@@ -5,13 +5,14 @@ namespace App\Domain\Workflow\Jobs;
 use App\Domain\Workflow\Models\WorkflowAction;
 use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Support\Tenancy\Jobs\BindTenantContext;
+use App\Support\Tenancy\Jobs\TenantAwareJob;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
 
 /** Webhook node: POST/PUT JSON to an external system; the outcome is logged on the run. */
-class SendWebhook implements ShouldQueue
+class SendWebhook implements ShouldQueue, TenantAwareJob
 {
     use Queueable;
 
@@ -30,6 +31,11 @@ class SendWebhook implements ShouldQueue
         public readonly array $payload,
     ) {
         $this->tenantId = $instance->tenant_id ?? app(TenantContext::class)->id();
+    }
+
+    public function tenantId(): ?int
+    {
+        return $this->tenantId;
     }
 
     /** @return list<object> */

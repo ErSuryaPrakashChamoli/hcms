@@ -9,13 +9,14 @@ use Closure;
 /**
  * Job middleware: re-binds the tenant captured at dispatch time so tenant-owned models created
  * inside a queue worker are stamped and scoped exactly as they would be in the request.
- * Jobs declare `public ?int $tenantId` and return `[new BindTenantContext]` from middleware().
+ * Jobs implement TenantAwareJob (or expose `public ?int $tenantId`) and return `[new BindTenantContext]`
+ * from middleware(). The previous context is restored when the job finishes (runAs).
  */
 final class BindTenantContext
 {
     public function handle(object $job, Closure $next): mixed
     {
-        $tenantId = $job->tenantId ?? null;
+        $tenantId = $job instanceof TenantAwareJob ? $job->tenantId() : ($job->tenantId ?? null);
         $context = app(TenantContext::class);
 
         if ($tenantId === null) {

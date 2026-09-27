@@ -5,8 +5,10 @@ use App\Domain\Assets\Models\AssetCategory;
 use App\Domain\Assets\Models\AssetModel;
 use App\Domain\Attendance\Adapters\EsslAdapter;
 use App\Domain\Attendance\Adapters\GenericJsonAdapter;
+use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Providers\ManualProvider;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
+use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\Form;
@@ -14,10 +16,16 @@ use App\Domain\Configuration\Models\FormSubmission;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Models\PolicyAssignmentRule;
 use App\Domain\Configuration\Models\PolicyVersion;
+use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\EmployeeBankAccount;
+use App\Domain\Employment\Models\EmployeeStatutoryDetail;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Enterprise\Models\WebhookEndpoint;
+use App\Domain\Exit\Models\FinalSettlement;
+use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\LearningPath;
 use App\Domain\Lifecycle\Enums\LifecycleState;
@@ -39,12 +47,17 @@ use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\ProfitCentre;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
+use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
+use App\Domain\Payroll\Models\PayrollEntry;
+use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\People\Models\Skill;
 use App\Domain\Performance\Models\CareerPath;
 use App\Domain\Performance\Models\Competency;
+use App\Domain\Performance\Models\ImprovementPlan;
 use App\Domain\Performance\Models\Kra;
+use App\Domain\Performance\Models\OneOnOne;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
 
@@ -1130,6 +1143,31 @@ return [
         'adapters' => [
             'generic' => ['label' => 'Generic JSON', 'driver' => GenericJsonAdapter::class],
             'essl' => ['label' => 'eSSL (push)', 'driver' => EsslAdapter::class],
+        ],
+    ],
+
+    /*
+    | Data classification (architecture contract §17). Levels drive masking, access audit, export
+    | and AI restrictions; the classes listed must keep their sensitive attributes masked in audit
+    | and behind the *.sensitive permissions. Checked by the architecture tests.
+    */
+    'data_classification' => [
+        'levels' => ['public', 'internal', 'confidential', 'sensitive', 'highly_sensitive', 'statutory', 'financial'],
+        'highly_sensitive' => [
+            EmployeeBankAccount::class => ['account_number'],
+            EmployeeStatutoryDetail::class => ['pan', 'aadhaar_reference', 'uan', 'pf_number', 'esic_number'],
+            User::class => ['password', 'app_authentication_secret', 'app_authentication_recovery_codes'],
+            SsoConnection::class => ['client_secret'],
+            WebhookEndpoint::class => ['secret'],
+        ],
+        'financial' => [
+            EmployeeSalaryAssignment::class, PayrollEntry::class,
+            Payslip::class, FinalSettlement::class,
+        ],
+        'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class],
+        'confidential' => [
+            Grievance::class, ImprovementPlan::class,
+            OneOnOne::class, BgvCase::class, EmployeeDocument::class,
         ],
     ],
 

@@ -4,6 +4,7 @@ namespace App\Domain\Identity\Services;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Employment\Models\ReportingRelationship;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Models\UserAccessScope;
 use App\Domain\Identity\Scopes\AccessScope;
@@ -19,8 +20,9 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  * record-level questions for policies.
  *
  * Semantics: no rows = tenant-wide (subject to permissions). With rows, an employee is visible
- * when the user is that employee, or when the employee's position effective today matches every
- * scoped dimension (any of the listed values per dimension).
+ * when the user is that employee, when the employee reports to the user today (any reporting
+ * type), or when the employee's position effective today matches every scoped dimension (any of
+ * the listed values per dimension).
  */
 final class AccessScopes
 {
@@ -80,9 +82,14 @@ final class AccessScopes
                 $positions->whereIn("{$dimension}_id", $ids);
             }
 
+            // Relationship scope (ADR-0004): a manager of any reporting type reaches the employees who
+            // report to them today, whatever the organisation scope says.
+            $reports = ReportingRelationship::query()->select('employee_id')->effectiveOn()
+                ->whereIn('manager_id', Employee::query()->select('id')->where('user_id', $user->getKey()));
+
             return Employee::query()
                 ->select('employees.id')
-                ->where(fn (Builder $q) => $q->where('employees.user_id', $user->getKey())->orWhereIn('employees.id', $positions))
+                ->where(fn (Builder $q) => $q->where('employees.user_id', $user->getKey())->orWhereIn('employees.id', $positions)->orWhereIn('employees.id', $reports))
                 ->toBase();
         });
     }

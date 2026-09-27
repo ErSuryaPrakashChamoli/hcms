@@ -160,3 +160,16 @@ it('audits scope assignments and exposes them on the user form', function () {
     $this->actingAs($this->scopedHr);
     expect(Employee::query()->count())->toBe(2);
 });
+
+it('lets a scoped manager reach direct reports outside the organisation scope (relationship scope, ADR-0004)', function () {
+    $managerUser = tenantUser($this->tenant, ['employee.view']);
+    $this->actingAs($this->admin);
+    $manager = app(HireEmployeeAction::class)->handle(['first_name' => 'Boss', 'last_name' => 'Person'], ['joining_date' => '2025-01-01', 'user_id' => $managerUser->id], ['company_id' => $this->companyA->id, 'location_id' => $this->delhi->id]);
+    $report = app(HireEmployeeAction::class)->handle(['first_name' => 'Rep', 'last_name' => 'Person'], ['joining_date' => '2025-01-01'], ['company_id' => $this->companyA->id, 'location_id' => $this->mumbai->id], $manager->id);
+    app(AccessScopes::class)->assign($managerUser, ['location' => [$this->delhi->id]]);
+
+    $this->actingAs($managerUser);
+    expect(Employee::query()->pluck('id')->sort()->values()->all())->toBe(collect([$this->empDelhi->id, $manager->id, $report->id])->sort()->values()->all())
+        ->and($managerUser->can('view', $report))->toBeTrue()
+        ->and($managerUser->can('view', $this->empMumbai))->toBeFalse();
+});
