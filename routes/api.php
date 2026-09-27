@@ -49,6 +49,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('leave/requests/{leaveRequest}/cancel', [LeaveController::class, 'cancel'])->name('leave.requests.cancel');
     });
     Route::get('payroll/runs', [ReadController::class, 'payrollRuns'])->middleware('api.key:payroll.read')->name('payroll.runs');
+    Route::get('payroll/runs/{run}', [ReadController::class, 'payrollRun'])->middleware('api.key:payroll.read')->name('payroll.runs.show');
+    Route::get('payroll/periods', [ReadController::class, 'payrollPeriods'])->middleware('api.key:payroll.read')->name('payroll.periods');
+    Route::get('payroll/payslips/{number}', [ReadController::class, 'payslip'])->middleware('api.key:payroll.read')->name('payroll.payslips.show');
     Route::get('payroll/payslips', [ReadController::class, 'payslips'])->middleware('api.key:payroll.read')->name('payroll.payslips');
     Route::get('documents', [ReadController::class, 'documents'])->middleware('api.key:documents.read')->name('documents.index');
     Route::get('assets', [ReadController::class, 'assets'])->middleware('api.key:assets.read')->name('assets.index');

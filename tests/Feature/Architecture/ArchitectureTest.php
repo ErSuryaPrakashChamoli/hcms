@@ -238,3 +238,20 @@ it('keeps the leave domain on its ledger, off attendance punches and payroll mon
 
     expect(in_array(AttendanceLeaveDayResolver::class, array_map(fn ($c) => $c, [get_class(app(LeaveDayResolver::class))]), true))->toBeTrue();
 });
+
+it('makes payroll consume attendance and leave outputs, never their internals, and keep statutory rates out of PHP', function () {
+    $payroll = array_values(array_filter(appFilesMatching('/./'), fn (string $f) => preg_match('#^app/Domain/Payroll/(Services|Jobs)/#', $f)));
+    expect($payroll)->not->toBeEmpty();
+
+    foreach ($payroll as $file) {
+        $source = file_get_contents(base_path($file));
+        // payroll consumes AttendanceOutput / LeaveOutput; it may lock days (PayrollRuns) but never read punches or recalculate.
+        expect((bool) preg_match('/AttendancePunch|AttendanceProcessor|LeaveBalances|LeaveAccrual|LeaveLedgerEntry/', $source))->toBeFalse("{$file} must use AttendanceOutput / LeaveOutput");
+        if (! str_ends_with($file, 'Services/PayrollRuns.php')) {
+            expect((bool) preg_match('/AttendanceRecord::/', $source))->toBeFalse("{$file} must read attendance through AttendanceOutput");
+        }
+        expect((bool) preg_match('/RecruitmentEdge|\\bRms\\b/', $source))->toBeFalse("{$file} must not reference RMS");
+        // No statutory rate literals in the engine: they live in versioned compliance rules.
+        expect((bool) preg_match('/\\b0\\.(12|0075|0325|0833)\\b|\\b(15000|21000)\\b/', $source))->toBeFalse("{$file} must not embed statutory rates");
+    }
+});

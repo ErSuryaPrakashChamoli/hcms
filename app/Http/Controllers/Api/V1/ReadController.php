@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Analytics\Models\Report;
 use App\Domain\Analytics\Services\ReportRunner;
 use App\Domain\Assets\Models\Asset;
+use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Documents\Models\EmployeeDocument;
+use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Performance\Models\Appraisal;
@@ -25,6 +28,28 @@ class ReadController extends Controller
         $query = PayrollRun::query()->with(['period', 'company'])->whereIn('status', ['finalized', 'paid'])->orderByDesc('id');
 
         return $this->page($query, $request, fn (PayrollRun $r) => ['id' => $r->id, 'company' => $r->company?->code, 'period' => $r->period?->start_date?->format('Y-m'), 'status' => $r->status, 'totals' => $r->totals, 'finalized_at' => $r->finalized_at?->toIso8601String()]);
+    }
+
+    public function payrollPeriods(Request $request): JsonResponse
+    {
+        $query = PayrollPeriod::query()->with('company:id,code')->orderByDesc('start_date');
+
+        return $this->page($query, $request, fn ($p) => ['id' => $p->id, 'company' => $p->company?->code, 'period' => $p->start_date->format('Y-m'), 'start_date' => $p->start_date->toDateString(), 'end_date' => $p->end_date->toDateString(), 'status' => $p->status]);
+    }
+
+    public function payrollRun(int $run): JsonResponse
+    {
+        $r = PayrollRun::query()->with(['period', 'company'])->findOrFail($run);
+
+        return response()->json(['data' => ['id' => $r->id, 'company' => $r->company?->code, 'period' => $r->period?->start_date?->format('Y-m'), 'status' => $r->status, 'calculation_version' => $r->calculation_version, 'totals' => $r->totals, 'rule_versions' => $r->rule_versions, 'reconciliation' => $r->reconciliation, 'exception_count' => $r->exception_count, 'finalized_at' => $r->finalized_at?->toIso8601String()]]);
+    }
+
+    public function payslip(string $number): JsonResponse
+    {
+        $p = Payslip::query()->with('employee')->where('number', $number)->firstOrFail();
+        app(AuditRecorder::class)->record(AuditAction::PayslipAccessed, 'payroll', $p, reason: 'API read ('.request()->attributes->get('api_key')?->name.')');
+
+        return response()->json(['data' => ['number' => $p->number, 'employee_code' => $p->employee?->employee_code, 'period' => $p->get('period.label'), 'totals' => $p->get('totals'), 'days' => $p->get('days'), 'earnings' => $p->get('earnings'), 'deductions' => $p->get('deductions'), 'employer_contributions' => $p->get('employer_contributions')]]);
     }
 
     public function payslips(Request $request): JsonResponse
