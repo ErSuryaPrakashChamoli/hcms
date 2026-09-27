@@ -51,12 +51,17 @@ class PayrollControlRoom extends Page implements HasTable
 
         return $unverified->isEmpty()
             ? null
-            : 'Statutory rules '.$unverified->implode(', ').' are ILLUSTRATIVE / development only. Verify them against official sources before running production payroll.';
+            : 'Statutory rules '.$unverified->implode(', ').' are not VERIFIED against official sources'.(ComplianceRules::enforced() ? '; payroll using them cannot be finalized.' : ' (enforcement is off in this environment).');
     }
 
     protected function getHeaderActions(): array
     {
-        return [PayrollActions::openRun()];
+        return [
+            PayrollActions::openRun(),
+            // Phase 5: statutory outputs built from finalized payroll live in the Compliance control room.
+            Action::make('complianceControlRoom')->label('Compliance control room')->icon(Heroicon::OutlinedShieldCheck)->color('gray')
+                ->visible(fn () => ComplianceControlRoom::canAccess())->url(fn () => ComplianceControlRoom::getUrl()),
+        ];
     }
 
     /** @return array<int, array<string, mixed>> */
