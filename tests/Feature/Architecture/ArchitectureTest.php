@@ -7,6 +7,7 @@ use App\Domain\Audit\Models\AuditEventChange;
 use App\Domain\Communication\Models\AnnouncementRead;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\ComplianceRuleVerification;
+use App\Domain\Compliance\Models\ProfessionalTaxRuleVersion;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\Permission;
@@ -56,6 +57,7 @@ it('scopes every domain model to a tenant except the documented platform-level m
         AuditEventChange::class,
         ComplianceRule::class,
         ComplianceRuleVerification::class, // Phase 5: platform rule verification history
+        ProfessionalTaxRuleVersion::class, // Phase 5: PT view of compliance_rules
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -97,7 +99,9 @@ it('audits every domain model except the documented append-only or derived table
         // through the return's STATUTORY_OUTPUT_* events and the statutory_return_actions log.
         'Compliance\Models\StatutoryReturnAction', 'Compliance\Models\StatutorySnapshot', 'Compliance\Models\StatutoryReconciliation',
         'Compliance\Models\EpfReturnRun', 'Compliance\Models\EpfReturnEntry', 'Compliance\Models\EpfReturnRevision',
-        'Compliance\Models\EsiReturnRun', 'Compliance\Models\EsiReturnEntry',
+        'Compliance\Models\EsiReturnRun', 'Compliance\Models\EsiReturnEntry', 'Compliance\Models\ProfessionalTaxReturn',
+        'Compliance\Models\ProfessionalTaxReturnEntry', 'Compliance\Models\LwfReturn', 'Compliance\Models\LwfReturnEntry',
+        'Compliance\Models\ProfessionalTaxRuleVersion',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

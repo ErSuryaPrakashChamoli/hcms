@@ -146,7 +146,7 @@ class ComplianceRule extends Model
 
     public function verifications(): HasMany
     {
-        return $this->hasMany(ComplianceRuleVerification::class)->orderBy('id');
+        return $this->hasMany(ComplianceRuleVerification::class, 'compliance_rule_id')->orderBy('id');
     }
 
     public function supersededBy(): BelongsTo

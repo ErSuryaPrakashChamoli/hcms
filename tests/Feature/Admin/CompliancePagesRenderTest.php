@@ -4,10 +4,13 @@ use App\Domain\Compliance\Services\Returns\EpfReturns;
 use App\Filament\Resources\ComplianceRules\ComplianceRuleResource;
 use App\Filament\Resources\EpfReturns\EpfReturnResource;
 use App\Filament\Resources\EpfReturns\Pages\ViewEpfReturn;
+use App\Filament\Resources\EsiReturns\EsiReturnResource;
 use App\Filament\Resources\EstablishmentAssignments\EstablishmentAssignmentResource;
 use App\Filament\Resources\Establishments\EstablishmentResource;
 use App\Filament\Resources\EstablishmentStatutoryProfiles\EstablishmentStatutoryProfileResource;
 use App\Filament\Resources\LegalEntities\LegalEntityResource;
+use App\Filament\Resources\LwfReturns\LwfReturnResource;
+use App\Filament\Resources\ProfessionalTaxReturns\ProfessionalTaxReturnResource;
 use App\Filament\Resources\RuleVerifications\RuleVerificationResource;
 use App\Filament\Resources\StatutoryRegistrations\StatutoryRegistrationResource;
 use Illuminate\Support\Facades\Storage;
@@ -39,6 +42,9 @@ it('renders the legal structure and compliance pages with masked identifiers', f
     $this->get(ComplianceRuleResource::getUrl('index'))->assertOk()->assertSee('Employees Provident Fund')->assertSee('In review');
     $this->get(RuleVerificationResource::getUrl('index'))->assertOk();
     $this->get(EpfReturnResource::getUrl('index'))->assertOk()->assertSee('2026-09');
+    $this->get(EsiReturnResource::getUrl('index'))->assertOk();
+    $this->get(ProfessionalTaxReturnResource::getUrl('index'))->assertOk();
+    $this->get(LwfReturnResource::getUrl('index'))->assertOk();
     $this->get(EpfReturnResource::getUrl('view', ['record' => $this->return]))->assertOk()->assertSee('ECR')->assertSee('Validate')->assertDontSee('100200300400');
 });
 

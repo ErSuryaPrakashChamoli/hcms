@@ -17,6 +17,8 @@ use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\StatutorySnapshot;
 use App\Domain\Compliance\Services\Returns\EpfReturns;
 use App\Domain\Compliance\Services\Returns\EsiReturns;
+use App\Domain\Compliance\Services\Returns\LwfReturns;
+use App\Domain\Compliance\Services\Returns\ProfessionalTaxReturns;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\Form;
@@ -1182,6 +1184,8 @@ return [
         'return_types' => [
             'EPF' => ['label' => 'EPF — Electronic Challan-cum-Return', 'form_code' => 'ECR', 'authority' => 'EPFO', 'scope' => 'establishment', 'generator' => EpfReturns::class, 'filing_totals' => ['ee_share', 'eps_share', 'er_share']],
             'ESI' => ['label' => 'ESI — monthly contribution', 'form_code' => 'ESI_MC', 'authority' => 'ESIC', 'scope' => 'establishment', 'generator' => EsiReturns::class, 'filing_totals' => ['ee_contribution', 'er_contribution']],
+            'PT' => ['label' => 'Professional tax return', 'form_code' => 'PT', 'authority' => 'STATE_PT', 'scope' => 'establishment', 'generator' => ProfessionalTaxReturns::class, 'filing_totals' => ['pt_amount']],
+            'LWF' => ['label' => 'Labour welfare fund return', 'form_code' => 'LWF', 'authority' => 'STATE_LWF', 'scope' => 'establishment', 'generator' => LwfReturns::class, 'filing_totals' => ['ee_contribution', 'er_contribution']],
         ],
         // Export layouts carry their own verification status; an unverified layout is exported with
         // an UNVERIFIED-FORMAT_ file-name prefix and flagged in validation.
@@ -1199,6 +1203,18 @@ return [
                 'fields' => ['IP Number', 'IP Name', 'No of Days for which wages paid/payable during the month', 'Total Monthly Wages', 'Reason Code for Zero workings days', 'Last Working Day'],
                 'ip_pattern' => '/^\d{10}$/',
                 'source' => 'ESIC employer-portal monthly contribution upload template (not retrieved). Column order and the 10-digit IP number pattern must be verified before upload.',
+            ],
+            'PT_RETURN' => [
+                'version' => 'pt-generic-1',
+                'verification_status' => 'review',
+                'fields' => ['Employee', 'State', 'Gross salary', 'Professional tax'],
+                'source' => 'Generic working schedule. Every state prescribes its own return form and portal; this export is a reconciliation schedule, not a state return file.',
+            ],
+            'LWF_RETURN' => [
+                'version' => 'lwf-generic-1',
+                'verification_status' => 'review',
+                'fields' => ['Employee', 'State', 'Employee contribution', 'Employer contribution'],
+                'source' => 'Generic working schedule. Each state welfare board prescribes its own form; this export is a reconciliation schedule, not a board return file.',
             ],
         ],
         'return_statuses' => ['draft' => 'Draft', 'calculated' => 'Calculated', 'validated' => 'Validated', 'approved' => 'Approved', 'exported' => 'Exported (not filed)', 'submitted' => 'Submitted (filing recorded)', 'acknowledged' => 'Acknowledged', 'reconciliation_required' => 'Reconciliation required', 'reconciled' => 'Reconciled', 'revised' => 'Revised', 'cancelled' => 'Cancelled'],

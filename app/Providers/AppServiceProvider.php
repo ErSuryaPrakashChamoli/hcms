@@ -53,7 +53,12 @@ use App\Domain\Compliance\Models\EpfReturnRun;
 use App\Domain\Compliance\Models\EsiReturnEntry;
 use App\Domain\Compliance\Models\EsiReturnRun;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
+use App\Domain\Compliance\Models\LwfReturn;
+use App\Domain\Compliance\Models\LwfReturnEntry;
 use App\Domain\Compliance\Models\ProfessionalTaxProfile;
+use App\Domain\Compliance\Models\ProfessionalTaxReturn;
+use App\Domain\Compliance\Models\ProfessionalTaxReturnEntry;
+use App\Domain\Compliance\Models\ProfessionalTaxRuleVersion;
 use App\Domain\Compliance\Models\StatutoryReconciliation;
 use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Models\StatutoryReturn;
@@ -332,6 +337,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Payslip::class, PayslipPolicy::class);
         Gate::policy(ComplianceRule::class, ComplianceRulePolicy::class);
         Gate::policy(ComplianceRuleVerification::class, ComplianceRulePolicy::class);
+        Gate::policy(ProfessionalTaxRuleVersion::class, ComplianceRulePolicy::class);
         Gate::policy(EmployeeTaxDeclaration::class, TaxDeclarationPolicy::class);
         Gate::policy(Tenant::class, TenantPolicy::class);
         Gate::policy(TenantSetting::class, TenantSettingPolicy::class);
@@ -343,7 +349,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Establishment::class, EstablishmentPolicy::class);
         Gate::policy(EmployeeEstablishmentAssignment::class, EstablishmentAssignmentPolicy::class);
         Gate::policy(StatutoryRegistration::class, StatutoryRegistrationPolicy::class);
-        foreach ([StatutoryReturn::class, StatutoryReturnAction::class, StatutorySnapshot::class, StatutoryReconciliation::class, EpfReturnRun::class, EpfReturnEntry::class, EpfReturnRevision::class, EsiReturnRun::class, EsiReturnEntry::class] as $model) {
+        foreach ([StatutoryReturn::class, StatutoryReturnAction::class, StatutorySnapshot::class, StatutoryReconciliation::class, EpfReturnRun::class, EpfReturnEntry::class, EpfReturnRevision::class, EsiReturnRun::class, EsiReturnEntry::class, ProfessionalTaxReturn::class, ProfessionalTaxReturnEntry::class, LwfReturn::class, LwfReturnEntry::class] as $model) {
             Gate::policy($model, StatutoryReturnPolicy::class);
         }
         Gate::policy(EstablishmentStatutoryProfile::class, StatutoryRegistrationPolicy::class);
