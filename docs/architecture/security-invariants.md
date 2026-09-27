@@ -1,6 +1,6 @@
-# PeopleOS security invariants
+# PeopleOS security and architecture invariants
 
-These hold for every change. The architecture tests in `tests/Feature/Architecture/ArchitectureTest.php`
+These hold for every change (Phase 0.2, extended in Phase 0.3 by the architecture contract). The architecture tests in `tests/Feature/Architecture/ArchitectureTest.php`
 enforce the mechanical ones on every CI run; the rest are reviewed.
 
 ## Tenancy
@@ -17,14 +17,20 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 4. Tenant resolution runs before route-model binding (`ResolveTenant` and `AuthenticateApiKey` are
    prepended to the middleware priority list ahead of `SubstituteBindings`). Controllers that look
    records up by id do so after the tenant is bound.
-5. Queued jobs that touch tenant-owned data carry `public ?int $tenantId` and return
-   `[new BindTenantContext]` from `middleware()`; the worker re-binds the tenant before `handle()`.
+5. Every queued job under `app/` implements `TenantAwareJob` (`tenantId()`) and returns
+   `[new BindTenantContext]` from `middleware()`; the worker re-binds the tenant before `handle()` and
+   restores the previous context afterwards (architecture test).
+5a. Scheduled commands run with `withoutOverlapping()->onOneServer()` and iterate tenants explicitly
+   with `runAs`; they never query tenant-owned models before binding a tenant.
+5b. Tenancy violations (`MissingTenantException`, `TenantMismatchException`) render as a plain 403
+   without tenant details.
 
 ## Organisational access scope (ABAC)
 
 6. `user_access_scopes` rows restrict a user to companies / locations / business units / divisions /
    departments / teams. No rows = tenant-wide (subject to permissions). Rows within one dimension are
-   OR-ed; dimensions are AND-ed. A user always reaches their own employee record.
+   OR-ed; dimensions are AND-ed. A user always reaches their own employee record and (relationship
+   scope, ADR-0004) every employee who reports to them today through any reporting type.
 7. The scope is enforced at the query layer by the `AccessScope` global scope on `Employee`, on every
    employee-linked model (`ScopedByEmployee`) and on organisation units (`ScopedByOrganisation`), so
    Filament tables, relation managers, global and table search, report datasets, CSV exports,
@@ -60,3 +66,29 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 15. Compliance rules carry `verification_status`; packs load as `illustrative`. With
     `peopleos.compliance.enforce_verified_rules` on (default in production) payroll cannot be
     finalized on illustrative rules. Nothing in the repository claims legal compliance.
+
+## Historical integrity and versioning
+
+16. Historical business facts are never overwritten: positions, reporting, salary, organisation units,
+    schedules, policy versions, rules, custom fields and addresses are effective-dated; changes create
+    new rows. Future-dated rows cannot rewrite the past.
+17. Published policy, workflow and form versions are immutable; a running workflow instance stays on
+    the version it started from; submissions reference their form version.
+18. One Person has exactly one Employee per tenant (database unique constraint); re-employment
+    re-activates that Employee rather than creating another.
+
+## Integration and AI
+
+19. PeopleOS carries no RecruitmentEdge / RMS namespace, model, migration, database connection or
+    package (architecture test). External systems are represented by external references and mappings;
+    PeopleOS owns its primary keys.
+20. No integration path bypasses PeopleOS authorisation: API keys carry scopes and bind the tenant
+    before any lookup; inbound events (future) are idempotent and audited; outbound webhooks are signed.
+21. AI assistants run as the user through the same tenant, permission, scope and classification layers,
+    receive redacted facts only, never write, and are logged.
+
+## Data classification
+
+22. `config('peopleos.data_classification')` lists the highly sensitive, financial, statutory and
+    confidential classes; every highly-sensitive attribute is masked in audit, excluded or encrypted
+    (architecture test). Tenant administrators are not implicitly entitled to sensitive fields.

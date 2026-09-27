@@ -1,0 +1,33 @@
+# Architecture Decision Register
+
+Consolidated register (Phase 0.3, 27 September 2026). ADR-0001 has its own file because it carries a migration plan; ADR-0002 to ADR-0015 are recorded here. Status values: **Accepted** (in force now), **Accepted / deferred implementation** (contract fixed, code later). The architecture contract (`peopleos-architecture-contract.md`) is the narrative; this register is the index of decisions.
+
+| ADR | Title | Status | Decision (one line) | Enforced by |
+|---|---|---|---|---|
+| 0001 | Legal Entity / Establishment | Accepted / deferred implementation | Keep Company = legal entity = establishment; target Tenant › Company › LegalEntity › Establishment › Location with additive backfill after Phase 0.3 | `ADR-0001-legal-entity-establishment.md` |
+| 0002 | Person / Employee / Employment | Accepted | One Person, one Employee per tenant (`unique tenant_id+person_id`); employment = effective-dated positions, reporting, salary and lifecycle transitions; spells derived, `employments` table deferred; rehire re-activates the same Employee | DB unique constraint; `HireEmployeeAction` reuses `person.id`; lifecycle `alumni → active` |
+| 0003 | Organisation & reporting | Accepted | Units classified as management/legal/physical/reporting/financial/job-architecture; typed effective-dated reporting relationships with one primary line at a time; no single `manager_id` | `reporting_relationships` schema, `currentManager`, `ApproverResolver` |
+| 0004 | Authorisation / ABAC / manager visibility | Accepted | Layers tenant → role → permission → organisation scope → relationship scope → field security; managers reach direct reports regardless of org scope; tenant admins are not implicitly sensitive-data viewers | `AccessScopes`, `AccessScope`, policies, `AccessScopeTest` |
+| 0005 | Field-level security & data classification | Accepted / matrix UI deferred | Classification map in config; view/edit via `*.sensitive.*` keys, export via dataset sensitive permission + audit, search never on sensitive columns; highly-sensitive attributes masked/encrypted | `config peopleos.data_classification`, architecture test |
+| 0006 | Effective dating | Accepted | `effective_from`/`effective_to` on every historical business fact (24 tables); never overwrite; future-dated rows allowed; queries use `effectiveOn()` | `HasEffectiveDates`, `EffectiveDatingTest` |
+| 0007 | Lifecycle & domain events | Accepted | 12 canonical states, config-owned transitions, one domain event per transition with audit + timeline + notification + workflow fan-out; reserved names for position/salary events emitted in Phase 1 | `LifecycleEngine`, `EmployeeLifecycleChanged`, config transitions |
+| 0008 | Audit & change intelligence | Accepted | Append-only hash-chained audit with operation ids; domain events are separate PHP events; change history = audit + effective-dated rows | `AuditRecorder`, `ImmutableBuilder`, `AuditHardeningTest` |
+| 0009 | Configuration & versioning | Accepted | Configuration / policy / rule / workflow vocabulary; Draft…Archived mapped onto existing status columns; published versions immutable, superseded retained; no universal config table | Change Centre, `policy_versions`, `form_versions` |
+| 0010 | Workflow versioning | Accepted | Instances pinned to `workflow_version_id`; new versions affect new instances only; rollback = republish; failed non-webhook nodes need operator resume (generic retry deferred) | `WorkflowInstance`, `WorkflowEngine` |
+| 0011 | External references | Accepted / deferred implementation | `external_references(tenant, entity_type, entity_id, external_system, external_entity_type, external_entity_id, external_reference, metadata)`; PeopleOS owns its keys; today `employees.external_reference` + `bgv_cases.external_reference` | `integration-contract.md`; RMS boundary test |
+| 0012 | Integration events | Accepted / deferred implementation | `inbound_events` with states received → processing → succeeded / failed → retrying → dead_letter → reprocessed; idempotency key per source; correlation id; payload bodies purged after processing | `integration-contract.md` |
+| 0013 | Queue tenant context | Accepted | Every `ShouldQueue` class implements `TenantAwareJob` and runs through `BindTenantContext`; scheduler entries guarded with `withoutOverlapping()->onOneServer()` and iterate tenants explicitly | Architecture test, `BindTenantContext`, `routes/console.php` |
+| 0014 | API & webhook contract | Accepted | `/api/v1` conventions frozen (key auth, tenant by key, JSON errors, pagination, filters, rate limit); outbound webhook envelope `{id, event, occurred_at, subject, data}` + timestamp/HMAC headers; per-key organisation scope data contract defined, deferred | `routes/api.php`, `Webhooks`, `integration-contract.md` |
+| 0015 | AI security boundary | Accepted | AI runs as the user through the same tenant/permission/scope/classification layers; redacted facts only; no writes; deterministic rules untouched | `AiGateway`, `AiTest` |
+
+## Notes on individual decisions
+
+**ADR-0002 rationale.** The blueprint's "Employment #1 / #2" is satisfied today by lifecycle spells on one Employee; splitting employees per spell would duplicate identity and break the lifetime record. A future `employments` table is additive (`employee_positions.employment_id`) if separate contracts must carry separate codes or legal entities.
+
+**ADR-0004 rationale for manager visibility.** A manager who cannot see a direct report cannot approve, review or coach; reporting relationships are audited, effective-dated and set by HR, so they are a safe basis for access. Indirect reports are intentionally not included by default.
+
+**ADR-0005 rationale.** A generic field matrix would duplicate the permission catalogue; classification in config plus per-model masking is testable and sufficient until a tenant needs per-field configuration.
+
+**ADR-0013 rationale.** Interface + middleware is the smallest mechanically enforceable pattern: the architecture test checks every `ShouldQueue` class in `app/`, so a new job cannot be merged without carrying its tenant.
+
+**ADR-0014 API-key scope.** Data contract: `api_keys.access_scope` JSON nullable with the same shape as `user_access_scopes` grouped by dimension; enforcement: `AuthenticateApiKey` registers a synthetic principal in `AccessScopes` so the same global scope applies. Not built now because no consumer needs it before the Integration Hub.
