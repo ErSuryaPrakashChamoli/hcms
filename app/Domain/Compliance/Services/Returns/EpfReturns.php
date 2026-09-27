@@ -148,6 +148,7 @@ final class EpfReturns implements StatutoryReturnGenerator
         }
 
         $ruleVersions = [];
+        $seenUans = [];
         $totals = ['entries' => 0, 'gross_wages' => 0.0, 'epf_wages' => 0.0, 'eps_wages' => 0.0, 'edli_wages' => 0.0, 'ee_share' => 0.0, 'eps_share' => 0.0, 'er_share' => 0.0, 'ncp_days' => 0.0, 'export_ee_share' => 0, 'export_eps_share' => 0, 'export_er_share' => 0];
 
         foreach ($rows as $row) {
@@ -167,6 +168,10 @@ final class EpfReturns implements StatutoryReturnGenerator
             $epsShare = (float) ($erBasis['eps'] ?? 0);
             $erShare = (float) ($erBasis['epf'] ?? 0);
             $uan = preg_replace('/\D+/', '', (string) $payroll->employee?->statutoryDetail?->uan) ?: null;
+            $uanHash = $uan ? hash_hmac('sha256', $uan, (string) config('app.key')) : null;
+            // Keep the per-return unique key; a repeated UAN is stored unhashed and flagged for validation.
+            $duplicateUan = $uanHash !== null && isset($seenUans[$uanHash]);
+            $seenUans[$uanHash ?? ''] = true;
 
             $entry = EpfReturnEntry::query()->create([
                 'epf_return_run_id' => $run->getKey(),
@@ -175,7 +180,7 @@ final class EpfReturns implements StatutoryReturnGenerator
                 'payroll_run_id' => $payroll->payroll_run_id,
                 'payroll_entry_id' => $payroll->getKey(),
                 'uan' => $uan,
-                'uan_hash' => $uan ? hash_hmac('sha256', $uan, (string) config('app.key')) : null,
+                'uan_hash' => $duplicateUan ? null : $uanHash,
                 'uan_last4' => $uan ? substr($uan, -4) : null,
                 'member_name' => mb_strtoupper(trim((string) ($payroll->employee?->person?->display_name ?? $payroll->employee?->employee_code))),
                 'calc_gross_wages' => (float) $payroll->gross,
@@ -199,7 +204,7 @@ final class EpfReturns implements StatutoryReturnGenerator
                 'compliance_rule_id' => $rule?->getKey(),
                 'rule_version' => $rule?->version,
                 'rule_checksum' => $basis['rule_checksum'] ?? $rule?->checksum,
-                'issues' => ['establishment_source' => $row['establishment_source']],
+                'issues' => ['establishment_source' => $row['establishment_source']] + ($duplicateUan ? ['duplicate_identifier' => true] : []),
             ]);
 
             if ($rule) {
@@ -263,7 +268,7 @@ final class EpfReturns implements StatutoryReturnGenerator
             } elseif (! preg_match('/^\d{12}$/', $entry->uan)) {
                 $flag('invalid_uan', 'blocking', "{$who}: UAN must be 12 digits.");
             }
-            if ($entry->uan_hash && $duplicates->has($entry->uan_hash)) {
+            if (($entry->uan_hash && $duplicates->has($entry->uan_hash)) || ($entry->issues['duplicate_identifier'] ?? false)) {
                 $flag('duplicate_uan', 'blocking', "{$who}: the same UAN appears more than once in this return.");
             }
             if ((float) $entry->calc_epf_wages <= 0) {
@@ -293,7 +298,7 @@ final class EpfReturns implements StatutoryReturnGenerator
                 $flag('establishment_resolved_at_return', 'warning', "{$who}: payroll was calculated before establishments existed; attributed through the establishment assignment.");
             }
 
-            $entry->update(['status' => collect($entryIssues)->contains('severity', 'blocking') ? 'error' : ($entryIssues ? 'warning' : 'ok'), 'issues' => ['establishment_source' => $entry->issues['establishment_source'] ?? null, 'list' => $entryIssues]]);
+            $entry->update(['status' => collect($entryIssues)->contains('severity', 'blocking') ? 'error' : ($entryIssues ? 'warning' : 'ok'), 'issues' => [...collect($entry->issues)->except('list')->all(), 'list' => $entryIssues]]);
         }
 
         // EPFO sequencing rules (Re-engineered ECR user manual v3.0).

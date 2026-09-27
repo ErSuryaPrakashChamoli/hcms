@@ -10,11 +10,13 @@ use App\Domain\Bgv\Providers\ManualProvider;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Compliance\Models\EpfReturnEntry;
+use App\Domain\Compliance\Models\EsiReturnEntry;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
 use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\StatutorySnapshot;
 use App\Domain\Compliance\Services\Returns\EpfReturns;
+use App\Domain\Compliance\Services\Returns\EsiReturns;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\Form;
@@ -1179,6 +1181,7 @@ return [
         // Phase 5 statutory outputs: one generator per return type (StatutoryReturnGenerator).
         'return_types' => [
             'EPF' => ['label' => 'EPF — Electronic Challan-cum-Return', 'form_code' => 'ECR', 'authority' => 'EPFO', 'scope' => 'establishment', 'generator' => EpfReturns::class, 'filing_totals' => ['ee_share', 'eps_share', 'er_share']],
+            'ESI' => ['label' => 'ESI — monthly contribution', 'form_code' => 'ESI_MC', 'authority' => 'ESIC', 'scope' => 'establishment', 'generator' => EsiReturns::class, 'filing_totals' => ['ee_contribution', 'er_contribution']],
         ],
         // Export layouts carry their own verification status; an unverified layout is exported with
         // an UNVERIFIED-FORMAT_ file-name prefix and flagged in validation.
@@ -1189,6 +1192,13 @@ return [
                 'separator' => '#~#',
                 'fields' => ['UAN', 'MEMBER NAME', 'GROSS WAGES', 'EPF WAGES', 'EPS WAGES', 'EDLI WAGES', 'EPF CONTRI REMITTED', 'EPS CONTRI REMITTED', 'EPF EPS DIFF REMITTED', 'NCP DAYS', 'REFUND OF ADVANCES'],
                 'source' => 'EPFO states the revamped ECR keeps the existing format (epfo.gov.in/revamped-ecr). The field layout itself is in the employer-portal Help File, which was not retrieved: verify before upload.',
+            ],
+            'ESI_MC' => [
+                'version' => 'esic-mc-draft-1',
+                'verification_status' => 'review',
+                'fields' => ['IP Number', 'IP Name', 'No of Days for which wages paid/payable during the month', 'Total Monthly Wages', 'Reason Code for Zero workings days', 'Last Working Day'],
+                'ip_pattern' => '/^\d{10}$/',
+                'source' => 'ESIC employer-portal monthly contribution upload template (not retrieved). Column order and the 10-digit IP number pattern must be verified before upload.',
             ],
         ],
         'return_statuses' => ['draft' => 'Draft', 'calculated' => 'Calculated', 'validated' => 'Validated', 'approved' => 'Approved', 'exported' => 'Exported (not filed)', 'submitted' => 'Submitted (filing recorded)', 'acknowledged' => 'Acknowledged', 'reconciliation_required' => 'Reconciliation required', 'reconciled' => 'Reconciled', 'revised' => 'Revised', 'cancelled' => 'Cancelled'],
@@ -1261,6 +1271,7 @@ return [
             EmployeeStatutoryDetail::class => ['pan', 'aadhaar_reference', 'uan', 'pf_number', 'esic_number'],
             StatutoryRegistration::class => ['registration_number'],
             EpfReturnEntry::class => ['uan'],
+            EsiReturnEntry::class => ['ip_number'],
             User::class => ['password', 'app_authentication_secret', 'app_authentication_recovery_codes'],
             SsoConnection::class => ['client_secret'],
             WebhookEndpoint::class => ['secret'],

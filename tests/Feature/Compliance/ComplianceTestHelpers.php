@@ -39,7 +39,8 @@ function complianceCompany(array $profile = []): array
 function statutoryEmployee(float $ctcAnnual, Establishment $establishment, ?string $uan = null, array $detail = []): Employee
 {
     $employee = salariedEmployee($ctcAnnual);
-    EmployeeStatutoryDetail::query()->create(['employee_id' => $employee->id, 'uan' => $uan, 'pan' => $detail['pan'] ?? null, 'esic_number' => $detail['esic_number'] ?? null] + collect($detail)->except(['pan', 'esic_number'])->all());
+    EmployeeStatutoryDetail::query()->create(['employee_id' => $employee->id, 'uan' => $uan, 'pan' => $detail['pan'] ?? null, 'esic_number' => $detail['esic_number'] ?? null]
+        + collect($detail)->except(['pan', 'esic_number'])->all() + ['pf_applicable' => true, 'esic_applicable' => true, 'pt_applicable' => true]);
     app(EstablishmentAssignments::class)->assign($employee, $establishment, '2025-01-01', 'Test assignment');
 
     return $employee->refresh();

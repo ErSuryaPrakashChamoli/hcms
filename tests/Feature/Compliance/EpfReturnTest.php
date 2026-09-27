@@ -211,3 +211,14 @@ it('generates through a tenant-aware unique queued job', function () {
     expect(StatutoryReturn::query()->where('return_type', 'EPF')->count())->toBe(1)
         ->and(StatutoryReturn::query()->first()->actions()->where('source', 'job')->count())->toBe(2);
 });
+
+it('reports a repeated UAN as a blocking duplicate instead of failing the build', function () {
+    $this->travelTo('2026-11-05 09:00:00');
+    statutoryEmployee(300000, $this->establishment, '100200300400'); // same UAN as Anita
+    finalizedPayroll($this->company, 2026, 10, $this->preparer, $this->payrollApprover);
+
+    $return = $this->returns->validate($this->epf->generate($this->establishment, 2026, 10, $this->generator), $this->generator);
+    expect(EpfReturnEntry::query()->where('statutory_return_id', $return->id)->count())->toBe(3)
+        ->and(collect($return->validation)->where('code', 'duplicate_uan')->where('severity', 'blocking'))->not->toBeEmpty()
+        ->and($return->status)->toBe('calculated');
+});
