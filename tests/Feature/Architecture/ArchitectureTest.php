@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Attendance\Contracts\LeaveDayResolver;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Audit\Models\AuditEventChange;
@@ -10,6 +11,7 @@ use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\User;
 use App\Domain\Knowledge\Models\ArticleRead;
+use App\Domain\Leave\Services\AttendanceLeaveDayResolver;
 use App\Domain\People\Models\Person;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\BelongsToTenant;
@@ -211,4 +213,28 @@ it('keeps the attendance domain free of payroll money, duplicate identity, appro
         $class = 'App\\Domain\\Attendance\\Models\\'.basename($path, '.php');
         expect(in_array(BelongsToTenant::class, class_uses_recursive($class), true))->toBeTrue("{$class} must be tenant-scoped");
     }
+});
+
+it('keeps the leave domain on its ledger, off attendance punches and payroll money, and behind LeaveDayResolver', function () {
+    $leaveFiles = array_values(array_filter(appFilesMatching('/./'), fn (string $f) => str_starts_with($f, 'app/Domain/Leave/')));
+    expect($leaveFiles)->not->toBeEmpty();
+
+    foreach ($leaveFiles as $file) {
+        $source = file_get_contents(base_path($file));
+        expect((bool) preg_match('/AttendancePunch/', $source))->toBeFalse("{$file} must not touch raw punches");
+        expect((bool) preg_match('/\\b(ctc|salary|payslip|earning|deduction|wage)\\b/i', $source))->toBeFalse("{$file} must not compute payroll amounts");
+        expect((bool) preg_match('/RecruitmentEdge|\\bRms\\b/', $source))->toBeFalse("{$file} must not reference RMS");
+        // Balances change only through the ledger service: no direct writes to leave_balances outside LeaveBalances.
+        if (! str_ends_with($file, 'Services/LeaveBalances.php')) {
+            expect((bool) preg_match('/LeaveBalance::(create|query\\(\\)->(update|insert))|->(increment|decrement)\\([\'"](closing|used|accrued)/', $source))->toBeFalse("{$file} must post ledger entries instead of editing balances");
+        }
+    }
+
+    // Attendance calculation consumes leave only through the contract (the record model keeps a plain
+    // leave_request_id relation for display, which is allowed).
+    foreach (array_filter(appFilesMatching('/./'), fn (string $f) => preg_match('#^app/Domain/Attendance/(Services|Jobs|Imports|Contracts)/#', $f)) as $file) {
+        expect((bool) preg_match('/use App\\\\Domain\\\\Leave\\\\(Models|Services)/', file_get_contents(base_path($file))))->toBeFalse("{$file} must use LeaveDayResolver, not Leave internals");
+    }
+
+    expect(in_array(AttendanceLeaveDayResolver::class, array_map(fn ($c) => $c, [get_class(app(LeaveDayResolver::class))]), true))->toBeTrue();
 });

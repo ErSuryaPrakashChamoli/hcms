@@ -82,7 +82,16 @@ final class LeaveActions
                 ->visible(fn (LeaveRequest $record) => $record->isOpen() && auth()->user()->can('cancel', $record))
                 ->requiresConfirmation()
                 ->schema([Textarea::make('reason')->required()->maxLength(255)])
-                ->action(fn (LeaveRequest $record, array $data) => self::run(fn () => app(Leaves::class)->cancel($record, $data['reason']), 'Leave cancelled')),
+                ->action(fn (LeaveRequest $record, array $data) => self::run(fn () => app(Leaves::class)->cancel($record, $data['reason']), 'Cancellation recorded')),
+            Action::make('approveCancellation')->label('Approve cancellation')->icon('heroicon-m-check-circle')->color('warning')
+                ->visible(fn (LeaveRequest $record) => $record->status === 'cancel_requested' && auth()->user()->can('approve', $record))
+                ->requiresConfirmation()
+                ->schema([Textarea::make('note')->maxLength(255)])
+                ->action(fn (LeaveRequest $record, array $data) => self::run(fn () => app(Leaves::class)->approveCancellation($record, $data['note'] ?? null), 'Cancellation approved; balance restored')),
+            Action::make('rejectCancellation')->label('Keep leave')->icon('heroicon-m-arrow-uturn-left')->color('gray')
+                ->visible(fn (LeaveRequest $record) => $record->status === 'cancel_requested' && auth()->user()->can('approve', $record))
+                ->schema([Textarea::make('note')->required()->maxLength(255)])
+                ->action(fn (LeaveRequest $record, array $data) => self::run(fn () => app(Leaves::class)->rejectCancellation($record, $data['note']), 'Cancellation rejected; leave stays approved')),
         ];
     }
 

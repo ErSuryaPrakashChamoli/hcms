@@ -9,7 +9,9 @@ use App\Filament\Support\AuditReasonField;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -44,6 +46,15 @@ class LeaveTypeResource extends Resource
             Toggle::make('is_paid')->label('Paid')->default(true),
             Toggle::make('allow_half_day')->label('Half days allowed')->default(true),
             Toggle::make('is_encashable')->label('Encashable'),
+            Textarea::make('description')->maxLength(1000)->columnSpanFull(),
+            Select::make('unit')->options(config('peopleos.leave.units'))->default('days')->required()->helperText('Hourly requests are not available yet; hour-based types can be configured for later use.'),
+            TextInput::make('min_request_units')->label('Minimum per request')->numeric()->minValue(0),
+            TextInput::make('max_request_units')->label('Maximum per request')->numeric()->minValue(0),
+            Toggle::make('requires_document')->label('Supporting document always required'),
+            Toggle::make('requires_approval')->label('Requires approval')->default(true),
+            Select::make('cancellation_policy')->label('Cancelling approved leave')->options(config('peopleos.leave.cancellation_policies'))->default('self')->required(),
+            DatePicker::make('effective_from')->native(false),
+            DatePicker::make('effective_to')->native(false)->afterOrEqual('effective_from'),
             ColorPicker::make('colour'),
             TextInput::make('sort_order')->numeric()->default(0),
             Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
@@ -62,6 +73,8 @@ class LeaveTypeResource extends Resource
                 IconColumn::make('is_paid')->label('Paid')->boolean(),
                 IconColumn::make('allow_half_day')->label('Half day')->boolean(),
                 IconColumn::make('is_encashable')->label('Encash')->boolean(),
+                TextColumn::make('unit')->badge()->color('gray')->toggleable(),
+                IconColumn::make('requires_approval')->label('Approval')->boolean()->toggleable(),
                 TextColumn::make('applicable_gender')->label('For')->placeholder('Everyone')->formatStateUsing(fn (?string $state) => config("peopleos.people.genders.{$state}", $state)),
                 TextColumn::make('status')->badge(),
             ])

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AttendancePunchController;
 use App\Http\Controllers\Api\V1\BgvCallbackController;
 use App\Http\Controllers\Api\V1\EmployeeController;
+use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\OrganisationController;
 use App\Http\Controllers\Api\V1\PreEmployeeController;
 use App\Http\Controllers\Api\V1\ReadController;
@@ -35,8 +36,18 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('attendance/punches', [AttendanceController::class, 'punch'])->name('attendance.punches.store');
         Route::post('attendance/regularisations', [AttendanceController::class, 'requestRegularisation'])->name('attendance.regularisations.store');
     });
-    Route::get('leave/requests', [ReadController::class, 'leaveRequests'])->middleware('api.key:leave.read')->name('leave.requests');
-    Route::get('leave/balances', [ReadController::class, 'leaveBalances'])->middleware('api.key:leave.read')->name('leave.balances');
+    Route::middleware('api.key:leave.read')->group(function () {
+        Route::get('leave/types', [LeaveController::class, 'types'])->name('leave.types');
+        Route::get('leave/balances', [LeaveController::class, 'balances'])->name('leave.balances');
+        Route::get('leave/transactions', [LeaveController::class, 'transactions'])->name('leave.transactions');
+        Route::get('leave/requests', [LeaveController::class, 'requests'])->name('leave.requests');
+        Route::get('leave/requests/{leaveRequest}', [LeaveController::class, 'show'])->name('leave.requests.show');
+        Route::get('leave/calendar', [LeaveController::class, 'calendar'])->name('leave.calendar');
+    });
+    Route::middleware('api.key:leave.write')->group(function () {
+        Route::post('leave/requests', [LeaveController::class, 'store'])->name('leave.requests.store');
+        Route::post('leave/requests/{leaveRequest}/cancel', [LeaveController::class, 'cancel'])->name('leave.requests.cancel');
+    });
     Route::get('payroll/runs', [ReadController::class, 'payrollRuns'])->middleware('api.key:payroll.read')->name('payroll.runs');
     Route::get('payroll/payslips', [ReadController::class, 'payslips'])->middleware('api.key:payroll.read')->name('payroll.payslips');
     Route::get('documents', [ReadController::class, 'documents'])->middleware('api.key:documents.read')->name('documents.index');

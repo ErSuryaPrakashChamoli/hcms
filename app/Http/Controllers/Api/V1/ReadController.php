@@ -6,8 +6,6 @@ use App\Domain\Analytics\Models\Report;
 use App\Domain\Analytics\Services\ReportRunner;
 use App\Domain\Assets\Models\Asset;
 use App\Domain\Documents\Models\EmployeeDocument;
-use App\Domain\Leave\Models\LeaveBalance;
-use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Performance\Models\Appraisal;
@@ -22,24 +20,6 @@ use Illuminate\Http\Request;
 /** Read API (§87): paginated, tenant-scoped by the API key, filtered with simple query parameters. */
 class ReadController extends Controller
 {
-    public function leaveRequests(Request $request): JsonResponse
-    {
-        $query = LeaveRequest::query()->with(['employee', 'leaveType'])
-            ->when($request->query('status'), fn (Builder $q, $s) => $q->where('status', $s))
-            ->when($request->query('from'), fn (Builder $q, $d) => $q->whereDate('to_date', '>=', $d))
-            ->when($request->query('to'), fn (Builder $q, $d) => $q->whereDate('from_date', '<=', $d))
-            ->orderByDesc('from_date');
-
-        return $this->page($query, $request, fn (LeaveRequest $r) => ['id' => $r->id, 'employee_code' => $r->employee?->employee_code, 'leave_type' => $r->leaveType?->code, 'from_date' => $r->from_date->toDateString(), 'to_date' => $r->to_date->toDateString(), 'days' => (float) $r->days, 'status' => $r->status]);
-    }
-
-    public function leaveBalances(Request $request): JsonResponse
-    {
-        $query = LeaveBalance::query()->with(['employee', 'leaveType'])->when($request->query('employee_code'), fn (Builder $q, $c) => $q->whereHas('employee', fn ($e) => $e->where('employee_code', $c)))->orderBy('employee_id');
-
-        return $this->page($query, $request, fn (LeaveBalance $b) => ['employee_code' => $b->employee?->employee_code, 'leave_type' => $b->leaveType?->code, 'period' => $b->period, 'available' => $b->available()]);
-    }
-
     public function payrollRuns(Request $request): JsonResponse
     {
         $query = PayrollRun::query()->with(['period', 'company'])->whereIn('status', ['finalized', 'paid'])->orderByDesc('id');
