@@ -15,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 /** Employee import foundation (Phase 1 §38): staged, validated, approved, audited. */
@@ -29,6 +30,11 @@ class EmployeeImportResource extends Resource
     protected static ?string $navigationLabel = 'Employee imports';
 
     protected static ?int $navigationSort = 30;
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('type', 'employees');
+    }
 
     public static function infolist(Schema $schema): Schema
     {

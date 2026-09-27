@@ -435,6 +435,9 @@ final class EmployeeImports
 
     private function assertStatus(EmployeeImport $import, array $allowed): void
     {
+        if (($import->type ?? 'employees') !== 'employees') {
+            throw new RuntimeException('This import is not an employee import.');
+        }
         if (! in_array($import->status, $allowed, true)) {
             throw new RuntimeException("This import is {$import->status}; expected ".implode(' or ', $allowed).'.');
         }

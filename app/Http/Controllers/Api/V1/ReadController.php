@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Analytics\Models\Report;
 use App\Domain\Analytics\Services\ReportRunner;
 use App\Domain\Assets\Models\Asset;
-use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Leave\Models\LeaveBalance;
 use App\Domain\Leave\Models\LeaveRequest;
@@ -23,17 +22,6 @@ use Illuminate\Http\Request;
 /** Read API (§87): paginated, tenant-scoped by the API key, filtered with simple query parameters. */
 class ReadController extends Controller
 {
-    public function attendance(Request $request): JsonResponse
-    {
-        $query = AttendanceRecord::query()->with('employee')
-            ->when($request->query('from'), fn (Builder $q, $d) => $q->whereDate('date', '>=', $d))
-            ->when($request->query('to'), fn (Builder $q, $d) => $q->whereDate('date', '<=', $d))
-            ->when($request->query('employee_code'), fn (Builder $q, $c) => $q->whereHas('employee', fn ($e) => $e->where('employee_code', $c)))
-            ->orderByDesc('date');
-
-        return $this->page($query, $request, fn (AttendanceRecord $r) => ['employee_code' => $r->employee?->employee_code, 'date' => $r->date->toDateString(), 'status' => $r->status, 'first_in' => $r->first_in?->toIso8601String(), 'last_out' => $r->last_out?->toIso8601String(), 'worked_minutes' => $r->worked_minutes, 'late_minutes' => $r->late_minutes, 'overtime_minutes' => $r->overtime_approved_minutes, 'is_locked' => $r->is_locked]);
-    }
-
     public function leaveRequests(Request $request): JsonResponse
     {
         $query = LeaveRequest::query()->with(['employee', 'leaveType'])

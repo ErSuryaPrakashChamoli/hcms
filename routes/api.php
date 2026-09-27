@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AttendancePunchController;
 use App\Http\Controllers\Api\V1\BgvCallbackController;
 use App\Http\Controllers\Api\V1\EmployeeController;
@@ -22,7 +23,18 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('employees/{employee}/lifecycle', [EmployeeController::class, 'lifecycle'])->name('employees.lifecycle');
     });
     Route::get('organisation/{type}', [OrganisationController::class, 'index'])->middleware('api.key:organisation.read')->name('organisation.index');
-    Route::get('attendance/records', [ReadController::class, 'attendance'])->middleware('api.key:attendance.read')->name('attendance.records');
+    Route::middleware('api.key:attendance.read')->group(function () {
+        Route::get('attendance/records', [AttendanceController::class, 'records'])->name('attendance.records');
+        Route::get('attendance/records/{employee}/{date}', [AttendanceController::class, 'record'])->name('attendance.record');
+        Route::get('attendance/exceptions', [AttendanceController::class, 'exceptions'])->name('attendance.exceptions');
+        Route::get('attendance/regularisations', [AttendanceController::class, 'regularisations'])->name('attendance.regularisations.index');
+        Route::get('attendance/shifts', [AttendanceController::class, 'shifts'])->name('attendance.shifts');
+        Route::get('attendance/schedules', [AttendanceController::class, 'schedules'])->name('attendance.schedules');
+    });
+    Route::middleware('api.key:attendance.write')->group(function () {
+        Route::post('attendance/punches', [AttendanceController::class, 'punch'])->name('attendance.punches.store');
+        Route::post('attendance/regularisations', [AttendanceController::class, 'requestRegularisation'])->name('attendance.regularisations.store');
+    });
     Route::get('leave/requests', [ReadController::class, 'leaveRequests'])->middleware('api.key:leave.read')->name('leave.requests');
     Route::get('leave/balances', [ReadController::class, 'leaveBalances'])->middleware('api.key:leave.read')->name('leave.balances');
     Route::get('payroll/runs', [ReadController::class, 'payrollRuns'])->middleware('api.key:payroll.read')->name('payroll.runs');

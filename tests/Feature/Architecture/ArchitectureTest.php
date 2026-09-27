@@ -190,3 +190,25 @@ it('masks every highly sensitive attribute in the data classification map (contr
         }
     }
 });
+
+it('keeps the attendance domain free of payroll money, duplicate identity, approval and audit frameworks', function () {
+    $attendance = appFilesMatching('/./'); // all app files, filtered below
+    $attendanceFiles = array_values(array_filter($attendance, fn (string $f) => str_starts_with($f, 'app/Domain/Attendance/')));
+    expect($attendanceFiles)->not->toBeEmpty();
+
+    foreach ($attendanceFiles as $file) {
+        $source = file_get_contents(base_path($file));
+        // No money: attendance produces quantities only (contract §41).
+        expect((bool) preg_match('/\\b(ctc|salary|payslip|earning|deduction|tds|esi_rate|pf_rate|wage)\\b/i', $source))->toBeFalse("{$file} must not compute payroll amounts");
+        // No second identity, approval or audit framework.
+        expect((bool) preg_match('/class\\s+(AttendanceEmployee|Worker|Staff)\\b|Schema::create\\(.*(worker|staff)/i', $source))->toBeFalse("{$file} must not define a worker identity");
+        expect((bool) preg_match('/AttendanceAudit|class\\s+\\w*ApprovalEngine/', $source))->toBeFalse("{$file} must reuse the platform audit and approval engines");
+        expect((bool) preg_match('/RecruitmentEdge|\\bRms\\b/', $source))->toBeFalse("{$file} must not reference RMS");
+    }
+
+    // Attendance models are tenant-scoped and audited or documented as evidence/derived tables.
+    foreach (glob(app_path('Domain/Attendance/Models/*.php')) as $path) {
+        $class = 'App\\Domain\\Attendance\\Models\\'.basename($path, '.php');
+        expect(in_array(BelongsToTenant::class, class_uses_recursive($class), true))->toBeTrue("{$class} must be tenant-scoped");
+    }
+});
