@@ -23,8 +23,9 @@ it('normalises device payloads through adapters and ignores duplicates and unkno
         ['employee_code' => 'NOBODY', 'punched_at' => '2026-09-23 18:00:00', 'direction' => 'out', 'id' => 'A3'],
     ]]);
 
-    expect($result)->toMatchArray(['accepted' => 2, 'duplicates' => 1, 'unknown' => ['NOBODY'], 'dates' => ['2026-09-23']])
-        ->and(AttendancePunch::query()->count())->toBe(2)
+    expect($result)->toMatchArray(['accepted' => 2, 'duplicates' => 1, 'failed' => 1, 'unknown' => ['NOBODY'], 'dates' => ['2026-09-23']])
+        ->and(AttendancePunch::query()->count())->toBe(3) // the unknown-code punch is retained as failed evidence
+        ->and(AttendancePunch::query()->where('processing_status', 'failed')->whereNull('employee_id')->count())->toBe(1)
         ->and(AttendancePunch::query()->first()->source)->toBe('biometric')
         ->and($this->device->fresh()->last_seen_at)->not->toBeNull();
 

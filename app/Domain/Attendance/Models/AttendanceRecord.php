@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** The computed day (§23). */
-#[Fillable(['tenant_id', 'employee_id', 'date', 'shift_id', 'status', 'first_in', 'last_out', 'worked_minutes', 'late_minutes', 'early_leave_minutes', 'overtime_minutes', 'overtime_approved_minutes', 'is_regularised', 'is_locked', 'leave_request_id', 'is_half_day_leave', 'exceptions', 'holiday_name', 'processed_at', 'note'])]
+#[Fillable(['tenant_id', 'employee_id', 'date', 'shift_id', 'scheduled_start', 'scheduled_end', 'scheduled_minutes', 'status', 'first_in', 'last_out', 'worked_minutes', 'break_minutes', 'late_minutes', 'early_leave_minutes', 'overtime_minutes', 'overtime_approved_minutes', 'overtime_status', 'overtime_review_note', 'overtime_reviewed_by', 'overtime_reviewed_at', 'is_regularised', 'is_locked', 'finalized_at', 'leave_request_id', 'is_half_day_leave', 'exceptions', 'holiday_name', 'timezone', 'calculation_version', 'calculation_basis', 'processed_at', 'note'])]
 class AttendanceRecord extends Model
 {
     use Auditable, BelongsToTenant;
@@ -34,6 +34,13 @@ class AttendanceRecord extends Model
             'is_half_day_leave' => 'boolean',
             'exceptions' => 'array',
             'processed_at' => 'datetime',
+            'scheduled_start' => 'datetime',
+            'scheduled_end' => 'datetime',
+            'scheduled_minutes' => 'integer',
+            'break_minutes' => 'integer',
+            'overtime_reviewed_at' => 'datetime',
+            'finalized_at' => 'datetime',
+            'calculation_basis' => 'array',
         ];
     }
 
@@ -49,7 +56,7 @@ class AttendanceRecord extends Model
 
     public function auditExcludedAttributes(): array
     {
-        return [...config('peopleos.audit.ignored_attributes', []), 'processed_at'];
+        return [...config('peopleos.audit.ignored_attributes', []), 'processed_at', 'calculation_basis'];
     }
 
     public function employee(): BelongsTo

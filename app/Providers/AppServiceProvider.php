@@ -21,6 +21,7 @@ use App\Domain\Assets\Models\AssetCategory;
 use App\Domain\Assets\Models\AssetModel;
 use App\Domain\Assets\Models\AssetRepair;
 use App\Domain\Assets\Policies\AssetPolicy;
+use App\Domain\Attendance\Contracts\LeaveDayResolver;
 use App\Domain\Attendance\Models\AttendanceDevice;
 use App\Domain\Attendance\Models\AttendancePunch;
 use App\Domain\Attendance\Models\AttendanceRecord;
@@ -29,6 +30,7 @@ use App\Domain\Attendance\Models\Holiday;
 use App\Domain\Attendance\Models\HolidayCalendar;
 use App\Domain\Attendance\Models\HolidayCalendarRule;
 use App\Domain\Attendance\Models\Shift;
+use App\Domain\Attendance\Models\ShiftBreak;
 use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Attendance\Models\WorkScheduleAssignment;
 use App\Domain\Attendance\Models\WorkScheduleRule;
@@ -121,6 +123,7 @@ use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Leave\Policies\LeaveRequestPolicy;
 use App\Domain\Leave\Policies\LeaveTypePolicy;
+use App\Domain\Leave\Services\AttendanceLeaveDayResolver;
 use App\Domain\Letters\Models\Letter;
 use App\Domain\Letters\Models\LetterTemplate;
 use App\Domain\Letters\Policies\LetterPolicy;
@@ -223,6 +226,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->bind(LeaveDayResolver::class, AttendanceLeaveDayResolver::class);
         $this->app->singleton(AccessScopes::class);
         // One tenant context per request / job / command execution.
         $this->app->bind(FinancialYear::class, fn () => FinancialYear::make());
@@ -360,7 +364,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BgvCheck::class, BgvPolicy::class);
         Gate::policy(ApiKey::class, ApiKeyPolicy::class);
 
-        foreach ([Shift::class, WorkSchedule::class, WorkScheduleAssignment::class, WorkScheduleRule::class, HolidayCalendar::class, Holiday::class, HolidayCalendarRule::class, AttendanceDevice::class, AttendancePunch::class] as $model) {
+        foreach ([Shift::class, ShiftBreak::class, WorkSchedule::class, WorkScheduleAssignment::class, WorkScheduleRule::class, HolidayCalendar::class, Holiday::class, HolidayCalendarRule::class, AttendanceDevice::class, AttendancePunch::class] as $model) {
             Gate::policy($model, AttendanceConfigPolicy::class);
         }
 

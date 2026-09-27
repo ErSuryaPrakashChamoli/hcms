@@ -423,6 +423,7 @@ return [
         'attendance.regularisation.window_days' => 7,
         'leave.year_start_month' => 1,
         'payroll.lop_from_attendance' => true,
+        'attendance.process_on_punch' => true,
         'tenant.base_currency' => 'INR',
         'tenant.locale' => 'en',
         'security.ip_allowlist' => '',
@@ -625,6 +626,8 @@ return [
             ]],
             'overtime' => ['label' => 'Overtime policy', 'fields' => [
                 ['key' => 'minimum_minutes', 'label' => 'Minimum OT (minutes)', 'type' => 'number'],
+                ['key' => 'max_daily_minutes', 'label' => 'Maximum OT per day (minutes)', 'type' => 'number'],
+                ['key' => 'rounding_minutes', 'label' => 'Round OT down to (minutes)', 'type' => 'number'],
                 ['key' => 'weekday_rate', 'label' => 'Weekday rate (x)', 'type' => 'number'],
                 ['key' => 'weekend_rate', 'label' => 'Weekend rate (x)', 'type' => 'number'],
                 ['key' => 'holiday_rate', 'label' => 'Holiday rate (x)', 'type' => 'number'],
@@ -743,6 +746,7 @@ return [
             'employee.created', 'employee.transferred', 'employee.promoted', 'employee.manager_changed', 'employee.salary_changed', 'employee.department_changed', 'employee.designation_changed', 'employee.location_changed', 'employee.company_changed', 'employee.rehired',
             'onboarding.started', 'onboarding.task.assigned', 'onboarding.completed', 'bgv.initiated', 'bgv.completed', 'document.uploaded', 'document.verified', 'document.rejected', 'document.expiring',
             'attendance.regularisation_requested', 'attendance.regularisation_approved', 'attendance.regularisation_rejected', 'attendance.overtime_recorded', 'attendance.exception',
+            'attendance.punch_received', 'attendance.processed', 'attendance.status_changed', 'attendance.overtime_approved', 'attendance.overtime_rejected', 'attendance.regularisation_cancelled',
             'leave.requested', 'leave.approved', 'leave.rejected', 'leave.cancelled', 'leave.encashment_requested', 'leave.encashment_approved', 'leave.balance_adjusted', 'leave.accrued',
             'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'payroll.payslip_generated', 'payroll.exception',
             'performance.cycle.launched', 'performance.cycle.stage_changed', 'performance.review.assigned', 'performance.review.submitted', 'performance.appraisal.finalized',
@@ -801,8 +805,8 @@ return [
     ],
     'api' => [
         'scopes' => [
-            'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches from devices',
-            'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records', 'leave.read' => 'Read leave requests and balances', 'payroll.read' => 'Read payroll runs and payslips (sensitive)',
+            'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches (devices or any source) and raise regularisations',
+            'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records, exceptions, regularisations, shifts and schedules', 'leave.read' => 'Read leave requests and balances', 'payroll.read' => 'Read payroll runs and payslips (sensitive)',
             'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read appraisals and goals', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
         ],
@@ -1138,10 +1142,14 @@ return [
         'sources' => ['biometric' => 'Biometric', 'mobile' => 'Mobile', 'web' => 'Web', 'api' => 'API', 'manual' => 'Manual', 'import' => 'Import', 'kiosk' => 'Kiosk'],
         'statuses' => [
             'present' => 'Present', 'half_day' => 'Half day', 'absent' => 'Absent', 'incomplete' => 'Incomplete (missed punch)',
-            'weekly_off' => 'Weekly off', 'holiday' => 'Holiday', 'leave' => 'Leave', 'unpaid_leave' => 'Leave without pay', 'wfh' => 'Work from home', 'on_duty' => 'On duty', 'not_processed' => 'Not processed',
+            'weekly_off' => 'Weekly off', 'holiday' => 'Holiday', 'leave' => 'Leave', 'unpaid_leave' => 'Leave without pay', 'wfh' => 'Work from home', 'on_duty' => 'On duty', 'field_duty' => 'Field duty', 'not_processed' => 'Not processed',
         ],
-        'exception_types' => ['missed_punch' => 'Missed punch', 'late' => 'Late coming', 'early_leave' => 'Early leaving', 'short_hours' => 'Short hours', 'absent' => 'Absent without leave', 'no_shift' => 'No shift assigned', 'holiday_work' => 'Worked on holiday / weekly off', 'overtime' => 'Overtime pending approval'],
-        'regularisation_types' => ['missed_punch' => 'Missed punch', 'late' => 'Late coming', 'early_leave' => 'Early leaving', 'wfh' => 'Work from home', 'on_duty' => 'On duty / field visit', 'absent' => 'Marked absent by mistake'],
+        'exception_types' => ['missed_punch' => 'Missed punch', 'missing_in' => 'Missing IN punch', 'missing_out' => 'Missing OUT punch', 'invalid_sequence' => 'Invalid punch sequence', 'late' => 'Late coming', 'early_leave' => 'Early leaving', 'short_hours' => 'Short hours', 'absent' => 'Absent without leave', 'no_shift' => 'No shift assigned', 'holiday_work' => 'Worked on holiday / weekly off', 'overtime' => 'Overtime pending approval'],
+        'regularisation_types' => ['missed_punch' => 'Missed punch', 'late' => 'Late coming', 'early_leave' => 'Early leaving', 'wfh' => 'Work from home', 'on_duty' => 'On duty', 'field_duty' => 'Field duty', 'absent' => 'Marked absent by mistake'],
+        'source_types' => ['biometric_device' => 'Biometric device', 'mobile' => 'Mobile', 'web' => 'Web', 'api' => 'API', 'manual' => 'Manual', 'import' => 'Import'],
+        'overtime_statuses' => ['none' => 'None', 'pending' => 'Pending approval', 'approved' => 'Approved', 'rejected' => 'Rejected'],
+        'engine_version' => '2.0',
+        'import_max_rows' => 50000,
         'holiday_types' => ['public' => 'Public holiday', 'optional' => 'Optional / restricted holiday', 'company' => 'Company holiday'],
         'adapters' => [
             'generic' => ['label' => 'Generic JSON', 'driver' => GenericJsonAdapter::class],

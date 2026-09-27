@@ -12,6 +12,7 @@ use App\Filament\Support\AuditReasonField;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
@@ -49,6 +50,7 @@ class ShiftResource extends Resource
                 TimePicker::make('start_time')->seconds(false)->required(fn (Get $get) => $get('type') === 'fixed')->visible(fn (Get $get) => $get('type') === 'fixed'),
                 TimePicker::make('end_time')->seconds(false)->required(fn (Get $get) => $get('type') === 'fixed')->visible(fn (Get $get) => $get('type') === 'fixed'),
                 Toggle::make('crosses_midnight')->label('Ends next day')->visible(fn (Get $get) => $get('type') === 'fixed'),
+                Select::make('timezone')->label('Timezone')->options(collect(timezone_identifiers_list())->mapWithKeys(fn ($tz) => [$tz => $tz]))->searchable()->placeholder('Location timezone, then application default')->helperText('Used only when the employee\'s work location has no timezone.'),
                 Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
             ]),
             Section::make('Hours and thresholds')->columns(3)->schema([
@@ -58,6 +60,15 @@ class ShiftResource extends Resource
                 TextInput::make('grace_in_minutes')->label('Grace in (minutes)')->numeric()->default(15),
                 TextInput::make('grace_out_minutes')->label('Grace out (minutes)')->numeric()->default(0),
             ]),
+            Section::make('Breaks')->description('Unpaid breaks reduce worked minutes; paid breaks do not. When no breaks are configured the single "Break (minutes)" value is used.')->schema([
+                Repeater::make('breaks')->relationship()->hiddenLabel()->columns(4)->defaultItems(0)->reorderableWithButtons()->orderColumn('sort_order')
+                    ->schema([
+                        TextInput::make('name')->required()->maxLength(64)->placeholder('Lunch'),
+                        TimePicker::make('starts_at')->seconds(false)->label('Starts'),
+                        TextInput::make('duration_minutes')->numeric()->required()->minValue(1)->maxValue(720)->label('Minutes'),
+                        Toggle::make('is_paid')->label('Paid')->inline(false),
+                    ]),
+            ])->collapsible(),
             Section::make('Overtime')->columns(2)->schema([
                 Toggle::make('overtime_eligible')->label('Overtime eligible'),
                 TextInput::make('min_overtime_minutes')->label('Minimum overtime (minutes)')->numeric()->default(30),

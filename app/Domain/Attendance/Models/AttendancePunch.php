@@ -11,15 +11,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** A raw, normalised punch. Never edited; corrections are regularisations. */
-#[Fillable(['tenant_id', 'employee_id', 'punched_at', 'direction', 'source', 'attendance_device_id', 'external_id', 'latitude', 'longitude', 'payload', 'recorded_by', 'note'])]
+#[Fillable(['tenant_id', 'employee_id', 'punched_at', 'direction', 'source', 'source_type', 'source_timezone', 'attendance_device_id', 'external_id', 'fingerprint', 'latitude', 'longitude', 'payload', 'received_at', 'processing_status', 'processing_error', 'processed_at', 'correlation_id', 'recorded_by', 'note'])]
 class AttendancePunch extends Model
 {
     use BelongsToTenant;
     use ScopedByEmployee;
 
+    public const STATUSES = ['received', 'normalized', 'processed', 'failed', 'ignored'];
+
     protected function casts(): array
     {
-        return ['punched_at' => 'datetime', 'payload' => 'array', 'latitude' => 'decimal:7', 'longitude' => 'decimal:7'];
+        return ['punched_at' => 'datetime', 'received_at' => 'datetime', 'processed_at' => 'datetime', 'payload' => 'array', 'latitude' => 'decimal:7', 'longitude' => 'decimal:7'];
     }
 
     public function employee(): BelongsTo

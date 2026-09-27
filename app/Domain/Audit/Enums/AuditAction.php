@@ -47,6 +47,20 @@ enum AuditAction: string
     case PolicyRetired = 'POLICY_RETIRED';
     case WorkflowChanged = 'WORKFLOW_CHANGED';
     case ShiftChanged = 'SHIFT_CHANGED';
+
+    // Attendance (Phase 2)
+    case PunchReceived = 'PUNCH_RECEIVED';
+    case PunchImported = 'PUNCH_IMPORTED';
+    case PunchReprocessed = 'PUNCH_REPROCESSED';
+    case AttendanceCalculated = 'ATTENDANCE_CALCULATED';
+    case AttendanceAdjusted = 'ATTENDANCE_ADJUSTED';
+    case RegularisationRequested = 'REGULARISATION_REQUESTED';
+    case RegularisationApproved = 'REGULARISATION_APPROVED';
+    case RegularisationRejected = 'REGULARISATION_REJECTED';
+    case ShiftAssigned = 'SHIFT_ASSIGNED';
+    case ScheduleAssigned = 'SCHEDULE_ASSIGNED';
+    case OvertimeApproved = 'OVERTIME_APPROVED';
+    case OvertimeRejected = 'OVERTIME_REJECTED';
     case FormChanged = 'FORM_CHANGED';
 
     // Payroll

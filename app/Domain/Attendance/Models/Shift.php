@@ -8,10 +8,11 @@ use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /** A shift definition (§13). type: fixed (timed) | flexible (hours only). */
-#[Fillable(['tenant_id', 'name', 'code', 'type', 'start_time', 'end_time', 'crosses_midnight', 'break_minutes', 'full_day_minutes', 'half_day_minutes', 'grace_in_minutes', 'grace_out_minutes', 'overtime_eligible', 'min_overtime_minutes', 'status', 'effective_from', 'effective_to'])]
+#[Fillable(['tenant_id', 'name', 'code', 'type', 'start_time', 'end_time', 'crosses_midnight', 'timezone', 'break_minutes', 'full_day_minutes', 'half_day_minutes', 'grace_in_minutes', 'grace_out_minutes', 'overtime_eligible', 'min_overtime_minutes', 'status', 'effective_from', 'effective_to'])]
 class Shift extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
@@ -48,21 +49,38 @@ class Shift extends Model
         return $this->type === 'flexible' || $this->start_time === null;
     }
 
-    /** Scheduled start on a given date (in app timezone). */
-    public function startsAt(Carbon $date): ?Carbon
+    /** Scheduled start on a given work date, computed in the business timezone and returned in the app timezone. */
+    public function startsAt(Carbon $date, ?string $timezone = null): ?Carbon
     {
-        return $this->start_time ? $date->copy()->startOfDay()->setTimeFromTimeString($this->start_time) : null;
+        if ($this->start_time === null) {
+            return null;
+        }
+
+        return Carbon::parse($date->toDateString().' '.$this->start_time, $timezone ?: $this->timezone ?: config('app.timezone'))->setTimezone(config('app.timezone'));
     }
 
-    public function endsAt(Carbon $date): ?Carbon
+    public function endsAt(Carbon $date, ?string $timezone = null): ?Carbon
     {
         if ($this->end_time === null) {
             return null;
         }
 
-        $end = $date->copy()->startOfDay()->setTimeFromTimeString($this->end_time);
+        $end = Carbon::parse($date->toDateString().' '.$this->end_time, $timezone ?: $this->timezone ?: config('app.timezone'));
 
-        return $this->crosses_midnight ? $end->addDay() : $end;
+        return ($this->crosses_midnight ? $end->addDay() : $end)->setTimezone(config('app.timezone'));
+    }
+
+    public function breaks(): HasMany
+    {
+        return $this->hasMany(ShiftBreak::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** Unpaid break minutes: configured breaks when present, otherwise the legacy single break_minutes. */
+    public function unpaidBreakMinutes(): int
+    {
+        $breaks = $this->relationLoaded('breaks') ? $this->breaks : $this->breaks()->get();
+
+        return $breaks->isEmpty() ? (int) $this->break_minutes : (int) $breaks->where('is_paid', false)->sum('duration_minutes');
     }
 
     public function scheduledMinutes(): int

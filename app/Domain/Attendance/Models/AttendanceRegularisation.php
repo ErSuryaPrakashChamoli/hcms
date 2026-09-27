@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'employee_id', 'date', 'type', 'requested_in', 'requested_out', 'reason', 'status', 'requested_by', 'reviewed_by', 'reviewed_at', 'review_note'])]
+#[Fillable(['tenant_id', 'employee_id', 'date', 'type', 'requested_in', 'requested_out', 'reason', 'status', 'requested_by', 'reviewed_by', 'reviewed_at', 'review_note', 'original_snapshot', 'resulting_snapshot', 'cancelled_at'])]
 class AttendanceRegularisation extends Model
 {
     use Auditable, BelongsToTenant;
@@ -21,7 +21,7 @@ class AttendanceRegularisation extends Model
 
     protected function casts(): array
     {
-        return ['date' => 'date', 'requested_in' => 'datetime', 'requested_out' => 'datetime', 'reviewed_at' => 'datetime'];
+        return ['date' => 'date', 'requested_in' => 'datetime', 'requested_out' => 'datetime', 'reviewed_at' => 'datetime', 'original_snapshot' => 'array', 'resulting_snapshot' => 'array', 'cancelled_at' => 'datetime'];
     }
 
     public function auditModule(): string
