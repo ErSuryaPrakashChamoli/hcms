@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Domain\Attendance\Models\AttendanceRecord;
+use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Experience\Services\NeedsAttention;
 use App\Domain\Leave\Models\LeaveRequest;
@@ -58,9 +59,14 @@ class MyTeam extends Page implements HasTable
 
         return [
             'headcount' => $ids->count(),
-            'present' => $records->whereIn('status', ['present', 'half_day', 'wfh', 'on_duty', 'incomplete'])->count(),
+            'present' => $records->whereIn('status', ['present', 'half_day', 'wfh', 'on_duty', 'field_duty', 'incomplete'])->count(),
             'leave' => $onLeave,
             'absent' => $records->where('status', 'absent')->count(),
+            'late' => $records->where('late_minutes', '>', 0)->count(),
+            'missing_punch' => $records->where('status', 'incomplete')->count(),
+            'remote' => $records->whereIn('status', ['wfh', 'on_duty', 'field_duty'])->count(),
+            'regularisations_pending' => AttendanceRegularisation::query()->whereIn('employee_id', $ids)->where('status', 'pending')->count(),
+            'overtime_pending' => AttendanceRecord::query()->whereIn('employee_id', $ids)->where('overtime_status', 'pending')->where('is_locked', false)->count(),
         ];
     }
 

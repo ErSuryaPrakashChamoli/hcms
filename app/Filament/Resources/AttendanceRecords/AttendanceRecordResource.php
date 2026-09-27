@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\AttendanceRecords;
 
 use App\Domain\Attendance\Models\AttendanceRecord;
+use App\Domain\Employment\Models\Employee;
 use App\Filament\Resources\AttendanceRecords\Pages\ListAttendanceRecords;
 use App\Filament\Support\AttendanceActions;
 use BackedEnum;
@@ -34,9 +35,14 @@ class AttendanceRecordResource extends Resource
         return false;
     }
 
+    /** Employees without attendance.view only ever see their own rows, whatever the table renders (server-side, not UI hiding). */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['employee.person', 'shift']);
+        $query = parent::getEloquentQuery()->with(['employee.person', 'shift']);
+
+        return auth()->user()?->can('attendance.view')
+            ? $query
+            : $query->whereIn('employee_id', Employee::query()->select('id')->where('user_id', auth()->id()));
     }
 
     public static function table(Table $table): Table

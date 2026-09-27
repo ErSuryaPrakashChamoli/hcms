@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AttendanceRegularisations;
 
 use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Attendance\Services\Regularisations;
+use App\Domain\Employment\Models\Employee;
 use App\Filament\Resources\AttendanceRegularisations\Pages\ListAttendanceRegularisations;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -42,9 +43,14 @@ class AttendanceRegularisationResource extends Resource
         return $count > 0 ? (string) $count : null;
     }
 
+    /** Employees without attendance.view only ever see their own rows, whatever the table renders (server-side, not UI hiding). */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['employee.person', 'requester', 'reviewer']);
+        $query = parent::getEloquentQuery()->with(['employee.person', 'requester', 'reviewer']);
+
+        return auth()->user()?->can('attendance.view')
+            ? $query
+            : $query->whereIn('employee_id', Employee::query()->select('id')->where('user_id', auth()->id()));
     }
 
     public static function table(Table $table): Table

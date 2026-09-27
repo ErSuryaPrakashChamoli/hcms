@@ -2,7 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Attendance\Models\AttendancePunch;
 use App\Domain\Attendance\Models\AttendanceRecord;
+use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Filament\Support\AttendanceActions;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
@@ -43,6 +45,22 @@ class AttendanceExceptionCentre extends Page implements HasTable
         $count = AttendanceRecord::query()->whereNotNull('exceptions')->where('is_locked', false)->whereDate('date', '>=', now()->subDays(30))->count();
 
         return $count > 0 ? (string) $count : null;
+    }
+
+    /** Operational counts for the last 30 days (unlocked days only). @return array<string, int> */
+    public function getSummary(): array
+    {
+        $base = fn () => AttendanceRecord::query()->where('is_locked', false)->whereDate('date', '>=', now()->subDays(30));
+
+        return [
+            'exceptions' => (clone $base())->whereNotNull('exceptions')->count(),
+            'missing_punch' => (clone $base())->where('status', 'incomplete')->count(),
+            'late' => (clone $base())->where('late_minutes', '>', 0)->count(),
+            'absent' => (clone $base())->whereJsonContains('exceptions', 'absent')->count(),
+            'overtime_pending' => (clone $base())->where('overtime_status', 'pending')->count(),
+            'regularisations_pending' => AttendanceRegularisation::query()->where('status', 'pending')->count(),
+            'failed_punches' => AttendancePunch::query()->where('processing_status', 'failed')->count(),
+        ];
     }
 
     public function table(Table $table): Table

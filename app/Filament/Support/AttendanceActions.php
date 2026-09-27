@@ -61,6 +61,17 @@ final class AttendanceActions
                         Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
                     }
                 }),
+            Action::make('rejectOvertime')->label('Reject OT')->icon('heroicon-m-x-circle')->color('danger')
+                ->visible(fn (AttendanceRecord $record) => $record->overtime_minutes > 0 && $record->overtime_status !== 'rejected' && ! $record->is_locked && auth()->user()->can('approve', $record))
+                ->schema([Textarea::make('reason')->required()->maxLength(255)])
+                ->action(function (AttendanceRecord $record, array $data) {
+                    try {
+                        app(Regularisations::class)->rejectOvertime($record, $data['reason']);
+                        Notification::make()->success()->title('Overtime rejected')->send();
+                    } catch (RuntimeException $e) {
+                        Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
+                    }
+                }),
             Action::make('reprocess')->label('Reprocess')->icon('heroicon-m-arrow-path')->color('gray')
                 ->visible(fn (AttendanceRecord $record) => ! $record->is_locked && auth()->user()->can('attendance.manage'))
                 ->action(function (AttendanceRecord $record) {
