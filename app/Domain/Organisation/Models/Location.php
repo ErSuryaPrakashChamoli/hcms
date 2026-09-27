@@ -4,6 +4,7 @@ namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Configuration\Concerns\HasCustomFields;
+use App\Domain\Identity\Concerns\ScopedByOrganisation;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Enums\LocationType;
 use App\Support\EffectiveDating\HasEffectiveDates;
@@ -21,6 +22,10 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 class Location extends Model
 {
     /** @use HasFactory<LocationFactory> */
+    use ScopedByOrganisation;
+
+    public string $accessScopeDimension = 'location';
+
     use Auditable, BelongsToTenant, HasCustomFields, HasEffectiveDates, HasFactory;
 
     protected function casts(): array

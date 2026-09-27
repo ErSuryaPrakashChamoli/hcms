@@ -4,6 +4,7 @@ namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Configuration\Concerns\HasCustomFields;
+use App\Domain\Identity\Concerns\ScopedByOrganisation;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
@@ -23,6 +24,10 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 class Company extends Model
 {
     /** @use HasFactory<CompanyFactory> */
+    use ScopedByOrganisation;
+
+    public string $accessScopeDimension = 'company';
+
     use Auditable, BelongsToTenant, HasCustomFields, HasEffectiveDates, HasFactory;
 
     protected function casts(): array

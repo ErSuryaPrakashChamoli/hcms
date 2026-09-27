@@ -5,6 +5,8 @@
  | `peopleos:compliance:sync`. Amounts in INR. These figures reflect widely published rates
  | for FY 2025-26 and MUST be verified against current notifications before production use.
  */
+// Every entry defaults to verification_status = 'illustrative' (see ComplianceRules::sync). Set
+// 'verification_status' => 'verified' and 'verified_at' only after checking the official source.
 return [
     [
         'code' => 'EPF', 'state' => null, 'name' => 'Employees Provident Fund', 'version' => 1, 'effective_from' => '2014-09-01',

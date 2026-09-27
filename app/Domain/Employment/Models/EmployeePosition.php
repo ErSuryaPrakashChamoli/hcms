@@ -3,6 +3,7 @@
 namespace App\Domain\Employment\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
@@ -27,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class EmployeePosition extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
+    use ScopedByEmployee;
 
     /** Dimension => [relation, human label]. Used for diffs on the timeline. */
     public const DIMENSIONS = [

@@ -4,6 +4,7 @@ namespace App\Domain\Onboarding\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class OnboardingPlan extends Model
 {
     use Auditable, BelongsToTenant;
+    use ScopedByEmployee;
 
     public const STATUSES = ['in_progress' => 'In progress', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
 

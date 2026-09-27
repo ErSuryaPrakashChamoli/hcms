@@ -4,6 +4,7 @@ namespace App\Domain\Grievance\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Grievance extends Model
 {
     use Auditable, BelongsToTenant;
+    use ScopedByEmployee;
 
     public const OPEN = ['submitted', 'under_review', 'investigating', 'action_taken'];
 

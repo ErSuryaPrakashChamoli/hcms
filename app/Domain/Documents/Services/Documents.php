@@ -100,7 +100,7 @@ final class Documents
             return;
         }
 
-        $this->audit->record(AuditAction::View, 'documents', $document, metadata: ['purpose' => $purpose, 'employee_id' => $document->employee_id], reason: $purpose);
+        $this->audit->record($purpose === 'download' ? AuditAction::Download : AuditAction::View, 'documents', $document, metadata: ['purpose' => $purpose, 'employee_id' => $document->employee_id], reason: $purpose);
     }
 
     public function delete(EmployeeDocument $document, ?string $reason = null): void

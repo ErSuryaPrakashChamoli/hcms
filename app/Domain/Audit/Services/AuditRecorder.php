@@ -44,6 +44,7 @@ final class AuditRecorder
         ?string $entityLabel = null,
         ?int $tenantId = null,
         ?User $actor = null,
+        ?string $operationId = null,
     ): AuditEvent {
         $tenantId ??= $entity?->getAttribute('tenant_id') ?? $this->tenants->id();
         $actor ??= $this->resolveActor();
@@ -72,6 +73,7 @@ final class AuditRecorder
             'user_agent' => Str::limit((string) $this->request->userAgent(), 500, ''),
             'source' => $this->resolveSource(),
             'request_id' => Context::get('request_id'),
+            'operation_id' => $operationId ?? Context::get('audit.operation_id'),
             'reason' => $reason,
             'approval_reference' => $approvalReference,
             'effective_date' => $effectiveDate ? Carbon::parse($effectiveDate)->toDateString() : null,
@@ -109,6 +111,70 @@ final class AuditRecorder
         }));
     }
 
+    /**
+     * Run a bulk operation: every audit event recorded inside carries the same operation id and a
+     * BULK_OPERATION summary (counts, entity type, reason) closes it. The callback returns
+     * ['succeeded' => n, 'failed' => n] (or an int treated as succeeded) and may throw; the
+     * summary is still written with what was counted.
+     *
+     * @template T
+     *
+     * @param  callable(string $operationId): (array{succeeded?: int, failed?: int, ids?: list<int|string>}|int|null)  $callback
+     */
+    public function operation(string $module, string $label, callable $callback, ?string $reason = null, ?string $entityType = null): string
+    {
+        $operationId = (string) Str::ulid();
+        $previous = Context::get('audit.operation_id');
+        Context::add('audit.operation_id', $operationId);
+
+        $counts = ['succeeded' => 0, 'failed' => 0];
+        $ids = [];
+
+        try {
+            $result = $callback($operationId);
+            if (is_int($result)) {
+                $counts['succeeded'] = $result;
+            } elseif (is_array($result)) {
+                $counts['succeeded'] = (int) ($result['succeeded'] ?? 0);
+                $counts['failed'] = (int) ($result['failed'] ?? 0);
+                $ids = array_values($result['ids'] ?? []);
+            }
+        } catch (\Throwable $e) {
+            $counts['failed'] = max($counts['failed'], 1);
+            $this->recordOperationSummary($module, $label, $operationId, $counts, $ids, $reason, $entityType, $e->getMessage());
+            Context::add('audit.operation_id', $previous);
+            throw $e;
+        }
+
+        $this->recordOperationSummary($module, $label, $operationId, $counts, $ids, $reason, $entityType);
+        Context::add('audit.operation_id', $previous);
+
+        return $operationId;
+    }
+
+    /** @param  array{succeeded: int, failed: int}  $counts */
+    private function recordOperationSummary(string $module, string $label, string $operationId, array $counts, array $ids, ?string $reason, ?string $entityType, ?string $error = null): void
+    {
+        $this->record(
+            AuditAction::BulkOperation,
+            $module,
+            null,
+            [],
+            $reason,
+            metadata: array_filter([
+                'label' => $label,
+                'entity_type' => $entityType,
+                'entity_count' => $counts['succeeded'] + $counts['failed'],
+                'success_count' => $counts['succeeded'],
+                'failure_count' => $counts['failed'],
+                'affected_ids' => $ids === [] ? null : $ids,
+                'error' => $error,
+            ], fn ($v) => $v !== null),
+            entityLabel: $label,
+            operationId: $operationId,
+        );
+    }
+
     private function resolveActor(): ?User
     {
         $user = $this->auth->user();
@@ -139,9 +205,11 @@ final class AuditRecorder
             return $entity->auditLabel();
         }
 
+        $attributes = $entity->getAttributes();
+
         foreach (['name', 'title', 'code', 'key', 'email'] as $attribute) {
-            if (! empty($entity->getAttribute($attribute))) {
-                return (string) $entity->getAttribute($attribute);
+            if (! empty($attributes[$attribute])) {
+                return (string) $attributes[$attribute];
             }
         }
 

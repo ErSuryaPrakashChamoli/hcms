@@ -15,6 +15,7 @@ use App\Domain\ServiceDesk\Models\TicketComment;
 use App\Domain\Workflow\Models\Workflow;
 use App\Domain\Workflow\Services\WorkflowEngine;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use RuntimeException;
 
 /** The HR service desk (§48): tickets with SLA clocks, assignment, conversation, escalation, resolution, satisfaction. */
@@ -213,5 +214,15 @@ final class ServiceDesk
         $seq = $last ? ((int) substr($last, -5)) + 1 : 1;
 
         return sprintf('%s-%s-%05d', $prefix, $year, $seq);
+    }
+
+    /** Temporary signed link to a comment's attachment; the download route re-authorises the ticket. */
+    public function attachmentUrl(TicketComment $comment, int $minutes = 15): ?string
+    {
+        if ($comment->attachment_path === null) {
+            return null;
+        }
+
+        return URL::temporarySignedRoute('tickets.attachment', now()->addMinutes($minutes), ['ticket' => $comment->ticket_id, 'comment' => $comment->id]);
     }
 }

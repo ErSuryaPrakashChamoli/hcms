@@ -12,9 +12,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /** Authenticated request -> authorisation -> signed URL -> secure download (§83). */
 class DocumentDownloadController extends Controller
 {
-    public function __invoke(Request $request, EmployeeDocument $document, Documents $documents): StreamedResponse
+    public function __invoke(Request $request, int $document, Documents $documents): StreamedResponse
     {
         abort_unless($request->hasValidSignature(), 403);
+
+        // Resolved here, after ResolveTenant, so ids from other tenants fail closed.
+        $document = EmployeeDocument::query()->findOrFail($document);
         Gate::authorize('view', $document);
 
         $documents->recordAccess($document, (string) $request->query('purpose', 'download'));

@@ -3,6 +3,7 @@
 namespace App\Domain\Lifecycle\Models;
 
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class EmployeeTimelineEntry extends Model
 {
     use BelongsToTenant;
+    use ScopedByEmployee;
 
     protected function casts(): array
     {

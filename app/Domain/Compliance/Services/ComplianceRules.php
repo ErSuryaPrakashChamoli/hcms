@@ -44,7 +44,7 @@ final class ComplianceRules
             foreach (require $file as $definition) {
                 $rule = ComplianceRule::query()->updateOrCreate(
                     ['jurisdiction' => $jurisdiction, 'code' => $definition['code'], 'state' => $definition['state'] ?? null, 'version' => $definition['version']],
-                    ['name' => $definition['name'], 'effective_from' => $definition['effective_from'], 'effective_to' => $definition['effective_to'] ?? null, 'parameters' => $definition['parameters'], 'source' => $definition['source'] ?? null, 'status' => $definition['status'] ?? 'active'],
+                    ['name' => $definition['name'], 'effective_from' => $definition['effective_from'], 'effective_to' => $definition['effective_to'] ?? null, 'parameters' => $definition['parameters'], 'source' => $definition['source'] ?? null, 'status' => $definition['status'] ?? 'active', 'verification_status' => $definition['verification_status'] ?? 'illustrative', 'verified_at' => $definition['verified_at'] ?? null],
                 );
                 $synced->push($rule);
             }
@@ -53,5 +53,28 @@ final class ComplianceRules
         $this->forget();
 
         return $synced;
+    }
+
+    /** Active rules for a jurisdiction that have not been verified against official sources. */
+    public function unverified(string $jurisdiction = 'IN'): Collection
+    {
+        return ComplianceRule::query()->where('jurisdiction', $jurisdiction)->where('status', 'active')->where('verification_status', '!=', 'verified')->orderBy('code')->get();
+    }
+
+    /**
+     * Statutory safety (Phase 0.2): when enforcement is on (production by default), payroll may
+     * not be finalized on illustrative rules.
+     */
+    public function assertProductionSafe(string $jurisdiction = 'IN'): void
+    {
+        if (! config('peopleos.compliance.enforce_verified_rules')) {
+            return;
+        }
+
+        $unverified = $this->unverified($jurisdiction);
+
+        if ($unverified->isNotEmpty()) {
+            throw new \RuntimeException('Statutory rules for '.$jurisdiction.' are illustrative and not verified against official sources: '.$unverified->map(fn (ComplianceRule $r) => $r->label())->unique()->implode(', ').'. Verify them (compliance phase) before finalizing payroll.');
+        }
     }
 }

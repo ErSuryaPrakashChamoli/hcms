@@ -5,6 +5,8 @@ namespace App\Domain\Payroll\Services;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compliance\Models\CompanyStatutoryProfile;
+use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Company;
@@ -26,6 +28,7 @@ final class PayrollRuns
         private readonly PayrollCalculator $calculator,
         private readonly Payslips $payslips,
         private readonly AuditRecorder $audit,
+        private readonly ComplianceRules $complianceRules,
     ) {}
 
     public function open(Company $company, int $year, int $month, ?User $actor = null): PayrollRun
@@ -167,6 +170,8 @@ final class PayrollRuns
         if ($run->status !== 'approved') {
             throw new RuntimeException('Only an approved run can be finalized.');
         }
+
+        $this->complianceRules->assertProductionSafe(CompanyStatutoryProfile::query()->where('company_id', $run->company_id)->value('jurisdiction') ?? 'IN');
 
         return DB::transaction(function () use ($run, $actor) {
             $run->loadMissing('period');

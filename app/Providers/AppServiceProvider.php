@@ -96,6 +96,7 @@ use App\Domain\Identity\Policies\TenantFeaturePolicy;
 use App\Domain\Identity\Policies\TenantPolicy;
 use App\Domain\Identity\Policies\TenantSettingPolicy;
 use App\Domain\Identity\Policies\UserPolicy;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Integration\Models\ApiKey;
 use App\Domain\Integration\Policies\ApiKeyPolicy;
@@ -220,6 +221,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(AccessScopes::class);
         // One tenant context per request / job / command execution.
         $this->app->bind(FinancialYear::class, fn () => FinancialYear::make());
         $this->app->bind(AiProvider::class, fn () => match (config('peopleos.ai.provider')) {

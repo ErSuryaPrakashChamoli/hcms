@@ -1086,6 +1086,10 @@ return [
     | production use.
     */
     'compliance' => [
+        // Statutory safety (Phase 0.2): refuse to finalize payroll on rules not verified against
+        // official sources. On in production; tests and development may switch it on explicitly.
+        'enforce_verified_rules' => env('PEOPLEOS_ENFORCE_VERIFIED_RULES', env('APP_ENV') === 'production'),
+        'verification_statuses' => ['illustrative' => 'Illustrative / development only', 'verified' => 'Verified against official source'],
         'jurisdictions' => ['IN' => 'India'],
         'states' => ['AP' => 'Andhra Pradesh', 'DL' => 'Delhi', 'GJ' => 'Gujarat', 'HR' => 'Haryana', 'KA' => 'Karnataka', 'KL' => 'Kerala', 'MH' => 'Maharashtra', 'MP' => 'Madhya Pradesh', 'RJ' => 'Rajasthan', 'TG' => 'Telangana', 'TN' => 'Tamil Nadu', 'UP' => 'Uttar Pradesh', 'WB' => 'West Bengal'],
         'tax_regimes' => ['new' => 'New regime (default)', 'old' => 'Old regime'],

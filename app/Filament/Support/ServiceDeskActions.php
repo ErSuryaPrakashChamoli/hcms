@@ -18,7 +18,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
 
@@ -113,10 +112,5 @@ final class ServiceDeskActions
             report($e);
             Notification::make()->danger()->title('Failed')->body($e->getMessage())->persistent()->send();
         }
-    }
-
-    public static function attachmentUrl(?string $path): ?string
-    {
-        return $path ? Storage::disk(config('peopleos.documents.disk', 'local'))->url($path) : null;
     }
 }

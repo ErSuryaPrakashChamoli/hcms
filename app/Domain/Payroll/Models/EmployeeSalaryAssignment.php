@@ -4,6 +4,7 @@ namespace App\Domain\Payroll\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class EmployeeSalaryAssignment extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
+    use ScopedByEmployee;
 
     public const CHANGE_TYPES = ['hire' => 'Hire', 'revision' => 'Revision', 'promotion' => 'Promotion', 'correction' => 'Correction', 'transfer' => 'Transfer'];
 

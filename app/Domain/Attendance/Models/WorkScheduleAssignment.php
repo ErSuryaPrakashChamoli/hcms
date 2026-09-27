@@ -4,6 +4,7 @@ namespace App\Domain\Attendance\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class WorkScheduleAssignment extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
+    use ScopedByEmployee;
 
     protected function casts(): array
     {

@@ -3,6 +3,7 @@
 namespace App\Domain\Documents\Policies;
 
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\AccessScopes;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeDocumentPolicy
@@ -14,7 +15,7 @@ class EmployeeDocumentPolicy
 
     public function view(User $user, Model $model): bool
     {
-        return $user->hasPermission('document.view');
+        return $user->hasPermission('document.view') && app(AccessScopes::class)->allows($user, $model);
     }
 
     public function create(User $user): bool

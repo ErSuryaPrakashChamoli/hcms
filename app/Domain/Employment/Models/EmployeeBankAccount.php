@@ -3,6 +3,7 @@
 namespace App\Domain\Employment\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class EmployeeBankAccount extends Model
 {
     use Auditable, BelongsToTenant;
+    use ScopedByEmployee;
 
     protected static function booted(): void
     {

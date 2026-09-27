@@ -56,7 +56,7 @@ it('serves downloads only through valid signed links to authorised users, auditi
     $this->get(route('documents.download', ['document' => $doc]))->assertForbidden();
     $this->get($url)->assertOk()->assertDownload('pan.pdf');
 
-    expect(AuditEvent::query()->where('action', 'VIEW')->where('entity_type', EmployeeDocument::class)->where('entity_id', (string) $doc->id)->exists())->toBeTrue();
+    expect(AuditEvent::query()->where('action', 'DOWNLOAD')->where('entity_type', EmployeeDocument::class)->where('entity_id', (string) $doc->id)->exists())->toBeTrue();
 
     $this->actingAs(tenantUser($this->tenant, ['employee.view']));
     $this->get($url)->assertForbidden();

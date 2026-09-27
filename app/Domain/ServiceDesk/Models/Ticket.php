@@ -4,6 +4,7 @@ namespace App\Domain\ServiceDesk\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\Workflow\Models\WorkflowInstance;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Ticket extends Model
 {
     use Auditable, BelongsToTenant;
+    use ScopedByEmployee;
 
     public const OPEN = ['new', 'open', 'pending'];
 

@@ -2,12 +2,18 @@
 
 namespace App\Domain\Audit\Models;
 
+use App\Domain\Audit\Builders\ImmutableBuilder;
 use App\Domain\Audit\Exceptions\ImmutableAuditRecordException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AuditEventChange extends Model
 {
+    public function newEloquentBuilder($query): ImmutableBuilder
+    {
+        return new ImmutableBuilder($query);
+    }
+
     public $timestamps = false;
 
     protected $guarded = [];

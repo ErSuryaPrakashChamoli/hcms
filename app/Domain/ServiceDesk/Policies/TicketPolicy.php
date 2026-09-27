@@ -4,6 +4,7 @@ namespace App\Domain\ServiceDesk\Policies;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\AccessScopes;
 use Illuminate\Database\Eloquent\Model;
 
 /** Agents (servicedesk.view) see every ticket; employees see their own. */
@@ -16,7 +17,7 @@ class TicketPolicy
 
     public function view(User $user, Model $model): bool
     {
-        return $user->hasPermission('servicedesk.view') || $model->getAttribute('assignee_id') === $user->id || self::isOwn($user, $model);
+        return ($user->hasPermission('servicedesk.view') && app(AccessScopes::class)->allows($user, $model)) || $model->getAttribute('assignee_id') === $user->id || self::isOwn($user, $model);
     }
 
     public function create(User $user): bool
@@ -26,7 +27,7 @@ class TicketPolicy
 
     public function update(User $user, Model $model): bool
     {
-        return $user->hasPermission('servicedesk.view') || $model->getAttribute('assignee_id') === $user->id;
+        return ($user->hasPermission('servicedesk.view') && app(AccessScopes::class)->allows($user, $model)) || $model->getAttribute('assignee_id') === $user->id;
     }
 
     public function delete(User $user, Model $model): bool

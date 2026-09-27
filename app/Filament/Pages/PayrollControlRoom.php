@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\ComplianceRule;
+use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
@@ -42,6 +43,15 @@ class PayrollControlRoom extends Page implements HasTable
     public static function canAccess(): bool
     {
         return auth()->user()?->can('payroll.view') ?? false;
+    }
+
+    public function getSubheading(): ?string
+    {
+        $unverified = app(ComplianceRules::class)->unverified()->pluck('code')->unique();
+
+        return $unverified->isEmpty()
+            ? null
+            : 'Statutory rules '.$unverified->implode(', ').' are ILLUSTRATIVE / development only. Verify them against official sources before running production payroll.';
     }
 
     protected function getHeaderActions(): array

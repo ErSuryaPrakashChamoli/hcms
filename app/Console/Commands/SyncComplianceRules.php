@@ -16,6 +16,11 @@ class SyncComplianceRules extends Command
         $synced = $rules->sync();
         $this->info("Synced {$synced->count()} statutory rule version(s).");
 
+        $illustrative = $synced->filter(fn ($rule) => ! $rule->isVerified())->count();
+        if ($illustrative > 0) {
+            $this->warn("{$illustrative} rule version(s) are ILLUSTRATIVE / development only and must be verified against official sources before production payroll.");
+        }
+
         return self::SUCCESS;
     }
 }

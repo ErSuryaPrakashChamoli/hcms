@@ -3,6 +3,7 @@
 namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Identity\Concerns\ScopedByOrganisation;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
@@ -19,6 +20,10 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 class Division extends Model
 {
     /** @use HasFactory<DivisionFactory> */
+    use ScopedByOrganisation;
+
+    public string $accessScopeDimension = 'division';
+
     use Auditable, BelongsToTenant, HasEffectiveDates, HasFactory;
 
     protected function casts(): array

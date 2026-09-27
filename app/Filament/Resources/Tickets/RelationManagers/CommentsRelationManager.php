@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Tickets\RelationManagers;
 
 use App\Domain\ServiceDesk\Models\TicketComment;
+use App\Domain\ServiceDesk\Services\ServiceDesk;
 use App\Filament\Support\ServiceDeskActions;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -29,7 +30,7 @@ class CommentsRelationManager extends RelationManager
                 TextColumn::make('created_at')->label('When')->since(),
                 TextColumn::make('author.name')->label('From')->placeholder('System')->description(fn (TicketComment $record) => $record->is_internal ? 'Internal note' : null),
                 TextColumn::make('body')->wrap(),
-                TextColumn::make('attachment_name')->label('Attachment')->placeholder('—')->url(fn (TicketComment $record) => ServiceDeskActions::attachmentUrl($record->attachment_path))->openUrlInNewTab(),
+                TextColumn::make('attachment_name')->label('Attachment')->placeholder('—')->url(fn (TicketComment $record) => app(ServiceDesk::class)->attachmentUrl($record))->openUrlInNewTab(),
             ])
             ->defaultSort('id')
             ->paginated(false);

@@ -12,6 +12,11 @@ enum AuditAction: string
     case Import = 'IMPORT';
     case Export = 'EXPORT';
     case View = 'VIEW';
+    case Download = 'DOWNLOAD';
+    case Archive = 'ARCHIVE';
+    case Assign = 'ASSIGN';
+    case StatusChange = 'STATUS_CHANGE';
+    case BulkOperation = 'BULK_OPERATION';
 
     // Workflow
     case Submitted = 'SUBMITTED';

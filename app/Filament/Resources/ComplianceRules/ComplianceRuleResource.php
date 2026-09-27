@@ -45,6 +45,7 @@ class ComplianceRuleResource extends Resource
                 TextColumn::make('effective_to')->date()->placeholder('Open'),
                 TextColumn::make('source')->limit(50)->placeholder('—')->toggleable(),
                 TextColumn::make('status')->badge()->color(fn (string $state) => $state === 'active' ? 'success' : 'gray'),
+                TextColumn::make('verification_status')->label('Verification')->badge()->formatStateUsing(fn (string $state) => config("peopleos.compliance.verification_statuses.{$state}", $state))->color(fn (string $state) => $state === 'verified' ? 'success' : 'danger'),
             ])
             ->defaultSort('code')
             ->filters([SelectFilter::make('code')->options(['EPF' => 'EPF', 'ESI' => 'ESI', 'PT' => 'Professional tax', 'LWF' => 'LWF', 'TDS' => 'Income tax', 'GRATUITY' => 'Gratuity'])])

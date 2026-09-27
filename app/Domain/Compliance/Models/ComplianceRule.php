@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * A versioned statutory rule (§32). Platform-owned: no tenant_id, read-only for tenants, written
  * only by `peopleos:compliance:sync` from database/data/compliance/*.php.
  */
-#[Fillable(['jurisdiction', 'code', 'state', 'name', 'version', 'effective_from', 'effective_to', 'parameters', 'source', 'status'])]
+#[Fillable(['jurisdiction', 'code', 'state', 'name', 'version', 'effective_from', 'effective_to', 'parameters', 'source', 'status', 'verification_status', 'verified_at'])]
 class ComplianceRule extends Model
 {
     use HasEffectiveDates;
@@ -18,11 +18,17 @@ class ComplianceRule extends Model
     protected function casts(): array
     {
         return [
+            'verified_at' => 'datetime',
             'version' => 'integer',
             'effective_from' => 'date',
             'effective_to' => 'date',
             'parameters' => 'array',
         ];
+    }
+
+    public function isVerified(): bool
+    {
+        return $this->verification_status === 'verified';
     }
 
     public function param(string $key, mixed $default = null): mixed

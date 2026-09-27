@@ -3,6 +3,7 @@
 namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Identity\Concerns\ScopedByOrganisation;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
@@ -18,6 +19,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CostCentre extends Model
 {
     /** @use HasFactory<CostCentreFactory> */
+    use ScopedByOrganisation;
+
+    public string $accessScopeDimension = 'company';
+
     use Auditable, BelongsToTenant, HasEffectiveDates, HasFactory;
 
     protected function casts(): array

@@ -19,6 +19,11 @@ class TicketComment extends Model
         return ['is_internal' => 'boolean'];
     }
 
+    public function auditLabel(): string
+    {
+        return 'Ticket #'.$this->ticket_id.' comment #'.$this->getKey().($this->attachment_name ? ' ('.$this->attachment_name.')' : '');
+    }
+
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class);

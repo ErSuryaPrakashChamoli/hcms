@@ -12,6 +12,7 @@ use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Configuration\Concerns\HasCustomFields;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Exit\Models\ExitCase;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Models\LearningCertificate;
 use App\Domain\Learning\Models\LearningEnrolment;
@@ -53,8 +54,10 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 #[Fillable(['tenant_id', 'person_id', 'user_id', 'employee_code', 'lifecycle_state', 'source', 'external_reference', 'joining_date', 'expected_joining_date', 'offer_accepted_at', 'probation_end_date', 'confirmation_date', 'exit_date', 'work_email', 'work_phone', 'metadata'])]
 class Employee extends Model
 {
-    /** @use HasFactory<EmployeeFactory> */
     use Auditable, BelongsToTenant, HasCustomFields, HasFactory;
+
+    /** @use HasFactory<EmployeeFactory> */
+    use ScopedByEmployee;
 
     protected function casts(): array
     {

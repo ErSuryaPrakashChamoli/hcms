@@ -1,0 +1,192 @@
+<?php
+
+namespace App\Domain\Identity\Services;
+
+use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Models\UserAccessScope;
+use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Organisation\Models\Company;
+use App\Support\Tenancy\TenantContext;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+
+/**
+ * Organisational access scoping (Phase 0.2 ABAC). Resolves a user's scope rows into query
+ * constraints that are applied at the data-access layer by {@see AccessScope}, and answers
+ * record-level questions for policies.
+ *
+ * Semantics: no rows = tenant-wide (subject to permissions). With rows, an employee is visible
+ * when the user is that employee, or when the employee's position effective today matches every
+ * scoped dimension (any of the listed values per dimension).
+ */
+final class AccessScopes
+{
+    /** @var array<int, array<string, list<int>>|null> */
+    private array $cache = [];
+
+    public function __construct(private readonly TenantContext $tenants) {}
+
+    /** @return array<string, list<int>>|null null = tenant-wide */
+    public function for(User $user): ?array
+    {
+        if ($user->isPlatformAdmin()) {
+            return null;
+        }
+
+        if (array_key_exists($user->getKey(), $this->cache)) {
+            return $this->cache[$user->getKey()];
+        }
+
+        $rows = $this->tenants->bypass(fn () => UserAccessScope::query()
+            ->where('user_id', $user->getKey())
+            ->get(['dimension', 'scope_id']));
+
+        $scope = $rows->isEmpty()
+            ? null
+            : $rows->groupBy('dimension')->map(fn ($group) => $group->pluck('scope_id')->map(fn ($id) => (int) $id)->values()->all())->all();
+
+        return $this->cache[$user->getKey()] = $scope;
+    }
+
+    public function isScoped(User $user): bool
+    {
+        return $this->for($user) !== null;
+    }
+
+    public function forget(?int $userId = null): void
+    {
+        if ($userId === null) {
+            $this->cache = [];
+        } else {
+            unset($this->cache[$userId]);
+        }
+    }
+
+    /**
+     * Sub-select of employee ids the user may reach. Built without re-entering the access scope so
+     * the position lookup itself is never scoped.
+     */
+    public function employeeKeys(User $user): QueryBuilder
+    {
+        $scope = $this->for($user) ?? [];
+
+        return AccessScope::withoutScoping(function () use ($user, $scope) {
+            $positions = EmployeePosition::query()->select('employee_id')->effectiveOn();
+
+            foreach ($scope as $dimension => $ids) {
+                $positions->whereIn("{$dimension}_id", $ids);
+            }
+
+            return Employee::query()
+                ->select('employees.id')
+                ->where(fn (Builder $q) => $q->where('employees.user_id', $user->getKey())->orWhereIn('employees.id', $positions))
+                ->toBase();
+        });
+    }
+
+    public function constrainEmployees(Builder $query, User $user): Builder
+    {
+        return $query->whereIn($query->getModel()->qualifyColumn('id'), $this->employeeKeys($user));
+    }
+
+    /** Rows keyed by employee_id; rows with no employee (e.g. anonymous grievances) stay visible. */
+    public function constrainByEmployee(Builder $query, User $user, string $column = 'employee_id'): Builder
+    {
+        $column = $query->getModel()->qualifyColumn($column);
+
+        return $query->where(fn (Builder $q) => $q->whereNull($column)->orWhereIn($column, $this->employeeKeys($user)));
+    }
+
+    /**
+     * Organisation units: companies are limited to the company scope; units under a company are
+     * limited to the company scope and, when the unit's own dimension is scoped, to those ids.
+     */
+    public function constrainOrganisation(Builder $query, User $user, string $dimension): Builder
+    {
+        $scope = $this->for($user) ?? [];
+        $model = $query->getModel();
+
+        if ($dimension === 'company') {
+            return isset($scope['company']) ? $query->whereIn($model->qualifyColumn('id'), $scope['company']) : $query;
+        }
+
+        if (isset($scope['company'])) {
+            $query->whereIn($model->qualifyColumn('company_id'), $scope['company']);
+        }
+
+        if (isset($scope[$dimension])) {
+            $query->whereIn($model->qualifyColumn('id'), $scope[$dimension]);
+        }
+
+        return $query;
+    }
+
+    /** Record-level answer used by policies (defence in depth behind the query scope). */
+    public function allows(User $user, Model $model): bool
+    {
+        // A record from another tenant is never reachable, whatever the scope rows say.
+        $recordTenant = $model->getAttributes()['tenant_id'] ?? null;
+        if ($recordTenant !== null && (int) $recordTenant !== (int) $this->tenants->id()) {
+            return false;
+        }
+
+        if (! $this->isScoped($user)) {
+            return true;
+        }
+
+        if ($model instanceof Employee) {
+            return $this->allowsEmployeeId($user, (int) $model->getKey());
+        }
+
+        if ($model instanceof Company) {
+            return $this->constrainOrganisation(Company::query()->whereKey($model->getKey()), $user, 'company')->exists();
+        }
+
+        $dimension = property_exists($model, 'accessScopeDimension') ? $model->accessScopeDimension : null;
+        if ($dimension !== null && in_array($dimension, UserAccessScope::DIMENSIONS, true)) {
+            return $this->constrainOrganisation($model->newQueryWithoutScope(AccessScope::class)->whereKey($model->getKey()), $user, $dimension)->exists();
+        }
+
+        $employeeId = $model->getAttribute('employee_id');
+
+        return $employeeId === null || $this->allowsEmployeeId($user, (int) $employeeId);
+    }
+
+    public function allowsEmployeeId(User $user, int $employeeId): bool
+    {
+        return $this->employeeKeys($user)->where('employees.id', $employeeId)->exists();
+    }
+
+    /**
+     * Replace the user's scope with the given map (dimension => ids), auditing each change.
+     *
+     * @param  array<string, list<int>>  $scope
+     */
+    public function assign(User $user, array $scope, ?string $reason = null): void
+    {
+        $existing = UserAccessScope::query()->where('user_id', $user->getKey())->get();
+
+        foreach ($existing as $row) {
+            if (! in_array((int) $row->scope_id, $scope[$row->dimension] ?? [], true)) {
+                $row->withAuditReason($reason)->delete();
+            }
+        }
+
+        foreach ($scope as $dimension => $ids) {
+            if (! in_array($dimension, UserAccessScope::DIMENSIONS, true)) {
+                continue;
+            }
+
+            foreach (array_unique(array_map('intval', $ids)) as $id) {
+                if (! $existing->contains(fn ($row) => $row->dimension === $dimension && (int) $row->scope_id === $id)) {
+                    (new UserAccessScope(['user_id' => $user->getKey(), 'dimension' => $dimension, 'scope_id' => $id]))->withAuditReason($reason)->save();
+                }
+            }
+        }
+
+        $this->forget((int) $user->getKey());
+    }
+}

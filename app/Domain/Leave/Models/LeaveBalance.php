@@ -3,6 +3,7 @@
 namespace App\Domain\Leave\Models;
 
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class LeaveBalance extends Model
 {
     use BelongsToTenant;
+    use ScopedByEmployee;
 
     protected function casts(): array
     {

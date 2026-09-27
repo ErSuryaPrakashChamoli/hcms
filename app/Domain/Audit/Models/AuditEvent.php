@@ -2,6 +2,7 @@
 
 namespace App\Domain\Audit\Models;
 
+use App\Domain\Audit\Builders\ImmutableBuilder;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Exceptions\ImmutableAuditRecordException;
 use App\Domain\Identity\Models\User;
@@ -25,6 +26,12 @@ class AuditEvent extends Model
     protected $dateFormat = 'Y-m-d H:i:s.u';
 
     protected $guarded = [];
+
+    /** Mass updates and deletes through the query builder are refused as well as model events. */
+    public function newEloquentBuilder($query): ImmutableBuilder
+    {
+        return new ImmutableBuilder($query);
+    }
 
     protected static function booted(): void
     {
@@ -95,6 +102,11 @@ class AuditEvent extends Model
             ], $changes),
         ];
 
+        // Added in Phase 0.2; only present when set so chains written before it still verify.
+        if (! empty($attributes['operation_id'])) {
+            $payload['operation_id'] = $attributes['operation_id'];
+        }
+
         return json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
@@ -144,6 +156,7 @@ class AuditEvent extends Model
             'approval_reference' => $this->approval_reference,
             'effective_date' => $this->effective_date?->toDateString(),
             'metadata' => $this->metadata,
+            'operation_id' => $this->operation_id,
         ];
 
         return self::computeHash($this->previous_hash, self::canonicalPayload($attributes, $changes));

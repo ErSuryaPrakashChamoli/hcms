@@ -3,6 +3,7 @@
 namespace App\Domain\Employment\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class EmployeeStatutoryDetail extends Model
 {
     use Auditable, BelongsToTenant;
+    use ScopedByEmployee;
 
     public const SENSITIVE = ['pan', 'aadhaar_reference', 'uan', 'pf_number', 'esic_number'];
 

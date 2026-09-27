@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TrainingSessions\RelationManagers;
 
+use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Learning\Models\TrainingSessionAttendee;
 use App\Domain\Learning\Services\TrainingSessions;
@@ -56,7 +57,16 @@ class AttendeesRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 BulkAction::make('markAttended')->label('Mark attended')->icon('heroicon-m-check')
-                    ->action(fn (Collection $records) => LearningActions::run(fn () => app(TrainingSessions::class)->markAttendance($session, $records->mapWithKeys(fn ($r) => [$r->employee_id => 'attended'])->all(), auth()->user()), fn ($n) => "{$n} marked attended")),
+                    ->action(fn (Collection $records) => LearningActions::run(function () use ($session, $records) {
+                        $marked = 0;
+                        app(AuditRecorder::class)->operation('learning', 'Mark attendance', function () use ($session, $records, &$marked) {
+                            $marked = app(TrainingSessions::class)->markAttendance($session, $records->mapWithKeys(fn ($r) => [$r->employee_id => 'attended'])->all(), auth()->user());
+
+                            return ['succeeded' => $marked, 'ids' => $records->pluck('employee_id')->all()];
+                        }, entityType: TrainingSessionAttendee::class);
+
+                        return $marked;
+                    }, fn ($n) => "{$n} marked attended")),
             ]);
     }
 }

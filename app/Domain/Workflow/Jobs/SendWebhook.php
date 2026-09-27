@@ -4,6 +4,8 @@ namespace App\Domain\Workflow\Jobs;
 
 use App\Domain\Workflow\Models\WorkflowAction;
 use App\Domain\Workflow\Models\WorkflowInstance;
+use App\Support\Tenancy\Jobs\BindTenantContext;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
@@ -15,6 +17,9 @@ class SendWebhook implements ShouldQueue
 
     public int $tries = 3;
 
+    /** Tenant captured at dispatch; re-bound by BindTenantContext inside the worker. */
+    public ?int $tenantId;
+
     /** @param  array<string, mixed>  $payload */
     public function __construct(
         public readonly WorkflowInstance $instance,
@@ -23,7 +28,15 @@ class SendWebhook implements ShouldQueue
         public readonly string $method,
         public readonly array $headers,
         public readonly array $payload,
-    ) {}
+    ) {
+        $this->tenantId = $instance->tenant_id ?? app(TenantContext::class)->id();
+    }
+
+    /** @return list<object> */
+    public function middleware(): array
+    {
+        return [new BindTenantContext];
+    }
 
     public function handle(): void
     {

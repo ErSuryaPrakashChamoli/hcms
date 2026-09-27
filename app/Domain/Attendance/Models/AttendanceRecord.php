@@ -4,6 +4,7 @@ namespace App\Domain\Attendance\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AttendanceRecord extends Model
 {
     use Auditable, BelongsToTenant;
+    use ScopedByEmployee;
 
     protected function casts(): array
     {

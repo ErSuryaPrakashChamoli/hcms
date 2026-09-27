@@ -4,6 +4,7 @@ namespace App\Domain\Performance\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class FeedbackEntry extends Model
 {
     use Auditable, BelongsToTenant;
+    use ScopedByEmployee;
 
     public function auditModule(): string
     {
