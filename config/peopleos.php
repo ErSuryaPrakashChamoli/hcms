@@ -15,10 +15,16 @@ use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
 use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\StatutorySnapshot;
+use App\Domain\Compliance\Models\TdsAnnualLedger;
+use App\Domain\Compliance\Models\TdsCertificate;
+use App\Domain\Compliance\Models\TdsEmployeeInvestment;
+use App\Domain\Compliance\Models\TdsProfile;
+use App\Domain\Compliance\Models\TdsQuarterlyReturnEntry;
 use App\Domain\Compliance\Services\Returns\EpfReturns;
 use App\Domain\Compliance\Services\Returns\EsiReturns;
 use App\Domain\Compliance\Services\Returns\LwfReturns;
 use App\Domain\Compliance\Services\Returns\ProfessionalTaxReturns;
+use App\Domain\Compliance\Services\Tds\TdsQuarterlyReturns;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\Form;
@@ -1185,6 +1191,7 @@ return [
             'EPF' => ['label' => 'EPF — Electronic Challan-cum-Return', 'form_code' => 'ECR', 'authority' => 'EPFO', 'scope' => 'establishment', 'generator' => EpfReturns::class, 'filing_totals' => ['ee_share', 'eps_share', 'er_share']],
             'ESI' => ['label' => 'ESI — monthly contribution', 'form_code' => 'ESI_MC', 'authority' => 'ESIC', 'scope' => 'establishment', 'generator' => EsiReturns::class, 'filing_totals' => ['ee_contribution', 'er_contribution']],
             'PT' => ['label' => 'Professional tax return', 'form_code' => 'PT', 'authority' => 'STATE_PT', 'scope' => 'establishment', 'generator' => ProfessionalTaxReturns::class, 'filing_totals' => ['pt_amount']],
+            'TDS' => ['label' => 'TDS on salary — Form No. 138 (earlier Form 24Q)', 'form_code' => 'FORM_138', 'authority' => 'INCOME_TAX', 'scope' => 'legal_entity', 'generator' => TdsQuarterlyReturns::class, 'filing_totals' => ['tax_deducted', 'tax_deposited']],
             'LWF' => ['label' => 'Labour welfare fund return', 'form_code' => 'LWF', 'authority' => 'STATE_LWF', 'scope' => 'establishment', 'generator' => LwfReturns::class, 'filing_totals' => ['ee_contribution', 'er_contribution']],
         ],
         // Export layouts carry their own verification status; an unverified layout is exported with
@@ -1203,6 +1210,13 @@ return [
                 'fields' => ['IP Number', 'IP Name', 'No of Days for which wages paid/payable during the month', 'Total Monthly Wages', 'Reason Code for Zero workings days', 'Last Working Day'],
                 'ip_pattern' => '/^\d{10}$/',
                 'source' => 'ESIC employer-portal monthly contribution upload template (not retrieved). Column order and the 10-digit IP number pattern must be verified before upload.',
+            ],
+            'TDS_FORM_138' => [
+                'version' => 'form138-schedule-1',
+                'verification_status' => 'review',
+                'section_code' => '392',
+                'fields' => ['PAN', 'Deductee name', 'Section', 'Date of payment/credit', 'Amount paid/credited', 'Tax deducted', 'Reason code'],
+                'source' => 'Income Tax Department: Form No. 138 (earlier Form No. 24Q) is filed under Rule 219 of the Income-tax Rules, 2026; Annexure-I every quarter, Annexure-II in Q4; salary TDS under section 392 of the Income-tax Act, 2025 (Form No. 130 FAQ). The utility / FVU file schema was not retrieved: this export is a working schedule only.',
             ],
             'PT_RETURN' => [
                 'version' => 'pt-generic-1',
@@ -1288,6 +1302,8 @@ return [
             StatutoryRegistration::class => ['registration_number'],
             EpfReturnEntry::class => ['uan'],
             EsiReturnEntry::class => ['ip_number'],
+            TdsQuarterlyReturnEntry::class => ['pan'],
+            TdsProfile::class => ['responsible_person_pan'],
             User::class => ['password', 'app_authentication_secret', 'app_authentication_recovery_codes'],
             SsoConnection::class => ['client_secret'],
             WebhookEndpoint::class => ['secret'],
@@ -1296,7 +1312,7 @@ return [
             EmployeeSalaryAssignment::class, PayrollEntry::class,
             Payslip::class, FinalSettlement::class,
         ],
-        'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class, EstablishmentStatutoryProfile::class, EmployeeEstablishmentAssignment::class, StatutoryReturn::class, StatutorySnapshot::class, EpfReturnEntry::class],
+        'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class, EstablishmentStatutoryProfile::class, EmployeeEstablishmentAssignment::class, StatutoryReturn::class, StatutorySnapshot::class, EpfReturnEntry::class, TdsAnnualLedger::class, TdsCertificate::class, TdsEmployeeInvestment::class],
         'confidential' => [
             Grievance::class, ImprovementPlan::class,
             OneOnOne::class, BgvCase::class, EmployeeDocument::class,

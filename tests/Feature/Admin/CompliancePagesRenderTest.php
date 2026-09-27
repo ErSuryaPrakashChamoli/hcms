@@ -13,6 +13,10 @@ use App\Filament\Resources\LwfReturns\LwfReturnResource;
 use App\Filament\Resources\ProfessionalTaxReturns\ProfessionalTaxReturnResource;
 use App\Filament\Resources\RuleVerifications\RuleVerificationResource;
 use App\Filament\Resources\StatutoryRegistrations\StatutoryRegistrationResource;
+use App\Filament\Resources\TdsCertificates\TdsCertificateResource;
+use App\Filament\Resources\TdsInvestments\TdsInvestmentResource;
+use App\Filament\Resources\TdsProfiles\TdsProfileResource;
+use App\Filament\Resources\TdsReturns\TdsReturnResource;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -45,6 +49,10 @@ it('renders the legal structure and compliance pages with masked identifiers', f
     $this->get(EsiReturnResource::getUrl('index'))->assertOk();
     $this->get(ProfessionalTaxReturnResource::getUrl('index'))->assertOk();
     $this->get(LwfReturnResource::getUrl('index'))->assertOk();
+    $this->get(TdsReturnResource::getUrl('index'))->assertOk();
+    $this->get(TdsProfileResource::getUrl('index'))->assertOk();
+    $this->get(TdsCertificateResource::getUrl('index'))->assertOk();
+    $this->get(TdsInvestmentResource::getUrl('index'))->assertOk();
     $this->get(EpfReturnResource::getUrl('view', ['record' => $this->return]))->assertOk()->assertSee('ECR')->assertSee('Validate')->assertDontSee('100200300400');
 });
 

@@ -101,7 +101,8 @@ it('audits every domain model except the documented append-only or derived table
         'Compliance\Models\EpfReturnRun', 'Compliance\Models\EpfReturnEntry', 'Compliance\Models\EpfReturnRevision',
         'Compliance\Models\EsiReturnRun', 'Compliance\Models\EsiReturnEntry', 'Compliance\Models\ProfessionalTaxReturn',
         'Compliance\Models\ProfessionalTaxReturnEntry', 'Compliance\Models\LwfReturn', 'Compliance\Models\LwfReturnEntry',
-        'Compliance\Models\ProfessionalTaxRuleVersion',
+        'Compliance\Models\ProfessionalTaxRuleVersion', 'Compliance\Models\TdsAnnualLedger', 'Compliance\Models\TdsQuarterlyReturn',
+        'Compliance\Models\TdsQuarterlyReturnEntry', 'Compliance\Models\TdsCertificate',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

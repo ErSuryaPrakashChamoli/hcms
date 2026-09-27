@@ -64,10 +64,18 @@ use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\StatutoryReturnAction;
 use App\Domain\Compliance\Models\StatutorySnapshot;
+use App\Domain\Compliance\Models\TdsAnnualLedger;
+use App\Domain\Compliance\Models\TdsCertificate;
+use App\Domain\Compliance\Models\TdsEmployeeInvestment;
+use App\Domain\Compliance\Models\TdsFinancialYear;
+use App\Domain\Compliance\Models\TdsProfile;
+use App\Domain\Compliance\Models\TdsQuarterlyReturn;
+use App\Domain\Compliance\Models\TdsQuarterlyReturnEntry;
 use App\Domain\Compliance\Policies\ComplianceRulePolicy;
 use App\Domain\Compliance\Policies\StatutoryRegistrationPolicy;
 use App\Domain\Compliance\Policies\StatutoryReturnPolicy;
 use App\Domain\Compliance\Policies\TaxDeclarationPolicy;
+use App\Domain\Compliance\Policies\TdsPolicy;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\FinancialYear;
 use App\Domain\Configuration\Models\ConfigurationChange;
@@ -349,7 +357,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Establishment::class, EstablishmentPolicy::class);
         Gate::policy(EmployeeEstablishmentAssignment::class, EstablishmentAssignmentPolicy::class);
         Gate::policy(StatutoryRegistration::class, StatutoryRegistrationPolicy::class);
-        foreach ([StatutoryReturn::class, StatutoryReturnAction::class, StatutorySnapshot::class, StatutoryReconciliation::class, EpfReturnRun::class, EpfReturnEntry::class, EpfReturnRevision::class, EsiReturnRun::class, EsiReturnEntry::class, ProfessionalTaxReturn::class, ProfessionalTaxReturnEntry::class, LwfReturn::class, LwfReturnEntry::class] as $model) {
+        foreach ([TdsProfile::class, TdsFinancialYear::class, TdsEmployeeInvestment::class] as $model) {
+            Gate::policy($model, TdsPolicy::class);
+        }
+        foreach ([StatutoryReturn::class, StatutoryReturnAction::class, StatutorySnapshot::class, StatutoryReconciliation::class, EpfReturnRun::class, EpfReturnEntry::class, EpfReturnRevision::class, EsiReturnRun::class, EsiReturnEntry::class, ProfessionalTaxReturn::class, ProfessionalTaxReturnEntry::class, LwfReturn::class, LwfReturnEntry::class, TdsAnnualLedger::class, TdsQuarterlyReturn::class, TdsQuarterlyReturnEntry::class, TdsCertificate::class] as $model) {
             Gate::policy($model, StatutoryReturnPolicy::class);
         }
         Gate::policy(EstablishmentStatutoryProfile::class, StatutoryRegistrationPolicy::class);

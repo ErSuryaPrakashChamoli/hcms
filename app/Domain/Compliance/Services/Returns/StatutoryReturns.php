@@ -55,6 +55,8 @@ final class StatutoryReturns
             $from = $return?->status;
             $return ??= StatutoryReturn::query()->create($header + ['uniqueness_key' => $key, 'status' => StatutoryReturn::DRAFT]);
 
+            // A rebuild takes the new inputs (attestations such as challans or a payment attestation, format).
+            $return->fill(collect($header)->only(['attestations', 'format_code', 'format_version', 'format_verification_status'])->all());
             $return->fill(['generated_by' => $actor->getKey(), 'generated_at' => now(), 'operation_id' => Context::get('audit.operation_id'), 'reason' => $reason ?? $return->reason]);
             $return->save();
 
