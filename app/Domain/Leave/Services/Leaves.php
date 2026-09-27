@@ -12,7 +12,6 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Events\LeaveEvent;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
-use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Services\Timeline;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -29,31 +28,32 @@ final class Leaves
         private readonly AttendanceProcessor $attendance,
         private readonly AuditRecorder $audit,
         private readonly Timeline $timeline,
+        private readonly LeaveEligibility $eligibility,
     ) {}
 
-    public function request(Employee $employee, LeaveType $type, Carbon|string $from, Carbon|string $to, string $reason, string $fromSession = 'full', string $toSession = 'full', ?EmployeeDocument $document = null, ?User $requester = null): LeaveRequest
+    public function request(Employee $employee, LeaveType $type, Carbon|string $from, Carbon|string $to, string $reason, string $fromSession = 'full', string $toSession = 'full', ?EmployeeDocument $document = null, ?User $requester = null, ?string $idempotencyKey = null, ?string $contact = null): LeaveRequest
     {
         $from = Carbon::parse($from)->startOfDay();
         $to = Carbon::parse($to)->startOfDay();
+
+        // A retried API call with the same key returns the original request instead of a second one.
+        if ($idempotencyKey !== null && ($existing = LeaveRequest::query()->where('employee_id', $employee->id)->where('idempotency_key', $idempotencyKey)->first())) {
+            return $existing;
+        }
 
         if ($to->lt($from)) {
             throw new RuntimeException('The end date must not be before the start date.');
         }
 
-        if ($type->status->value !== 'active') {
-            throw new RuntimeException('This leave type is not available.');
+        if ($type->unit === 'hours') {
+            throw new RuntimeException("{$type->name} is configured in hours; hourly leave requests are not available yet.");
         }
 
-        if ($type->applicable_gender && $employee->person?->gender && $type->applicable_gender !== $employee->person->gender) {
-            throw new RuntimeException("{$type->name} does not apply to this employee.");
+        $eligibility = $this->eligibility->check($employee, $type, $from);
+        if (! $eligibility->eligible) {
+            throw new RuntimeException($eligibility->reason);
         }
-
-        $rule = $this->entitlements->forType($employee, $type, $from)
-            ?? ($type->category === 'unpaid' ? LeaveEntitlements::DEFAULTS : throw new RuntimeException("No leave policy grants {$type->name} to this employee."));
-
-        if (! $rule['probation_eligible'] && $employee->lifecycle_state === LifecycleState::Probation) {
-            throw new RuntimeException("{$type->name} is not available during probation.");
-        }
+        $rule = $eligibility->rule;
 
         if (($fromSession !== 'full' || $toSession !== 'full') && ! ($type->allow_half_day && $rule['half_day_allowed'])) {
             throw new RuntimeException('Half days are not allowed for this leave type.');
@@ -69,28 +69,29 @@ final class Leaves
         if ($days <= 0) {
             throw new RuntimeException('The selected span contains no working days.');
         }
-
+        if ($type->min_request_units !== null && $days < $type->min_request_units) {
+            throw new RuntimeException("{$type->name} must be requested for at least {$type->min_request_units} day(s).");
+        }
+        if ($type->max_request_units !== null && $days > $type->max_request_units) {
+            throw new RuntimeException("{$type->name} can be requested for at most {$type->max_request_units} day(s) at a time.");
+        }
         if ((int) $rule['max_consecutive_days'] > 0 && $days > (int) $rule['max_consecutive_days']) {
             throw new RuntimeException("{$type->name} allows at most {$rule['max_consecutive_days']} consecutive day(s).");
         }
 
-        if ((int) $rule['document_required_after_days'] > 0 && $days > (int) $rule['document_required_after_days'] && $document === null) {
-            throw new RuntimeException("A supporting document is required for more than {$rule['document_required_after_days']} day(s).");
+        $needsDocument = $type->requires_document || ((int) $rule['document_required_after_days'] > 0 && $days > (int) $rule['document_required_after_days']);
+        if ($needsDocument && $document === null) {
+            throw new RuntimeException($type->requires_document ? "{$type->name} requires a supporting document." : "A supporting document is required for more than {$rule['document_required_after_days']} day(s).");
         }
 
-        $this->assertNoOverlap($employee, $dates);
         $this->assertLockedDays($employee, $dates);
 
-        if ($type->category !== 'unpaid') {
-            $period = $this->years->periodFor($from);
-            $available = $this->balances->balance($employee, $type, $period)->available();
+        return DB::transaction(function () use ($employee, $type, $from, $to, $fromSession, $toSession, $dates, $days, $reason, $document, $requester, $rule, $idempotencyKey, $contact) {
+            // Serialise concurrent requests for this employee, then re-check overlap and balance under the lock.
+            $this->balances->lockEmployee($employee);
+            $this->assertNoOverlap($employee, $dates);
+            $this->assertBalance($employee, $type, $dates, $rule, $days);
 
-            if ($available - $days < -(float) $rule['negative_balance_limit']) {
-                throw new RuntimeException(sprintf('Insufficient %s balance: %.1f available, %.1f requested.', $type->name, $available, $days));
-            }
-        }
-
-        return DB::transaction(function () use ($employee, $type, $from, $to, $fromSession, $toSession, $dates, $days, $reason, $document, $requester) {
             $request = new LeaveRequest([
                 'employee_id' => $employee->id,
                 'leave_type_id' => $type->id,
@@ -101,9 +102,11 @@ final class Leaves
                 'days' => $days,
                 'dates' => $dates,
                 'reason' => $reason,
+                'contact_details' => $contact,
                 'status' => 'pending',
                 'document_id' => $document?->id,
                 'requested_by' => ($requester ?? auth()->user())?->id,
+                'idempotency_key' => $idempotencyKey,
             ]);
             $request->withAuditReason($reason)->save();
 
@@ -111,7 +114,12 @@ final class Leaves
                 $this->balances->recompute($employee, $type, $period);
             }
 
+            $this->audit->record(AuditAction::LeaveRequested, 'leave', $request, reason: $reason, metadata: ['leave_type' => $type->code, 'days' => $days, 'from' => $from->toDateString(), 'to' => $to->toDateString()]);
             LeaveEvent::dispatch('leave.requested', $employee, $request, ['leave_type' => $type->code, 'from' => $from->toDateString(), 'to' => $to->toDateString(), 'days' => $days, 'reason' => $reason]);
+
+            if (! $type->requires_approval) {
+                return $this->approve($request, 'Auto-approved: this leave type needs no approval', $requester ?? auth()->user());
+            }
 
             return $request;
         });
@@ -119,11 +127,19 @@ final class Leaves
 
     public function approve(LeaveRequest $request, ?string $note = null, ?User $actor = null): LeaveRequest
     {
-        $this->assertPending($request);
         $request->loadMissing(['employee', 'leaveType']);
         $actor ??= auth()->user();
 
         return DB::transaction(function () use ($request, $note, $actor) {
+            $this->balances->lockEmployee($request->employee);
+            $this->assertPending($request->refresh());
+
+            // Another approval may have used the balance since the request was made.
+            if ($request->leaveType->category !== 'unpaid') {
+                $rule = $this->eligibility->check($request->employee, $request->leaveType, $request->from_date)->rule ?? LeaveEntitlements::DEFAULTS;
+                $this->assertBalance($request->employee, $request->leaveType, $request->dates ?? [], $rule, (float) $request->days, $request);
+            }
+
             $request->withAuditReason($note)->update(['status' => 'approved', 'reviewed_by' => $actor?->id, 'reviewed_at' => now(), 'review_note' => $note]);
 
             if ($request->leaveType->category !== 'unpaid') {
@@ -136,8 +152,8 @@ final class Leaves
                 }
             }
 
-            $this->audit->record(AuditAction::Approved, 'leave', $request, reason: $note, actor: $actor);
-            $this->timeline->record($request->employee, 'leave', "{$request->leaveType->name} approved: {$request->days} day(s)", $request->from_date, $request->reason, $request);
+            $this->audit->record(AuditAction::LeaveApproved, 'leave', $request, reason: $note, actor: $actor, metadata: ['days' => (float) $request->days]);
+            $this->timeline->record($request->employee, 'leave', "{$request->leaveType->name} approved: {$request->days} day(s)", $request->from_date, null, $request);
             $this->reprocessAttendance($request);
 
             LeaveEvent::dispatch('leave.approved', $request->employee, $request, ['leave_type' => $request->leaveType->code, 'from' => $request->from_date->toDateString(), 'to' => $request->to_date->toDateString(), 'days' => (float) $request->days, 'note' => $note]);
@@ -148,35 +164,112 @@ final class Leaves
 
     public function reject(LeaveRequest $request, string $note, ?User $actor = null): LeaveRequest
     {
-        $this->assertPending($request);
         $request->loadMissing(['employee', 'leaveType']);
         $actor ??= auth()->user();
 
-        $request->withAuditReason($note)->update(['status' => 'rejected', 'reviewed_by' => $actor?->id, 'reviewed_at' => now(), 'review_note' => $note]);
+        return DB::transaction(function () use ($request, $note, $actor) {
+            $this->balances->lockEmployee($request->employee);
+            $this->assertPending($request->refresh());
 
-        foreach ($this->periods($request) as $period) {
-            $this->balances->recompute($request->employee, $request->leaveType, $period);
-        }
+            $request->withAuditReason($note)->update(['status' => 'rejected', 'reviewed_by' => $actor?->id, 'reviewed_at' => now(), 'review_note' => $note]);
 
-        $this->audit->record(AuditAction::Rejected, 'leave', $request, reason: $note, actor: $actor);
-        LeaveEvent::dispatch('leave.rejected', $request->employee, $request, ['leave_type' => $request->leaveType->code, 'note' => $note]);
+            foreach ($this->periods($request) as $period) {
+                $this->balances->recompute($request->employee, $request->leaveType, $period);
+            }
 
-        return $request;
+            $this->audit->record(AuditAction::LeaveRejected, 'leave', $request, reason: $note, actor: $actor);
+            LeaveEvent::dispatch('leave.rejected', $request->employee, $request, ['leave_type' => $request->leaveType->code, 'note' => $note]);
+
+            return $request;
+        });
     }
 
-    /** Cancel a pending or approved request; approved usage is reversed and attendance recomputed. */
+    /**
+     * Cancel a request. Pending requests are withdrawn. Approved leave is reversed with compensating
+     * ledger entries — unless the leave type's cancellation policy requires approval (then it moves
+     * to cancel_requested and stays effective) or forbids self-cancellation (only leave.manage may).
+     */
     public function cancel(LeaveRequest $request, string $reason, ?User $actor = null): LeaveRequest
     {
-        if (! $request->isOpen()) {
-            throw new RuntimeException('Only pending or approved requests can be cancelled.');
+        $request->loadMissing(['employee', 'leaveType']);
+        $actor ??= auth()->user();
+
+        if (in_array($request->status, ['approved', 'cancel_requested'], true) && ! ($actor?->can('leave.manage') ?? false)) {
+            $policy = $request->leaveType->cancellation_policy ?? 'self';
+
+            if ($policy === 'not_allowed') {
+                throw new RuntimeException('Approved '.$request->leaveType->name.' can only be cancelled by HR.');
+            }
+            if ($policy === 'approval') {
+                return $this->requestCancellation($request, $reason, $actor);
+            }
         }
 
-        $request->loadMissing(['employee', 'leaveType']);
-        $this->assertLockedDays($request->employee, $request->dates ?? []);
-        $wasApproved = $request->status === 'approved';
+        return $this->reverse($request, $reason, $actor);
+    }
 
-        return DB::transaction(function () use ($request, $reason, $actor, $wasApproved) {
-            $request->withAuditReason($reason)->update(['status' => 'cancelled', 'cancelled_at' => now(), 'review_note' => $reason]);
+    /** Employee asks to cancel approved leave; the leave stays effective until the cancellation is decided. */
+    public function requestCancellation(LeaveRequest $request, string $reason, ?User $actor = null): LeaveRequest
+    {
+        return DB::transaction(function () use ($request, $reason, $actor) {
+            $this->balances->lockEmployee($request->employee);
+            if ($request->refresh()->status !== 'approved') {
+                throw new RuntimeException('Only approved leave can have a cancellation requested.');
+            }
+            $this->assertLockedDays($request->employee, $request->dates ?? []);
+
+            $request->withAuditReason($reason)->update(['status' => 'cancel_requested', 'cancel_requested_at' => now(), 'cancel_reason' => $reason]);
+            $this->audit->record(AuditAction::LeaveCancelRequested, 'leave', $request, reason: $reason, actor: $actor);
+            LeaveEvent::dispatch('leave.cancel_requested', $request->employee, $request, ['leave_type' => $request->leaveType->code, 'reason' => $reason]);
+
+            return $request;
+        });
+    }
+
+    public function approveCancellation(LeaveRequest $request, ?string $note = null, ?User $actor = null): LeaveRequest
+    {
+        $request->loadMissing(['employee', 'leaveType']);
+        if ($request->status !== 'cancel_requested') {
+            throw new RuntimeException('There is no cancellation request to approve.');
+        }
+        $actor ??= auth()->user();
+        $request->forceFill(['cancellation_reviewed_by' => $actor?->id, 'cancellation_reviewed_at' => now()]);
+
+        return $this->reverse($request, $request->cancel_reason ?? $note ?? 'Cancellation approved', $actor, $note);
+    }
+
+    public function rejectCancellation(LeaveRequest $request, string $note, ?User $actor = null): LeaveRequest
+    {
+        $request->loadMissing(['employee', 'leaveType']);
+
+        return DB::transaction(function () use ($request, $note, $actor) {
+            $this->balances->lockEmployee($request->employee);
+            if ($request->refresh()->status !== 'cancel_requested') {
+                throw new RuntimeException('There is no cancellation request to reject.');
+            }
+            $actor ??= auth()->user();
+            $request->withAuditReason($note)->update(['status' => 'approved', 'cancellation_reviewed_by' => $actor?->id, 'cancellation_reviewed_at' => now()]);
+            $this->audit->record(AuditAction::Rejected, 'leave', $request, reason: $note, actor: $actor, metadata: ['decision' => 'cancellation rejected']);
+            LeaveEvent::dispatch('leave.cancellation_rejected', $request->employee, $request, ['leave_type' => $request->leaveType->code, 'note' => $note]);
+
+            return $request;
+        });
+    }
+
+    private function reverse(LeaveRequest $request, string $reason, ?User $actor, ?string $note = null): LeaveRequest
+    {
+        return DB::transaction(function () use ($request, $reason, $actor, $note) {
+            $this->balances->lockEmployee($request->employee);
+            $reviewer = ['cancellation_reviewed_by' => $request->cancellation_reviewed_by, 'cancellation_reviewed_at' => $request->cancellation_reviewed_at];
+            $request->refresh();
+
+            if (! $request->isOpen()) {
+                throw new RuntimeException('Only pending or approved requests can be cancelled.');
+            }
+            $this->assertLockedDays($request->employee, $request->dates ?? []);
+            $wasApproved = in_array($request->status, LeaveRequest::TAKEN, true);
+
+            $request->withAuditReason($reason)->update(['status' => 'cancelled', 'cancelled_at' => now(), 'review_note' => $note ?? $reason, 'cancel_reason' => $request->cancel_reason ?? $reason] + array_filter($reviewer));
 
             if ($wasApproved && $request->leaveType->category !== 'unpaid') {
                 foreach ($this->daysByPeriod($request) as $period => $days) {
@@ -188,7 +281,7 @@ final class Leaves
                 }
             }
 
-            $this->audit->record(AuditAction::Cancelled, 'leave', $request, reason: $reason, actor: $actor ?? auth()->user());
+            $this->audit->record(AuditAction::LeaveCancelled, 'leave', $request, reason: $reason, actor: $actor ?? auth()->user(), metadata: ['was_approved' => $wasApproved]);
 
             if ($wasApproved) {
                 $this->reprocessAttendance($request);
@@ -206,7 +299,7 @@ final class Leaves
         return LeaveRequest::query()
             ->with('leaveType')
             ->where('employee_id', $employee->id)
-            ->where('status', 'approved')
+            ->whereIn('status', LeaveRequest::TAKEN)
             ->whereDate('from_date', '<=', $date->toDateString())
             ->whereDate('to_date', '>=', $date->toDateString())
             ->get()
@@ -232,6 +325,36 @@ final class Leaves
         return array_keys($this->daysByPeriod($request));
     }
 
+    /**
+     * Balance check under the employee lock (see inline note on reservation vs approval).
+     *
+     * @param  list<array{date: string, days: float}>  $dates
+     */
+    private function assertBalance(Employee $employee, LeaveType $type, array $dates, array $rule, float $days, ?LeaveRequest $self = null): void
+    {
+        if ($type->category === 'unpaid') {
+            return;
+        }
+
+        $byPeriod = [];
+        foreach ($dates as $d) {
+            $period = $this->years->periodFor($d['date']);
+            $byPeriod[$period] = ($byPeriod[$period] ?? 0) + (float) $d['days'];
+        }
+
+        foreach ($byPeriod as $period => $wanted) {
+            $balance = $this->balances->recompute($employee, $type, $period);
+            // New requests are checked against closing minus everything pending (reservation); at approval
+            // the request is checked against the committed closing balance only, so an earlier request is
+            // not blocked by later pending ones.
+            $available = $self !== null ? (float) $balance->closing : $balance->available();
+
+            if ($available - $wanted < -(float) $rule['negative_balance_limit'] - 0.0001) {
+                throw new RuntimeException(sprintf('Insufficient %s balance: %.1f available, %.1f requested.', $type->name, $available, $wanted));
+            }
+        }
+    }
+
     private function assertPending(LeaveRequest $request): void
     {
         if ($request->status !== 'pending') {
@@ -246,7 +369,7 @@ final class Leaves
 
         $clash = LeaveRequest::query()
             ->where('employee_id', $employee->id)
-            ->whereIn('status', ['pending', 'approved'])
+            ->whereIn('status', LeaveRequest::ACTIVE)
             ->whereDate('from_date', '<=', max($wanted))
             ->whereDate('to_date', '>=', min($wanted))
             ->get()
