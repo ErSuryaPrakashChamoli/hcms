@@ -62,7 +62,7 @@ it('flags late coming beyond grace, early leaving, short hours and half days', f
 it('marks missed punches, absences, weekly offs and holidays', function () {
     punch($this->employee, "{$this->wednesday} 09:00:00", 'in');
     $incomplete = $this->processor->process($this->employee, $this->wednesday);
-    expect($incomplete->status)->toBe('incomplete')->and($incomplete->exceptions)->toBe(['missed_punch']);
+    expect($incomplete->status)->toBe('incomplete')->and($incomplete->exceptions)->toEqualCanonicalizing(['missed_punch', 'missing_out']);
 
     $absent = $this->processor->process($this->employee, '2026-09-24');
     expect($absent->status)->toBe('absent')->and($absent->exceptions)->toBe(['absent']);
