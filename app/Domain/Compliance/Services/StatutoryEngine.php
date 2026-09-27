@@ -42,7 +42,7 @@ final class StatutoryEngine
             $admin = max($this->round($edliBase * $rule->param('edli_rate'), $rule) + $this->round($base * $rule->param('admin_rate'), $rule), $base > 0 ? (float) $rule->param('admin_minimum', 0) : 0);
 
             if ($base > 0) {
-                $basis = ['rule' => $rule->label(), 'wages' => $wages, 'base' => $base];
+                $basis = [...$this->ruleRef($rule), 'wages' => $wages, 'base' => $base];
                 $c->addLine('PF_EE', 'Provident fund (employee)', 'deduction', $employee, ['classification' => 'pf_employee', 'basis' => $basis + ['rate' => $rule->param('employee_rate')], 'sort_order' => 500]);
                 $c->addLine('PF_ER', 'Provident fund (employer)', 'employer_contribution', $employer, ['classification' => 'pf_employer', 'basis' => $basis + ['eps' => $eps, 'epf' => round($employer - $eps, 2)], 'sort_order' => 700]);
                 $c->addLine('PF_ADMIN', 'PF admin & EDLI charges', 'employer_contribution', $admin, ['classification' => 'pf_employer', 'basis' => $basis, 'sort_order' => 701]);
@@ -55,7 +55,7 @@ final class StatutoryEngine
             $wages = $c->esiWages();
 
             if ($fullMonth > 0 && $fullMonth <= (float) $rule->param('wage_ceiling')) {
-                $basis = ['rule' => $rule->label(), 'wages' => $wages, 'eligibility_wages' => round($fullMonth, 2)];
+                $basis = [...$this->ruleRef($rule), 'wages' => $wages, 'eligibility_wages' => round($fullMonth, 2)];
                 $c->addLine('ESI_EE', 'ESI (employee)', 'deduction', $this->round($wages * $rule->param('employee_rate'), $rule), ['classification' => 'esi_employee', 'basis' => $basis, 'sort_order' => 510]);
                 $c->addLine('ESI_ER', 'ESI (employer)', 'employer_contribution', $this->round($wages * $rule->param('employer_rate'), $rule), ['classification' => 'esi_employer', 'basis' => $basis, 'sort_order' => 710]);
             }
@@ -80,7 +80,7 @@ final class StatutoryEngine
             }
 
             if ($amount > 0) {
-                $c->addLine('PT', 'Professional tax', 'deduction', $amount, ['classification' => 'pt', 'basis' => ['rule' => $rule->label(), 'state' => $ptState, 'gross' => $gross], 'sort_order' => 520]);
+                $c->addLine('PT', 'Professional tax', 'deduction', $amount, ['classification' => 'pt', 'basis' => [...$this->ruleRef($rule), 'state' => $ptState, 'gross' => $gross], 'sort_order' => 520]);
             }
         }
 
@@ -91,7 +91,7 @@ final class StatutoryEngine
             $ceiling = $rule->param('wage_ceiling');
 
             if ($ceiling === null || $c->gross() <= (float) $ceiling) {
-                $basis = ['rule' => $rule->label(), 'state' => $lwfState];
+                $basis = [...$this->ruleRef($rule), 'state' => $lwfState];
                 $c->addLine('LWF_EE', 'Labour welfare fund (employee)', 'deduction', (float) $rule->param('employee_amount'), ['classification' => 'lwf_employee', 'basis' => $basis, 'sort_order' => 530]);
                 $c->addLine('LWF_ER', 'Labour welfare fund (employer)', 'employer_contribution', (float) $rule->param('employer_amount'), ['classification' => 'lwf_employer', 'basis' => $basis, 'sort_order' => 720]);
             }
@@ -106,7 +106,7 @@ final class StatutoryEngine
             }
 
             if ($result['tds'] > 0) {
-                $c->addLine('TDS', 'Income tax (TDS)', 'deduction', $result['tds'], ['classification' => 'tds', 'basis' => $result['basis'], 'sort_order' => 540]);
+                $c->addLine('TDS', 'Income tax (TDS)', 'deduction', $result['tds'], ['classification' => 'tds', 'basis' => [...$this->ruleRef($rule), ...$result['basis']], 'sort_order' => 540]);
             }
             $c->inputs['tax'] = $result['basis'];
         }
@@ -125,7 +125,7 @@ final class StatutoryEngine
 
         if ($profile->pf_applicable && ($rule = $this->rules->resolve('SS', $on, null, $jurisdiction)) && $gross > 0) {
             $base = min(max($gross, (float) $rule->param('wage_floor', 0)), (float) ($rule->param('wage_ceiling') ?? $gross));
-            $basis = ['rule' => $rule->label(), 'jurisdiction' => $jurisdiction, 'base' => $base];
+            $basis = [...$this->ruleRef($rule), 'jurisdiction' => $jurisdiction, 'base' => $base];
             $c->addLine('SS_EE', 'Social security (employee)', 'deduction', $this->round($base * (float) $rule->param('employee_rate', 0), $rule), ['classification' => 'other_deduction', 'basis' => $basis, 'sort_order' => 500]);
             $c->addLine('SS_ER', 'Social security (employer)', 'employer_contribution', $this->round($base * (float) $rule->param('employer_rate', 0), $rule), ['classification' => 'other', 'basis' => $basis, 'sort_order' => 700]);
         }
@@ -135,7 +135,7 @@ final class StatutoryEngine
             $tax = $this->tax->slabTax($rule->param('slabs', []), $annual);
             $monthly = round($tax / 12, 2);
             if ($monthly > 0) {
-                $c->addLine('TAX', 'Income tax', 'deduction', $monthly, ['classification' => 'tds', 'basis' => ['rule' => $rule->label(), 'jurisdiction' => $jurisdiction, 'annual_taxable' => $annual, 'annual_tax' => $tax], 'sort_order' => 540]);
+                $c->addLine('TAX', 'Income tax', 'deduction', $monthly, ['classification' => 'tds', 'basis' => [...$this->ruleRef($rule), 'jurisdiction' => $jurisdiction, 'annual_taxable' => $annual, 'annual_tax' => $tax], 'sort_order' => 540]);
             }
         }
     }
@@ -206,5 +206,15 @@ final class StatutoryEngine
     public static function declarationFor(int $employeeId, string $financialYear): ?EmployeeTaxDeclaration
     {
         return EmployeeTaxDeclaration::query()->where('employee_id', $employeeId)->where('financial_year', $financialYear)->first();
+    }
+
+    /** Identifies the exact statutory rule version behind a line (Phase 4 §28, §59). @return array<string, mixed> */
+    public function ruleRef(ComplianceRule $rule): array
+    {
+        return [
+            'rule' => $rule->label(), 'rule_id' => $rule->id, 'rule_code' => $rule->code, 'rule_version' => $rule->version,
+            'jurisdiction' => $rule->jurisdiction, 'state' => $rule->state, 'effective_from' => $rule->effective_from?->toDateString(),
+            'verification_status' => $rule->verification_status ?? 'illustrative', 'source' => $rule->source,
+        ];
     }
 }

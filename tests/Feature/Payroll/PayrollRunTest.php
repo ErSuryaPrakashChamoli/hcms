@@ -3,6 +3,8 @@
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Employment\Models\EmployeeBankAccount;
+use App\Domain\Leave\Models\LeaveRequest;
+use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollAdjustment;
@@ -110,6 +112,9 @@ it('prorates by attendance LOP, manual LOP, mid-month joining and exit', functio
     foreach (['2026-09-02' => 'absent', '2026-09-03' => 'unpaid_leave', '2026-09-04' => 'present'] as $date => $status) {
         AttendanceRecord::create(['employee_id' => $employee->id, 'date' => $date, 'status' => $status, 'is_half_day_leave' => $status === 'unpaid_leave', 'processed_at' => now()]);
     }
+    // Phase 4: unpaid leave reaches payroll through LeaveOutput (an approved unpaid leave), not the attendance status.
+    $lwp = LeaveType::query()->where('category', 'unpaid')->first();
+    LeaveRequest::create(['employee_id' => $employee->id, 'leave_type_id' => $lwp->id, 'from_date' => '2026-09-03', 'to_date' => '2026-09-03', 'from_session' => 'first_half', 'to_session' => 'first_half', 'days' => 0.5, 'dates' => [['date' => '2026-09-03', 'days' => 0.5, 'session' => 'first_half']], 'reason' => 'Personal', 'status' => 'approved']);
     PayrollAdjustment::create(['employee_id' => $employee->id, 'payroll_period_id' => $period->id, 'type' => 'lop', 'name' => 'Unauthorised absence', 'amount' => 1]);
     PayrollAdjustment::create(['employee_id' => $employee->id, 'payroll_period_id' => $period->id, 'type' => 'earning', 'name' => 'Spot bonus', 'amount' => 5000, 'taxable' => true]);
     PayrollAdjustment::create(['employee_id' => $employee->id, 'payroll_period_id' => $period->id, 'type' => 'deduction', 'name' => 'Canteen', 'amount' => 300]);

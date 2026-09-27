@@ -17,6 +17,9 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['tenant_id', 'name', 'code', 'type', 'classification', 'calculation_method', 'formula', 'taxable', 'pf_applicable', 'esi_applicable', 'include_in_ctc', 'include_in_gross', 'is_recurring', 'is_proratable', 'is_arrear_eligible', 'is_statutory', 'sort_order', 'status', 'effective_from', 'effective_to'])]
 class SalaryComponent extends Model
 {
+    /** Controlled component classification (Phase 4 §9); statutory lines are produced by the compliance engine. */
+    public const TYPES = ['earning', 'deduction', 'employer_contribution', 'reimbursement'];
+
     use Auditable, BelongsToTenant, HasEffectiveDates;
 
     /** Codes reserved for statutory lines produced by the compliance engine. */
