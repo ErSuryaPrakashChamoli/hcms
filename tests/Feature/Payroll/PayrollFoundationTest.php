@@ -117,7 +117,7 @@ it('finalizes only a reconciled run on the current engine and records statutory 
     expect($run->calculation_version)->toBe(PayrollCalculator::VERSION)
         ->and($run->reconciliation['balanced'])->toBeTrue()
         ->and(collect($run->rule_versions)->pluck('rule_code'))->toContain('EPF', 'PT')
-        ->and(collect($run->rule_versions)->pluck('verification_status')->unique()->all())->toBe(['illustrative']);
+        ->and(collect($run->rule_versions)->pluck('verification_status')->unique()->sort()->values()->all())->toBe(['draft', 'review']);
 
     // Tampered totals do not reconcile: finalization refuses.
     $original = $run->totals;

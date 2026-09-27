@@ -9,6 +9,7 @@ use App\Domain\Compliance\Support\StatutoryContext;
 use App\Domain\Enterprise\Services\CountryPacks;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Services\PayrollComputation;
+use Carbon\CarbonInterface;
 use WeakMap;
 
 /**
@@ -47,7 +48,7 @@ final class StatutoryEngine
         }
 
         // --- EPF -----------------------------------------------------------------------------
-        if ($context->applies('EPF') && ($detail?->pf_applicable ?? true) && ($rule = $this->rules->resolve('EPF', $on))) {
+        if ($context->applies('EPF') && ($detail?->pf_applicable ?? true) && ($rule = $this->rule($c, 'EPF', $on))) {
             $wages = $c->pfWages();
             $base = $context->restrictPfToCeiling() ? min($wages, (float) $rule->param('wage_ceiling')) : $wages;
             $employee = $this->round($base * $rule->param('employee_rate'), $rule);
@@ -65,7 +66,7 @@ final class StatutoryEngine
         }
 
         // --- ESI -----------------------------------------------------------------------------
-        if ($context->applies('ESI') && ($detail?->esic_applicable ?? true) && ($rule = $this->rules->resolve('ESI', $on))) {
+        if ($context->applies('ESI') && ($detail?->esic_applicable ?? true) && ($rule = $this->rule($c, 'ESI', $on))) {
             $fullMonth = collect($c->lines)->filter(fn ($l) => $l['type'] === 'earning' && $l['esi_applicable'])->sum(fn ($l) => $l['basis']['full_month'] ?? $l['amount']);
             $wages = $c->esiWages();
 
@@ -79,7 +80,11 @@ final class StatutoryEngine
         // --- Professional tax ----------------------------------------------------------------
         $ptState = $context->ptState;
 
-        if ($context->applies('PT') && ($detail?->pt_applicable ?? true) && $ptState && ($rule = $this->rules->resolve('PT', $on, $ptState))) {
+        if ($context->applies('PT') && ($detail?->pt_applicable ?? true) && ! $ptState) {
+            $c->exception('statutory_state_missing', 'Professional tax applies but no state is known for the employee\'s establishment.', ComplianceRules::enforced());
+        }
+
+        if ($context->applies('PT') && ($detail?->pt_applicable ?? true) && $ptState && ($rule = $this->rule($c, 'PT', $on, $ptState))) {
             $gross = $c->gross();
             $amount = $this->slab($rule->param('slabs', []), $gross);
             $month = (int) $c->period->month;
@@ -102,7 +107,7 @@ final class StatutoryEngine
         // --- Labour welfare fund -------------------------------------------------------------
         $lwfState = $context->lwfState;
 
-        if ($context->applies('LWF') && $lwfState && ($rule = $this->rules->resolve('LWF', $on, $lwfState)) && in_array((int) $c->period->month, $rule->param('months', []), true) && $c->gross() > 0) {
+        if ($context->applies('LWF') && $lwfState && ($rule = $this->rule($c, 'LWF', $on, $lwfState)) && in_array((int) $c->period->month, $rule->param('months', []), true) && $c->gross() > 0) {
             $ceiling = $rule->param('wage_ceiling');
 
             if ($ceiling === null || $c->gross() <= (float) $ceiling) {
@@ -113,7 +118,7 @@ final class StatutoryEngine
         }
 
         // --- Income tax (TDS) ----------------------------------------------------------------
-        if ($context->applies('TDS') && ($rule = $this->rules->resolve('TDS', $on))) {
+        if ($context->applies('TDS') && ($rule = $this->rule($c, 'TDS', $on))) {
             $result = $this->tax->monthlyTds($c, $rule);
 
             if ($result['pan_missing']) {
@@ -138,14 +143,14 @@ final class StatutoryEngine
         $on = $c->period->end_date;
         $gross = $c->gross();
 
-        if ($context->applies('EPF') && ($rule = $this->rules->resolve('SS', $on, null, $jurisdiction)) && $gross > 0) {
+        if ($context->applies('EPF') && $gross > 0 && ($rule = $this->rule($c, 'SS', $on, null, $jurisdiction))) {
             $base = min(max($gross, (float) $rule->param('wage_floor', 0)), (float) ($rule->param('wage_ceiling') ?? $gross));
             $basis = [...$this->ruleRef($rule), 'jurisdiction' => $jurisdiction, 'base' => $base];
             $c->addLine('SS_EE', 'Social security (employee)', 'deduction', $this->round($base * (float) $rule->param('employee_rate', 0), $rule), ['classification' => 'other_deduction', 'basis' => $basis, 'sort_order' => 500]);
             $c->addLine('SS_ER', 'Social security (employer)', 'employer_contribution', $this->round($base * (float) $rule->param('employer_rate', 0), $rule), ['classification' => 'other', 'basis' => $basis, 'sort_order' => 700]);
         }
 
-        if ($context->applies('TDS') && ($rule = $this->rules->resolve('TAX', $on, null, $jurisdiction)) && $gross > 0) {
+        if ($context->applies('TDS') && $gross > 0 && ($rule = $this->rule($c, 'TAX', $on, null, $jurisdiction))) {
             $annual = max(0, $c->taxableEarnings() * 12 - (float) $rule->param('standard_deduction', 0));
             $tax = $this->tax->slabTax($rule->param('slabs', []), $annual);
             $monthly = round($tax / 12, 2);
@@ -230,7 +235,33 @@ final class StatutoryEngine
         return [
             'rule' => $rule->label(), 'rule_id' => $rule->id, 'rule_code' => $rule->code, 'rule_version' => $rule->version,
             'jurisdiction' => $rule->jurisdiction, 'state' => $rule->state, 'effective_from' => $rule->effective_from?->toDateString(),
-            'verification_status' => $rule->verification_status ?? 'illustrative', 'source' => $rule->source,
+            'verification_status' => $rule->verification_status ?? ComplianceRule::DRAFT, 'source' => $rule->source,
+            'rule_checksum' => $rule->checksum, 'source_url' => $rule->source_url,
         ];
+    }
+
+    /**
+     * Phase 5 Part F: resolve a rule for an applicable statute. A missing rule is never skipped
+     * silently, and an unverified one is flagged; both block finalization when enforcement is on.
+     */
+    private function rule(PayrollComputation $c, string $code, CarbonInterface $on, ?string $state = null, string $jurisdiction = 'IN'): ?ComplianceRule
+    {
+        $rule = $this->rules->resolve($code, $on, $state, $jurisdiction);
+        $where = $jurisdiction.($state ? "/{$state}" : '');
+
+        if ($rule === null) {
+            $c->exception('statutory_rule_missing', "{$code} applies but no rule version for {$where} is effective on {$on->toDateString()}; nothing was deducted.", ComplianceRules::enforced());
+
+            return null;
+        }
+
+        // Every rule consulted is recorded, even when it produces no line (e.g. an ESI ceiling test).
+        $c->inputs['rules_consulted'][$rule->id] = $this->ruleRef($rule);
+
+        if (! $rule->isVerified()) {
+            $c->exception('unverified_statutory_rule', "{$rule->label()} ({$where}) is {$rule->verification_status}, not verified against an official source.", ComplianceRules::enforced());
+        }
+
+        return $rule;
     }
 }

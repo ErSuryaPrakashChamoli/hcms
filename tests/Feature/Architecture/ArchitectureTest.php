@@ -6,6 +6,7 @@ use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Audit\Models\AuditEventChange;
 use App\Domain\Communication\Models\AnnouncementRead;
 use App\Domain\Compliance\Models\ComplianceRule;
+use App\Domain\Compliance\Models\ComplianceRuleVerification;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\Permission;
@@ -54,6 +55,7 @@ it('scopes every domain model to a tenant except the documented platform-level m
         AuditEvent::class,
         AuditEventChange::class,
         ComplianceRule::class,
+        ComplianceRuleVerification::class, // Phase 5: platform rule verification history
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -90,7 +92,7 @@ it('audits every domain model except the documented append-only or derived table
         'Workflow\Models\WorkflowTask', 'Workflow\Models\WorkflowInstance', 'Enterprise\Models\WebhookDelivery', 'Identity\Models\Permission',
         'Learning\Models\AssessmentAttempt', 'Learning\Models\TrainingSessionAttendee', 'Exit\Models\FinalSettlementLine', 'Ai\Models\AiInteraction',
         'Assets\Models\AssetMovement', 'Communication\Models\AnnouncementRead', 'Performance\Models\GoalCheckIn', 'Performance\Models\AppraisalRating',
-        'ServiceDesk\Models\TicketComment',
+        'ServiceDesk\Models\TicketComment', 'Compliance\Models\ComplianceRuleVerification',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

@@ -2,24 +2,48 @@
 
 /*
  | India compliance pack (§32). Platform-owned, versioned, effective-dated. Loaded by
- | `peopleos:compliance:sync`. Amounts in INR. These figures reflect widely published rates
- | for FY 2025-26 and MUST be verified against current notifications before production use.
+ | `peopleos:compliance:sync`. Amounts in INR.
+ |
+ | Phase 5 rules for this file:
+ | - A published version is immutable (checksum). A correction is a NEW version; editing an existing
+ |   entry makes the sync fail.
+ | - Every version is created as DRAFT. An entry may carry 'evidence' from an official source
+ |   (see peopleos.compliance.authoritative_domains); the sync then submits it for REVIEW.
+ | - Nothing here can mark a rule VERIFIED. Only a platform administrator who did not submit the
+ |   evidence can verify it, in the Rule Verification screen.
+ | - Evidence gathered on 28 Sep 2026 is listed in docs/compliance/india-statutory-rule-verification.md.
  */
-// Every entry defaults to verification_status = 'illustrative' (see ComplianceRules::sync). Set
-// 'verification_status' => 'verified' and 'verified_at' only after checking the official source.
 return [
     [
-        'code' => 'EPF', 'state' => null, 'name' => 'Employees Provident Fund', 'version' => 1, 'effective_from' => '2014-09-01',
+        'code' => 'EPF', 'state' => null, 'name' => 'Employees Provident Fund', 'version' => 1, 'effective_from' => '2014-09-01', 'authority' => 'EPFO',
         'source' => 'EPF & MP Act 1952; EPFO circulars',
+        'notes' => 'DRAFT: no official source retrieved yet confirms the wage ceiling, EPS, EDLI and admin parameters. The EPFO Re-engineered ECR user manual v3.0 only confirms that a 12% or 10% contribution rate is selected on the return; the 10% option is not modelled.',
         'parameters' => [
             'employee_rate' => 0.12, 'employer_rate' => 0.12, 'eps_rate' => 0.0833, 'eps_wage_ceiling' => 15000, 'wage_ceiling' => 15000,
             'edli_rate' => 0.005, 'edli_wage_ceiling' => 15000, 'admin_rate' => 0.005, 'admin_minimum' => 75, 'round' => 'nearest',
         ],
     ],
     [
-        'code' => 'ESI', 'state' => null, 'name' => 'Employees State Insurance', 'version' => 1, 'effective_from' => '2019-07-01',
+        'code' => 'ESI', 'state' => null, 'name' => 'Employees State Insurance', 'version' => 1, 'effective_from' => '2019-07-01', 'authority' => 'ESIC',
         'source' => 'ESI (Central) Amendment Rules 2019; wage ceiling notification 2017',
         'parameters' => ['employee_rate' => 0.0075, 'employer_rate' => 0.0325, 'wage_ceiling' => 21000, 'round' => 'ceil', 'contribution_periods' => [[4, 9], [10, 3]]],
+        'evidence' => [
+            'authority' => 'ESIC',
+            'source_url' => 'https://esic.gov.in/contribution',
+            'source_title' => 'ESIC — Contribution (with ESIC — Coverage, https://esic.gov.in/coverage)',
+            'source_published_date' => null,
+            'effective_date' => '2019-07-01',
+            'requirement_text' => "Contribution: \"the employee's contribution rate (w.e.f. 01.07.2019) is 0.75% of the wages and that of employer's is 3.25% of the wages paid/payable\"; \"Employees in receipt of a daily average wage upto Rs.176/- are exempted from payment of contribution\"; contribution periods \"1st April to 30th Sept.\" and \"1st Oct to 31st March of the year following\". Coverage: \"The existing wage limit for coverage under the Act, effective from 01.01.2017, is Rs.21,000/- per month (Rs.25,000/- per month in the case of Persons with Disability).\"",
+            'mapping' => [
+                'employee_rate' => 'Contribution page: employee 0.75% w.e.f. 01.07.2019 — matches.',
+                'employer_rate' => 'Contribution page: employer 3.25% w.e.f. 01.07.2019 — matches.',
+                'wage_ceiling' => 'Coverage page: Rs.21,000 per month w.e.f. 01.01.2017 — matches; the Rs.25,000 limit for persons with disability is NOT modelled.',
+                'round' => 'NOT CONFIRMED: the retrieved pages do not state the rounding rule.',
+                'contribution_periods' => 'Contribution page: April–September and October–March — matches.',
+            ],
+            'evidence_reference' => 'Retrieved 2026-09-28 from esic.gov.in (page text quoted above).',
+            'notes' => 'Blocking gaps for verification: rounding not confirmed; persons-with-disability limit and the Rs.176 daily-average-wage employee exemption are not modelled by the engine.',
+        ],
     ],
     // Professional tax: monthly slabs on gross, per state. Slab = [upper bound inclusive or null, monthly tax].
     ['code' => 'PT', 'state' => 'MH', 'name' => 'Professional tax – Maharashtra', 'version' => 1, 'effective_from' => '2023-04-01', 'source' => 'Maharashtra State Tax on Professions Act 1975 (Sch. I, amended 2023)',
@@ -57,7 +81,8 @@ return [
         'parameters' => ['months' => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 'employee_amount' => 31, 'employer_amount' => 62, 'wage_ceiling' => null]],
     // Income tax (TDS on salary, section 192). Slabs: [upper bound or null, rate].
     [
-        'code' => 'TDS', 'state' => null, 'name' => 'Income tax on salary – FY 2025-26', 'version' => 1, 'effective_from' => '2025-04-01', 'effective_to' => '2026-03-31',
+        'code' => 'TDS', 'state' => null, 'name' => 'Income tax on salary – FY 2025-26', 'version' => 1, 'effective_from' => '2025-04-01', 'effective_to' => '2026-03-31', 'authority' => 'INCOME_TAX',
+        'notes' => 'DRAFT: slabs, rebate and surcharge not yet checked against an official Income Tax Department source.',
         'source' => 'Finance Act 2025',
         'parameters' => [
             'new' => ['slabs' => [[400000, 0], [800000, 0.05], [1200000, 0.10], [1600000, 0.15], [2000000, 0.20], [2400000, 0.25], [null, 0.30]], 'standard_deduction' => 75000, 'rebate_income_limit' => 1200000, 'rebate_max' => 60000, 'marginal_relief' => true, 'allow_chapter_via' => ['80CCD2']],
@@ -68,8 +93,9 @@ return [
         ],
     ],
     [
-        'code' => 'TDS', 'state' => null, 'name' => 'Income tax on salary – FY 2026-27', 'version' => 2, 'effective_from' => '2026-04-01',
+        'code' => 'TDS', 'state' => null, 'name' => 'Income tax on salary – FY 2026-27', 'version' => 2, 'effective_from' => '2026-04-01', 'authority' => 'INCOME_TAX',
         'source' => 'Finance Act 2025 rates carried forward pending Finance Act 2026 verification',
+        'notes' => 'DRAFT and must not be verified as is: from 1 April 2026 salary TDS falls under section 392 of the Income-tax Act, 2025 (Income Tax Department, Form No. 130 FAQ). Re-author as a new version from the Income-tax Act, 2025 and the Finance Act, 2026.',
         'parameters' => [
             'new' => ['slabs' => [[400000, 0], [800000, 0.05], [1200000, 0.10], [1600000, 0.15], [2000000, 0.20], [2400000, 0.25], [null, 0.30]], 'standard_deduction' => 75000, 'rebate_income_limit' => 1200000, 'rebate_max' => 60000, 'marginal_relief' => true, 'allow_chapter_via' => ['80CCD2']],
             'old' => ['slabs' => [[250000, 0], [500000, 0.05], [1000000, 0.20], [null, 0.30]], 'standard_deduction' => 50000, 'rebate_income_limit' => 500000, 'rebate_max' => 12500, 'marginal_relief' => false, 'allow_chapter_via' => ['80C', '80CCD1B', '80D', '80E', '80G', '80TTA', '80CCD2'], 'limits' => ['80C' => 150000, '80CCD1B' => 50000, '80D' => 25000, '80TTA' => 10000], 'hra_exempt' => true],

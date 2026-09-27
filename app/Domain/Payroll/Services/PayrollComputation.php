@@ -63,9 +63,10 @@ final class PayrollComputation
         ]);
     }
 
-    public function exception(string $type, string $message): void
+    /** @param  bool  $blocking  force blocking (e.g. unverified statutory rules under enforcement) */
+    public function exception(string $type, string $message, bool $blocking = false): void
     {
-        $this->exceptions[] = ['type' => $type, 'message' => $message];
+        $this->exceptions[] = ['type' => $type, 'message' => $message] + ($blocking ? ['blocking' => true] : []);
     }
 
     public function amount(string $code): float
@@ -125,6 +126,8 @@ final class PayrollComputation
 
     public function blocking(): bool
     {
-        return collect($this->exceptions)->contains(fn ($e) => in_array($e['type'], ['no_salary', 'no_structure', 'negative_net', 'formula_error'], true));
+        // Phase 5: one source of truth (PayrollCalculator::BLOCKING, which also lists
+        // invalid_component) plus exceptions raised as blocking by the statutory engine.
+        return collect($this->exceptions)->contains(fn ($e) => ($e['blocking'] ?? false) || in_array($e['type'], PayrollCalculator::BLOCKING, true));
     }
 }

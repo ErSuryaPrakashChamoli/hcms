@@ -5,7 +5,6 @@ namespace App\Domain\Payroll\Services;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
-use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
@@ -88,6 +87,7 @@ final class PayrollRuns
             // One calculation at a time per run; a finalized run is never recalculated.
             $run = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail()->loadMissing('period');
             $this->assertEditable($run);
+            $this->complianceRules->forget(); // never calculate on a stale rule status
             $run->entries()->delete();
             $ruleVersions = [];
             $totals = ['employees' => 0, 'gross' => 0.0, 'earnings' => 0.0, 'deductions' => 0.0, 'net' => 0.0, 'employer_cost' => 0.0, 'pf_employee' => 0.0, 'pf_employer' => 0.0, 'esi' => 0.0, 'pt' => 0.0, 'tds' => 0.0, 'lop_days' => 0.0];
@@ -95,9 +95,9 @@ final class PayrollRuns
 
             foreach ($this->populationQuery($run)->orderBy('id')->lazyById(200) as $employee) {
                 $c = $this->calculator->calculate($employee, $run->period);
-                foreach ($c->lines as $line) {
-                    if (isset($line['basis']['rule_id'])) {
-                        $ruleVersions[$line['basis']['rule_id']] = collect($line['basis'])->only(['rule_code', 'rule_version', 'jurisdiction', 'state', 'effective_from', 'verification_status'])->all();
+                foreach ([...array_column($c->lines, 'basis'), ...array_values($c->inputs['rules_consulted'] ?? [])] as $basis) {
+                    if (isset($basis['rule_id'])) {
+                        $ruleVersions[$basis['rule_id']] = collect($basis)->only(['rule_code', 'rule_version', 'jurisdiction', 'state', 'effective_from', 'verification_status', 'rule_checksum'])->all();
                     }
                 }
                 $entry = PayrollEntry::create([
@@ -207,8 +207,6 @@ final class PayrollRuns
             throw new RuntimeException('Only an approved run can be finalized.');
         }
 
-        $this->complianceRules->assertProductionSafe(CompanyStatutoryProfile::query()->where('company_id', $run->company_id)->value('jurisdiction') ?? 'IN');
-
         return DB::transaction(function () use ($run, $actor) {
             // Two finalizations cannot race: lock, then re-check everything on the locked row.
             $run = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail()->loadMissing('period');
@@ -218,6 +216,8 @@ final class PayrollRuns
             if ($run->calculation_version !== PayrollCalculator::VERSION) {
                 throw new RuntimeException('The run was calculated with engine '.($run->calculation_version ?? 'unknown').'; recalculate with '.PayrollCalculator::VERSION.' before finalizing.');
             }
+            // Phase 5 Part F: every statutory rule version the run used must be VERIFIED and intact.
+            $this->complianceRules->assertRunVerified($run);
             if ($run->entries()->where('status', 'exception')->exists()) {
                 throw new RuntimeException('The run has blocking exceptions.');
             }
@@ -260,12 +260,23 @@ final class PayrollRuns
     /** Reopen a finalized (unpaid) run: payslips withdrawn, attendance unlocked, period reopened. Always audited with a reason. */
     public function reopen(PayrollRun $run, string $reason, ?User $actor = null): PayrollRun
     {
-        if ($run->status !== 'finalized') {
-            throw new RuntimeException('Only a finalized, unpaid run can be reopened.');
+        if (! in_array($run->status, ['approved', 'finalized'], true)) {
+            throw new RuntimeException('Only an approved or finalized, unpaid run can be reopened.');
         }
 
         if (trim($reason) === '') {
             throw new RuntimeException('A reason is required to reopen payroll.');
+        }
+
+        // Phase 5: an approved run that can no longer be finalized (engine version changed, a rule
+        // was superseded) goes back to draft for recalculation. Nothing was locked or issued yet.
+        if ($run->status === 'approved') {
+            return DB::transaction(function () use ($run, $reason, $actor) {
+                $run->update(['status' => 'draft', 'approved_by' => null, 'approved_at' => null]);
+                $this->audit->record(AuditAction::PayrollReopened, 'payroll', $run, [['field' => 'status', 'before' => 'approved', 'after' => 'draft']], $reason, actor: $actor);
+
+                return $run->refresh();
+            });
         }
 
         return DB::transaction(function () use ($run, $reason, $actor) {

@@ -8,7 +8,7 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 1. Every domain model uses `BelongsToTenant` except the six platform-level models: `Tenant`, `User`
    (looked up before a tenant is known; listings use `forCurrentTenant()`), `Permission` (platform
    catalogue), `AuditEvent` and `AuditEventChange` (nullable tenant for platform events; reads scoped
-   explicitly; writes only through `AuditRecorder`), `ComplianceRule` (platform-owned statutory rules).
+   explicitly; writes only through `AuditRecorder`), `ComplianceRule` (platform-owned statutory rules) and `ComplianceRuleVerification` (its append-only verification history, Phase 5; audited through `AuditRecorder` platform events).
 2. With no tenant bound, tenant-owned queries return nothing (`TenantScope` adds `1 = 0`); creating a
    tenant-owned record without a bound tenant throws; moving a record between tenants throws.
 3. `TenantContext::bypass()` / `withoutTenancy()` appear only in the allow-listed platform services

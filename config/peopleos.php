@@ -848,6 +848,10 @@ return [
     | Statutory components are created by the compliance pack and locked for tenants (§32).
     */
     'payroll' => [
+        // Phase 5 Part F: payroll may not be finalized on a statutory rule version that is not
+        // VERIFIED (and intact). On by default everywhere; switch off only for development or
+        // tests with PEOPLEOS_ENFORCE_VERIFIED_RULES=false.
+        'enforce_verified_rules' => (bool) env('PEOPLEOS_ENFORCE_VERIFIED_RULES', true),
         'component_types' => ['earning' => 'Earning', 'deduction' => 'Deduction', 'employer_contribution' => 'Employer contribution', 'reimbursement' => 'Reimbursement (non-taxable)'],
         'calculation_methods' => ['fixed' => 'Fixed amount from the salary assignment', 'formula' => 'Formula', 'statutory' => 'Statutory (compliance pack)'],
         'classifications' => [
@@ -1137,10 +1141,15 @@ return [
     | production use.
     */
     'compliance' => [
-        // Statutory safety (Phase 0.2): refuse to finalize payroll on rules not verified against
-        // official sources. On in production; tests and development may switch it on explicitly.
-        'enforce_verified_rules' => env('PEOPLEOS_ENFORCE_VERIFIED_RULES', env('APP_ENV') === 'production'),
-        'verification_statuses' => ['illustrative' => 'Illustrative / development only', 'verified' => 'Verified against official source'],
+        // Phase 5 Part F/G: rule version statuses. Only VERIFIED rules may be used for production
+        // finalization (see payroll.enforce_verified_rules).
+        'verification_statuses' => ['draft' => 'Draft', 'review' => 'In review', 'verified' => 'Verified against an official source', 'superseded' => 'Superseded', 'rejected' => 'Rejected'],
+        // Evidence for a rule must come from an official source: the URL host must end with one of
+        // these suffixes. Blogs, payroll vendors and articles are never authoritative.
+        'authoritative_domains' => [
+            'IN' => ['gov.in', 'nic.in', 'epfindia.gov.in', 'epfo.gov.in', 'esic.gov.in', 'incometax.gov.in', 'incometaxindia.gov.in', 'tdscpc.gov.in', 'egazette.gov.in', 'indiacode.nic.in', 'labour.gov.in'],
+            'AE' => ['gov.ae'],
+        ],
         'jurisdictions' => ['IN' => 'India'],
         'states' => ['AP' => 'Andhra Pradesh', 'DL' => 'Delhi', 'GJ' => 'Gujarat', 'HR' => 'Haryana', 'KA' => 'Karnataka', 'KL' => 'Kerala', 'MH' => 'Maharashtra', 'MP' => 'Madhya Pradesh', 'RJ' => 'Rajasthan', 'TG' => 'Telangana', 'TN' => 'Tamil Nadu', 'UP' => 'Uttar Pradesh', 'WB' => 'West Bengal'],
         'tax_regimes' => ['new' => 'New regime (default)', 'old' => 'Old regime'],

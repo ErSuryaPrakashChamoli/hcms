@@ -46,7 +46,7 @@ final class AuditRecorder
         ?User $actor = null,
         ?string $operationId = null,
     ): AuditEvent {
-        $tenantId ??= $entity?->getAttribute('tenant_id') ?? $this->tenants->id();
+        $tenantId ??= ($entity?->getAttributes()['tenant_id'] ?? null) ?? $this->tenants->id();
         $actor ??= $this->resolveActor();
         $occurredAt = Carbon::now();
 

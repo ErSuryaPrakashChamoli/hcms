@@ -16,9 +16,12 @@ class SyncComplianceRules extends Command
         $synced = $rules->sync();
         $this->info("Synced {$synced->count()} statutory rule version(s).");
 
-        $illustrative = $synced->filter(fn ($rule) => ! $rule->isVerified())->count();
-        if ($illustrative > 0) {
-            $this->warn("{$illustrative} rule version(s) are ILLUSTRATIVE / development only and must be verified against official sources before production payroll.");
+        $byStatus = $synced->countBy('verification_status');
+        $this->line('By status: '.$byStatus->map(fn ($n, $s) => strtoupper($s).' '.$n)->implode(', '));
+
+        $unverified = $synced->filter(fn ($rule) => ! $rule->isVerified())->count();
+        if ($unverified > 0) {
+            $this->warn("{$unverified} rule version(s) are not VERIFIED against an official source; payroll using them cannot be finalized while enforcement is on.");
         }
 
         return self::SUCCESS;

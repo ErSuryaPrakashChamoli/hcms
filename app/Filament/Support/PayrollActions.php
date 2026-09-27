@@ -73,10 +73,10 @@ final class PayrollActions
                 ->schema([DatePicker::make('paid_on')->native(false)->default(now())->required()])
                 ->action(fn (PayrollRun $record, array $data) => self::run(fn () => app(PayrollRuns::class)->markPaid($record, $data['paid_on'], auth()->user()), 'Run marked as paid')),
             Action::make('reopen')->label('Reopen')->icon(Heroicon::OutlinedLockOpen)->color('danger')
-                ->visible(fn (PayrollRun $record) => $record->status === 'finalized' && auth()->user()->can('finalize', $record))
+                ->visible(fn (PayrollRun $record) => in_array($record->status, ['approved', 'finalized'], true) && auth()->user()->can('finalize', $record))
                 ->requiresConfirmation()
                 ->schema([Textarea::make('reason')->required()->maxLength(255)])
-                ->action(fn (PayrollRun $record, array $data) => self::run(fn () => app(PayrollRuns::class)->reopen($record, $data['reason'], auth()->user()), 'Run reopened; payslips withdrawn')),
+                ->action(fn (PayrollRun $record, array $data) => self::run(fn () => app(PayrollRuns::class)->reopen($record, $data['reason'], auth()->user()), $record->status === 'approved' ? 'Run returned to draft for recalculation' : 'Run reopened; payslips withdrawn')),
         ];
     }
 

@@ -45,6 +45,7 @@ use App\Domain\Communication\Models\Announcement;
 use App\Domain\Communication\Policies\AnnouncementPolicy;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\ComplianceRule;
+use App\Domain\Compliance\Models\ComplianceRuleVerification;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
 use App\Domain\Compliance\Models\ProfessionalTaxProfile;
@@ -52,6 +53,7 @@ use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Policies\ComplianceRulePolicy;
 use App\Domain\Compliance\Policies\StatutoryRegistrationPolicy;
 use App\Domain\Compliance\Policies\TaxDeclarationPolicy;
+use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\FinancialYear;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
@@ -238,6 +240,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(LeaveDayResolver::class, AttendanceLeaveDayResolver::class);
         $this->app->singleton(AccessScopes::class);
+        // Phase 5: one statutory rule cache per request / job, cleared at the start of each run calculation.
+        $this->app->scoped(ComplianceRules::class);
         // One tenant context per request / job / command execution.
         $this->app->bind(FinancialYear::class, fn () => FinancialYear::make());
         $this->app->bind(AiProvider::class, fn () => match (config('peopleos.ai.provider')) {
@@ -317,6 +321,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PayrollEntry::class, PayrollRunPolicy::class);
         Gate::policy(Payslip::class, PayslipPolicy::class);
         Gate::policy(ComplianceRule::class, ComplianceRulePolicy::class);
+        Gate::policy(ComplianceRuleVerification::class, ComplianceRulePolicy::class);
         Gate::policy(EmployeeTaxDeclaration::class, TaxDeclarationPolicy::class);
         Gate::policy(Tenant::class, TenantPolicy::class);
         Gate::policy(TenantSetting::class, TenantSettingPolicy::class);
