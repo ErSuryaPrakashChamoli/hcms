@@ -64,12 +64,14 @@ use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Documents\Policies\DocumentTypePolicy;
 use App\Domain\Documents\Policies\EmployeeDocumentPolicy;
+use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Models\EmployeeStatutoryDetail;
 use App\Domain\Employment\Models\ReportingRelationship;
 use App\Domain\Employment\Policies\EmployeeDataPolicy;
+use App\Domain\Employment\Policies\EmployeeImportPolicy;
 use App\Domain\Employment\Policies\EmployeePolicy;
 use App\Domain\Employment\Policies\SensitiveEmployeeDataPolicy;
 use App\Domain\Enterprise\Models\ExchangeRate;
@@ -260,6 +262,7 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, EnterprisePolicy::class);
         }
         Gate::policy(AiInteraction::class, AiInteractionPolicy::class);
+        Gate::policy(EmployeeImport::class, EmployeeImportPolicy::class);
         Gate::policy(Report::class, ReportPolicy::class);
         Gate::policy(ReportSchedule::class, ReportPolicy::class);
         Gate::policy(Dashboard::class, DashboardPolicy::class);
