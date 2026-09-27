@@ -31,8 +31,27 @@ final class LeaveAdjustments
         $period ??= $this->years->periodFor(now());
         $entry = $this->balances->post($employee, $type, $period, $entryType, $days, null, $note);
 
-        $this->audit->record(AuditAction::Update, 'leave', $employee, changes: [['field' => "{$type->code} balance ({$period})", 'before' => null, 'after' => sprintf('%+.2f', $days)]], reason: $note, entityLabel: $employee->auditLabel());
+        $this->audit->record(AuditAction::LeaveBalanceAdjusted, 'leave', $entry, changes: [['field' => "{$type->code} balance ({$period})", 'before' => null, 'after' => sprintf('%+.2f', $days)]], reason: $note, entityLabel: $employee->auditLabel().' · '.$type->code, metadata: ['employee_id' => $employee->id, 'entry_type' => $entryType]);
         LeaveEvent::dispatch('leave.balance_adjusted', $employee, $entry, ['leave_type' => $type->code, 'days' => $days, 'note' => $note]);
+
+        return $entry;
+    }
+
+    /**
+     * Opening balance for a period (go-live or migration), idempotent per employee/type/period:
+     * a second call returns null instead of doubling the balance.
+     */
+    public function opening(Employee $employee, LeaveType $type, float $days, int $period, string $note): ?LeaveLedgerEntry
+    {
+        if ($days < 0) {
+            throw new RuntimeException('An opening balance cannot be negative; use an adjustment.');
+        }
+
+        $entry = $this->balances->post($employee, $type, $period, 'opening', $days, null, $note, "opening-{$period}", $this->years->start($period)->toDateString());
+
+        if ($entry !== null) {
+            $this->audit->record(AuditAction::LeaveBalanceAdjusted, 'leave', $entry, changes: [['field' => "{$type->code} opening ({$period})", 'before' => null, 'after' => sprintf('%.2f', $days)]], reason: $note, entityLabel: $employee->auditLabel().' · '.$type->code, metadata: ['employee_id' => $employee->id, 'entry_type' => 'opening']);
+        }
 
         return $entry;
     }

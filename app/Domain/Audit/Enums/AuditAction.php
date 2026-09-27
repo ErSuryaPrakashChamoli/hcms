@@ -61,6 +61,17 @@ enum AuditAction: string
     case ScheduleAssigned = 'SCHEDULE_ASSIGNED';
     case OvertimeApproved = 'OVERTIME_APPROVED';
     case OvertimeRejected = 'OVERTIME_REJECTED';
+
+    // Leave (Phase 3)
+    case LeaveRequested = 'LEAVE_REQUESTED';
+    case LeaveApproved = 'LEAVE_APPROVED';
+    case LeaveRejected = 'LEAVE_REJECTED';
+    case LeaveCancelRequested = 'LEAVE_CANCEL_REQUESTED';
+    case LeaveCancelled = 'LEAVE_CANCELLED';
+    case LeaveBalanceAdjusted = 'LEAVE_BALANCE_ADJUSTED';
+    case LeaveAccrued = 'LEAVE_ACCRUED';
+    case LeaveExpired = 'LEAVE_EXPIRED';
+    case LeaveCarriedForward = 'LEAVE_CARRIED_FORWARD';
     case FormChanged = 'FORM_CHANGED';
 
     // Payroll

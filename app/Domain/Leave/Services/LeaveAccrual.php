@@ -2,8 +2,11 @@
 
 namespace App\Domain\Leave\Services;
 
+use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Leave\Events\LeaveEvent;
+use App\Domain\Leave\Models\LeaveLedgerEntry;
 use App\Domain\Leave\Models\LeaveType;
 use Illuminate\Support\Carbon;
 
@@ -17,6 +20,7 @@ final class LeaveAccrual
         private readonly LeaveEntitlements $entitlements,
         private readonly LeaveBalances $balances,
         private readonly LeaveYear $years,
+        private readonly AuditRecorder $audit,
     ) {}
 
     /** Credit everything due up to $asOf for this employee. Returns the number of ledger entries written. */
@@ -71,12 +75,54 @@ final class LeaveAccrual
             $carry = min($closing, (float) $rule['carry_forward_limit']);
             $lapse = $closing - $carry;
 
-            if ($carry > 0) {
-                $written += (int) (bool) $this->balances->post($employee, $type, $period + 1, 'carry_forward', $carry, null, "Carried forward from {$period}", "cf-{$period}", $nextStart->toDateString());
+            if ($carry > 0 && ($entry = $this->balances->post($employee, $type, $period + 1, 'carry_forward', $carry, null, "Carried forward from {$period}", "cf-{$period}", $nextStart->toDateString()))) {
+                $written++;
+                $this->audit->record(AuditAction::LeaveCarriedForward, 'leave', $entry, reason: "Year-end {$period}", metadata: ['employee_id' => $employee->id, 'leave_type' => $type->code, 'days' => $carry]);
+                LeaveEvent::dispatch('leave.carried_forward', $employee, $entry, ['leave_type' => $type->code, 'days' => $carry, 'period' => $period + 1]);
             }
 
-            if ($lapse > 0) {
-                $written += (int) (bool) $this->balances->post($employee, $type, $period, 'lapse', -$lapse, null, "Lapsed at end of {$period}", "lapse-{$period}", $this->years->end($period)->toDateString());
+            if ($lapse > 0 && ($entry = $this->balances->post($employee, $type, $period, 'lapse', -$lapse, null, "Lapsed at end of {$period}", "lapse-{$period}", $this->years->end($period)->toDateString()))) {
+                $written++;
+                $this->audit->record(AuditAction::LeaveExpired, 'leave', $entry, reason: "Year-end {$period}", metadata: ['employee_id' => $employee->id, 'leave_type' => $type->code, 'days' => $lapse, 'kind' => 'lapse']);
+            }
+        }
+
+        return $written;
+    }
+
+    /**
+     * Carried-forward days not used within `carry_forward_expiry_months` of the period start expire
+     * (ledger entry "expiry", idempotent per period). Usage is consumed from carried days first.
+     */
+    public function expireCarryForward(Employee $employee, Carbon|string|null $asOf = null): int
+    {
+        $asOf = Carbon::parse($asOf ?? now())->startOfDay();
+        $period = $this->years->periodFor($asOf);
+        $written = 0;
+
+        foreach ($this->entitlements->for($employee, $asOf) as $code => $rule) {
+            $months = (int) ($rule['carry_forward_expiry_months'] ?? 0);
+            if ($months <= 0) {
+                continue;
+            }
+            $expiresOn = $this->years->start($period)->addMonths($months);
+            if ($asOf->lt($expiresOn)) {
+                continue;
+            }
+            $type = LeaveType::query()->where('code', $code)->first();
+            if ($type === null) {
+                continue;
+            }
+
+            $entries = LeaveLedgerEntry::query()->where('employee_id', $employee->id)->where('leave_type_id', $type->id)->where('period_year', $period);
+            $carried = (float) (clone $entries)->where('type', 'carry_forward')->sum('days');
+            $usedBefore = -(float) (clone $entries)->whereIn('type', ['usage', 'reversal', 'encashment'])->whereDate('entry_date', '<', $expiresOn->toDateString())->sum('days');
+            $expire = round(max(0, $carried - max(0, $usedBefore)), 2);
+
+            if ($expire > 0 && ($entry = $this->balances->post($employee, $type, $period, 'expiry', -$expire, null, "Carried-forward days expired after {$months} month(s)", "cfexp-{$period}", $expiresOn->toDateString()))) {
+                $written++;
+                $this->audit->record(AuditAction::LeaveExpired, 'leave', $entry, reason: 'Carry-forward expiry', metadata: ['employee_id' => $employee->id, 'leave_type' => $type->code, 'days' => $expire, 'kind' => 'expiry']);
+                LeaveEvent::dispatch('leave.expired', $employee, $entry, ['leave_type' => $type->code, 'days' => $expire, 'period' => $period]);
             }
         }
 
@@ -88,9 +134,19 @@ final class LeaveAccrual
         $days = (float) $rule['days'];
         $start = $joined->gt($periodStart) ? $joined : $periodStart;
 
-        if ($rule['prorate_on_join'] && $joined->gt($periodStart)) {
-            $remainingMonths = 12 - (int) $periodStart->diffInMonths($joined);
-            $days = round($days * max(0, $remainingMonths) / 12, 2);
+        $proration = $rule['prorate_on_join'] ? ($rule['proration'] ?? 'monthly') : 'none';
+
+        if ($proration !== 'none' && $joined->gt($periodStart)) {
+            if ($proration === 'daily') {
+                $periodEnd = $this->years->end($period)->startOfDay();
+                $total = (int) $periodStart->diffInDays($periodEnd) + 1;
+                $remaining = (int) $joined->diffInDays($periodEnd) + 1;
+                $days = round($days * max(0, $remaining) / $total, 2);
+            } else {
+                // Remaining whole months including the joining month.
+                $remainingMonths = 12 - (int) $periodStart->diffInMonths($joined->copy()->startOfMonth());
+                $days = round($days * max(0, $remainingMonths) / 12, 2);
+            }
         }
 
         return $this->credit($employee, $type, $period, $days, "annual-{$period}", $start, 'Annual credit');

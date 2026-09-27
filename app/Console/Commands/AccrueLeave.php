@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Leave\Models\LeaveLedgerEntry;
 use App\Domain\Leave\Services\LeaveAccrual;
 use App\Domain\Leave\Services\LeaveYear;
 use App\Domain\Platform\Models\Tenant;
@@ -28,20 +30,26 @@ class AccrueLeave extends Command
                     $entries = 0;
                     $closed = 0;
 
-                    Employee::query()->with('person')->employed()->orderBy('id')->each(function (Employee $employee) use ($accrual, $years, $asOf, &$entries, &$closed) {
-                        if ($this->option('close-year')) {
-                            $closed += $accrual->closeYear($employee, (int) $this->option('close-year'));
-                        }
+                    // One audit operation per tenant run: every ledger entry carries its id.
+                    app(AuditRecorder::class)->operation('leave', 'Leave accrual '.$asOf->toDateString(), function () use ($accrual, $years, $asOf, &$entries, &$closed) {
+                        Employee::query()->with('person')->employed()->orderBy('id')->each(function (Employee $employee) use ($accrual, $years, $asOf, &$entries, &$closed) {
+                            if ($this->option('close-year')) {
+                                $closed += $accrual->closeYear($employee, (int) $this->option('close-year'));
+                            }
 
-                        // Auto-close the previous year on the first run after it ended.
-                        $previous = $years->periodFor($asOf) - 1;
+                            // Auto-close the previous year on the first run after it ended.
+                            $previous = $years->periodFor($asOf) - 1;
 
-                        if ($asOf->gte($years->start($previous + 1)) && ! $this->option('close-year')) {
-                            $closed += $accrual->closeYear($employee, $previous);
-                        }
+                            if ($asOf->gte($years->start($previous + 1)) && ! $this->option('close-year')) {
+                                $closed += $accrual->closeYear($employee, $previous);
+                            }
 
-                        $entries += $accrual->accrue($employee, $asOf);
-                    });
+                            $entries += $accrual->accrue($employee, $asOf);
+                            $closed += $accrual->expireCarryForward($employee, $asOf);
+                        });
+
+                        return ['succeeded' => $entries + $closed];
+                    }, entityType: LeaveLedgerEntry::class);
 
                     $this->info("{$tenant->slug}: {$entries} accrual(s), {$closed} year-end movement(s)");
                 });

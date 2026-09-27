@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'employee_id', 'leave_type_id', 'from_date', 'to_date', 'from_session', 'to_session', 'days', 'dates', 'reason', 'status', 'document_id', 'requested_by', 'reviewed_by', 'reviewed_at', 'review_note', 'cancelled_at'])]
+#[Fillable(['tenant_id', 'employee_id', 'leave_type_id', 'from_date', 'to_date', 'from_session', 'to_session', 'days', 'dates', 'reason', 'status', 'document_id', 'requested_by', 'reviewed_by', 'reviewed_at', 'review_note', 'cancelled_at', 'contact_details', 'cancel_requested_at', 'cancel_reason', 'cancellation_reviewed_by', 'cancellation_reviewed_at', 'idempotency_key'])]
 class LeaveRequest extends Model
 {
     use Auditable, BelongsToTenant;
@@ -25,6 +25,8 @@ class LeaveRequest extends Model
     protected function casts(): array
     {
         return [
+            'cancel_requested_at' => 'datetime',
+            'cancellation_reviewed_at' => 'datetime',
             'from_date' => 'date',
             'to_date' => 'date',
             'days' => 'decimal:2',
@@ -83,8 +85,14 @@ class LeaveRequest extends Model
         return null;
     }
 
+    /** Statuses that hold the dates (block overlaps) — cancel_requested is still approved leave until decided. */
+    public const ACTIVE = ['pending', 'approved', 'cancel_requested'];
+
+    /** Statuses whose days count as taken leave. */
+    public const TAKEN = ['approved', 'cancel_requested'];
+
     public function isOpen(): bool
     {
-        return in_array($this->status, ['pending', 'approved'], true);
+        return in_array($this->status, self::ACTIVE, true);
     }
 }

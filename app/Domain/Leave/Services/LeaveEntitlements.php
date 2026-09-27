@@ -15,6 +15,7 @@ final class LeaveEntitlements
         'days' => 0, 'accrual_frequency' => 'annual', 'prorate_on_join' => true, 'carry_forward_limit' => 0, 'carry_forward_expiry_months' => 0,
         'encashment_allowed' => false, 'max_encash_days' => 0, 'probation_eligible' => true, 'negative_balance_limit' => 0,
         'half_day_allowed' => true, 'min_notice_days' => 0, 'max_consecutive_days' => 0, 'document_required_after_days' => 0,
+        'proration' => 'monthly', 'eligible_after' => 'immediate', 'eligible_after_value' => 0,
     ];
 
     public function __construct(private readonly PolicyResolver $policies) {}

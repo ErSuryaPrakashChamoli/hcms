@@ -604,6 +604,9 @@ return [
                     ['key' => 'days', 'label' => 'Days per year', 'type' => 'number'],
                     ['key' => 'accrual_frequency', 'label' => 'Accrual', 'type' => 'select', 'options' => ['annual' => 'Annual (credited at year start)', 'monthly' => 'Monthly', 'quarterly' => 'Quarterly']],
                     ['key' => 'prorate_on_join', 'label' => 'Pro-rate in the joining year', 'type' => 'boolean'],
+                    ['key' => 'proration', 'label' => 'Pro-ration basis', 'type' => 'select', 'options' => ['monthly' => 'Remaining months', 'daily' => 'Remaining days', 'none' => 'No pro-ration']],
+                    ['key' => 'eligible_after', 'label' => 'Available', 'type' => 'select', 'options' => ['immediate' => 'Immediately', 'days' => 'After N days of service', 'months' => 'After N months of service', 'confirmation' => 'After confirmation']],
+                    ['key' => 'eligible_after_value', 'label' => 'N (days or months)', 'type' => 'number'],
                     ['key' => 'carry_forward_limit', 'label' => 'Carry-forward limit (days)', 'type' => 'number'],
                     ['key' => 'carry_forward_expiry_months', 'label' => 'Carried days expire after (months, 0 = never)', 'type' => 'number'],
                     ['key' => 'encashment_allowed', 'label' => 'Encashment allowed', 'type' => 'boolean'],
@@ -747,7 +750,7 @@ return [
             'onboarding.started', 'onboarding.task.assigned', 'onboarding.completed', 'bgv.initiated', 'bgv.completed', 'document.uploaded', 'document.verified', 'document.rejected', 'document.expiring',
             'attendance.regularisation_requested', 'attendance.regularisation_approved', 'attendance.regularisation_rejected', 'attendance.overtime_recorded', 'attendance.exception',
             'attendance.punch_received', 'attendance.processed', 'attendance.status_changed', 'attendance.overtime_approved', 'attendance.overtime_rejected', 'attendance.regularisation_cancelled',
-            'leave.requested', 'leave.approved', 'leave.rejected', 'leave.cancelled', 'leave.encashment_requested', 'leave.encashment_approved', 'leave.balance_adjusted', 'leave.accrued',
+            'leave.requested', 'leave.approved', 'leave.rejected', 'leave.cancelled', 'leave.cancel_requested', 'leave.cancellation_rejected', 'leave.balance_changed', 'leave.expired', 'leave.carried_forward', 'leave.encashment_requested', 'leave.encashment_approved', 'leave.balance_adjusted', 'leave.accrued',
             'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'payroll.payslip_generated', 'payroll.exception',
             'performance.cycle.launched', 'performance.cycle.stage_changed', 'performance.review.assigned', 'performance.review.submitted', 'performance.appraisal.finalized',
             'performance.feedback.received', 'performance.feedback.requested', 'performance.goal.assigned', 'performance.pip.opened', 'performance.promotion.recommended',
@@ -806,7 +809,7 @@ return [
     'api' => [
         'scopes' => [
             'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches (devices or any source) and raise regularisations',
-            'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records, exceptions, regularisations, shifts and schedules', 'leave.read' => 'Read leave requests and balances', 'payroll.read' => 'Read payroll runs and payslips (sensitive)',
+            'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records, exceptions, regularisations, shifts and schedules', 'leave.read' => 'Read leave types, balances, transactions, requests and the leave calendar', 'leave.write' => 'Submit and cancel leave requests on behalf of employees', 'payroll.read' => 'Read payroll runs and payslips (sensitive)',
             'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read appraisals and goals', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
         ],
@@ -1120,6 +1123,10 @@ return [
     | Leave engine (§25, §26). Types every new tenant receives; policies decide entitlements.
     */
     'leave' => [
+        // Lifecycle states in which leave may be requested unless a policy entitlement overrides (Phase 3 §58).
+        'eligible_states' => ['joined', 'probation', 'confirmed', 'active', 'on_leave', 'notice_period'],
+        'units' => ['days' => 'Days', 'hours' => 'Hours'],
+        'cancellation_policies' => ['self' => 'Employee may cancel', 'approval' => 'Cancellation needs approval', 'not_allowed' => 'Only HR may cancel'],
         'categories' => ['paid' => 'Paid leave', 'unpaid' => 'Unpaid leave', 'comp_off' => 'Compensatory off', 'restricted' => 'Restricted / optional holiday', 'special' => 'Special (maternity, paternity, bereavement…)'],
         'ledger_types' => ['accrual' => 'Accrual', 'carry_forward' => 'Carried forward', 'lapse' => 'Lapsed', 'usage' => 'Used', 'reversal' => 'Reversed', 'adjustment' => 'Adjustment', 'encashment' => 'Encashed', 'comp_off_credit' => 'Comp-off credit'],
         'defaults' => [
