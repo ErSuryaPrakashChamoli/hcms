@@ -81,6 +81,9 @@ enum AuditAction: string
     case PayrollFinalized = 'PAYROLL_FINALIZED';
     case PayrollReopened = 'PAYROLL_REOPENED';
     case PayslipGenerated = 'PAYSLIP_GENERATED';
+    case PayrollAdjusted = 'PAYROLL_ADJUSTED';
+    case PayrollAdjustmentApproved = 'PAYROLL_ADJUSTMENT_APPROVED';
+    case PayslipAccessed = 'PAYSLIP_ACCESSED';
 
     // Lifecycle
     case Joined = 'JOINED';

@@ -19,6 +19,18 @@ class PayrollEntry extends Model
     use Auditable, BelongsToTenant;
     use ScopedByEmployee;
 
+    protected static function booted(): void
+    {
+        // Phase 4 §32: finalized payroll is history; corrections go through arrears, recoveries or a reopen.
+        $guard = function (self $model): void {
+            if (in_array($model->run()->value('status'), ['finalized', 'paid'], true)) {
+                throw new \RuntimeException('Entries of finalized payroll cannot be changed; use an arrear, a recovery or reopen the run.');
+            }
+        };
+        static::updating($guard);
+        static::deleting($guard);
+    }
+
     protected function casts(): array
     {
         return [

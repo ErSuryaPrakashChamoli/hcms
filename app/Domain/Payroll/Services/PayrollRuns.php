@@ -18,6 +18,7 @@ use App\Domain\Payroll\Models\PayrollRun;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -29,6 +30,7 @@ final class PayrollRuns
         private readonly Payslips $payslips,
         private readonly AuditRecorder $audit,
         private readonly ComplianceRules $complianceRules,
+        private readonly PayrollReconciliation $reconciliation,
     ) {}
 
     public function open(Company $company, int $year, int $month, ?User $actor = null): PayrollRun
@@ -65,18 +67,39 @@ final class PayrollRuns
             ->get();
     }
 
+    /** Same population, streamed in chunks for large runs (Phase 4 §55). */
+    public function populationQuery(PayrollRun $run)
+    {
+        $period = $run->period;
+
+        return Employee::query()
+            ->with(['person', 'statutoryDetail', 'bankAccounts'])
+            ->whereHas('positions', fn ($q) => $q->where('company_id', $run->company_id)->effectiveOn($period->end_date))
+            ->where(fn ($q) => $q->whereNull('joining_date')->orWhere('joining_date', '<=', $period->end_date->toDateString().' 23:59:59'))
+            ->where(fn ($q) => $q->whereNull('exit_date')->orWhere('exit_date', '>=', $period->start_date->toDateString()))
+            ->whereNotIn('lifecycle_state', ['pre_employee', 'alumni', 'offer_accepted', 'candidate']);
+    }
+
     public function calculate(PayrollRun $run, ?User $actor = null): PayrollRun
     {
-        $this->assertEditable($run);
         $run->loadMissing('period');
 
         return DB::transaction(function () use ($run, $actor) {
+            // One calculation at a time per run; a finalized run is never recalculated.
+            $run = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail()->loadMissing('period');
+            $this->assertEditable($run);
             $run->entries()->delete();
+            $ruleVersions = [];
             $totals = ['employees' => 0, 'gross' => 0.0, 'earnings' => 0.0, 'deductions' => 0.0, 'net' => 0.0, 'employer_cost' => 0.0, 'pf_employee' => 0.0, 'pf_employer' => 0.0, 'esi' => 0.0, 'pt' => 0.0, 'tds' => 0.0, 'lop_days' => 0.0];
             $exceptions = 0;
 
-            foreach ($this->population($run) as $employee) {
+            foreach ($this->populationQuery($run)->orderBy('id')->lazyById(200) as $employee) {
                 $c = $this->calculator->calculate($employee, $run->period);
+                foreach ($c->lines as $line) {
+                    if (isset($line['basis']['rule_id'])) {
+                        $ruleVersions[$line['basis']['rule_id']] = collect($line['basis'])->only(['rule_code', 'rule_version', 'jurisdiction', 'state', 'effective_from', 'verification_status'])->all();
+                    }
+                }
                 $entry = PayrollEntry::create([
                     'payroll_run_id' => $run->id,
                     'employee_id' => $employee->id,
@@ -117,7 +140,8 @@ final class PayrollRuns
                 }
             }
 
-            $run->update(['status' => 'calculated', 'totals' => array_map(fn ($v) => is_float($v) ? round($v, 2) : $v, $totals), 'exception_count' => $exceptions, 'calculated_at' => now()]);
+            $run->update(['status' => 'calculated', 'calculation_version' => PayrollCalculator::VERSION, 'rule_versions' => $ruleVersions, 'totals' => array_map(fn ($v) => is_float($v) ? round($v, 2) : $v, $totals), 'exception_count' => $exceptions, 'calculated_at' => now(), 'operation_id' => Context::get('audit.operation_id')]);
+            $run->update(['reconciliation' => $this->reconciliation->reconcile($run)]);
             $this->audit->record(AuditAction::PayrollCalculated, 'payroll', $run, [], null, metadata: ['employees' => $totals['employees'], 'net' => round($totals['net'], 2), 'exceptions' => $exceptions], actor: $actor);
             PayrollEvent::dispatch('payroll.calculated', $run, ['period' => $run->period->label(), 'employees' => $totals['employees'], 'exceptions' => $exceptions]);
 
@@ -128,6 +152,7 @@ final class PayrollRuns
     /** Validation gate: no blocking exceptions. */
     public function validate(PayrollRun $run): PayrollRun
     {
+        $run->refresh();
         if ($run->status !== 'calculated') {
             throw new RuntimeException('Only a calculated run can be validated.');
         }
@@ -148,6 +173,15 @@ final class PayrollRuns
 
     /** Separation of duties: the approver may not be the person who created or calculated the run. */
     public function approve(PayrollRun $run, User $approver, ?string $note = null): PayrollRun
+    {
+        return DB::transaction(function () use ($run, $approver, $note) {
+            $run = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail()->loadMissing('period');
+
+            return $this->approveLocked($run, $approver, $note);
+        });
+    }
+
+    private function approveLocked(PayrollRun $run, User $approver, ?string $note): PayrollRun
     {
         if ($run->status !== 'validated') {
             throw new RuntimeException('Only a validated run can be approved.');
@@ -174,13 +208,28 @@ final class PayrollRuns
         $this->complianceRules->assertProductionSafe(CompanyStatutoryProfile::query()->where('company_id', $run->company_id)->value('jurisdiction') ?? 'IN');
 
         return DB::transaction(function () use ($run, $actor) {
-            $run->loadMissing('period');
+            // Two finalizations cannot race: lock, then re-check everything on the locked row.
+            $run = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail()->loadMissing('period');
+            if ($run->status !== 'approved') {
+                throw new RuntimeException('Only an approved run can be finalized.');
+            }
+            if ($run->calculation_version !== PayrollCalculator::VERSION) {
+                throw new RuntimeException('The run was calculated with engine '.($run->calculation_version ?? 'unknown').'; recalculate with '.PayrollCalculator::VERSION.' before finalizing.');
+            }
+            if ($run->entries()->where('status', 'exception')->exists()) {
+                throw new RuntimeException('The run has blocking exceptions.');
+            }
+            $reconciliation = $this->reconciliation->reconcile($run);
+            if (! $reconciliation['balanced']) {
+                throw new RuntimeException('Run totals do not reconcile with its entries; recalculate before finalizing.');
+            }
             $employeeIds = $run->entries()->pluck('employee_id');
 
             AttendanceRecord::query()->whereIn('employee_id', $employeeIds)
                 ->whereBetween('date', [$run->period->start_date->toDateString(), $run->period->end_date->toDateString()])
-                ->update(['is_locked' => true]);
+                ->update(['is_locked' => true, 'finalized_at' => now()]);
 
+            $run->update(['reconciliation' => $reconciliation]);
             $run->update(['status' => 'finalized', 'finalized_by' => $actor?->id ?? auth()->id(), 'finalized_at' => now()]);
             $run->period->update(['status' => 'closed']);
 
@@ -223,7 +272,7 @@ final class PayrollRuns
 
             AttendanceRecord::query()->whereIn('employee_id', $employeeIds)
                 ->whereBetween('date', [$run->period->start_date->toDateString(), $run->period->end_date->toDateString()])
-                ->update(['is_locked' => false]);
+                ->update(['is_locked' => false, 'finalized_at' => null]);
 
             $this->payslips->withdrawForRun($run);
             $run->period->update(['status' => 'open']);

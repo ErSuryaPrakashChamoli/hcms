@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** One pass through the payroll pipeline for a period (§31). */
-#[Fillable(['tenant_id', 'company_id', 'payroll_period_id', 'status', 'totals', 'exception_count', 'created_by', 'calculated_at', 'approved_by', 'approved_at', 'finalized_by', 'finalized_at', 'paid_at', 'notes'])]
+#[Fillable(['tenant_id', 'company_id', 'payroll_period_id', 'status', 'calculation_version', 'totals', 'rule_versions', 'reconciliation', 'operation_id', 'exception_count', 'created_by', 'calculated_at', 'approved_by', 'approved_at', 'finalized_by', 'finalized_at', 'paid_at', 'notes'])]
 class PayrollRun extends Model
 {
     use Auditable, BelongsToTenant;
@@ -22,6 +22,8 @@ class PayrollRun extends Model
     protected function casts(): array
     {
         return [
+            'rule_versions' => 'array',
+            'reconciliation' => 'array',
             'totals' => 'array',
             'exception_count' => 'integer',
             'calculated_at' => 'datetime',

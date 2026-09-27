@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\PayrollAdjustments;
 
+use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Models\PayrollAdjustment;
@@ -9,6 +11,7 @@ use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Filament\Resources\PayrollAdjustments\Pages\ManagePayrollAdjustments;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -84,6 +87,7 @@ class PayrollAdjustmentResource extends Resource
                 TextColumn::make('period.start_date')->label('Period')->formatStateUsing(fn ($state, PayrollAdjustment $record) => $record->period->label())->sortable(),
                 TextColumn::make('employee.employee_code')->label('Code')->searchable(),
                 TextColumn::make('employee.person.full_name')->label('Employee'),
+                TextColumn::make('status')->badge()->color(fn (string $state) => $state === 'approved' ? 'success' : ($state === 'pending' ? 'warning' : 'gray')),
                 TextColumn::make('type')->badge()->formatStateUsing(fn (string $state) => PayrollAdjustment::TYPES[$state] ?? $state)->color(fn (string $state) => match ($state) {
                     'deduction', 'lop' => 'danger', default => 'success'
                 }),
@@ -94,6 +98,13 @@ class PayrollAdjustmentResource extends Resource
             ->defaultSort('id', 'desc')
             ->filters([SelectFilter::make('type')->options(PayrollAdjustment::TYPES)])
             ->recordActions([
+                Action::make('approve')->label('Approve')->icon('heroicon-m-check')->color('success')
+                    ->visible(fn (PayrollAdjustment $record) => $record->status === 'pending' && $record->created_by !== auth()->id() && (auth()->user()?->can('payroll.approve') ?? false))
+                    ->requiresConfirmation()
+                    ->action(function (PayrollAdjustment $record) {
+                        $record->update(['status' => 'approved', 'approved_by' => auth()->id(), 'approved_at' => now()]);
+                        app(AuditRecorder::class)->record(AuditAction::PayrollAdjustmentApproved, 'payroll', $record, reason: $record->note);
+                    }),
                 EditAction::make()->visible(fn (PayrollAdjustment $record) => $record->period->status === 'open'),
                 DeleteAction::make()->visible(fn (PayrollAdjustment $record) => $record->period->status === 'open'),
             ]);

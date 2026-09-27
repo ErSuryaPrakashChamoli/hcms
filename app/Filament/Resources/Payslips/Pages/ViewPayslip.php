@@ -19,6 +19,6 @@ class ViewPayslip extends ViewRecord
         if ($payslip->viewed_at === null && $payslip->employee()->value('user_id') === auth()->id()) {
             $payslip->forceFill(['viewed_at' => now()])->saveQuietly();
         }
-        app(AuditRecorder::class)->record(AuditAction::View, 'payroll', $payslip, [], null, metadata: ['sensitive' => true]);
+        app(AuditRecorder::class)->record(AuditAction::PayslipAccessed, 'payroll', $payslip, [], null, metadata: ['sensitive' => true]);
     }
 }

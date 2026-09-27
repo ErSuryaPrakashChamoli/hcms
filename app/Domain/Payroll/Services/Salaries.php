@@ -9,6 +9,9 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Services\Timeline;
 use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
+use App\Domain\Payroll\Models\PayrollEntry;
+use App\Domain\Payroll\Models\PayrollPeriod;
+use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\SalaryStructure;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -33,6 +36,14 @@ final class Salaries
     public function assign(Employee $employee, SalaryStructure $structure, float $ctcAnnual, CarbonInterface|string $effectiveFrom, array $componentValues = [], string $changeType = 'hire', ?string $reason = null, ?User $actor = null, string $currency = 'INR'): EmployeeSalaryAssignment
     {
         $from = Carbon::parse($effectiveFrom)->startOfDay();
+
+        // A revision may not reach back into a period this employee was already paid for (Phase 4 §50).
+        $closedThrough = PayrollPeriod::query()
+            ->whereIn('id', PayrollRun::query()->whereIn('status', ['finalized', 'paid'])->whereIn('id', PayrollEntry::query()->where('employee_id', $employee->id)->select('payroll_run_id'))->select('payroll_period_id'))
+            ->max('end_date');
+        if ($closedThrough !== null && $from->lte(Carbon::parse($closedThrough))) {
+            throw new RuntimeException('Payroll is finalized through '.Carbon::parse($closedThrough)->toDateString().'; a salary effective on '.$from->toDateString().' would rewrite a closed payroll period. Use an effective date after it and pay the difference as an arrear.');
+        }
 
         if ($ctcAnnual <= 0) {
             throw new RuntimeException('Annual CTC must be positive.');
