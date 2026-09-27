@@ -802,7 +802,7 @@ return [
     'api' => [
         'scopes' => [
             'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches from devices',
-            'employees.read' => 'Read employees and positions', 'attendance.read' => 'Read attendance records', 'leave.read' => 'Read leave requests and balances', 'payroll.read' => 'Read payroll runs and payslips (sensitive)',
+            'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records', 'leave.read' => 'Read leave requests and balances', 'payroll.read' => 'Read payroll runs and payslips (sensitive)',
             'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read appraisals and goals', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
         ],

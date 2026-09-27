@@ -19,6 +19,7 @@ use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
+use App\Domain\Organisation\Services\OrganisationCodes;
 use App\Domain\People\Actions\UpdatePersonAction;
 use App\Domain\People\Services\PersonMatcher;
 use App\Support\Tenancy\TenantContext;
@@ -412,11 +413,7 @@ final class EmployeeImports
 
     private function create(array $record, EmployeeImport $import): Employee
     {
-        $position = [];
-        foreach ($record['position'] as $key => $code) {
-            [$column, $model] = self::ORGANISATION[$key];
-            $position[$column] = $model::query()->whereRaw('lower(code) = ?', [mb_strtolower((string) $code)])->value('id');
-        }
+        $position = app(OrganisationCodes::class)->resolvePosition($record['position']);
         $managerId = $record['manager_code'] ? Employee::query()->where('employee_code', $record['manager_code'])->value('id') : null;
         $employee = $this->hire->handle($record['person'], array_intersect_key($record['employee'], array_flip(['joining_date', 'probation_end_date', 'employee_code', 'work_email', 'work_phone'])), $position, $managerId, "Import #{$import->getKey()}");
         $employee->withAuditReason("Import #{$import->getKey()}")->update(['source' => 'import', 'external_reference' => $record['employee']['external_reference'] ?? $employee->external_reference]);

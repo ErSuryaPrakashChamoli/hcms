@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\V1\AttendancePunchController;
 use App\Http\Controllers\Api\V1\BgvCallbackController;
+use App\Http\Controllers\Api\V1\EmployeeController;
+use App\Http\Controllers\Api\V1\OrganisationController;
 use App\Http\Controllers\Api\V1\PreEmployeeController;
 use App\Http\Controllers\Api\V1\ReadController;
 use App\Http\Controllers\Scim\ScimUserController;
@@ -12,9 +14,14 @@ use Illuminate\Support\Facades\Route;
 */
 Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::middleware('api.key:employees.read')->group(function () {
-        Route::get('employees', [ReadController::class, 'employees'])->name('employees.index');
-        Route::get('employees/{employee}', [ReadController::class, 'employee'])->name('employees.show');
+        Route::get('employees', [EmployeeController::class, 'index'])->name('employees.index');
+        Route::get('employees/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
     });
+    Route::middleware('api.key:employees.write')->group(function () {
+        Route::post('employees', [EmployeeController::class, 'store'])->name('employees.store');
+        Route::post('employees/{employee}/lifecycle', [EmployeeController::class, 'lifecycle'])->name('employees.lifecycle');
+    });
+    Route::get('organisation/{type}', [OrganisationController::class, 'index'])->middleware('api.key:organisation.read')->name('organisation.index');
     Route::get('attendance/records', [ReadController::class, 'attendance'])->middleware('api.key:attendance.read')->name('attendance.records');
     Route::get('leave/requests', [ReadController::class, 'leaveRequests'])->middleware('api.key:leave.read')->name('leave.requests');
     Route::get('leave/balances', [ReadController::class, 'leaveBalances'])->middleware('api.key:leave.read')->name('leave.balances');

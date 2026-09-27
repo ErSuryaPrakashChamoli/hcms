@@ -7,7 +7,6 @@ use App\Domain\Analytics\Services\ReportRunner;
 use App\Domain\Assets\Models\Asset;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Documents\Models\EmployeeDocument;
-use App\Domain\Employment\Models\Employee;
 use App\Domain\Leave\Models\LeaveBalance;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Payroll\Models\PayrollRun;
@@ -24,36 +23,6 @@ use Illuminate\Http\Request;
 /** Read API (§87): paginated, tenant-scoped by the API key, filtered with simple query parameters. */
 class ReadController extends Controller
 {
-    public function employees(Request $request): JsonResponse
-    {
-        $query = Employee::query()->with(['person', 'currentPosition.company', 'currentPosition.department', 'currentPosition.designation', 'currentPosition.location'])
-            ->when($request->query('state'), fn (Builder $q, $s) => $q->where('lifecycle_state', $s))
-            ->when($request->query('employed') === '1', fn (Builder $q) => $q->employed())
-            ->when($request->query('updated_since'), fn (Builder $q, $d) => $q->where('updated_at', '>=', $d))
-            ->orderBy('employee_code');
-
-        return $this->page($query, $request, fn (Employee $e) => [
-            'id' => $e->id, 'employee_code' => $e->employee_code, 'name' => $e->person?->full_name, 'work_email' => $e->work_email, 'lifecycle_state' => $e->lifecycle_state->value,
-            'joining_date' => $e->joining_date?->toDateString(), 'exit_date' => $e->exit_date?->toDateString(),
-            'position' => $e->currentPosition ? ['company' => $e->currentPosition->company?->name, 'department' => $e->currentPosition->department?->name, 'designation' => $e->currentPosition->designation?->name, 'location' => $e->currentPosition->location?->name] : null,
-            'updated_at' => $e->updated_at?->toIso8601String(),
-        ]);
-    }
-
-    /** Bindings resolve inside the action: the API-key middleware sets the tenant after route substitution. */
-    public function employee(int $employee): JsonResponse
-    {
-        $employee = Employee::query()->findOrFail($employee);
-        $employee->loadMissing(['person', 'currentPosition.company', 'currentPosition.department', 'currentPosition.designation', 'currentManager.manager.person']);
-
-        return response()->json(['data' => [
-            'id' => $employee->id, 'employee_code' => $employee->employee_code, 'name' => $employee->person?->full_name, 'work_email' => $employee->work_email, 'work_phone' => $employee->work_phone,
-            'lifecycle_state' => $employee->lifecycle_state->value, 'joining_date' => $employee->joining_date?->toDateString(), 'confirmation_date' => $employee->confirmation_date?->toDateString(), 'exit_date' => $employee->exit_date?->toDateString(),
-            'position' => $employee->currentPosition ? ['company' => $employee->currentPosition->company?->name, 'department' => $employee->currentPosition->department?->name, 'designation' => $employee->currentPosition->designation?->name] : null,
-            'manager' => $employee->currentManager?->manager ? ['employee_code' => $employee->currentManager->manager->employee_code, 'name' => $employee->currentManager->manager->person?->full_name] : null,
-        ]]);
-    }
-
     public function attendance(Request $request): JsonResponse
     {
         $query = AttendanceRecord::query()->with('employee')
