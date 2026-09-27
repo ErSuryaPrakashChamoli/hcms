@@ -153,7 +153,9 @@ final class AccessScopes
         }
 
         $dimension = property_exists($model, 'accessScopeDimension') ? $model->accessScopeDimension : null;
-        if ($dimension !== null && in_array($dimension, UserAccessScope::DIMENSIONS, true)) {
+        // Units without a dimension of their own (legal entities, establishments, statutory
+        // records) are constrained through their denormalised company_id.
+        if ($dimension !== null && (in_array($dimension, UserAccessScope::DIMENSIONS, true) || array_key_exists('company_id', $model->getAttributes()))) {
             return $this->constrainOrganisation($model->newQueryWithoutScope(AccessScope::class)->whereKey($model->getKey()), $user, $dimension)->exists();
         }
 

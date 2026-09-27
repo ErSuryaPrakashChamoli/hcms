@@ -1,6 +1,6 @@
 # ADR-0001 — Company, Legal Entity and Establishment
 
-- **Status:** Accepted as a deferred decision (Phase 0.2, 27 September 2026)
+- **Status:** Accepted (Phase 0.2, 27 September 2026); **implemented in Phase 5.1 (28 September 2026)** — see "Implementation (Phase 5)" at the end
 - **Deciders:** PeopleOS architecture; to be ratified in Phase 0.3 (Architecture Contract)
 - **Implementation phase:** Compliance / organisation hardening, not before Phase 0.3 sign-off
 
@@ -120,3 +120,30 @@ Tenant
 - The compliance phase must not build filings (ECR, PT returns, Form 16) before this ADR is
   implemented, because the filing unit does not exist yet.
 - Recorded in the Phase 0.1 report as TD-04/TD-20 and in the Phase 0.2 report as a deferred item.
+
+
+## Implementation (Phase 5)
+
+Implemented additively in migration `2026_10_04_100001_create_legal_entities_and_establishments`:
+
+| Element | As implemented |
+|---|---|
+| `legal_entities` | `company_id`, `code` (unique per tenant), `legal_name`, `trade_name`, `legal_form`, `country`, `incorporation_identifier`, `is_primary`, `status`, effective dates |
+| `establishments` | `legal_entity_id`, denormalised `company_id` (always copied from the legal entity, never from input), `code` (unique per legal entity), `name`, `address`, `country`, `state`, `district`, `postal_code`, `establishment_type`, `is_primary`, `status`, effective dates |
+| `locations.establishment_id` | nullable; the transition attaches every location to its company's principal establishment |
+| Transition | `Company::created` calls `LegalEntities::ensureFor()`; existing data via `peopleos:legal-entities:backfill` (idempotent, one audit operation per tenant; establishment state from the legacy profile `pt_state`, else the first located state) |
+| Access | Both models use the `company` dimension through `company_id`; record-level checks (`AccessScopes::allows`) now apply the company constraint to any model with an organisation dimension and a `company_id` |
+| Deletion | Never: policies refuse delete; records are closed with `effective_to` / `inactive` |
+
+Deviations from the original plan, decided in the Phase 5 discovery:
+
+1. **Employee ↔ establishment** is a separate effective-dated table (`employee_establishment_assignments`,
+   Phase 5.2), not columns on `employee_positions`.
+2. **Registrations** move to `statutory_registrations` (Phase 5.2) keyed by legal entity and, where
+   applicable, establishment; the legacy columns on `company_statutory_profiles` are kept, backfilled and
+   no longer read by new code.
+3. **Payroll runs and periods stay per company** (Phase 4 is frozen). Each payroll entry records the
+   legal entity and establishment it was calculated for; statutory returns are built per establishment
+   (EPF, ESI, PT, LWF) or per legal entity (TDS) from those entries.
+4. **`legal_entity_bank_accounts`** and the `legal_entity` / `establishment` access-scope dimensions are
+   not built in Phase 5 (bank payments are a Phase 5 non-goal); company scoping covers them.

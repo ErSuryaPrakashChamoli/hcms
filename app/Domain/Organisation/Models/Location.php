@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 #[UseFactory(LocationFactory::class)]
-#[Fillable(['tenant_id', 'company_id', 'name', 'code', 'type', 'address_line_1', 'address_line_2', 'city', 'state_code', 'postal_code', 'country_code', 'timezone', 'status', 'effective_from', 'effective_to', 'metadata'])]
+#[Fillable(['tenant_id', 'company_id', 'establishment_id', 'name', 'code', 'type', 'address_line_1', 'address_line_2', 'city', 'state_code', 'postal_code', 'country_code', 'timezone', 'status', 'effective_from', 'effective_to', 'metadata'])]
 class Location extends Model
 {
     /** @use HasFactory<LocationFactory> */
@@ -52,5 +52,10 @@ class Location extends Model
     public function organisationNode(): MorphOne
     {
         return $this->morphOne(OrganisationNode::class, 'nodeable');
+    }
+
+    public function establishment(): BelongsTo
+    {
+        return $this->belongsTo(Establishment::class);
     }
 }

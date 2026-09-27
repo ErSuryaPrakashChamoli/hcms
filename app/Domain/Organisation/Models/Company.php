@@ -6,6 +6,7 @@ use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Configuration\Concerns\HasCustomFields;
 use App\Domain\Identity\Concerns\ScopedByOrganisation;
 use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Domain\Organisation\Services\LegalEntities;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
 use Database\Factories\CompanyFactory;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 /**
@@ -29,6 +32,12 @@ class Company extends Model
     public string $accessScopeDimension = 'company';
 
     use Auditable, BelongsToTenant, HasCustomFields, HasEffectiveDates, HasFactory;
+
+    protected static function booted(): void
+    {
+        // ADR-0001: every company is an explicit legal entity with a primary establishment.
+        static::created(fn (Company $company) => app(LegalEntities::class)->ensureFor($company));
+    }
 
     protected function casts(): array
     {
@@ -48,5 +57,20 @@ class Company extends Model
     public function organisationNode(): MorphOne
     {
         return $this->morphOne(OrganisationNode::class, 'nodeable');
+    }
+
+    public function legalEntities(): HasMany
+    {
+        return $this->hasMany(LegalEntity::class);
+    }
+
+    public function primaryLegalEntity(): HasOne
+    {
+        return $this->hasOne(LegalEntity::class)->where('is_primary', true);
+    }
+
+    public function establishments(): HasMany
+    {
+        return $this->hasMany(Establishment::class);
     }
 }

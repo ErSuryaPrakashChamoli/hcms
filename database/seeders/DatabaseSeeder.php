@@ -315,6 +315,8 @@ class DatabaseSeeder extends Seeder
             ['company_id' => $tech->id],
             ['pt_state' => 'KA', 'lwf_state' => 'KA', 'lwf_applicable' => true, 'pf_establishment_code' => 'KABNG0000001000', 'tan' => 'BLRD00000A'] + CompanyStatutoryProfile::defaults(),
         );
+        // ADR-0001: every company gets an explicit legal entity and establishment (state from the profile).
+        app(Kernel::class)->call('peopleos:legal-entities:backfill');
 
         $structure = SalaryStructure::query()->where('code', 'STANDARD')->first();
         $salaries = app(Salaries::class);

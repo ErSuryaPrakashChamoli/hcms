@@ -205,8 +205,26 @@ return [
             'payroll.finalize' => 'Finalize, reopen and mark runs as paid',
             'payroll.payslip' => 'View own payslips',
         ],
+        'legal_structure' => [
+            'legal_entity.view' => 'View legal entities (ADR-0001)',
+            'legal_entity.create' => 'Create legal entities',
+            'legal_entity.update' => 'Update legal entities',
+            'establishment.view' => 'View establishments',
+            'establishment.create' => 'Create establishments',
+            'establishment.update' => 'Update establishments and assign employees to them',
+        ],
         'compliance' => [
             'compliance.view' => 'View statutory rules and compliance status',
+            'compliance.registrations.view' => 'View statutory registrations (numbers masked)',
+            'compliance.registrations.manage' => 'Create, correct and close statutory registrations and establishment statutory profiles',
+            'compliance.sensitive.view' => 'See unmasked registration numbers, UAN, ESI IP and PAN on statutory outputs (audited)',
+            'compliance.returns.view' => 'View statutory returns, entries, snapshots and reconciliations',
+            'compliance.returns.generate' => 'Generate, validate and revise statutory returns',
+            'compliance.returns.approve' => 'Approve statutory returns (never the generator)',
+            'compliance.returns.export' => 'Export approved statutory returns',
+            'compliance.returns.file' => 'Record filing submission and acknowledgement (never the approver)',
+            'compliance.reconcile' => 'Reconcile statutory returns against payroll',
+            'compliance.tds.manage' => 'Maintain TDS profiles, investment proofs, ledgers and certificates',
         ],
         'enterprise' => [
             'sso.manage' => 'Configure single sign-on connections',
@@ -457,6 +475,9 @@ return [
     | may sit directly beneath each type (blueprint §9: hierarchy is configuration, not code).
     */
     'organisation' => [
+        // ADR-0001 vocabularies.
+        'legal_forms' => ['private_limited' => 'Private limited company', 'public_limited' => 'Public limited company', 'llp' => 'Limited liability partnership', 'partnership' => 'Partnership firm', 'proprietorship' => 'Sole proprietorship', 'trust' => 'Trust', 'society' => 'Society', 'branch_of_foreign_company' => 'Branch of a foreign company', 'government' => 'Government body', 'other' => 'Other'],
+        'establishment_types' => ['registered_office' => 'Registered office', 'office' => 'Office', 'branch' => 'Branch', 'factory' => 'Factory', 'warehouse' => 'Warehouse', 'shop' => 'Shop / commercial establishment', 'site' => 'Project site', 'other' => 'Other'],
         'node_types' => [
             'company' => ['label' => 'Company', 'model' => Company::class, 'root' => true,
                 'children' => ['business_unit', 'division', 'department', 'location', 'team']],
@@ -1121,6 +1142,34 @@ return [
         'states' => ['AP' => 'Andhra Pradesh', 'DL' => 'Delhi', 'GJ' => 'Gujarat', 'HR' => 'Haryana', 'KA' => 'Karnataka', 'KL' => 'Kerala', 'MH' => 'Maharashtra', 'MP' => 'Madhya Pradesh', 'RJ' => 'Rajasthan', 'TG' => 'Telangana', 'TN' => 'Tamil Nadu', 'UP' => 'Uttar Pradesh', 'WB' => 'West Bengal'],
         'tax_regimes' => ['new' => 'New regime (default)', 'old' => 'Old regime'],
         'financial_year_start_month' => 4,
+
+        // Phase 5 Part B: extensible registration catalogue. level = establishment (required) or
+        // entity (establishment optional). Adding a type needs no schema change.
+        'authorities' => ['EPFO' => 'Employees\' Provident Fund Organisation', 'ESIC' => 'Employees\' State Insurance Corporation', 'INCOME_TAX' => 'Income Tax Department', 'STATE_PT' => 'State professional tax authority', 'STATE_LWF' => 'State labour welfare board', 'STATE_LABOUR' => 'State labour department'],
+        'registration_types' => [
+            'epf_establishment_code' => ['label' => 'EPF establishment code', 'authority' => 'EPFO', 'level' => 'establishment', 'statute' => 'EPF'],
+            'epf_exemption' => ['label' => 'EPF exemption (exempted establishment)', 'authority' => 'EPFO', 'level' => 'establishment', 'statute' => 'EPF'],
+            'eps_exemption' => ['label' => 'EPS exemption', 'authority' => 'EPFO', 'level' => 'establishment', 'statute' => 'EPF'],
+            'edli_exemption' => ['label' => 'EDLI exemption', 'authority' => 'EPFO', 'level' => 'establishment', 'statute' => 'EPF'],
+            'esic_employer_code' => ['label' => 'ESIC employer code', 'authority' => 'ESIC', 'level' => 'establishment', 'statute' => 'ESI'],
+            'esic_region' => ['label' => 'ESIC regional / sub-regional office', 'authority' => 'ESIC', 'level' => 'establishment', 'statute' => 'ESI'],
+            'tan' => ['label' => 'TAN', 'authority' => 'INCOME_TAX', 'level' => 'entity', 'statute' => 'TDS'],
+            'pan' => ['label' => 'PAN (deductor)', 'authority' => 'INCOME_TAX', 'level' => 'entity', 'statute' => 'TDS'],
+            'pt_registration_certificate' => ['label' => 'PT registration certificate (employer)', 'authority' => 'STATE_PT', 'level' => 'establishment', 'statute' => 'PT', 'state_required' => true],
+            'pt_enrolment_certificate' => ['label' => 'PT enrolment certificate', 'authority' => 'STATE_PT', 'level' => 'entity', 'statute' => 'PT', 'state_required' => true],
+            'lwf_registration' => ['label' => 'Labour welfare fund registration', 'authority' => 'STATE_LWF', 'level' => 'establishment', 'statute' => 'LWF', 'state_required' => true],
+            'shops_establishment' => ['label' => 'Shops & establishments registration', 'authority' => 'STATE_LABOUR', 'level' => 'establishment', 'statute' => null, 'state_required' => true],
+        ],
+        'registration_statuses' => ['active' => 'Active', 'inactive' => 'Inactive', 'cancelled' => 'Cancelled', 'superseded' => 'Superseded'],
+        'registration_verification_statuses' => ['unverified' => 'Unverified', 'verified' => 'Verified against the certificate', 'rejected' => 'Rejected'],
+        // Phase 5 Part D: the only options an establishment profile may carry (yes/no, never rates).
+        'profile_settings' => [
+            'EPF' => ['restrict_to_ceiling' => ['label' => 'Restrict PF to the statutory wage ceiling', 'default' => true]],
+            'ESI' => [],
+            'PT' => [],
+            'LWF' => [],
+            'TDS' => [],
+        ],
     ],
 
     /*

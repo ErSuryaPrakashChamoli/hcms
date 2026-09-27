@@ -152,8 +152,10 @@ use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Division;
 use App\Domain\Organisation\Models\EmployeeCategory;
 use App\Domain\Organisation\Models\EmploymentType;
+use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\JobFamily;
+use App\Domain\Organisation\Models\LegalEntity;
 use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\OrganisationNode;
@@ -161,6 +163,8 @@ use App\Domain\Organisation\Models\ProfitCentre;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\Organisation\Policies\CompanyPolicy;
+use App\Domain\Organisation\Policies\EstablishmentPolicy;
+use App\Domain\Organisation\Policies\LegalEntityPolicy;
 use App\Domain\Organisation\Policies\OrganisationStructurePolicy;
 use App\Domain\Organisation\Policies\PeopleSetupPolicy;
 use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
@@ -314,6 +318,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
         Gate::policy(Company::class, CompanyPolicy::class);
+        Gate::policy(LegalEntity::class, LegalEntityPolicy::class);
+        Gate::policy(Establishment::class, EstablishmentPolicy::class);
         Gate::policy(AuditEvent::class, AuditEventPolicy::class);
 
         foreach ([Location::class, BusinessUnit::class, Division::class, Department::class, Team::class, CostCentre::class, ProfitCentre::class, OrganisationNode::class] as $model) {

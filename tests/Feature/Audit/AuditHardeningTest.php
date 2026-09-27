@@ -7,6 +7,8 @@ use App\Domain\Audit\Models\AuditEventChange;
 use App\Domain\Audit\Services\AuditIntegrityVerifier;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Models\Establishment;
+use App\Domain\Organisation\Models\LegalEntity;
 
 beforeEach(function () {
     $this->tenant = provisionTenant();
@@ -24,8 +26,12 @@ it('groups the events of a bulk operation under one operation id and writes a su
     }, reason: 'Import', entityType: Company::class);
 
     $events = AuditEvent::query()->where('operation_id', $operationId)->orderBy('id')->get();
-    expect($events)->toHaveCount(3)
-        ->and($events->where('action', AuditAction::Create)->count())->toBe(2);
+    // Phase 5 (ADR-0001): each company also creates its legal entity and principal establishment,
+    // audited inside the same operation.
+    expect($events)->toHaveCount(7)
+        ->and($events->where('action', AuditAction::Create)->where('entity_type', Company::class)->count())->toBe(2)
+        ->and($events->where('action', AuditAction::Create)->where('entity_type', LegalEntity::class)->count())->toBe(2)
+        ->and($events->where('action', AuditAction::Create)->where('entity_type', Establishment::class)->count())->toBe(2);
 
     $summary = $events->firstWhere('action', AuditAction::BulkOperation);
     expect($summary->metadata['entity_count'])->toBe(2)
