@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AttendancePunchController;
 use App\Http\Controllers\Api\V1\BgvCallbackController;
+use App\Http\Controllers\Api\V1\ComplianceController;
 use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\OrganisationController;
@@ -53,6 +54,17 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::get('payroll/periods', [ReadController::class, 'payrollPeriods'])->middleware('api.key:payroll.read')->name('payroll.periods');
     Route::get('payroll/payslips/{number}', [ReadController::class, 'payslip'])->middleware('api.key:payroll.read')->name('payroll.payslips.show');
     Route::get('payroll/payslips', [ReadController::class, 'payslips'])->middleware('api.key:payroll.read')->name('payroll.payslips');
+    // Phase 5 Part S: read-only compliance API.
+    Route::middleware('api.key:compliance.read')->prefix('compliance')->name('compliance.')->group(function () {
+        Route::get('establishments', [ComplianceController::class, 'establishments'])->name('establishments');
+        Route::get('registrations', [ComplianceController::class, 'registrations'])->name('registrations');
+        Route::get('rules', [ComplianceController::class, 'rules'])->name('rules');
+        Route::get('rules/{rule}', [ComplianceController::class, 'ruleShow'])->whereNumber('rule')->name('rules.show');
+        Route::get('returns', [ComplianceController::class, 'returns'])->name('returns');
+        Route::get('returns/{return}', [ComplianceController::class, 'show'])->whereNumber('return')->name('returns.show');
+        Route::get('returns/{return}/entries', [ComplianceController::class, 'entries'])->whereNumber('return')->name('returns.entries');
+        Route::get('reconciliation/{return}', [ComplianceController::class, 'reconciliation'])->whereNumber('return')->name('reconciliation');
+    });
     Route::get('documents', [ReadController::class, 'documents'])->middleware('api.key:documents.read')->name('documents.index');
     Route::get('assets', [ReadController::class, 'assets'])->middleware('api.key:assets.read')->name('assets.index');
     Route::get('performance/appraisals', [ReadController::class, 'appraisals'])->middleware('api.key:performance.read')->name('performance.appraisals');

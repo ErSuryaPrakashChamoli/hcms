@@ -90,3 +90,13 @@ Documents hand-off: external document → signed, expiring pull URL (or push upl
 - Idempotency: natural keys today (external reference); `Idempotency-Key` header for write endpoints when the Integration Hub lands.
 - Every write is audited with source `api:<key name>`; reads of sensitive resources require the sensitive scope and are audited as exports when bulk.
 - OpenAPI description to be generated in the API hardening phase; no endpoint is rewritten for cosmetics.
+
+## Phase 5 — compliance API (read-only)
+
+Scope `compliance.read`, under `/api/v1/compliance`: `establishments`, `registrations` (numbers
+always masked), `rules`, `rules/{id}` (payload and verification history), `returns` (filters: type,
+status, period, establishment_id), `returns/{id}` (validation, rule versions, production-gate
+readiness, action log), `returns/{id}/entries` (UAN / IP number / PAN masked; each read recorded as
+`STATUTORY_OUTPUT_ACCESSED`), `reconciliation/{id}`. No write verbs; no bank credentials, payroll
+secrets, tax or portal credentials, or tokens are ever returned. Records of another tenant return
+404.
