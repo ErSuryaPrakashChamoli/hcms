@@ -1,0 +1,314 @@
+{
+  "name": "Enterprise",
+  "description": "Multi-entity groups: full ladder, formal approvals, grade-specific leave.",
+  "levels": [
+    {
+      "code": "L1",
+      "name": "L1",
+      "rank": 1
+    },
+    {
+      "code": "L2",
+      "name": "L2",
+      "rank": 2
+    },
+    {
+      "code": "L3",
+      "name": "L3",
+      "rank": 3
+    },
+    {
+      "code": "L4",
+      "name": "L4",
+      "rank": 4
+    },
+    {
+      "code": "L5",
+      "name": "L5",
+      "rank": 5
+    },
+    {
+      "code": "L6",
+      "name": "L6",
+      "rank": 6
+    }
+  ],
+  "grades": [
+    {
+      "code": "G1",
+      "name": "Grade 1",
+      "rank": 1,
+      "level_code": "L1"
+    },
+    {
+      "code": "G2",
+      "name": "Grade 2",
+      "rank": 2,
+      "level_code": "L2"
+    },
+    {
+      "code": "G3",
+      "name": "Grade 3",
+      "rank": 3,
+      "level_code": "L3"
+    },
+    {
+      "code": "G4",
+      "name": "Grade 4",
+      "rank": 4,
+      "level_code": "L4"
+    },
+    {
+      "code": "G5",
+      "name": "Grade 5",
+      "rank": 5,
+      "level_code": "L5"
+    },
+    {
+      "code": "G6",
+      "name": "Grade 6",
+      "rank": 6,
+      "level_code": "L6"
+    }
+  ],
+  "features": {
+    "configuration.approval": true
+  },
+  "settings": {
+    "configuration.approval.minimum_risk": "medium"
+  },
+  "policies": [
+    {
+      "code": "ENT_LEAVE_STD",
+      "type": "leave",
+      "name": "Standard leave",
+      "description": null,
+      "settings": {
+        "count_weekly_offs": false,
+        "count_holidays": false,
+        "entitlements": [
+          {
+            "leave_type_code": "EL",
+            "days": 21,
+            "accrual_frequency": "monthly",
+            "prorate_on_join": true,
+            "carry_forward_limit": 30,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": true,
+            "max_encash_days": 10,
+            "probation_eligible": false,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "CL",
+            "days": 7,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 3,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "SL",
+            "days": 10,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 0,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 2
+          }
+        ]
+      },
+      "rules": [
+        {
+          "name": "All employees",
+          "priority": 200,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ENT_LEAVE_SENIOR",
+      "type": "leave",
+      "name": "Senior leadership leave",
+      "description": null,
+      "settings": {
+        "count_weekly_offs": false,
+        "count_holidays": false,
+        "entitlements": [
+          {
+            "leave_type_code": "EL",
+            "days": 30,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 45,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": true,
+            "max_encash_days": 10,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "CL",
+            "days": 7,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 3,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "SL",
+            "days": 10,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 0,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 2
+          }
+        ]
+      },
+      "rules": [
+        {
+          "name": "Level 5 and above",
+          "priority": 10,
+          "match": "any",
+          "conditions": [
+            {
+              "field": "tenure_months",
+              "operator": "gte",
+              "value": 120
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ENT_ATTENDANCE",
+      "type": "attendance",
+      "name": "Corporate attendance",
+      "description": null,
+      "settings": {
+        "grace_minutes": 15,
+        "late_marks_threshold": 4,
+        "late_mark_action": "warn",
+        "regularisation_allowed": true,
+        "regularisation_window_days": 7,
+        "manager_approval_required": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "ENT_EXIT",
+      "type": "exit",
+      "name": "90-day notice",
+      "description": null,
+      "settings": {
+        "notice_period_days": 90,
+        "notice_buyout_allowed": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "key": "exit_clearance",
+      "name": "Exit clearance",
+      "description": null,
+      "requires_approval": true,
+      "fields": [
+        {
+          "key": "manager_clearance",
+          "label": "Manager clearance",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "key": "it_clearance",
+          "label": "IT clearance",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "key": "finance_clearance",
+          "label": "Finance clearance",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "format": "peopleos.blueprint/1"
+}

@@ -1,50 +1,62 @@
 <?php
 
+use App\Domain\Identity\Models\Role;
+use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\PermissionRegistry;
+use App\Domain\Platform\Actions\ProvisionTenantAction;
+use App\Domain\Platform\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
-/*
-|--------------------------------------------------------------------------
-| Test Case
-|--------------------------------------------------------------------------
-|
-| The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
-| need to change it using the "pest()" function to bind different classes or traits.
-|
-*/
-
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
 
 /*
 |--------------------------------------------------------------------------
-| Expectations
+| Tenancy helpers
 |--------------------------------------------------------------------------
-|
-| When you're writing tests, you often need to check that values meet certain conditions. The
-| "expect()" function gives you access to a set of "expectations" methods that you can use
-| to assert different things. Of course, you may extend the Expectation API at any time.
-|
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Functions
-|--------------------------------------------------------------------------
-|
-| While Pest is very powerful out-of-the-box, you may have some testing code specific to your
-| project that you don't want to repeat in every file. Here you can also expose helpers as
-| global functions to help you to reduce the number of lines of code in your test files.
-|
-*/
-
-function something()
+/** Provision a fully seeded tenant (system roles, features, settings) with no admin user. */
+function provisionTenant(string $name = 'Acme'): Tenant
 {
-    // ..
+    app(PermissionRegistry::class)->sync();
+
+    return app(ProvisionTenantAction::class)->handle([
+        'name' => $name,
+        'slug' => Str::slug($name).'-'.Str::lower(Str::random(4)),
+    ]);
+}
+
+function actAsTenant(?Tenant $tenant): void
+{
+    app(TenantContext::class)->set($tenant);
+}
+
+/**
+ * A tenant user holding one ad-hoc role with the given permission patterns (`company.*`, `*`).
+ *
+ * @param  list<string>  $permissions
+ */
+function tenantUser(Tenant $tenant, array $permissions = [], array $attributes = []): User
+{
+    return app(TenantContext::class)->runAs($tenant, function () use ($tenant, $permissions, $attributes) {
+        $user = User::factory()->forTenant($tenant)->create($attributes);
+
+        if ($permissions !== []) {
+            $role = Role::factory()->create();
+            $role->permissions()->sync(app(PermissionRegistry::class)->idsMatching($permissions));
+            $user->roles()->attach($role);
+        }
+
+        return $user;
+    });
+}
+
+function platformAdmin(): User
+{
+    return User::factory()->platformAdmin()->create();
 }

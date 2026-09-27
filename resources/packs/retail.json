@@ -1,0 +1,180 @@
+{
+  "name": "Retail",
+  "description": "Store networks: location-based rules, six-day weeks, part-time categories.",
+  "levels": [
+    {
+      "code": "L1",
+      "name": "L1",
+      "rank": 1
+    },
+    {
+      "code": "L2",
+      "name": "L2",
+      "rank": 2
+    },
+    {
+      "code": "L3",
+      "name": "L3",
+      "rank": 3
+    },
+    {
+      "code": "L4",
+      "name": "L4",
+      "rank": 4
+    },
+    {
+      "code": "L5",
+      "name": "L5",
+      "rank": 5
+    }
+  ],
+  "job_families": [
+    {
+      "code": "STORE",
+      "name": "Store operations"
+    },
+    {
+      "code": "MERCH",
+      "name": "Merchandising"
+    },
+    {
+      "code": "SUPPLY",
+      "name": "Supply chain"
+    }
+  ],
+  "policies": [
+    {
+      "code": "RET_HOURS",
+      "type": "work_schedule",
+      "name": "Store hours",
+      "description": null,
+      "settings": {
+        "daily_hours": 8,
+        "weekly_hours": 48,
+        "working_days": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat"
+        ],
+        "flexible_timing": false
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "RET_ATTENDANCE",
+      "type": "attendance",
+      "name": "Store attendance",
+      "description": null,
+      "settings": {
+        "grace_minutes": 10,
+        "late_marks_threshold": 3,
+        "late_mark_action": "warn",
+        "regularisation_allowed": true,
+        "regularisation_window_days": 3,
+        "manager_approval_required": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "RET_LEAVE",
+      "type": "leave",
+      "name": "Retail leave",
+      "description": null,
+      "settings": {
+        "count_weekly_offs": false,
+        "count_holidays": false,
+        "entitlements": [
+          {
+            "leave_type_code": "EL",
+            "days": 18,
+            "accrual_frequency": "monthly",
+            "prorate_on_join": true,
+            "carry_forward_limit": 6,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 10,
+            "probation_eligible": false,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "CL",
+            "days": 7,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 3,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "SL",
+            "days": 10,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 0,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 2
+          }
+        ]
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "format": "peopleos.blueprint/1"
+}

@@ -1,0 +1,208 @@
+{
+  "name": "Consulting",
+  "description": "Client-facing teams: project reporting, remote work, generous leave, longer notice.",
+  "levels": [
+    {
+      "code": "L1",
+      "name": "L1",
+      "rank": 1
+    },
+    {
+      "code": "L2",
+      "name": "L2",
+      "rank": 2
+    },
+    {
+      "code": "L3",
+      "name": "L3",
+      "rank": 3
+    },
+    {
+      "code": "L4",
+      "name": "L4",
+      "rank": 4
+    },
+    {
+      "code": "L5",
+      "name": "L5",
+      "rank": 5
+    },
+    {
+      "code": "L6",
+      "name": "L6",
+      "rank": 6
+    }
+  ],
+  "job_families": [
+    {
+      "code": "CONS",
+      "name": "Consulting"
+    },
+    {
+      "code": "ANALYT",
+      "name": "Analytics"
+    },
+    {
+      "code": "BD",
+      "name": "Business development"
+    }
+  ],
+  "custom_fields": [
+    {
+      "entity": "employee",
+      "key": "billable",
+      "label": "Billable",
+      "type": "boolean",
+      "is_required": false,
+      "visible_to_employee": false,
+      "visible_to_manager": true,
+      "visible_to_hr": true,
+      "is_searchable": false,
+      "is_reportable": true,
+      "sort_order": 1
+    },
+    {
+      "entity": "employee",
+      "key": "utilisation_target",
+      "label": "Utilisation target (%)",
+      "type": "number",
+      "is_required": false,
+      "visible_to_employee": true,
+      "visible_to_manager": true,
+      "visible_to_hr": true,
+      "is_searchable": false,
+      "is_reportable": true,
+      "sort_order": 2
+    }
+  ],
+  "policies": [
+    {
+      "code": "CONS_LEAVE",
+      "type": "leave",
+      "name": "Consulting leave",
+      "description": null,
+      "settings": {
+        "count_weekly_offs": false,
+        "count_holidays": false,
+        "entitlements": [
+          {
+            "leave_type_code": "EL",
+            "days": 24,
+            "accrual_frequency": "quarterly",
+            "prorate_on_join": true,
+            "carry_forward_limit": 12,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": true,
+            "max_encash_days": 10,
+            "probation_eligible": true,
+            "negative_balance_limit": 3,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "CL",
+            "days": 7,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 3,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "SL",
+            "days": 10,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 0,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 2
+          }
+        ]
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "CONS_HOURS",
+      "type": "work_schedule",
+      "name": "Client hours",
+      "description": null,
+      "settings": {
+        "daily_hours": 8,
+        "weekly_hours": 40,
+        "working_days": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri"
+        ],
+        "flexible_timing": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "CONS_EXIT",
+      "type": "exit",
+      "name": "90-day notice",
+      "description": null,
+      "settings": {
+        "notice_period_days": 90,
+        "notice_buyout_allowed": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "format": "peopleos.blueprint/1"
+}

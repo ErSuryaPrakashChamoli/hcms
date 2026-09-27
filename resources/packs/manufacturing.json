@@ -1,0 +1,212 @@
+{
+  "name": "Manufacturing",
+  "description": "Plant-oriented: factory attendance, statutory overtime limits, worker categories.",
+  "levels": [
+    {
+      "code": "L1",
+      "name": "L1",
+      "rank": 1
+    },
+    {
+      "code": "L2",
+      "name": "L2",
+      "rank": 2
+    },
+    {
+      "code": "L3",
+      "name": "L3",
+      "rank": 3
+    },
+    {
+      "code": "L4",
+      "name": "L4",
+      "rank": 4
+    },
+    {
+      "code": "L5",
+      "name": "L5",
+      "rank": 5
+    },
+    {
+      "code": "L6",
+      "name": "L6",
+      "rank": 6
+    }
+  ],
+  "employee_categories": [
+    {
+      "code": "WORKMAN",
+      "name": "Workman"
+    },
+    {
+      "code": "STAFF",
+      "name": "Staff"
+    },
+    {
+      "code": "MANAGEMENT",
+      "name": "Management"
+    }
+  ],
+  "policies": [
+    {
+      "code": "MFG_ATTENDANCE",
+      "type": "attendance",
+      "name": "Factory attendance",
+      "description": null,
+      "settings": {
+        "grace_minutes": 10,
+        "late_marks_threshold": 2,
+        "late_mark_action": "half_day",
+        "regularisation_allowed": true,
+        "regularisation_window_days": 3,
+        "manager_approval_required": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "MFG_OT",
+      "type": "overtime",
+      "name": "Factory overtime",
+      "description": "Rates follow the Factories Act double-rate norm; verify against current notifications before production use.",
+      "settings": {
+        "minimum_minutes": 30,
+        "weekday_rate": 2,
+        "weekend_rate": 2,
+        "holiday_rate": 2,
+        "max_hours_per_week": 10,
+        "approval_required": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "MFG_HOURS",
+      "type": "work_schedule",
+      "name": "48-hour week",
+      "description": null,
+      "settings": {
+        "daily_hours": 8,
+        "weekly_hours": 48,
+        "working_days": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat"
+        ],
+        "flexible_timing": false
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "MFG_LEAVE",
+      "type": "leave",
+      "name": "Earned leave",
+      "description": null,
+      "settings": {
+        "count_weekly_offs": false,
+        "count_holidays": false,
+        "entitlements": [
+          {
+            "leave_type_code": "EL",
+            "days": 15,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 30,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": true,
+            "max_encash_days": 10,
+            "probation_eligible": false,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "CL",
+            "days": 7,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 3,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "SL",
+            "days": 10,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 0,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 2
+          }
+        ]
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "format": "peopleos.blueprint/1"
+}

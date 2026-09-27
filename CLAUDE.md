@@ -45,3 +45,13 @@ php artisan boost:install
 
 Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
 </laravel-boost-guidelines>
+
+# Markedge PeopleOS — project notes
+
+- Product blueprint (130 sections, source of truth for scope and phasing): `docs/peopleos-blueprint.md`.
+- What is actually built and the conventions to follow: `docs/architecture/` (one file per phase).
+- Domain code lives in `app/Domain/{Module}/{Models,Services,Actions,Policies,Enums}`; cross-cutting
+  primitives in `app/Support/`. Tenant-owned models use `BelongsToTenant` + `Auditable`
+  (+ `HasEffectiveDates` where history matters). Never expose `tenant_id` in forms.
+- Permission keys are declared in `config/peopleos.php`; run `php artisan peopleos:sync-permissions` after adding any.
+- Tests: `php artisan test` (Pest, SQLite in-memory). Helpers in `tests/Pest.php`: `provisionTenant()`, `actAsTenant()`, `tenantUser()`, `platformAdmin()`.

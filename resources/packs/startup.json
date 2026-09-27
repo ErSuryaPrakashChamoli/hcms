@@ -1,0 +1,248 @@
+{
+  "name": "Startup",
+  "description": "Lean setup: flat levels, flexible work, generous leave, minimal process.",
+  "levels": [
+    {
+      "code": "L1",
+      "name": "L1",
+      "rank": 1
+    },
+    {
+      "code": "L2",
+      "name": "L2",
+      "rank": 2
+    },
+    {
+      "code": "L3",
+      "name": "L3",
+      "rank": 3
+    },
+    {
+      "code": "L4",
+      "name": "L4",
+      "rank": 4
+    }
+  ],
+  "job_families": [
+    {
+      "code": "ENG",
+      "name": "Engineering"
+    },
+    {
+      "code": "PROD",
+      "name": "Product"
+    },
+    {
+      "code": "GTM",
+      "name": "Go-to-market"
+    },
+    {
+      "code": "OPS",
+      "name": "Operations"
+    }
+  ],
+  "custom_fields": [
+    {
+      "entity": "employee",
+      "key": "tshirt_size",
+      "label": "T-shirt size",
+      "type": "dropdown",
+      "options": [
+        {
+          "value": "S",
+          "label": "S"
+        },
+        {
+          "value": "M",
+          "label": "M"
+        },
+        {
+          "value": "L",
+          "label": "L"
+        },
+        {
+          "value": "XL",
+          "label": "XL"
+        }
+      ],
+      "is_required": false,
+      "visible_to_employee": true,
+      "visible_to_manager": true,
+      "visible_to_hr": true,
+      "is_searchable": false,
+      "is_reportable": true,
+      "sort_order": 1
+    },
+    {
+      "entity": "employee",
+      "key": "github_handle",
+      "label": "GitHub handle",
+      "type": "text",
+      "is_required": false,
+      "visible_to_employee": true,
+      "visible_to_manager": true,
+      "visible_to_hr": true,
+      "is_searchable": true,
+      "is_reportable": false,
+      "sort_order": 2
+    }
+  ],
+  "policies": [
+    {
+      "code": "STARTUP_LEAVE",
+      "type": "leave",
+      "name": "Flexible leave",
+      "description": null,
+      "settings": {
+        "count_weekly_offs": false,
+        "count_holidays": false,
+        "entitlements": [
+          {
+            "leave_type_code": "EL",
+            "days": 24,
+            "accrual_frequency": "monthly",
+            "prorate_on_join": true,
+            "carry_forward_limit": 10,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 10,
+            "probation_eligible": true,
+            "negative_balance_limit": 2,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "CL",
+            "days": 7,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 3,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "SL",
+            "days": 10,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 0,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 2
+          }
+        ]
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "STARTUP_HOURS",
+      "type": "work_schedule",
+      "name": "Flexible hours",
+      "description": null,
+      "settings": {
+        "daily_hours": 8,
+        "weekly_hours": 40,
+        "working_days": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri"
+        ],
+        "flexible_timing": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "STARTUP_EXIT",
+      "type": "exit",
+      "name": "30-day notice",
+      "description": null,
+      "settings": {
+        "notice_period_days": 30,
+        "notice_buyout_allowed": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "key": "onboarding_checklist",
+      "name": "Onboarding checklist",
+      "description": null,
+      "requires_approval": false,
+      "fields": [
+        {
+          "key": "laptop_received",
+          "label": "Laptop received",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "key": "email_created",
+          "label": "Email created",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "key": "buddy",
+          "label": "Buddy",
+          "type": "employee",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "format": "peopleos.blueprint/1"
+}

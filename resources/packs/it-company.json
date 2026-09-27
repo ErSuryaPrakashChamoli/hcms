@@ -1,0 +1,346 @@
+{
+  "name": "IT Company",
+  "description": "Six-level engineering ladder, hybrid work, standard Indian leave, attendance grace.",
+  "levels": [
+    {
+      "code": "L1",
+      "name": "L1",
+      "rank": 1
+    },
+    {
+      "code": "L2",
+      "name": "L2",
+      "rank": 2
+    },
+    {
+      "code": "L3",
+      "name": "L3",
+      "rank": 3
+    },
+    {
+      "code": "L4",
+      "name": "L4",
+      "rank": 4
+    },
+    {
+      "code": "L5",
+      "name": "L5",
+      "rank": 5
+    },
+    {
+      "code": "L6",
+      "name": "L6",
+      "rank": 6
+    }
+  ],
+  "grades": [
+    {
+      "code": "G1",
+      "name": "G1",
+      "rank": 1,
+      "level_code": "L1"
+    },
+    {
+      "code": "G2",
+      "name": "G2",
+      "rank": 2,
+      "level_code": "L2"
+    },
+    {
+      "code": "G3",
+      "name": "G3",
+      "rank": 3,
+      "level_code": "L3"
+    },
+    {
+      "code": "G4",
+      "name": "G4",
+      "rank": 4,
+      "level_code": "L4"
+    },
+    {
+      "code": "G5",
+      "name": "G5",
+      "rank": 5,
+      "level_code": "L5"
+    },
+    {
+      "code": "G6",
+      "name": "G6",
+      "rank": 6,
+      "level_code": "L6"
+    }
+  ],
+  "job_families": [
+    {
+      "code": "ENG",
+      "name": "Engineering"
+    },
+    {
+      "code": "QA",
+      "name": "Quality"
+    },
+    {
+      "code": "DEVOPS",
+      "name": "DevOps"
+    },
+    {
+      "code": "PM",
+      "name": "Product management"
+    },
+    {
+      "code": "DESIGN",
+      "name": "Design"
+    },
+    {
+      "code": "HR",
+      "name": "Human resources"
+    },
+    {
+      "code": "FIN",
+      "name": "Finance"
+    }
+  ],
+  "skills": [
+    {
+      "code": "PHP",
+      "name": "PHP",
+      "category": "technical"
+    },
+    {
+      "code": "LARAVEL",
+      "name": "Laravel",
+      "category": "technical"
+    },
+    {
+      "code": "JS",
+      "name": "JavaScript",
+      "category": "technical"
+    },
+    {
+      "code": "SQL",
+      "name": "SQL",
+      "category": "technical"
+    },
+    {
+      "code": "AWS",
+      "name": "AWS",
+      "category": "technical"
+    },
+    {
+      "code": "LEAD",
+      "name": "Leadership",
+      "category": "behavioural"
+    }
+  ],
+  "custom_fields": [
+    {
+      "entity": "employee",
+      "key": "laptop_asset_tag",
+      "label": "Laptop asset tag",
+      "type": "text",
+      "is_required": false,
+      "visible_to_employee": true,
+      "visible_to_manager": true,
+      "visible_to_hr": true,
+      "is_searchable": true,
+      "is_reportable": true,
+      "sort_order": 1
+    }
+  ],
+  "policies": [
+    {
+      "code": "IT_LEAVE",
+      "type": "leave",
+      "name": "Standard leave",
+      "description": null,
+      "settings": {
+        "count_weekly_offs": false,
+        "count_holidays": false,
+        "entitlements": [
+          {
+            "leave_type_code": "EL",
+            "days": 21,
+            "accrual_frequency": "monthly",
+            "prorate_on_join": true,
+            "carry_forward_limit": 30,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": true,
+            "max_encash_days": 10,
+            "probation_eligible": false,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "CL",
+            "days": 7,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 1,
+            "max_consecutive_days": 3,
+            "document_required_after_days": 0
+          },
+          {
+            "leave_type_code": "SL",
+            "days": 10,
+            "accrual_frequency": "annual",
+            "prorate_on_join": true,
+            "carry_forward_limit": 0,
+            "carry_forward_expiry_months": 0,
+            "encashment_allowed": false,
+            "max_encash_days": 0,
+            "probation_eligible": true,
+            "negative_balance_limit": 0,
+            "half_day_allowed": true,
+            "min_notice_days": 0,
+            "max_consecutive_days": 0,
+            "document_required_after_days": 2
+          }
+        ]
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "IT_ATTENDANCE",
+      "type": "attendance",
+      "name": "Office attendance",
+      "description": null,
+      "settings": {
+        "grace_minutes": 15,
+        "late_marks_threshold": 3,
+        "late_mark_action": "half_day",
+        "regularisation_allowed": true,
+        "regularisation_window_days": 7,
+        "manager_approval_required": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "IT_HOURS",
+      "type": "work_schedule",
+      "name": "Standard 9-hour day",
+      "description": null,
+      "settings": {
+        "daily_hours": 9,
+        "weekly_hours": 45,
+        "working_days": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri"
+        ],
+        "flexible_timing": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "IT_EXIT",
+      "type": "exit",
+      "name": "60-day notice",
+      "description": null,
+      "settings": {
+        "notice_period_days": 60,
+        "notice_buyout_allowed": true
+      },
+      "rules": [
+        {
+          "name": "Everyone",
+          "priority": 100,
+          "match": "all",
+          "conditions": [
+            {
+              "field": "lifecycle_state",
+              "operator": "is_not_empty"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "forms": [
+    {
+      "key": "it_asset_handover",
+      "name": "IT asset handover",
+      "description": null,
+      "requires_approval": true,
+      "fields": [
+        {
+          "key": "asset",
+          "label": "Asset description",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "handed_on",
+          "label": "Date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "condition",
+          "label": "Condition",
+          "type": "dropdown",
+          "required": true,
+          "options": [
+            {
+              "value": "good",
+              "label": "Good"
+            },
+            {
+              "value": "damaged",
+              "label": "Damaged"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "format": "peopleos.blueprint/1"
+}
