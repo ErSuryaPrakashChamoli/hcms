@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /** One employee's result within a run: totals, exceptions and the inputs used (§31 traceability). */
-#[Fillable(['tenant_id', 'payroll_run_id', 'employee_id', 'employee_salary_assignment_id', 'days_in_period', 'paid_days', 'lop_days', 'gross', 'total_earnings', 'total_deductions', 'net_pay', 'employer_cost', 'taxable_earnings', 'status', 'exceptions', 'inputs'])]
+#[Fillable(['tenant_id', 'payroll_run_id', 'employee_id', 'employee_salary_assignment_id', 'legal_entity_id', 'establishment_id', 'days_in_period', 'paid_days', 'lop_days', 'gross', 'total_earnings', 'total_deductions', 'net_pay', 'employer_cost', 'taxable_earnings', 'status', 'exceptions', 'inputs'])]
 class PayrollEntry extends Model
 {
     use Auditable, BelongsToTenant;

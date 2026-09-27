@@ -22,6 +22,8 @@ trait Auditable
 
     protected bool $auditingDisabled = false;
 
+    protected ?AuditAction $auditActionOverride = null;
+
     public static function bootAuditable(): void
     {
         static::created(fn (Model $model) => $model->recordAudit(AuditAction::Create));
@@ -43,6 +45,14 @@ trait Auditable
     {
         $this->auditReason = $reason;
         $this->auditApprovalReference = $approvalReference;
+
+        return $this;
+    }
+
+    /** Record the next create/update under a domain action (e.g. STATUTORY_REGISTRATION_CREATED) with the same field diff. */
+    public function withAuditAction(?AuditAction $action): static
+    {
+        $this->auditActionOverride = $action;
 
         return $this;
     }
@@ -100,7 +110,7 @@ trait Auditable
         }
 
         app(AuditRecorder::class)->record(
-            action: $action,
+            action: $this->auditActionOverride ?? $action,
             module: $this->auditModule(),
             entity: $this,
             changes: $changes,
@@ -111,6 +121,7 @@ trait Auditable
 
         $this->auditReason = null;
         $this->auditApprovalReference = null;
+        $this->auditActionOverride = null;
     }
 
     /**

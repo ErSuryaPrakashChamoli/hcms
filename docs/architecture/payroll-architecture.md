@@ -2,7 +2,7 @@
 
 Phase 4 (27 September 2026). Describes what is implemented; *deferred* items are not built. Statutory rates remain **illustrative** (see §8).
 
-## 1. Pipeline (engine `payroll-2.0`)
+## 1. Pipeline (engine `payroll-2.1`; 2.1 = 2.0 + Phase 5 establishment-resolved statutory context, see compliance architecture)
 
 ```
 PayrollPeriod (company, month; open → closed)

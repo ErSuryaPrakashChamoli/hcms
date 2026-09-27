@@ -46,7 +46,11 @@ use App\Domain\Communication\Policies\AnnouncementPolicy;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
+use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
+use App\Domain\Compliance\Models\ProfessionalTaxProfile;
+use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Policies\ComplianceRulePolicy;
+use App\Domain\Compliance\Policies\StatutoryRegistrationPolicy;
 use App\Domain\Compliance\Policies\TaxDeclarationPolicy;
 use App\Domain\Compliance\Services\FinancialYear;
 use App\Domain\Configuration\Models\ConfigurationChange;
@@ -151,6 +155,7 @@ use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Division;
 use App\Domain\Organisation\Models\EmployeeCategory;
+use App\Domain\Organisation\Models\EmployeeEstablishmentAssignment;
 use App\Domain\Organisation\Models\EmploymentType;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\Grade;
@@ -163,6 +168,7 @@ use App\Domain\Organisation\Models\ProfitCentre;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\Organisation\Policies\CompanyPolicy;
+use App\Domain\Organisation\Policies\EstablishmentAssignmentPolicy;
 use App\Domain\Organisation\Policies\EstablishmentPolicy;
 use App\Domain\Organisation\Policies\LegalEntityPolicy;
 use App\Domain\Organisation\Policies\OrganisationStructurePolicy;
@@ -320,6 +326,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(LegalEntity::class, LegalEntityPolicy::class);
         Gate::policy(Establishment::class, EstablishmentPolicy::class);
+        Gate::policy(EmployeeEstablishmentAssignment::class, EstablishmentAssignmentPolicy::class);
+        Gate::policy(StatutoryRegistration::class, StatutoryRegistrationPolicy::class);
+        Gate::policy(EstablishmentStatutoryProfile::class, StatutoryRegistrationPolicy::class);
+        Gate::policy(ProfessionalTaxProfile::class, StatutoryRegistrationPolicy::class);
         Gate::policy(AuditEvent::class, AuditEventPolicy::class);
 
         foreach ([Location::class, BusinessUnit::class, Division::class, Department::class, Team::class, CostCentre::class, ProfitCentre::class, OrganisationNode::class] as $model) {

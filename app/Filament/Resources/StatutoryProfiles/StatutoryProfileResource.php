@@ -30,7 +30,7 @@ class StatutoryProfileResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Payroll';
 
-    protected static ?string $navigationLabel = 'Statutory profiles';
+    protected static ?string $navigationLabel = 'Company statutory profiles (legacy)';
 
     protected static ?int $navigationSort = 50;
 

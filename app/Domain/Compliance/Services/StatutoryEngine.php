@@ -5,9 +5,11 @@ namespace App\Domain\Compliance\Services;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
+use App\Domain\Compliance\Support\StatutoryContext;
 use App\Domain\Enterprise\Services\CountryPacks;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Services\PayrollComputation;
+use WeakMap;
 
 /**
  * Protected statutory logic (§32, §101): EPF, ESI, professional tax, LWF and TDS. Parameters come
@@ -16,25 +18,38 @@ use App\Domain\Payroll\Services\PayrollComputation;
  */
 final class StatutoryEngine
 {
-    public function __construct(private readonly ComplianceRules $rules, private readonly TaxComputer $tax) {}
+    /** @var WeakMap<PayrollComputation, StatutoryContext> one resolution per computation */
+    private WeakMap $resolved;
+
+    public function __construct(private readonly ComplianceRules $rules, private readonly TaxComputer $tax, private readonly StatutoryContexts $contexts)
+    {
+        $this->resolved = new WeakMap;
+    }
+
+    public function context(PayrollComputation $c): StatutoryContext
+    {
+        return $this->resolved[$c] ??= $this->contexts->for($c->employee, $c->period);
+    }
 
     public function apply(PayrollComputation $c): void
     {
-        $profile = $this->profile($c);
+        // Phase 5: Employee → establishment (period end) → state → profiles. Recorded on the entry.
+        $context = $this->context($c);
+        $c->inputs['statutory_context'] = $context->toArray();
         $detail = $c->employee->statutoryDetail;
         $on = $c->period->end_date;
-        $jurisdiction = strtoupper($profile->jurisdiction ?: 'IN');
+        $jurisdiction = $context->jurisdiction();
 
         if (app(CountryPacks::class)->statutoryEngine($jurisdiction) !== 'india') {
-            $this->applyGeneric($c, $profile, $jurisdiction);
+            $this->applyGeneric($c, $context, $jurisdiction);
 
             return;
         }
 
         // --- EPF -----------------------------------------------------------------------------
-        if ($profile->pf_applicable && ($detail?->pf_applicable ?? true) && ($rule = $this->rules->resolve('EPF', $on))) {
+        if ($context->applies('EPF') && ($detail?->pf_applicable ?? true) && ($rule = $this->rules->resolve('EPF', $on))) {
             $wages = $c->pfWages();
-            $base = $profile->pf_restrict_to_ceiling ? min($wages, (float) $rule->param('wage_ceiling')) : $wages;
+            $base = $context->restrictPfToCeiling() ? min($wages, (float) $rule->param('wage_ceiling')) : $wages;
             $employee = $this->round($base * $rule->param('employee_rate'), $rule);
             $employer = $this->round($base * $rule->param('employer_rate'), $rule);
             $eps = $this->round(min($base, (float) $rule->param('eps_wage_ceiling')) * $rule->param('eps_rate'), $rule);
@@ -42,7 +57,7 @@ final class StatutoryEngine
             $admin = max($this->round($edliBase * $rule->param('edli_rate'), $rule) + $this->round($base * $rule->param('admin_rate'), $rule), $base > 0 ? (float) $rule->param('admin_minimum', 0) : 0);
 
             if ($base > 0) {
-                $basis = [...$this->ruleRef($rule), 'wages' => $wages, 'base' => $base];
+                $basis = [...$this->ruleRef($rule), 'wages' => $wages, 'base' => $base, 'establishment_id' => $context->establishment?->getKey()];
                 $c->addLine('PF_EE', 'Provident fund (employee)', 'deduction', $employee, ['classification' => 'pf_employee', 'basis' => $basis + ['rate' => $rule->param('employee_rate')], 'sort_order' => 500]);
                 $c->addLine('PF_ER', 'Provident fund (employer)', 'employer_contribution', $employer, ['classification' => 'pf_employer', 'basis' => $basis + ['eps' => $eps, 'epf' => round($employer - $eps, 2)], 'sort_order' => 700]);
                 $c->addLine('PF_ADMIN', 'PF admin & EDLI charges', 'employer_contribution', $admin, ['classification' => 'pf_employer', 'basis' => $basis, 'sort_order' => 701]);
@@ -50,21 +65,21 @@ final class StatutoryEngine
         }
 
         // --- ESI -----------------------------------------------------------------------------
-        if ($profile->esi_applicable && ($detail?->esic_applicable ?? true) && ($rule = $this->rules->resolve('ESI', $on))) {
+        if ($context->applies('ESI') && ($detail?->esic_applicable ?? true) && ($rule = $this->rules->resolve('ESI', $on))) {
             $fullMonth = collect($c->lines)->filter(fn ($l) => $l['type'] === 'earning' && $l['esi_applicable'])->sum(fn ($l) => $l['basis']['full_month'] ?? $l['amount']);
             $wages = $c->esiWages();
 
             if ($fullMonth > 0 && $fullMonth <= (float) $rule->param('wage_ceiling')) {
-                $basis = [...$this->ruleRef($rule), 'wages' => $wages, 'eligibility_wages' => round($fullMonth, 2)];
+                $basis = [...$this->ruleRef($rule), 'wages' => $wages, 'eligibility_wages' => round($fullMonth, 2), 'establishment_id' => $context->establishment?->getKey()];
                 $c->addLine('ESI_EE', 'ESI (employee)', 'deduction', $this->round($wages * $rule->param('employee_rate'), $rule), ['classification' => 'esi_employee', 'basis' => $basis, 'sort_order' => 510]);
                 $c->addLine('ESI_ER', 'ESI (employer)', 'employer_contribution', $this->round($wages * $rule->param('employer_rate'), $rule), ['classification' => 'esi_employer', 'basis' => $basis, 'sort_order' => 710]);
             }
         }
 
         // --- Professional tax ----------------------------------------------------------------
-        $ptState = $detail?->pt_state_code ?: $profile->pt_state;
+        $ptState = $context->ptState;
 
-        if ($profile->pt_applicable && ($detail?->pt_applicable ?? true) && $ptState && ($rule = $this->rules->resolve('PT', $on, $ptState))) {
+        if ($context->applies('PT') && ($detail?->pt_applicable ?? true) && $ptState && ($rule = $this->rules->resolve('PT', $on, $ptState))) {
             $gross = $c->gross();
             $amount = $this->slab($rule->param('slabs', []), $gross);
             $month = (int) $c->period->month;
@@ -80,25 +95,25 @@ final class StatutoryEngine
             }
 
             if ($amount > 0) {
-                $c->addLine('PT', 'Professional tax', 'deduction', $amount, ['classification' => 'pt', 'basis' => [...$this->ruleRef($rule), 'state' => $ptState, 'gross' => $gross], 'sort_order' => 520]);
+                $c->addLine('PT', 'Professional tax', 'deduction', $amount, ['classification' => 'pt', 'basis' => [...$this->ruleRef($rule), 'state' => $ptState, 'state_source' => $context->ptStateSource, 'gross' => $gross, 'establishment_id' => $context->establishment?->getKey()], 'sort_order' => 520]);
             }
         }
 
         // --- Labour welfare fund -------------------------------------------------------------
-        $lwfState = $profile->lwf_state ?: $ptState;
+        $lwfState = $context->lwfState;
 
-        if ($profile->lwf_applicable && $lwfState && ($rule = $this->rules->resolve('LWF', $on, $lwfState)) && in_array((int) $c->period->month, $rule->param('months', []), true) && $c->gross() > 0) {
+        if ($context->applies('LWF') && $lwfState && ($rule = $this->rules->resolve('LWF', $on, $lwfState)) && in_array((int) $c->period->month, $rule->param('months', []), true) && $c->gross() > 0) {
             $ceiling = $rule->param('wage_ceiling');
 
             if ($ceiling === null || $c->gross() <= (float) $ceiling) {
-                $basis = [...$this->ruleRef($rule), 'state' => $lwfState];
+                $basis = [...$this->ruleRef($rule), 'state' => $lwfState, 'establishment_id' => $context->establishment?->getKey()];
                 $c->addLine('LWF_EE', 'Labour welfare fund (employee)', 'deduction', (float) $rule->param('employee_amount'), ['classification' => 'lwf_employee', 'basis' => $basis, 'sort_order' => 530]);
                 $c->addLine('LWF_ER', 'Labour welfare fund (employer)', 'employer_contribution', (float) $rule->param('employer_amount'), ['classification' => 'lwf_employer', 'basis' => $basis, 'sort_order' => 720]);
             }
         }
 
         // --- Income tax (TDS) ----------------------------------------------------------------
-        if ($profile->tds_applicable && ($rule = $this->rules->resolve('TDS', $on))) {
+        if ($context->applies('TDS') && ($rule = $this->rules->resolve('TDS', $on))) {
             $result = $this->tax->monthlyTds($c, $rule);
 
             if ($result['pan_missing']) {
@@ -118,19 +133,19 @@ final class StatutoryEngine
      * gross × 12 less standard deduction, spread monthly) when the profile has tax on. Rules come from
      * database/data/compliance/<jurisdiction>.php.
      */
-    private function applyGeneric(PayrollComputation $c, CompanyStatutoryProfile $profile, string $jurisdiction): void
+    private function applyGeneric(PayrollComputation $c, StatutoryContext $context, string $jurisdiction): void
     {
         $on = $c->period->end_date;
         $gross = $c->gross();
 
-        if ($profile->pf_applicable && ($rule = $this->rules->resolve('SS', $on, null, $jurisdiction)) && $gross > 0) {
+        if ($context->applies('EPF') && ($rule = $this->rules->resolve('SS', $on, null, $jurisdiction)) && $gross > 0) {
             $base = min(max($gross, (float) $rule->param('wage_floor', 0)), (float) ($rule->param('wage_ceiling') ?? $gross));
             $basis = [...$this->ruleRef($rule), 'jurisdiction' => $jurisdiction, 'base' => $base];
             $c->addLine('SS_EE', 'Social security (employee)', 'deduction', $this->round($base * (float) $rule->param('employee_rate', 0), $rule), ['classification' => 'other_deduction', 'basis' => $basis, 'sort_order' => 500]);
             $c->addLine('SS_ER', 'Social security (employer)', 'employer_contribution', $this->round($base * (float) $rule->param('employer_rate', 0), $rule), ['classification' => 'other', 'basis' => $basis, 'sort_order' => 700]);
         }
 
-        if ($profile->tds_applicable && ($rule = $this->rules->resolve('TAX', $on, null, $jurisdiction)) && $gross > 0) {
+        if ($context->applies('TDS') && ($rule = $this->rules->resolve('TAX', $on, null, $jurisdiction)) && $gross > 0) {
             $annual = max(0, $c->taxableEarnings() * 12 - (float) $rule->param('standard_deduction', 0));
             $tax = $this->tax->slabTax($rule->param('slabs', []), $annual);
             $monthly = round($tax / 12, 2);
@@ -143,18 +158,19 @@ final class StatutoryEngine
     /** Employer PF on the full-month PF wages so far; used by CTC-balancing formulas (`pf_employer`). */
     public function estimateEmployerPf(PayrollComputation $c, float $pfWagesFullMonth): float
     {
-        $profile = $this->profile($c);
+        $context = $this->context($c);
         $detail = $c->employee->statutoryDetail;
 
-        if (! $profile->pf_applicable || ! ($detail?->pf_applicable ?? true) || app(CountryPacks::class)->statutoryEngine(strtoupper($profile->jurisdiction ?: 'IN')) !== 'india' || ! ($rule = $this->rules->resolve('EPF', $c->period->end_date))) {
+        if (! $context->applies('EPF') || ! ($detail?->pf_applicable ?? true) || app(CountryPacks::class)->statutoryEngine($context->jurisdiction()) !== 'india' || ! ($rule = $this->rules->resolve('EPF', $c->period->end_date))) {
             return 0.0;
         }
 
-        $base = $profile->pf_restrict_to_ceiling ? min($pfWagesFullMonth, (float) $rule->param('wage_ceiling')) : $pfWagesFullMonth;
+        $base = $context->restrictPfToCeiling() ? min($pfWagesFullMonth, (float) $rule->param('wage_ceiling')) : $pfWagesFullMonth;
 
         return $this->round($base * $rule->param('employer_rate'), $rule);
     }
 
+    /** @deprecated Phase 5: use context(); kept for callers of the Phase 4 API. */
     public function profile(PayrollComputation $c): CompanyStatutoryProfile
     {
         return CompanyStatutoryProfile::query()->where('company_id', $c->period->company_id)->first()

@@ -104,6 +104,8 @@ final class PayrollRuns
                     'payroll_run_id' => $run->id,
                     'employee_id' => $employee->id,
                     'employee_salary_assignment_id' => $c->assignment?->id,
+                    'legal_entity_id' => $c->inputs['statutory_context']['legal_entity_id'] ?? null,
+                    'establishment_id' => $c->inputs['statutory_context']['establishment_id'] ?? null,
                     'days_in_period' => $c->daysInPeriod,
                     'paid_days' => $c->paidDays,
                     'lop_days' => $c->lopDays,

@@ -9,6 +9,8 @@ use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Providers\ManualProvider;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
+use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
+use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\Form;
@@ -39,6 +41,7 @@ use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Division;
 use App\Domain\Organisation\Models\EmployeeCategory;
+use App\Domain\Organisation\Models\EmployeeEstablishmentAssignment;
 use App\Domain\Organisation\Models\EmploymentType;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\JobFamily;
@@ -1227,6 +1230,7 @@ return [
         'highly_sensitive' => [
             EmployeeBankAccount::class => ['account_number'],
             EmployeeStatutoryDetail::class => ['pan', 'aadhaar_reference', 'uan', 'pf_number', 'esic_number'],
+            StatutoryRegistration::class => ['registration_number'],
             User::class => ['password', 'app_authentication_secret', 'app_authentication_recovery_codes'],
             SsoConnection::class => ['client_secret'],
             WebhookEndpoint::class => ['secret'],
@@ -1235,7 +1239,7 @@ return [
             EmployeeSalaryAssignment::class, PayrollEntry::class,
             Payslip::class, FinalSettlement::class,
         ],
-        'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class],
+        'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class, EstablishmentStatutoryProfile::class, EmployeeEstablishmentAssignment::class],
         'confidential' => [
             Grievance::class, ImprovementPlan::class,
             OneOnOne::class, BgvCase::class, EmployeeDocument::class,

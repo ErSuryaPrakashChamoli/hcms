@@ -74,6 +74,26 @@ enum AuditAction: string
     case LeaveCarriedForward = 'LEAVE_CARRIED_FORWARD';
     case FormChanged = 'FORM_CHANGED';
 
+    // Compliance (Phase 5)
+    case StatutoryRuleCreated = 'STATUTORY_RULE_CREATED';
+    case StatutoryRuleReviewed = 'STATUTORY_RULE_REVIEWED';
+    case StatutoryRuleVerified = 'STATUTORY_RULE_VERIFIED';
+    case StatutoryRuleRejected = 'STATUTORY_RULE_REJECTED';
+    case StatutoryRuleSuperseded = 'STATUTORY_RULE_SUPERSEDED';
+    case StatutoryRegistrationCreated = 'STATUTORY_REGISTRATION_CREATED';
+    case StatutoryRegistrationUpdated = 'STATUTORY_REGISTRATION_UPDATED';
+    case StatutoryOutputCreated = 'STATUTORY_OUTPUT_CREATED';
+    case StatutoryOutputValidated = 'STATUTORY_OUTPUT_VALIDATED';
+    case StatutoryOutputApproved = 'STATUTORY_OUTPUT_APPROVED';
+    case StatutoryOutputExported = 'STATUTORY_OUTPUT_EXPORTED';
+    case StatutoryOutputSubmitted = 'STATUTORY_OUTPUT_SUBMITTED';
+    case StatutoryOutputAcknowledged = 'STATUTORY_OUTPUT_ACKNOWLEDGED';
+    case StatutoryOutputRevised = 'STATUTORY_OUTPUT_REVISED';
+    case StatutoryOutputReconciled = 'STATUTORY_OUTPUT_RECONCILED';
+    case StatutoryOutputCancelled = 'STATUTORY_OUTPUT_CANCELLED';
+    case StatutoryOutputAccessed = 'STATUTORY_OUTPUT_ACCESSED';
+    case EstablishmentAssigned = 'ESTABLISHMENT_ASSIGNED';
+
     // Payroll
     case PayrollStarted = 'PAYROLL_STARTED';
     case PayrollCalculated = 'PAYROLL_CALCULATED';
