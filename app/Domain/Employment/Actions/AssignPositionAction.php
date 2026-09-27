@@ -4,6 +4,8 @@ namespace App\Domain\Employment\Actions;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Employment\Events\EmploymentEvent;
+use App\Domain\Employment\Exceptions\OverlappingAssignmentException;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Lifecycle\Services\Timeline;
@@ -42,7 +44,13 @@ final class AssignPositionAction
             $current = $employee->positions()->effectiveOn($from)->first();
 
             if ($current !== null && $current->effective_from->gte($from)) {
-                throw new InvalidArgumentException('The new position must start after the current one ('.$current->effective_from->toDateString().').');
+                throw new OverlappingAssignmentException('The new position must start after the current one ('.$current->effective_from->toDateString().').');
+            }
+
+            // A future-dated position after this date would overlap the new open-ended one.
+            $future = $employee->positions()->where('effective_from', '>', $from->toDateString())->orderBy('effective_from')->first();
+            if ($future !== null) {
+                throw new OverlappingAssignmentException('A position already starts on '.$future->effective_from->toDateString().'; positions cannot overlap. Use an effective date after it, or correct that position first.');
             }
 
             // Carry forward unchanged dimensions so a transfer only needs to state what changed.
@@ -79,9 +87,32 @@ final class AssignPositionAction
             );
 
             $this->writeTimeline($employee, $current, $position, $changeType, $from, $reason);
+            $this->dispatchEvents($employee, $current, $position, $changeType, $from, $reason);
 
             return $position;
         });
+    }
+
+    /** Reserved employment events (contract §7): one per business change plus one per changed key dimension. */
+    private function dispatchEvents(Employee $employee, ?EmployeePosition $before, EmployeePosition $after, string $changeType, Carbon $from, ?string $reason): void
+    {
+        $context = ['change_type' => $changeType, 'effective_date' => $from->toDateString(), 'reason' => $reason, 'position_id' => $after->getKey()];
+
+        if ($changeType === 'promotion') {
+            EmploymentEvent::dispatch('employee.promoted', $employee, $after, $context);
+        } elseif ($changeType === 'transfer') {
+            EmploymentEvent::dispatch('employee.transferred', $employee, $after, $context);
+        }
+
+        if ($before === null) {
+            return;
+        }
+
+        foreach (['department_id' => 'employee.department_changed', 'designation_id' => 'employee.designation_changed', 'location_id' => 'employee.location_changed', 'company_id' => 'employee.company_changed'] as $column => $event) {
+            if ((int) $before->getAttribute($column) !== (int) $after->getAttribute($column)) {
+                EmploymentEvent::dispatch($event, $employee, $after, $context + ['before' => $before->getAttribute($column), 'after' => $after->getAttribute($column)]);
+            }
+        }
     }
 
     /** @return array<int, array{field: string, before: mixed, after: mixed}> */

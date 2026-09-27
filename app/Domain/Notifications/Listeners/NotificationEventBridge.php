@@ -7,6 +7,7 @@ use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Configuration\Events\ConfigurationChangeProposed;
 use App\Domain\Configuration\Events\FormSubmitted;
 use App\Domain\Documents\Events\DocumentExpiring;
+use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Identity\Models\User;
@@ -53,6 +54,7 @@ final class NotificationEventBridge
             DocumentExpiring::class => 'onDocumentExpiring',
             AttendanceEvent::class => 'onAttendance',
             LeaveEvent::class => 'onLeave',
+            EmploymentEvent::class => 'onEmployment',
             PayrollEvent::class => 'onPayroll',
             PerformanceEvent::class => 'onPerformance',
             LearningEvent::class => 'onLearning',
@@ -221,6 +223,11 @@ final class NotificationEventBridge
         if ($event->name === 'payroll.payslip_generated' && $sent->isEmpty() && $employee?->user?->isActive()) {
             $this->notifier->send([$employee->user], ['in_app'], 'Payslip for '.$event->context['period'], 'Your payslip for '.$event->context['period'].' is ready.', $event->name, $subject);
         }
+    }
+
+    public function onEmployment(EmploymentEvent $event): void
+    {
+        $this->engine->fire($event->name, $this->context->build($event->employee, ['employment' => $event->context]), $event->subject);
     }
 
     public function onLeave(LeaveEvent $event): void

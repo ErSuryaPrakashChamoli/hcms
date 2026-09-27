@@ -5,6 +5,7 @@ namespace App\Domain\Enterprise\Services;
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Documents\Events\DocumentExpiring;
+use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Learning\Events\LearningEvent;
 use App\Domain\Leave\Events\LeaveEvent;
@@ -24,7 +25,7 @@ final class WebhookEventBridge
     {
         return [
             EmployeeLifecycleChanged::class => 'onLifecycle',
-            LeaveEvent::class => 'onNamed', AttendanceEvent::class => 'onNamed', PayrollEvent::class => 'onNamed', PerformanceEvent::class => 'onNamed',
+            LeaveEvent::class => 'onNamed', EmploymentEvent::class => 'onNamed', AttendanceEvent::class => 'onNamed', PayrollEvent::class => 'onNamed', PerformanceEvent::class => 'onNamed',
             LearningEvent::class => 'onNamed', AssetEvent::class => 'onNamed', ServiceDeskEvent::class => 'onNamed', ExitEvent::class => 'onNamed',
             WorkflowCompleted::class => 'onWorkflowCompleted', DocumentExpiring::class => 'onDocumentExpiring',
         ];

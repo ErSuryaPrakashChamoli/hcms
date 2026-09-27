@@ -18,16 +18,21 @@ use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
+use App\Domain\People\Models\Person;
+use App\Domain\People\Services\PersonMatcher;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Support\AuditReasonField;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Resources\Pages\CreateRecord\Concerns\HasWizard;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard\Step;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 
 /** Hire wizard: Person → Employment → Position → Manager. Lands in HireEmployeeAction. */
@@ -45,7 +50,36 @@ class CreateEmployee extends CreateRecord
             Step::make('Person')
                 ->description('Who is joining')
                 ->columns(3)
-                ->schema(EmployeeForm::personFields()),
+                ->schema([
+                    Select::make('existing_person_id')
+                        ->label('Existing person (re-use instead of creating a new one)')
+                        ->helperText('Pick a person already on record when this hire is a known individual; leave blank to create a new person. Definite duplicates (same email, phone or work email) are refused.')
+                        ->searchable()
+                        ->getSearchResultsUsing(fn (string $search) => Person::query()->whereDoesntHave('employee')->where(fn ($q) => $q->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('personal_email', 'like', "%{$search}%"))->limit(20)->get()->mapWithKeys(fn (Person $p) => [$p->id => $p->display_name.($p->personal_email ? " ({$p->personal_email})" : '')])->all())
+                        ->getOptionLabelUsing(fn ($value) => Person::query()->find($value)?->display_name)
+                        ->columnSpanFull(),
+                    ...EmployeeForm::personFields(),
+                ])
+                ->afterValidation(function (Get $get): void {
+                    if ($get('existing_person_id')) {
+                        return;
+                    }
+                    $person = array_filter(['first_name' => $get('first_name'), 'last_name' => $get('last_name'), 'date_of_birth' => $get('date_of_birth'), 'personal_email' => $get('personal_email'), 'personal_phone' => $get('personal_phone')]);
+                    $candidates = app(PersonMatcher::class)->candidates($person, ['work_email' => $get('work_email')]);
+                    if ($candidates->isEmpty()) {
+                        return;
+                    }
+                    $definite = $candidates->where('definite', true);
+                    Notification::make()
+                        ->title($definite->isNotEmpty() ? 'This person already exists' : 'Possible duplicate person')
+                        ->body($candidates->map(fn ($c) => $c['name'].($c['employee_code'] ? " ({$c['employee_code']})" : '').' — same '.implode(', ', $c['matched_on']))->implode('; ').($definite->isNotEmpty() ? '. Select the existing person above or correct the details.' : '. Review before continuing.'))
+                        ->{$definite->isNotEmpty() ? 'danger' : 'warning'}()
+                        ->persistent()
+                        ->send();
+                    if ($definite->isNotEmpty()) {
+                        throw new Halt;
+                    }
+                }),
             Step::make('Employment')
                 ->description('When and how to reach them')
                 ->columns(3)
@@ -116,8 +150,13 @@ class CreateEmployee extends CreateRecord
         $personKeys = ['first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'gender', 'marital_status', 'nationality', 'blood_group', 'personal_email', 'personal_phone'];
         $employeeKeys = ['joining_date', 'probation_end_date', 'employee_code', 'work_email', 'work_phone'];
 
+        $person = array_filter(array_intersect_key($data, array_flip($personKeys)), fn ($v) => $v !== null && $v !== '');
+        if (! empty($data['existing_person_id'])) {
+            $person = ['id' => (int) $data['existing_person_id']];
+        }
+
         return app(HireEmployeeAction::class)->handle(
-            person: array_filter(array_intersect_key($data, array_flip($personKeys)), fn ($v) => $v !== null && $v !== ''),
+            person: $person,
             employee: array_filter(array_intersect_key($data, array_flip($employeeKeys)), fn ($v) => $v !== null && $v !== ''),
             position: array_filter(array_intersect_key($data, EmployeePosition::DIMENSIONS)),
             managerId: isset($data['manager_id']) ? (int) $data['manager_id'] : null,

@@ -20,7 +20,7 @@ beforeEach(function () {
     $this->actingAs($this->hr);
     $this->employee = activeEmployee(null, ['kb.view', 'communication.view', 'task.view']);
     $this->probation = activeEmployee(null, ['kb.view', 'communication.view', 'task.view']);
-    $this->probation->update(['lifecycle_state' => 'probation']);
+    forceLifecycle($this->probation, 'probation');
 });
 
 it('versions articles on publish, targets audiences, and tracks reads and acknowledgements', function () {

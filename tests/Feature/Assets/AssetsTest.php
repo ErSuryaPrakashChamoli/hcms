@@ -69,7 +69,7 @@ it('handles lost, found and retire, and refuses assignment to non-employees', fu
     expect($this->laptop->refresh()->status)->toBe('retired');
 
     $leaver = activeEmployee();
-    $leaver->update(['lifecycle_state' => 'exited']);
+    forceLifecycle($leaver, 'exited');
     $monitor = $this->assets->receive(['asset_category_id' => AssetCategory::query()->where('code', 'MONITOR')->value('id'), 'asset_tag' => 'MON-1', 'name' => 'Monitor']);
     expect(fn () => $this->assets->assign($monitor, $leaver->refresh()))->toThrow(RuntimeException::class, 'current employees');
     expect($this->other->user->can('view', $monitor))->toBeFalse();

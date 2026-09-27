@@ -4,6 +4,7 @@ namespace App\Domain\Payroll\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Services\Timeline;
@@ -72,6 +73,7 @@ final class Salaries
             ], $reason, effectiveDate: $from, metadata: ['change_type' => $changeType, 'employee_id' => $employee->id]);
 
             $this->timeline->record($employee, 'compensation', ucfirst($changeType).': salary '.($previous ? 'revised' : 'assigned'), $from, $reason, $assignment, ['structure' => $structure->code]);
+            EmploymentEvent::dispatch('employee.salary_changed', $employee, $assignment, ['change_type' => $changeType, 'structure' => $structure->code, 'effective_date' => $from->toDateString()]);
 
             return $assignment;
         });

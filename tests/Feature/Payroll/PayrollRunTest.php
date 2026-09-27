@@ -133,7 +133,7 @@ it('prorates by attendance LOP, manual LOP, mid-month joining and exit', functio
 it('blocks validation on missing salaries and formula errors while warnings pass', function () {
     $ok = salariedEmployee(600000);
     $noSalary = employeeWithUser();
-    $noSalary->update(['lifecycle_state' => LifecycleState::Active]);
+    forceLifecycle($noSalary, LifecycleState::Active);
 
     $run = $this->runs->calculate($this->runs->open($this->company, 2026, 9));
     $entries = $run->entries()->get()->keyBy('employee_id');

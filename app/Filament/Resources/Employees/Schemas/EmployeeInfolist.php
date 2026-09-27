@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Employees\Schemas;
 use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
 use App\Filament\Support\CustomFieldsSchema;
+use Carbon\CarbonInterface;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -52,6 +53,7 @@ class EmployeeInfolist
                                 ->placeholder('No line manager'),
                             TextEntry::make('joining_date')->date()->placeholder(fn (Employee $record) => $record->expected_joining_date ? 'Expected '.$record->expected_joining_date->toFormattedDateString() : '—'),
                             TextEntry::make('probation_end_date')->date()->placeholder('—'),
+                            TextEntry::make('tenure')->state(fn (Employee $record) => $record->joining_date && $record->lifecycle_state->isEmployed() ? $record->joining_date->diffForHumans(now(), ['parts' => 2, 'syntax' => CarbonInterface::DIFF_ABSOLUTE]) : '—'),
                             TextEntry::make('confirmation_date')->date()->placeholder('Not confirmed'),
                         ]),
                 ]),

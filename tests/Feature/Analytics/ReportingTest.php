@@ -119,7 +119,7 @@ it('computes workforce metrics and series, and resolves dashboards per viewer', 
     expect($metrics->absenteeismRate())->toBe(33.3);
 
     ExitCase::create(['number' => 'EXIT-2026-00001', 'employee_id' => $this->c->id, 'type' => 'resignation', 'status' => 'completed', 'initiated_on' => '2026-08-01', 'last_working_day' => '2026-08-31', 'completed_at' => now()]);
-    $this->c->update(['lifecycle_state' => 'exited', 'exit_date' => '2026-08-31']);
+    forceLifecycle($this->c, 'exited', ['exit_date' => '2026-08-31']);
     expect($metrics->headcount())->toBe(2)->and($metrics->headcount('2026-08-15'))->toBe(3)
         ->and($metrics->metric('exits_30d')['value'])->toBe(1)
         ->and($metrics->attritionRate())->toBe(40.0) // 1 exit / avg(3, 2)

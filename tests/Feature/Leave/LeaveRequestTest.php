@@ -36,7 +36,7 @@ beforeEach(function () {
     $this->schedule = weeklySchedule($this->shift);
     $this->manager = employeeWithUser();
     $this->employee = employeeWithUser($this->manager, ['leave.apply', 'task.view', 'task.act']);
-    $this->employee->update(['lifecycle_state' => LifecycleState::Active, 'joining_date' => '2025-01-01']);
+    forceLifecycle($this->employee, LifecycleState::Active, ['joining_date' => '2025-01-01']);
     assignSchedule($this->employee, $this->schedule);
     app(LeaveAccrual::class)->accrue($this->employee);
     $this->leaves = app(Leaves::class);

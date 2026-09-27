@@ -155,7 +155,7 @@ it('generates, approves and issues letters as documents, and serves alumni reque
         ->and($this->employee->user->notifications()->count())->toBe(1)
         ->and(AuditEvent::query()->where('module', 'letters')->count())->toBeGreaterThanOrEqual(4);
 
-    $this->employee->update(['lifecycle_state' => 'exited', 'exit_date' => '2026-09-21']);
+    forceLifecycle($this->employee, 'exited', ['exit_date' => '2026-09-21']);
     $case = ExitCase::create(['number' => 'EXIT-2026-00009', 'employee_id' => $this->employee->id, 'type' => 'resignation', 'status' => 'completed', 'initiated_on' => '2026-08-01', 'last_working_day' => '2026-09-21', 'completed_at' => now()]);
     $profile = $this->exits->createAlumni($case, $this->hr);
 

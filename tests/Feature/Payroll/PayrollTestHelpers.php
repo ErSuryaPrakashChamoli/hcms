@@ -28,7 +28,7 @@ function payrollCompany(array $profile = []): Company
 function salariedEmployee(float $ctcAnnual, array $userPermissions = ['task.view'], string $from = '2025-01-01', array $componentValues = ['CONV' => 1600], ?Employee $manager = null): Employee
 {
     $employee = employeeWithUser($manager, $userPermissions);
-    $employee->update(['lifecycle_state' => LifecycleState::Active, 'joining_date' => '2025-01-01']);
+    forceLifecycle($employee, LifecycleState::Active, ['joining_date' => '2025-01-01']);
     $structure = SalaryStructure::query()->where('code', 'STANDARD')->firstOrFail();
     app(Salaries::class)->assign($employee, $structure, $ctcAnnual, $from, $componentValues, 'hire', 'test');
 

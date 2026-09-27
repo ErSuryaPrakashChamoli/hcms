@@ -4,6 +4,7 @@ namespace App\Domain\Employment\Actions;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\ReportingRelationship;
 use App\Domain\Lifecycle\Services\Timeline;
@@ -80,6 +81,8 @@ final class ChangeManagerAction
                 $relationship,
                 ['type' => $type],
             );
+
+            EmploymentEvent::dispatch('employee.manager_changed', $employee, $relationship, ['type' => $type, 'manager_id' => $manager->getKey(), 'manager_code' => $manager->employee_code, 'previous_manager_id' => $current?->manager_id, 'effective_date' => $from->toDateString(), 'reason' => $reason]);
 
             return $relationship;
         });

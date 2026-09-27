@@ -28,7 +28,7 @@ beforeEach(function () {
     leavePolicy(['EL' => ['days' => 24, 'accrual_frequency' => 'annual']]);
     assignSchedule($this->manager = employeeWithUser(null, ['leave.view', 'leave.approve', 'task.view']), weeklySchedule(generalShift()));
     $this->employee = employeeWithUser($this->manager, ['leave.apply', 'task.view']);
-    $this->employee->update(['lifecycle_state' => LifecycleState::Active, 'joining_date' => '2025-01-01']);
+    forceLifecycle($this->employee, LifecycleState::Active, ['joining_date' => '2025-01-01']);
     assignSchedule($this->employee, WorkSchedule::query()->first());
     app(LeaveAccrual::class)->accrue($this->employee);
     $this->el = LeaveType::query()->where('code', 'EL')->first();

@@ -11,4 +11,9 @@ class InvalidLifecycleTransitionException extends RuntimeException
     {
         return new self(sprintf('An employee cannot move from %s to %s.', $from->getLabel(), $to->getLabel()));
     }
+
+    public static function directMutation(object $employee): self
+    {
+        return new self('lifecycle_state cannot be set directly on '.$employee::class.'; use LifecycleEngine::transition().');
+    }
 }

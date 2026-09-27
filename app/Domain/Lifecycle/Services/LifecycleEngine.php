@@ -20,6 +20,26 @@ final class LifecycleEngine
         private readonly Timeline $timeline,
     ) {}
 
+    private static int $mutating = 0;
+
+    /** True while the engine (or an explicitly unguarded block) is changing lifecycle_state. */
+    public static function isMutating(): bool
+    {
+        return self::$mutating > 0;
+    }
+
+    /** Run a callback that may set lifecycle_state directly (data migrations, tests, provisioning). Audited like any update. */
+    public static function unguarded(\Closure $callback): mixed
+    {
+        self::$mutating++;
+
+        try {
+            return $callback();
+        } finally {
+            self::$mutating--;
+        }
+    }
+
     public function transition(
         Employee $employee,
         LifecycleState $to,
@@ -44,7 +64,7 @@ final class LifecycleEngine
                 default => [],
             };
 
-            $employee->withAuditReason($reason)->update($attributes);
+            self::unguarded(fn () => $employee->withAuditReason($reason)->update($attributes));
 
             $transition = EmployeeLifecycleTransition::create([
                 'employee_id' => $employee->getKey(),

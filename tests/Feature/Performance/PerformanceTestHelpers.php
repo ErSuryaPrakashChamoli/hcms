@@ -23,7 +23,7 @@ function draftCycle(array $overrides = []): PerformanceCycle
 function activeEmployee(?Employee $manager = null, array $permissions = ['performance.goals', 'performance.review', 'performance.feedback', 'task.view']): Employee
 {
     $employee = employeeWithUser($manager, $permissions);
-    $employee->update(['lifecycle_state' => LifecycleState::Active, 'joining_date' => '2025-01-01']);
+    forceLifecycle($employee, LifecycleState::Active, ['joining_date' => '2025-01-01']);
 
     return $employee->refresh();
 }

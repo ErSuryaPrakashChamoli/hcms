@@ -16,7 +16,7 @@ beforeEach(function () {
     $this->hr = tenantUser($this->tenant, ['*']);
     $this->actingAs($this->hr);
     $this->manager = employeeWithUser();
-    $this->manager->update(['lifecycle_state' => LifecycleState::Active]);
+    forceLifecycle($this->manager, LifecycleState::Active);
 
     $template = NotificationTemplate::create(['key' => 'reminder', 'name' => 'Reminder', 'subject' => '{{ employee.name }}: {{ reminder.days_left }} days', 'body' => 'x']);
     foreach (['employee.joining_due', 'employee.probation_ending', 'employee.probation_overdue'] as $event) {
@@ -29,13 +29,13 @@ it('emits joining, probation-ending and probation-overdue events that rules and 
     publishWorkflow($nodes, $edges, ['trigger_event' => 'employee.probation_ending']);
 
     $joiner = employeeWithUser($this->manager);
-    $joiner->update(['lifecycle_state' => LifecycleState::Preboarding, 'expected_joining_date' => now()->addDays(2)]);
+    forceLifecycle($joiner, LifecycleState::Preboarding, ['expected_joining_date' => now()->addDays(2)]);
     $ending = employeeWithUser($this->manager);
-    $ending->update(['lifecycle_state' => LifecycleState::Probation, 'probation_end_date' => now()->addDays(5)]);
+    forceLifecycle($ending, LifecycleState::Probation, ['probation_end_date' => now()->addDays(5)]);
     $overdue = employeeWithUser($this->manager);
-    $overdue->update(['lifecycle_state' => LifecycleState::Probation, 'probation_end_date' => now()->subDays(3)]);
+    forceLifecycle($overdue, LifecycleState::Probation, ['probation_end_date' => now()->subDays(3)]);
     $fine = employeeWithUser($this->manager);
-    $fine->update(['lifecycle_state' => LifecycleState::Probation, 'probation_end_date' => now()->addMonths(3)]);
+    forceLifecycle($fine, LifecycleState::Probation, ['probation_end_date' => now()->addMonths(3)]);
 
     $this->artisan('peopleos:lifecycle:reminders')->assertSuccessful();
 

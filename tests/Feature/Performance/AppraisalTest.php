@@ -114,7 +114,7 @@ it('launches a cycle for eligible employees, walks the stages, scores, calibrate
 
 it('applies eligibility rules at launch', function () {
     $cycle = draftCycle(['code' => 'ELIG', 'eligibility' => [['field' => 'lifecycle_state', 'operator' => 'equals', 'value' => 'probation']]]);
-    $this->employee->update(['lifecycle_state' => 'probation']);
+    forceLifecycle($this->employee, 'probation');
 
     $cycle = $this->appraisals->launch($cycle);
     expect($cycle->appraisals()->pluck('employee_id')->all())->toBe([$this->employee->id]);

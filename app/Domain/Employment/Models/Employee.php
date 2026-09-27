@@ -20,8 +20,10 @@ use App\Domain\Leave\Models\LeaveBalance;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Letters\Models\Letter;
 use App\Domain\Lifecycle\Enums\LifecycleState;
+use App\Domain\Lifecycle\Exceptions\InvalidLifecycleTransitionException;
 use App\Domain\Lifecycle\Models\EmployeeLifecycleTransition;
 use App\Domain\Lifecycle\Models\EmployeeTimelineEntry;
+use App\Domain\Lifecycle\Services\LifecycleEngine;
 use App\Domain\Onboarding\Models\OnboardingPlan;
 use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollEntry;
@@ -58,6 +60,16 @@ class Employee extends Model
 
     /** @use HasFactory<EmployeeFactory> */
     use ScopedByEmployee;
+
+    protected static function booted(): void
+    {
+        // Contract §7: lifecycle_state changes only through LifecycleEngine (or an explicit unguarded block).
+        static::updating(function (self $employee): void {
+            if ($employee->isDirty('lifecycle_state') && ! LifecycleEngine::isMutating()) {
+                throw InvalidLifecycleTransitionException::directMutation($employee);
+            }
+        });
+    }
 
     protected function casts(): array
     {

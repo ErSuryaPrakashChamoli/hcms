@@ -1,8 +1,11 @@
 <?php
 
+use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\PermissionRegistry;
+use App\Domain\Lifecycle\Enums\LifecycleState;
+use App\Domain\Lifecycle\Services\LifecycleEngine;
 use App\Domain\Platform\Actions\ProvisionTenantAction;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
@@ -59,4 +62,17 @@ function tenantUser(Tenant $tenant, array $permissions = [], array $attributes =
 function platformAdmin(): User
 {
     return User::factory()->platformAdmin()->create();
+}
+
+/**
+ * Put an employee directly into a lifecycle state for test setup, bypassing the engine's guard
+ * (production code must use LifecycleEngine::transition()).
+ *
+ * @param  array<string, mixed>  $extra
+ */
+function forceLifecycle(Employee $employee, LifecycleState|string $state, array $extra = []): Employee
+{
+    LifecycleEngine::unguarded(fn () => $employee->update(['lifecycle_state' => $state] + $extra));
+
+    return $employee;
 }

@@ -82,7 +82,7 @@ it('applies rule-based and recurring assignments, and paths enrol every course',
     $path->items()->create(['course_id' => $second->id, 'sort_order' => 20, 'is_required' => false]);
 
     $probation = activeEmployee();
-    $probation->update(['lifecycle_state' => 'probation']);
+    forceLifecycle($probation, 'probation');
 
     $assignment = LearningAssignment::create(['name' => 'Everyone on probation', 'learning_path_id' => $path->id, 'conditions' => [['field' => 'lifecycle_state', 'operator' => 'equals', 'value' => 'probation']], 'due_days' => 14, 'recur_months' => 12, 'is_mandatory' => true]);
     $enrolled = $this->learning->applyAssignment($assignment);
