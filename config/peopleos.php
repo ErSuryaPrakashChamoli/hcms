@@ -9,8 +9,12 @@ use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Providers\ManualProvider;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
+use App\Domain\Compliance\Models\EpfReturnEntry;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
 use App\Domain\Compliance\Models\StatutoryRegistration;
+use App\Domain\Compliance\Models\StatutoryReturn;
+use App\Domain\Compliance\Models\StatutorySnapshot;
+use App\Domain\Compliance\Services\Returns\EpfReturns;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\Form;
@@ -1172,6 +1176,22 @@ return [
             'lwf_registration' => ['label' => 'Labour welfare fund registration', 'authority' => 'STATE_LWF', 'level' => 'establishment', 'statute' => 'LWF', 'state_required' => true],
             'shops_establishment' => ['label' => 'Shops & establishments registration', 'authority' => 'STATE_LABOUR', 'level' => 'establishment', 'statute' => null, 'state_required' => true],
         ],
+        // Phase 5 statutory outputs: one generator per return type (StatutoryReturnGenerator).
+        'return_types' => [
+            'EPF' => ['label' => 'EPF — Electronic Challan-cum-Return', 'form_code' => 'ECR', 'authority' => 'EPFO', 'scope' => 'establishment', 'generator' => EpfReturns::class, 'filing_totals' => ['ee_share', 'eps_share', 'er_share']],
+        ],
+        // Export layouts carry their own verification status; an unverified layout is exported with
+        // an UNVERIFIED-FORMAT_ file-name prefix and flagged in validation.
+        'formats' => [
+            'EPF_ECR' => [
+                'version' => 'ecr-2.0',
+                'verification_status' => 'review',
+                'separator' => '#~#',
+                'fields' => ['UAN', 'MEMBER NAME', 'GROSS WAGES', 'EPF WAGES', 'EPS WAGES', 'EDLI WAGES', 'EPF CONTRI REMITTED', 'EPS CONTRI REMITTED', 'EPF EPS DIFF REMITTED', 'NCP DAYS', 'REFUND OF ADVANCES'],
+                'source' => 'EPFO states the revamped ECR keeps the existing format (epfo.gov.in/revamped-ecr). The field layout itself is in the employer-portal Help File, which was not retrieved: verify before upload.',
+            ],
+        ],
+        'return_statuses' => ['draft' => 'Draft', 'calculated' => 'Calculated', 'validated' => 'Validated', 'approved' => 'Approved', 'exported' => 'Exported (not filed)', 'submitted' => 'Submitted (filing recorded)', 'acknowledged' => 'Acknowledged', 'reconciliation_required' => 'Reconciliation required', 'reconciled' => 'Reconciled', 'revised' => 'Revised', 'cancelled' => 'Cancelled'],
         'registration_statuses' => ['active' => 'Active', 'inactive' => 'Inactive', 'cancelled' => 'Cancelled', 'superseded' => 'Superseded'],
         'registration_verification_statuses' => ['unverified' => 'Unverified', 'verified' => 'Verified against the certificate', 'rejected' => 'Rejected'],
         // Phase 5 Part D: the only options an establishment profile may carry (yes/no, never rates).
@@ -1240,6 +1260,7 @@ return [
             EmployeeBankAccount::class => ['account_number'],
             EmployeeStatutoryDetail::class => ['pan', 'aadhaar_reference', 'uan', 'pf_number', 'esic_number'],
             StatutoryRegistration::class => ['registration_number'],
+            EpfReturnEntry::class => ['uan'],
             User::class => ['password', 'app_authentication_secret', 'app_authentication_recovery_codes'],
             SsoConnection::class => ['client_secret'],
             WebhookEndpoint::class => ['secret'],
@@ -1248,7 +1269,7 @@ return [
             EmployeeSalaryAssignment::class, PayrollEntry::class,
             Payslip::class, FinalSettlement::class,
         ],
-        'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class, EstablishmentStatutoryProfile::class, EmployeeEstablishmentAssignment::class],
+        'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class, EstablishmentStatutoryProfile::class, EmployeeEstablishmentAssignment::class, StatutoryReturn::class, StatutorySnapshot::class, EpfReturnEntry::class],
         'confidential' => [
             Grievance::class, ImprovementPlan::class,
             OneOnOne::class, BgvCase::class, EmployeeDocument::class,

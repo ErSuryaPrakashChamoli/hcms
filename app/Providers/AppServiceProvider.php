@@ -47,11 +47,19 @@ use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\ComplianceRuleVerification;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
+use App\Domain\Compliance\Models\EpfReturnEntry;
+use App\Domain\Compliance\Models\EpfReturnRevision;
+use App\Domain\Compliance\Models\EpfReturnRun;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
 use App\Domain\Compliance\Models\ProfessionalTaxProfile;
+use App\Domain\Compliance\Models\StatutoryReconciliation;
 use App\Domain\Compliance\Models\StatutoryRegistration;
+use App\Domain\Compliance\Models\StatutoryReturn;
+use App\Domain\Compliance\Models\StatutoryReturnAction;
+use App\Domain\Compliance\Models\StatutorySnapshot;
 use App\Domain\Compliance\Policies\ComplianceRulePolicy;
 use App\Domain\Compliance\Policies\StatutoryRegistrationPolicy;
+use App\Domain\Compliance\Policies\StatutoryReturnPolicy;
 use App\Domain\Compliance\Policies\TaxDeclarationPolicy;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\FinancialYear;
@@ -333,6 +341,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Establishment::class, EstablishmentPolicy::class);
         Gate::policy(EmployeeEstablishmentAssignment::class, EstablishmentAssignmentPolicy::class);
         Gate::policy(StatutoryRegistration::class, StatutoryRegistrationPolicy::class);
+        foreach ([StatutoryReturn::class, StatutoryReturnAction::class, StatutorySnapshot::class, StatutoryReconciliation::class, EpfReturnRun::class, EpfReturnEntry::class, EpfReturnRevision::class] as $model) {
+            Gate::policy($model, StatutoryReturnPolicy::class);
+        }
         Gate::policy(EstablishmentStatutoryProfile::class, StatutoryRegistrationPolicy::class);
         Gate::policy(ProfessionalTaxProfile::class, StatutoryRegistrationPolicy::class);
         Gate::policy(AuditEvent::class, AuditEventPolicy::class);

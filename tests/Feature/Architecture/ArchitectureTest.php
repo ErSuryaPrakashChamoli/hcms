@@ -93,6 +93,10 @@ it('audits every domain model except the documented append-only or derived table
         'Learning\Models\AssessmentAttempt', 'Learning\Models\TrainingSessionAttendee', 'Exit\Models\FinalSettlementLine', 'Ai\Models\AiInteraction',
         'Assets\Models\AssetMovement', 'Communication\Models\AnnouncementRead', 'Performance\Models\GoalCheckIn', 'Performance\Models\AppraisalRating',
         'ServiceDesk\Models\TicketComment', 'Compliance\Models\ComplianceRuleVerification',
+        // Phase 5 statutory outputs: rows derived from finalized payroll or append-only records, audited
+        // through the return's STATUTORY_OUTPUT_* events and the statutory_return_actions log.
+        'Compliance\Models\StatutoryReturnAction', 'Compliance\Models\StatutorySnapshot', 'Compliance\Models\StatutoryReconciliation',
+        'Compliance\Models\EpfReturnRun', 'Compliance\Models\EpfReturnEntry', 'Compliance\Models\EpfReturnRevision',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

@@ -92,3 +92,17 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 22. `config('peopleos.data_classification')` lists the highly sensitive, financial, statutory and
     confidential classes; every highly-sensitive attribute is masked in audit, excluded or encrypted
     (architecture test). Tenant administrators are not implicitly entitled to sensitive fields.
+
+## Phase 5 additions
+
+- Statutory output rows (`statutory_return_actions`, `statutory_snapshots`, `statutory_reconciliations`
+  and the per-type return runs, entries and revisions) are derived from finalized payroll or
+  append-only. They are not individually `Auditable`; every lifecycle step is a
+  `STATUTORY_OUTPUT_*` audit event plus a `statutory_return_actions` row. Snapshots, actions,
+  reconciliations and revision records refuse updates and deletes; return lines are frozen once the
+  return leaves the editable statuses.
+- Statutory identifiers (registration numbers, UAN, ESI IP number, PAN on returns) are encrypted,
+  hashed with the app key for uniqueness and shown masked; unmasking needs
+  `compliance.sensitive.view` and is recorded as `STATUTORY_OUTPUT_ACCESSED`.
+- Statutory returns are visible only with `compliance.returns.view` and within the company access
+  scope; a reporting line never grants access.
