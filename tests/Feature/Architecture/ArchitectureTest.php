@@ -113,6 +113,7 @@ it('audits every domain model except the documented append-only or derived table
         'Compliance\Models\TdsQuarterlyReturnEntry', 'Compliance\Models\TdsCertificate',
         // Phase 6 platform evidence records: append-only, audited through AuditRecorder platform events.
         'Compliance\Models\ComplianceEvidenceDocument', 'Compliance\Models\ComplianceRuleParameter', 'Compliance\Models\ComplianceRuleNotice', 'Compliance\Models\StatutoryExportLayout',
+        'Compliance\Models\ParallelPayrollLine', // compared values; reviews audited on the parallel run
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

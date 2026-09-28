@@ -12,6 +12,7 @@ use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Compliance\Models\EpfReturnEntry;
 use App\Domain\Compliance\Models\EsiReturnEntry;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
+use App\Domain\Compliance\Models\ParallelPayrollLine;
 use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\StatutorySnapshot;
@@ -244,6 +245,7 @@ return [
             'compliance.returns.file' => 'Record filing submission and acknowledgement (never the approver)',
             'compliance.reconcile' => 'Reconcile statutory returns against payroll',
             'compliance.tds.manage' => 'Maintain TDS profiles, investment proofs, ledgers and certificates',
+            'compliance.parallel.manage' => 'Run parallel payroll cycles: import reference values, compare, review differences, reconcile',
         ],
         'enterprise' => [
             'sso.manage' => 'Configure single sign-on connections',
@@ -1282,7 +1284,7 @@ return [
             WebhookEndpoint::class => ['secret'],
         ],
         'financial' => [
-            EmployeeSalaryAssignment::class, PayrollEntry::class,
+            EmployeeSalaryAssignment::class, PayrollEntry::class, ParallelPayrollLine::class,
             Payslip::class, FinalSettlement::class,
         ],
         'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class, EstablishmentStatutoryProfile::class, EmployeeEstablishmentAssignment::class, StatutoryReturn::class, StatutorySnapshot::class, EpfReturnEntry::class, TdsAnnualLedger::class, TdsCertificate::class, TdsEmployeeInvestment::class],

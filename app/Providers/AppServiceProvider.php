@@ -58,6 +58,8 @@ use App\Domain\Compliance\Models\EsiReturnRun;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
 use App\Domain\Compliance\Models\LwfReturn;
 use App\Domain\Compliance\Models\LwfReturnEntry;
+use App\Domain\Compliance\Models\ParallelPayrollLine;
+use App\Domain\Compliance\Models\ParallelPayrollRun;
 use App\Domain\Compliance\Models\ProfessionalTaxProfile;
 use App\Domain\Compliance\Models\ProfessionalTaxReturn;
 use App\Domain\Compliance\Models\ProfessionalTaxReturnEntry;
@@ -368,7 +370,7 @@ class AppServiceProvider extends ServiceProvider
         foreach ([TdsProfile::class, TdsFinancialYear::class, TdsEmployeeInvestment::class] as $model) {
             Gate::policy($model, TdsPolicy::class);
         }
-        foreach ([StatutoryReturn::class, StatutoryReturnAction::class, StatutorySnapshot::class, StatutoryReconciliation::class, EpfReturnRun::class, EpfReturnEntry::class, EpfReturnRevision::class, EsiReturnRun::class, EsiReturnEntry::class, ProfessionalTaxReturn::class, ProfessionalTaxReturnEntry::class, LwfReturn::class, LwfReturnEntry::class, TdsAnnualLedger::class, TdsQuarterlyReturn::class, TdsQuarterlyReturnEntry::class, TdsCertificate::class] as $model) {
+        foreach ([StatutoryReturn::class, StatutoryReturnAction::class, StatutorySnapshot::class, StatutoryReconciliation::class, EpfReturnRun::class, EpfReturnEntry::class, EpfReturnRevision::class, EsiReturnRun::class, EsiReturnEntry::class, ProfessionalTaxReturn::class, ProfessionalTaxReturnEntry::class, LwfReturn::class, LwfReturnEntry::class, TdsAnnualLedger::class, TdsQuarterlyReturn::class, TdsQuarterlyReturnEntry::class, TdsCertificate::class, ParallelPayrollRun::class, ParallelPayrollLine::class] as $model) {
             Gate::policy($model, StatutoryReturnPolicy::class);
         }
         Gate::policy(EstablishmentStatutoryProfile::class, StatutoryRegistrationPolicy::class);

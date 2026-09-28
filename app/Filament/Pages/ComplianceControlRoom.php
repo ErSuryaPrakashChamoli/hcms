@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
+use App\Domain\Compliance\Models\ParallelPayrollRun;
 use App\Domain\Compliance\Models\StatutoryExportLayout;
 use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Models\StatutoryReturn;
@@ -95,6 +96,8 @@ class ComplianceControlRoom extends Page implements HasTable
             'establishments_verified' => Establishment::query()->where('status', 'active')->where('verification_status', 'verified')->count(),
             'registrations_total' => StatutoryRegistration::query()->where('status', 'active')->count(),
             'registrations_verified' => StatutoryRegistration::query()->where('status', 'active')->where('verification_status', 'verified')->count(),
+            'parallel_reconciled' => ParallelPayrollRun::query()->where('status', 'reconciled')->count(),
+            'parallel_open' => ParallelPayrollRun::query()->whereIn('status', ['imported', 'compared'])->count(),
             'eligible_returns' => StatutoryReturn::query()->whereIn('status', [StatutoryReturn::APPROVED, StatutoryReturn::EXPORTED, StatutoryReturn::SUBMITTED, StatutoryReturn::ACKNOWLEDGED, StatutoryReturn::RECONCILED])->get()->filter(fn ($r) => app(ComplianceReadiness::class)->forReturn($r)['ready'])->count(),
         ];
     }

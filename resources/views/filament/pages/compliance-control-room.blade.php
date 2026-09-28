@@ -49,6 +49,7 @@
         <x-filament::section compact>
             <div class="text-sm text-gray-500">Returns passing the production gate</div>
             <div class="text-2xl font-semibold">{{ $ready['eligible_returns'] }}</div>
+            <div class="text-xs text-gray-500">parallel runs reconciled {{ $ready['parallel_reconciled'] }} · in progress {{ $ready['parallel_open'] }}</div>
         </x-filament::section>
     </div>
 
