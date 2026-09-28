@@ -9,6 +9,9 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Models\UserAccessScope;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Models\EmployeeEstablishmentAssignment;
+use App\Domain\Organisation\Models\Establishment;
+use App\Domain\Organisation\Models\LegalEntity;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -79,6 +82,12 @@ final class AccessScopes
             $positions = EmployeePosition::query()->select('employee_id')->effectiveOn();
 
             foreach ($scope as $dimension => $ids) {
+                if ($dimension === 'establishment') {
+                    // Phase 6: establishments come from the effective-dated assignment, not the position.
+                    $positions->whereIn('employee_id', EmployeeEstablishmentAssignment::query()->select('employee_id')->effectiveOn()->whereIn('establishment_id', $ids));
+
+                    continue;
+                }
                 $positions->whereIn("{$dimension}_id", $ids);
             }
 
@@ -126,6 +135,17 @@ final class AccessScopes
 
         if (isset($scope[$dimension])) {
             $query->whereIn($model->qualifyColumn('id'), $scope[$dimension]);
+        }
+
+        // Phase 6: an establishment-scoped user reaches statutory records of those establishments
+        // only (legal-entity-level records such as TDS statements have no establishment and stay hidden),
+        // and the legal entities that own them.
+        if (isset($scope['establishment']) && $dimension !== 'establishment') {
+            if ($model instanceof LegalEntity) {
+                $query->whereIn($model->qualifyColumn('id'), Establishment::query()->withoutGlobalScope(AccessScope::class)->select('legal_entity_id')->whereIn('id', $scope['establishment']));
+            } elseif (in_array('establishment_id', $model->getFillable(), true)) {
+                $query->whereIn($model->qualifyColumn('establishment_id'), $scope['establishment']);
+            }
         }
 
         return $query;

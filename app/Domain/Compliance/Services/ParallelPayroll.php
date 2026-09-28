@@ -9,6 +9,7 @@ use App\Domain\Compliance\Models\ParallelPayrollRun;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollRun;
@@ -179,7 +180,7 @@ final class ParallelPayroll
             ->filter(fn (StatutoryReturn $r) => in_array($run->getKey(), array_map('intval', (array) $r->payroll_run_ids), true));
 
         foreach ($returns as $return) {
-            $scope = $return->return_type.':'.(Establishment::query()->withoutGlobalScopes()->whereKey($return->establishment_id)->value('code') ?? $return->establishment_id);
+            $scope = $return->return_type.':'.(Establishment::query()->withoutGlobalScope(AccessScope::class)->whereKey($return->establishment_id)->value('code') ?? $return->establishment_id);
             foreach ((array) $return->totals as $component => $amount) {
                 if (is_numeric($amount)) {
                     $key = $this->key('return', null, $scope, $component);

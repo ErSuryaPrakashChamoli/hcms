@@ -6,6 +6,7 @@ use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\EsiReturnEntry;
 use App\Domain\Compliance\Models\EsiReturnRun;
 use App\Domain\Compliance\Models\StatutoryReturn;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use Illuminate\Database\Eloquent\Model;
@@ -134,7 +135,7 @@ final class EsiReturns extends PayrollLineReturns
 
         // Coverage continuity: covered earlier in the contribution period but not deducted now.
         $period = $entries->first()?->contribution_period ?? $this->contributionPeriod($return->period_start, $this->rules->resolve('ESI', $return->period_end));
-        $earlierIds = EsiReturnEntry::query()->withoutGlobalScopes()->where('contribution_period', $period)
+        $earlierIds = EsiReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('contribution_period', $period)
             ->whereIn('statutory_return_id', StatutoryReturn::query()->where('return_type', self::TYPE)->where('establishment_id', $return->establishment_id)
                 ->where('period_start', '<', $return->period_start->toDateString())->where('status', '!=', StatutoryReturn::CANCELLED)->pluck('id'))
             ->pluck('employee_id')->unique();

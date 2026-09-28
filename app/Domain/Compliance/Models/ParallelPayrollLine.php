@@ -4,6 +4,7 @@ namespace App\Domain\Compliance\Models;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -25,7 +26,7 @@ class ParallelPayrollLine extends Model
     protected static function booted(): void
     {
         $guard = function (ParallelPayrollLine $line) {
-            if (ParallelPayrollRun::query()->withoutGlobalScopes()->whereKey($line->parallel_payroll_run_id)->value('status') === 'reconciled') {
+            if (ParallelPayrollRun::query()->withoutGlobalScope(AccessScope::class)->whereKey($line->parallel_payroll_run_id)->value('status') === 'reconciled') {
                 throw new RuntimeException('A reconciled parallel run is immutable.');
             }
         };

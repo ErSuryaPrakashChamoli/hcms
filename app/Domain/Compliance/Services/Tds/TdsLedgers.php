@@ -12,6 +12,7 @@ use App\Domain\Compliance\Models\TdsQuarterlyReturnEntry;
 use App\Domain\Compliance\Services\FinancialYear;
 use App\Domain\Compliance\Services\Returns\StatutoryPayrollSource;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\LegalEntity;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -64,7 +65,7 @@ final class TdsLedgers
                     'rule_checksum' => $basis['rule_checksum'] ?? $rule?->checksum,
                 ];
 
-                $active = TdsAnnualLedger::query()->withoutGlobalScopes()->where('active_source_key', $key)->first();
+                $active = TdsAnnualLedger::query()->withoutGlobalScope(AccessScope::class)->where('active_source_key', $key)->first();
                 if ($active !== null && $this->same($active, $values)) {
                     if ((int) $active->payroll_entry_id !== (int) $payroll->getKey()) {
                         $active->update(['payroll_entry_id' => $payroll->getKey()]);
@@ -101,7 +102,7 @@ final class TdsLedgers
             }
 
             // Rows whose payroll run is no longer finalized (reopened) are withdrawn, never deleted.
-            TdsAnnualLedger::query()->withoutGlobalScopes()->where('legal_entity_id', $entity->getKey())->where('financial_year', $financialYear)
+            TdsAnnualLedger::query()->withoutGlobalScope(AccessScope::class)->where('legal_entity_id', $entity->getKey())->where('financial_year', $financialYear)
                 ->where('status', 'active')->get()
                 ->reject(fn (TdsAnnualLedger $row) => isset($seen[$row->source_key]))
                 ->each(function (TdsAnnualLedger $row) use (&$counts) {
@@ -120,7 +121,7 @@ final class TdsLedgers
     /** @return Collection<int, TdsAnnualLedger> */
     public function active(LegalEntity $entity, string $financialYear, ?int $quarter = null): Collection
     {
-        return TdsAnnualLedger::query()->withoutGlobalScopes()->with('employee.person', 'employee.statutoryDetail')
+        return TdsAnnualLedger::query()->withoutGlobalScope(AccessScope::class)->with('employee.person', 'employee.statutoryDetail')
             ->where('legal_entity_id', $entity->getKey())->where('financial_year', $financialYear)->where('status', 'active')
             ->when($quarter, fn ($q) => $q->where('quarter', $quarter))
             ->orderBy('month')->orderBy('employee_id')->get();
@@ -156,7 +157,7 @@ final class TdsLedgers
                 continue;
             }
 
-            $filed = TdsQuarterlyReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->pluck('tds_annual_ledger_id')->sort()->values()->all();
+            $filed = TdsQuarterlyReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->pluck('tds_annual_ledger_id')->sort()->values()->all();
             $ledger = $this->active($entity, $financialYear, $quarter)->where('tds_deducted', '>', 0)->pluck('id')->sort()->values()->all();
             if ($filed !== $ledger) {
                 $problems[] = "Q{$quarter} statement does not match the current ledger";

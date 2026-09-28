@@ -8,6 +8,7 @@ use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\TdsCertificate;
 use App\Domain\Compliance\Models\TdsProfile;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\LegalEntity;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ final class TdsCertificates
             throw new RuntimeException('Form No. 130 is prepared only from a verified annual ledger; verify the ledger (all four Form No. 138 statements acknowledged) first.');
         }
 
-        $profile = TdsProfile::query()->withoutGlobalScopes()->with('tan')->where('legal_entity_id', $entity->getKey())->first();
+        $profile = TdsProfile::query()->withoutGlobalScope(AccessScope::class)->with('tan')->where('legal_entity_id', $entity->getKey())->first();
         $statements = StatutoryReturn::query()->where('return_type', 'TDS')->where('legal_entity_id', $entity->getKey())
             ->where('period_key', 'like', "{$financialYear}-Q%")->whereIn('status', [StatutoryReturn::ACKNOWLEDGED, StatutoryReturn::RECONCILED])
             ->get()->mapWithKeys(fn ($r) => [$r->period_key => ['return_id' => $r->id, 'acknowledgement' => $r->acknowledgement_reference, 'external_reference' => $r->external_reference]]);
@@ -45,7 +46,7 @@ final class TdsCertificates
 
             foreach ($this->ledgers->active($entity, $financialYear)->groupBy('employee_id') as $employeeId => $rows) {
                 $last = $rows->sortBy('month')->last();
-                $previous = TdsCertificate::query()->withoutGlobalScopes()->where('employee_id', $employeeId)->where('legal_entity_id', $entity->getKey())
+                $previous = TdsCertificate::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employeeId)->where('legal_entity_id', $entity->getKey())
                     ->where('financial_year', $financialYear)->orderByDesc('version')->first();
 
                 $snapshot = [

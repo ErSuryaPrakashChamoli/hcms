@@ -6,6 +6,7 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Department;
+use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\Location;
 use App\Filament\Support\AuditReasonField;
 use Filament\Forms\Components\Select;
@@ -63,6 +64,8 @@ class UserForm
                             ->options(fn () => Department::query()->orderBy('name')->pluck('name', 'id')),
                         Select::make('access_scope.business_unit')->label('Business units')->multiple()->searchable()->preload()
                             ->options(fn () => BusinessUnit::query()->orderBy('name')->pluck('name', 'id')),
+                        Select::make('access_scope.establishment')->label('Establishments (statutory data)')->multiple()->searchable()->preload()
+                            ->options(fn () => Establishment::query()->orderBy('name')->pluck('name', 'id')),
                     ])
                     ->columns(2)
                     ->disabled(fn () => ! auth()->user()->can('user.assign_roles'))

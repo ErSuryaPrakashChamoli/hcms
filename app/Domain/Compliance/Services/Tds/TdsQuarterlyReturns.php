@@ -14,6 +14,7 @@ use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Compliance\Services\Returns\StatutoryReturns;
 use App\Domain\Compliance\Services\Returns\StatutorySnapshots;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\LegalEntity;
 use App\Domain\Payroll\Models\PayrollEntry;
 use Illuminate\Database\Eloquent\Builder;
@@ -77,17 +78,17 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
 
     public function build(StatutoryReturn $return): void
     {
-        $entity = LegalEntity::query()->withoutGlobalScopes()->findOrFail($return->legal_entity_id);
+        $entity = LegalEntity::query()->withoutGlobalScope(AccessScope::class)->findOrFail($return->legal_entity_id);
         [$financialYear, $quarterLabel] = explode('-Q', $return->period_key);
         $quarter = (int) $quarterLabel;
         $this->ledgers->sync($entity, $financialYear);
 
         if ($existing = TdsQuarterlyReturn::query()->where('statutory_return_id', $return->getKey())->first()) {
-            TdsQuarterlyReturnEntry::query()->withoutGlobalScopes()->where('tds_quarterly_return_id', $existing->getKey())->get()->each->delete();
+            TdsQuarterlyReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('tds_quarterly_return_id', $existing->getKey())->get()->each->delete();
             $existing->delete();
         }
 
-        $profile = TdsProfile::query()->withoutGlobalScopes()->where('legal_entity_id', $entity->getKey())->first();
+        $profile = TdsProfile::query()->withoutGlobalScope(AccessScope::class)->where('legal_entity_id', $entity->getKey())->first();
         $run = TdsQuarterlyReturn::query()->create([
             'statutory_return_id' => $return->getKey(),
             'legal_entity_id' => $entity->getKey(),
@@ -145,7 +146,7 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
             })->values()->all();
         }
 
-        $entries = TdsQuarterlyReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get();
+        $entries = TdsQuarterlyReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get();
         $totals = [
             'entries' => $entries->count(),
             'deductees' => $entries->pluck('employee_id')->unique()->count(),
@@ -165,8 +166,8 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
             $issues[] = ['code' => $code, 'severity' => $severity, 'message' => $message, 'employee_id' => $employeeId];
         };
         $run = TdsQuarterlyReturn::query()->where('statutory_return_id', $return->getKey())->firstOrFail();
-        $profile = TdsProfile::query()->withoutGlobalScopes()->where('legal_entity_id', $return->legal_entity_id)->first();
-        $entries = TdsQuarterlyReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get();
+        $profile = TdsProfile::query()->withoutGlobalScope(AccessScope::class)->where('legal_entity_id', $return->legal_entity_id)->first();
+        $entries = TdsQuarterlyReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get();
         $enforced = ComplianceRules::enforced();
 
         if ($profile === null) {
@@ -227,11 +228,11 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
 
     public function reconcile(StatutoryReturn $return): array
     {
-        $entries = TdsQuarterlyReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get();
+        $entries = TdsQuarterlyReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get();
         $ledgerIds = $entries->pluck('tds_annual_ledger_id');
-        $ledger = TdsAnnualLedger::query()->withoutGlobalScopes()->whereIn('id', $ledgerIds)->get();
+        $ledger = TdsAnnualLedger::query()->withoutGlobalScope(AccessScope::class)->whereIn('id', $ledgerIds)->get();
         [$financialYear, $quarter] = explode('-Q', $return->period_key);
-        $entity = LegalEntity::query()->withoutGlobalScopes()->findOrFail($return->legal_entity_id);
+        $entity = LegalEntity::query()->withoutGlobalScope(AccessScope::class)->findOrFail($return->legal_entity_id);
         $currentLedger = $this->ledgers->active($entity, $financialYear, (int) $quarter)->filter(fn ($r) => (float) $r->tds_deducted > 0);
         $payroll = PayrollEntry::query()->with('lines')->whereIn('id', $ledger->pluck('payroll_entry_id')->filter())->get();
         $check = fn (string $name, float|int $expected, float|int $actual) => ['check' => $name, 'expected' => $expected, 'actual' => $actual, 'difference' => round($actual - $expected, 2), 'blocking' => abs(round($actual - $expected, 2)) > 0.009];
@@ -247,7 +248,7 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
     public function export(StatutoryReturn $return): array
     {
         $layout = app(ExportLayouts::class)->forReturn($return) ?? throw new RuntimeException('No export layout is registered for TDS_FORM_138.');
-        $entries = TdsQuarterlyReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->orderBy('id')->get();
+        $entries = TdsQuarterlyReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->orderBy('id')->get();
         $lines = [ExportLayouts::csvRow($layout->fieldNames())];
 
         foreach ($entries as $e) {
@@ -283,8 +284,8 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
     public function captureSnapshots(StatutoryReturn $return): int
     {
         $count = 0;
-        foreach (TdsQuarterlyReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get() as $entry) {
-            $ledger = TdsAnnualLedger::query()->withoutGlobalScopes()->find($entry->tds_annual_ledger_id);
+        foreach (TdsQuarterlyReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get() as $entry) {
+            $ledger = TdsAnnualLedger::query()->withoutGlobalScope(AccessScope::class)->find($entry->tds_annual_ledger_id);
             $payroll = $ledger?->payroll_entry_id ? PayrollEntry::query()->find($ledger->payroll_entry_id) : null;
             $this->snapshots->capture($return, $entry, $payroll, $entry->employee_id,
                 ['rule_id' => $entry->compliance_rule_id, 'rule_version' => $entry->rule_version, 'rule_checksum' => $entry->rule_checksum],

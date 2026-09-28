@@ -12,6 +12,7 @@ use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Compliance\Services\StatutoryRegistrations;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollPeriod;
@@ -108,7 +109,7 @@ final class EpfReturns implements StatutoryReturnGenerator
 
     public function build(StatutoryReturn $return): void
     {
-        $establishment = Establishment::query()->withoutGlobalScopes()->findOrFail($return->establishment_id);
+        $establishment = Establishment::query()->withoutGlobalScope(AccessScope::class)->findOrFail($return->establishment_id);
         $start = $return->period_start;
         $runs = $this->source->runs($return->company_id, $start, $start);
 
@@ -232,8 +233,8 @@ final class EpfReturns implements StatutoryReturnGenerator
             $issues[] = ['code' => $code, 'severity' => $severity, 'message' => $message, 'employee_id' => $employeeId];
         };
         $run = EpfReturnRun::query()->where('statutory_return_id', $return->getKey())->firstOrFail();
-        $establishment = Establishment::query()->withoutGlobalScopes()->findOrFail($return->establishment_id);
-        $entries = EpfReturnEntry::query()->withoutGlobalScopes()->where('epf_return_run_id', $run->getKey())->get();
+        $establishment = Establishment::query()->withoutGlobalScope(AccessScope::class)->findOrFail($return->establishment_id);
+        $entries = EpfReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('epf_return_run_id', $run->getKey())->get();
         $enforced = ComplianceRules::enforced();
 
         if ($run->statutory_registration_id === null) {
@@ -336,7 +337,7 @@ final class EpfReturns implements StatutoryReturnGenerator
 
     public function reconcile(StatutoryReturn $return): array
     {
-        $entries = EpfReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get();
+        $entries = EpfReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get();
         $payroll = PayrollEntry::query()->with('lines')->whereIn('id', $entries->pluck('payroll_entry_id')->filter())->get();
         $line = fn (string $code) => round($payroll->sum(fn ($p) => (float) $p->lines->where('code', $code)->sum('amount')), 2);
         $check = fn (string $name, float|int $expected, float|int $actual) => ['check' => $name, 'expected' => $expected, 'actual' => $actual, 'difference' => round($actual - $expected, 2), 'blocking' => abs(round($actual - $expected, 2)) > 0.009];
@@ -351,7 +352,7 @@ final class EpfReturns implements StatutoryReturnGenerator
         ];
 
         if ($return->return_kind === 'regular') {
-            $establishment = Establishment::query()->withoutGlobalScopes()->findOrFail($return->establishment_id);
+            $establishment = Establishment::query()->withoutGlobalScope(AccessScope::class)->findOrFail($return->establishment_id);
             $members = $this->source->entries($this->source->runs($return->company_id, $return->period_start, $return->period_start), $establishment->getKey())
                 ->filter(fn ($row) => $row['entry']->lines->contains('code', 'PF_EE'))->count();
             $checks[] = $check('establishment_members_vs_payroll', $members, $entries->count());
@@ -364,7 +365,7 @@ final class EpfReturns implements StatutoryReturnGenerator
     {
         $layout = app(ExportLayouts::class)->forReturn($return) ?? throw new RuntimeException('No export layout is registered for EPF_ECR.');
         $separator = $layout->specification['separator'];
-        $entries = EpfReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->orderBy('id')->get();
+        $entries = EpfReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->orderBy('id')->get();
 
         $lines = $entries->map(fn (EpfReturnEntry $e) => implode($separator, [
             $e->uan, $e->member_name, $e->export_gross_wages, $e->export_epf_wages, $e->export_eps_wages, $e->export_edli_wages,
@@ -405,7 +406,7 @@ final class EpfReturns implements StatutoryReturnGenerator
     {
         $count = 0;
 
-        foreach (EpfReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get() as $entry) {
+        foreach (EpfReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get() as $entry) {
             $payroll = $entry->payroll_entry_id ? PayrollEntry::query()->with('lines')->find($entry->payroll_entry_id) : null;
             $this->snapshots->capture($return, $entry, $payroll, $entry->employee_id,
                 ['rule_id' => $entry->compliance_rule_id, 'rule_version' => $entry->rule_version, 'rule_checksum' => $entry->rule_checksum],
@@ -427,10 +428,10 @@ final class EpfReturns implements StatutoryReturnGenerator
         $changes = [];
         $up = false;
         $down = false;
-        $establishment = Establishment::query()->withoutGlobalScopes()->findOrFail($return->establishment_id);
+        $establishment = Establishment::query()->withoutGlobalScope(AccessScope::class)->findOrFail($return->establishment_id);
 
-        foreach (EpfReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get() as $entry) {
-            $previous = EpfReturnEntry::query()->withoutGlobalScopes()->where('employee_id', $entry->employee_id)
+        foreach (EpfReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get() as $entry) {
+            $previous = EpfReturnEntry::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $entry->employee_id)
                 ->whereIn('statutory_return_id', $this->settledReturns($establishment, $return->period_key)->pluck('id'))
                 ->orderByDesc('id')->first();
             $before = $previous ? ['ee_share' => $previous->export_ee_share, 'eps_share' => $previous->export_eps_share, 'er_share' => $previous->export_er_share, 'epf_wages' => $previous->export_epf_wages] : null;
@@ -490,7 +491,7 @@ final class EpfReturns implements StatutoryReturnGenerator
             ->where('period_key', $periodKey)->whereIn('return_kind', $kinds)->where('status', '!=', StatutoryReturn::CANCELLED)
             ->when($except, fn ($q) => $q->whereKeyNot($except))->pluck('id');
 
-        return EpfReturnEntry::query()->withoutGlobalScopes()->whereIn('statutory_return_id', $ids)->pluck('employee_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+        return EpfReturnEntry::query()->withoutGlobalScope(AccessScope::class)->whereIn('statutory_return_id', $ids)->pluck('employee_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
     }
 
     private function missingPreviousRegular(Establishment $establishment, Carbon $wageMonth): bool

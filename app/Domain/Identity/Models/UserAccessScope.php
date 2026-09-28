@@ -17,7 +17,7 @@ class UserAccessScope extends Model
 {
     use Auditable, BelongsToTenant;
 
-    public const DIMENSIONS = ['company', 'location', 'business_unit', 'division', 'department', 'team'];
+    public const DIMENSIONS = ['company', 'location', 'business_unit', 'division', 'department', 'team', 'establishment'];
 
     public function auditModule(): string
     {

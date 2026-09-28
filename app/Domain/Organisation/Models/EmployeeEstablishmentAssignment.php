@@ -5,6 +5,7 @@ namespace App\Domain\Organisation\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -31,7 +32,7 @@ class EmployeeEstablishmentAssignment extends Model
             $closable = ['effective_to', 'closed_by', 'closed_at', 'closure_reason', 'updated_at'];
 
             // Read the stored row: a stale in-memory copy must not reopen or re-close history.
-            $storedEnd = static::query()->withoutGlobalScopes()->whereKey($assignment->getKey())->value('effective_to');
+            $storedEnd = static::query()->withoutGlobalScope(AccessScope::class)->whereKey($assignment->getKey())->value('effective_to');
 
             if (array_diff($dirty, $closable) !== [] || $storedEnd !== null) {
                 throw new RuntimeException('Establishment assignment history is immutable; record a new assignment instead.');

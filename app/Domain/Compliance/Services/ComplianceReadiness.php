@@ -14,6 +14,7 @@ use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\StatutorySnapshot;
 use App\Domain\Compliance\Models\TdsQuarterlyReturn;
 use App\Domain\Compliance\Services\Returns\ReturnGenerators;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\LegalEntity;
 use App\Domain\Payroll\Models\PayrollEntry;
@@ -51,8 +52,8 @@ final class ComplianceReadiness
         $rules = ComplianceRule::query()->whereIn('id', array_keys((array) $return->rule_versions))->get();
         $entries = (int) ($return->totals['entries'] ?? 0);
         $approvedStatuses = [StatutoryReturn::APPROVED, StatutoryReturn::EXPORTED, StatutoryReturn::SUBMITTED, StatutoryReturn::ACKNOWLEDGED, StatutoryReturn::RECONCILED];
-        $entity = LegalEntity::query()->withoutGlobalScopes()->find($return->legal_entity_id);
-        $establishment = $return->establishment_id ? Establishment::query()->withoutGlobalScopes()->find($return->establishment_id) : null;
+        $entity = LegalEntity::query()->withoutGlobalScope(AccessScope::class)->find($return->legal_entity_id);
+        $establishment = $return->establishment_id ? Establishment::query()->withoutGlobalScope(AccessScope::class)->find($return->establishment_id) : null;
         $registration = $this->registrationFor($return);
         $runs = PayrollRun::query()->whereIn('id', (array) $return->payroll_run_ids)->get();
         $notices = $rules->map(fn (ComplianceRule $r) => $this->rules->pendingNotice($r, $return->period_end))->filter();
@@ -106,7 +107,7 @@ final class ComplianceReadiness
             default => null,
         };
 
-        return $id ? StatutoryRegistration::query()->withoutGlobalScopes()->find($id) : null;
+        return $id ? StatutoryRegistration::query()->withoutGlobalScope(AccessScope::class)->find($id) : null;
     }
 
     /** Lines whose employee was not explicitly assigned to the establishment when payroll ran. */
@@ -116,7 +117,7 @@ final class ComplianceReadiness
             return 0;
         }
 
-        $entries = app(ReturnGenerators::class)->for($return->return_type)->entries($return)->withoutGlobalScopes()->get(['id', 'payroll_entry_id', 'issues']);
+        $entries = app(ReturnGenerators::class)->for($return->return_type)->entries($return)->withoutGlobalScope(AccessScope::class)->get(['id', 'payroll_entry_id', 'issues']);
         $payroll = PayrollEntry::query()->whereIn('id', $entries->pluck('payroll_entry_id')->filter())->get(['id', 'inputs'])->keyBy('id');
 
         return $entries->filter(fn ($e) => ($e->issues['establishment_source'] ?? null) !== 'payroll_entry'

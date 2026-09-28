@@ -9,6 +9,7 @@ use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Compliance\Services\StatutoryRegistrations;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use Illuminate\Database\Eloquent\Builder;
@@ -97,7 +98,7 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
 
     public function build(StatutoryReturn $return): void
     {
-        $establishment = Establishment::query()->withoutGlobalScopes()->findOrFail($return->establishment_id);
+        $establishment = Establishment::query()->withoutGlobalScope(AccessScope::class)->findOrFail($return->establishment_id);
         $runs = $this->source->runs($return->company_id, $return->period_start, $return->period_start);
 
         if ($runs->isEmpty()) {
@@ -107,7 +108,7 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
         $runModel = $this->runModel();
         $entryModel = $this->entryModel();
         if ($existing = $runModel::query()->where('statutory_return_id', $return->getKey())->first()) {
-            $entryModel::query()->withoutGlobalScopes()->where($this->runForeignKey(), $existing->getKey())->get()->each->delete();
+            $entryModel::query()->withoutGlobalScope(AccessScope::class)->where($this->runForeignKey(), $existing->getKey())->get()->each->delete();
             $existing->delete();
         }
 
@@ -158,7 +159,7 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
             $count++;
         }
 
-        $entries = $entryModel::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get();
+        $entries = $entryModel::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get();
         $totals = ['entries' => $count];
         foreach ($this->reconciledColumns() as $column) {
             $totals[str_replace('calc_', '', $column)] = round((float) $entries->sum($column), 2);
@@ -180,9 +181,9 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
             $add($code, $severity, "{$entry->member_name}: {$message}", $entry->employee_id);
         };
 
-        $establishment = Establishment::query()->withoutGlobalScopes()->findOrFail($return->establishment_id);
+        $establishment = Establishment::query()->withoutGlobalScope(AccessScope::class)->findOrFail($return->establishment_id);
         $run = ($this->runModel())::query()->where('statutory_return_id', $return->getKey())->firstOrFail();
-        $entries = ($this->entryModel())::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get();
+        $entries = ($this->entryModel())::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get();
         $enforced = ComplianceRules::enforced();
 
         if ($run->statutory_registration_id === null) {
@@ -237,7 +238,7 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
 
     public function reconcile(StatutoryReturn $return): array
     {
-        $entries = ($this->entryModel())::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get();
+        $entries = ($this->entryModel())::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get();
         $payroll = PayrollEntry::query()->with('lines')->whereIn('id', $entries->pluck('payroll_entry_id')->filter())->get();
         $check = fn (string $name, float|int $expected, float|int $actual) => ['check' => $name, 'expected' => $expected, 'actual' => $actual, 'difference' => round($actual - $expected, 2), 'blocking' => abs(round($actual - $expected, 2)) > 0.009];
 
@@ -260,7 +261,7 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
     public function export(StatutoryReturn $return): array
     {
         $layout = app(ExportLayouts::class)->forReturn($return) ?? throw new RuntimeException('No export layout is registered for '.$this->formatCode().'.');
-        $entries = ($this->entryModel())::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->orderBy('id')->get();
+        $entries = ($this->entryModel())::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->orderBy('id')->get();
 
         $lines = [ExportLayouts::csvRow($layout->fieldNames())];
         foreach ($entries as $entry) {
@@ -282,7 +283,7 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
     {
         $count = 0;
 
-        foreach (($this->entryModel())::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->get() as $entry) {
+        foreach (($this->entryModel())::query()->withoutGlobalScope(AccessScope::class)->where('statutory_return_id', $return->getKey())->get() as $entry) {
             $payroll = $entry->payroll_entry_id ? PayrollEntry::query()->with('lines')->find($entry->payroll_entry_id) : null;
             $attributes = $entry->getAttributes();
             $this->snapshots->capture($return, $entry, $payroll, $entry->employee_id,

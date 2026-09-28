@@ -3,6 +3,7 @@
 namespace App\Domain\Compliance\Concerns;
 
 use App\Domain\Compliance\Models\StatutoryReturn;
+use App\Domain\Identity\Scopes\AccessScope;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
@@ -17,7 +18,7 @@ trait FrozenWithReturn
     public static function bootFrozenWithReturn(): void
     {
         $guard = function (Model $model, string $operation) {
-            $status = StatutoryReturn::query()->withoutGlobalScopes()->whereKey($model->getAttribute('statutory_return_id'))->value('status');
+            $status = StatutoryReturn::query()->withoutGlobalScope(AccessScope::class)->whereKey($model->getAttribute('statutory_return_id'))->value('status');
 
             if ($status !== null && ! in_array($status, StatutoryReturn::EDITABLE, true)) {
                 throw new RuntimeException("Cannot {$operation} a line of a {$status} statutory return; create a revision instead.");

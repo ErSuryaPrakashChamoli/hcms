@@ -44,7 +44,7 @@ final class EstablishmentAssignments
         }
 
         return DB::transaction(function () use ($employee, $establishment, $from, $reason, $source, $actor) {
-            Employee::query()->withoutGlobalScopes()->whereKey($employee->getKey())->lockForUpdate()->first();
+            Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($employee->getKey())->lockForUpdate()->first();
 
             $rows = EmployeeEstablishmentAssignment::query()->withoutGlobalScope(AccessScope::class)
                 ->where('employee_id', $employee->getKey())->orderBy('effective_from')->get();
