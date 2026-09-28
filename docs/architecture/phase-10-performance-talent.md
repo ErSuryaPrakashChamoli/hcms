@@ -48,3 +48,9 @@ Blueprint §34–§36, §121 Phase 10. Built 2026-09-27.
 - Goal templates per designation and automatic KRA assignment are not built; KRAs are picked manually when creating a goal.
 - Peer nomination by the employee, review reminders by stage window and stage auto-advance by date are not scheduled.
 - Skill gap analysis uses recorded person skills only; learning recommendations arrive with Phase 11.
+
+## Phase 7 hardening
+
+Versioned templates, pinning, locking, relationship-based manager scope, goal validation, check-ins,
+private notes, anonymous feedback, calibration history, the PIP lifecycle and the performance API
+are described in `performance-foundation.md`.

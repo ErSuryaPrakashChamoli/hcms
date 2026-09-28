@@ -100,3 +100,27 @@ Phase 6 added stored evidence documents, parameter-level coverage, correction ve
 regulatory notices: see `docs/architecture/statutory-production-readiness.md`. The ESI submission
 from Phase 5 has `round` not confirmed and no stored document, so it cannot be verified until a
 reviewer supplies both.
+
+## 8. Phase 7 statutory updates (28 September 2026)
+
+Two controlled updates were published as **new versions**. Nothing existing was overwritten, and
+nothing was verified.
+
+| Rule | Version | Effective | Status | Evidence stored | Not confirmed (blocks verification) |
+|---|---|---|---|---|---|
+| EPF | v2 | 17 Sep 2026 | REVIEW | PIB release 16 Sep 2026 (PDF), PIB release 23 Sep 2026 (HTML) — corroborating only | Every parameter, including the ₹25,000 wage and EPS ceilings: the Gazette notification S.O. 5109(E) text was not obtained. EDLI, admin charges, rounding and eligibility are carried from v1 unchanged and not inferred |
+| TDS | v3 (corrects v2) | 1 Apr 2026 | REVIEW | Income Tax Department "TDS Compliance FAQs"; the Finance Act, 2026 (No. 4 of 2026) gazette | `old` (slabs traced to Part III Para A, but standard deduction, rebate and deduction limits are in the Income-tax Act, 2025, not retrieved), `new` (section 202, not retrieved), `surcharge_new_regime_cap`. Covered: legal basis, deduction trigger, cess 4%, surcharge rates |
+
+- **EPF v1** (₹15,000 ceiling) is untouched and still resolves for dates before 17 Sep 2026.
+- **Open notice (EPF v1 and v2):** "EPFO wage ceiling changed effective 17-Sep-2026. Exact
+  intra-month September payroll treatment requires authoritative implementation evidence before
+  verification." Neither version can be verified while it is open.
+- **TDS by payment date:** salary paid up to 31 Mar 2026 → Income-tax Act, 1961 (TDS v1, FY 2025-26);
+  paid from 1 Apr 2026 → Income-tax Act, 2025, section 392(1) (TDS v3, tax year 2026-27). Payroll
+  periods carry an optional `payment_date` (default: period end) and payroll engine `payroll-2.2`
+  resolves the TDS rule, tax year, year-to-date and ledger month by it.
+- Evidence files and SHA-256 hashes: `database/data/compliance/evidence/README.md`.
+
+Current state after Phase 7: 24 rule versions — 3 REVIEW (ESI v1, EPF v2, TDS v3), 21 DRAFT,
+**0 VERIFIED**; 3 open notices (EPF v1 wage ceiling; TDS v2 legal basis; EPF v1+v2 September
+2026 treatment). Statutory production readiness is not declared.
