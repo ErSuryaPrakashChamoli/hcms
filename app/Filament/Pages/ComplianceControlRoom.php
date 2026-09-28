@@ -4,11 +4,13 @@ namespace App\Filament\Pages;
 
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
+use App\Domain\Compliance\Models\StatutoryExportLayout;
 use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\TdsCertificate;
 use App\Domain\Compliance\Services\ComplianceReadiness;
 use App\Domain\Compliance\Services\ComplianceRules;
+use App\Domain\Compliance\Services\RequiredRules;
 use App\Domain\Organisation\Models\Establishment;
 use App\Filament\Resources\EpfReturns\EpfReturnResource;
 use App\Filament\Resources\EsiReturns\EsiReturnResource;
@@ -63,14 +65,38 @@ class ComplianceControlRoom extends Page implements HasTable
 
     public function getSubheading(): ?string
     {
-        return (ComplianceRules::enforced() ? 'Verified-rule enforcement is ON.' : 'Verified-rule enforcement is OFF (development / test only).')
-            .' Exported files are not filings: a return is filed only when its portal reference is recorded.';
+        return (ComplianceRules::enforced() ? 'Verified-rule enforcement is ON.' : 'Verified-rule enforcement is OFF (development / test only; always on in production).')
+            .' Software ready ≠ statutory rules verified ≠ production payroll ready ≠ return filed. Exported files are not filings: a return is filed only when its portal reference is recorded.';
     }
 
     /** @return array<string, int> */
     public function getRuleSummary(): array
     {
         return ComplianceRule::query()->where('status', 'active')->get()->countBy('verification_status')->all() + array_fill_keys(ComplianceRule::STATUSES, 0);
+    }
+
+    /**
+     * Phase 6: production-readiness evidence — what this tenant needs and how much of it is verified.
+     *
+     * @return array<string, mixed>
+     */
+    public function getReadinessSummary(): array
+    {
+        $required = app(RequiredRules::class)->on();
+
+        return [
+            'required' => $required,
+            'required_total' => $required->count(),
+            'required_verified' => $required->where('status', 'verified')->count(),
+            'notices' => app(ComplianceRules::class)->openNotices(),
+            'layouts_total' => StatutoryExportLayout::query()->whereNotIn('status', ['superseded', 'rejected'])->count(),
+            'layouts_verified' => StatutoryExportLayout::query()->where('status', 'verified')->count(),
+            'establishments_total' => Establishment::query()->where('status', 'active')->count(),
+            'establishments_verified' => Establishment::query()->where('status', 'active')->where('verification_status', 'verified')->count(),
+            'registrations_total' => StatutoryRegistration::query()->where('status', 'active')->count(),
+            'registrations_verified' => StatutoryRegistration::query()->where('status', 'active')->where('verification_status', 'verified')->count(),
+            'eligible_returns' => StatutoryReturn::query()->whereIn('status', [StatutoryReturn::APPROVED, StatutoryReturn::EXPORTED, StatutoryReturn::SUBMITTED, StatutoryReturn::ACKNOWLEDGED, StatutoryReturn::RECONCILED])->get()->filter(fn ($r) => app(ComplianceReadiness::class)->forReturn($r)['ready'])->count(),
+        ];
     }
 
     /** @return array<string, int> */

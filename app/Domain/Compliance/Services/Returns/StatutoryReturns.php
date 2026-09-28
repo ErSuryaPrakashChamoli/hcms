@@ -9,6 +9,8 @@ use App\Domain\Compliance\Events\ComplianceEvent;
 use App\Domain\Compliance\Models\StatutoryReconciliation;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\StatutoryReturnAction;
+use App\Domain\Compliance\Services\ComplianceReadiness;
+use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Identity\Models\User;
 use Illuminate\Support\Carbon;
@@ -143,6 +145,12 @@ final class StatutoryReturns
     {
         $this->requirePermission($actor, 'compliance.returns.export');
         $this->requireStatus($return, [StatutoryReturn::APPROVED, StatutoryReturn::EXPORTED, StatutoryReturn::SUBMITTED, StatutoryReturn::ACKNOWLEDGED, StatutoryReturn::RECONCILED]);
+
+        // Phase 6 §18: under enforcement (always in production) an export must pass the production
+        // gate first. Outside enforcement, files are still produced and marked UNVERIFIED-FORMAT.
+        if (ComplianceRules::enforced()) {
+            app(ComplianceReadiness::class)->assertExportable($return);
+        }
 
         $file = $this->generator($return)->export($return);
 

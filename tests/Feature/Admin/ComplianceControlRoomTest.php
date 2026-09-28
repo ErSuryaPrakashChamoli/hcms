@@ -30,7 +30,7 @@ it('keeps the production gate closed while rules and formats are unverified, and
     $failed = collect($gate['checks'])->reject(fn ($c) => $c['passed'])->pluck('check')->all();
 
     expect($gate['ready'])->toBeFalse()
-        ->and($failed)->toBe(['rules_verified', 'export_format_verified'])
+        ->and($failed)->toBe(['legal_entity_verified', 'establishment_verified', 'registration_verified', 'rules_verified', 'evidence_complete', 'export_layout_verified'])
         ->and(collect($gate['checks'])->firstWhere('check', 'approved_with_separation_of_duties')['passed'])->toBeTrue()
         ->and(collect($gate['checks'])->firstWhere('check', 'audit_chain_intact')['passed'])->toBeTrue();
 });
@@ -38,7 +38,7 @@ it('keeps the production gate closed while rules and formats are unverified, and
 it('renders the control rooms with the exported-not-filed distinction', function () {
     actAsTenant(null);
     $this->get(ComplianceControlRoom::getUrl())->assertOk()
-        ->assertSee('Exported, not yet filed')->assertSee('Verified-rule enforcement is OFF')
+        ->assertSee('Exported, not yet filed')->assertSee('Verified-rule enforcement is OFF')->assertSee('Rules this tenant needs')->assertSee('Open regulatory notices')
         ->assertSee($this->establishment->name)->assertSee('2026-09');
     $this->get(PayrollControlRoom::getUrl())->assertOk()->assertSee('Compliance control room')->assertSee('not VERIFIED');
 });
