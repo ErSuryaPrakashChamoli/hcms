@@ -62,6 +62,7 @@ use App\Domain\Compliance\Models\ProfessionalTaxProfile;
 use App\Domain\Compliance\Models\ProfessionalTaxReturn;
 use App\Domain\Compliance\Models\ProfessionalTaxReturnEntry;
 use App\Domain\Compliance\Models\ProfessionalTaxRuleVersion;
+use App\Domain\Compliance\Models\StatutoryExportLayout;
 use App\Domain\Compliance\Models\StatutoryReconciliation;
 use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Models\StatutoryReturn;
@@ -348,6 +349,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Payslip::class, PayslipPolicy::class);
         Gate::policy(ComplianceRule::class, ComplianceRulePolicy::class);
         Gate::policy(ComplianceRuleVerification::class, ComplianceRulePolicy::class);
+        Gate::policy(StatutoryExportLayout::class, ComplianceRulePolicy::class);
         Gate::policy(ComplianceRuleNotice::class, ComplianceRulePolicy::class);
         Gate::policy(ComplianceEvidenceDocument::class, ComplianceRulePolicy::class);
         Gate::policy(ComplianceRuleParameter::class, ComplianceRulePolicy::class);

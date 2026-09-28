@@ -10,6 +10,7 @@ use App\Domain\Compliance\Models\TdsProfile;
 use App\Domain\Compliance\Models\TdsQuarterlyReturn;
 use App\Domain\Compliance\Models\TdsQuarterlyReturnEntry;
 use App\Domain\Compliance\Services\ComplianceRules;
+use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Compliance\Services\Returns\StatutoryReturns;
 use App\Domain\Compliance\Services\Returns\StatutorySnapshots;
 use App\Domain\Identity\Models\User;
@@ -54,7 +55,6 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
 
         $fyStart = Carbon::create((int) substr($financialYear, 0, 4), (int) config('peopleos.compliance.financial_year_start_month', 4), 1);
         $start = $fyStart->copy()->addMonthsNoOverflow(($quarter - 1) * 3);
-        $format = config('peopleos.compliance.formats.TDS_FORM_138');
 
         $return = $this->returns->generate([
             'company_id' => $entity->company_id,
@@ -68,9 +68,7 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
             'period_start' => $start->toDateString(),
             'period_end' => $start->copy()->addMonthsNoOverflow(2)->endOfMonth()->toDateString(),
             'sequence' => 1,
-            'format_code' => 'TDS_FORM_138',
-            'format_version' => $format['version'],
-            'format_verification_status' => $format['verification_status'],
+            ...app(ExportLayouts::class)->headerFor('TDS_FORM_138'),
             'attestations' => ['challans' => array_values($challans)],
         ], $actor, $source, $reason);
 
@@ -248,13 +246,12 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
 
     public function export(StatutoryReturn $return): array
     {
-        $format = config('peopleos.compliance.formats.TDS_FORM_138');
+        $layout = app(ExportLayouts::class)->forReturn($return) ?? throw new RuntimeException('No export layout is registered for TDS_FORM_138.');
         $entries = TdsQuarterlyReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->orderBy('id')->get();
-        $csv = fn (array $row) => implode(',', array_map(fn ($v) => '"'.str_replace('"', '""', (string) $v).'"', $row));
-        $lines = [$csv($format['fields'])];
+        $lines = [ExportLayouts::csvRow($layout->fieldNames())];
 
         foreach ($entries as $e) {
-            $lines[] = $csv([$e->pan ?? 'PANNOTAVBL', $e->member_name, $e->section_code, $e->payment_date->toDateString(), number_format((float) $e->export_amount_paid, 2, '.', ''), number_format((float) $e->export_tax_deducted, 2, '.', ''), $e->reason_code]);
+            $lines[] = ExportLayouts::csvRow([$e->pan ?? 'PANNOTAVBL', $e->member_name, $e->section_code, $e->payment_date->toDateString(), number_format((float) $e->export_amount_paid, 2, '.', ''), number_format((float) $e->export_tax_deducted, 2, '.', ''), $e->reason_code]);
         }
 
         return ['filename' => 'WORKING-SCHEDULE_FORM138_'.str_replace('-', '', $return->period_key).'_LE'.$return->legal_entity_id.'.csv', 'content' => implode("\n", $lines)."\n"];

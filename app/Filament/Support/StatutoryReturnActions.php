@@ -8,6 +8,7 @@ use App\Domain\Identity\Models\User;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -48,6 +49,16 @@ final class StatutoryReturnActions
                         Notification::make()->danger()->title($e->getMessage())->persistent()->send();
                     }
                 }),
+            Action::make('recordPortalValidation')->label('Record portal validation')->icon(Heroicon::OutlinedShieldCheck)
+                ->modalDescription('Record the result of the authority\'s own validation of this file (portal upload check or validation utility). Accepted by the portal is not the same as filed.')
+                ->visible(fn (StatutoryReturn $record) => $record->status === StatutoryReturn::EXPORTED && self::user()->hasPermission('compliance.returns.file'))
+                ->schema([
+                    Select::make('result')->options(['accepted' => 'Accepted', 'rejected' => 'Rejected'])->required(),
+                    TextInput::make('reference')->label('Validation reference')->required()->maxLength(128),
+                    DateTimePicker::make('validated_at')->required()->default(now())->maxDate(now()),
+                    Textarea::make('notes')->rows(2),
+                ])
+                ->action(fn (StatutoryReturn $record, array $data) => self::run(fn () => $service()->recordPortalValidation($record, self::user(), $data['result'], $data['reference'], $data['validated_at'], $data['notes'] ?? null), 'Portal validation recorded')),
             Action::make('recordSubmission')->label('Record submission')->icon(Heroicon::OutlinedPaperAirplane)->requiresConfirmation()
                 ->modalDescription('Record only a filing that has actually happened on the portal. You cannot record it if you generated or approved the return.')
                 ->visible(fn (StatutoryReturn $record) => $record->status === StatutoryReturn::EXPORTED && self::user()->hasPermission('compliance.returns.file'))

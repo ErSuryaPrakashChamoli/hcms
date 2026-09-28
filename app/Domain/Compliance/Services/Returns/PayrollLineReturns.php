@@ -6,6 +6,7 @@ use App\Domain\Compliance\Contracts\StatutoryReturnGenerator;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Services\ComplianceRules;
+use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Compliance\Services\StatutoryRegistrations;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Establishment;
@@ -77,7 +78,6 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
     public function generate(Establishment $establishment, int $year, int $month, User $actor, ?string $reason = null, string $source = 'ui'): StatutoryReturn
     {
         $start = Carbon::create($year, $month, 1)->startOfDay();
-        $format = config('peopleos.compliance.formats.'.$this->formatCode());
 
         return $this->returns->generate([
             'company_id' => $establishment->company_id,
@@ -91,9 +91,7 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
             'period_start' => $start->toDateString(),
             'period_end' => $start->copy()->endOfMonth()->toDateString(),
             'sequence' => 1,
-            'format_code' => $this->formatCode(),
-            'format_version' => $format['version'] ?? null,
-            'format_verification_status' => $format['verification_status'] ?? 'review',
+            ...app(ExportLayouts::class)->headerFor($this->formatCode()),
         ], $actor, $source, $reason);
     }
 
@@ -225,7 +223,7 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
 
         $this->extraValidation($return, $entries, $flag, $add);
 
-        if (($return->format_verification_status ?? 'review') !== 'verified') {
+        if (! app(ExportLayouts::class)->forReturn($return)?->isVerified()) {
             $add('export_format_unverified', 'warning', 'The export layout has not been verified against the authority\'s current upload format; the export is marked UNVERIFIED-FORMAT.');
         }
 
@@ -261,16 +259,15 @@ abstract class PayrollLineReturns implements StatutoryReturnGenerator
 
     public function export(StatutoryReturn $return): array
     {
-        $format = config('peopleos.compliance.formats.'.$this->formatCode());
+        $layout = app(ExportLayouts::class)->forReturn($return) ?? throw new RuntimeException('No export layout is registered for '.$this->formatCode().'.');
         $entries = ($this->entryModel())::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->orderBy('id')->get();
-        $csv = fn (array $row) => implode(',', array_map(fn ($v) => '"'.str_replace('"', '""', (string) $v).'"', $row));
 
-        $lines = [$csv($format['fields'])];
+        $lines = [ExportLayouts::csvRow($layout->fieldNames())];
         foreach ($entries as $entry) {
-            $lines[] = $csv($this->exportRow($entry));
+            $lines[] = ExportLayouts::csvRow($this->exportRow($entry));
         }
 
-        $prefix = $return->format_verification_status === 'verified' ? '' : 'UNVERIFIED-FORMAT_';
+        $prefix = app(ExportLayouts::class)->prefixFor($return);
         $scope = ($return->state_code ? $return->state_code.'_' : '').$return->establishment_id;
 
         return ['filename' => $prefix.$this->formCode().'_'.$scope.'_'.str_replace('-', '', $return->period_key).'.csv', 'content' => implode("\n", $lines)."\n"];

@@ -21,7 +21,7 @@ use RuntimeException;
  * steps only record export, filing and reconciliation facts. EXPORTED never implies SUBMITTED:
  * SUBMITTED and ACKNOWLEDGED are recorded by a person with an external reference.
  */
-#[Fillable(['tenant_id', 'company_id', 'legal_entity_id', 'establishment_id', 'return_type', 'form_code', 'legacy_form_code', 'return_kind', 'state_code', 'period_key', 'period_start', 'period_end', 'sequence', 'parent_return_id', 'status', 'uniqueness_key', 'rule_versions', 'payroll_run_ids', 'format_code', 'format_version', 'format_verification_status', 'totals', 'validation', 'blocking_count', 'warning_count', 'reconciliation_status', 'attestations', 'generated_by', 'generated_at', 'validated_at', 'approved_by', 'approved_at', 'exported_by', 'exported_at', 'export_filename', 'export_path', 'export_checksum', 'submitted_by', 'submitted_at', 'external_reference', 'acknowledged_by', 'acknowledged_at', 'acknowledgement_reference', 'reconciled_at', 'cancelled_at', 'reason', 'operation_id'])]
+#[Fillable(['tenant_id', 'company_id', 'legal_entity_id', 'establishment_id', 'return_type', 'form_code', 'legacy_form_code', 'return_kind', 'state_code', 'period_key', 'period_start', 'period_end', 'sequence', 'parent_return_id', 'status', 'uniqueness_key', 'rule_versions', 'payroll_run_ids', 'format_code', 'format_version', 'format_verification_status', 'export_layout_id', 'totals', 'validation', 'blocking_count', 'warning_count', 'reconciliation_status', 'attestations', 'generated_by', 'generated_at', 'validated_at', 'approved_by', 'approved_at', 'exported_by', 'exported_at', 'export_filename', 'export_path', 'export_checksum', 'local_validation', 'locally_validated_at', 'portal_validation_result', 'portal_validation_reference', 'portal_validated_at', 'portal_validated_by', 'submitted_by', 'submitted_at', 'external_reference', 'acknowledged_by', 'acknowledged_at', 'acknowledgement_reference', 'reconciled_at', 'cancelled_at', 'reason', 'operation_id'])]
 class StatutoryReturn extends Model
 {
     use Auditable, BelongsToTenant, ScopedByOrganisation;
@@ -82,6 +82,9 @@ class StatutoryReturn extends Model
             'totals' => 'array',
             'validation' => 'array',
             'attestations' => 'array',
+            'local_validation' => 'array',
+            'locally_validated_at' => 'datetime',
+            'portal_validated_at' => 'datetime',
             'generated_at' => 'datetime',
             'validated_at' => 'datetime',
             'approved_at' => 'datetime',
@@ -146,6 +149,11 @@ class StatutoryReturn extends Model
     public function snapshots(): HasMany
     {
         return $this->hasMany(StatutorySnapshot::class);
+    }
+
+    public function exportLayout(): BelongsTo
+    {
+        return $this->belongsTo(StatutoryExportLayout::class, 'export_layout_id');
     }
 
     public function epfRun(): HasOne

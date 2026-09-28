@@ -1194,42 +1194,12 @@ return [
             'TDS' => ['label' => 'TDS on salary — Form No. 138 (earlier Form 24Q)', 'form_code' => 'FORM_138', 'authority' => 'INCOME_TAX', 'scope' => 'legal_entity', 'generator' => TdsQuarterlyReturns::class, 'filing_totals' => ['tax_deducted', 'tax_deposited']],
             'LWF' => ['label' => 'Labour welfare fund return', 'form_code' => 'LWF', 'authority' => 'STATE_LWF', 'scope' => 'establishment', 'generator' => LwfReturns::class, 'filing_totals' => ['ee_contribution', 'er_contribution']],
         ],
-        // Export layouts carry their own verification status; an unverified layout is exported with
-        // an UNVERIFIED-FORMAT_ file-name prefix and flagged in validation.
+        // Phase 6.2: export layouts (fields, order, formats, encoding) live in the versioned
+        // statutory_export_layouts registry (database/data/compliance/layouts). Only validation
+        // settings that are not part of a file layout remain here.
         'formats' => [
-            'EPF_ECR' => [
-                'version' => 'ecr-2.0',
-                'verification_status' => 'review',
-                'separator' => '#~#',
-                'fields' => ['UAN', 'MEMBER NAME', 'GROSS WAGES', 'EPF WAGES', 'EPS WAGES', 'EDLI WAGES', 'EPF CONTRI REMITTED', 'EPS CONTRI REMITTED', 'EPF EPS DIFF REMITTED', 'NCP DAYS', 'REFUND OF ADVANCES'],
-                'source' => 'EPFO states the revamped ECR keeps the existing format (epfo.gov.in/revamped-ecr). The field layout itself is in the employer-portal Help File, which was not retrieved: verify before upload.',
-            ],
-            'ESI_MC' => [
-                'version' => 'esic-mc-draft-1',
-                'verification_status' => 'review',
-                'fields' => ['IP Number', 'IP Name', 'No of Days for which wages paid/payable during the month', 'Total Monthly Wages', 'Reason Code for Zero workings days', 'Last Working Day'],
-                'ip_pattern' => '/^\d{10}$/',
-                'source' => 'ESIC employer-portal monthly contribution upload template (not retrieved). Column order and the 10-digit IP number pattern must be verified before upload.',
-            ],
-            'TDS_FORM_138' => [
-                'version' => 'form138-schedule-1',
-                'verification_status' => 'review',
-                'section_code' => '392',
-                'fields' => ['PAN', 'Deductee name', 'Section', 'Date of payment/credit', 'Amount paid/credited', 'Tax deducted', 'Reason code'],
-                'source' => 'Income Tax Department: Form No. 138 (earlier Form No. 24Q) is filed under Rule 219 of the Income-tax Rules, 2026; Annexure-I every quarter, Annexure-II in Q4; salary TDS under section 392 of the Income-tax Act, 2025 (Form No. 130 FAQ). The utility / FVU file schema was not retrieved: this export is a working schedule only.',
-            ],
-            'PT_RETURN' => [
-                'version' => 'pt-generic-1',
-                'verification_status' => 'review',
-                'fields' => ['Employee', 'State', 'Gross salary', 'Professional tax'],
-                'source' => 'Generic working schedule. Every state prescribes its own return form and portal; this export is a reconciliation schedule, not a state return file.',
-            ],
-            'LWF_RETURN' => [
-                'version' => 'lwf-generic-1',
-                'verification_status' => 'review',
-                'fields' => ['Employee', 'State', 'Employee contribution', 'Employer contribution'],
-                'source' => 'Generic working schedule. Each state welfare board prescribes its own form; this export is a reconciliation schedule, not a board return file.',
-            ],
+            'ESI_MC' => ['ip_pattern' => '/^\d{10}$/'],
+            'TDS_FORM_138' => ['section_code' => '392'],
         ],
         'return_statuses' => ['draft' => 'Draft', 'calculated' => 'Calculated', 'validated' => 'Validated', 'approved' => 'Approved', 'exported' => 'Exported (not filed)', 'submitted' => 'Submitted (filing recorded)', 'acknowledged' => 'Acknowledged', 'reconciliation_required' => 'Reconciliation required', 'reconciled' => 'Reconciled', 'revised' => 'Revised', 'cancelled' => 'Cancelled'],
         'registration_statuses' => ['active' => 'Active', 'inactive' => 'Inactive', 'cancelled' => 'Cancelled', 'superseded' => 'Superseded'],

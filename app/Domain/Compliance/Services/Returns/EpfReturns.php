@@ -9,6 +9,7 @@ use App\Domain\Compliance\Models\EpfReturnRevision;
 use App\Domain\Compliance\Models\EpfReturnRun;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Services\ComplianceRules;
+use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Compliance\Services\StatutoryRegistrations;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Establishment;
@@ -84,8 +85,6 @@ final class EpfReturns implements StatutoryReturnGenerator
             }
         }
 
-        $format = config('peopleos.compliance.formats.EPF_ECR');
-
         return $this->returns->generate([
             'company_id' => $establishment->company_id,
             'legal_entity_id' => $establishment->legal_entity_id,
@@ -98,9 +97,7 @@ final class EpfReturns implements StatutoryReturnGenerator
             'period_end' => $start->copy()->endOfMonth()->toDateString(),
             'sequence' => $sequence,
             'parent_return_id' => $parent?->getKey(),
-            'format_code' => 'EPF_ECR',
-            'format_version' => $format['version'],
-            'format_verification_status' => $format['verification_status'],
+            ...app(ExportLayouts::class)->headerFor('EPF_ECR'),
             'attestations' => array_filter([
                 'employee_ids' => $employeeIds,
                 'payment_not_initiated' => $kind === 'revised' ? $paymentNotInitiated : null,
@@ -330,7 +327,7 @@ final class EpfReturns implements StatutoryReturnGenerator
         }
 
         $add('eps_eligibility_not_modelled', 'warning', 'EPS wages assume every member is EPS-eligible; age 58+ and post-Sept-2014 higher-wage members are not modelled — check before upload.');
-        if (($return->format_verification_status ?? 'review') !== 'verified') {
+        if (! app(ExportLayouts::class)->forReturn($return)?->isVerified()) {
             $add('export_format_unverified', 'warning', 'The ECR file layout has not been verified against the EPFO portal Help File; the export is marked UNVERIFIED-FORMAT.');
         }
 
@@ -365,8 +362,8 @@ final class EpfReturns implements StatutoryReturnGenerator
 
     public function export(StatutoryReturn $return): array
     {
-        $format = config('peopleos.compliance.formats.EPF_ECR');
-        $separator = $format['separator'];
+        $layout = app(ExportLayouts::class)->forReturn($return) ?? throw new RuntimeException('No export layout is registered for EPF_ECR.');
+        $separator = $layout->specification['separator'];
         $entries = EpfReturnEntry::query()->withoutGlobalScopes()->where('statutory_return_id', $return->getKey())->orderBy('id')->get();
 
         $lines = $entries->map(fn (EpfReturnEntry $e) => implode($separator, [
@@ -375,7 +372,7 @@ final class EpfReturns implements StatutoryReturnGenerator
         ]));
 
         $code = EpfReturnRun::query()->where('statutory_return_id', $return->getKey())->first()?->registration?->registration_number_last4 ?? 'NOREG';
-        $prefix = ($return->format_verification_status === 'verified') ? '' : 'UNVERIFIED-FORMAT_';
+        $prefix = app(ExportLayouts::class)->prefixFor($return);
 
         return [
             'filename' => $prefix.'ECR_'.$code.'_'.str_replace('-', '', $return->period_key).'_'.strtoupper($return->return_kind).($return->sequence > 1 ? '_'.$return->sequence : '').'.txt',

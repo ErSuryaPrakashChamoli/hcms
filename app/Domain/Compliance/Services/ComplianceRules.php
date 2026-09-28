@@ -135,6 +135,7 @@ final class ComplianceRules
         }
 
         $this->syncNotices();
+        app(ExportLayouts::class)->sync();
         $this->forget();
 
         return $synced;

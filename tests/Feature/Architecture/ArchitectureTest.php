@@ -11,6 +11,7 @@ use App\Domain\Compliance\Models\ComplianceRuleNotice;
 use App\Domain\Compliance\Models\ComplianceRuleParameter;
 use App\Domain\Compliance\Models\ComplianceRuleVerification;
 use App\Domain\Compliance\Models\ProfessionalTaxRuleVersion;
+use App\Domain\Compliance\Models\StatutoryExportLayout;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\Permission;
@@ -64,6 +65,7 @@ it('scopes every domain model to a tenant except the documented platform-level m
         ComplianceEvidenceDocument::class, // Phase 6: platform rule evidence
         ComplianceRuleParameter::class,
         ComplianceRuleNotice::class,
+        StatutoryExportLayout::class, // Phase 6.2: platform export layouts
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -110,7 +112,7 @@ it('audits every domain model except the documented append-only or derived table
         'Compliance\Models\ProfessionalTaxRuleVersion', 'Compliance\Models\TdsAnnualLedger', 'Compliance\Models\TdsQuarterlyReturn',
         'Compliance\Models\TdsQuarterlyReturnEntry', 'Compliance\Models\TdsCertificate',
         // Phase 6 platform evidence records: append-only, audited through AuditRecorder platform events.
-        'Compliance\Models\ComplianceEvidenceDocument', 'Compliance\Models\ComplianceRuleParameter', 'Compliance\Models\ComplianceRuleNotice',
+        'Compliance\Models\ComplianceEvidenceDocument', 'Compliance\Models\ComplianceRuleParameter', 'Compliance\Models\ComplianceRuleNotice', 'Compliance\Models\StatutoryExportLayout',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

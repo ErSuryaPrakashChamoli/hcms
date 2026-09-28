@@ -8,6 +8,7 @@ use App\Domain\Compliance\Contracts\StatutoryReturnGenerator;
 use App\Domain\Compliance\Models\StatutoryReconciliation;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\StatutoryReturnAction;
+use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Identity\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Context;
@@ -56,7 +57,7 @@ final class StatutoryReturns
             $return ??= StatutoryReturn::query()->create($header + ['uniqueness_key' => $key, 'status' => StatutoryReturn::DRAFT]);
 
             // A rebuild takes the new inputs (attestations such as challans or a payment attestation, format).
-            $return->fill(collect($header)->only(['attestations', 'format_code', 'format_version', 'format_verification_status'])->all());
+            $return->fill(collect($header)->only(['attestations', 'format_code', 'format_version', 'format_verification_status', 'export_layout_id'])->all());
             $return->fill(['generated_by' => $actor->getKey(), 'generated_at' => now(), 'operation_id' => Context::get('audit.operation_id'), 'reason' => $reason ?? $return->reason]);
             $return->save();
 
@@ -143,6 +144,15 @@ final class StatutoryReturns
         $this->requireStatus($return, [StatutoryReturn::APPROVED, StatutoryReturn::EXPORTED, StatutoryReturn::SUBMITTED, StatutoryReturn::ACKNOWLEDGED, StatutoryReturn::RECONCILED]);
 
         $file = $this->generator($return)->export($return);
+
+        // Phase 6.2: the file must pass the structural validation of its layout before it is stored.
+        $layout = app(ExportLayouts::class)->forReturn($return) ?? throw new RuntimeException('No export layout is registered for this return.');
+        $issues = app(ExportLayouts::class)->validate($layout, $file['content']);
+        $return->update(['local_validation' => ['valid' => $issues === [], 'layout' => $layout->label(), 'layout_status' => $layout->status, 'issues' => array_slice($issues, 0, 100), 'issue_count' => count($issues)], 'locally_validated_at' => now()]);
+        if ($issues !== []) {
+            throw new RuntimeException('The export failed structural validation against '.$layout->label().': '.implode(' ', array_slice($issues, 0, 5)).(count($issues) > 5 ? ' …' : ''));
+        }
+
         $path = "statutory-exports/{$return->tenant_id}/{$return->getKey()}/{$file['filename']}";
         Storage::disk('local')->put($path, $file['content']);
         $checksum = hash('sha256', $file['content']);
@@ -157,7 +167,7 @@ final class StatutoryReturns
             'exported_by' => $actor->getKey(), 'exported_at' => now(),
             'export_filename' => $file['filename'], 'export_path' => $path, 'export_checksum' => $checksum,
         ]);
-        $this->act($return, 'exported', $from, $return->status, $actor, null, $source, AuditAction::StatutoryOutputExported, ['filename' => $file['filename'], 'checksum' => $checksum, 'format' => $return->format_code, 'format_version' => $return->format_version, 'format_verification_status' => $return->format_verification_status]);
+        $this->act($return, 'exported', $from, $return->status, $actor, null, $source, AuditAction::StatutoryOutputExported, ['filename' => $file['filename'], 'checksum' => $checksum, 'layout' => $layout->label(), 'layout_status' => $layout->status, 'locally_validated' => true]);
 
         return $return;
     }
@@ -173,6 +183,32 @@ final class StatutoryReturns
         $this->recordAccess($return, $actor, $source, 'export_download');
 
         return (string) Storage::disk('local')->get($return->export_path);
+    }
+
+    /**
+     * Phase 6 §24: a person records the result of the authority's own validation of the exported
+     * file (e.g. a portal upload check or the authority's validation utility). Accepted by the portal
+     * is not filed; nothing is recorded automatically.
+     */
+    public function recordPortalValidation(StatutoryReturn $return, User $actor, string $result, string $reference, Carbon|string $validatedAt, ?string $notes = null, string $source = 'ui'): StatutoryReturn
+    {
+        $this->requirePermission($actor, 'compliance.returns.file');
+        $this->requireStatus($return, [StatutoryReturn::EXPORTED]);
+
+        if (! in_array($result, ['accepted', 'rejected'], true)) {
+            throw new RuntimeException('Portal validation is either accepted or rejected.');
+        }
+        if (blank(trim($reference))) {
+            throw new RuntimeException('Record the reference the portal or validation utility gave for this check.');
+        }
+        if (Carbon::parse($validatedAt)->isFuture()) {
+            throw new RuntimeException('The validation date cannot be in the future.');
+        }
+
+        $return->update(['portal_validation_result' => $result, 'portal_validation_reference' => trim($reference), 'portal_validated_at' => Carbon::parse($validatedAt), 'portal_validated_by' => $actor->getKey()]);
+        $this->act($return, 'portal_validated', $return->status, $return->status, $actor, $notes, $source, AuditAction::StatutoryPortalValidationRecorded, ['result' => $result, 'reference' => trim($reference)]);
+
+        return $return;
     }
 
     /** A person records that the exported file was filed on the portal, with the portal's reference. */
