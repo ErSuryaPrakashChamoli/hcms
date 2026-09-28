@@ -91,6 +91,12 @@ Known gaps a reviewer must resolve before verifying:
 
 ## 7. Current state
 
-At the end of Phase 5: 22 rule versions — 1 REVIEW (ESI), 21 DRAFT, **0 VERIFIED**. With
-enforcement on, production payroll cannot be finalized and no statutory output can pass the
+At the end of Phase 6: 22 rule versions — 1 REVIEW (ESI), 21 DRAFT, **0 VERIFIED**; 2 open
+regulatory notices (EPF v1 wage ceiling from 17 Sep 2026; TDS v2 legal basis for tax year 2026-27).
+With enforcement on, production payroll cannot be finalized and no statutory output can pass the
 production gate. This is intended.
+
+Phase 6 added stored evidence documents, parameter-level coverage, correction versions and
+regulatory notices: see `docs/architecture/statutory-production-readiness.md`. The ESI submission
+from Phase 5 has `round` not confirmed and no stored document, so it cannot be verified until a
+reviewer supplies both.

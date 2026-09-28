@@ -98,3 +98,10 @@ ESI coverage continuity across a contribution period is detected, not applied; E
 EPF 10% option and the ESI disability limit and daily-wage exemption are not modelled; export
 layouts and the Form No. 138 schema are unverified; payments, challans and portal filing stay
 outside PeopleOS.
+
+## 7. Phase 6
+
+Evidence documents, parameter coverage, corrections, regulatory notices, versioned export layouts,
+legal-entity / establishment / registration verification, the extended production gate, the
+establishment access-scope dimension and parallel payroll are described in
+`docs/architecture/statutory-production-readiness.md`.
