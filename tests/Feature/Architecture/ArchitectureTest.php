@@ -114,6 +114,9 @@ it('audits every domain model except the documented append-only or derived table
         // Phase 6 platform evidence records: append-only, audited through AuditRecorder platform events.
         'Compliance\Models\ComplianceEvidenceDocument', 'Compliance\Models\ComplianceRuleParameter', 'Compliance\Models\ComplianceRuleNotice', 'Compliance\Models\StatutoryExportLayout',
         'Compliance\Models\ParallelPayrollLine', // compared values; reviews audited on the parallel run
+        // Phase 7: calibration history is itself the append-only record (each change is also audited
+        // on the appraisal); reminder logs are derived de-duplication rows.
+        'Performance\Models\CalibrationAdjustment', 'Performance\Models\PerformanceReminderLog',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

@@ -214,12 +214,12 @@ return new class extends Migration
         Schema::table('goals', fn (Blueprint $t) => $t->dropColumn(['source', 'measurement', 'lock_version']));
         Schema::table('competencies', fn (Blueprint $t) => $t->dropColumn(['level', 'weight', 'effective_from', 'effective_to']));
         Schema::table('appraisals', function (Blueprint $t) {
-            $t->dropConstrainedForeignId('performance_template_version_id');
-            $t->dropColumn(['locked_at', 'lock_version']);
+            $t->dropForeign('appraisals_template_version_fk');
+            $t->dropColumn(['performance_template_version_id', 'locked_at', 'lock_version']);
         });
         Schema::table('performance_cycles', function (Blueprint $t) {
-            $t->dropConstrainedForeignId('performance_template_version_id');
-            $t->dropColumn(['scheduled_for', 'archived_at']);
+            $t->dropForeign('perf_cycles_template_version_fk');
+            $t->dropColumn(['performance_template_version_id', 'scheduled_for', 'archived_at']);
         });
         Schema::dropIfExists('performance_template_versions');
         Schema::dropIfExists('performance_templates');

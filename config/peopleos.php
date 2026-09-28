@@ -71,11 +71,16 @@ use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\People\Models\Skill;
+use App\Domain\Performance\Models\CalibrationAdjustment;
+use App\Domain\Performance\Models\CalibrationSession;
 use App\Domain\Performance\Models\CareerPath;
 use App\Domain\Performance\Models\Competency;
+use App\Domain\Performance\Models\FeedbackEntry;
 use App\Domain\Performance\Models\ImprovementPlan;
+use App\Domain\Performance\Models\ImprovementPlanCheckpoint;
 use App\Domain\Performance\Models\Kra;
 use App\Domain\Performance\Models\OneOnOne;
+use App\Domain\Performance\Models\PerformanceCheckIn;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
 
@@ -1304,6 +1309,8 @@ return [
             User::class => ['password', 'app_authentication_secret', 'app_authentication_recovery_codes'],
             SsoConnection::class => ['client_secret'],
             WebhookEndpoint::class => ['secret'],
+            // Phase 7: manager-private one-on-one notes (encrypted, hidden, masked in audit).
+            OneOnOne::class => ['private_notes'],
         ],
         'financial' => [
             EmployeeSalaryAssignment::class, PayrollEntry::class, ParallelPayrollLine::class,
@@ -1313,6 +1320,9 @@ return [
         'confidential' => [
             Grievance::class, ImprovementPlan::class,
             OneOnOne::class, BgvCase::class, EmployeeDocument::class,
+            FeedbackEntry::class, PerformanceCheckIn::class,
+            CalibrationSession::class, CalibrationAdjustment::class,
+            ImprovementPlanCheckpoint::class,
         ],
     ],
 
