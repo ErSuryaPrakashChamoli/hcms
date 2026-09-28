@@ -22,6 +22,12 @@ class RatingScale extends Model
             $scale->code = strtoupper(trim((string) $scale->code));
             $scale->levels = collect($scale->levels ?? [])->map(fn ($l) => ['value' => (float) $l['value'], 'label' => $l['label'], 'description' => $l['description'] ?? null])->sortBy('value')->values()->all();
 
+            // Phase 7: a scale used by a scheduled, active or closed cycle keeps its levels (its
+            // reviews are pinned); publish a new scale instead.
+            if ($scale->exists && $scale->isDirty('levels') && PerformanceCycle::query()->where('rating_scale_id', $scale->getKey())->where('status', '!=', 'draft')->exists()) {
+                throw new \RuntimeException('This rating scale is used by a launched cycle; create a new scale instead of changing its levels.');
+            }
+
             if ($scale->is_default) {
                 static::query()->whereKeyNot($scale->getKey())->update(['is_default' => false]);
             }

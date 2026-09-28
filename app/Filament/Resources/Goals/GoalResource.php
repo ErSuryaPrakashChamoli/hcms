@@ -8,6 +8,7 @@ use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\Kra;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Policies\EmployeeOwnedPolicy;
+use App\Domain\Performance\Services\PerformanceRelationships;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\Goals\Pages\CreateGoal;
 use App\Filament\Resources\Goals\Pages\EditGoal;
@@ -53,7 +54,7 @@ class GoalResource extends Resource
             return $query;
         }
         $me = EmployeeOwnedPolicy::employeeOf($user);
-        $reports = $me && $user->can('performance.team') ? $me->directReports()->currentlyEffective()->pluck('employee_id') : collect();
+        $reports = $me && $user->can('performance.team') ? app(PerformanceRelationships::class)->reportIds($me) : collect();
 
         // Organisation-level goals are visible to everyone; personal goals to owner and manager.
         return $query->where(fn (Builder $q) => $q->whereNull('employee_id')->orWhere('employee_id', $me?->id ?? 0)->orWhereIn('employee_id', $reports));
@@ -75,7 +76,7 @@ class GoalResource extends Resource
                     ->options(function () use ($me, $canAssign, $user) {
                         $q = Employee::query()->with('person')->employed();
                         if (! $user->can('performance.manage')) {
-                            $ids = collect([$me?->id])->merge($canAssign && $me ? $me->directReports()->currentlyEffective()->pluck('employee_id') : [])->filter();
+                            $ids = collect([$me?->id])->merge($canAssign && $me ? app(PerformanceRelationships::class)->reportIds($me) : [])->filter();
                             $q->whereIn('id', $ids);
                         }
 

@@ -4,11 +4,13 @@ namespace App\Domain\Performance\Policies;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Performance\Services\PerformanceRelationships;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Goals, appraisals, feedback, one-on-ones, PIPs, aspirations: HR sees all (performance.view);
- * employees see their own; managers (performance.team) see their current direct reports.
+ * employees see their own; managers (performance.team) see employees they manage through a
+ * configured performance-manager relationship type (PerformanceRelationships).
  */
 class EmployeeOwnedPolicy
 {
@@ -52,8 +54,8 @@ class EmployeeOwnedPolicy
         if (! $user->hasPermission('performance.team') || $model->getAttribute('employee_id') === null) {
             return false;
         }
-        $me = self::employeeOf($user);
 
-        return $me !== null && $me->directReports()->currentlyEffective()->where('employee_id', $model->getAttribute('employee_id'))->exists();
+        // Phase 7: only the configured performance-manager relationship types (not mentors or buddies).
+        return app(PerformanceRelationships::class)->manages(self::employeeOf($user), $model->getAttribute('employee_id'));
     }
 }

@@ -8,6 +8,7 @@ use App\Domain\Performance\Models\CareerAspiration;
 use App\Domain\Performance\Models\CareerPath;
 use App\Domain\Performance\Policies\EmployeeOwnedPolicy;
 use App\Domain\Performance\Services\CareerPassport;
+use App\Domain\Performance\Services\PerformanceRelationships;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -59,7 +60,7 @@ class CareerPassportPage extends Page
 
         $query = Employee::query()->with('person')->employed()->orderBy('employee_code');
         if (! $user->can('performance.view')) {
-            $ids = collect([$me?->id])->merge($me && $user->can('performance.team') ? $me->directReports()->currentlyEffective()->pluck('employee_id') : [])->filter();
+            $ids = collect([$me?->id])->merge($me && $user->can('performance.team') ? app(PerformanceRelationships::class)->reportIds($me) : [])->filter();
             $query->whereIn('id', $ids);
         }
 

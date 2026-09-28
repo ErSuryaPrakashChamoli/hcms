@@ -8,6 +8,7 @@ use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Lifecycle\Services\Timeline;
 use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\Performance\Models\Appraisal;
@@ -30,6 +31,7 @@ final class Appraisals
         private readonly EmployeeRuleContext $context,
         private readonly AuditRecorder $audit,
         private readonly Timeline $timeline,
+        private readonly PerformanceTemplates $templates,
     ) {}
 
     // --- Cycle -------------------------------------------------------------------------------
@@ -43,29 +45,53 @@ final class Appraisals
             ->values();
     }
 
-    public function launch(PerformanceCycle $cycle, ?User $actor = null): PerformanceCycle
+    /** Phase 7: a draft cycle is scheduled for a launch date; its configuration freezes. */
+    public function schedule(PerformanceCycle $cycle, string $date, ?User $actor = null): PerformanceCycle
     {
         if ($cycle->status !== 'draft') {
-            throw new RuntimeException('Only a draft cycle can be launched.');
+            throw new RuntimeException('Only a draft cycle can be scheduled.');
+        }
+        if (empty($cycle->stages)) {
+            throw new RuntimeException('Define at least one stage before scheduling.');
+        }
+        $cycle->update(['status' => 'scheduled', 'scheduled_for' => $date]);
+        $this->audit->record(AuditAction::Update, 'performance', $cycle, [['field' => 'status', 'before' => 'draft', 'after' => 'scheduled']], null, actor: $actor, metadata: ['scheduled_for' => $date]);
+
+        return $cycle->refresh();
+    }
+
+    public function launch(PerformanceCycle $cycle, ?User $actor = null): PerformanceCycle
+    {
+        if (! in_array($cycle->status, ['draft', 'scheduled'], true)) {
+            throw new RuntimeException('Only a draft or scheduled cycle can be launched.');
         }
         if (empty($cycle->stages)) {
             throw new RuntimeException('Define at least one stage before launching.');
         }
 
         return DB::transaction(function () use ($cycle, $actor) {
+            $locked = PerformanceCycle::query()->whereKey($cycle->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($locked->status, ['draft', 'scheduled'], true)) {
+                throw new RuntimeException('The cycle was launched by someone else.');
+            }
+            $before = $locked->status;
+            // Pin the template version: the scale, competencies, workflow and weights as they are now.
+            $version = $this->templates->pinFor($cycle, $actor);
             $employees = $this->eligible($cycle);
             $first = $cycle->stageKeys()[0];
 
             foreach ($employees as $employee) {
                 $appraisal = Appraisal::query()->firstOrCreate(
                     ['performance_cycle_id' => $cycle->id, 'employee_id' => $employee->id],
-                    ['manager_id' => $employee->currentManager?->manager_id, 'status' => 'pending'],
+                    ['manager_id' => $employee->currentManager?->manager_id, 'status' => 'pending', 'performance_template_version_id' => $version->id],
                 );
                 $this->ensureReviews($cycle, $appraisal);
             }
+            Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id)->whereNull('performance_template_version_id')->update(['performance_template_version_id' => $version->id]);
 
-            $cycle->update(['status' => 'active', 'current_stage' => $first, 'launched_at' => now()]);
-            $this->audit->record(AuditAction::Update, 'performance', $cycle, [['field' => 'status', 'before' => 'draft', 'after' => 'active']], null, actor: $actor, metadata: ['appraisals' => $employees->count()]);
+            $cycle->update(['status' => 'active', 'current_stage' => $first, 'launched_at' => now(), 'performance_template_version_id' => $version->id]);
+            $this->audit->record(AuditAction::Update, 'performance', $cycle, [['field' => 'status', 'before' => $before, 'after' => 'active']], null, actor: $actor, metadata: ['appraisals' => $employees->count(), 'template_version_id' => $version->id, 'template_checksum' => $version->checksum]);
+            PerformanceEvent::dispatch('performance.cycle.published', null, $cycle, ['cycle' => $cycle->name, 'template_version' => $version->version], []);
             PerformanceEvent::dispatch('performance.cycle.launched', null, $cycle, ['cycle' => $cycle->name, 'stage' => config("peopleos.performance.stages.{$first}"), 'appraisals' => $employees->count()], $employees->pluck('id')->all());
             $this->onStageEntered($cycle, $first);
 
@@ -135,14 +161,35 @@ final class Appraisals
 
     public function close(PerformanceCycle $cycle, ?User $actor = null): PerformanceCycle
     {
-        $open = $cycle->appraisals()->whereNotIn('status', ['finalized', 'acknowledged'])->count();
-        if ($open > 0) {
-            throw new RuntimeException("{$open} appraisal(s) are not finalized yet.");
-        }
+        return DB::transaction(function () use ($cycle, $actor) {
+            $locked = PerformanceCycle::query()->whereKey($cycle->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'active') {
+                throw new RuntimeException('Only an active cycle can be closed.');
+            }
+            $all = Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id);
+            $open = (clone $all)->whereNotIn('status', ['finalized', 'acknowledged'])->count();
+            if ($open > 0) {
+                throw new RuntimeException("{$open} appraisal(s) are not finalized yet.");
+            }
 
-        $cycle->update(['status' => 'closed', 'closed_at' => now()]);
-        Goal::query()->where('performance_cycle_id', $cycle->id)->where('status', 'active')->update(['status' => 'completed']);
-        $this->audit->record(AuditAction::Update, 'performance', $cycle, [['field' => 'status', 'before' => 'active', 'after' => 'closed']], null, actor: $actor);
+            $cycle->update(['status' => 'closed', 'closed_at' => now()]);
+            // Phase 7: every appraisal (and its reviews and ratings) locks with the cycle.
+            (clone $all)->whereNull('locked_at')->update(['locked_at' => now()]);
+            Goal::query()->where('performance_cycle_id', $cycle->id)->where('status', 'active')->update(['status' => 'completed']);
+            $this->audit->record(AuditAction::Update, 'performance', $cycle, [['field' => 'status', 'before' => 'active', 'after' => 'closed']], null, actor: $actor, metadata: ['appraisals_locked' => (clone $all)->count()]);
+
+            return $cycle->refresh();
+        });
+    }
+
+    /** Phase 7: a closed cycle is archived — read-only from then on. */
+    public function archive(PerformanceCycle $cycle, ?User $actor = null): PerformanceCycle
+    {
+        if ($cycle->status !== 'closed') {
+            throw new RuntimeException('Only a closed cycle can be archived.');
+        }
+        $cycle->update(['status' => 'archived', 'archived_at' => now()]);
+        $this->audit->record(AuditAction::Update, 'performance', $cycle, [['field' => 'status', 'before' => 'closed', 'after' => 'archived']], null, actor: $actor);
 
         return $cycle->refresh();
     }
@@ -172,7 +219,7 @@ final class Appraisals
     public function submitReview(AppraisalReview $review, array $goalRatings, array $competencyRatings, ?float $overall, array $text = [], ?User $actor = null): AppraisalReview
     {
         // Always judge against the stored state: a stale loaded relation must not bypass finalization.
-        $appraisal = $review->appraisal()->with(['cycle.scale', 'employee'])->firstOrFail();
+        $appraisal = $review->appraisal()->with(['cycle.templateVersion', 'employee'])->firstOrFail();
         $review->setRelation('appraisal', $appraisal);
         $cycle = $appraisal->cycle;
 
@@ -190,7 +237,7 @@ final class Appraisals
             throw new RuntimeException('The '.config("peopleos.performance.stages.{$stage}").' stage has not opened yet.');
         }
 
-        $scale = $cycle->scale;
+        $scale = $cycle->ratingScale();
         $validate = function (array $ratings) use ($scale) {
             foreach ($ratings as $value) {
                 if ($value !== null && ($value < $scale->min() || $value > $scale->max())) {
@@ -202,7 +249,15 @@ final class Appraisals
         $validate($competencyRatings);
         $validate([$overall]);
 
-        return DB::transaction(function () use ($review, $goalRatings, $competencyRatings, $overall, $text, $appraisal, $actor) {
+        return DB::transaction(function () use ($review, $goalRatings, $competencyRatings, $overall, $text, $appraisal, $actor, $cycle) {
+            // Phase 7: serialize concurrent submissions and re-check the stored state under the lock.
+            $current = Appraisal::query()->withoutGlobalScope(AccessScope::class)->whereKey($appraisal->id)->lockForUpdate()->firstOrFail();
+            if ($current->isFinal() || $current->isLocked()) {
+                throw new RuntimeException('The appraisal is finalized.');
+            }
+            if (AppraisalReview::query()->whereKey($review->id)->lockForUpdate()->value('status') === 'submitted' && ! $cycle->setting('allow_resubmit', false)) {
+                throw new RuntimeException('This review was already submitted.');
+            }
             $review->ratings()->delete();
             foreach ($goalRatings as $id => $rating) {
                 if ($rating !== null) {
@@ -240,9 +295,9 @@ final class Appraisals
      */
     public function score(Appraisal $appraisal): Appraisal
     {
-        $appraisal->loadMissing(['cycle.scale', 'reviews.ratings', 'employee']);
+        $appraisal->loadMissing(['cycle.templateVersion', 'reviews.ratings', 'employee']);
         $cycle = $appraisal->cycle;
-        $scale = $cycle->scale;
+        $scale = $cycle->ratingScale();
         $goals = $this->goals->forEmployee($appraisal->employee, $cycle->id)->where('status', '!=', 'cancelled');
 
         $manager = $appraisal->review('manager');
@@ -308,7 +363,7 @@ final class Appraisals
 
     public function calibrate(Appraisal $appraisal, float $rating, string $note, ?User $actor = null): Appraisal
     {
-        $appraisal->loadMissing('cycle.scale');
+        $appraisal->loadMissing('cycle.templateVersion');
         if ($appraisal->isFinal()) {
             throw new RuntimeException('The appraisal is finalized.');
         }
@@ -318,21 +373,27 @@ final class Appraisals
         if (trim($note) === '') {
             throw new RuntimeException('A calibration note is required.');
         }
-        $scale = $appraisal->cycle->scale;
+        $scale = $appraisal->cycle->ratingScale();
         if ($rating < $scale->min() || $rating > $scale->max()) {
             throw new RuntimeException("Ratings must be between {$scale->min()} and {$scale->max()}.");
         }
 
-        $before = $appraisal->calibrated_rating ?? $appraisal->computed_rating;
-        $appraisal->update(['calibrated_rating' => $rating, 'calibration_note' => $note, 'status' => 'calibration']);
-        $this->audit->record(AuditAction::Update, 'performance', $appraisal, [['field' => 'calibrated_rating', 'before' => $before, 'after' => $rating]], $note, actor: $actor);
+        return DB::transaction(function () use ($appraisal, $rating, $note, $actor) {
+            $current = Appraisal::query()->withoutGlobalScope(AccessScope::class)->whereKey($appraisal->id)->lockForUpdate()->firstOrFail();
+            if ($current->isFinal() || $current->isLocked()) {
+                throw new RuntimeException('The appraisal is finalized.');
+            }
+            $before = $current->calibrated_rating ?? $current->computed_rating;
+            $appraisal->update(['calibrated_rating' => $rating, 'calibration_note' => $note, 'status' => 'calibration']);
+            $this->audit->record(AuditAction::Update, 'performance', $appraisal, [['field' => 'calibrated_rating', 'before' => $before, 'after' => $rating]], $note, actor: $actor);
 
-        return $appraisal;
+            return $appraisal;
+        });
     }
 
     public function finalize(Appraisal $appraisal, ?User $actor = null, ?float $rating = null, ?string $summary = null, bool $promotion = false, bool $pip = false): Appraisal
     {
-        $appraisal->loadMissing(['cycle.scale', 'employee']);
+        $appraisal->loadMissing(['cycle.templateVersion', 'employee']);
         $cycle = $appraisal->cycle;
 
         if ($appraisal->isFinal()) {
@@ -354,12 +415,16 @@ final class Appraisals
         if ($final === null) {
             throw new RuntimeException('No rating available to finalize.');
         }
-        $scale = $cycle->scale;
+        $scale = $cycle->ratingScale();
         if ($final < $scale->min() || $final > $scale->max()) {
             throw new RuntimeException("Ratings must be between {$scale->min()} and {$scale->max()}.");
         }
 
         return DB::transaction(function () use ($appraisal, $cycle, $scale, $final, $summary, $promotion, $pip, $actor) {
+            $current = Appraisal::query()->withoutGlobalScope(AccessScope::class)->whereKey($appraisal->id)->lockForUpdate()->firstOrFail();
+            if ($current->isFinal() || $current->isLocked()) {
+                throw new RuntimeException('The appraisal is already finalized.');
+            }
             $appraisal->update([
                 'final_rating' => $final,
                 'final_label' => $scale->labelFor($final),
@@ -397,11 +462,11 @@ final class Appraisals
     /** Rating distribution for a cycle, keyed by scale label. */
     public function distribution(PerformanceCycle $cycle): array
     {
-        $cycle->loadMissing('scale');
-        $counts = collect($cycle->scale->levels)->mapWithKeys(fn ($l) => [$l['label'] => 0])->all();
+        $scale = $cycle->ratingScale();
+        $counts = collect($scale->levels)->mapWithKeys(fn ($l) => [$l['label'] => 0])->all();
 
         foreach ($cycle->appraisals()->get() as $appraisal) {
-            $label = $cycle->scale->labelFor($appraisal->effectiveRating());
+            $label = $scale->labelFor($appraisal->effectiveRating());
             if ($label !== null) {
                 $counts[$label]++;
             }

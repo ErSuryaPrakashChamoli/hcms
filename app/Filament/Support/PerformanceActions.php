@@ -13,6 +13,7 @@ use App\Domain\Performance\Services\Appraisals;
 use App\Domain\Performance\Services\Goals;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -34,14 +35,23 @@ final class PerformanceActions
     public static function forCycle(): array
     {
         return [
-            Action::make('launch')->label('Launch cycle')->icon(Heroicon::OutlinedRocketLaunch)->color('success')
+            Action::make('schedule')->label('Schedule')->icon(Heroicon::OutlinedCalendarDays)->color('gray')
                 ->visible(fn (PerformanceCycle $record) => $record->status === 'draft' && auth()->user()->can('performance.manage'))
-                ->requiresConfirmation()->modalDescription(fn (PerformanceCycle $record) => 'Creates an appraisal for every eligible employee ('.app(Appraisals::class)->eligible($record)->count().') and opens the first stage.')
+                ->schema([DatePicker::make('scheduled_for')->label('Launch on')->required()->native(false)])
+                ->modalDescription('Freezes the cycle configuration until launch.')
+                ->action(fn (PerformanceCycle $record, array $data) => self::run(fn () => app(Appraisals::class)->schedule($record, $data['scheduled_for'], auth()->user()), 'Cycle scheduled')),
+            Action::make('launch')->label('Launch cycle')->icon(Heroicon::OutlinedRocketLaunch)->color('success')
+                ->visible(fn (PerformanceCycle $record) => in_array($record->status, ['draft', 'scheduled'], true) && auth()->user()->can('performance.manage'))
+                ->requiresConfirmation()->modalDescription(fn (PerformanceCycle $record) => 'Pins the template version and creates an appraisal for every eligible employee ('.app(Appraisals::class)->eligible($record)->count().'), then opens the first stage. The configuration cannot change afterwards.')
                 ->action(fn (PerformanceCycle $record) => self::run(fn () => app(Appraisals::class)->launch($record, auth()->user()), 'Cycle launched')),
             Action::make('advance')->label(fn (PerformanceCycle $record) => $record->nextStage() ? 'Move to '.config('peopleos.performance.stages.'.$record->nextStage()) : 'Close cycle')->icon(Heroicon::OutlinedForward)->color('primary')
                 ->visible(fn (PerformanceCycle $record) => $record->status === 'active' && auth()->user()->can('performance.manage'))
                 ->requiresConfirmation()
                 ->action(fn (PerformanceCycle $record) => self::run(fn () => app(Appraisals::class)->advance($record, auth()->user()), fn (PerformanceCycle $c) => $c->status === 'closed' ? 'Cycle closed' : 'Now at '.config("peopleos.performance.stages.{$c->current_stage}"))),
+            Action::make('archive')->label('Archive')->icon(Heroicon::OutlinedArchiveBox)->color('gray')
+                ->visible(fn (PerformanceCycle $record) => $record->status === 'closed' && auth()->user()->can('performance.manage'))
+                ->requiresConfirmation()->modalDescription('An archived cycle is read-only.')
+                ->action(fn (PerformanceCycle $record) => self::run(fn () => app(Appraisals::class)->archive($record, auth()->user()), 'Cycle archived')),
         ];
     }
 
@@ -74,14 +84,14 @@ final class PerformanceActions
             Action::make('calibrate')->label('Calibrate')->icon(Heroicon::OutlinedAdjustmentsVertical)->color('warning')
                 ->visible(fn (Appraisal $record) => ! $record->isFinal() && $user()->can('performance.calibrate'))
                 ->schema(fn (Appraisal $record) => [
-                    Select::make('rating')->label('Calibrated rating')->options($record->cycle->scale->options())->default(fn () => $record->effectiveRating() === null ? null : (string) round($record->effectiveRating()))->required(),
+                    Select::make('rating')->label('Calibrated rating')->options($record->cycle->ratingScale()->options())->default(fn () => $record->effectiveRating() === null ? null : (string) round($record->effectiveRating()))->required(),
                     Textarea::make('note')->required()->maxLength(500),
                 ])
                 ->action(fn (Appraisal $record, array $data) => self::run(fn () => app(Appraisals::class)->calibrate($record, (float) $data['rating'], $data['note'], auth()->user()), 'Calibrated')),
             Action::make('finalize')->label('Finalize')->icon(Heroicon::OutlinedCheckBadge)->color('success')
                 ->visible(fn (Appraisal $record) => ! $record->isFinal() && $user()->can('performance.calibrate'))
                 ->schema(fn (Appraisal $record) => [
-                    Select::make('rating')->label('Final rating')->options($record->cycle->scale->options())->default(fn () => $record->effectiveRating() === null ? null : (string) round($record->effectiveRating()))->placeholder('Use computed / calibrated rating'),
+                    Select::make('rating')->label('Final rating')->options($record->cycle->ratingScale()->options())->default(fn () => $record->effectiveRating() === null ? null : (string) round($record->effectiveRating()))->placeholder('Use computed / calibrated rating'),
                     Textarea::make('summary')->label('Summary for the employee')->maxLength(1000),
                     Checkbox::make('promotion')->label('Recommend for promotion'),
                     Checkbox::make('pip')->label('Recommend an improvement plan'),
@@ -105,7 +115,7 @@ final class PerformanceActions
     public static function reviewForm(Appraisal $record, bool $withGoals = true): array
     {
         $record->loadMissing('cycle.scale');
-        $options = $record->cycle->scale->options();
+        $options = $record->cycle->ratingScale()->options();
         $components = [];
 
         if ($withGoals) {

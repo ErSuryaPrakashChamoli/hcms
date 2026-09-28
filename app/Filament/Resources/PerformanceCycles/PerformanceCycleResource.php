@@ -47,7 +47,7 @@ class PerformanceCycleResource extends Resource
     public static function statusColor(string $status): string
     {
         return match ($status) {
-            'draft' => 'gray', 'active' => 'success', 'closed' => 'primary', default => 'gray'
+            'draft' => 'gray', 'scheduled' => 'info', 'active' => 'success', 'closed' => 'primary', default => 'gray'
         };
     }
 
@@ -108,7 +108,7 @@ class PerformanceCycleResource extends Resource
             ])
             ->defaultSort('period_start', 'desc')
             ->filters([SelectFilter::make('status')->options(PerformanceCycle::STATUSES)])
-            ->recordActions([EditAction::make(), ...PerformanceActions::forCycle()]);
+            ->recordActions([EditAction::make()->visible(fn (PerformanceCycle $record) => $record->isEditable()), ...PerformanceActions::forCycle()]);
     }
 
     public static function getRelations(): array

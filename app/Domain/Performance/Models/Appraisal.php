@@ -13,15 +13,41 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** One employee's appraisal in a cycle (§34): reviews, computed and calibrated scores, final rating. */
-#[Fillable(['tenant_id', 'performance_cycle_id', 'employee_id', 'manager_id', 'status', 'goal_score', 'competency_score', 'self_rating', 'manager_rating', 'peer_rating', 'computed_rating', 'calibrated_rating', 'final_rating', 'final_label', 'calibration_note', 'manager_summary', 'promotion_recommended', 'pip_recommended', 'finalized_by', 'finalized_at', 'acknowledged_at', 'employee_comment'])]
+#[Fillable(['tenant_id', 'performance_cycle_id', 'employee_id', 'manager_id', 'status', 'goal_score', 'competency_score', 'self_rating', 'manager_rating', 'peer_rating', 'computed_rating', 'calibrated_rating', 'final_rating', 'final_label', 'calibration_note', 'manager_summary', 'promotion_recommended', 'pip_recommended', 'finalized_by', 'finalized_at', 'acknowledged_at', 'employee_comment', 'performance_template_version_id', 'locked_at', 'lock_version'])]
 class Appraisal extends Model
 {
     use Auditable, BelongsToTenant;
     use ScopedByEmployee;
 
+    protected static function booted(): void
+    {
+        // Phase 7: an appraisal locks when its cycle closes; nothing about it changes afterwards.
+        static::updating(function (self $a) {
+            if ($a->getRawOriginal('locked_at') !== null) {
+                throw new \RuntimeException('This appraisal is locked: its cycle is closed.');
+            }
+        });
+        static::deleting(function (self $a) {
+            if ($a->locked_at !== null) {
+                throw new \RuntimeException('This appraisal is locked: its cycle is closed.');
+            }
+        });
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
+    }
+
+    public function templateVersion(): BelongsTo
+    {
+        return $this->belongsTo(PerformanceTemplateVersion::class, 'performance_template_version_id');
+    }
+
     protected function casts(): array
     {
         return [
+            'locked_at' => 'datetime', 'lock_version' => 'integer',
             'goal_score' => 'decimal:2', 'competency_score' => 'decimal:2',
             'self_rating' => 'decimal:2', 'manager_rating' => 'decimal:2', 'peer_rating' => 'decimal:2',
             'computed_rating' => 'decimal:2', 'calibrated_rating' => 'decimal:2', 'final_rating' => 'decimal:2',

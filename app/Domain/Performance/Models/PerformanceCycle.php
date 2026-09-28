@@ -14,26 +14,32 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * An appraisal cycle (§35): period, rating scale, ordered stages with windows, weights for goals vs
  * competencies, the competencies rated, and eligibility. draft → active (launched) → closed.
  */
-#[Fillable(['tenant_id', 'name', 'code', 'type', 'period_start', 'period_end', 'rating_scale_id', 'stages', 'weights', 'settings', 'competency_ids', 'eligibility', 'status', 'current_stage', 'launched_at', 'closed_at'])]
+#[Fillable(['tenant_id', 'name', 'code', 'type', 'period_start', 'period_end', 'rating_scale_id', 'stages', 'weights', 'settings', 'competency_ids', 'eligibility', 'status', 'current_stage', 'launched_at', 'closed_at', 'performance_template_version_id', 'scheduled_for', 'archived_at'])]
 class PerformanceCycle extends Model
 {
     use Auditable, BelongsToTenant;
 
     protected $attributes = ['status' => 'draft'];
 
-    public const STATUSES = ['draft' => 'Draft', 'active' => 'Active', 'closed' => 'Closed'];
+    /** Phase 7: Open / In progress / Review / Calibration are the active cycle's pinned stages. */
+    public const STATUSES = ['draft' => 'Draft', 'scheduled' => 'Scheduled', 'active' => 'Active (open, in progress, review, calibration)', 'closed' => 'Closed', 'archived' => 'Archived'];
 
     protected static function booted(): void
     {
         static::saving(function (self $cycle): void {
             $cycle->code = strtoupper(trim((string) $cycle->code));
 
-            if ($cycle->exists && $cycle->getRawOriginal('status') !== 'draft') {
-                foreach (['period_start', 'period_end', 'rating_scale_id', 'weights', 'competency_ids'] as $locked) {
-                    if ($cycle->isDirty($locked)) {
-                        throw new \RuntimeException('A launched cycle keeps its period, scale, weights and competencies. Create a new cycle instead.');
+            // Phase 7: once scheduled or launched, the configuration is frozen (the launched cycle pins a
+            // template version); an archived cycle changes nothing at all.
+            if ($cycle->exists && ! in_array($cycle->getRawOriginal('status'), ['draft'], true)) {
+                foreach (['period_start', 'period_end', 'rating_scale_id', 'weights', 'competency_ids', 'stages', 'eligibility', 'settings', 'type', 'performance_template_version_id'] as $locked) {
+                    if ($cycle->isDirty($locked) && ! ($locked === 'performance_template_version_id' && $cycle->getRawOriginal('performance_template_version_id') === null && $cycle->getRawOriginal('status') === 'scheduled')) {
+                        throw new \RuntimeException('A scheduled or launched cycle keeps its configuration. Create a new cycle instead.');
                     }
                 }
+            }
+            if ($cycle->exists && $cycle->getRawOriginal('status') === 'archived') {
+                throw new \RuntimeException('An archived cycle is read-only.');
             }
         });
     }
@@ -50,6 +56,8 @@ class PerformanceCycle extends Model
             'eligibility' => 'array',
             'launched_at' => 'datetime',
             'closed_at' => 'datetime',
+            'scheduled_for' => 'date',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -66,6 +74,21 @@ class PerformanceCycle extends Model
     public function scale(): BelongsTo
     {
         return $this->belongsTo(RatingScale::class, 'rating_scale_id');
+    }
+
+    public function templateVersion(): BelongsTo
+    {
+        return $this->belongsTo(PerformanceTemplateVersion::class, 'performance_template_version_id');
+    }
+
+    /** Phase 7: the pinned scale once launched; the live scale only while the cycle is a draft. */
+    public function ratingScale(): RatingScale
+    {
+        if ($this->performance_template_version_id) {
+            return ($this->relationLoaded('templateVersion') ? $this->templateVersion : $this->templateVersion()->firstOrFail())->ratingScale();
+        }
+
+        return $this->relationLoaded('scale') ? $this->scale : $this->scale()->firstOrFail();
     }
 
     public function appraisals(): HasMany

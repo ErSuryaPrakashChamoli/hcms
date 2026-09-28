@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Appraisals;
 
 use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Policies\EmployeeOwnedPolicy;
+use App\Domain\Performance\Services\PerformanceRelationships;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\Appraisals\Pages\ListAppraisals;
 use App\Filament\Resources\Appraisals\Pages\ViewAppraisal;
@@ -53,7 +54,7 @@ class AppraisalResource extends Resource
         if ($me === null) {
             return $query->whereRaw('1 = 0');
         }
-        $reports = $user->can('performance.team') ? $me->directReports()->currentlyEffective()->pluck('employee_id') : collect();
+        $reports = $user->can('performance.team') ? app(PerformanceRelationships::class)->reportIds($me) : collect();
 
         return $query->where(fn (Builder $q) => $q->where('employee_id', $me->id)->orWhereIn('employee_id', $reports)->orWhereHas('reviews', fn (Builder $r) => $r->where('reviewer_id', $me->id)));
     }

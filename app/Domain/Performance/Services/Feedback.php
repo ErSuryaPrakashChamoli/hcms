@@ -53,7 +53,7 @@ final class Feedback
         if ($seesAll) {
             return $query;
         }
-        $reports = $viewer->directReports()->currentlyEffective()->pluck('employee_id');
+        $reports = app(PerformanceRelationships::class)->reportIds($viewer);
 
         return $query->where(function ($q) use ($viewer, $reports) {
             $q->where('employee_id', $viewer->id)

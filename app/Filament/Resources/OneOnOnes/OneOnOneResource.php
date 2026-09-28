@@ -5,6 +5,7 @@ namespace App\Filament\Resources\OneOnOnes;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Performance\Models\OneOnOne;
 use App\Domain\Performance\Policies\EmployeeOwnedPolicy;
+use App\Domain\Performance\Services\PerformanceRelationships;
 use App\Filament\Resources\OneOnOnes\Pages\ManageOneOnOnes;
 use App\Filament\Support\PerformanceActions;
 use BackedEnum;
@@ -54,7 +55,7 @@ class OneOnOneResource extends Resource
 
         return $schema->columns(2)->components([
             Select::make('employee_id')->label('Employee')->required()->searchable()
-                ->options(fn () => ($me && ! auth()->user()->can('performance.manage') ? Employee::query()->with('person')->whereIn('id', $me->directReports()->currentlyEffective()->pluck('employee_id')) : Employee::query()->with('person')->employed())->get()->mapWithKeys(fn ($e) => [$e->id => "{$e->employee_code} · {$e->person?->full_name}"])->all()),
+                ->options(fn () => ($me && ! auth()->user()->can('performance.manage') ? Employee::query()->with('person')->whereIn('id', app(PerformanceRelationships::class)->reportIds($me)) : Employee::query()->with('person')->employed())->get()->mapWithKeys(fn ($e) => [$e->id => "{$e->employee_code} · {$e->person?->full_name}"])->all()),
             Select::make('manager_id')->label('Manager')->required()->searchable()->default(fn () => $me?->id)
                 ->options(fn () => Employee::query()->with('person')->employed()->get()->mapWithKeys(fn ($e) => [$e->id => "{$e->employee_code} · {$e->person?->full_name}"])->all()),
             DateTimePicker::make('scheduled_at')->native(false)->required()->default(now()->addDay()->setTime(10, 0)),

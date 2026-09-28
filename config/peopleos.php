@@ -325,6 +325,11 @@ return [
             'performance.calibrate' => 'Calibrate and finalize appraisals',
             'performance.feedback' => 'Give and request continuous feedback',
             'performance.team' => 'View and act on direct reports (goals, reviews, one-on-ones, PIPs)',
+            'performance.checkins' => 'Submit own check-ins and respond to reports\' check-ins',
+            'performance.pip' => 'Create and manage performance improvement plans',
+            'performance.analytics' => 'View aggregated performance analytics (small groups suppressed)',
+            'performance.private_notes' => 'Read managers\' private one-on-one notes (access audited)',
+            'performance.anonymous_identity' => 'Reveal the author of anonymous feedback (access audited)',
         ],
         'leave' => [
             'leave.view' => 'View leave requests, balances and the leave register',
@@ -907,6 +912,20 @@ return [
         'competency_categories' => ['core' => 'Core', 'functional' => 'Functional', 'leadership' => 'Leadership', 'behavioural' => 'Behavioural'],
         'pip_statuses' => ['draft' => 'Draft', 'active' => 'Active', 'extended' => 'Extended', 'completed' => 'Completed successfully', 'unsuccessful' => 'Unsuccessful', 'withdrawn' => 'Withdrawn'],
         'default_weights' => ['goals' => 70, 'competencies' => 30],
+        // Phase 7: which reporting relationships make someone a performance manager of an employee
+        // (goals, reviews, check-ins, one-on-ones, PIPs). Mentors, buddies and project leads are not.
+        'manager_relationship_types' => array_values(array_filter(explode(',', (string) env('PEOPLEOS_PERFORMANCE_MANAGER_TYPES', 'line,functional,dotted,secondary,hrbp')))),
+        'check_in_cadences' => ['weekly' => 'Weekly', 'biweekly' => 'Every two weeks', 'monthly' => 'Monthly', 'custom' => 'Custom'],
+        'check_in_statuses' => ['draft' => 'Draft', 'submitted' => 'Submitted', 'reviewed' => 'Reviewed'],
+        'goal_sources' => ['manual' => 'Manual', 'check_in' => 'Check-in', 'api' => 'API', 'import' => 'Import', 'system' => 'System'],
+        'calibration_statuses' => ['open' => 'Open', 'closed' => 'Closed'],
+        'development_need_priorities' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High'],
+        'development_need_statuses' => ['open' => 'Open', 'in_progress' => 'In progress', 'addressed' => 'Addressed', 'closed' => 'Closed'],
+        'checkpoint_statuses' => ['pending' => 'Pending', 'met' => 'Met', 'partially_met' => 'Partially met', 'not_met' => 'Not met'],
+        // Analytics never shows a group smaller than this (privacy of individual ratings).
+        'analytics_min_group' => (int) env('PEOPLEOS_PERFORMANCE_MIN_GROUP', 5),
+        // Reminder lead time before a stage window or check-in closes.
+        'reminder_days_before' => 3,
         'defaults' => [
             'rating_scale' => ['name' => 'Five-point scale', 'code' => 'FIVE_POINT', 'levels' => [
                 ['value' => 1, 'label' => 'Needs Improvement', 'description' => 'Consistently below expectations'],
