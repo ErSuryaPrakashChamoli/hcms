@@ -171,12 +171,13 @@ final class PerformanceActions
                         Select::make('key_result_id')->label('Key result')->options($krs->pluck('title', 'id')->all())->placeholder('The goal itself')->visible($krs->isNotEmpty()),
                         TextInput::make('value')->label('Current value')->numeric()->required(),
                         Select::make('confidence')->options(GoalCheckIn::CONFIDENCE)->default('on_track'),
+                        TextInput::make('measurement')->label('How it was measured')->maxLength(255),
                         Textarea::make('note')->maxLength(500),
                     ];
                 })
                 ->action(function (Goal $record, array $data) {
                     $subject = ! empty($data['key_result_id']) ? $record->keyResults()->findOrFail($data['key_result_id']) : $record;
-                    self::run(fn () => app(Goals::class)->checkIn($subject, (float) $data['value'], $data['note'] ?? null, $data['confidence'] ?? null, auth()->user()), 'Progress updated');
+                    self::run(fn () => app(Goals::class)->checkIn($subject, (float) $data['value'], $data['note'] ?? null, $data['confidence'] ?? null, auth()->user(), 'manual', $data['measurement'] ?? null), 'Progress updated');
                 }),
             Action::make('close')->label('Close')->icon(Heroicon::OutlinedCheckCircle)->color('gray')
                 ->visible(fn (Goal $record) => $record->isOpen() && auth()->user()->can('update', $record))
