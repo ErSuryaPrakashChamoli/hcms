@@ -14,6 +14,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Get;
@@ -51,7 +52,7 @@ class FeedbackEntryResource extends Resource
             return parent::getEloquentQuery()->whereRaw('1 = 0');
         }
 
-        return ($me ? app(Feedback::class)->visibleTo($me, $user->can('performance.view')) : parent::getEloquentQuery())->with(['employee.person', 'author.person', 'requestedFrom.person', 'goal', 'competency']);
+        return ($me ? app(Feedback::class)->visibleTo($me, $user->can('performance.view')) : parent::getEloquentQuery())->with(['employee.person', 'requestedFrom.person', 'goal', 'competency', 'author.person']);
     }
 
     /** @return array<int, Component> */
@@ -71,8 +72,9 @@ class FeedbackEntryResource extends Resource
                 Select::make('goal_id')->label('Related goal')->placeholder('—')->options(fn (Get $get) => Goal::query()->where('employee_id', $get('employee_id'))->whereIn('status', ['active', 'completed'])->pluck('title', 'id')->all()),
                 Select::make('competency_id')->label('Competency')->placeholder('—')->options(fn () => Competency::query()->where('status', 'active')->pluck('name', 'id')->all()),
                 Textarea::make('message')->required()->maxLength(2000)->rows(4),
+                Toggle::make('is_anonymous')->label('Give anonymously')->helperText('Your name is hidden from the recipient, their manager and HR.'),
             ])
-            ->action(fn (array $data) => PerformanceActions::run(fn () => app(Feedback::class)->give(Employee::query()->findOrFail($data['employee_id']), PerformanceActions::me(), $data['type'], $data['message'], $data['visibility'], $data['goal_id'] ?? null, $data['competency_id'] ?? null), 'Feedback shared'));
+            ->action(fn (array $data) => PerformanceActions::run(fn () => app(Feedback::class)->give(Employee::query()->findOrFail($data['employee_id']), PerformanceActions::me(), $data['type'], $data['message'], $data['visibility'], $data['goal_id'] ?? null, $data['competency_id'] ?? null, null, (bool) ($data['is_anonymous'] ?? false)), 'Feedback shared'));
     }
 
     public static function requestAction(): Action
@@ -98,7 +100,7 @@ class FeedbackEntryResource extends Resource
                     'praise' => 'success', 'constructive' => 'warning', default => 'gray'
                 })->formatStateUsing(fn (string $state) => config("peopleos.performance.feedback_types.{$state}", $state)),
                 TextColumn::make('employee.person.full_name')->label('About'),
-                TextColumn::make('author.person.full_name')->label('From')->placeholder('—'),
+                TextColumn::make('from')->label('From')->state(fn (FeedbackEntry $record) => $record->authorLabel()),
                 TextColumn::make('requestedFrom.person.full_name')->label('Asked')->placeholder('—')->toggleable(),
                 TextColumn::make('message')->wrap()->limit(160),
                 TextColumn::make('goal.title')->label('Goal')->placeholder('—')->toggleable(),
@@ -116,6 +118,10 @@ class FeedbackEntryResource extends Resource
                         Textarea::make('message')->required()->maxLength(2000)->rows(4),
                     ])
                     ->action(fn (FeedbackEntry $record, array $data) => PerformanceActions::run(fn () => app(Feedback::class)->give($record->employee, PerformanceActions::me(), $data['type'], $data['message'], $data['visibility'], $record->goal_id, null, $record), 'Feedback shared')),
+                Action::make('reveal')->label('Reveal author')->icon(Heroicon::OutlinedEye)->color('danger')
+                    ->visible(fn (FeedbackEntry $record) => $record->is_anonymous && auth()->user()->can('performance.anonymous_identity'))
+                    ->schema([Textarea::make('reason')->label('Reason (audited)')->required()->maxLength(500)])
+                    ->action(fn (FeedbackEntry $record, array $data) => PerformanceActions::run(fn () => app(Feedback::class)->authorFor($record, auth()->user(), $data['reason']), fn (?Employee $author) => 'Author: '.($author?->person?->full_name ?? 'unknown'))),
             ]);
     }
 

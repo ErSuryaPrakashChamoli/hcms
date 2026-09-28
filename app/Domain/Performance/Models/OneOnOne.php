@@ -10,8 +10,11 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** A manager–employee check-in (§34): agenda, notes, action items. */
-#[Fillable(['tenant_id', 'employee_id', 'manager_id', 'scheduled_at', 'held_at', 'agenda', 'notes', 'action_items', 'status'])]
+/**
+ * A manager–employee one-on-one (§34): agenda, shared notes, action items. Phase 7: the manager's
+ * private notes are encrypted, never serialized, and read only through OneOnOnes::privateNotesFor().
+ */
+#[Fillable(['tenant_id', 'employee_id', 'manager_id', 'scheduled_at', 'held_at', 'agenda', 'notes', 'private_notes', 'action_items', 'status'])]
 class OneOnOne extends Model
 {
     use Auditable, BelongsToTenant;
@@ -19,11 +22,13 @@ class OneOnOne extends Model
 
     protected $attributes = ['status' => 'scheduled'];
 
+    protected $hidden = ['private_notes'];
+
     public const STATUSES = ['scheduled' => 'Scheduled', 'held' => 'Held', 'cancelled' => 'Cancelled'];
 
     protected function casts(): array
     {
-        return ['scheduled_at' => 'datetime', 'held_at' => 'datetime', 'action_items' => 'array'];
+        return ['scheduled_at' => 'datetime', 'held_at' => 'datetime', 'action_items' => 'array', 'private_notes' => 'encrypted'];
     }
 
     public function auditModule(): string
@@ -38,7 +43,7 @@ class OneOnOne extends Model
 
     public function auditSensitiveAttributes(): array
     {
-        return ['notes'];
+        return ['notes', 'private_notes'];
     }
 
     public function employee(): BelongsTo

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\OneOnOnes;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Performance\Models\OneOnOne;
 use App\Domain\Performance\Policies\EmployeeOwnedPolicy;
+use App\Domain\Performance\Services\OneOnOnes;
 use App\Domain\Performance\Services\PerformanceRelationships;
 use App\Filament\Resources\OneOnOnes\Pages\ManageOneOnOnes;
 use App\Filament\Support\PerformanceActions;
@@ -61,7 +62,15 @@ class OneOnOneResource extends Resource
             DateTimePicker::make('scheduled_at')->native(false)->required()->default(now()->addDay()->setTime(10, 0)),
             Select::make('status')->options(OneOnOne::STATUSES)->default('scheduled')->required(),
             Textarea::make('agenda')->rows(3)->columnSpanFull(),
-            Textarea::make('notes')->rows(4)->columnSpanFull()->helperText('Private to the two of you and HR'),
+            Textarea::make('notes')->label('Shared notes')->rows(4)->columnSpanFull()->helperText('Visible to the employee, the manager and HR'),
+            // Phase 7: the manager's private notes — never shown to the employee; others need
+            // performance.private_notes and every read is audited (OneOnOnes service).
+            Textarea::make('private_notes')->label('Private manager notes')->rows(3)->columnSpanFull()
+                ->visible(fn (?OneOnOne $record) => $record !== null && app(OneOnOnes::class)->canReadPrivateNotes($record, auth()->user()))
+                ->afterStateHydrated(fn (Textarea $component, ?OneOnOne $record) => $component->state($record ? app(OneOnOnes::class)->privateNotesFor($record, auth()->user()) : null))
+                ->disabled(fn (?OneOnOne $record) => $record === null || ! app(OneOnOnes::class)->isOwningManager($record, auth()->user()))
+                ->dehydrated(fn (?OneOnOne $record) => $record !== null && app(OneOnOnes::class)->isOwningManager($record, auth()->user()))
+                ->helperText('Only you can read these. The employee never sees them.'),
             Repeater::make('action_items')->columnSpanFull()->columns(3)->default([])->schema([
                 TextInput::make('item')->required()->columnSpan(2),
                 Toggle::make('done')->inline(false),
