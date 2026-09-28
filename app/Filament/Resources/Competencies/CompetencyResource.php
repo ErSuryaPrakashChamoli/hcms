@@ -8,6 +8,7 @@ use App\Filament\Resources\Competencies\Pages\ManageCompetencies;
 use App\Filament\Support\AuditReasonField;
 use BackedEnum;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
@@ -40,6 +41,10 @@ class CompetencyResource extends Resource
             TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
             Select::make('category')->options(config('peopleos.performance.competency_categories'))->default('core')->required(),
             Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            TextInput::make('level')->maxLength(32)->placeholder('e.g. L2, Proficient'),
+            TextInput::make('weight')->numeric()->minValue(0)->suffix('%'),
+            DatePicker::make('effective_from')->native(false),
+            DatePicker::make('effective_to')->native(false)->afterOrEqual('effective_from'),
             Textarea::make('description')->rows(2)->columnSpanFull(),
             TagsInput::make('indicators')->label('Behavioural indicators')->placeholder('Add an indicator')->columnSpanFull(),
             AuditReasonField::make()->visibleOn('edit'),

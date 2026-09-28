@@ -207,6 +207,12 @@ final class NotificationEventBridge
             'performance.goal.assigned' => 'New goal: '.$event->context['title'],
             'performance.pip.opened' => 'Improvement plan opened until '.$event->context['until'],
             'performance.promotion.recommended' => 'Promotion recommended for '.($event->employee?->person?->full_name ?? 'an employee'),
+            'performance.reminder.review_due' => 'Reminder: review due by '.$event->context['due'].' for '.$event->context['cycle'],
+            'performance.reminder.check_in_response' => 'Reminder: a check-in for '.$event->context['period'].' is waiting for your response',
+            'performance.reminder.pip_checkpoint' => 'Reminder: improvement-plan checkpoint due '.$event->context['due'],
+            'performance.check_in.submitted' => 'Check-in submitted for '.$event->context['period'],
+            'performance.check_in.reviewed' => 'Your manager responded to your check-in for '.$event->context['period'],
+            'performance.pip.completed' => 'Improvement plan outcome recorded: '.$event->context['outcome'],
             default => str_replace('.', ' ', $event->name),
         };
 

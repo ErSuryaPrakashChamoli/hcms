@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * A progress update on a goal or key result (continuous check-in). Append-only (Phase 7): each row
  * keeps the previous and new value and progress, the measurement, source, author and time.
  */
-#[Fillable(['tenant_id', 'goal_id', 'key_result_id', 'previous_value', 'value', 'previous_progress', 'progress', 'confidence', 'source', 'measurement', 'note', 'created_by'])]
+#[Fillable(['tenant_id', 'goal_id', 'key_result_id', 'previous_value', 'value', 'previous_progress', 'progress', 'confidence', 'source', 'idempotency_key', 'measurement', 'note', 'created_by'])]
 class GoalCheckIn extends Model
 {
     use BelongsToTenant;

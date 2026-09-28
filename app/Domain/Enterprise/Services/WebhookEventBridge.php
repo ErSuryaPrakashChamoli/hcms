@@ -43,7 +43,7 @@ final class WebhookEventBridge
         if ($name === null || ! in_array($name, config('peopleos.enterprise.webhook_events', []), true)) {
             return;
         }
-        $context = $event->context ?? [];
+        $context = array_diff_key($event->context ?? [], array_flip(config('peopleos.enterprise.webhook_redacted_context', [])));
         $employee = $event->employee ?? null;
         $this->webhooks->publish($name, array_merge(['employee_id' => $employee?->id, 'employee_code' => $employee?->employee_code], array_filter($context, fn ($v) => is_scalar($v) || $v === null)), $event->subject ?? null);
     }

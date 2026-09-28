@@ -227,16 +227,23 @@ use App\Domain\Performance\Contracts\DevelopmentNeedsReader;
 use App\Domain\Performance\Contracts\PerformanceOutcomesReader;
 use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\AppraisalReview;
+use App\Domain\Performance\Models\CalibrationAdjustment;
+use App\Domain\Performance\Models\CalibrationSession;
 use App\Domain\Performance\Models\CareerAspiration;
 use App\Domain\Performance\Models\CareerPath;
 use App\Domain\Performance\Models\Competency;
+use App\Domain\Performance\Models\DevelopmentNeed;
 use App\Domain\Performance\Models\FeedbackEntry;
 use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\ImprovementPlan;
 use App\Domain\Performance\Models\Kra;
 use App\Domain\Performance\Models\OneOnOne;
+use App\Domain\Performance\Models\PerformanceCheckIn;
 use App\Domain\Performance\Models\PerformanceCycle;
+use App\Domain\Performance\Models\PerformanceTemplate;
+use App\Domain\Performance\Models\PerformanceTemplateVersion;
 use App\Domain\Performance\Models\RatingScale;
+use App\Domain\Performance\Policies\CalibrationPolicy;
 use App\Domain\Performance\Policies\EmployeeOwnedPolicy;
 use App\Domain\Performance\Policies\PerformanceConfigPolicy;
 use App\Domain\Performance\Services\DevelopmentNeeds;
@@ -341,10 +348,13 @@ class AppServiceProvider extends ServiceProvider
         foreach ([Asset::class, AssetCategory::class, AssetModel::class, AssetAssignment::class, AssetRepair::class] as $model) {
             Gate::policy($model, AssetPolicy::class);
         }
-        foreach ([PerformanceCycle::class, RatingScale::class, Competency::class, Kra::class, CareerPath::class] as $model) {
+        foreach ([PerformanceCycle::class, RatingScale::class, Competency::class, Kra::class, CareerPath::class, PerformanceTemplate::class, PerformanceTemplateVersion::class] as $model) {
             Gate::policy($model, PerformanceConfigPolicy::class);
         }
-        foreach ([Goal::class, Appraisal::class, AppraisalReview::class, FeedbackEntry::class, OneOnOne::class, ImprovementPlan::class, CareerAspiration::class] as $model) {
+        foreach ([CalibrationSession::class, CalibrationAdjustment::class] as $model) {
+            Gate::policy($model, CalibrationPolicy::class);
+        }
+        foreach ([Goal::class, Appraisal::class, AppraisalReview::class, FeedbackEntry::class, OneOnOne::class, ImprovementPlan::class, CareerAspiration::class, PerformanceCheckIn::class, DevelopmentNeed::class] as $model) {
             Gate::policy($model, EmployeeOwnedPolicy::class);
         }
         Gate::policy(SalaryComponent::class, PayrollConfigPolicy::class);

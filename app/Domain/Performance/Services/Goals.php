@@ -176,8 +176,12 @@ final class Goals
         }
     }
 
-    public function checkIn(Goal|KeyResult $subject, ?float $value, ?string $note = null, ?string $confidence = null, ?User $actor = null, string $source = 'manual', ?string $measurement = null): GoalCheckIn
+    public function checkIn(Goal|KeyResult $subject, ?float $value, ?string $note = null, ?string $confidence = null, ?User $actor = null, string $source = 'manual', ?string $measurement = null, ?string $idempotencyKey = null): GoalCheckIn
     {
+        $goalId = $subject instanceof Goal ? $subject->id : $subject->goal_id;
+        if ($idempotencyKey !== null && ($previous = GoalCheckIn::query()->where('goal_id', $goalId)->where('idempotency_key', $idempotencyKey)->first())) {
+            return $previous; // a retried request: nothing is recorded twice
+        }
         if (! array_key_exists($source, config('peopleos.performance.goal_sources'))) {
             throw new RuntimeException("Unknown progress source '{$source}'.");
         }
@@ -193,7 +197,7 @@ final class Goals
             throw new RuntimeException('This goal belongs to a closed cycle.');
         }
 
-        return DB::transaction(function () use ($subject, $goal, $value, $note, $confidence, $actor, $source, $measurement) {
+        return DB::transaction(function () use ($subject, $goal, $value, $note, $confidence, $actor, $source, $measurement, $idempotencyKey) {
             // Serialize concurrent updates of the same goal; read the previous values under the lock.
             Goal::query()->whereKey($goal->id)->lockForUpdate()->first();
             $subject->refresh();
@@ -212,6 +216,7 @@ final class Goals
                 'progress' => $progress,
                 'confidence' => $confidence,
                 'source' => $source,
+                'idempotency_key' => $idempotencyKey,
                 'measurement' => $measurement,
                 'note' => $note,
                 'created_by' => $actor?->id ?? auth()->id(),

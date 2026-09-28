@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 /** A competency (§35) with optional behavioural indicators. */
-#[Fillable(['tenant_id', 'name', 'code', 'category', 'description', 'indicators', 'status'])]
+#[Fillable(['tenant_id', 'name', 'code', 'category', 'level', 'weight', 'description', 'indicators', 'status', 'effective_from', 'effective_to'])]
 class Competency extends Model
 {
     use Auditable, BelongsToTenant;
@@ -18,12 +18,20 @@ class Competency extends Model
 
     protected static function booted(): void
     {
-        static::saving(fn (self $c) => $c->code = strtoupper(trim((string) $c->code)));
+        static::saving(function (self $c) {
+            $c->code = strtoupper(trim((string) $c->code));
+            if ($c->weight !== null && (float) $c->weight < 0) {
+                throw new \RuntimeException('A competency weight cannot be negative.');
+            }
+            if ($c->effective_from && $c->effective_to && $c->effective_to->lt($c->effective_from)) {
+                throw new \RuntimeException('A competency cannot stop being effective before it starts.');
+            }
+        });
     }
 
     protected function casts(): array
     {
-        return ['indicators' => 'array', 'status' => ActiveStatus::class];
+        return ['indicators' => 'array', 'status' => ActiveStatus::class, 'weight' => 'decimal:2', 'effective_from' => 'date', 'effective_to' => 'date'];
     }
 
     public function auditModule(): string

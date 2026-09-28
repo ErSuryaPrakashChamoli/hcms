@@ -5,6 +5,7 @@ use App\Domain\Identity\Models\Permission;
 use App\Domain\Performance\Models\FeedbackEntry;
 use App\Domain\Performance\Models\OneOnOne;
 use App\Domain\Performance\Models\PerformanceCheckIn;
+use App\Domain\Performance\Models\PerformanceReminderLog;
 use App\Domain\Performance\Services\Feedback;
 use App\Domain\Performance\Services\Goals;
 use App\Domain\Performance\Services\OneOnOnes;
@@ -99,4 +100,16 @@ it('never exposes the author of anonymous feedback without the audited reveal pe
 
     $named = $feedback->give($this->employee, $this->peer, 'praise', 'Great demo', 'private');
     expect(FeedbackEntry::query()->findOrFail($named->id)->toArray())->toHaveKey('author_id');
+});
+
+it('sends each performance reminder once per subject per day across tenants', function () {
+    $checkIns = app(PerformanceCheckIns::class);
+    $checkIns->save($this->employee, 'weekly', '2026-09-14', ['went_well' => 'x'], true, $this->employee->user);
+    $this->travelTo('2026-09-25 07:00:00');
+
+    $this->artisan('peopleos:performance:reminders')->assertSuccessful();
+    $this->artisan('peopleos:performance:reminders')->assertSuccessful();
+
+    expect(PerformanceReminderLog::query()->where('reminder', 'check_in_response')->count())->toBe(1)
+        ->and($this->manager->user->notifications()->where('data->title', 'like', 'Reminder:%')->count())->toBe(1);
 });

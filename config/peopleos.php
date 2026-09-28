@@ -861,7 +861,7 @@ return [
         'scopes' => [
             'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches (devices or any source) and raise regularisations',
             'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records, exceptions, regularisations, shifts and schedules', 'leave.read' => 'Read leave types, balances, transactions, requests and the leave calendar', 'leave.write' => 'Submit and cancel leave requests on behalf of employees', 'payroll.read' => 'Read payroll runs and payslips (sensitive)', 'compliance.read' => 'Read establishments, statutory registrations (masked), rule versions, statutory returns, entries (masked) and reconciliations',
-            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read appraisals and goals', 'workflows.read' => 'Read workflow instances and tasks',
+            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
         ],
     ],
@@ -959,11 +959,13 @@ return [
         'webhook_events' => [
             'employee.created', 'employee.joined', 'employee.probation', 'employee.confirmed', 'employee.notice_period', 'employee.exited', 'employee.alumni',
             'employee.salary_changed', 'employee.transferred', 'employee.promoted', 'employee.manager_changed', 'employee.rehired', 'leave.requested', 'leave.approved', 'leave.rejected', 'leave.cancelled', 'attendance.regularisation_requested',
-            'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'performance.appraisal.finalized', 'learning.completed',
+            'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'performance.appraisal.finalized', 'performance.cycle.published', 'performance.goal.created', 'performance.goal.progress_updated', 'performance.review.submitted', 'performance.check_in.submitted', 'performance.feedback.received', 'learning.completed',
             'asset.assigned', 'asset.returned', 'servicedesk.ticket.created', 'servicedesk.ticket.resolved', 'grievance.raised', 'exit.initiated', 'exit.completed',
             'letter.issued', 'workflow.completed', 'document.expiring',
             'compliance.establishment_verified', 'compliance.return_reconciled', 'compliance.return_approved', 'compliance.return_exported', 'compliance.return_filed',
         ],
+        // Context keys never sent in webhook payloads (names of feedback authors, free text).
+        'webhook_redacted_context' => ['from', 'note', 'reason', 'outcome', 'summary', 'comment'],
         'webhook_max_attempts' => 5,
         'tiers' => ['shared' => 'Shared infrastructure', 'dedicated' => 'Dedicated tenant infrastructure'],
         'regions' => ['in' => 'India', 'eu' => 'European Union', 'us' => 'United States', 'ae' => 'UAE', 'sg' => 'Singapore', 'au' => 'Australia'],

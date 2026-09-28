@@ -71,9 +71,13 @@ it('publishes numbered template versions and validates their content', function 
         ->and(fn () => $templates->publish($template, [...$content, 'weights' => ['goals' => -10]]))->toThrow(RuntimeException::class, 'negative')
         ->and(fn () => $templates->publish($template, [...$content, 'goal_rules' => ['required_total_weight' => 0]]))->toThrow(RuntimeException::class, 'positive');
 
-    // A cycle launched on a chosen template version pins exactly that version.
-    $cycle = $this->appraisals->launch(draftCycle(['performance_template_version_id' => $v1->id]), $this->hr);
-    expect($cycle->performance_template_version_id)->toBe($v1->id);
+    // A cycle pinned to a version must run exactly its configuration; applying the template aligns it.
+    $cycle = draftCycle(['performance_template_version_id' => $v1->id]);
+    expect(fn () => $this->appraisals->launch($cycle, $this->hr))->toThrow(RuntimeException::class, 'differs from template version v1');
+    $cycle = $templates->applyTo($cycle->refresh(), $v1);
+    $cycle = $this->appraisals->launch($cycle, $this->hr);
+    expect($cycle->performance_template_version_id)->toBe($v1->id)
+        ->and($cycle->stageKeys())->toBe(['self_review', 'manager_review']);
 });
 
 it('schedules, launches, closes with locked appraisals and archives a cycle', function () {

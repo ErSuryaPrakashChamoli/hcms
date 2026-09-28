@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PerformanceCycles;
 
 use App\Domain\Performance\Models\Competency;
 use App\Domain\Performance\Models\PerformanceCycle;
+use App\Domain\Performance\Models\PerformanceTemplateVersion;
 use App\Domain\Performance\Models\RatingScale;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\PerformanceCycles\Pages\CreatePerformanceCycle;
@@ -62,6 +63,9 @@ class PerformanceCycleResource extends Resource
                 Select::make('type')->options(config('peopleos.performance.cycle_types'))->default('annual')->required(),
                 DatePicker::make('period_start')->native(false)->required()->disabled($locked)->dehydrated(),
                 DatePicker::make('period_end')->native(false)->required()->afterOrEqual('period_start')->disabled($locked)->dehydrated()->live(),
+                Select::make('performance_template_version_id')->label('Template version')->placeholder('Pin this cycle\'s own configuration at launch')->disabled($locked)->dehydrated()
+                    ->options(fn () => PerformanceTemplateVersion::query()->with('template')->where('status', 'published')->orderByDesc('id')->get()->mapWithKeys(fn ($v) => [$v->id => $v->template?->name.' · v'.$v->version])->all())
+                    ->helperText('The scale, competencies, workflow and weights of the chosen version are pinned when the cycle launches.'),
                 Select::make('rating_scale_id')->label('Rating scale')->required()->disabled($locked)->dehydrated()
                     ->options(fn () => RatingScale::query()->where('status', 'active')->pluck('name', 'id')->all())
                     ->default(fn () => RatingScale::default()?->id),

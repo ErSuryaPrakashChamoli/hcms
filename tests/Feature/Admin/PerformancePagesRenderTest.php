@@ -1,14 +1,22 @@
 <?php
 
 use App\Domain\Performance\Models\Appraisal;
+use App\Domain\Performance\Models\PerformanceCheckIn;
+use App\Domain\Performance\Models\PerformanceTemplate;
+use App\Domain\Performance\Models\RatingScale;
 use App\Domain\Performance\Services\Appraisals;
 use App\Domain\Performance\Services\Goals;
 use App\Filament\Pages\CalibrationBoard;
 use App\Filament\Pages\CareerPassportPage;
+use App\Filament\Pages\PerformanceAnalyticsPage;
 use App\Filament\Resources\Appraisals\AppraisalResource;
 use App\Filament\Resources\Appraisals\Pages\ViewAppraisal;
+use App\Filament\Resources\CalibrationSessions\CalibrationSessionResource;
+use App\Filament\Resources\CalibrationSessions\Pages\ManageCalibrationSessions;
 use App\Filament\Resources\CareerPaths\CareerPathResource;
 use App\Filament\Resources\Competencies\CompetencyResource;
+use App\Filament\Resources\DevelopmentNeeds\DevelopmentNeedResource;
+use App\Filament\Resources\DevelopmentNeeds\Pages\ManageDevelopmentNeeds;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\FeedbackEntries\FeedbackEntryResource;
 use App\Filament\Resources\FeedbackEntries\Pages\ManageFeedbackEntries;
@@ -17,7 +25,11 @@ use App\Filament\Resources\Goals\Pages\ListGoals;
 use App\Filament\Resources\ImprovementPlans\ImprovementPlanResource;
 use App\Filament\Resources\Kras\KraResource;
 use App\Filament\Resources\OneOnOnes\OneOnOneResource;
+use App\Filament\Resources\PerformanceCheckIns\Pages\ManagePerformanceCheckIns;
+use App\Filament\Resources\PerformanceCheckIns\PerformanceCheckInResource;
 use App\Filament\Resources\PerformanceCycles\PerformanceCycleResource;
+use App\Filament\Resources\PerformanceTemplates\Pages\ManagePerformanceTemplates;
+use App\Filament\Resources\PerformanceTemplates\PerformanceTemplateResource;
 use App\Filament\Resources\RatingScales\RatingScaleResource;
 use Livewire\Livewire;
 
@@ -86,4 +98,41 @@ it('lets the manager review from the appraisal page, the employee check in on go
     $this->get(PerformanceCycleResource::getUrl('index'))->assertForbidden();
     $this->get(CalibrationBoard::getUrl())->assertForbidden();
     $this->get(CareerPassportPage::getUrl())->assertOk()->assertDontSee('Choose employee');
+});
+
+it('renders the Phase 7 performance screens and runs their actions', function () {
+    actAsTenant($this->tenant);
+    $template = PerformanceTemplate::query()->create(['code' => 'ANNUAL', 'name' => 'Annual template']);
+
+    $this->get(PerformanceTemplateResource::getUrl('index'))->assertOk()->assertSee('Annual template');
+    $this->get(PerformanceCheckInResource::getUrl('index'))->assertOk();
+    $this->get(CalibrationSessionResource::getUrl('index'))->assertOk();
+    $this->get(DevelopmentNeedResource::getUrl('index'))->assertOk();
+    $this->get(PerformanceAnalyticsPage::getUrl())->assertOk()->assertSee('Suppressed');
+
+    Livewire::test(ManagePerformanceTemplates::class)
+        ->callTableAction('publish', $template, data: ['rating_scale_id' => RatingScale::default()->id, 'stages' => ['manager_review', 'self_review'], 'sections' => ['goals', 'ratings'], 'weights' => ['goals' => 60, 'competencies' => 40], 'required_goal_weight' => 100])
+        ->assertNotified('Version 1 published');
+    expect(array_column($template->latestVersion()->first()->workflow, 'key'))->toBe(['self_review', 'manager_review']);
+
+    Livewire::test(ManageCalibrationSessions::class)
+        ->callAction('open', data: ['cycle_id' => $this->cycle->id, 'name' => 'Engineering'])
+        ->assertNotified('Session opened');
+
+    $this->actingAs($this->employee->user);
+    Livewire::test(ManagePerformanceCheckIns::class)
+        ->callAction('checkIn', data: ['cadence' => 'weekly', 'date' => '2026-09-21', 'went_well' => 'Shipped', 'goal_progress' => [], 'submit' => true])
+        ->assertNotified('Check-in saved');
+    $checkIn = PerformanceCheckIn::query()->sole();
+
+    $this->actingAs($this->manager->user);
+    Livewire::test(ManagePerformanceCheckIns::class)
+        ->callTableAction('respond', $checkIn, data: ['manager_feedback' => 'Good', 'actions' => []])
+        ->assertNotified('Response recorded');
+    expect($checkIn->refresh()->status)->toBe('reviewed');
+
+    Livewire::test(ManageDevelopmentNeeds::class)
+        ->callAction('record', data: ['employee_id' => $this->employee->id, 'title' => 'Presenting', 'priority' => 'medium', 'source_type' => 'check_in'])
+        ->assertNotified('Development need recorded');
+    $this->get(PerformanceAnalyticsPage::getUrl())->assertForbidden();
 });

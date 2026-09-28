@@ -64,6 +64,47 @@ final class PerformanceTemplates
         });
     }
 
+    /** Copy a template version's configuration onto a draft cycle (stage windows come from the cycle period). */
+    public function applyTo(PerformanceCycle $cycle, PerformanceTemplateVersion $version): PerformanceCycle
+    {
+        if ($cycle->status !== 'draft') {
+            throw new RuntimeException('A template can only be applied to a draft cycle.');
+        }
+        $keys = array_column($version->workflow, 'key');
+        $windows = collect(PerformanceCycle::defaultStages($cycle->period_end))->keyBy('key');
+        $cycle->update([
+            'performance_template_version_id' => $version->id,
+            'rating_scale_id' => $version->rating_scale_id,
+            'competency_ids' => array_column($version->competency_snapshot, 'id'),
+            'weights' => $version->weights,
+            'stages' => collect($keys)->map(fn ($k) => $windows[$k] ?? ['key' => $k, 'name' => config("peopleos.performance.stages.{$k}")])->values()->all(),
+        ]);
+
+        return $cycle->refresh();
+    }
+
+    /** A cycle pinned to a version must run exactly that configuration. */
+    private function assertMatches(PerformanceCycle $cycle, PerformanceTemplateVersion $version): void
+    {
+        $differs = [];
+        if ($cycle->stageKeys() !== array_column($version->workflow, 'key')) {
+            $differs[] = 'stages';
+        }
+        if ((int) $cycle->rating_scale_id !== (int) $version->rating_scale_id) {
+            $differs[] = 'rating scale';
+        }
+        $ids = fn (array $a) => collect($a)->map(fn ($v) => (int) $v)->sort()->values()->all();
+        if ($ids($cycle->competency_ids ?? []) !== $ids(array_column($version->competency_snapshot, 'id'))) {
+            $differs[] = 'competencies';
+        }
+        if (collect($cycle->weights ?? [])->map(fn ($v) => (float) $v)->sortKeys()->all() !== collect($version->weights ?? [])->map(fn ($v) => (float) $v)->sortKeys()->all()) {
+            $differs[] = 'weights';
+        }
+        if ($differs !== []) {
+            throw new RuntimeException("The cycle differs from template version v{$version->version} ({$version->template?->code}) in: ".implode(', ', $differs).'. Apply the template again or clear it.');
+        }
+    }
+
     /**
      * The version a cycle pins at launch: its chosen template version, or an implicit version built
      * from the cycle's own configuration (so cycles without a template are pinned too).
@@ -71,7 +112,10 @@ final class PerformanceTemplates
     public function pinFor(PerformanceCycle $cycle, ?User $actor = null): PerformanceTemplateVersion
     {
         if ($cycle->performance_template_version_id) {
-            return PerformanceTemplateVersion::query()->findOrFail($cycle->performance_template_version_id);
+            $version = PerformanceTemplateVersion::query()->findOrFail($cycle->performance_template_version_id);
+            $this->assertMatches($cycle, $version);
+
+            return $version;
         }
 
         $template = PerformanceTemplate::query()->firstOrCreate(['code' => 'CYCLE-'.$cycle->code], ['name' => "{$cycle->name} (cycle configuration)", 'description' => 'Pinned automatically when the cycle launched.']);

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\ComplianceController;
 use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\OrganisationController;
+use App\Http\Controllers\Api\V1\PerformanceController;
 use App\Http\Controllers\Api\V1\PreEmployeeController;
 use App\Http\Controllers\Api\V1\ReadController;
 use App\Http\Controllers\Scim\ScimUserController;
@@ -68,7 +69,20 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::get('documents', [ReadController::class, 'documents'])->middleware('api.key:documents.read')->name('documents.index');
     Route::get('assets', [ReadController::class, 'assets'])->middleware('api.key:assets.read')->name('assets.index');
     Route::get('performance/appraisals', [ReadController::class, 'appraisals'])->middleware('api.key:performance.read')->name('performance.appraisals');
-    Route::get('performance/goals', [ReadController::class, 'goals'])->middleware('api.key:performance.read')->name('performance.goals');
+    Route::get('performance/goals', [PerformanceController::class, 'goals'])->middleware('api.key:performance.read')->name('performance.goals');
+    // Phase 7 performance API: metadata and finalized outcomes only; see PerformanceController.
+    Route::middleware('api.key:performance.read')->prefix('performance')->name('performance.')->group(function () {
+        Route::get('cycles', [PerformanceController::class, 'cycles'])->name('cycles');
+        Route::get('goals/{goal}/progress', [PerformanceController::class, 'goalProgress'])->whereNumber('goal')->name('goals.progress');
+        Route::get('reviews', [PerformanceController::class, 'reviews'])->name('reviews');
+        Route::get('check-ins', [PerformanceController::class, 'checkIns'])->name('check-ins');
+        Route::get('one-on-ones', [PerformanceController::class, 'oneOnOnes'])->name('one-on-ones');
+        Route::get('feedback', [PerformanceController::class, 'feedback'])->name('feedback');
+        Route::get('competencies', [PerformanceController::class, 'competencies'])->name('competencies');
+        Route::get('pips', [PerformanceController::class, 'pips'])->name('pips');
+        Route::get('analytics', [PerformanceController::class, 'analytics'])->name('analytics');
+    });
+    Route::post('performance/goals/{goal}/progress', [PerformanceController::class, 'recordGoalProgress'])->whereNumber('goal')->middleware('api.key:performance.write')->name('performance.goals.progress.store');
     Route::get('workflows/instances', [ReadController::class, 'workflowInstances'])->middleware('api.key:workflows.read')->name('workflows.instances');
     Route::get('workflows/tasks', [ReadController::class, 'workflowTasks'])->middleware('api.key:workflows.read')->name('workflows.tasks');
     Route::get('reports/{report}/run', [ReadController::class, 'runReport'])->middleware('api.key:reports.run')->name('reports.run');
