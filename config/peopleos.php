@@ -910,7 +910,8 @@ return [
         'feedback_types' => ['praise' => 'Praise', 'constructive' => 'Constructive', 'request' => 'Feedback request'],
         'feedback_visibility' => ['private' => 'Only the recipient', 'manager' => 'Recipient and their manager', 'public' => 'Everyone in the tenant'],
         'competency_categories' => ['core' => 'Core', 'functional' => 'Functional', 'leadership' => 'Leadership', 'behavioural' => 'Behavioural'],
-        'pip_statuses' => ['draft' => 'Draft', 'active' => 'Active', 'extended' => 'Extended', 'completed' => 'Completed successfully', 'unsuccessful' => 'Unsuccessful', 'withdrawn' => 'Withdrawn'],
+        // 'withdrawn' is kept only for plans closed before Phase 7; new plans use 'cancelled'.
+        'pip_statuses' => ['draft' => 'Draft', 'active' => 'Active', 'extended' => 'Extended', 'completed' => 'Successfully completed', 'unsuccessful' => 'Unsuccessful', 'closed' => 'Closed', 'cancelled' => 'Cancelled', 'withdrawn' => 'Withdrawn'],
         'default_weights' => ['goals' => 70, 'competencies' => 30],
         // Phase 7: which reporting relationships make someone a performance manager of an employee
         // (goals, reviews, check-ins, one-on-ones, PIPs). Mentors, buddies and project leads are not.

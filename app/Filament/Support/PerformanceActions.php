@@ -14,6 +14,7 @@ use App\Domain\Performance\Services\Goals;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -86,8 +87,10 @@ final class PerformanceActions
                 ->schema(fn (Appraisal $record) => [
                     Select::make('rating')->label('Calibrated rating')->options($record->cycle->ratingScale()->options())->default(fn () => $record->effectiveRating() === null ? null : (string) round($record->effectiveRating()))->required(),
                     Textarea::make('note')->required()->maxLength(500),
+                    // Optimistic concurrency: the rating this person saw when opening the form.
+                    Hidden::make('expected')->default(fn () => $record->effectiveRating()),
                 ])
-                ->action(fn (Appraisal $record, array $data) => self::run(fn () => app(Appraisals::class)->calibrate($record, (float) $data['rating'], $data['note'], auth()->user()), 'Calibrated')),
+                ->action(fn (Appraisal $record, array $data) => self::run(fn () => app(Appraisals::class)->calibrate($record, (float) $data['rating'], $data['note'], auth()->user(), isset($data['expected']) && $data['expected'] !== '' ? (float) $data['expected'] : null), 'Calibrated')),
             Action::make('finalize')->label('Finalize')->icon(Heroicon::OutlinedCheckBadge)->color('success')
                 ->visible(fn (Appraisal $record) => ! $record->isFinal() && $user()->can('performance.calibrate'))
                 ->schema(fn (Appraisal $record) => [

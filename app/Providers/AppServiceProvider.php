@@ -223,6 +223,8 @@ use App\Domain\People\Models\PersonFamilyMember;
 use App\Domain\People\Models\PersonQualification;
 use App\Domain\People\Models\PersonSkill;
 use App\Domain\People\Models\Skill;
+use App\Domain\Performance\Contracts\DevelopmentNeedsReader;
+use App\Domain\Performance\Contracts\PerformanceOutcomesReader;
 use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\AppraisalReview;
 use App\Domain\Performance\Models\CareerAspiration;
@@ -237,6 +239,8 @@ use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Models\RatingScale;
 use App\Domain\Performance\Policies\EmployeeOwnedPolicy;
 use App\Domain\Performance\Policies\PerformanceConfigPolicy;
+use App\Domain\Performance\Services\DevelopmentNeeds;
+use App\Domain\Performance\Services\PerformanceOutcomes;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
@@ -268,6 +272,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(LeaveDayResolver::class, AttendanceLeaveDayResolver::class);
+        $this->app->bind(DevelopmentNeedsReader::class, DevelopmentNeeds::class);
+        $this->app->bind(PerformanceOutcomesReader::class, PerformanceOutcomes::class);
         $this->app->singleton(AccessScopes::class);
         // Phase 5: one statutory rule cache per request / job, cleared at the start of each run calculation.
         $this->app->scoped(ComplianceRules::class);

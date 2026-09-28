@@ -91,14 +91,34 @@ class ImprovementPlanResource extends Resource
             ->defaultSort('id', 'desc')
             ->filters([SelectFilter::make('status')->options(config('peopleos.performance.pip_statuses'))])
             ->recordActions([
+                Action::make('activate')->label('Activate')->icon('heroicon-m-play')->color('primary')
+                    ->visible(fn (ImprovementPlan $record) => $record->status === 'draft' && auth()->user()->can('update', $record))
+                    ->requiresConfirmation()
+                    ->action(fn (ImprovementPlan $record) => PerformanceActions::run(fn () => app(ImprovementPlans::class)->activate($record, auth()->user()), 'Plan started')),
+                Action::make('checkpoint')->label('Add checkpoint')->icon('heroicon-m-flag')->color('gray')
+                    ->visible(fn (ImprovementPlan $record) => $record->isOpen() && auth()->user()->can('update', $record))
+                    ->schema([TextInput::make('title')->required()->maxLength(255), DatePicker::make('due_date')->native(false)->required(), Textarea::make('notes')->maxLength(1000)])
+                    ->action(fn (ImprovementPlan $record, array $data) => PerformanceActions::run(fn () => app(ImprovementPlans::class)->addCheckpoint($record, $data['title'], $data['due_date'], $data['notes'] ?? null, auth()->user()), 'Checkpoint added')),
+                Action::make('reviewCheckpoint')->label('Review checkpoint')->icon('heroicon-m-clipboard-document-check')->color('gray')
+                    ->visible(fn (ImprovementPlan $record) => $record->isOpen() && auth()->user()->can('update', $record) && $record->checkpoints()->where('status', 'pending')->exists())
+                    ->schema(fn (ImprovementPlan $record) => [
+                        Select::make('checkpoint_id')->label('Checkpoint')->required()->options($record->checkpoints()->where('status', 'pending')->get()->mapWithKeys(fn ($c) => [$c->id => $c->due_date->toDateString().' · '.$c->title])->all()),
+                        Select::make('status')->options(collect(config('peopleos.performance.checkpoint_statuses'))->except('pending')->all())->required(),
+                        Textarea::make('outcome')->required()->maxLength(1000),
+                    ])
+                    ->action(fn (ImprovementPlan $record, array $data) => PerformanceActions::run(fn () => app(ImprovementPlans::class)->reviewCheckpoint($record->checkpoints()->findOrFail($data['checkpoint_id']), $data['status'], $data['outcome'], auth()->user()), 'Checkpoint reviewed')),
                 Action::make('extend')->label('Extend')->icon('heroicon-m-calendar')->color('warning')
                     ->visible(fn (ImprovementPlan $record) => $record->isOpen() && auth()->user()->can('update', $record))
                     ->schema([DatePicker::make('end_date')->native(false)->required(), Textarea::make('reason')->required()->maxLength(255)])
-                    ->action(fn (ImprovementPlan $record, array $data) => PerformanceActions::run(fn () => app(ImprovementPlans::class)->extend($record, $data['end_date'], $data['reason']), 'Plan extended')),
+                    ->action(fn (ImprovementPlan $record, array $data) => PerformanceActions::run(fn () => app(ImprovementPlans::class)->extend($record, $data['end_date'], $data['reason'], auth()->user()), 'Plan extended')),
                 Action::make('close')->label('Close')->icon('heroicon-m-check-circle')->color('success')
                     ->visible(fn (ImprovementPlan $record) => $record->isOpen() && auth()->user()->can('update', $record))
-                    ->schema([Select::make('status')->options(collect(config('peopleos.performance.pip_statuses'))->only(['completed', 'unsuccessful', 'withdrawn'])->all())->required(), Textarea::make('outcome')->required()->maxLength(1000)])
-                    ->action(fn (ImprovementPlan $record, array $data) => PerformanceActions::run(fn () => app(ImprovementPlans::class)->close($record, $data['status'], $data['outcome'], auth()->user()), 'Plan closed')),
+                    ->schema([Select::make('status')->options(collect(config('peopleos.performance.pip_statuses'))->only(['completed', 'unsuccessful', 'cancelled'])->all())->required(), Textarea::make('outcome')->required()->maxLength(1000)])
+                    ->action(fn (ImprovementPlan $record, array $data) => PerformanceActions::run(fn () => app(ImprovementPlans::class)->close($record, $data['status'], $data['outcome'], auth()->user()), 'Outcome recorded')),
+                Action::make('closeOut')->label('Close plan')->icon('heroicon-m-lock-closed')->color('gray')
+                    ->visible(fn (ImprovementPlan $record) => in_array($record->status, ['completed', 'unsuccessful'], true) && auth()->user()->can('update', $record))
+                    ->schema([Textarea::make('reason')->required()->maxLength(500)])
+                    ->action(fn (ImprovementPlan $record, array $data) => PerformanceActions::run(fn () => app(ImprovementPlans::class)->closeOut($record, $data['reason'], auth()->user()), 'Plan closed')),
             ]);
     }
 

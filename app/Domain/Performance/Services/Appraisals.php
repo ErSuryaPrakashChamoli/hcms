@@ -361,34 +361,15 @@ final class Appraisals
 
     // --- Calibration and finalization -------------------------------------------------------
 
-    public function calibrate(Appraisal $appraisal, float $rating, string $note, ?User $actor = null): Appraisal
+    /** Calibrate one appraisal (delegates to Calibrations, which keeps the immutable history). */
+    public function calibrate(Appraisal $appraisal, float $rating, string $note, ?User $actor = null, ?float $expected = null): Appraisal
     {
-        $appraisal->loadMissing('cycle.templateVersion');
         if ($appraisal->isFinal()) {
             throw new RuntimeException('The appraisal is finalized.');
         }
-        if (! $appraisal->cycle->isAtOrPast('calibration') && $appraisal->cycle->hasStage('calibration')) {
-            throw new RuntimeException('Calibration has not opened yet.');
-        }
-        if (trim($note) === '') {
-            throw new RuntimeException('A calibration note is required.');
-        }
-        $scale = $appraisal->cycle->ratingScale();
-        if ($rating < $scale->min() || $rating > $scale->max()) {
-            throw new RuntimeException("Ratings must be between {$scale->min()} and {$scale->max()}.");
-        }
+        app(Calibrations::class)->adjust($appraisal, $rating, $note, $expected, null, $actor);
 
-        return DB::transaction(function () use ($appraisal, $rating, $note, $actor) {
-            $current = Appraisal::query()->withoutGlobalScope(AccessScope::class)->whereKey($appraisal->id)->lockForUpdate()->firstOrFail();
-            if ($current->isFinal() || $current->isLocked()) {
-                throw new RuntimeException('The appraisal is finalized.');
-            }
-            $before = $current->calibrated_rating ?? $current->computed_rating;
-            $appraisal->update(['calibrated_rating' => $rating, 'calibration_note' => $note, 'status' => 'calibration']);
-            $this->audit->record(AuditAction::Update, 'performance', $appraisal, [['field' => 'calibrated_rating', 'before' => $before, 'after' => $rating]], $note, actor: $actor);
-
-            return $appraisal;
-        });
+        return $appraisal->refresh();
     }
 
     public function finalize(Appraisal $appraisal, ?User $actor = null, ?float $rating = null, ?string $summary = null, bool $promotion = false, bool $pip = false): Appraisal
