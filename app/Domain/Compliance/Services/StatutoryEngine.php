@@ -258,6 +258,10 @@ final class StatutoryEngine
         // Every rule consulted is recorded, even when it produces no line (e.g. an ESI ceiling test).
         $c->inputs['rules_consulted'][$rule->id] = $this->ruleRef($rule);
 
+        if ($notice = $this->rules->pendingNotice($rule, $on)) {
+            $c->exception('statutory_change_pending', "{$rule->label()} ({$where}) is affected by a regulatory change from {$notice->effective_date->toDateString()}: {$notice->title}.", ComplianceRules::enforced());
+        }
+
         if (! $rule->isVerified()) {
             $c->exception('unverified_statutory_rule', "{$rule->label()} ({$where}) is {$rule->verification_status}, not verified against an official source.", ComplianceRules::enforced());
         }

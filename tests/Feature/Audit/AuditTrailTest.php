@@ -72,8 +72,9 @@ it('masks sensitive attributes', function () {
     $event = $user->auditEvents()->where('action', 'UPDATE')->first();
     $fields = $event->fieldChanges->pluck('field')->all();
 
-    // password is excluded outright; name is recorded in clear.
-    expect($fields)->toBe(['name']);
+    // password is excluded outright; name is recorded in clear. password_changed_at changes only when
+    // creation and update straddle a second boundary, so it is ignored here (Phase 6 de-flake).
+    expect(array_values(array_diff($fields, ['password_changed_at'])))->toBe(['name']);
 
     $recorded = app(AuditRecorder::class)->record(AuditAction::View, 'people', $user, [
         ['field' => 'bank_account', 'before' => null, 'after' => '1234567890', 'sensitive' => true],

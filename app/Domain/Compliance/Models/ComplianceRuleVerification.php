@@ -13,7 +13,7 @@ use RuntimeException;
  * from which status to which, against which official source, with which requirement text and
  * payload mapping, and the rule checksum at that moment. Platform-level; never updated or deleted.
  */
-#[Fillable(['compliance_rule_id', 'action', 'from_status', 'to_status', 'authority', 'source_url', 'source_title', 'source_published_date', 'effective_date', 'requirement_text', 'mapping', 'evidence_reference', 'evidence_checksum', 'rule_checksum', 'actor_id', 'actor_label', 'notes', 'created_at'])]
+#[Fillable(['compliance_rule_id', 'action', 'from_status', 'to_status', 'authority', 'source_url', 'source_title', 'source_published_date', 'effective_date', 'retrieved_at', 'requirement_text', 'mapping', 'evidence_reference', 'evidence_checksum', 'rule_checksum', 'actor_id', 'actor_label', 'notes', 'created_at'])]
 class ComplianceRuleVerification extends Model
 {
     public const UPDATED_AT = null;
@@ -32,6 +32,7 @@ class ComplianceRuleVerification extends Model
             'mapping' => 'array',
             'source_published_date' => 'date',
             'effective_date' => 'date',
+            'retrieved_at' => 'date',
             'created_at' => 'datetime',
         ];
     }

@@ -94,6 +94,22 @@ enum AuditAction: string
     case StatutoryOutputAccessed = 'STATUTORY_OUTPUT_ACCESSED';
     case EstablishmentAssigned = 'ESTABLISHMENT_ASSIGNED';
 
+    // Statutory readiness (Phase 6)
+    case StatutoryRuleEvidenceAttached = 'STATUTORY_RULE_EVIDENCE_ATTACHED';
+    case StatutoryRuleNoticeRecorded = 'STATUTORY_RULE_NOTICE_RECORDED';
+    case StatutoryRuleNoticeResolved = 'STATUTORY_RULE_NOTICE_RESOLVED';
+    case ExportLayoutSubmitted = 'EXPORT_LAYOUT_SUBMITTED';
+    case ExportLayoutVerified = 'EXPORT_LAYOUT_VERIFIED';
+    case ExportLayoutRejected = 'EXPORT_LAYOUT_REJECTED';
+    case LegalEntityVerified = 'LEGAL_ENTITY_VERIFIED';
+    case EstablishmentVerified = 'ESTABLISHMENT_VERIFIED';
+    case RegistrationVerified = 'REGISTRATION_VERIFIED';
+    case VerificationSubmitted = 'VERIFICATION_SUBMITTED';
+    case StatutoryPortalValidationRecorded = 'STATUTORY_PORTAL_VALIDATION_RECORDED';
+    case ParallelRunImported = 'PARALLEL_RUN_IMPORTED';
+    case ParallelDifferenceReviewed = 'PARALLEL_DIFFERENCE_REVIEWED';
+    case ParallelRunReconciled = 'PARALLEL_RUN_RECONCILED';
+
     // Payroll
     case PayrollStarted = 'PAYROLL_STARTED';
     case PayrollCalculated = 'PAYROLL_CALCULATED';

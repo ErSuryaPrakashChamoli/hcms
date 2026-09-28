@@ -8,11 +8,16 @@ use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\RuleVerifications;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 require_once __DIR__.'/../Payroll/PayrollTestHelpers.php';
 
 beforeEach(function () {
+    Storage::fake('local');
     syncComplianceRules();
+    // These cases exercise the verification mechanics on EPF v1; the Phase 6 regulatory notice that
+    // blocks EPF v1 is covered in RegulatoryReadinessTest, so it is closed here as test setup.
+    DB::table('compliance_rule_notices')->update(['status' => 'resolved']);
     $this->workflow = app(RuleVerifications::class);
     $this->submitter = platformAdmin();
     $this->reviewer = platformAdmin();
@@ -27,6 +32,7 @@ beforeEach(function () {
         'mapping' => array_fill_keys(array_keys($rule->payload()), 'mapped'),
     ];
     $this->bypass = fn (callable $fn) => app(TenantContext::class)->bypass($fn);
+    $this->attach = fn (ComplianceRule $rule) => $this->workflow->attachEvidence($rule, '%PDF-1.4 official circular '.$rule->id, 'circular.pdf', '2026-09-28', 'https://www.epfindia.gov.in/x.pdf', $this->submitter);
 });
 
 it('records creation history and a checksum for every published version', function () {
@@ -69,6 +75,8 @@ it('verifies only through review, by a different platform administrator, and the
     expect($this->epf->refresh()->verification_status)->toBe('review')
         ->and($this->epf->source_url)->toContain('epfindia.gov.in');
 
+    expect(fn () => $this->workflow->verify($this->epf, $this->reviewer, 'no document'))->toThrow(RuntimeException::class, 'evidence document');
+    ($this->attach)($this->epf);
     expect(fn () => $this->workflow->verify($this->epf, $this->submitter, 'self'))->toThrow(RuntimeException::class, 'cannot verify');
     expect(fn () => $this->workflow->verify($this->epf, tenantUser(provisionTenant(), ['*']), 'tenant'))->toThrow(RuntimeException::class, 'platform administrators');
     expect(fn () => $this->workflow->verify($this->epf, $this->reviewer, ''))->toThrow(RuntimeException::class, 'notes');
@@ -93,6 +101,7 @@ it('verifies only through review, by a different platform administrator, and the
 it('rejects, supersedes corrections and never falls back to an older or rejected version', function () {
     $rules = app(ComplianceRules::class);
     $this->workflow->submit($this->epf, ($this->evidence)($this->epf), $this->submitter);
+    ($this->attach)($this->epf);
     $this->workflow->verify($this->epf, $this->reviewer, 'ok');
 
     // A newer draft correction is what resolution returns (flagged as unverified), not the verified v1.
@@ -110,6 +119,7 @@ it('rejects, supersedes corrections and never falls back to an older or rejected
     // A verified correction supersedes the earlier version from the same date.
     $v3 = ($this->bypass)(fn () => ComplianceRule::query()->create(['jurisdiction' => 'IN', 'code' => 'EPF', 'name' => 'Employees Provident Fund', 'version' => 3, 'effective_from' => '2014-09-01', 'parameters' => $this->epf->parameters]));
     $this->workflow->submit($v3, ($this->evidence)($v3), $this->submitter);
+    ($this->attach)($v3);
     $this->workflow->verify($v3, $this->reviewer, 'Correction');
     $rules->forget();
     expect($this->epf->refresh()->verification_status)->toBe('superseded')

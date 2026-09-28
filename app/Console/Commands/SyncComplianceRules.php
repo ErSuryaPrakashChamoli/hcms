@@ -16,6 +16,11 @@ class SyncComplianceRules extends Command
         $synced = $rules->sync();
         $this->info("Synced {$synced->count()} statutory rule version(s).");
 
+        $notices = $rules->openNotices();
+        if ($notices->isNotEmpty()) {
+            $this->warn("{$notices->count()} open regulatory notice(s): ".$notices->map(fn ($n) => "{$n->code} from {$n->effective_date->toDateString()}")->implode(', ').'.');
+        }
+
         $byStatus = $synced->countBy('verification_status');
         $this->line('By status: '.$byStatus->map(fn ($n, $s) => strtoupper($s).' '.$n)->implode(', '));
 

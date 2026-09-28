@@ -42,6 +42,7 @@ return [
                 'contribution_periods' => 'Contribution page: April–September and October–March — matches.',
             ],
             'evidence_reference' => 'Retrieved 2026-09-28 from esic.gov.in (page text quoted above).',
+            'retrieved_at' => '2026-09-28',
             'notes' => 'Blocking gaps for verification: rounding not confirmed; persons-with-disability limit and the Rs.176 daily-average-wage employee exemption are not modelled by the engine.',
         ],
     ],

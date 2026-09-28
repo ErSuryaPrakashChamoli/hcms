@@ -18,7 +18,7 @@ use RuntimeException;
  * (RuleVerifications) moves `verification_status` through DRAFT → REVIEW → VERIFIED, and to
  * SUPERSEDED or REJECTED. `parameters` is the rule payload.
  */
-#[Fillable(['jurisdiction', 'country', 'code', 'state', 'authority', 'name', 'version', 'effective_from', 'effective_to', 'parameters', 'checksum', 'source', 'source_url', 'source_title', 'source_published_date', 'status', 'verification_status', 'verified_at', 'verified_by', 'verification_notes', 'superseded_by_id'])]
+#[Fillable(['jurisdiction', 'country', 'code', 'state', 'authority', 'name', 'version', 'effective_from', 'effective_to', 'parameters', 'checksum', 'source', 'source_url', 'source_title', 'source_published_date', 'status', 'verification_status', 'verified_at', 'verified_by', 'verification_notes', 'superseded_by_id', 'corrects_rule_id', 'correction_reason'])]
 class ComplianceRule extends Model
 {
     use HasEffectiveDates;
@@ -36,7 +36,7 @@ class ComplianceRule extends Model
     public const STATUSES = [self::DRAFT, self::REVIEW, self::VERIFIED, self::SUPERSEDED, self::REJECTED];
 
     /** Never changed after creation. */
-    public const IMMUTABLE = ['jurisdiction', 'country', 'code', 'state', 'version', 'effective_from', 'effective_to', 'parameters', 'checksum', 'name'];
+    public const IMMUTABLE = ['jurisdiction', 'country', 'code', 'state', 'version', 'effective_from', 'effective_to', 'parameters', 'checksum', 'name', 'corrects_rule_id', 'correction_reason'];
 
     protected static function booted(): void
     {
@@ -147,6 +147,22 @@ class ComplianceRule extends Model
     public function verifications(): HasMany
     {
         return $this->hasMany(ComplianceRuleVerification::class, 'compliance_rule_id')->orderBy('id');
+    }
+
+    public function evidenceDocuments(): HasMany
+    {
+        return $this->hasMany(ComplianceEvidenceDocument::class, 'compliance_rule_id')->orderBy('id');
+    }
+
+    /** Coverage rows of the latest evidence submission. */
+    public function coverage(): HasMany
+    {
+        return $this->hasMany(ComplianceRuleParameter::class, 'compliance_rule_id')->orderBy('parameter');
+    }
+
+    public function corrects(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'corrects_rule_id');
     }
 
     public function supersededBy(): BelongsTo

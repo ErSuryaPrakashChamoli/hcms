@@ -5,7 +5,10 @@ use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Audit\Models\AuditEventChange;
 use App\Domain\Communication\Models\AnnouncementRead;
+use App\Domain\Compliance\Models\ComplianceEvidenceDocument;
 use App\Domain\Compliance\Models\ComplianceRule;
+use App\Domain\Compliance\Models\ComplianceRuleNotice;
+use App\Domain\Compliance\Models\ComplianceRuleParameter;
 use App\Domain\Compliance\Models\ComplianceRuleVerification;
 use App\Domain\Compliance\Models\ProfessionalTaxRuleVersion;
 use App\Domain\Employment\Models\Employee;
@@ -58,6 +61,9 @@ it('scopes every domain model to a tenant except the documented platform-level m
         ComplianceRule::class,
         ComplianceRuleVerification::class, // Phase 5: platform rule verification history
         ProfessionalTaxRuleVersion::class, // Phase 5: PT view of compliance_rules
+        ComplianceEvidenceDocument::class, // Phase 6: platform rule evidence
+        ComplianceRuleParameter::class,
+        ComplianceRuleNotice::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -103,6 +109,8 @@ it('audits every domain model except the documented append-only or derived table
         'Compliance\Models\ProfessionalTaxReturnEntry', 'Compliance\Models\LwfReturn', 'Compliance\Models\LwfReturnEntry',
         'Compliance\Models\ProfessionalTaxRuleVersion', 'Compliance\Models\TdsAnnualLedger', 'Compliance\Models\TdsQuarterlyReturn',
         'Compliance\Models\TdsQuarterlyReturnEntry', 'Compliance\Models\TdsCertificate',
+        // Phase 6 platform evidence records: append-only, audited through AuditRecorder platform events.
+        'Compliance\Models\ComplianceEvidenceDocument', 'Compliance\Models\ComplianceRuleParameter', 'Compliance\Models\ComplianceRuleNotice',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

@@ -1,12 +1,14 @@
 <?php
 
 use App\Domain\Compliance\Models\ComplianceRule;
+use App\Domain\Compliance\Models\ComplianceRuleNotice;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\RuleVerifications;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Services\PayrollRuns;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Storage;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/PayrollTestHelpers.php';
@@ -36,7 +38,7 @@ function verifyRuleForTest(ComplianceRule $rule): void
     [$submitter, $reviewer] = [platformAdmin(), platformAdmin()];
 
     app(TenantContext::class)->bypass(function () use ($workflow, $rule, $submitter, $reviewer) {
-        if ($rule->verification_status === ComplianceRule::DRAFT) {
+        if (in_array($rule->verification_status, [ComplianceRule::DRAFT, ComplianceRule::REVIEW], true)) {
             $workflow->submit($rule, [
                 'source_url' => 'https://www.example.gov.in/notification',
                 'source_title' => 'Test notification',
@@ -45,6 +47,7 @@ function verifyRuleForTest(ComplianceRule $rule): void
                 'mapping' => array_fill_keys(array_keys($rule->payload()), 'test mapping'),
             ], $submitter);
         }
+        $workflow->attachEvidence($rule, '%PDF-1.4 test evidence '.$rule->id, 'evidence.pdf', now()->toDateString(), 'https://www.example.gov.in/notification', $submitter);
         $workflow->verify($rule->refresh(), $reviewer, 'Verified in test');
     });
 }
@@ -80,6 +83,20 @@ it('turns enforcement on by default when no environment override exists', functi
 
 it('blocks unverified rules at calculation and finalization when enforced, and finalizes once the used rules are verified', function () {
     config(['peopleos.payroll.enforce_verified_rules' => true]);
+    Storage::fake('local');
+
+    // Phase 6: the open EPF and TDS regulatory notices must be resolved by new versions first
+    // (test payloads; real ones come from the gazette / enacted Finance Act).
+    $admin = platformAdmin();
+    $workflow = app(RuleVerifications::class);
+    app(TenantContext::class)->bypass(function () use ($workflow, $admin) {
+        foreach (ComplianceRuleNotice::query()->where('status', 'open')->get() as $notice) {
+            $old = ComplianceRule::query()->where('code', $notice->code)->where('version', $notice->affects_versions[0])->sole();
+            $new = $workflow->publishCorrection($old, $old->payload(), $notice->effective_date, null, 'Test correction for '.$notice->title, $admin);
+            $workflow->resolveNotice($notice, $new, $admin, 'Test resolution');
+        }
+    });
+    app(ComplianceRules::class)->forget();
     $employee = salariedEmployee(600000);
     $run = $this->runs->calculate($this->runs->open($this->company, 2026, 9, $this->preparer), $this->preparer);
 
