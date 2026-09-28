@@ -229,6 +229,8 @@ return [
             'establishment.view' => 'View establishments',
             'establishment.create' => 'Create establishments',
             'establishment.update' => 'Update establishments and assign employees to them',
+            'legal_entity.verify' => 'Verify legal entity details against the incorporation document (never the submitter)',
+            'establishment.verify' => 'Verify establishment details against the registration certificate (never the submitter)',
         ],
         'compliance' => [
             'compliance.view' => 'View statutory rules and compliance status',
@@ -938,6 +940,7 @@ return [
             'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'performance.appraisal.finalized', 'learning.completed',
             'asset.assigned', 'asset.returned', 'servicedesk.ticket.created', 'servicedesk.ticket.resolved', 'grievance.raised', 'exit.initiated', 'exit.completed',
             'letter.issued', 'workflow.completed', 'document.expiring',
+            'compliance.establishment_verified', 'compliance.return_reconciled', 'compliance.return_approved', 'compliance.return_exported', 'compliance.return_filed',
         ],
         'webhook_max_attempts' => 5,
         'tiers' => ['shared' => 'Shared infrastructure', 'dedicated' => 'Dedicated tenant infrastructure'],

@@ -59,6 +59,11 @@ final class StatutoryRegistrations
             throw new RuntimeException('A reason is required to change a statutory registration.');
         }
 
+        // Phase 6.3: a verified registration whose name or jurisdiction changes must be re-verified.
+        if ($registration->verification_status === 'verified' && array_intersect(array_keys($changes), ['registration_name', 'jurisdiction']) !== []) {
+            $changes += ['verification_status' => 'unverified', 'verified_by' => null, 'verified_at' => null];
+        }
+
         $registration->withAuditReason($reason)->withAuditAction(AuditAction::StatutoryRegistrationUpdated)->update($changes);
 
         return $registration;
@@ -94,7 +99,11 @@ final class StatutoryRegistrations
             throw new RuntimeException('Verification needs the certificate or portal reference it was checked against.');
         }
 
-        $registration->withAuditReason('Verified against '.$sourceReference)->withAuditAction(AuditAction::StatutoryRegistrationUpdated)->update([
+        if (! $verifier->hasPermission('compliance.registrations.manage')) {
+            throw new RuntimeException('You do not have the compliance.registrations.manage permission.');
+        }
+
+        $registration->withAuditReason('Verified against '.$sourceReference)->withAuditAction(AuditAction::RegistrationVerified)->update([
             'verification_status' => 'verified',
             'verified_by' => $verifier->getKey(),
             'verified_at' => now(),

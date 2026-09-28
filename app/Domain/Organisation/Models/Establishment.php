@@ -4,6 +4,7 @@ namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Identity\Concerns\ScopedByOrganisation;
+use App\Domain\Organisation\Concerns\HasRecordVerification;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
@@ -21,7 +22,7 @@ use RuntimeException;
 #[Fillable(['tenant_id', 'company_id', 'legal_entity_id', 'code', 'name', 'address', 'country', 'state', 'district', 'postal_code', 'establishment_type', 'is_primary', 'status', 'effective_from', 'effective_to', 'metadata'])]
 class Establishment extends Model
 {
-    use Auditable, BelongsToTenant, HasEffectiveDates, ScopedByOrganisation;
+    use Auditable, BelongsToTenant, HasEffectiveDates, HasRecordVerification, ScopedByOrganisation;
 
     public string $accessScopeDimension = 'establishment';
 
@@ -48,7 +49,14 @@ class Establishment extends Model
             'effective_from' => 'date',
             'effective_to' => 'date',
             'metadata' => 'array',
+            'verification_submitted_at' => 'datetime',
+            'verified_at' => 'datetime',
         ];
+    }
+
+    public function verificationIdentity(): array
+    {
+        return ['legal_entity_id', 'code', 'name', 'address', 'country', 'state', 'district', 'postal_code', 'establishment_type'];
     }
 
     public function auditModule(): string

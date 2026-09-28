@@ -8,6 +8,7 @@ use App\Domain\Organisation\Models\LegalEntity;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\LegalEntities\Pages\ManageLegalEntities;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\RecordVerificationActions;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -72,12 +73,14 @@ class LegalEntityResource extends Resource
                 TextColumn::make('establishments_count')->label('Establishments'),
                 IconColumn::make('is_primary')->label('Primary')->boolean(),
                 TextColumn::make('status')->badge(),
+                RecordVerificationActions::column(),
                 TextColumn::make('effective_from')->date()->toggleable(),
                 TextColumn::make('effective_to')->date()->placeholder('Open')->toggleable(),
             ])
             ->filters([SelectFilter::make('status')->options(ActiveStatus::class)])
             ->defaultSort('legal_name')
             ->recordActions([
+                ...RecordVerificationActions::make('legal_entity'),
                 EditAction::make()->using(function (LegalEntity $record, array $data) {
                     $record->withAuditReason(AuditReasonField::extract($data))->update($data);
 

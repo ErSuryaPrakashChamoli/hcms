@@ -8,6 +8,7 @@ use App\Domain\Organisation\Models\LegalEntity;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\Establishments\Pages\ManageEstablishments;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\RecordVerificationActions;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -76,6 +77,7 @@ class EstablishmentResource extends Resource
                 TextColumn::make('establishment_type')->label('Type')->formatStateUsing(fn (?string $state) => config("peopleos.organisation.establishment_types.{$state}", $state)),
                 IconColumn::make('is_primary')->label('Principal')->boolean(),
                 TextColumn::make('status')->badge(),
+                RecordVerificationActions::column(),
                 TextColumn::make('effective_to')->date()->placeholder('Open')->toggleable(),
             ])
             ->filters([
@@ -84,6 +86,7 @@ class EstablishmentResource extends Resource
             ])
             ->defaultSort('name')
             ->recordActions([
+                ...RecordVerificationActions::make('establishment'),
                 EditAction::make()->using(function (Establishment $record, array $data) {
                     $record->withAuditReason(AuditReasonField::extract($data))->update($data);
 

@@ -4,6 +4,7 @@ namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Identity\Concerns\ScopedByOrganisation;
+use App\Domain\Organisation\Concerns\HasRecordVerification;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['tenant_id', 'company_id', 'code', 'legal_name', 'trade_name', 'legal_form', 'country', 'incorporation_identifier', 'is_primary', 'status', 'effective_from', 'effective_to', 'metadata'])]
 class LegalEntity extends Model
 {
-    use Auditable, BelongsToTenant, HasEffectiveDates, ScopedByOrganisation;
+    use Auditable, BelongsToTenant, HasEffectiveDates, HasRecordVerification, ScopedByOrganisation;
 
     public string $accessScopeDimension = 'legal_entity';
 
@@ -31,7 +32,14 @@ class LegalEntity extends Model
             'effective_from' => 'date',
             'effective_to' => 'date',
             'metadata' => 'array',
+            'verification_submitted_at' => 'datetime',
+            'verified_at' => 'datetime',
         ];
+    }
+
+    public function verificationIdentity(): array
+    {
+        return ['legal_name', 'legal_form', 'country', 'incorporation_identifier', 'company_id'];
     }
 
     public function auditModule(): string

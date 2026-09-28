@@ -5,6 +5,7 @@ namespace App\Domain\Compliance\Services\Returns;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compliance\Contracts\StatutoryReturnGenerator;
+use App\Domain\Compliance\Events\ComplianceEvent;
 use App\Domain\Compliance\Models\StatutoryReconciliation;
 use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Models\StatutoryReturnAction;
@@ -323,6 +324,18 @@ final class StatutoryReturns
             entityLabel: $return->label(),
             actor: $actor,
         );
+
+        // Phase 6 §32: tenant-level outcomes for the webhook bridge.
+        $event = match (true) {
+            $action === 'approved' => 'compliance.return_approved',
+            $action === 'exported' && $from !== $to => 'compliance.return_exported',
+            $action === 'submitted' => 'compliance.return_filed',
+            $action === 'reconciled' && $to === StatutoryReturn::RECONCILED => 'compliance.return_reconciled',
+            default => null,
+        };
+        if ($event !== null) {
+            ComplianceEvent::dispatch($event, $return, ['return_id' => $return->getKey(), 'type' => $return->return_type, 'form' => $return->form_code, 'period' => $return->period_key, 'status' => $to, 'external_reference' => $action === 'submitted' ? $return->external_reference : null]);
+        }
 
         return StatutoryReturnAction::query()->create([
             'statutory_return_id' => $return->getKey(),
