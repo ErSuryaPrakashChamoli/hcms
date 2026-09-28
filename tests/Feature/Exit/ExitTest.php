@@ -126,7 +126,7 @@ it('recovers notice shortfall, withdraws resignations and treats terminations as
     }
     $settlement = app(FinalSettlements::class)->calculate($case->refresh(), $this->hr);
     $recovery = $settlement->lines->firstWhere('code', 'NOTICE_RECOVERY');
-    expect($recovery)->not->toBeNull()->and($recovery->basis['served_days'])->toBe(10)->and((float) $recovery->amount)->toBe(round(20 * round(48200 / 30, 2), 2));
+    expect($recovery)->not->toBeNull()->and($recovery->basis['served_days'])->toBe(10)->and((float) $recovery->amount)->toBe(round(20 * round(47600 / 30, 2), 2)); // Phase 7: September 2026 gross is 47,600 under draft EPF v2 (higher employer PF in the CTC balance)
 
     $this->exits->withdraw($case, 'Counter-offer accepted', $this->hr);
     expect($case->refresh()->status)->toBe('withdrawn')->and($this->employee->refresh()->lifecycle_state)->toBe(LifecycleState::Active)->and($this->employee->exit_date)->toBeNull();

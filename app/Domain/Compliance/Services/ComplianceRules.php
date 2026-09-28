@@ -42,6 +42,9 @@ final class ComplianceRules
             ->where('status', 'active')
             ->whereNotIn('verification_status', [ComplianceRule::SUPERSEDED, ComplianceRule::REJECTED])
             ->effectiveOn($day)
+            // Phase 7: the most recent legal position first (latest effective date), then the latest
+            // correction of it — a correction of an older period never overrides a later change.
+            ->orderByDesc('effective_from')
             ->orderByDesc('version')
             ->first();
     }
@@ -128,6 +131,19 @@ final class ComplianceRules
 
                 if (isset($definition['evidence']) && $rule->verification_status === ComplianceRule::DRAFT) {
                     $this->verifications->submit($rule, $definition['evidence'], actorLabel: 'pack:'.basename($file));
+                }
+
+                // Phase 7: official documents shipped with the pack (database/data/compliance/evidence)
+                // are attached as evidence documents while the version is not yet verified.
+                foreach ($definition['evidence_documents'] ?? [] as $document) {
+                    $path = database_path('data/compliance/evidence/'.$document['path']);
+                    if (in_array($rule->refresh()->verification_status, [ComplianceRule::DRAFT, ComplianceRule::REVIEW], true) && is_file($path)) {
+                        $contents = (string) file_get_contents($path);
+                        if (isset($document['sha256']) && ! hash_equals($document['sha256'], hash('sha256', $contents))) {
+                            throw new RuntimeException("Evidence file {$document['path']} does not match its recorded SHA-256.");
+                        }
+                        $this->verifications->attachEvidence($rule, $contents, basename($path), $document['retrieved_at'], $document['source_url'] ?? null, null, 'pack:'.basename($file));
+                    }
                 }
 
                 $synced->push($rule->refresh());

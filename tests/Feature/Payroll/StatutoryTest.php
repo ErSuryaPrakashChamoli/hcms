@@ -31,16 +31,17 @@ it('loads versioned statutory rules from the platform pack and resolves by date 
         ->and($rules->resolve('PT', '2026-09-30', 'KA')->param('slabs'))->toBe([[24999, 0], [null, 200]])
         ->and($rules->resolve('PT', '2026-09-30', 'XX'))->toBeNull()
         ->and($rules->resolve('TDS', '2026-03-31')->version)->toBe(1)
-        ->and($rules->resolve('TDS', '2026-04-01')->version)->toBe(2);
+        ->and($rules->resolve('TDS', '2026-04-01')->version)->toBe(3); // Phase 7: v3 corrects v2 (Income-tax Act, 2025)
 
     // Re-syncing is idempotent.
     syncComplianceRules();
-    expect(ComplianceRule::query()->where('code', 'EPF')->count())->toBe(1);
+    expect(ComplianceRule::query()->where('code', 'EPF')->count())->toBe(2); // v1 (2014) and v2 (17 Sep 2026)
 });
 
 it('splits CTC into components and applies EPF at the wage ceiling, PT by state slab and TDS by projection', function () {
     $employee = salariedEmployee(600000);
-    $c = ($this->calc)($employee);
+    // August 2026: before the EPF wage-ceiling change of 17 Sep 2026 (EPF v1, ceiling 15,000).
+    $c = ($this->calc)($employee, 2026, 8);
 
     expect($c->amount('BASIC'))->toBe(20000.0)
         ->and($c->amount('HRA'))->toBe(10000.0)
@@ -112,8 +113,8 @@ it('computes income tax per regime with rebate, chapter VI-A limits and the no-P
     expect($c->inputs['tax']['regime'])->toBe('old')
         ->and($c->inputs['tax']['chapter_via'])->toBe(160000.0)
         ->and($c->inputs['tax']['standard_deduction'])->toBe(50000.0)
-        ->and($c->inputs['tax']['taxable_income'])->toBe(476000.0)
-        ->and($c->inputs['tax']['tax_before_rebate'])->toBe(11300.0)
+        ->and($c->inputs['tax']['taxable_income'])->toBe(467600.0) // Phase 7: September 2026 uses draft EPF v2 (ceiling 25,000): smaller special allowance, larger PF in 80C
+        ->and($c->inputs['tax']['tax_before_rebate'])->toBe(10880.0) // Phase 7: lower taxable income under draft EPF v2 in September 2026
         ->and($c->has('TDS'))->toBeFalse();
 
     // Same declarations, three times the pay: rebate gone, TDS deducted.

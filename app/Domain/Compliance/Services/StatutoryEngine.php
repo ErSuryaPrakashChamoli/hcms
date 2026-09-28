@@ -118,7 +118,8 @@ final class StatutoryEngine
         }
 
         // --- Income tax (TDS) ----------------------------------------------------------------
-        if ($context->applies('TDS') && ($rule = $this->rule($c, 'TDS', $on))) {
+        // Phase 7: salary TDS follows the payment date, not the earning month.
+        if ($context->applies('TDS') && ($rule = $this->rule($c, 'TDS', $c->period->paymentDate()))) {
             $result = $this->tax->monthlyTds($c, $rule);
 
             if ($result['pan_missing']) {
@@ -128,7 +129,8 @@ final class StatutoryEngine
             if ($result['tds'] > 0) {
                 $c->addLine('TDS', 'Income tax (TDS)', 'deduction', $result['tds'], ['classification' => 'tds', 'basis' => [...$this->ruleRef($rule), ...$result['basis']], 'sort_order' => 540]);
             }
-            $c->inputs['tax'] = $result['basis'];
+            // Phase 7 §12: the tax basis carries its rule reference even when nothing is deducted.
+            $c->inputs['tax'] = [...$this->ruleRef($rule), ...$result['basis']];
         }
     }
 
@@ -205,12 +207,14 @@ final class StatutoryEngine
     }
 
     /** Year-to-date taxable earnings and TDS from finalized entries in the same financial year, before the given period. */
-    public static function yearToDate(int $employeeId, string $fyStart, string $periodStart): array
+    public static function yearToDate(int $employeeId, string $fyStart, string $paidBefore, ?int $exceptPeriodId = null): array
     {
+        // Phase 7: payments made in the tax year before this payment (payment date, else period end).
         $entries = PayrollEntry::query()->with('lines')
             ->where('employee_id', $employeeId)
             ->whereHas('run', fn ($q) => $q->whereIn('status', ['finalized', 'paid']))
-            ->whereHas('run.period', fn ($q) => $q->where('start_date', '>=', $fyStart)->where('start_date', '<', $periodStart))
+            ->whereHas('run.period', fn ($q) => $q->whereRaw('coalesce(payment_date, end_date) >= ?', [$fyStart])->whereRaw('coalesce(payment_date, end_date) < ?', [$paidBefore])
+                ->when($exceptPeriodId, fn ($q, $id) => $q->whereKeyNot($id)))
             ->get();
 
         return [
@@ -237,6 +241,9 @@ final class StatutoryEngine
             'jurisdiction' => $rule->jurisdiction, 'state' => $rule->state, 'effective_from' => $rule->effective_from?->toDateString(),
             'verification_status' => $rule->verification_status ?? ComplianceRule::DRAFT, 'source' => $rule->source,
             'rule_checksum' => $rule->checksum, 'source_url' => $rule->source_url,
+            // Phase 7 §12: enough to reproduce and explain the calculation.
+            'effective_to' => $rule->effective_to?->toDateString(),
+            'evidence_reference' => $rule->source_url ?? $rule->source,
         ];
     }
 

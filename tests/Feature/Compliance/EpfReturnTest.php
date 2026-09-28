@@ -54,8 +54,9 @@ it('builds the regular ECR from finalized PF lines, keeping calculated bases apa
         ->and($return->period_key)->toBe('2026-09')
         ->and($return->totals['entries'])->toBe(2)
         ->and((float) $entry->calc_ee_share)->toBe((float) $pf->firstWhere('code', 'PF_EE')->amount)
-        ->and((float) $entry->calc_epf_wages)->toBe(15000.0)
-        ->and($entry->export_epf_wages)->toBe(15000)
+        // Phase 7: September 2026 resolves draft EPF v2 (ceiling 25,000): EPF wages are the full basic of 20,000.
+        ->and((float) $entry->calc_epf_wages)->toBe(20000.0)
+        ->and($entry->export_epf_wages)->toBe(20000)
         ->and((float) $entry->calc_eps_share + (float) $entry->calc_er_share)->toBe((float) $pf->firstWhere('code', 'PF_ER')->amount)
         ->and($entry->maskedUan())->toBe('••••••••0400')
         ->and(DB::table('epf_return_entries')->where('id', $entry->id)->value('uan'))->not->toContain('100200300400')

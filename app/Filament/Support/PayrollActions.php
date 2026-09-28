@@ -72,6 +72,11 @@ final class PayrollActions
                 ->visible(fn (PayrollRun $record) => $record->status === 'finalized' && auth()->user()->can('finalize', $record))
                 ->schema([DatePicker::make('paid_on')->native(false)->default(now())->required()])
                 ->action(fn (PayrollRun $record, array $data) => self::run(fn () => app(PayrollRuns::class)->markPaid($record, $data['paid_on'], auth()->user()), 'Run marked as paid')),
+            Action::make('paymentDate')->label('Set payment date')->icon(Heroicon::OutlinedCalendarDays)
+                ->modalDescription('Salary TDS follows the payment date (Income-tax Act, 1961 up to 31 Mar 2026; Income-tax Act, 2025 s.392(1) from 1 Apr 2026). A calculated run returns to draft for recalculation.')
+                ->visible(fn (PayrollRun $record) => $record->isEditable() && auth()->user()->can('payroll.calculate'))
+                ->schema([DatePicker::make('payment_date')->required(), Textarea::make('reason')->required()->maxLength(255)])
+                ->action(fn (PayrollRun $record, array $data) => self::run(fn () => app(PayrollRuns::class)->setPaymentDate($record, $data['payment_date'], $data['reason'], auth()->user()), 'Payment date set; recalculate the run')),
             Action::make('reopen')->label('Reopen')->icon(Heroicon::OutlinedLockOpen)->color('danger')
                 ->visible(fn (PayrollRun $record) => in_array($record->status, ['approved', 'finalized'], true) && auth()->user()->can('finalize', $record))
                 ->requiresConfirmation()

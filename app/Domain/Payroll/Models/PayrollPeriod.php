@@ -12,14 +12,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /** A calendar month for one legal entity (§31). Closed once its run is finalized. */
-#[Fillable(['tenant_id', 'company_id', 'year', 'month', 'start_date', 'end_date', 'status'])]
+#[Fillable(['tenant_id', 'company_id', 'year', 'month', 'start_date', 'end_date', 'payment_date', 'status'])]
 class PayrollPeriod extends Model
 {
     use Auditable, BelongsToTenant;
 
     protected function casts(): array
     {
-        return ['year' => 'integer', 'month' => 'integer', 'start_date' => 'date', 'end_date' => 'date'];
+        return ['year' => 'integer', 'month' => 'integer', 'start_date' => 'date', 'end_date' => 'date', 'payment_date' => 'date'];
     }
 
     public function auditModule(): string
@@ -55,6 +55,15 @@ class PayrollPeriod extends Model
     public function daysInPeriod(): int
     {
         return (int) $this->start_date->diffInDays($this->end_date) + 1;
+    }
+
+    /**
+     * Phase 7: the date salary for this period is paid — the statutory trigger for salary TDS
+     * (Income-tax Act, 2025 s.392(1)). Defaults to the period end date.
+     */
+    public function paymentDate(): Carbon
+    {
+        return ($this->payment_date ?? $this->end_date)->copy()->startOfDay();
     }
 
     public static function for(Company $company, int $year, int $month): self

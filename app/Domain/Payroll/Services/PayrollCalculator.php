@@ -29,8 +29,11 @@ use RuntimeException;
  */
 class PayrollCalculator
 {
-    /** 2.1 = 2.0 + Phase 5 establishment-resolved statutory context recorded on each entry. */
-    public const VERSION = 'payroll-2.1';
+    /**
+     * 2.1 = 2.0 + Phase 5 establishment-resolved statutory context recorded on each entry.
+     * 2.2 = 2.1 + Phase 7 salary TDS resolved by the payment date (rule, tax year, year-to-date).
+     */
+    public const VERSION = 'payroll-2.2';
 
     public const BLOCKING = ['no_salary', 'no_structure', 'negative_net', 'formula_error', 'invalid_component'];
 

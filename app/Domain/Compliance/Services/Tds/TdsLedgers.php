@@ -14,6 +14,7 @@ use App\Domain\Compliance\Services\Returns\StatutoryPayrollSource;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\LegalEntity;
+use App\Domain\Payroll\Models\PayrollRun;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -46,13 +47,16 @@ final class TdsLedgers
         $counts = ['added' => 0, 'superseded' => 0, 'withdrawn' => 0];
 
         return DB::transaction(function () use ($entity, $year, $financialYear, &$counts) {
-            $runs = $this->source->runs($entity->company_id, $year->start_date, $year->end_date);
+            // Phase 7: a salary belongs to the tax year of its payment date (s.392(1)).
+            $runs = PayrollRun::query()->with('period')->where('company_id', $entity->company_id)->whereIn('status', ['finalized', 'paid'])
+                ->whereHas('period', fn ($q) => $q->whereRaw('coalesce(payment_date, end_date) >= ?', [$year->start_date->toDateString()])->whereRaw('coalesce(payment_date, end_date) <= ?', [$year->end_date->toDateString()]))
+                ->orderBy('id')->get();
             $rows = $this->source->entries($runs, null, $entity->getKey());
             $seen = [];
 
             foreach ($rows as $row) {
                 $payroll = $row['entry'];
-                $month = $payroll->run->period->start_date;
+                $month = $payroll->run->period->paymentDate()->startOfMonth();
                 $key = $payroll->payroll_run_id.':'.$payroll->employee_id;
                 $seen[$key] = true;
                 $tds = $payroll->lines->firstWhere('code', 'TDS');

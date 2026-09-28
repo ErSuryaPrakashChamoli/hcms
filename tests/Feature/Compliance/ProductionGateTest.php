@@ -46,9 +46,12 @@ beforeEach(function () {
         $rules = app(RuleVerifications::class);
         $bypass(function () use ($rules) {
             // EPF v1 is affected by the ceiling notice; test resolution with a test v2 from 17 Sep.
-            $notice = ComplianceRuleNotice::query()->where('code', 'EPF')->sole();
+            // Both EPF notices (ceiling; September treatment) are closed by a test version from 17 Sep.
             $v1 = ComplianceRule::query()->where('code', 'EPF')->where('version', 1)->sole();
-            $rules->resolveNotice($notice, $rules->publishCorrection($v1, ['wage_ceiling' => 25000] + $v1->payload(), '2026-09-17', null, 'Test correction', $this->maker), $this->maker, 'Test resolution');
+            $test = $rules->publishCorrection($v1, ['wage_ceiling' => 25000] + $v1->payload(), '2026-09-17', null, 'Test correction', $this->maker);
+            foreach (ComplianceRuleNotice::query()->where('code', 'EPF')->where('status', 'open')->get() as $notice) {
+                $rules->resolveNotice($notice, $test, $this->maker, 'Test resolution');
+            }
             $rules->submit($v1, ['source_url' => 'https://www.epfindia.gov.in/test.pdf', 'source_title' => 'Test', 'effective_date' => '2014-09-01', 'retrieved_at' => '2026-09-01', 'requirement_text' => 'Test', 'mapping' => array_fill_keys(array_keys($v1->payload()), 'Test clause')], $this->maker);
             $rules->attachEvidence($v1, '%PDF test', 't.pdf', '2026-09-01', null, $this->maker);
             $rules->verify($v1, $this->checker, 'Test verification');

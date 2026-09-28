@@ -7,6 +7,7 @@ use App\Domain\Compliance\Models\ComplianceRuleVerification;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\RuleVerifications;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -21,7 +22,7 @@ beforeEach(function () {
     $this->workflow = app(RuleVerifications::class);
     $this->submitter = platformAdmin();
     $this->reviewer = platformAdmin();
-    $this->epf = ComplianceRule::query()->where('code', 'EPF')->sole();
+    $this->epf = ComplianceRule::query()->where('code', 'EPF')->where('version', 1)->sole();
     $this->evidence = fn (ComplianceRule $rule, array $overrides = []) => $overrides + [
         'authority' => 'EPFO',
         'source_url' => 'https://www.epfindia.gov.in/site_docs/PDFs/Circulars/test.pdf',
@@ -39,7 +40,7 @@ it('records creation history and a checksum for every published version', functi
     expect($this->epf->checksum)->toHaveLength(64)
         ->and($this->epf->checksumIntact())->toBeTrue()
         ->and($this->epf->verifications()->where('action', 'created')->exists())->toBeTrue()
-        ->and(ComplianceRuleVerification::query()->where('action', 'submitted')->count())->toBe(1); // ESI, from official evidence in the pack
+        ->and(ComplianceRuleVerification::query()->where('action', 'submitted')->count())->toBe(3); // ESI, EPF v2, TDS v3 from official evidence in the pack
 });
 
 it('keeps rule versions immutable: no payload edits, no deletion, no pack rewrite', function () {
@@ -105,24 +106,28 @@ it('rejects, supersedes corrections and never falls back to an older or rejected
     $this->workflow->verify($this->epf, $this->reviewer, 'ok');
 
     // A newer draft correction is what resolution returns (flagged as unverified), not the verified v1.
-    $v2 = ($this->bypass)(fn () => ComplianceRule::query()->create(['jurisdiction' => 'IN', 'code' => 'EPF', 'name' => 'Employees Provident Fund', 'version' => 2, 'effective_from' => '2014-09-01', 'parameters' => ['employee_rate' => 0.12] + $this->epf->parameters]));
+    // (August 2026: before the pack's EPF v2 of 17 Sep 2026; test versions start at 3.)
+    expect(fn () => ($this->bypass)(fn () => ComplianceRule::query()->create(['jurisdiction' => 'IN', 'code' => 'EPF', 'name' => 'Duplicate', 'version' => 2, 'effective_from' => '2014-09-01', 'parameters' => $this->epf->parameters])))->toThrow(UniqueConstraintViolationException::class);
+    $v2 = ($this->bypass)(fn () => ComplianceRule::query()->create(['jurisdiction' => 'IN', 'code' => 'EPF', 'name' => 'Employees Provident Fund', 'version' => 3, 'effective_from' => '2014-09-01', 'parameters' => ['employee_rate' => 0.12] + $this->epf->parameters]));
     $rules->forget();
-    expect($rules->resolve('EPF', '2026-09-30')->id)->toBe($v2->id);
+    expect($rules->resolve('EPF', '2026-08-30')->id)->toBe($v2->id);
 
     // Rejected versions are never resolved.
     $this->workflow->reject($v2, $this->reviewer, 'Duplicate of v1');
     $rules->forget();
     expect($v2->refresh()->verification_status)->toBe('rejected')
-        ->and($rules->resolve('EPF', '2026-09-30')->id)->toBe($this->epf->id);
+        ->and($rules->resolve('EPF', '2026-08-30')->id)->toBe($this->epf->id);
     expect(fn () => $this->workflow->reject($v2, $this->reviewer, 'again'))->toThrow(RuntimeException::class, 'draft or in-review');
 
     // A verified correction supersedes the earlier version from the same date.
-    $v3 = ($this->bypass)(fn () => ComplianceRule::query()->create(['jurisdiction' => 'IN', 'code' => 'EPF', 'name' => 'Employees Provident Fund', 'version' => 3, 'effective_from' => '2014-09-01', 'parameters' => $this->epf->parameters]));
+    $v3 = ($this->bypass)(fn () => ComplianceRule::query()->create(['jurisdiction' => 'IN', 'code' => 'EPF', 'name' => 'Employees Provident Fund', 'version' => 4, 'effective_from' => '2014-09-01', 'parameters' => $this->epf->parameters]));
     $this->workflow->submit($v3, ($this->evidence)($v3), $this->submitter);
     ($this->attach)($v3);
     $this->workflow->verify($v3, $this->reviewer, 'Correction');
     $rules->forget();
     expect($this->epf->refresh()->verification_status)->toBe('superseded')
         ->and($this->epf->superseded_by_id)->toBe($v3->id)
-        ->and($rules->resolve('EPF', '2026-09-30')->id)->toBe($v3->id);
+        ->and($rules->resolve('EPF', '2026-08-30')->id)->toBe($v3->id)
+        // From 17 Sep 2026 the pack's EPF v2 (the later legal change) wins over the 2014 correction.
+        ->and($rules->resolve('EPF', '2026-09-30')->version)->toBe(2);
 });

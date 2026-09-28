@@ -6,9 +6,11 @@ use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Payroll\Services\PayrollComputation;
 
 /**
- * Section 192 TDS by annual projection: (YTD actuals + this month + projected remaining months)
+ * Salary TDS by annual projection: (YTD actuals + this month + projected remaining months)
  * → deductions per regime → slab tax → rebate → surcharge → cess; the balance is spread over the
- * remaining months of the financial year.
+ * remaining months of the year. Phase 7: the tax year, the year-to-date and the months remaining
+ * follow the salary PAYMENT date (s.192 of the 1961 Act up to 31 Mar 2026; s.392(1) of the
+ * Income-tax Act, 2025 from 1 Apr 2026, with the computation reset for the new tax year).
  */
 final class TaxComputer
 {
@@ -17,13 +19,13 @@ final class TaxComputer
     /** @return array{tds: float, pan_missing: bool, basis: array<string, mixed>} */
     public function monthlyTds(PayrollComputation $c, ComplianceRule $rule): array
     {
-        $periodStart = $c->period->start_date;
-        $fyLabel = $this->fy->label($periodStart);
+        $paid = $c->period->paymentDate();
+        $fyLabel = $this->fy->label($paid);
         $declaration = StatutoryEngine::declarationFor($c->employee->id, $fyLabel);
         $regime = $declaration?->regime ?? 'new';
         $params = $rule->param($regime) ?? $rule->param('new');
-        $ytd = StatutoryEngine::yearToDate($c->employee->id, $this->fy->start($periodStart)->toDateString(), $periodStart->toDateString());
-        $remaining = $this->fy->monthsRemainingIncluding($periodStart); // including this month
+        $ytd = StatutoryEngine::yearToDate($c->employee->id, $this->fy->start($paid)->toDateString(), $paid->toDateString(), $c->period->getKey());
+        $remaining = $this->fy->monthsRemainingIncluding($paid); // including this month
 
         $thisMonth = $c->taxableEarnings();
         $projected = round($ytd['taxable'] + $thisMonth * $remaining, 2);
@@ -93,7 +95,7 @@ final class TaxComputer
             'tds' => (float) $tds,
             'pan_missing' => $panMissing && $taxable > 0,
             'basis' => [
-                'rule' => $rule->label(), 'financial_year' => $fyLabel, 'regime' => $regime, 'months_remaining' => $remaining,
+                'rule' => $rule->label(), 'financial_year' => $fyLabel, 'payment_date' => $paid->toDateString(), 'legal_basis' => $rule->param('legal_basis'), 'regime' => $regime, 'months_remaining' => $remaining,
                 'ytd_taxable' => $ytd['taxable'], 'this_month_taxable' => $thisMonth, 'projected_gross' => $grossSalary,
                 'hra_exempt' => round($hraExempt, 2), 'standard_deduction' => $standard, 'chapter_via' => round($chapterVia, 2),
                 'taxable_income' => $taxable, 'tax_before_rebate' => round($tax + $rebate, 2), 'rebate' => round($rebate, 2), 'surcharge' => $surcharge, 'cess' => $cess,

@@ -123,7 +123,9 @@ it('prorates by attendance LOP, manual LOP, mid-month joining and exit', functio
     expect($c->lopDays)->toBe(2.5)->and($c->paidDays)->toBe(27.5)
         ->and($c->amount('BASIC'))->toBe(round(20000 * 27.5 / 30, 2))
         ->and($c->amount('ADJ1'))->toBe(5000.0)->and($c->amount('ADJ2'))->toBe(300.0)
-        ->and($c->earnings())->toEqualWithDelta(48200 * 27.5 / 30 + 5000, 0.05);
+        // Phase 7: September 2026 uses draft EPF v2 (ceiling 25,000), so the CTC-balancing special
+        // allowance is 600 lower (employer PF 2,400 instead of 1,800): monthly gross 47,600.
+        ->and($c->earnings())->toEqualWithDelta(47600 * 27.5 / 30 + 5000, 0.05);
 
     $joiner = salariedEmployee(600000);
     $joiner->update(['joining_date' => '2026-09-16']);

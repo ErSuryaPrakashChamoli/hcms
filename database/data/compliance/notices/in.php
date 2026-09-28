@@ -38,4 +38,18 @@ return [
         ],
         'retrieved_at' => '2026-09-28',
     ],
+    [
+        'jurisdiction' => 'IN',
+        'code' => 'EPF',
+        'state' => null,
+        'affects_versions' => [1, 2],
+        'effective_date' => '2026-09-17',
+        'title' => 'EPFO wage ceiling changed effective 17-Sep-2026: September 2026 intra-month treatment not established',
+        'summary' => 'EPFO wage ceiling changed effective 17-Sep-2026. Exact intra-month September payroll treatment requires authoritative implementation evidence before verification. The official releases state the effective date but not whether the September 2026 wage month applies the ₹15,000 or ₹25,000 ceiling, a split by days, or another method. Until an authoritative EPFO / gazette instruction is recorded, neither EPF v1 nor EPF v2 can be verified and payroll on or after 17 Sep 2026 is flagged.',
+        'references' => [
+            ['title' => 'PIB Delhi, 16 Sep 2026 (effective 17 Sep 2026)', 'url' => 'https://www.labour.gov.in/static/uploads/2026/09/4f607a88c5342aeb980c6b999997caab.pdf', 'sha256' => 'a31038ee4fbc5541515336ebb245ab94194d224c9807a4dc7bdd3968e46e0677'],
+            ['title' => 'PIB release 2313829, 23 Sep 2026 (S.O. 5109(E))', 'url' => 'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2313829&reg=48&lang=2', 'sha256' => 'ba2bf8dc7e6dfb4e3673500fbef764269ae5acf04540bec9fd56fe7af8f1f7d6'],
+        ],
+        'retrieved_at' => '2026-09-28',
+    ],
 ];

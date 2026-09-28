@@ -36,13 +36,14 @@ class ComplianceRule extends Model
     public const STATUSES = [self::DRAFT, self::REVIEW, self::VERIFIED, self::SUPERSEDED, self::REJECTED];
 
     /** Never changed after creation. */
-    public const IMMUTABLE = ['jurisdiction', 'country', 'code', 'state', 'version', 'effective_from', 'effective_to', 'parameters', 'checksum', 'name', 'corrects_rule_id', 'correction_reason'];
+    public const IMMUTABLE = ['jurisdiction', 'country', 'code', 'state', 'state_key', 'version', 'effective_from', 'effective_to', 'parameters', 'checksum', 'name', 'corrects_rule_id', 'correction_reason'];
 
     protected static function booted(): void
     {
         static::creating(function (ComplianceRule $rule) {
             $rule->country ??= strtoupper((string) $rule->jurisdiction);
             $rule->verification_status ??= self::DRAFT;
+            $rule->state_key = (string) ($rule->state ?? '');
             $rule->checksum = $rule->computeChecksum();
         });
 

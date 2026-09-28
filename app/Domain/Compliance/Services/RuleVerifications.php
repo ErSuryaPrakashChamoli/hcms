@@ -174,7 +174,8 @@ final class RuleVerifications
         if ($contents === '') {
             throw new RuntimeException('The evidence document is empty.');
         }
-        if (Carbon::parse($retrievedAt)->isAfter(now()->endOfDay())) {
+        // A person cannot claim a retrieval in the future; pack-shipped documents carry their recorded date.
+        if ($actor !== null && Carbon::parse($retrievedAt)->isAfter(now()->endOfDay())) {
             throw new RuntimeException('The retrieval date cannot be in the future.');
         }
 

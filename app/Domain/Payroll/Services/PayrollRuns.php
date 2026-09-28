@@ -244,6 +244,32 @@ final class PayrollRuns
         });
     }
 
+    /**
+     * Phase 7: record the salary payment date of the run's period. It decides the salary TDS rule and
+     * tax year, so it can change only while the run is editable, and a calculated run returns to draft.
+     */
+    public function setPaymentDate(PayrollRun $run, CarbonInterface|string $paymentDate, string $reason, ?User $actor = null): PayrollRun
+    {
+        if (! $run->isEditable()) {
+            throw new RuntimeException("The payment date of a {$run->status} run cannot change. Reopen it first.");
+        }
+        if (trim($reason) === '') {
+            throw new RuntimeException('A reason is required to set the payment date.');
+        }
+
+        return DB::transaction(function () use ($run, $paymentDate, $reason, $actor) {
+            $run = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail()->loadMissing('period');
+            $before = $run->period->payment_date?->toDateString();
+            $run->period->update(['payment_date' => Carbon::parse($paymentDate)->toDateString()]);
+            if ($run->status !== 'draft') {
+                $run->update(['status' => 'draft']);
+            }
+            $this->audit->record(AuditAction::Update, 'payroll', $run->period, [['field' => 'payment_date', 'before' => $before, 'after' => Carbon::parse($paymentDate)->toDateString()]], $reason, actor: $actor);
+
+            return $run->refresh();
+        });
+    }
+
     public function markPaid(PayrollRun $run, CarbonInterface|string|null $paidOn = null, ?User $actor = null): PayrollRun
     {
         if ($run->status !== 'finalized') {
