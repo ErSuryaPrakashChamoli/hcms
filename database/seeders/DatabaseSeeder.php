@@ -91,7 +91,7 @@ class DatabaseSeeder extends Seeder
         $tenant = $tenants->bypass(fn () => Tenant::query()->where('slug', 'demo')->first())
             ?? $provisioner->handle(
                 ['name' => 'Demo Group', 'slug' => 'demo'],
-                ['name' => 'Demo Admin', 'email' => 'admin@demo.local', 'password' => 'password'],
+                ['name' => 'Demo Admin', 'email' => 'admin@fynnedge.com', 'password' => 'Fynnone@2029'],
                 reason: 'Development seed',
             );
 
@@ -164,7 +164,7 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        $admin = User::query()->where('email', 'admin@demo.local')->first();
+        $admin = User::query()->where('email', 'admin@fynnedge.com')->first();
         $vikram = Employee::query()->with('person')->where('work_email', 'vikram.singh@demo.local')->first();
         if (! $vikram || ! $vikram->lifecycle_state->isEmployed()) {
             return;
@@ -192,7 +192,7 @@ class DatabaseSeeder extends Seeder
     private function seedExperience(): void
     {
         app(ServiceDeskDefaults::class)->seed();
-        $admin = User::query()->where('email', 'admin@demo.local')->first();
+        $admin = User::query()->where('email', 'admin@fynnedge.com')->first();
 
         if (Article::query()->doesntExist()) {
             $kb = app(KnowledgeBase::class);

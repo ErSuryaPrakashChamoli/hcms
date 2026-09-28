@@ -94,7 +94,7 @@ flags), Audit (Change history), Platform (Tenants — platform admins only).
 | --- | --- |
 | `peopleos:sync-permissions` | Mirror the catalogue into the DB and top up system roles |
 | `peopleos:audit:verify [--tenant=]` | Recompute hash chains |
-| `db:seed` | Platform admin `platform@markedge.local`, tenant `demo` with `admin@demo.local` (password `password`) |
+| `db:seed` | Platform admin `platform@markedge.local`, tenant `demo` with `admin@fynnedge.com` (password `Fynnone@2029`) |
 
 ## Tests
 
