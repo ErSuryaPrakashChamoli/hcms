@@ -135,14 +135,19 @@ final class ComplianceRules
 
                 // Phase 7: official documents shipped with the pack (database/data/compliance/evidence)
                 // are attached as evidence documents while the version is not yet verified.
-                foreach ($definition['evidence_documents'] ?? [] as $document) {
-                    $path = database_path('data/compliance/evidence/'.$document['path']);
-                    if (in_array($rule->refresh()->verification_status, [ComplianceRule::DRAFT, ComplianceRule::REVIEW], true) && is_file($path)) {
-                        $contents = (string) file_get_contents($path);
-                        if (isset($document['sha256']) && ! hash_equals($document['sha256'], hash('sha256', $contents))) {
-                            throw new RuntimeException("Evidence file {$document['path']} does not match its recorded SHA-256.");
-                        }
-                        $this->verifications->attachEvidence($rule, $contents, basename($path), $document['retrieved_at'], $document['source_url'] ?? null, null, 'pack:'.basename($file));
+                $this->attachPackDocuments($rule, $definition['evidence_documents'] ?? [], 'pack:'.basename($file));
+
+                // Phase 8: later evidence for a version still in draft or review is an append-only
+                // revision — submitted once (identified by its label), never replacing earlier
+                // submissions, and never verifying anything: verification stays a second person's act.
+                foreach ($definition['evidence_revisions'] ?? [] as $revision) {
+                    $label = 'pack:'.basename($file).'#'.$revision['revision'];
+                    if (! in_array($rule->refresh()->verification_status, [ComplianceRule::DRAFT, ComplianceRule::REVIEW], true)) {
+                        continue;
+                    }
+                    $this->attachPackDocuments($rule, $revision['evidence_documents'] ?? [], $label);
+                    if (! $rule->verifications()->where('action', 'submitted')->where('actor_label', $label)->exists()) {
+                        $this->verifications->submit($rule, $revision['evidence'], actorLabel: $label);
                     }
                 }
 
@@ -231,6 +236,21 @@ final class ComplianceRules
 
         if ($problems !== []) {
             throw new RuntimeException('Statutory rules are not verified for production finalization: '.implode(' ', $problems).' Verify them (compliance) before finalizing payroll.');
+        }
+    }
+
+    /** @param  list<array{path: string, sha256?: string, retrieved_at: string, source_url?: ?string}>  $documents */
+    private function attachPackDocuments(ComplianceRule $rule, array $documents, string $label): void
+    {
+        foreach ($documents as $document) {
+            $path = database_path('data/compliance/evidence/'.$document['path']);
+            if (in_array($rule->refresh()->verification_status, [ComplianceRule::DRAFT, ComplianceRule::REVIEW], true) && is_file($path)) {
+                $contents = (string) file_get_contents($path);
+                if (isset($document['sha256']) && ! hash_equals($document['sha256'], hash('sha256', $contents))) {
+                    throw new RuntimeException("Evidence file {$document['path']} does not match its recorded SHA-256.");
+                }
+                $this->verifications->attachEvidence($rule, $contents, basename($path), $document['retrieved_at'], $document['source_url'] ?? null, null, $label);
+            }
         }
     }
 }
