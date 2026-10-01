@@ -239,6 +239,7 @@ use App\Domain\People\Models\PersonFamilyMember;
 use App\Domain\People\Models\PersonQualification;
 use App\Domain\People\Models\PersonSkill;
 use App\Domain\People\Models\Skill;
+use App\Domain\Performance\Contracts\CompetencyEvidenceReader;
 use App\Domain\Performance\Contracts\DevelopmentNeedsReader;
 use App\Domain\Performance\Contracts\PerformanceOutcomesReader;
 use App\Domain\Performance\Models\Appraisal;
@@ -262,6 +263,7 @@ use App\Domain\Performance\Models\RatingScale;
 use App\Domain\Performance\Policies\CalibrationPolicy;
 use App\Domain\Performance\Policies\EmployeeOwnedPolicy;
 use App\Domain\Performance\Policies\PerformanceConfigPolicy;
+use App\Domain\Performance\Services\CompetencyEvidence;
 use App\Domain\Performance\Services\DevelopmentNeeds;
 use App\Domain\Performance\Services\PerformanceOutcomes;
 use App\Domain\Platform\Models\Tenant;
@@ -277,6 +279,7 @@ use App\Domain\Skills\Models\SkillScale;
 use App\Domain\Skills\Models\SkillScaleVersion;
 use App\Domain\Skills\Policies\SkillConfigPolicy;
 use App\Domain\Skills\Policies\SkillRecordPolicy;
+use App\Domain\Succession\Listeners\SuccessionWorkflowBridge;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use App\Domain\Workflow\Listeners\WorkflowTrigger;
 use App\Domain\Workflow\Models\Workflow;
@@ -303,6 +306,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(LeaveDayResolver::class, AttendanceLeaveDayResolver::class);
         $this->app->bind(DevelopmentNeedsReader::class, DevelopmentNeeds::class);
         $this->app->bind(PerformanceOutcomesReader::class, PerformanceOutcomes::class);
+        $this->app->bind(CompetencyEvidenceReader::class, CompetencyEvidence::class);
         $this->app->singleton(AccessScopes::class);
         // Phase 5: one statutory rule cache per request / job, cleared at the start of each run calculation.
         $this->app->scoped(ComplianceRules::class);
@@ -331,6 +335,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(EmployeeLifecycleChanged::class, AutoStartOnboarding::class);
         Event::listen(WorkflowCompleted::class, LeaveWorkflowBridge::class);
         Event::listen(WorkflowCompleted::class, LearningWorkflowBridge::class);
+        Event::listen(WorkflowCompleted::class, SuccessionWorkflowBridge::class);
     }
 
     /** API limits are per key (falls back to IP for unauthenticated calls). */
