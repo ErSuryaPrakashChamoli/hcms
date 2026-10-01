@@ -2,6 +2,7 @@
 
 namespace App\Domain\Succession\Models;
 
+use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['tenant_id', 'critical_position_id', 'criticality', 'business_impact', 'scarcity', 'replacement_difficulty', 'operational_dependency', 'reason', 'assessed_by', 'assessed_at', 'effective_from'])]
 class CriticalPositionAssessment extends Model
 {
-    use BelongsToTenant;
+    use Auditable, BelongsToTenant;
 
     public const UPDATED_AT = null;
 
@@ -38,6 +39,16 @@ class CriticalPositionAssessment extends Model
     protected function casts(): array
     {
         return ['assessed_at' => 'datetime', 'effective_from' => 'date'];
+    }
+
+    public function auditModule(): string
+    {
+        return 'succession';
+    }
+
+    public function auditLabel(): string
+    {
+        return 'Criticality assessment #'.$this->id;
     }
 
     public function position(): BelongsTo
