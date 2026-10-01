@@ -87,6 +87,13 @@ use App\Domain\Performance\Models\PerformanceCheckIn;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
 use App\Domain\Skills\Models\SkillAssessment;
+use App\Domain\Succession\Models\ReadinessAssessment;
+use App\Domain\Succession\Models\SuccessionPlan;
+use App\Domain\Succession\Models\Successor;
+use App\Domain\Talent\Models\TalentAssessment;
+use App\Domain\Talent\Models\TalentPoolMembership;
+use App\Domain\Talent\Models\TalentProfile;
+use App\Domain\Talent\Models\TalentReviewItem;
 
 /*
 |--------------------------------------------------------------------------
@@ -1435,6 +1442,11 @@ return [
             // Phase 8: assessor / manager private notes (encrypted, hidden, masked in audit).
             SkillAssessment::class => ['private_notes'],
             DevelopmentPlan::class => ['private_notes'],
+            // Phase 9: confidential talent and succession notes (encrypted, hidden, masked in audit).
+            TalentProfile::class => ['confidential_notes'],
+            TalentAssessment::class => ['confidential_notes'],
+            SuccessionPlan::class => ['confidential_notes'],
+            Successor::class => ['confidential_notes'],
         ],
         'financial' => [
             EmployeeSalaryAssignment::class, PayrollEntry::class, ParallelPayrollLine::class,
@@ -1448,6 +1460,11 @@ return [
             CalibrationSession::class, CalibrationAdjustment::class,
             ImprovementPlanCheckpoint::class,
             SkillAssessment::class, LearningEvidence::class,
+            // Phase 9: talent and succession records are confidential (explicit permissions, audited reads).
+            TalentProfile::class, TalentPoolMembership::class,
+            TalentAssessment::class, TalentReviewItem::class,
+            SuccessionPlan::class, Successor::class,
+            ReadinessAssessment::class,
         ],
     ],
 

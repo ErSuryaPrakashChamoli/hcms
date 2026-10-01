@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AttendancePunchController;
 use App\Http\Controllers\Api\V1\BgvCallbackController;
+use App\Http\Controllers\Api\V1\CareerController;
 use App\Http\Controllers\Api\V1\ComplianceController;
 use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\LearningController;
@@ -11,6 +12,8 @@ use App\Http\Controllers\Api\V1\OrganisationController;
 use App\Http\Controllers\Api\V1\PerformanceController;
 use App\Http\Controllers\Api\V1\PreEmployeeController;
 use App\Http\Controllers\Api\V1\ReadController;
+use App\Http\Controllers\Api\V1\SuccessionController;
+use App\Http\Controllers\Api\V1\TalentController;
 use App\Http\Controllers\Scim\ScimUserController;
 use Illuminate\Support\Facades\Route;
 
@@ -91,6 +94,34 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::middleware('api.key:learning.write')->prefix('learning')->name('learning.')->group(function () {
         Route::post('enrolments', [LearningController::class, 'enrol'])->name('enrolments.store');
         Route::post('enrolments/{enrolment}/progress', [LearningController::class, 'progress'])->whereNumber('enrolment')->name('enrolments.progress');
+    });
+
+    // Phase 9 career, talent and succession APIs: separate scopes, field-filtered, no confidential fields.
+    Route::middleware('api.key:career.read')->prefix('career')->name('career.')->group(function () {
+        Route::get('tracks', [CareerController::class, 'tracks'])->name('tracks');
+        Route::get('paths', [CareerController::class, 'paths'])->name('paths');
+        Route::get('role-requirements', [CareerController::class, 'requirements'])->name('requirements');
+        Route::get('profiles', [CareerController::class, 'profiles'])->name('profiles');
+        Route::get('goals', [CareerController::class, 'goals'])->name('goals');
+        Route::get('mobility-interests', [CareerController::class, 'mobility'])->name('mobility');
+        Route::get('gaps', [CareerController::class, 'gaps'])->name('gaps');
+        Route::get('movements', [CareerController::class, 'movements'])->name('movements');
+    });
+    Route::middleware('api.key:talent.read')->prefix('talent')->name('talent.')->group(function () {
+        Route::get('pools', [TalentController::class, 'pools'])->name('pools');
+        Route::get('memberships', [TalentController::class, 'memberships'])->name('memberships');
+        Route::get('reviews', [TalentController::class, 'reviews'])->name('reviews');
+        Route::get('reviews/{review}', [TalentController::class, 'review'])->whereNumber('review')->name('reviews.show');
+        Route::get('analytics', [TalentController::class, 'analytics'])->name('analytics');
+    });
+    Route::middleware('api.key:succession.read')->prefix('succession')->name('succession.')->group(function () {
+        Route::get('critical-positions', [SuccessionController::class, 'positions'])->name('positions');
+        Route::get('critical-positions/{position}', [SuccessionController::class, 'position'])->whereNumber('position')->name('positions.show');
+        Route::get('plans', [SuccessionController::class, 'plans'])->name('plans');
+        Route::get('plans/{plan}', [SuccessionController::class, 'plan'])->whereNumber('plan')->name('plans.show');
+        Route::get('successors', [SuccessionController::class, 'successors'])->name('successors');
+        Route::get('readiness', [SuccessionController::class, 'readiness'])->name('readiness');
+        Route::get('analytics', [SuccessionController::class, 'analytics'])->name('analytics');
     });
 
     // Phase 7 performance API: metadata and finalized outcomes only; see PerformanceController.

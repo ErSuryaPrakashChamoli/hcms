@@ -41,6 +41,15 @@ use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Models\BgvCheck;
 use App\Domain\Bgv\Policies\BgvPolicy;
+use App\Domain\Career\Models\CareerAspirationEntry;
+use App\Domain\Career\Models\CareerGoal;
+use App\Domain\Career\Models\CareerPathVersion;
+use App\Domain\Career\Models\CareerProfile;
+use App\Domain\Career\Models\CareerTrack;
+use App\Domain\Career\Models\MobilityInterest;
+use App\Domain\Career\Models\RoleRequirementVersion;
+use App\Domain\Career\Policies\CareerArchitecturePolicy;
+use App\Domain\Career\Policies\CareerRecordPolicy;
 use App\Domain\Communication\Models\Announcement;
 use App\Domain\Communication\Policies\AnnouncementPolicy;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
@@ -280,6 +289,23 @@ use App\Domain\Skills\Models\SkillScaleVersion;
 use App\Domain\Skills\Policies\SkillConfigPolicy;
 use App\Domain\Skills\Policies\SkillRecordPolicy;
 use App\Domain\Succession\Listeners\SuccessionWorkflowBridge;
+use App\Domain\Succession\Models\CriticalPosition;
+use App\Domain\Succession\Models\CriticalPositionAssessment;
+use App\Domain\Succession\Models\ReadinessAssessment;
+use App\Domain\Succession\Models\SuccessionPlan;
+use App\Domain\Succession\Models\Successor;
+use App\Domain\Succession\Policies\SuccessionPolicy;
+use App\Domain\Talent\Models\TalentAssessment;
+use App\Domain\Talent\Models\TalentAssessmentModel;
+use App\Domain\Talent\Models\TalentAssessmentModelVersion;
+use App\Domain\Talent\Models\TalentDevelopmentAction;
+use App\Domain\Talent\Models\TalentPool;
+use App\Domain\Talent\Models\TalentPoolMembership;
+use App\Domain\Talent\Models\TalentProfile;
+use App\Domain\Talent\Models\TalentReviewItem;
+use App\Domain\Talent\Models\TalentReviewSession;
+use App\Domain\Talent\Policies\TalentConfigPolicy;
+use App\Domain\Talent\Policies\TalentRecordPolicy;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use App\Domain\Workflow\Listeners\WorkflowTrigger;
 use App\Domain\Workflow\Models\Workflow;
@@ -393,8 +419,24 @@ class AppServiceProvider extends ServiceProvider
         foreach ([Asset::class, AssetCategory::class, AssetModel::class, AssetAssignment::class, AssetRepair::class] as $model) {
             Gate::policy($model, AssetPolicy::class);
         }
-        foreach ([PerformanceCycle::class, RatingScale::class, Competency::class, Kra::class, CareerPath::class, PerformanceTemplate::class, PerformanceTemplateVersion::class] as $model) {
+        foreach ([PerformanceCycle::class, RatingScale::class, Competency::class, Kra::class, PerformanceTemplate::class, PerformanceTemplateVersion::class] as $model) {
             Gate::policy($model, PerformanceConfigPolicy::class);
+        }
+        // Phase 9: career architecture keeps Phase 7 performance access and adds career.view / career.manage.
+        foreach ([CareerPath::class, CareerTrack::class, CareerPathVersion::class, RoleRequirementVersion::class] as $model) {
+            Gate::policy($model, CareerArchitecturePolicy::class);
+        }
+        foreach ([CareerProfile::class, CareerAspirationEntry::class, CareerGoal::class, MobilityInterest::class] as $model) {
+            Gate::policy($model, CareerRecordPolicy::class);
+        }
+        foreach ([TalentProfile::class, TalentPoolMembership::class, TalentAssessment::class, TalentReviewItem::class, TalentDevelopmentAction::class] as $model) {
+            Gate::policy($model, TalentRecordPolicy::class);
+        }
+        foreach ([TalentPool::class, TalentAssessmentModel::class, TalentAssessmentModelVersion::class, TalentReviewSession::class] as $model) {
+            Gate::policy($model, TalentConfigPolicy::class);
+        }
+        foreach ([CriticalPosition::class, CriticalPositionAssessment::class, SuccessionPlan::class, Successor::class, ReadinessAssessment::class] as $model) {
+            Gate::policy($model, SuccessionPolicy::class);
         }
         foreach ([CalibrationSession::class, CalibrationAdjustment::class] as $model) {
             Gate::policy($model, CalibrationPolicy::class);
