@@ -18,6 +18,7 @@ use App\Domain\Onboarding\Services\Onboarding;
 use App\Domain\Workflow\Exceptions\WorkflowException;
 use App\Domain\Workflow\Models\Workflow;
 use App\Domain\Workflow\Services\WorkflowEngine;
+use App\Domain\Workforce\Models\Position;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
 use App\Filament\Support\AuditReasonField;
@@ -87,6 +88,14 @@ class ViewEmployee extends ViewRecord
                     DatePicker::make('effective_from')->native(false)->required(),
                 ]),
                 Grid::make(3)->schema(CreateEmployee::positionFields()),
+                // Phase 10: occupy a position (seat) — validated for status and capacity — or vacate it.
+                Grid::make(3)->schema([
+                    Select::make('position_id')->label('Position (seat)')->searchable()
+                        ->options(fn () => Position::query()->where('status', 'open')->orderBy('code')->limit(500)->get(['id', 'code', 'title'])->mapWithKeys(fn ($p) => [$p->id => "{$p->code} · {$p->title}"])->all())
+                        ->visible(fn () => auth()->user()->can('workforce.view') || auth()->user()->can('workforce.manage')),
+                    TextInput::make('fte')->label('FTE')->numeric()->minValue(0.01)->maxValue(1.5)->step(0.05),
+                    Toggle::make('vacate_position')->label('Vacate current position'),
+                ]),
                 AuditReasonField::make()->required(),
             ])
             ->action(function (Employee $record, array $data) {

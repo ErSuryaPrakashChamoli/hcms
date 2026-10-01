@@ -10,10 +10,12 @@ use App\Http\Controllers\Api\V1\LearningController;
 use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\OrganisationController;
 use App\Http\Controllers\Api\V1\PerformanceController;
+use App\Http\Controllers\Api\V1\PositionController;
 use App\Http\Controllers\Api\V1\PreEmployeeController;
 use App\Http\Controllers\Api\V1\ReadController;
 use App\Http\Controllers\Api\V1\SuccessionController;
 use App\Http\Controllers\Api\V1\TalentController;
+use App\Http\Controllers\Api\V1\WorkforceController;
 use App\Http\Controllers\Scim\ScimUserController;
 use Illuminate\Support\Facades\Route;
 
@@ -122,6 +124,21 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('successors', [SuccessionController::class, 'successors'])->name('successors');
         Route::get('readiness', [SuccessionController::class, 'readiness'])->name('readiness');
         Route::get('analytics', [SuccessionController::class, 'analytics'])->name('analytics');
+    });
+
+    // Phase 10 positions and workforce APIs: read-only, as of ?on=, positions by code, costs with workforce.costs.
+    Route::middleware('api.key:positions.read')->prefix('positions')->name('positions.')->group(function () {
+        Route::get('/', [PositionController::class, 'index'])->name('index');
+        Route::get('vacancies', [PositionController::class, 'vacancies'])->name('vacancies');
+        Route::get('{code}', [PositionController::class, 'show'])->name('show');
+        Route::get('{code}/occupancy', [PositionController::class, 'occupancy'])->name('occupancy');
+    });
+    Route::middleware('api.key:workforce.read')->prefix('workforce')->name('workforce.')->group(function () {
+        Route::get('plans', [WorkforceController::class, 'plans'])->name('plans');
+        Route::get('plans/{code}/versions/{version}', [WorkforceController::class, 'version'])->whereNumber('version')->name('plans.version');
+        Route::get('scenarios', [WorkforceController::class, 'scenarios'])->name('scenarios');
+        Route::get('headcount', [WorkforceController::class, 'headcount'])->name('headcount');
+        Route::get('snapshot', [WorkforceController::class, 'snapshot'])->name('snapshot');
     });
 
     // Phase 7 performance API: metadata and finalized outcomes only; see PerformanceController.
