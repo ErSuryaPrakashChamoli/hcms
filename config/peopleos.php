@@ -339,6 +339,27 @@ return [
             'development.own' => 'Maintain my own development plans',
             'development.team' => 'Create and manage development plans for employees I manage',
         ],
+        'career' => [
+            'career.view' => 'View every career profile, aspiration, goal and mobility interest (within organisation scope)',
+            'career.manage' => 'Configure career tracks, career paths and role requirements',
+            'career.self' => 'Maintain my own career profile, aspirations, career goals and mobility interests',
+            'career.team' => 'View the career information employees I manage have chosen to share',
+        ],
+        'talent' => [
+            'talent.view' => 'View talent profiles and talent pool membership (no confidential notes)',
+            'talent.manage' => 'Configure talent pools and assessment models; manage pool membership and talent reviews',
+            'talent.assess' => 'Record talent assessments',
+            'talent.review' => 'Take part in talent review sessions and record decisions',
+            'talent.confidential' => 'Read confidential talent notes and assessments (access audited)',
+            'talent.analytics' => 'View aggregated talent and succession analytics',
+        ],
+        'succession' => [
+            'succession.view' => 'View critical positions, succession plans and successors (within organisation scope)',
+            'succession.manage' => 'Designate critical positions; manage succession plans and successors',
+            'succession.assess' => 'Record readiness assessments',
+            'succession.team' => 'View succession information about employees I manage',
+            'succession.own_candidacy' => 'See my own succession candidacy (granted only by explicit decision)',
+        ],
         'asset' => [
             'asset.view' => 'View the asset register',
             'asset.manage' => 'Configure categories/models, procure, repair and dispose of assets',
@@ -402,7 +423,7 @@ return [
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
@@ -437,12 +458,12 @@ return [
         'manager' => [
             'name' => 'Manager',
             'description' => 'People manager.',
-            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
+            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
         ],
         'employee' => [
             'name' => 'Employee',
             'description' => 'Standard employee access.',
-            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
+            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
         ],
         'executive' => [
             'name' => 'Executive',
@@ -457,7 +478,7 @@ return [
         'auditor' => [
             'name' => 'Auditor',
             'description' => 'Read-only access with full audit visibility.',
-            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
+            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
         ],
     ],
 
@@ -889,7 +910,7 @@ return [
         'scopes' => [
             'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches (devices or any source) and raise regularisations',
             'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records, exceptions, regularisations, shifts and schedules', 'leave.read' => 'Read leave types, balances, transactions, requests and the leave calendar', 'leave.write' => 'Submit and cancel leave requests on behalf of employees', 'payroll.read' => 'Read payroll runs and payslips (sensitive)', 'compliance.read' => 'Read establishments, statutory registrations (masked), rule versions, statutory returns, entries (masked) and reconciliations',
-            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'learning.read' => 'Read the learning catalogue, paths, programs, enrolments, assignments, completions, certificates (no codes or documents), skills, finalized assessment levels (no comments), development plan metadata and suppressed analytics', 'learning.write' => 'Enrol employees and record learning progress (idempotent)', 'learning.costs' => 'Include learning costs in learning API responses', 'workflows.read' => 'Read workflow instances and tasks',
+            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'learning.read' => 'Read the learning catalogue, paths, programs, enrolments, assignments, completions, certificates (no codes or documents), skills, finalized assessment levels (no comments), development plan metadata and suppressed analytics', 'learning.write' => 'Enrol employees and record learning progress (idempotent)', 'learning.costs' => 'Include learning costs in learning API responses', 'career.read' => 'Read career architecture, career profiles (shared fields only), goals, skill gaps and mobility interests', 'talent.read' => 'Read talent pools and memberships, talent reviews (decisions only) and suppressed talent analytics — never confidential notes or assessments', 'succession.read' => 'Read critical positions, succession plans, successors and readiness — never confidential notes or deliberations', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
         ],
     ],
@@ -1213,6 +1234,41 @@ return [
             ['value' => 3, 'label' => 'Advanced', 'description' => 'Handles complex work; guides others', 'indicator' => 'Solves non-routine problems; reviews others'],
             ['value' => 4, 'label' => 'Expert', 'description' => 'Recognised authority; shapes practice', 'indicator' => 'Sets standards; teaches the skill'],
         ]],
+    ],
+
+    /*
+    | Career, talent & succession (Phase 9). Every label is configuration; nothing here is computed
+    | into a recommendation. Readiness and criticality are recorded by people.
+    */
+    'career' => [
+        'track_types' => ['individual_contributor' => 'Individual contributor', 'people_manager' => 'People manager', 'technical_specialist' => 'Technical specialist', 'functional_specialist' => 'Functional specialist', 'leadership' => 'Leadership'],
+        'aspiration_terms' => ['short' => 'Short term (≤ 1 year)', 'medium' => 'Medium term (1–3 years)', 'long' => 'Long term (3+ years)'],
+        'goal_types' => ['role' => 'Reach a role', 'skill' => 'Build a skill', 'capability' => 'Build a capability', 'move' => 'Move function / location', 'assignment' => 'Assignment / experience'],
+        'goal_statuses' => ['active' => 'Active', 'achieved' => 'Achieved', 'paused' => 'Paused', 'abandoned' => 'Abandoned'],
+        'mobility_interest_types' => ['position' => 'Position', 'job_family' => 'Job family', 'department' => 'Department', 'location' => 'Location', 'career_track' => 'Career track'],
+        'mobility_options' => ['relocation' => 'Open to relocation', 'international' => 'Open to international moves', 'role_change' => 'Open to a role change', 'travel' => 'Open to travel'],
+    ],
+
+    'talent' => [
+        'readiness_levels' => ['ready_now' => 'Ready now', 'lt_1_year' => 'Ready < 1 year', '1_2_years' => 'Ready 1–2 years', 'longer_term' => 'Longer term', 'not_assessed' => 'Not assessed'],
+        'readiness_validity_months' => 12,
+        'criticality_levels' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High', 'critical' => 'Critical'],
+        'impact_levels' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High'],
+        'vacancy_risk_levels' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High'],
+        'mobility_levels' => ['not_mobile' => 'Not mobile', 'within_location' => 'Within location', 'national' => 'National', 'international' => 'International'],
+        'review_decisions' => ['retain_and_develop' => 'Retain and develop', 'accelerate_development' => 'Accelerate development', 'add_to_pool' => 'Add to a talent pool', 'nominate_successor' => 'Nominate as successor', 'no_change' => 'No change', 'revisit' => 'Revisit next review'],
+        'development_action_types' => ['learning_path' => 'Complete a learning path', 'certification' => 'Gain a certification', 'skill' => 'Build a skill', 'project' => 'Project assignment', 'mentoring' => 'Mentoring', 'coaching' => 'Coaching', 'stretch' => 'Stretch assignment', 'rotation' => 'Job rotation'],
+        // A default assessment model; tenants configure their own (a 9-box is one possible configuration).
+        'default_model' => ['code' => 'PERF_POTENTIAL', 'name' => 'Performance and potential', 'dimensions' => [
+            ['key' => 'performance', 'label' => 'Performance', 'levels' => [['value' => 1, 'label' => 'Below'], ['value' => 2, 'label' => 'Meets'], ['value' => 3, 'label' => 'Exceeds']]],
+            ['key' => 'potential', 'label' => 'Potential', 'levels' => [['value' => 1, 'label' => 'Limited'], ['value' => 2, 'label' => 'Moderate'], ['value' => 3, 'label' => 'Strong']]],
+        ]],
+        // Employees do not see their own succession candidacy unless granted succession.own_candidacy.
+        'analytics_min_group' => (int) env('PEOPLEOS_TALENT_MIN_GROUP', 5),
+        'review_reminder_days' => 14,
+        // Optional approval workflows (keys of published workflows); empty = people decide directly.
+        'review_workflow_key' => env('PEOPLEOS_TALENT_REVIEW_WORKFLOW'),
+        'succession_plan_workflow_key' => env('PEOPLEOS_SUCCESSION_PLAN_WORKFLOW'),
     ],
 
     'development' => [
