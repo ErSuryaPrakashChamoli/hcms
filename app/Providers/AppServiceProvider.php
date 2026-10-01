@@ -230,6 +230,7 @@ use App\Domain\Organisation\Policies\EstablishmentPolicy;
 use App\Domain\Organisation\Policies\LegalEntityPolicy;
 use App\Domain\Organisation\Policies\OrganisationStructurePolicy;
 use App\Domain\Organisation\Policies\PeopleSetupPolicy;
+use App\Domain\Payroll\Contracts\WorkforceCostReader;
 use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollAdjustment;
 use App\Domain\Payroll\Models\PayrollEntry;
@@ -240,6 +241,7 @@ use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\Payroll\Policies\PayrollConfigPolicy;
 use App\Domain\Payroll\Policies\PayrollRunPolicy;
 use App\Domain\Payroll\Policies\PayslipPolicy;
+use App\Domain\Payroll\Services\WorkforceCost;
 use App\Domain\People\Models\Person;
 use App\Domain\People\Models\PersonAddress;
 use App\Domain\People\Models\PersonCertification;
@@ -316,6 +318,18 @@ use App\Domain\Workflow\Models\WorkflowTask;
 use App\Domain\Workflow\Models\WorkflowVersion;
 use App\Domain\Workflow\Policies\WorkflowPolicy;
 use App\Domain\Workflow\Policies\WorkflowTaskPolicy;
+use App\Domain\Workforce\Listeners\WorkforceWorkflowBridge;
+use App\Domain\Workforce\Models\Position;
+use App\Domain\Workforce\Models\PositionChangeRequest;
+use App\Domain\Workforce\Models\PositionVersion;
+use App\Domain\Workforce\Models\WorkforceBudget;
+use App\Domain\Workforce\Models\WorkforcePlan;
+use App\Domain\Workforce\Models\WorkforcePlanLine;
+use App\Domain\Workforce\Models\WorkforcePlanVersion;
+use App\Domain\Workforce\Models\WorkforceScenario;
+use App\Domain\Workforce\Policies\PositionPolicy;
+use App\Domain\Workforce\Policies\WorkforceBudgetPolicy;
+use App\Domain\Workforce\Policies\WorkforcePlanningPolicy;
 use App\Domain\Workforce\Services\PositionSeats;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -338,6 +352,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CompetencyEvidenceReader::class, CompetencyEvidence::class);
         // Phase 10: employment assignments that name a position are validated by the workforce module.
         $this->app->bind(PositionAssignmentGuard::class, PositionSeats::class);
+        $this->app->bind(WorkforceCostReader::class, WorkforceCost::class);
         $this->app->singleton(AccessScopes::class);
         // Phase 5: one statutory rule cache per request / job, cleared at the start of each run calculation.
         $this->app->scoped(ComplianceRules::class);
@@ -367,6 +382,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(WorkflowCompleted::class, LeaveWorkflowBridge::class);
         Event::listen(WorkflowCompleted::class, LearningWorkflowBridge::class);
         Event::listen(WorkflowCompleted::class, SuccessionWorkflowBridge::class);
+        Event::listen(WorkflowCompleted::class, WorkforceWorkflowBridge::class);
     }
 
     /** API limits are per key (falls back to IP for unauthenticated calls). */
@@ -441,6 +457,14 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, TalentConfigPolicy::class);
         }
         Gate::policy(TalentReviewSession::class, TalentReviewPolicy::class);
+        // Phase 10: workforce planning.
+        foreach ([Position::class, PositionVersion::class, PositionChangeRequest::class] as $model) {
+            Gate::policy($model, PositionPolicy::class);
+        }
+        foreach ([WorkforcePlan::class, WorkforcePlanVersion::class, WorkforcePlanLine::class, WorkforceScenario::class] as $model) {
+            Gate::policy($model, WorkforcePlanningPolicy::class);
+        }
+        Gate::policy(WorkforceBudget::class, WorkforceBudgetPolicy::class);
         foreach ([CriticalPosition::class, CriticalPositionAssessment::class, SuccessionPlan::class, Successor::class, ReadinessAssessment::class] as $model) {
             Gate::policy($model, SuccessionPolicy::class);
         }

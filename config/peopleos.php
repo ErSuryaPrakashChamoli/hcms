@@ -94,6 +94,10 @@ use App\Domain\Talent\Models\TalentAssessment;
 use App\Domain\Talent\Models\TalentPoolMembership;
 use App\Domain\Talent\Models\TalentProfile;
 use App\Domain\Talent\Models\TalentReviewItem;
+use App\Domain\Workforce\Models\WorkforceBudget;
+use App\Domain\Workforce\Models\WorkforcePlanLine;
+use App\Domain\Workforce\Models\WorkforcePlanVersion;
+use App\Domain\Workforce\Models\WorkforceScenario;
 
 /*
 |--------------------------------------------------------------------------
@@ -1032,6 +1036,8 @@ return [
             // Phase 9: architecture-level events only. Candidacy, pool membership, readiness and talent
             // assessments are confidential and are never published as webhooks.
             'career.path.published', 'succession.critical_position.created', 'talent.review.completed',
+            // Phase 10: capacity facts an integration (e.g. RecruitmentEdge, outside PeopleOS) may consume. No costs, no people.
+            'workforce.position.approved', 'workforce.position.opened', 'workforce.position.vacated', 'workforce.position.frozen', 'workforce.position.abolished', 'workforce.position.closed',
         ],
         // Context keys never sent in webhook payloads (names of feedback authors, free text).
         'webhook_redacted_context' => ['from', 'note', 'reason', 'outcome', 'summary', 'comment'],
@@ -1341,7 +1347,6 @@ return [
         'plan_expiry_reminder_days' => 30,
         'vacancy_reminder_days' => 30,
         // Optional approval workflows (keys of published workflows); empty = people decide directly.
-        'position_workflow_key' => env('PEOPLEOS_POSITION_WORKFLOW'),
         'plan_workflow_key' => env('PEOPLEOS_WORKFORCE_PLAN_WORKFLOW'),
     ],
 
@@ -1518,6 +1523,8 @@ return [
         'financial' => [
             EmployeeSalaryAssignment::class, PayrollEntry::class, ParallelPayrollLine::class,
             Payslip::class, FinalSettlement::class, LearningCost::class,
+            // Phase 10: workforce budgets (amounts masked in audit; workforce.costs only).
+            WorkforceBudget::class,
         ],
         'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class, EstablishmentStatutoryProfile::class, EmployeeEstablishmentAssignment::class, StatutoryReturn::class, StatutorySnapshot::class, EpfReturnEntry::class, TdsAnnualLedger::class, TdsCertificate::class, TdsEmployeeInvestment::class],
         'confidential' => [
@@ -1532,6 +1539,8 @@ return [
             TalentAssessment::class, TalentReviewItem::class,
             SuccessionPlan::class, Successor::class,
             ReadinessAssessment::class,
+            // Phase 10: workforce plans and scenarios are management-confidential planning records.
+            WorkforcePlanVersion::class, WorkforcePlanLine::class, WorkforceScenario::class,
         ],
     ],
 

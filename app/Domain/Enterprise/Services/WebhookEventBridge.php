@@ -20,6 +20,7 @@ use App\Domain\Skills\Events\SkillEvent;
 use App\Domain\Succession\Events\SuccessionEvent;
 use App\Domain\Talent\Events\TalentEvent;
 use App\Domain\Workflow\Events\WorkflowCompleted;
+use App\Domain\Workforce\Events\WorkforceEvent;
 use Illuminate\Events\Dispatcher;
 
 /** Domain events → outbound webhooks (§88). Payloads carry identifiers and business fields, never sensitive detail. */
@@ -35,6 +36,8 @@ final class WebhookEventBridge
             LearningEvent::class => 'onNamed', AssetEvent::class => 'onNamed', SkillEvent::class => 'onNamed', DevelopmentEvent::class => 'onNamed', ServiceDeskEvent::class => 'onNamed', ExitEvent::class => 'onNamed', ComplianceEvent::class => 'onNamed',
             // Phase 9: only the allow-listed architecture events pass onNamed (never candidacy, pools or readiness).
             CareerEvent::class => 'onNamed', TalentEvent::class => 'onNamed', SuccessionEvent::class => 'onNamed',
+            // Phase 10: position capacity events only (no costs, no plan content).
+            WorkforceEvent::class => 'onNamed',
             WorkflowCompleted::class => 'onWorkflowCompleted', DocumentExpiring::class => 'onDocumentExpiring',
         ];
     }

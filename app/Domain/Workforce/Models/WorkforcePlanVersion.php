@@ -32,7 +32,7 @@ class WorkforcePlanVersion extends Model
     ];
 
     /** Fields that never change once the version leaves draft. */
-    public const CONTENT = ['workforce_scenario_id', 'period_type', 'period_start', 'period_end', 'currency', 'notes', 'version', 'workforce_plan_id', 'effective_from', 'effective_to'];
+    public const CONTENT = ['workforce_scenario_id', 'period_type', 'period_start', 'period_end', 'currency', 'notes', 'version', 'workforce_plan_id'];
 
     protected $attributes = ['status' => 'draft'];
 

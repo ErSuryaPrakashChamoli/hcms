@@ -24,13 +24,13 @@ final class PositionOccupancy
 {
     private const EPSILON = 0.0001;
 
-    /** Occupant rows effective on a day for the given positions (no access scope: callers decide visibility). */
-    public function occupantRows(array $positionIds, CarbonInterface|string|null $on = null): Builder
+    /** Occupant rows effective on a day for the given positions, or any position when null (no access scope: callers decide visibility). */
+    public function occupantRows(?array $positionIds, CarbonInterface|string|null $on = null): Builder
     {
         $day = Carbon::parse($on ?? now())->toDateString();
 
         return EmployeePosition::query()->withoutGlobalScope(AccessScope::class)
-            ->whereIn('employee_positions.position_id', $positionIds)
+            ->when($positionIds === null, fn ($q) => $q->whereNotNull('employee_positions.position_id'), fn ($q) => $q->whereIn('employee_positions.position_id', $positionIds))
             ->effectiveOn($day)
             ->whereIn('employee_positions.employee_id', Employee::query()->withoutGlobalScope(AccessScope::class)->select('employees.id')
                 ->where(fn ($q) => $q->whereNull('employees.exit_date')->orWhere('employees.exit_date', '>=', $day)))

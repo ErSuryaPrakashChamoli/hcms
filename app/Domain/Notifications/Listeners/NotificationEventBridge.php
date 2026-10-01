@@ -32,6 +32,7 @@ use App\Domain\Succession\Events\SuccessionEvent;
 use App\Domain\Talent\Events\TalentEvent;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use App\Domain\Workflow\Events\WorkflowTaskAssigned;
+use App\Domain\Workforce\Events\WorkforceEvent;
 use Illuminate\Events\Dispatcher;
 
 /**
@@ -72,6 +73,7 @@ final class NotificationEventBridge
             CareerEvent::class => 'onTalent',
             TalentEvent::class => 'onTalent',
             SuccessionEvent::class => 'onTalent',
+            WorkforceEvent::class => 'onWorkforce',
         ];
     }
 
@@ -258,6 +260,31 @@ final class NotificationEventBridge
             'succession.plan.created' => 'Succession plan created: '.($c['position'] ?? ''),
             'talent.pool.membership_changed' => 'Talent pool membership changed'.(isset($c['pool']) ? ': '.$c['pool'] : ''),
             default => str_replace(['.', '_'], ' ', $event->name),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 10 workforce events: in-app to the users the event names only (position owner, plan owner,
+     * submitter). No tenant rule fires with an employee's context; planning details are not sent to
+     * employees.
+     */
+    public function onWorkforce(WorkforceEvent $event): void
+    {
+        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $title = match ($event->name) {
+            'workforce.position.occupied' => 'Position '.($c['code'] ?? '').' is now occupied',
+            'workforce.position.vacated' => 'Position '.($c['code'] ?? '').' is vacant from '.($c['effective_date'] ?? ''),
+            'workforce.reminder.vacancy' => 'Position '.($c['code'] ?? '').' has been vacant for a while',
+            'workforce.reminder.pending_approval' => 'Workforce plan '.($c['plan'] ?? '').' v'.($c['version'] ?? '').' is waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
+            'workforce.reminder.plan_expiry' => 'Workforce plan '.($c['plan'] ?? '').' ends on '.($c['period_end'] ?? ''),
+            'workforce.plan.published' => 'Workforce plan '.($c['plan'] ?? '').' v'.($c['version'] ?? '').' is now active',
+            default => ucfirst(str_replace(['workforce.', '.', '_'], ['', ' ', ' '], $event->name)).(isset($c['code']) ? ': '.$c['code'] : (isset($c['plan']) ? ': '.$c['plan'] : '')),
         };
 
         $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
