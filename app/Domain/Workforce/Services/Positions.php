@@ -26,6 +26,8 @@ use RuntimeException;
  */
 final class Positions
 {
+    use ChecksOrganisationScope;
+
     /** Attribute groups, used for configurable change approval (peopleos.workforce.change_approval). */
     public const CATEGORIES = [
         'headcount' => ['headcount', 'occupancy_mode', 'fte_capacity'],
@@ -55,6 +57,7 @@ final class Positions
             throw new RuntimeException('A position needs a code.');
         }
         $definition = $this->definition($data, null);
+        $this->assertDimensionsInScope($actor, $definition);
         $this->hierarchy->assertParent(null, $definition['parent_position_id'], (int) $definition['company_id'], $from);
 
         try {
@@ -82,8 +85,9 @@ final class Positions
     {
         $this->authorise($actor, 'workforce.manage');
 
-        return DB::transaction(function () use ($position, $data) {
+        return DB::transaction(function () use ($position, $data, $actor) {
             $locked = $this->lock($position);
+            $this->assertRecordInScope($actor, $locked);
             $latest = $this->latest($locked);
             if ($latest->status !== 'draft') {
                 throw new RuntimeException('Only a draft position is edited in place; change an approved position from an effective date.');
@@ -92,6 +96,7 @@ final class Positions
             if ((int) $definition['company_id'] !== (int) $locked->company_id) {
                 throw new RuntimeException('A position keeps its company.');
             }
+            $this->assertDimensionsInScope($actor, $definition);
             $from = Carbon::parse($data['effective_from'] ?? $latest->effective_from)->startOfDay();
             $this->hierarchy->assertParent($locked, $definition['parent_position_id'], (int) $locked->company_id, $from);
             $latest->update([...$definition, 'effective_from' => $from->toDateString()]);
@@ -122,6 +127,7 @@ final class Positions
 
         return DB::transaction(function () use ($position, $to, $reason, $actor, $effectiveFrom, $expectedLockVersion, $approval) {
             $locked = $this->lock($position);
+            $this->assertRecordInScope($actor, $locked);
             if ($expectedLockVersion !== null && (int) $locked->lock_version !== $expectedLockVersion) {
                 throw new RuntimeException('The position was changed meanwhile. Reload and try again.');
             }
@@ -165,6 +171,7 @@ final class Positions
         if (trim($reason) === '') {
             throw new RuntimeException('A position change needs a reason.');
         }
+        $this->assertRecordInScope($actor, $position);
         $latest = $this->latest($position);
         if ($latest->status === 'draft') {
             $this->updateDraft($position, $changes, $actor);
@@ -205,6 +212,7 @@ final class Positions
             if ($current->status !== 'pending') {
                 throw new RuntimeException('This change request was already decided.');
             }
+            $this->assertRecordInScope($actor, Position::query()->withoutGlobalScope(AccessScope::class)->findOrFail($current->position_id));
             $applied = $approve ? $this->apply(Position::query()->withoutGlobalScope(AccessScope::class)->findOrFail($current->position_id), $current->changes, Carbon::parse($current->effective_from), $current->reason, $actor) : null;
             $request->setRawAttributes($current->getAttributes(), true);
             $request->update(['status' => $approve ? 'approved' : 'rejected', 'decided_by' => $actor->id, 'decided_at' => now(), 'decision_note' => $note, 'applied_version_id' => $applied?->id]);
@@ -260,6 +268,7 @@ final class Positions
             if ((int) $definition['company_id'] !== (int) $locked->company_id) {
                 throw new RuntimeException('A position keeps its company; abolish it and create another.');
             }
+            $this->assertDimensionsInScope($actor, $definition);
             $this->hierarchy->assertParent($locked, $definition['parent_position_id'], (int) $locked->company_id, $from);
             [$seats, $fte] = $this->occupancy->usedFrom($locked, $from, null, (float) $definition['fte']);
             if ($seats > (int) $definition['headcount'] || $fte > (float) $definition['fte_capacity'] + 0.0001) {

@@ -33,6 +33,9 @@ class PositionVersion extends Model
 
     public const UPDATED_AT = null;
 
+    /** Mirror the column defaults so guards see them before the insert. */
+    protected $attributes = ['worker_type' => 'employee', 'occupancy_mode' => 'single', 'headcount' => 1, 'fte' => 1, 'fte_capacity' => 1];
+
     /** The definition fields covered by the checksum. */
     public const DEFINITION = ['status', 'effective_from', 'title', 'designation_id', 'job_family_id', 'career_track_id', 'company_id', 'organisation_node_id', 'location_id', 'establishment_id', 'legal_entity_id', 'employment_type_id', 'worker_type', 'grade_id', 'cost_centre_id', 'parent_position_id', 'occupancy_mode', 'headcount', 'fte', 'fte_capacity', 'standard_hours'];
 

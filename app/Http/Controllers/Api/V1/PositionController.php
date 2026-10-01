@@ -36,8 +36,8 @@ class PositionController extends Controller
         $on = $this->on($request);
 
         return response()->json(['data' => [
-            ...$this->row($position, $position->versionOn($on)),
-            'as_of' => $on,
+            ...$this->row($position, $position->versionOn($on), false),
+            'as_of' => $on, 'in_force' => $position->versionOn($on) !== null,
             'versions' => PositionVersion::query()->with(['designation:id,code', 'parent:id,code'])->where('position_id', $position->id)->orderBy('version')->get()
                 ->map(fn (PositionVersion $v) => [
                     'version' => $v->version, 'status' => $v->status, 'effective_from' => $v->effective_from->toDateString(), 'effective_to' => $v->effective_to?->toDateString(),
@@ -67,10 +67,10 @@ class PositionController extends Controller
         ]);
     }
 
-    private function row(Position $position, ?PositionVersion $version): array
+    private function row(Position $position, ?PositionVersion $version, bool $fallBackToLatest = true): array
     {
         return [
-            'code' => $position->code, 'title' => $version?->title ?? $position->title, 'status' => $version?->status ?? $position->status, 'latest_status' => $position->status,
+            'code' => $position->code, 'title' => $version?->title ?? $position->title, 'status' => $version?->status ?? ($fallBackToLatest ? $position->status : null), 'latest_status' => $position->status,
             'company_code' => $position->company?->code, 'designation_code' => $version?->designation?->code, 'parent_code' => $version?->parent?->code,
             'occupancy_mode' => $version?->occupancy_mode, 'headcount' => $version?->headcount, 'fte' => $version ? (float) $version->fte : null, 'fte_capacity' => $version ? (float) $version->fte_capacity : null,
             'worker_type' => $version?->worker_type, 'first_effective_from' => $position->first_effective_from?->toDateString(),

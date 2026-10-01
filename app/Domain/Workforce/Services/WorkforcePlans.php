@@ -31,6 +31,8 @@ use RuntimeException;
  */
 final class WorkforcePlans
 {
+    use ChecksOrganisationScope;
+
     public function __construct(
         private readonly OrganisationDimensions $dimensions,
         private readonly Positions $positions,
@@ -48,6 +50,7 @@ final class WorkforcePlans
             }
         }
         $scope = $this->scope($data);
+        $this->assertDimensionsInScope($actor, $scope);
 
         try {
             return DB::transaction(function () use ($data, $scope, $actor) {
@@ -70,8 +73,10 @@ final class WorkforcePlans
     {
         $this->authorise($actor, 'workforce.plan');
 
+        $this->assertRecordInScope($actor, $plan);
+
         return DB::transaction(function () use ($plan, $data, $actor, $copyFrom) {
-            WorkforcePlan::query()->whereKey($plan->id)->lockForUpdate()->first();
+            WorkforcePlan::query()->withoutGlobalScope(AccessScope::class)->whereKey($plan->id)->lockForUpdate()->first();
             $versions = WorkforcePlanVersion::query()->where('workforce_plan_id', $plan->id)->lockForUpdate();
             if ((clone $versions)->where('status', 'draft')->exists()) {
                 throw new RuntimeException('This plan already has a draft version.');
@@ -111,6 +116,7 @@ final class WorkforcePlans
             throw new RuntimeException('Planned costs are recorded with workforce.costs.');
         }
         $plan = $version->plan()->withoutGlobalScope(AccessScope::class)->firstOrFail();
+        $this->assertRecordInScope($actor, $plan);
         if (filled($data['position_id'] ?? null) && (int) Position::query()->withoutGlobalScope(AccessScope::class)->whereKey($data['position_id'])->value('company_id') !== (int) $plan->company_id) {
             throw new RuntimeException('A plan line can only name a position of the plan\'s company.');
         }
@@ -208,6 +214,7 @@ final class WorkforcePlans
         try {
             return DB::transaction(function () use ($version, $from, $actor) {
                 $plan = WorkforcePlan::query()->withoutGlobalScope(AccessScope::class)->whereKey($version->workforce_plan_id)->lockForUpdate()->firstOrFail();
+                $this->assertRecordInScope($actor, $plan);
                 $current = WorkforcePlanVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
                 if ($current->status !== 'approved') {
                     throw new RuntimeException('Only an approved plan version is published.');
@@ -318,6 +325,7 @@ final class WorkforcePlans
             if (! in_array($current->status, $from, true)) {
                 throw new RuntimeException("A plan version that is {$current->status} cannot become {$to}.");
             }
+            $this->assertRecordInScope($actor, WorkforcePlan::query()->withoutGlobalScope(AccessScope::class)->findOrFail($current->workforce_plan_id));
             $before = $current->status;
             $extra = $changes($current);
             $version->setRawAttributes($current->getAttributes(), true);

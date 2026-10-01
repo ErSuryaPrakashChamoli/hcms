@@ -6,7 +6,9 @@ use App\Domain\Employment\Contracts\PositionAssignmentGuard;
 use App\Domain\Employment\Exceptions\PositionUnavailableException;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Workforce\Events\WorkforceEvent;
 use App\Domain\Workforce\Models\Position;
 use Carbon\CarbonInterface;
@@ -33,6 +35,11 @@ final class PositionSeats implements PositionAssignmentGuard
             $position = Position::query()->withoutGlobalScope(AccessScope::class)->whereKey($positionId)->lockForUpdate()->first();
             if ($position === null) {
                 throw new PositionUnavailableException('That position does not exist in this organisation.');
+            }
+            // Defence in depth: a scoped user assigns only to positions inside their organisation scope.
+            $actor = auth()->user();
+            if ($actor instanceof User && ! app(AccessScopes::class)->allows($actor, $position)) {
+                throw new PositionUnavailableException('That position is outside your organisation scope.');
             }
             $version = $this->occupancy->assertCanAssign($position, $employee, $from, $fte);
             $dimensions = collect(['company_id', 'location_id', 'business_unit_id', 'division_id', 'department_id', 'team_id', 'designation_id', 'grade_id', 'employment_type_id', 'cost_centre_id'])

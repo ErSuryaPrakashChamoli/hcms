@@ -23,6 +23,8 @@ use RuntimeException;
  */
 final class WorkforceBudgets
 {
+    use ChecksOrganisationScope;
+
     public function __construct(private readonly OrganisationDimensions $dimensions, private readonly WorkforceCostReader $costs, private readonly AuditRecorder $audit) {}
 
     /** @param  array<string, mixed>  $data */
@@ -40,6 +42,8 @@ final class WorkforceBudgets
             throw new RuntimeException('A budget belongs to one company and its organisation units.');
         }
 
+        $this->assertDimensionsInScope($actor, ['company_id' => $companyId, 'location_id' => $data['location_id'] ?? null, ...array_intersect_key($node, array_flip(OrganisationDimensions::UNIT_COLUMNS))]);
+
         return WorkforceBudget::query()->create([
             ...array_intersect_key($data, array_flip(['workforce_plan_version_id', 'organisation_node_id', 'cost_centre_id', 'location_id', 'name', 'period_start', 'period_end', 'cost_basis', 'amount', 'notes'])),
             ...array_intersect_key($node, array_flip(OrganisationDimensions::UNIT_COLUMNS)),
@@ -51,6 +55,7 @@ final class WorkforceBudgets
     public function update(WorkforceBudget $budget, array $data, User $actor): WorkforceBudget
     {
         $this->authorise($actor, ['workforce.plan', 'workforce.costs']);
+        $this->assertRecordInScope($actor, $budget);
         $budget->update(array_intersect_key($data, array_flip(['name', 'period_start', 'period_end', 'cost_basis', 'amount', 'currency', 'notes'])));
 
         return $budget;
@@ -65,6 +70,7 @@ final class WorkforceBudgets
 
         return DB::transaction(function () use ($budget, $actor) {
             $current = WorkforceBudget::query()->withoutGlobalScope(AccessScope::class)->whereKey($budget->id)->lockForUpdate()->firstOrFail();
+            $this->assertRecordInScope($actor, $current);
             if ($current->status !== 'draft') {
                 throw new RuntimeException('Only a draft budget is approved.');
             }
@@ -97,6 +103,7 @@ final class WorkforceBudgets
     public function comparison(WorkforceBudget $budget, User $viewer): array
     {
         $this->authorise($viewer, ['workforce.costs']);
+        $this->assertRecordInScope($viewer, $budget);
         $planned = $budget->workforce_plan_version_id ? WorkforcePlanLine::query()->where('workforce_plan_version_id', $budget->workforce_plan_version_id)
             ->where('cost_basis', $budget->cost_basis)->get()->sum(fn (WorkforcePlanLine $l) => $l->sign() * (float) $l->planned_cost) : null;
         $actual = null;

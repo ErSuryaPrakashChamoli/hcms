@@ -122,8 +122,8 @@ it('audits every domain model except the documented append-only or derived table
         // Phase 8: completions are the append-only learning record (finalization and corrections are
         // audited on the enrolment / correction events); reminder logs are derived de-duplication rows.
         'Learning\Models\LearningCompletion', 'Learning\Models\LearningReminderLog',
-        // Phase 9: reminder logs are derived de-duplication rows.
-        'Talent\Models\TalentReminderLog',
+        // Phase 9 / 10: reminder logs are derived de-duplication rows.
+        'Talent\Models\TalentReminderLog', 'Workforce\Models\WorkforceReminderLog',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
