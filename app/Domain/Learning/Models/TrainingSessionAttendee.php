@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'training_session_id', 'employee_id', 'learning_enrolment_id', 'status', 'feedback', 'rating'])]
+#[Fillable(['tenant_id', 'training_session_id', 'employee_id', 'learning_enrolment_id', 'status', 'waitlist_position', 'registered_at', 'cancelled_at', 'feedback', 'rating'])]
 class TrainingSessionAttendee extends Model
 {
     use BelongsToTenant;
@@ -19,7 +19,7 @@ class TrainingSessionAttendee extends Model
 
     protected function casts(): array
     {
-        return ['rating' => 'integer'];
+        return ['rating' => 'integer', 'waitlist_position' => 'integer', 'registered_at' => 'datetime', 'cancelled_at' => 'datetime'];
     }
 
     public function session(): BelongsTo

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** A classroom or virtual delivery of a course (§37). */
-#[Fillable(['tenant_id', 'course_id', 'title', 'mode', 'trainer_id', 'trainer_name', 'starts_at', 'ends_at', 'venue', 'meeting_url', 'capacity', 'status'])]
+#[Fillable(['tenant_id', 'course_id', 'course_version_id', 'learning_instructor_id', 'title', 'mode', 'trainer_id', 'trainer_name', 'starts_at', 'ends_at', 'venue', 'meeting_url', 'capacity', 'status'])]
 class TrainingSession extends Model
 {
     use Auditable, BelongsToTenant;
@@ -51,5 +51,15 @@ class TrainingSession extends Model
     public function seatsLeft(): ?int
     {
         return $this->capacity === null ? null : max(0, $this->capacity - $this->attendees()->whereIn('status', ['registered', 'attended'])->count());
+    }
+
+    public function waitlistCount(): int
+    {
+        return $this->attendees()->where('status', 'waitlisted')->count();
+    }
+
+    public function instructor(): BelongsTo
+    {
+        return $this->belongsTo(LearningInstructor::class, 'learning_instructor_id');
     }
 }
