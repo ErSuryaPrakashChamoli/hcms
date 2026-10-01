@@ -163,3 +163,76 @@ Then publish corrected versions where values change, resolve the notices and ver
 
 Current state after Phase 8: 24 rule versions — 3 REVIEW, 21 DRAFT, **0 VERIFIED**; 5 open notices.
 Statutory production readiness is not declared.
+
+## 10. Phase 9 evidence maintenance (1 October 2026)
+
+Phase 9 was not a statutory readiness phase. Newly retrieved official texts were recorded as a
+further evidence revision (`pack:in.php#phase-9-2026-10-01`) of EPF v2 and TDS v3:
+
+- No payload changed and no version was published.
+- Nothing was verified and no notice was resolved or added.
+- Payroll is unchanged.
+
+Files and SHA-256 hashes: `database/data/compliance/evidence/README.md`.
+
+**Retrieved (official domains only):**
+- **EPF / EPS / EDLI Schemes, 2026:** EPF Scheme G.S.R. 525(E), EDLI Scheme G.S.R. 526(E) and EPS
+  G.S.R. 527(E), all of 29 Jun 2026 and made under the Code on Social Security, 2020.
+  - The EPF Scheme supersedes the EPF Scheme, 1952.
+- **Rate notifications of 1 Jul 2026:**
+  - S.O. 3580(E): EPS 8⅓%.
+  - S.O. 3581(E): EDLI 0.5%.
+  - S.O. 3582(E): EPF 12%, deemed in force from 21 Nov 2025.
+- **Corrigenda** G.S.R. 703(E), 704(E) and 705(E) of 4 Aug 2026.
+- **S.O. 2702(E)** of 29 May 2026: ₹15,000 for Chapter III, with no commencement clause. It is
+  superseded by S.O. 5109(E).
+- **Income-tax Rules, 2026** (G.S.R. 198(E), in force 1 Apr 2026).
+
+| Rule | Covered by notified text | Still open (not decided here) |
+|---|---|---|
+| EPF v2 | `wage_ceiling` (S.O. 5109(E); EPF para 18(3))<br>`eps_wage_ceiling` (EPS para 4(1), 11(3))<br>`employee_rate`, `employer_rate` (EPF para 18(2); S.O. 3582(E))<br>`edli_rate` (S.O. 3581(E))<br>`round` (EPF 18(5), EPS 4(3), EDLI 5(3): nearest rupee, 50 paise up) | `edli_wage_ceiling` — **contradicted by notified text**<br>`eps_rate` — **two notified texts differ**<br>`admin_rate`, `admin_minimum` — **not notified** |
+| TDS v3 | Unchanged. The Rules add rules 204 / 205 / 215 / 219 and Form No. 130 ("Surcharge, wherever applicable"; "Health and education cess @ 4%"). | `new`, `old`, `surcharge_new_regime_cap` — the Rules prescribe no rates, map no 1961 sections and do not settle the cap |
+
+**EPF v2 open items, in detail:**
+- **`edli_wage_ceiling`:** EDLI para 5(1) applies the clause (89) ceiling, which is ₹25,000 from
+  17 Sep 2026. v2 carries ₹15,000.
+- **`eps_rate`:** EPS para 4(1) says "eight and thirty-three hundredths per cent"; S.O. 3580(E)
+  says "eight and one-third per cent".
+- **`admin_rate`, `admin_minimum`:** EPF para 29(1) leaves the percentage to a notification, and
+  none was found. The "₹500" in para 29(2) is a daily late fee.
+
+**Not modelled:**
+- the 10% rate for notified classes;
+- the S.O. 3582(E) exceptions;
+- the 9.49% EPS joint option.
+
+**September 2026:** still not established by notified text.
+- EPF para 18(4) uses "wages actually drawn or payable during the month".
+- EPS para 11(1) prorates pensionable wages per wage-ceiling period for pension, not for
+  contributions.
+- No EPFO ECR instruction or circular after 25 Sep 2026 was found. The "Wage Ceiling Circular
+  28.09.2026" re-posts E-1345653.
+- This is recorded for the future payroll remediation phase. The blocking notice stays open.
+
+**EPF v1:** from 29 Jun 2026 its legal basis is the Code and the 2026 Schemes (S.O. 2702(E),
+₹15,000), not the EPF & MP Act, 1952 that its source names. Its values are consistent with those
+texts apart from the unnotified administrative charges. v1 is not changed.
+
+**Not found:**
+- a notification fixing EPF administrative charges under the 2026 Scheme;
+- EPFO ECR instructions for September 2026;
+- a CBDT circular on salary TDS for tax year 2026-27.
+
+**What a second verifier still needs:**
+- **EPF v2:**
+  - a ruling on the EDLI ceiling, then a corrected version;
+  - a ruling on the EPS rate wording (8.33% or 8⅓%);
+  - the administrative-charge notification;
+  - EPFO's September 2026 instructions.
+- **TDS v3:** a qualified ruling on the three open questions.
+
+Current state after Phase 9: 24 rule versions — 3 REVIEW, 21 DRAFT, **0 VERIFIED**; 5 open notices.
+The Phase 8 EPF notice says the scheme texts were "not retrieved". Notices are immutable, so this
+revision supersedes that statement without editing the notice.
+
+**Statutory production readiness: NOT DECLARED.**

@@ -78,8 +78,9 @@ it('blocks EPF verification: carried-forward parameters are not confirmed and th
     $v2 = ComplianceRule::query()->where('code', 'EPF')->where('version', 2)->sole();
     $gaps = app(RuleVerifications::class)->coverageGaps($v2);
 
-    // Phase 8: the wage ceiling is now covered by S.O. 5109(E) itself; everything else stays unconfirmed.
-    expect($gaps)->toContain('edli_wage_ceiling not confirmed', 'admin_minimum not confirmed', 'round not confirmed')->not->toContain('wage_ceiling not confirmed')
+    // Phase 8: the wage ceiling is covered by S.O. 5109(E) itself. Phase 9: the 2026 Schemes cover the
+    // rates and rounding; the EDLI ceiling, administrative charges and the EPS rate wording stay open.
+    expect($gaps)->toContain('edli_wage_ceiling not confirmed', 'admin_minimum not confirmed', 'admin_rate not confirmed', 'eps_rate not confirmed')->not->toContain('wage_ceiling not confirmed', 'round not confirmed')
         ->and(ComplianceRuleNotice::query()->where('code', 'EPF')->where('status', 'open')->count())->toBe(3);
     expect(fn () => app(RuleVerifications::class)->verify($v2, platformAdmin(), 'Looks right'))->toThrow(RuntimeException::class, 'Parameter coverage is incomplete');
 

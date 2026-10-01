@@ -23,15 +23,16 @@ beforeEach(function () {
     syncComplianceRules();
     $this->epf = ComplianceRule::query()->where('code', 'EPF')->where('version', 2)->sole();
     $this->tds = ComplianceRule::query()->where('code', 'TDS')->where('version', 3)->sole();
-    $this->latest = fn (ComplianceRule $rule) => $rule->verifications()->where('action', 'submitted')->reorder()->latest('id')->first();
-    $this->coverage = fn (ComplianceRule $rule) => ComplianceRuleParameter::query()->where('compliance_rule_verification_id', ($this->latest)($rule)->id)->get()->keyBy('parameter');
+    // The Phase 8 revision, read by its label (Phase 9 appended a later revision; see StatutoryEvidenceMaintenanceTest).
+    $this->phase8 = fn (ComplianceRule $rule) => $rule->verifications()->where('action', 'submitted')->where('actor_label', 'pack:in.php#phase-8-2026-10-01')->sole();
+    $this->coverage = fn (ComplianceRule $rule) => ComplianceRuleParameter::query()->where('compliance_rule_verification_id', ($this->phase8)($rule)->id)->get()->keyBy('parameter');
 });
 
 it('records the Phase 8 evidence as an append-only revision, once, keeping the Phase 7 submission', function () {
     foreach ([$this->epf, $this->tds] as $rule) {
         $submissions = $rule->verifications()->where('action', 'submitted')->reorder()->orderBy('id')->get();
-        expect($submissions)->toHaveCount(2)
-            ->and($submissions->last()->actor_label)->toBe('pack:in.php#phase-8-2026-10-01')
+        expect($submissions)->toHaveCount(3)
+            ->and($submissions->get(1)->actor_label)->toBe('pack:in.php#phase-8-2026-10-01')
             ->and($rule->refresh()->verification_status)->toBe(ComplianceRule::REVIEW);
     }
 
@@ -53,7 +54,7 @@ it('covers the EPF wage ceiling from the gazette and records contradicted carrie
             '970c2ea088c808a2427f630ba344ab8cfc7a26a10ba9babee2f150b0451c70df', // S.O. 5109(E)
             '47c22e56faaf6735bb8bd0b70db502e2f86efd4adb654cc4593ff85be6eb1052', // EPFO FAQs
         )
-        ->and(app(RuleVerifications::class)->coverageGaps($this->epf))->toHaveCount(9)
+        ->and($coverage->where('status', ComplianceRuleParameter::NOT_CONFIRMED))->toHaveCount(9) // as recorded in Phase 8
         ->and(fn () => app(RuleVerifications::class)->verify($this->epf, platformAdmin(), 'Gazette retrieved'))->toThrow(RuntimeException::class);
 
     $notice = ComplianceRuleNotice::query()->where('code', 'EPF')->where('status', 'open')->whereJsonLength('affects_versions', 1)->whereJsonContains('affects_versions', 2)->sole();
@@ -71,7 +72,7 @@ it('cites the salary-specific TDS rule and the Finance Act section 3, keeping op
         ->and($coverage['new']->status)->toBe(ComplianceRuleParameter::NOT_CONFIRMED)
         ->and($coverage['new']->note)->toContain('s.202(1)')->toContain('rates in force')
         ->and($coverage['old']->note)->toContain('1961')
-        ->and(app(RuleVerifications::class)->coverageGaps($this->tds))->toEqualCanonicalizing(['new not confirmed', 'old not confirmed', 'surcharge_new_regime_cap not confirmed'])
+        ->and($coverage->where('status', ComplianceRuleParameter::NOT_CONFIRMED)->keys()->all())->toEqualCanonicalizing(['new', 'old', 'surcharge_new_regime_cap'])
         ->and(ComplianceRuleNotice::query()->where('code', 'TDS')->where('status', 'open')->whereJsonContains('affects_versions', 3)->exists())->toBeTrue()
         ->and(fn () => app(RuleVerifications::class)->verify($this->tds, platformAdmin(), 'Act retrieved'))->toThrow(RuntimeException::class);
 
