@@ -4,12 +4,14 @@ namespace App\Domain\People\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Domain\Skills\Models\SkillScale;
 use App\Support\Tenancy\BelongsToTenant;
 use Database\Factories\SkillFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[UseFactory(SkillFactory::class)]
 #[Fillable(['tenant_id', 'name', 'code', 'category', 'skill_type', 'description', 'skill_scale_id', 'status', 'effective_from', 'effective_to'])]
@@ -28,9 +30,9 @@ class Skill extends Model
     }
 
     /** Phase 8: the proficiency scale this skill is measured on. */
-    public function scale(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function scale(): BelongsTo
     {
-        return $this->belongsTo(\App\Domain\Skills\Models\SkillScale::class, 'skill_scale_id');
+        return $this->belongsTo(SkillScale::class, 'skill_scale_id');
     }
 
     public function auditLabel(): string

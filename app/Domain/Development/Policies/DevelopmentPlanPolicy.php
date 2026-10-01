@@ -6,6 +6,7 @@ use App\Domain\Development\Services\DevelopmentPlans;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Performance\Services\PerformanceRelationships;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,7 +20,7 @@ class DevelopmentPlanPolicy
 
     public function view(User $user, Model $model): bool
     {
-        if ($user->hasPermission('development.view') || $user->hasPermission('development.manage')) {
+        if (($user->hasPermission('development.view') || $user->hasPermission('development.manage')) && app(AccessScopes::class)->allows($user, $model)) {
             return true;
         }
         $relationships = app(PerformanceRelationships::class);

@@ -58,7 +58,7 @@ final class LearningPaths
 
             $version = LearningPathVersion::query()->create([
                 'learning_path_id' => $path->id,
-                'version' => (int) LearningPathVersion::query()->where('learning_path_id', $path->id)->max('version') + 1,
+                'version' => (int) LearningPathVersion::query()->where('learning_path_id', $path->id)->lockForUpdate()->max('version') + 1,
                 'name' => $path->name,
                 'items' => $snapshot,
                 'milestones' => array_values($path->milestones ?? []),
@@ -76,8 +76,17 @@ final class LearningPaths
     /** The version enrolments pin; published on first use for paths created before Phase 8. */
     public function ensureVersion(LearningPath $path): LearningPathVersion
     {
-        return $path->current_version_id
-            ? LearningPathVersion::query()->findOrFail($path->current_version_id)
-            : $this->publish($path, null);
+        if ($path->current_version_id) {
+            return LearningPathVersion::query()->findOrFail($path->current_version_id);
+        }
+
+        return DB::transaction(function () use ($path) {
+            // Re-check under the path lock so two first uses never publish two versions.
+            $locked = LearningPath::query()->whereKey($path->id)->lockForUpdate()->firstOrFail();
+
+            return $locked->current_version_id
+                ? LearningPathVersion::query()->whereKey($locked->current_version_id)->lockForUpdate()->firstOrFail()
+                : $this->publish($locked, null);
+        });
     }
 }

@@ -11,6 +11,10 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <!-- Phase 8: real MySQL concurrency (skipped unless PEOPLEOS_MYSQL_CONCURRENCY_DB names a disposable database). -->
+        <testsuite name="MySql">
+            <directory>tests/MySql</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

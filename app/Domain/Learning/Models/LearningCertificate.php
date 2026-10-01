@@ -9,6 +9,7 @@ use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 /** Issued on completion of a course with validity (§37). valid → expiring → expired / revoked. */
 #[Fillable(['tenant_id', 'employee_id', 'course_id', 'course_version_id', 'learning_program_version_id', 'learning_enrolment_id', 'learning_completion_id', 'number', 'issued_on', 'expires_on', 'recertification_due_on', 'renewed_by_certificate_id', 'score', 'issuer', 'credential_url', 'verification_code', 'verification_status', 'document_path', 'document_name', 'document_sha256', 'is_external', 'status', 'revoked_at', 'revoked_by', 'revocation_reason'])]
@@ -28,7 +29,7 @@ class LearningCertificate extends Model
 
     protected static function booted(): void
     {
-        static::creating(fn (self $c) => $c->verification_code ??= \Illuminate\Support\Str::random(40));
+        static::creating(fn (self $c) => $c->verification_code ??= Str::random(40));
         static::updating(function (self $c) {
             if ($c->getRawOriginal('status') === 'revoked') {
                 throw new \RuntimeException('A revoked certificate is read-only.');

@@ -4,6 +4,7 @@ namespace App\Domain\Skills\Policies;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Performance\Services\PerformanceRelationships;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,7 +22,8 @@ class SkillRecordPolicy
 
     public function view(User $user, Model $model): bool
     {
-        return $user->hasPermission('skills.view') || $user->hasPermission('skills.manage') || $this->isOwn($user, $model) || $this->isReport($user, $model);
+        return (($user->hasPermission('skills.view') || $user->hasPermission('skills.manage')) && app(AccessScopes::class)->allows($user, $model))
+            || $this->isOwn($user, $model) || $this->isReport($user, $model);
     }
 
     public function create(User $user): bool

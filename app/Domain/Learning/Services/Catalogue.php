@@ -130,7 +130,9 @@ final class Catalogue
         return DB::transaction(function () use ($course) {
             $locked = Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
             if ($locked->current_version_id) {
-                return CourseVersion::query()->findOrFail($locked->current_version_id);
+                // A locking read: under REPEATABLE READ a plain read could miss a version another
+                // transaction committed after this one's snapshot.
+                return CourseVersion::query()->whereKey($locked->current_version_id)->lockForUpdate()->firstOrFail();
             }
             $version = $this->snapshot($locked, null, $locked->effective_from ?? $locked->created_at?->copy()->startOfDay() ?? now()->startOfDay());
             $locked->forceFill(['current_version_id' => $version->id])->saveQuietly();
@@ -151,7 +153,7 @@ final class Catalogue
 
         return CourseVersion::query()->create([
             'course_id' => $course->id,
-            'version' => (int) CourseVersion::query()->where('course_id', $course->id)->max('version') + 1,
+            'version' => (int) CourseVersion::query()->where('course_id', $course->id)->lockForUpdate()->max('version') + 1,
             'title' => $course->title,
             'description' => $course->description,
             'delivery_mode' => $course->delivery_mode ?? $this->modeFor($course->type),

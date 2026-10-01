@@ -5,6 +5,7 @@ namespace App\Domain\Performance\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
+use App\Domain\People\Models\Skill;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -33,7 +34,7 @@ class DevelopmentNeed extends Model
 
     public function skill(): BelongsTo
     {
-        return $this->belongsTo(\App\Domain\People\Models\Skill::class);
+        return $this->belongsTo(Skill::class);
     }
 
     public function auditModule(): string

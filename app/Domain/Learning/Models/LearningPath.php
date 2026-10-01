@@ -7,6 +7,7 @@ use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** An ordered set of courses (§37). */
@@ -42,7 +43,7 @@ class LearningPath extends Model
         return $this->hasMany(LearningPathVersion::class)->orderBy('version');
     }
 
-    public function currentVersion(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function currentVersion(): BelongsTo
     {
         return $this->belongsTo(LearningPathVersion::class, 'current_version_id');
     }

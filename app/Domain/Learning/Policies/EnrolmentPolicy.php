@@ -4,6 +4,7 @@ namespace App\Domain\Learning\Policies;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Performance\Services\PerformanceRelationships;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,9 +22,11 @@ class EnrolmentPolicy
         return $user->hasPermission('learning.view') || $user->hasPermission('learning.manage') || $user->hasPermission('learning.assign') || $user->hasPermission('learning.team') || $user->hasPermission('learning.learn');
     }
 
+    /** Staff permissions still stop at the user's organisation scope and tenant (AccessScopes::allows). */
     public function view(User $user, Model $model): bool
     {
-        return $user->hasPermission('learning.view') || $user->hasPermission('learning.manage') || self::isOwn($user, $model) || self::isReport($user, $model);
+        return (($user->hasPermission('learning.view') || $user->hasPermission('learning.manage')) && app(AccessScopes::class)->allows($user, $model))
+            || self::isOwn($user, $model) || self::isReport($user, $model);
     }
 
     public function create(User $user): bool
@@ -34,7 +37,7 @@ class EnrolmentPolicy
     /** Learners act on their own learning; managers on their reports'; L&D on everyone's. Finalized records are guarded by the models. */
     public function update(User $user, Model $model): bool
     {
-        return $user->hasPermission('learning.manage') || self::isOwn($user, $model) || ($user->hasPermission('learning.assign') && self::isReport($user, $model));
+        return ($user->hasPermission('learning.manage') && app(AccessScopes::class)->allows($user, $model)) || self::isOwn($user, $model) || ($user->hasPermission('learning.assign') && self::isReport($user, $model));
     }
 
     public function delete(User $user, Model $model): bool

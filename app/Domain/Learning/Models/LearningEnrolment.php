@@ -6,6 +6,7 @@ use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -57,7 +58,7 @@ class LearningEnrolment extends Model
                     throw new \RuntimeException("An enrolment cannot move from {$from} to {$e->status}.");
                 }
                 // Completion is a finalized record, not a status flip: it must exist first.
-                if ($e->status === 'completed' && ! LearningCompletion::query()->withoutGlobalScope(\App\Domain\Identity\Scopes\AccessScope::class)->where('learning_enrolment_id', $e->id)->where('status', 'final')->exists()) {
+                if ($e->status === 'completed' && ! LearningCompletion::query()->withoutGlobalScope(AccessScope::class)->where('learning_enrolment_id', $e->id)->where('status', 'final')->exists()) {
                     throw new \RuntimeException('Record the completion through the completion service.');
                 }
             } elseif (in_array($from, ['completed', 'expired', 'failed', 'withdrawn', 'cancelled', 'rejected'], true)

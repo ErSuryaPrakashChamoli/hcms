@@ -17,6 +17,9 @@ pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
 
+// Phase 8: MySQL concurrency tests manage their own disposable database (no RefreshDatabase).
+pest()->extend(TestCase::class)->in('MySql');
+
 /*
 |--------------------------------------------------------------------------
 | Tenancy helpers

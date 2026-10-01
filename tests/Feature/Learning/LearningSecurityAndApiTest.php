@@ -1,15 +1,21 @@
 <?php
 
 use App\Domain\Audit\Models\AuditEvent;
+use App\Domain\Development\Models\DevelopmentPlan;
 use App\Domain\Development\Services\DevelopmentPlans;
 use App\Domain\Employment\Models\ReportingRelationship;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Integration\Services\ApiKeys;
+use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\LearningCertificate;
+use App\Domain\Learning\Models\LearningCost;
 use App\Domain\Learning\Models\LearningEnrolment;
 use App\Domain\Learning\Policies\EnrolmentPolicy;
+use App\Domain\Learning\Services\Catalogue;
 use App\Domain\Learning\Services\Certificates;
 use App\Domain\Learning\Services\Learning;
 use App\Domain\Learning\Services\LearningAnalytics;
+use App\Domain\Organisation\Models\Location;
 use App\Domain\People\Models\Skill;
 use App\Domain\Skills\Services\SkillAssessments;
 use App\Domain\Skills\Services\SkillProfiles;
@@ -138,4 +144,40 @@ it('keeps learning analytics aggregate and suppresses small groups', function ()
 
     config(['peopleos.learning.analytics_min_group' => 1]);
     expect(app(LearningAnalytics::class)->skillGaps()[0])->toMatchArray(['skill' => 'Kotlin', 'employees' => 1, 'average_gap' => 3.0]);
+});
+
+it('limits L&D staff to their organisation scope and every user to their own tenant', function () {
+    $enrolment = $this->learning->enrol($this->employee, $this->course);
+    $plan = app(DevelopmentPlans::class)->create($this->employee, 'Plan', [], $this->admin);
+    $scoped = tenantUser($this->tenant, ['learning.view', 'learning.manage', 'development.view']);
+    expect($scoped->can('view', $enrolment))->toBeTrue()->and($scoped->can('view', $plan))->toBeTrue();
+
+    app(AccessScopes::class)->assign($scoped, ['location' => [Location::factory()->create()->id]]);
+    $scoped = $scoped->fresh();
+    expect($scoped->can('view', $enrolment))->toBeFalse()
+        ->and($scoped->can('update', $enrolment))->toBeFalse()
+        ->and($scoped->can('view', $plan))->toBeFalse();
+    $this->actingAs($scoped);
+    expect(LearningEnrolment::query()->whereKey($enrolment->id)->exists())->toBeFalse(); // query-level scope too
+
+    // Another tenant's administrator never reaches these rows.
+    $other = provisionTenant();
+    actAsTenant($other);
+    $foreignAdmin = tenantUser($other, ['*']);
+    $this->actingAs($foreignAdmin);
+    expect(LearningEnrolment::query()->count())->toBe(0)
+        ->and(DevelopmentPlan::query()->count())->toBe(0)
+        ->and($foreignAdmin->can('view', $enrolment))->toBeFalse();
+});
+
+it('reserves catalogue administration for learning.manage and approval for a second person', function () {
+    $draft = Course::create(['title' => 'Draft', 'code' => 'DRAFTX', 'type' => 'elearning', 'status' => 'draft']);
+
+    expect($this->employee->user->can('create', Course::class))->toBeFalse()
+        ->and($this->employee->user->can('update', $draft))->toBeFalse()
+        ->and($this->manager->user->can('delete', $draft))->toBeFalse()
+        ->and(fn () => app(Catalogue::class)->approve($draft, $this->manager->user))->toThrow(RuntimeException::class, 'learning.publish')
+        ->and(fn () => $this->learning->assign(['name' => 'All staff', 'course_id' => $this->course->id, 'target_type' => 'population'], $this->employee->user))->toThrow(RuntimeException::class, 'learning.assign')
+        ->and(fn () => $this->learning->assign(['name' => 'Unit', 'course_id' => $this->course->id, 'target_type' => 'organisation_unit', 'target_id' => 1], $this->manager->user))->toThrow(RuntimeException::class, 'learning.manage')
+        ->and($this->manager->user->can('viewAny', LearningCost::class))->toBeFalse();
 });

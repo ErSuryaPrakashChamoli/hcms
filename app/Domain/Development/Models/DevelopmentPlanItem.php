@@ -3,6 +3,7 @@
 namespace App\Domain\Development\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\LearningEnrolment;
 use App\Domain\Learning\Models\LearningPath;
@@ -29,7 +30,7 @@ class DevelopmentPlanItem extends Model
             if (! array_key_exists($item->item_type, self::TYPES)) {
                 throw new \RuntimeException("Unknown plan item type '{$item->item_type}'.");
             }
-            $plan = DevelopmentPlan::query()->withoutGlobalScope(\App\Domain\Identity\Scopes\AccessScope::class)->find($item->development_plan_id);
+            $plan = DevelopmentPlan::query()->withoutGlobalScope(AccessScope::class)->find($item->development_plan_id);
             if ($plan?->isClosed()) {
                 throw new \RuntimeException('A closed development plan is read-only history.');
             }
