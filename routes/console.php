@@ -16,6 +16,7 @@ Schedule::command('peopleos:attendance:process')->dailyAt('02:00')->withoutOverl
 Schedule::command('peopleos:leave:accrue')->dailyAt('01:00')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:compliance:sync')->weeklyOn(1, '00:30')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:learning:tick')->dailyAt('03:00')->withoutOverlapping()->onOneServer();
+Schedule::command('peopleos:learning:send-reminders')->dailyAt('07:30')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:servicedesk:tick')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:exit:tick')->dailyAt('04:00')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:reports:run-due')->hourly()->withoutOverlapping()->onOneServer();

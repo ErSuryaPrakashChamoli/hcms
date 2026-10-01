@@ -5,6 +5,7 @@ namespace App\Domain\Enterprise\Services;
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Compliance\Events\ComplianceEvent;
+use App\Domain\Development\Events\DevelopmentEvent;
 use App\Domain\Documents\Events\DocumentExpiring;
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Exit\Events\ExitEvent;
@@ -14,6 +15,7 @@ use App\Domain\Lifecycle\Events\EmployeeLifecycleChanged;
 use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
+use App\Domain\Skills\Events\SkillEvent;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use Illuminate\Events\Dispatcher;
 
@@ -27,7 +29,7 @@ final class WebhookEventBridge
         return [
             EmployeeLifecycleChanged::class => 'onLifecycle',
             LeaveEvent::class => 'onNamed', EmploymentEvent::class => 'onNamed', AttendanceEvent::class => 'onNamed', PayrollEvent::class => 'onNamed', PerformanceEvent::class => 'onNamed',
-            LearningEvent::class => 'onNamed', AssetEvent::class => 'onNamed', ServiceDeskEvent::class => 'onNamed', ExitEvent::class => 'onNamed', ComplianceEvent::class => 'onNamed',
+            LearningEvent::class => 'onNamed', AssetEvent::class => 'onNamed', SkillEvent::class => 'onNamed', DevelopmentEvent::class => 'onNamed', ServiceDeskEvent::class => 'onNamed', ExitEvent::class => 'onNamed', ComplianceEvent::class => 'onNamed',
             WorkflowCompleted::class => 'onWorkflowCompleted', DocumentExpiring::class => 'onDocumentExpiring',
         ];
     }

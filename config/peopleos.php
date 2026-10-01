@@ -987,7 +987,7 @@ return [
         'webhook_events' => [
             'employee.created', 'employee.joined', 'employee.probation', 'employee.confirmed', 'employee.notice_period', 'employee.exited', 'employee.alumni',
             'employee.salary_changed', 'employee.transferred', 'employee.promoted', 'employee.manager_changed', 'employee.rehired', 'leave.requested', 'leave.approved', 'leave.rejected', 'leave.cancelled', 'attendance.regularisation_requested',
-            'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'performance.appraisal.finalized', 'performance.cycle.published', 'performance.goal.created', 'performance.goal.progress_updated', 'performance.review.submitted', 'performance.check_in.submitted', 'performance.feedback.received', 'learning.completed',
+            'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'performance.appraisal.finalized', 'performance.cycle.published', 'performance.goal.created', 'performance.goal.progress_updated', 'performance.review.submitted', 'performance.check_in.submitted', 'performance.feedback.received', 'learning.completed', 'learning.enrolment.requested', 'learning.enrolment.approved', 'learning.started', 'learning.certificate.issued', 'learning.certificate_expired', 'skill.assessed', 'development.plan.created', 'development.plan.completed',
             'asset.assigned', 'asset.returned', 'servicedesk.ticket.created', 'servicedesk.ticket.resolved', 'grievance.raised', 'exit.initiated', 'exit.completed',
             'letter.issued', 'workflow.completed', 'document.expiring',
             'compliance.establishment_verified', 'compliance.return_reconciled', 'compliance.return_approved', 'compliance.return_exported', 'compliance.return_filed',
@@ -1186,6 +1186,9 @@ return [
         'recertification_lead_days' => 60,
         'analytics_min_group' => (int) env('PEOPLEOS_LEARNING_MIN_GROUP', 5),
         'reminder_days_before' => 3,
+        'overdue_reminder_every_days' => 7,
+        // Render an HTML certificate document onto the private disk (queued) when a certificate is issued.
+        'generate_certificate_documents' => (bool) env('PEOPLEOS_LEARNING_CERTIFICATE_DOCUMENTS', true),
         // Assignment populations are processed in chunks so large tenants are never loaded at once.
         'assignment_chunk' => 500,
         'evidence_max_kb' => 10240,

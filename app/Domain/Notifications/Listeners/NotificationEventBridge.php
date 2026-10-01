@@ -6,6 +6,7 @@ use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Configuration\Events\ConfigurationChangeProposed;
 use App\Domain\Configuration\Events\FormSubmitted;
+use App\Domain\Development\Events\DevelopmentEvent;
 use App\Domain\Documents\Events\DocumentExpiring;
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Models\Employee;
@@ -24,6 +25,7 @@ use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
+use App\Domain\Skills\Events\SkillEvent;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use App\Domain\Workflow\Events\WorkflowTaskAssigned;
 use Illuminate\Events\Dispatcher;
@@ -58,6 +60,8 @@ final class NotificationEventBridge
             PayrollEvent::class => 'onPayroll',
             PerformanceEvent::class => 'onPerformance',
             LearningEvent::class => 'onLearning',
+            SkillEvent::class => 'onSkillsOrDevelopment',
+            DevelopmentEvent::class => 'onSkillsOrDevelopment',
             ServiceDeskEvent::class => 'onServiceDesk',
             ExitEvent::class => 'onExit',
             AssetEvent::class => 'onAsset',
@@ -192,6 +196,31 @@ final class NotificationEventBridge
         };
 
         $this->notifier->send([$user], ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /** Phase 8 skill and development events: rules first, otherwise an in-app note to the named recipients. */
+    public function onSkillsOrDevelopment(object $event): void
+    {
+        $sent = $event->employee ? $this->engine->fire($event->name, $this->context->build($event->employee, ['learning' => $event->context]), $event->subject) : collect();
+        if ($sent->isNotEmpty() || $event->recipientEmployeeIds === []) {
+            return;
+        }
+        $users = Employee::query()->with('user')->whereIn('id', $event->recipientEmployeeIds)->get()->pluck('user')->filter(fn ($u) => $u?->isActive());
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $title = match ($event->name) {
+            'skill.assessed' => 'A skill assessment was finalized'.(isset($c['type']) ? ' ('.$c['type'].')' : ''),
+            'skill.reminder.assessment_due' => 'Reminder: finish the '.($c['skill'] ?? 'skill').' assessment for '.($c['employee'] ?? 'your report'),
+            'development.plan.created' => 'Development plan created: '.($c['title'] ?? ''),
+            'development.plan.completed' => 'Development plan completed: '.($c['title'] ?? ''),
+            'development.reminder.milestone_due' => 'Development milestone due '.($c['due_on'] ?? '').': '.($c['title'] ?? ''),
+            'learning.reminder.team_overdue' => ($c['employee'] ?? 'A team member').' is overdue on mandatory learning: '.($c['course'] ?? ''),
+            default => str_replace('.', ' ', $event->name),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
     }
 
     public function onPerformance(PerformanceEvent $event): void

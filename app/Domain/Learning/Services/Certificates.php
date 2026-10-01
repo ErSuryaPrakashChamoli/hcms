@@ -8,6 +8,7 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Learning\Events\LearningEvent;
+use App\Domain\Learning\Jobs\GenerateCertificateDocument;
 use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\CourseVersion;
 use App\Domain\Learning\Models\LearningCertificate;
@@ -52,6 +53,9 @@ final class Certificates
             ->get()->each(fn (LearningCertificate $old) => $old->update(['renewed_by_certificate_id' => $certificate->id]));
 
         $this->audit->record(AuditAction::Create, 'learning', $certificate, [], null, actor: $actor, metadata: ['event' => 'certificate_issued', 'course_version_id' => $version->id]);
+        if (config('peopleos.learning.generate_certificate_documents', true)) {
+            DB::afterCommit(fn () => GenerateCertificateDocument::dispatch($certificate->id));
+        }
         LearningEvent::dispatch('learning.certificate.issued', $employee, $certificate, ['course' => $version->title, 'expires_on' => $expires?->toDateString()]);
 
         return $certificate;

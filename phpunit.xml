@@ -21,6 +21,7 @@
         <env name="APP_ENV" value="testing"/>
         <!-- Phase 5: the statutory packs are unverified; enforcement tests switch it on explicitly. -->
         <env name="PEOPLEOS_ENFORCE_VERIFIED_RULES" value="false"/>
+        <env name="PEOPLEOS_LEARNING_CERTIFICATE_DOCUMENTS" value="false"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
