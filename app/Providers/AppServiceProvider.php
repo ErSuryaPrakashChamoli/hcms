@@ -141,6 +141,7 @@ use App\Domain\Integration\Models\ApiKey;
 use App\Domain\Integration\Policies\ApiKeyPolicy;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Policies\ArticlePolicy;
+use App\Domain\Learning\Listeners\LearningWorkflowBridge;
 use App\Domain\Learning\Models\Assessment;
 use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\LearningAssignment;
@@ -308,6 +309,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(WebhookEventBridge::class);
         Event::listen(EmployeeLifecycleChanged::class, AutoStartOnboarding::class);
         Event::listen(WorkflowCompleted::class, LeaveWorkflowBridge::class);
+        Event::listen(WorkflowCompleted::class, LearningWorkflowBridge::class);
     }
 
     /** API limits are per key (falls back to IP for unauthenticated calls). */

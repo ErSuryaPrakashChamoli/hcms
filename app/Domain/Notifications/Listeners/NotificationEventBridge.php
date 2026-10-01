@@ -140,6 +140,9 @@ final class NotificationEventBridge
 
     public function onLearning(LearningEvent $event): void
     {
+        if ($event->employee === null) {
+            return; // catalogue events notify nobody directly
+        }
         $sent = $this->engine->fire($event->name, $this->context->build($event->employee, ['learning' => $event->context]), $event->subject);
 
         $user = $event->employee->user()->first();
@@ -155,6 +158,14 @@ final class NotificationEventBridge
             'learning.completed' => 'Completed: '.$c['course'],
             'learning.failed' => 'Not passed: '.$c['course'],
             'learning.certificate_expiring' => 'Certificate expiring on '.$c['expires_on'].': '.$c['course'],
+            'learning.certificate_expired' => 'Certificate expired: '.$c['course'],
+            'learning.certificate.issued' => 'Certificate issued: '.$c['course'],
+            'learning.enrolment.approved' => 'Learning request approved: '.$c['course'],
+            'learning.enrolment.rejected' => 'Learning request not approved: '.$c['course'],
+            'learning.session.waitlisted' => 'Waitlisted: '.$c['session'].' on '.$c['starts_at'],
+            'learning.program.completed' => 'Program completed: '.($c['program'] ?? ''),
+            'learning.reminder.due' => 'Reminder: '.$c['course'].' is due on '.$c['due_on'],
+            'learning.reminder.overdue_mandatory' => 'Mandatory learning overdue: '.$c['course'],
             'learning.session.registered' => 'Registered: '.$c['session'].' on '.$c['starts_at'],
             default => str_replace('.', ' ', $event->name),
         };

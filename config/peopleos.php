@@ -315,6 +315,25 @@ return [
             'learning.manage' => 'Configure courses, learning paths, assessments and sessions',
             'learning.assign' => 'Assign learning to employees and mark attendance',
             'learning.learn' => 'Take assigned learning (own enrolments)',
+            'learning.team' => 'View the learning of employees I manage (configured relationships)',
+            'learning.approve' => 'Approve or reject learning requests (never my own)',
+            'learning.publish' => 'Approve catalogue items for publication (second person)',
+            'learning.certificates' => 'Record external certificates, review evidence and revoke certificates',
+            'learning.costs' => 'View and record learning costs',
+            'learning.analytics' => 'View aggregated learning analytics',
+        ],
+        'skills' => [
+            'skills.view' => 'View every employee skill profile and assessment (not private notes)',
+            'skills.manage' => 'Configure the skill library and skill scales',
+            'skills.assess' => 'Assess the skills of employees I manage',
+            'skills.self' => 'Maintain my own skill profile (self-declared, never verified)',
+            'skills.private_notes' => 'Read assessors\' private notes (access audited)',
+        ],
+        'development' => [
+            'development.view' => 'View every development plan (not private notes)',
+            'development.manage' => 'Manage any development plan',
+            'development.own' => 'Maintain my own development plans',
+            'development.team' => 'Create and manage development plans for employees I manage',
         ],
         'asset' => [
             'asset.view' => 'View the asset register',
@@ -379,7 +398,7 @@ return [
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
@@ -414,12 +433,12 @@ return [
         'manager' => [
             'name' => 'Manager',
             'description' => 'People manager.',
-            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
+            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
         ],
         'employee' => [
             'name' => 'Employee',
             'description' => 'Standard employee access.',
-            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
+            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
         ],
         'executive' => [
             'name' => 'Executive',
@@ -434,7 +453,7 @@ return [
         'auditor' => [
             'name' => 'Auditor',
             'description' => 'Read-only access with full audit visibility.',
-            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compliance.view', 'performance.view', 'learning.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
+            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
         ],
     ],
 
@@ -1147,12 +1166,51 @@ return [
         'course_types' => ['video' => 'Video', 'document' => 'Document / reading', 'elearning' => 'E-learning (external link)', 'classroom' => 'Classroom training', 'virtual' => 'Virtual training', 'assessment' => 'Assessment only'],
         'categories' => ['compliance' => 'Compliance', 'onboarding' => 'Onboarding', 'technical' => 'Technical', 'leadership' => 'Leadership', 'soft_skills' => 'Soft skills', 'product' => 'Product', 'safety' => 'Health & safety', 'other' => 'Other'],
         'module_types' => ['video' => 'Video', 'document' => 'Document', 'link' => 'External link', 'text' => 'Text', 'assessment' => 'Assessment'],
-        'enrolment_statuses' => ['enrolled' => 'Enrolled', 'in_progress' => 'In progress', 'completed' => 'Completed', 'failed' => 'Failed', 'overdue' => 'Overdue', 'expired' => 'Expired', 'withdrawn' => 'Withdrawn'],
+        'enrolment_statuses' => ['assigned' => 'Assigned', 'requested' => 'Requested', 'pending_approval' => 'Pending approval', 'approved' => 'Approved', 'enrolled' => 'Enrolled', 'waitlisted' => 'Waitlisted', 'in_progress' => 'Started', 'overdue' => 'Overdue', 'completed' => 'Completed', 'failed' => 'Failed', 'withdrawn' => 'Withdrawn', 'expired' => 'Expired', 'cancelled' => 'Cancelled', 'rejected' => 'Rejected'],
+        // Phase 8 catalogue taxonomy — all configurable per installation, nothing hard-coded in services.
+        'delivery_modes' => ['classroom' => 'Classroom', 'virtual' => 'Virtual', 'self_paced' => 'Self-paced', 'blended' => 'Blended', 'on_the_job' => 'On-the-job', 'external' => 'External', 'workshop' => 'Workshop', 'conference' => 'Conference', 'certification' => 'Certification'],
+        'difficulties' => ['introductory' => 'Introductory', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced', 'expert' => 'Expert'],
+        'languages' => ['en' => 'English', 'hi' => 'Hindi', 'ar' => 'Arabic'],
+        'provider_types' => ['internal' => 'Internal L&D', 'external' => 'External provider'],
+        'priorities' => ['low' => 'Low', 'normal' => 'Normal', 'high' => 'High', 'critical' => 'Critical'],
+        'grades' => ['distinction' => 'Distinction', 'merit' => 'Merit', 'pass' => 'Pass', 'fail' => 'Fail'],
+        'attendance' => ['full' => 'Attended in full', 'partial' => 'Partially attended', 'none' => 'Did not attend'],
+        // Delivery modes whose learner may report their own progress (instructor-led progress comes from attendance).
+        'self_reported_progress_modes' => ['self_paced', 'on_the_job', 'blended', 'external'],
+        // A course must be approved by a second person (learning.publish) before it is published.
+        'require_catalogue_approval' => (bool) env('PEOPLEOS_LEARNING_REQUIRE_APPROVAL', true),
+        'recertification_lead_days' => 60,
+        'analytics_min_group' => (int) env('PEOPLEOS_LEARNING_MIN_GROUP', 5),
+        'reminder_days_before' => 3,
+        // Assignment populations are processed in chunks so large tenants are never loaded at once.
+        'assignment_chunk' => 500,
+        'evidence_max_kb' => 10240,
+        'evidence_mimes' => ['application/pdf', 'image/png', 'image/jpeg'],
         'session_statuses' => ['scheduled' => 'Scheduled', 'completed' => 'Completed', 'cancelled' => 'Cancelled'],
         'attendee_statuses' => ['registered' => 'Registered', 'attended' => 'Attended', 'absent' => 'Absent', 'cancelled' => 'Cancelled'],
         'due_soon_days' => 7,
         'certificate_expiry_notice_days' => 30,
         'certificate_prefix' => 'CERT',
+    ],
+
+    /*
+    | Skills & development (Phase 8). Taxonomies are configurable; nothing is inferred from job titles.
+    */
+    'skills' => [
+        'types' => ['technical' => 'Technical', 'behavioural' => 'Behavioural', 'functional' => 'Functional', 'leadership' => 'Leadership', 'domain' => 'Domain', 'digital' => 'Digital', 'language' => 'Language'],
+        'confidence' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High'],
+        // Seeded once per tenant as version 1 of the default scale; edits are new versions.
+        'default_scale' => ['code' => 'PROFICIENCY', 'name' => 'Proficiency', 'levels' => [
+            ['value' => 1, 'label' => 'Beginner', 'description' => 'Learning the basics; needs guidance', 'indicator' => 'Completes simple tasks with support'],
+            ['value' => 2, 'label' => 'Intermediate', 'description' => 'Works independently on routine work', 'indicator' => 'Handles common cases without help'],
+            ['value' => 3, 'label' => 'Advanced', 'description' => 'Handles complex work; guides others', 'indicator' => 'Solves non-routine problems; reviews others'],
+            ['value' => 4, 'label' => 'Expert', 'description' => 'Recognised authority; shapes practice', 'indicator' => 'Sets standards; teaches the skill'],
+        ]],
+    ],
+
+    'development' => [
+        'item_statuses' => ['open' => 'Open', 'done' => 'Done', 'cancelled' => 'Cancelled'],
+        'milestone_reminder_days' => 7,
     ],
 
     /*

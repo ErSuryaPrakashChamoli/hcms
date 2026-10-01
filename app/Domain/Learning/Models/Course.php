@@ -5,6 +5,7 @@ namespace App\Domain\Learning\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
 use App\Support\Tenancy\BelongsToTenant;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /** A course (§37): modules, optional assessment, mandatory flag, certification validity. draft → published → retired. */
-#[Fillable(['tenant_id', 'title', 'code', 'type', 'category', 'topic', 'difficulty', 'delivery_mode', 'language', 'description', 'duration_minutes', 'content_url', 'is_mandatory', 'validity_months', 'passing_score', 'attempts_allowed', 'owner_id', 'learning_provider_id', 'learning_instructor_id', 'cost', 'currency', 'prerequisite_course_ids', 'allow_self_enrol', 'requires_approval', 'approval_workflow_key', 'status', 'effective_from', 'effective_to', 'current_version_id', 'submitted_by', 'submitted_at', 'approved_by', 'approved_at', 'lock_version'])]
+#[Fillable(['tenant_id', 'title', 'code', 'type', 'category', 'topic', 'difficulty', 'delivery_mode', 'language', 'description', 'duration_minutes', 'content_url', 'is_mandatory', 'validity_months', 'passing_score', 'attempts_allowed', 'owner_id', 'learning_provider_id', 'learning_instructor_id', 'cost', 'currency', 'prerequisite_course_ids', 'skill_outcomes', 'allow_self_enrol', 'requires_approval', 'approval_workflow_key', 'status', 'effective_from', 'effective_to', 'current_version_id', 'submitted_by', 'submitted_at', 'approved_by', 'approved_at', 'lock_version'])]
 class Course extends Model
 {
     use Auditable, BelongsToTenant;
@@ -70,7 +71,7 @@ class Course extends Model
 
     protected function casts(): array
     {
-        return ['duration_minutes' => 'integer', 'is_mandatory' => 'boolean', 'validity_months' => 'integer', 'passing_score' => 'integer', 'attempts_allowed' => 'integer', 'cost' => 'decimal:2', 'prerequisite_course_ids' => 'array', 'allow_self_enrol' => 'boolean', 'requires_approval' => 'boolean', 'effective_from' => 'date', 'effective_to' => 'date', 'submitted_at' => 'datetime', 'approved_at' => 'datetime', 'lock_version' => 'integer'];
+        return ['duration_minutes' => 'integer', 'is_mandatory' => 'boolean', 'validity_months' => 'integer', 'passing_score' => 'integer', 'attempts_allowed' => 'integer', 'cost' => 'decimal:2', 'prerequisite_course_ids' => 'array', 'skill_outcomes' => 'array', 'allow_self_enrol' => 'boolean', 'requires_approval' => 'boolean', 'effective_from' => 'date', 'effective_to' => 'date', 'submitted_at' => 'datetime', 'approved_at' => 'datetime', 'lock_version' => 'integer'];
     }
 
     public function auditModule(): string
@@ -135,7 +136,7 @@ class Course extends Model
     }
 
     /** Enrollable: published or active, and inside its effective window. */
-    public function isPublished(?\Carbon\CarbonInterface $on = null): bool
+    public function isPublished(?CarbonInterface $on = null): bool
     {
         $on ??= now();
 
