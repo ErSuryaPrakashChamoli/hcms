@@ -379,7 +379,8 @@ final class Learning
             throw new RuntimeException('Progress is between 0 and 100.');
         }
         $own = $actor !== null && $this->relationships->forUser($actor)?->id === $enrolment->employee_id;
-        if (! $own && ! ($actor?->hasPermission('learning.assign') || $actor?->hasPermission('learning.manage'))) {
+        // A null actor is a system integration (API key with learning.write).
+        if ($actor !== null && ! $own && ! ($actor->hasPermission('learning.assign') || $actor->hasPermission('learning.manage'))) {
             throw new RuntimeException('Only the learner or L&D update this progress.');
         }
         $mode = $enrolment->courseVersion()->value('delivery_mode');

@@ -33,6 +33,7 @@ use App\Domain\Configuration\Models\FormSubmission;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Models\PolicyAssignmentRule;
 use App\Domain\Configuration\Models\PolicyVersion;
+use App\Domain\Development\Models\DevelopmentPlan;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
@@ -44,6 +45,8 @@ use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Models\Course;
+use App\Domain\Learning\Models\LearningCost;
+use App\Domain\Learning\Models\LearningEvidence;
 use App\Domain\Learning\Models\LearningPath;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Notifications\Channels\EmailChannel;
@@ -83,6 +86,7 @@ use App\Domain\Performance\Models\OneOnOne;
 use App\Domain\Performance\Models\PerformanceCheckIn;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
+use App\Domain\Skills\Models\SkillAssessment;
 
 /*
 |--------------------------------------------------------------------------
@@ -885,7 +889,7 @@ return [
         'scopes' => [
             'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches (devices or any source) and raise regularisations',
             'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records, exceptions, regularisations, shifts and schedules', 'leave.read' => 'Read leave types, balances, transactions, requests and the leave calendar', 'leave.write' => 'Submit and cancel leave requests on behalf of employees', 'payroll.read' => 'Read payroll runs and payslips (sensitive)', 'compliance.read' => 'Read establishments, statutory registrations (masked), rule versions, statutory returns, entries (masked) and reconciliations',
-            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'workflows.read' => 'Read workflow instances and tasks',
+            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'learning.read' => 'Read the learning catalogue, paths, programs, enrolments, assignments, completions, certificates (no codes or documents), skills, finalized assessment levels (no comments), development plan metadata and suppressed analytics', 'learning.write' => 'Enrol employees and record learning progress (idempotent)', 'learning.costs' => 'Include learning costs in learning API responses', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
         ],
     ],
@@ -1369,10 +1373,13 @@ return [
             WebhookEndpoint::class => ['secret'],
             // Phase 7: manager-private one-on-one notes (encrypted, hidden, masked in audit).
             OneOnOne::class => ['private_notes'],
+            // Phase 8: assessor / manager private notes (encrypted, hidden, masked in audit).
+            SkillAssessment::class => ['private_notes'],
+            DevelopmentPlan::class => ['private_notes'],
         ],
         'financial' => [
             EmployeeSalaryAssignment::class, PayrollEntry::class, ParallelPayrollLine::class,
-            Payslip::class, FinalSettlement::class,
+            Payslip::class, FinalSettlement::class, LearningCost::class,
         ],
         'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class, EstablishmentStatutoryProfile::class, EmployeeEstablishmentAssignment::class, StatutoryReturn::class, StatutorySnapshot::class, EpfReturnEntry::class, TdsAnnualLedger::class, TdsCertificate::class, TdsEmployeeInvestment::class],
         'confidential' => [
@@ -1381,6 +1388,7 @@ return [
             FeedbackEntry::class, PerformanceCheckIn::class,
             CalibrationSession::class, CalibrationAdjustment::class,
             ImprovementPlanCheckpoint::class,
+            SkillAssessment::class, LearningEvidence::class,
         ],
     ],
 

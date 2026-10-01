@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\ExitTenantController;
+use App\Http\Controllers\LearningCertificateDownloadController;
 use App\Http\Controllers\Sso\SsoController;
 use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Middleware\ResolveTenant;
@@ -16,6 +17,11 @@ Route::post('/admin/exit-tenant', ExitTenantController::class)
 Route::get('/documents/{document}/download', DocumentDownloadController::class)
     ->middleware(['web', 'auth', ResolveTenant::class])
     ->name('documents.download');
+
+Route::get('/learning/certificates/{certificate}/download', LearningCertificateDownloadController::class)
+    ->middleware(['web', 'auth', ResolveTenant::class])
+    ->whereNumber('certificate')
+    ->name('learning.certificates.download');
 
 Route::get('/tickets/{ticket}/attachments/{comment}', TicketAttachmentController::class)
     ->middleware(['web', 'auth', ResolveTenant::class])

@@ -14,6 +14,7 @@ use App\Filament\Resources\Employees\RelationManagers\AttendanceRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\BankAccountsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\BgvRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\CertificationsRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\DevelopmentRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\DocumentsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\EmergencyContactsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\ExperiencesRelationManager;
@@ -87,6 +88,9 @@ class EmployeeResource extends Resource
             LeaveRelationManager::class,
             PerformanceRelationManager::class,
             LearningRelationManager::class,
+            SkillsRelationManager::class,
+            CertificationsRelationManager::class,
+            DevelopmentRelationManager::class,
             AssetsRelationManager::class,
             RequestsRelationManager::class,
             PositionsRelationManager::class,

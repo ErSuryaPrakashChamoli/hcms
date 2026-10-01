@@ -2,44 +2,44 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Schema;
+use App\Domain\Skills\Models\EmployeeSkill;
+use App\Domain\Skills\Services\SkillProfiles;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
-/** Career Passport seed (blueprint §36): skills with proficiency. */
-class SkillsRelationManager extends PersonSatelliteRelationManager
+/** Employee 360 → Skills: sourced skill history (verified vs self-declared), gaps on the pinned scale. Evidence stays out of the table. */
+class SkillsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'personSkills';
+    protected static string $relationship = 'employeeSkills';
 
     protected static ?string $title = 'Skills';
 
-    public function form(Schema $schema): Schema
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        return $schema->columns(2)->components([
-            Select::make('skill_id')->label('Skill')->relationship('skill', 'name')->searchable()->preload()->required(),
-            Select::make('proficiency')->options(config('peopleos.people.skill_proficiencies')),
-            TextInput::make('years_of_experience')->numeric()->minValue(0)->maxValue(60),
-            DatePicker::make('last_used_on')->native(false),
-        ]);
+        return auth()->user()?->can('view', new EmployeeSkill(['employee_id' => $ownerRecord->id])) ?? false;
     }
 
     public function table(Table $table): Table
     {
+        $gaps = collect(app(SkillProfiles::class)->gaps($this->getOwnerRecord()));
+
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['skill', 'scaleVersion']))
+            ->description($gaps->isEmpty() ? 'No open skill gaps.' : 'Gaps: '.$gaps->map(fn ($g) => $g['skill'].' ('.$g['gap'].')')->implode(', '))
             ->columns([
-                TextColumn::make('skill.name')->label('Skill'),
-                TextColumn::make('skill.category')->label('Category')->badge()->color('gray')->placeholder('—'),
-                TextColumn::make('proficiency')->badge()->formatStateUsing(fn (?string $state) => config("peopleos.people.skill_proficiencies.{$state}", $state))->placeholder('—'),
-                TextColumn::make('years_of_experience')->label('Years')->placeholder('—'),
-                TextColumn::make('last_used_on')->date()->placeholder('—'),
+                TextColumn::make('skill.name')->label('Skill')->searchable(),
+                TextColumn::make('current_level')->label('Level')->state(fn (EmployeeSkill $record) => $record->current_level === null ? 'Target only' : $record->scaleVersion?->labelFor((float) $record->current_level)),
+                TextColumn::make('target_level')->label('Target')->placeholder('—'),
+                TextColumn::make('source')->badge()->formatStateUsing(fn (string $state) => EmployeeSkill::SOURCES[$state] ?? $state),
+                IconColumn::make('is_verified')->label('Verified')->boolean(),
+                TextColumn::make('valid_from')->date(),
+                TextColumn::make('status')->badge()->color(fn (string $state) => $state === 'current' ? 'success' : 'gray'),
             ])
-            ->headerActions([CreateAction::make()])
-            ->recordActions([EditAction::make(), DeleteAction::make()]);
+            ->defaultSort('id', 'desc')
+            ->filters([SelectFilter::make('status')->options(['current' => 'Current', 'superseded' => 'History'])->default('current')]);
     }
 }

@@ -97,6 +97,9 @@ use App\Domain\Configuration\Policies\ConfigurationChangePolicy;
 use App\Domain\Configuration\Policies\CustomFieldPolicy;
 use App\Domain\Configuration\Policies\FormPolicy;
 use App\Domain\Configuration\Policies\PolicyPolicy;
+use App\Domain\Development\Models\DevelopmentPlan;
+use App\Domain\Development\Models\DevelopmentPlanItem;
+use App\Domain\Development\Policies\DevelopmentPlanPolicy;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Documents\Policies\DocumentTypePolicy;
@@ -143,14 +146,26 @@ use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Policies\ArticlePolicy;
 use App\Domain\Learning\Listeners\LearningWorkflowBridge;
 use App\Domain\Learning\Models\Assessment;
+use App\Domain\Learning\Models\AssessmentAttempt;
 use App\Domain\Learning\Models\Course;
+use App\Domain\Learning\Models\CourseVersion;
 use App\Domain\Learning\Models\LearningAssignment;
 use App\Domain\Learning\Models\LearningCertificate;
+use App\Domain\Learning\Models\LearningCompletion;
+use App\Domain\Learning\Models\LearningCost;
 use App\Domain\Learning\Models\LearningEnrolment;
+use App\Domain\Learning\Models\LearningEvidence;
+use App\Domain\Learning\Models\LearningInstructor;
 use App\Domain\Learning\Models\LearningPath;
+use App\Domain\Learning\Models\LearningPathVersion;
+use App\Domain\Learning\Models\LearningProgram;
+use App\Domain\Learning\Models\LearningProgramParticipant;
+use App\Domain\Learning\Models\LearningProgramVersion;
+use App\Domain\Learning\Models\LearningProvider;
 use App\Domain\Learning\Models\TrainingSession;
 use App\Domain\Learning\Policies\EnrolmentPolicy;
 use App\Domain\Learning\Policies\LearningConfigPolicy;
+use App\Domain\Learning\Policies\LearningCostPolicy;
 use App\Domain\Leave\Listeners\LeaveWorkflowBridge;
 use App\Domain\Leave\Models\LeaveBalance;
 use App\Domain\Leave\Models\LeaveEncashment;
@@ -256,6 +271,12 @@ use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Models\TicketCategory;
 use App\Domain\ServiceDesk\Policies\ServiceDeskConfigPolicy;
 use App\Domain\ServiceDesk\Policies\TicketPolicy;
+use App\Domain\Skills\Models\EmployeeSkill;
+use App\Domain\Skills\Models\SkillAssessment;
+use App\Domain\Skills\Models\SkillScale;
+use App\Domain\Skills\Models\SkillScaleVersion;
+use App\Domain\Skills\Policies\SkillConfigPolicy;
+use App\Domain\Skills\Policies\SkillRecordPolicy;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use App\Domain\Workflow\Listeners\WorkflowTrigger;
 use App\Domain\Workflow\Models\Workflow;
@@ -347,6 +368,23 @@ class AppServiceProvider extends ServiceProvider
         }
         Gate::policy(LearningEnrolment::class, EnrolmentPolicy::class);
         Gate::policy(LearningCertificate::class, EnrolmentPolicy::class);
+        // Phase 8 learning, skills and development.
+        foreach ([LearningCompletion::class, LearningEvidence::class, LearningProgramParticipant::class, AssessmentAttempt::class] as $model) {
+            Gate::policy($model, EnrolmentPolicy::class);
+        }
+        foreach ([LearningProvider::class, LearningInstructor::class, CourseVersion::class, LearningPathVersion::class, LearningProgram::class, LearningProgramVersion::class] as $model) {
+            Gate::policy($model, LearningConfigPolicy::class);
+        }
+        Gate::policy(LearningCost::class, LearningCostPolicy::class);
+        foreach ([EmployeeSkill::class, SkillAssessment::class] as $model) {
+            Gate::policy($model, SkillRecordPolicy::class);
+        }
+        foreach ([SkillScale::class, SkillScaleVersion::class] as $model) {
+            Gate::policy($model, SkillConfigPolicy::class);
+        }
+        foreach ([DevelopmentPlan::class, DevelopmentPlanItem::class] as $model) {
+            Gate::policy($model, DevelopmentPlanPolicy::class);
+        }
         foreach ([Asset::class, AssetCategory::class, AssetModel::class, AssetAssignment::class, AssetRepair::class] as $model) {
             Gate::policy($model, AssetPolicy::class);
         }

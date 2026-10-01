@@ -17,6 +17,7 @@ use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\User;
 use App\Domain\Knowledge\Models\ArticleRead;
+use App\Domain\Learning\Models\LearningInstructor;
 use App\Domain\Leave\Services\AttendanceLeaveDayResolver;
 use App\Domain\People\Models\Person;
 use App\Domain\Platform\Models\Tenant;
@@ -82,6 +83,7 @@ it('applies the access scope to every employee-linked model except the documente
         ArticleRead::class,   // read receipts, not people data
         AnnouncementRead::class,
         Employee::class,    // scoped directly by AccessScope in AccessScopes
+        LearningInstructor::class, // catalogue directory entry; the employee link only names the instructor
     ];
 
     $missing = collect(domainModelClasses())
@@ -117,6 +119,9 @@ it('audits every domain model except the documented append-only or derived table
         // Phase 7: calibration history is itself the append-only record (each change is also audited
         // on the appraisal); reminder logs are derived de-duplication rows.
         'Performance\Models\CalibrationAdjustment', 'Performance\Models\PerformanceReminderLog',
+        // Phase 8: completions are the append-only learning record (finalization and corrections are
+        // audited on the enrolment / correction events); reminder logs are derived de-duplication rows.
+        'Learning\Models\LearningCompletion', 'Learning\Models\LearningReminderLog',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

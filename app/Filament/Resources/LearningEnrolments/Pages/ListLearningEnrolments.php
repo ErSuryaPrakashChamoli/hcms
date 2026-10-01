@@ -12,6 +12,6 @@ class ListLearningEnrolments extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [LearningActions::enrol()];
+        return [LearningActions::requestLearning(), LearningActions::enrol()];
     }
 }

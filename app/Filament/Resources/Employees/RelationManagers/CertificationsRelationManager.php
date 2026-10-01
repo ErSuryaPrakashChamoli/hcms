@@ -2,45 +2,40 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Schema;
-use Filament\Tables\Columns\IconColumn;
+use App\Domain\Learning\Models\LearningCertificate;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
-class CertificationsRelationManager extends PersonSatelliteRelationManager
+/** Employee 360 → Certifications: issued and external credentials with version, expiry and verification. */
+class CertificationsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'certifications';
+    protected static string $relationship = 'learningCertificates';
 
-    public function form(Schema $schema): Schema
+    protected static ?string $title = 'Certifications';
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        return $schema->columns(2)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('issuing_body')->maxLength(255),
-            TextInput::make('credential_id')->maxLength(255),
-            DatePicker::make('issued_on')->native(false),
-            DatePicker::make('expires_on')->native(false)->afterOrEqual('issued_on'),
-            Toggle::make('is_verified')->label('Verified'),
-        ]);
+        return auth()->user()?->can('view', new LearningCertificate(['employee_id' => $ownerRecord->id])) ?? false;
     }
 
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['course', 'courseVersion']))
             ->columns([
-                TextColumn::make('name'),
-                TextColumn::make('issuing_body')->placeholder('—'),
-                TextColumn::make('credential_id')->placeholder('—')->toggleable(),
-                TextColumn::make('issued_on')->date()->placeholder('—'),
-                TextColumn::make('expires_on')->date()->placeholder('Never')->color(fn ($state) => $state && $state->isPast() ? 'danger' : null),
-                IconColumn::make('is_verified')->label('Verified')->boolean(),
+                TextColumn::make('number'),
+                TextColumn::make('course.title')->label('Learning'),
+                TextColumn::make('courseVersion.version')->label('Version')->prefix('v')->placeholder('—'),
+                TextColumn::make('issuer')->placeholder('—'),
+                TextColumn::make('issued_on')->date(),
+                TextColumn::make('expires_on')->date()->placeholder('No expiry'),
+                TextColumn::make('verification_status')->label('Verified')->badge()->color(fn (?string $state) => $state === 'verified' ? 'success' : 'warning'),
+                TextColumn::make('status')->badge()->color(fn (string $state) => match ($state) {
+                    'valid' => 'success', 'expiring' => 'warning', 'revoked' => 'gray', default => 'danger'
+                }),
             ])
-            ->headerActions([CreateAction::make()])
-            ->recordActions([EditAction::make(), DeleteAction::make()]);
+            ->defaultSort('issued_on', 'desc');
     }
 }

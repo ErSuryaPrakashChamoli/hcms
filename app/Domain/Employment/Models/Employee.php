@@ -10,6 +10,7 @@ use App\Domain\Attendance\Models\WorkScheduleAssignment;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Configuration\Concerns\HasCustomFields;
+use App\Domain\Development\Models\DevelopmentPlan;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
@@ -33,6 +34,7 @@ use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\FeedbackEntry;
 use App\Domain\Performance\Models\Goal;
 use App\Domain\ServiceDesk\Models\Ticket;
+use App\Domain\Skills\Models\EmployeeSkill;
 use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Support\Tenancy\BelongsToTenant;
 use Database\Factories\EmployeeFactory;
@@ -236,6 +238,17 @@ class Employee extends Model
     public function learningCertificates(): HasMany
     {
         return $this->hasMany(LearningCertificate::class);
+    }
+
+    /** Phase 8: skill history (one lifetime record; rehire keeps the same employee). */
+    public function employeeSkills(): HasMany
+    {
+        return $this->hasMany(EmployeeSkill::class);
+    }
+
+    public function developmentPlans(): HasMany
+    {
+        return $this->hasMany(DevelopmentPlan::class);
     }
 
     public function assetAssignments(): HasMany

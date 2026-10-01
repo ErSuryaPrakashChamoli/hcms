@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AttendancePunchController;
 use App\Http\Controllers\Api\V1\BgvCallbackController;
 use App\Http\Controllers\Api\V1\ComplianceController;
 use App\Http\Controllers\Api\V1\EmployeeController;
+use App\Http\Controllers\Api\V1\LearningController;
 use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\OrganisationController;
 use App\Http\Controllers\Api\V1\PerformanceController;
@@ -70,6 +71,28 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::get('assets', [ReadController::class, 'assets'])->middleware('api.key:assets.read')->name('assets.index');
     Route::get('performance/appraisals', [ReadController::class, 'appraisals'])->middleware('api.key:performance.read')->name('performance.appraisals');
     Route::get('performance/goals', [PerformanceController::class, 'goals'])->middleware('api.key:performance.read')->name('performance.goals');
+    // Phase 8 learning API: field-filtered; costs need the learning.costs scope; see LearningController.
+    Route::middleware('api.key:learning.read')->prefix('learning')->name('learning.')->group(function () {
+        Route::get('catalogue', [LearningController::class, 'catalogue'])->name('catalogue');
+        Route::get('courses', [LearningController::class, 'courses'])->name('courses');
+        Route::get('courses/{code}/versions', [LearningController::class, 'courseVersions'])->name('courses.versions');
+        Route::get('learning-paths', [LearningController::class, 'paths'])->name('paths');
+        Route::get('programs', [LearningController::class, 'programs'])->name('programs');
+        Route::get('enrolments', [LearningController::class, 'enrolments'])->name('enrolments');
+        Route::get('assignments', [LearningController::class, 'assignments'])->name('assignments');
+        Route::get('completions', [LearningController::class, 'completions'])->name('completions');
+        Route::get('certificates', [LearningController::class, 'certificates'])->name('certificates');
+        Route::get('skills', [LearningController::class, 'skills'])->name('skills');
+        Route::get('employee-skills', [LearningController::class, 'employeeSkills'])->name('employee-skills');
+        Route::get('assessments', [LearningController::class, 'assessments'])->name('assessments');
+        Route::get('development-plans', [LearningController::class, 'developmentPlans'])->name('development-plans');
+        Route::get('analytics', [LearningController::class, 'analytics'])->name('analytics');
+    });
+    Route::middleware('api.key:learning.write')->prefix('learning')->name('learning.')->group(function () {
+        Route::post('enrolments', [LearningController::class, 'enrol'])->name('enrolments.store');
+        Route::post('enrolments/{enrolment}/progress', [LearningController::class, 'progress'])->whereNumber('enrolment')->name('enrolments.progress');
+    });
+
     // Phase 7 performance API: metadata and finalized outcomes only; see PerformanceController.
     Route::middleware('api.key:performance.read')->prefix('performance')->name('performance.')->group(function () {
         Route::get('cycles', [PerformanceController::class, 'cycles'])->name('cycles');

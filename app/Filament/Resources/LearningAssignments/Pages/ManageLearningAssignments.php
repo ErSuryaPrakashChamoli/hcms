@@ -14,9 +14,9 @@ class ManageLearningAssignments extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->mutateDataUsing(fn (array $data) => $data + ['created_by' => auth()->id()])
-                ->after(fn ($record) => app(Learning::class)->applyAssignment($record, auth()->user())),
+            // Phase 8: created and applied through Learning::assign — scope checks, one audited bulk operation.
+            CreateAction::make()->label('Assign learning')
+                ->using(fn (array $data) => app(Learning::class)->assign($data, auth()->user())),
         ];
     }
 }
