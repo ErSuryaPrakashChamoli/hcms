@@ -367,6 +367,16 @@ return [
             'succession.team' => 'View succession information about employees I manage',
             'succession.own_candidacy' => 'See my own succession candidacy (granted only by explicit decision)',
         ],
+        'workforce' => [
+            'workforce.view' => 'View positions, occupancy, vacancies, workforce plans and snapshots (within organisation scope; no costs)',
+            'workforce.manage' => 'Create and change positions and request position changes (propose, plan, open, freeze, hold, abolish, close)',
+            'workforce.approve' => 'Approve positions, position changes, scenarios, budgets and workforce plans (never one\'s own submission)',
+            'workforce.plan' => 'Prepare workforce plans, scenarios and budgets and submit them for approval',
+            'workforce.review' => 'Review submitted workforce plans',
+            'workforce.costs' => 'See and record planned, budget and actual workforce costs (field security)',
+            'workforce.team' => 'View headcount, open and planned positions and vacancies under the positions I hold or for employees I manage',
+            'workforce.analytics' => 'View workforce analytics and dashboards',
+        ],
         'asset' => [
             'asset.view' => 'View the asset register',
             'asset.manage' => 'Configure categories/models, procure, repair and dispose of assets',
@@ -430,7 +440,7 @@ return [
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
@@ -465,7 +475,7 @@ return [
         'manager' => [
             'name' => 'Manager',
             'description' => 'People manager.',
-            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
+            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'workforce.team', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
         ],
         'employee' => [
             'name' => 'Employee',
@@ -475,7 +485,7 @@ return [
         'executive' => [
             'name' => 'Executive',
             'description' => 'Workforce Command Centre and dashboards; no transactional access.',
-            'permissions' => ['analytics.view', 'analytics.executive', 'analytics.reports', 'ai.workforce', 'company.view', 'organisation.view'],
+            'permissions' => ['analytics.view', 'analytics.executive', 'analytics.reports', 'ai.workforce', 'company.view', 'organisation.view', 'workforce.analytics'],
         ],
         'alumni' => [
             'name' => 'Alumni',
@@ -485,7 +495,7 @@ return [
         'auditor' => [
             'name' => 'Auditor',
             'description' => 'Read-only access with full audit visibility.',
-            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
+            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'workforce.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
         ],
     ],
 
@@ -917,7 +927,7 @@ return [
         'scopes' => [
             'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches (devices or any source) and raise regularisations',
             'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records, exceptions, regularisations, shifts and schedules', 'leave.read' => 'Read leave types, balances, transactions, requests and the leave calendar', 'leave.write' => 'Submit and cancel leave requests on behalf of employees', 'payroll.read' => 'Read payroll runs and payslips (sensitive)', 'compliance.read' => 'Read establishments, statutory registrations (masked), rule versions, statutory returns, entries (masked) and reconciliations',
-            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'learning.read' => 'Read the learning catalogue, paths, programs, enrolments, assignments, completions, certificates (no codes or documents), skills, finalized assessment levels (no comments), development plan metadata and suppressed analytics', 'learning.write' => 'Enrol employees and record learning progress (idempotent)', 'learning.costs' => 'Include learning costs in learning API responses', 'career.read' => 'Read career architecture, career profiles (shared fields only), goals, skill gaps and mobility interests', 'talent.read' => 'Read talent pools and memberships, talent reviews (decisions only) and suppressed talent analytics — never confidential notes or assessments', 'succession.read' => 'Read critical positions, succession plans, successors and readiness — never confidential notes or deliberations', 'workflows.read' => 'Read workflow instances and tasks',
+            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'learning.read' => 'Read the learning catalogue, paths, programs, enrolments, assignments, completions, certificates (no codes or documents), skills, finalized assessment levels (no comments), development plan metadata and suppressed analytics', 'learning.write' => 'Enrol employees and record learning progress (idempotent)', 'learning.costs' => 'Include learning costs in learning API responses', 'career.read' => 'Read career architecture, career profiles (shared fields only), goals, skill gaps and mobility interests', 'talent.read' => 'Read talent pools and memberships, talent reviews (decisions only) and suppressed talent analytics — never confidential notes or assessments', 'succession.read' => 'Read critical positions, succession plans, successors and readiness — never confidential notes or deliberations', 'positions.read' => 'Read positions, their effective-dated versions, occupancy (employee codes) and vacancies', 'workforce.read' => 'Read workforce plans, scenarios, headcount, vacancies, snapshots and analytics (no costs)', 'workforce.costs' => 'Include planned, budget and actual workforce costs in workforce API responses', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
         ],
     ],
@@ -1279,6 +1289,60 @@ return [
         // Optional approval workflows (keys of published workflows); empty = people decide directly.
         'review_workflow_key' => env('PEOPLEOS_TALENT_REVIEW_WORKFLOW'),
         'succession_plan_workflow_key' => env('PEOPLEOS_SUCCESSION_PLAN_WORKFLOW'),
+    ],
+
+    /*
+    | Phase 10: workforce planning and position management. A position is capacity, never a person;
+    | "occupied" is derived from employee assignments, never typed.
+    */
+    'workforce' => [
+        'position_statuses' => ['draft' => 'Draft', 'proposed' => 'Proposed', 'approved' => 'Approved', 'planned' => 'Planned', 'open' => 'Open', 'frozen' => 'Frozen', 'on_hold' => 'On hold', 'abolished' => 'Abolished', 'closed' => 'Closed'],
+        // Allowed lifecycle moves. Tenants with other conventions change this map; "occupied" is never a target.
+        'position_transitions' => [
+            'draft' => ['proposed', 'closed'],
+            'proposed' => ['approved', 'draft', 'closed'],
+            'approved' => ['planned', 'open', 'closed'],
+            'planned' => ['open', 'frozen', 'on_hold', 'abolished', 'closed'],
+            'open' => ['frozen', 'on_hold', 'abolished', 'closed'],
+            'frozen' => ['open', 'abolished', 'closed'],
+            'on_hold' => ['open', 'frozen', 'abolished', 'closed'],
+            'abolished' => [],
+            'closed' => [],
+        ],
+        // Statuses in which a position counts as approved organisational capacity on a date.
+        'effective_statuses' => ['approved', 'planned', 'open', 'frozen', 'on_hold'],
+        // Statuses that accept a new employee assignment.
+        'assignable_statuses' => ['open'],
+        'worker_types' => ['employee' => 'Employee', 'contractor' => 'Contractor', 'apprentice' => 'Apprentice', 'intern' => 'Intern', 'consultant' => 'Consultant'],
+        'occupancy_modes' => ['single' => 'Single occupant', 'multiple' => 'Multiple occupants'],
+        // Position attribute groups whose change needs a second person's approval (true) or applies directly (false).
+        'change_approval' => ['headcount' => true, 'fte' => true, 'status' => false, 'organisation' => true, 'location' => false, 'grade' => true, 'definition' => false],
+        // Statuses reached only through approval (proposer ≠ approver).
+        'approval_statuses' => ['approved'],
+        'plan_statuses' => ['draft' => 'Draft', 'submitted' => 'Submitted', 'under_review' => 'Under review', 'approved' => 'Approved', 'active' => 'Active', 'superseded' => 'Superseded', 'archived' => 'Archived', 'rejected' => 'Rejected'],
+        'period_types' => ['monthly' => 'Monthly', 'quarterly' => 'Quarterly', 'half_year' => 'Half-year', 'annual' => 'Annual', 'custom' => 'Custom'],
+        // Plan line movements and their direction on planned headcount (+1 adds, -1 removes, 0 neutral).
+        'movement_types' => [
+            'baseline' => ['label' => 'Existing capacity (baseline)', 'sign' => 1],
+            'new_position' => ['label' => 'New position', 'sign' => 1],
+            'expansion' => ['label' => 'Position expansion', 'sign' => 1],
+            'transfer_in' => ['label' => 'Transfer in', 'sign' => 1],
+            'reduction' => ['label' => 'Position reduction', 'sign' => -1],
+            'position_closure' => ['label' => 'Position closure', 'sign' => -1],
+            'transfer_out' => ['label' => 'Transfer out', 'sign' => -1],
+            'retirement' => ['label' => 'Retirement', 'sign' => -1],
+            'known_exit' => ['label' => 'Known exit', 'sign' => -1],
+        ],
+        'cost_bases' => ['annual_salary' => 'Annualised salary', 'monthly_salary' => 'Monthly salary', 'employer_cost' => 'Employer cost', 'position_cost' => 'Configured position cost'],
+        // Planning assumptions a scenario may state explicitly (labelled as assumptions, never predictions).
+        'scenario_assumptions' => ['attrition_rate_percent' => 'Expected attrition % per year (planning assumption)', 'growth_rate_percent' => 'Expected growth % (planning assumption)', 'notes' => 'Other assumptions'],
+        'analytics_min_group' => (int) env('PEOPLEOS_WORKFORCE_MIN_GROUP', 5),
+        'approval_reminder_days' => 3,
+        'plan_expiry_reminder_days' => 30,
+        'vacancy_reminder_days' => 30,
+        // Optional approval workflows (keys of published workflows); empty = people decide directly.
+        'position_workflow_key' => env('PEOPLEOS_POSITION_WORKFLOW'),
+        'plan_workflow_key' => env('PEOPLEOS_WORKFORCE_PLAN_WORKFLOW'),
     ],
 
     'development' => [

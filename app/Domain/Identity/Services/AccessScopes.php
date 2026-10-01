@@ -172,6 +172,13 @@ final class AccessScopes
             return $this->constrainOrganisation(Company::query()->whereKey($model->getKey()), $user, 'company')->exists();
         }
 
+        if (method_exists($model, 'applyAccessScope')) {
+            $query = $model->newQueryWithoutScope(AccessScope::class)->whereKey($model->getKey());
+            $model->applyAccessScope($query, $user, $this);
+
+            return $query->exists();
+        }
+
         $dimension = property_exists($model, 'accessScopeDimension') ? $model->accessScopeDimension : null;
         // Units without a dimension of their own (legal entities, establishments, statutory
         // records) are constrained through their denormalised company_id.

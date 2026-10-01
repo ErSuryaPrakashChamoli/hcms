@@ -113,6 +113,7 @@ use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Documents\Policies\DocumentTypePolicy;
 use App\Domain\Documents\Policies\EmployeeDocumentPolicy;
+use App\Domain\Employment\Contracts\PositionAssignmentGuard;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
@@ -315,6 +316,7 @@ use App\Domain\Workflow\Models\WorkflowTask;
 use App\Domain\Workflow\Models\WorkflowVersion;
 use App\Domain\Workflow\Policies\WorkflowPolicy;
 use App\Domain\Workflow\Policies\WorkflowTaskPolicy;
+use App\Domain\Workforce\Services\PositionSeats;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -334,6 +336,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DevelopmentNeedsReader::class, DevelopmentNeeds::class);
         $this->app->bind(PerformanceOutcomesReader::class, PerformanceOutcomes::class);
         $this->app->bind(CompetencyEvidenceReader::class, CompetencyEvidence::class);
+        // Phase 10: employment assignments that name a position are validated by the workforce module.
+        $this->app->bind(PositionAssignmentGuard::class, PositionSeats::class);
         $this->app->singleton(AccessScopes::class);
         // Phase 5: one statutory rule cache per request / job, cleared at the start of each run calculation.
         $this->app->scoped(ComplianceRules::class);
