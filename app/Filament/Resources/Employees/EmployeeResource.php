@@ -13,6 +13,7 @@ use App\Filament\Resources\Employees\RelationManagers\AssetsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\AttendanceRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\BankAccountsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\BgvRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\CareerRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\CertificationsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\DevelopmentRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\DocumentsRelationManager;
@@ -29,6 +30,8 @@ use App\Filament\Resources\Employees\RelationManagers\ReportingRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\RequestsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\SalaryRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\SkillsRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\SuccessionRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\TalentRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\TimelineRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\WorkflowsRelationManager;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
@@ -89,6 +92,9 @@ class EmployeeResource extends Resource
             PerformanceRelationManager::class,
             LearningRelationManager::class,
             SkillsRelationManager::class,
+            CareerRelationManager::class,
+            TalentRelationManager::class,
+            SuccessionRelationManager::class,
             CertificationsRelationManager::class,
             DevelopmentRelationManager::class,
             AssetsRelationManager::class,

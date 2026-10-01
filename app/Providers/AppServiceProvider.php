@@ -306,6 +306,7 @@ use App\Domain\Talent\Models\TalentReviewItem;
 use App\Domain\Talent\Models\TalentReviewSession;
 use App\Domain\Talent\Policies\TalentConfigPolicy;
 use App\Domain\Talent\Policies\TalentRecordPolicy;
+use App\Domain\Talent\Policies\TalentReviewPolicy;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use App\Domain\Workflow\Listeners\WorkflowTrigger;
 use App\Domain\Workflow\Models\Workflow;
@@ -432,9 +433,10 @@ class AppServiceProvider extends ServiceProvider
         foreach ([TalentProfile::class, TalentPoolMembership::class, TalentAssessment::class, TalentReviewItem::class, TalentDevelopmentAction::class] as $model) {
             Gate::policy($model, TalentRecordPolicy::class);
         }
-        foreach ([TalentPool::class, TalentAssessmentModel::class, TalentAssessmentModelVersion::class, TalentReviewSession::class] as $model) {
+        foreach ([TalentPool::class, TalentAssessmentModel::class, TalentAssessmentModelVersion::class] as $model) {
             Gate::policy($model, TalentConfigPolicy::class);
         }
+        Gate::policy(TalentReviewSession::class, TalentReviewPolicy::class);
         foreach ([CriticalPosition::class, CriticalPositionAssessment::class, SuccessionPlan::class, Successor::class, ReadinessAssessment::class] as $model) {
             Gate::policy($model, SuccessionPolicy::class);
         }

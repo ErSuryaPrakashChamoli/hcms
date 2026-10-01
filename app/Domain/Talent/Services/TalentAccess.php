@@ -101,7 +101,8 @@ final class TalentAccess
     /** Read a confidential attribute: talent.confidential, never about oneself, always audited. */
     public function confidential(Model $record, string $attribute, User $viewer): ?string
     {
-        $employeeId = $record->getAttribute('employee_id');
+        // Position-level records (succession plans) carry no employee; person-level ones do.
+        $employeeId = array_key_exists('employee_id', $record->getAttributes()) ? $record->getAttribute('employee_id') : null;
         if (! $viewer->hasPermission('talent.confidential') || $this->self($viewer, $employeeId) || ($employeeId !== null && ! $this->inScope($viewer, $employeeId))) {
             return null;
         }
