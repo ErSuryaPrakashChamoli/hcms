@@ -4,6 +4,7 @@ namespace App\Domain\Enterprise\Services;
 
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
+use App\Domain\Career\Events\CareerEvent;
 use App\Domain\Compliance\Events\ComplianceEvent;
 use App\Domain\Development\Events\DevelopmentEvent;
 use App\Domain\Documents\Events\DocumentExpiring;
@@ -16,6 +17,8 @@ use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
 use App\Domain\Skills\Events\SkillEvent;
+use App\Domain\Succession\Events\SuccessionEvent;
+use App\Domain\Talent\Events\TalentEvent;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use Illuminate\Events\Dispatcher;
 
@@ -30,6 +33,8 @@ final class WebhookEventBridge
             EmployeeLifecycleChanged::class => 'onLifecycle',
             LeaveEvent::class => 'onNamed', EmploymentEvent::class => 'onNamed', AttendanceEvent::class => 'onNamed', PayrollEvent::class => 'onNamed', PerformanceEvent::class => 'onNamed',
             LearningEvent::class => 'onNamed', AssetEvent::class => 'onNamed', SkillEvent::class => 'onNamed', DevelopmentEvent::class => 'onNamed', ServiceDeskEvent::class => 'onNamed', ExitEvent::class => 'onNamed', ComplianceEvent::class => 'onNamed',
+            // Phase 9: only the allow-listed architecture events pass onNamed (never candidacy, pools or readiness).
+            CareerEvent::class => 'onNamed', TalentEvent::class => 'onNamed', SuccessionEvent::class => 'onNamed',
             WorkflowCompleted::class => 'onWorkflowCompleted', DocumentExpiring::class => 'onDocumentExpiring',
         ];
     }

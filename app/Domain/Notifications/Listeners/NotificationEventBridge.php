@@ -4,6 +4,7 @@ namespace App\Domain\Notifications\Listeners;
 
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
+use App\Domain\Career\Events\CareerEvent;
 use App\Domain\Configuration\Events\ConfigurationChangeProposed;
 use App\Domain\Configuration\Events\FormSubmitted;
 use App\Domain\Development\Events\DevelopmentEvent;
@@ -12,6 +13,7 @@ use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Learning\Events\LearningEvent;
 use App\Domain\Leave\Events\LeaveEvent;
 use App\Domain\Lifecycle\Events\EmployeeLifecycleChanged;
@@ -26,6 +28,8 @@ use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
 use App\Domain\Skills\Events\SkillEvent;
+use App\Domain\Succession\Events\SuccessionEvent;
+use App\Domain\Talent\Events\TalentEvent;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use App\Domain\Workflow\Events\WorkflowTaskAssigned;
 use Illuminate\Events\Dispatcher;
@@ -65,6 +69,9 @@ final class NotificationEventBridge
             ServiceDeskEvent::class => 'onServiceDesk',
             ExitEvent::class => 'onExit',
             AssetEvent::class => 'onAsset',
+            CareerEvent::class => 'onTalent',
+            TalentEvent::class => 'onTalent',
+            SuccessionEvent::class => 'onTalent',
         ];
     }
 
@@ -218,6 +225,39 @@ final class NotificationEventBridge
             'development.reminder.milestone_due' => 'Development milestone due '.($c['due_on'] ?? '').': '.($c['title'] ?? ''),
             'learning.reminder.team_overdue' => ($c['employee'] ?? 'A team member').' is overdue on mandatory learning: '.($c['course'] ?? ''),
             default => str_replace('.', ' ', $event->name),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 9 career, talent and succession events. Talent and succession are confidential: no tenant
+     * rule fires with the employee's context, and the employee concerned is never a recipient — only
+     * the users and employees the event names (plan owner, assessor, review participants).
+     */
+    public function onTalent(CareerEvent|TalentEvent|SuccessionEvent $event): void
+    {
+        $subjectUserId = $event->employee?->user_id;
+        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()
+            ->merge(Employee::query()->withoutGlobalScope(AccessScope::class)->with('user')->whereIn('id', $event->recipientEmployeeIds)->get()->pluck('user'))
+            ->filter(fn ($u) => $u?->isActive())
+            ->reject(fn (User $u) => ! $event instanceof CareerEvent && $subjectUserId !== null && (int) $u->id === (int) $subjectUserId)
+            ->unique('id')->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $title = match ($event->name) {
+            'succession.reminder.position_review' => 'Critical position review due '.($c['due_on'] ?? '').': '.($c['title'] ?? ''),
+            'succession.reminder.plan_review' => 'Succession plan review due '.($c['due_on'] ?? '').': '.($c['title'] ?? ''),
+            'succession.reminder.readiness_expiring' => 'A readiness assessment you recorded expires on '.($c['expires_on'] ?? '').($c['title'] ?? null ? ' ('.$c['title'].')' : ''),
+            'talent.reminder.review_scheduled' => 'Talent review '.($c['name'] ?? '').' is scheduled for '.($c['scheduled_for'] ?? ''),
+            'talent.review.completed' => 'Talent review completed: '.($c['name'] ?? ''),
+            'succession.successor.added' => 'A successor was added to a succession plan you own',
+            'succession.successor.removed' => 'A successor was removed from a succession plan you own',
+            'succession.plan.created' => 'Succession plan created: '.($c['position'] ?? ''),
+            'talent.pool.membership_changed' => 'Talent pool membership changed'.(isset($c['pool']) ? ': '.$c['pool'] : ''),
+            default => str_replace(['.', '_'], ' ', $event->name),
         };
 
         $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);

@@ -1019,6 +1019,9 @@ return [
             'asset.assigned', 'asset.returned', 'servicedesk.ticket.created', 'servicedesk.ticket.resolved', 'grievance.raised', 'exit.initiated', 'exit.completed',
             'letter.issued', 'workflow.completed', 'document.expiring',
             'compliance.establishment_verified', 'compliance.return_reconciled', 'compliance.return_approved', 'compliance.return_exported', 'compliance.return_filed',
+            // Phase 9: architecture-level events only. Candidacy, pool membership, readiness and talent
+            // assessments are confidential and are never published as webhooks.
+            'career.path.published', 'succession.critical_position.created', 'talent.review.completed',
         ],
         // Context keys never sent in webhook payloads (names of feedback authors, free text).
         'webhook_redacted_context' => ['from', 'note', 'reason', 'outcome', 'summary', 'comment'],
