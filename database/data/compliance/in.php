@@ -99,7 +99,7 @@ return [
             'evidence' => [
                 'authority' => 'EPFO',
                 'source_url' => 'https://egazette.gov.in/WriteReadData/2026/273957.pdf',
-                'source_title' => 'Employees\' Provident Funds Scheme, 2026 (G.S.R. 525(E), 29 Jun 2026, CG-DL-E-01072026-273957); with the Employees\' Deposit-Linked Insurance Scheme, 2026 (G.S.R. 526(E)), the Employees\' Pension Scheme, 2026 (G.S.R. 527(E)), S.O. 3580(E), 3581(E) and 3582(E) of 1 Jul 2026, corrigenda G.S.R. 703(E), 704(E), 705(E) of 4 Aug 2026, and S.O. 2702(E) of 29 May 2026',
+                'source_title' => 'EPF Scheme, 2026 (G.S.R. 525(E), 29 Jun 2026, CG-DL-E-01072026-273957), with the EDLI Scheme and EPS, 2026 (G.S.R. 526-527(E)), S.O. 3580-3582(E), corrigenda G.S.R. 703-705(E) and S.O. 2702(E)',
                 'source_published_date' => '2026-06-29',
                 'effective_date' => '2026-09-17',
                 'retrieved_at' => '2026-10-01',
@@ -116,7 +116,7 @@ return [
                     'admin_minimum' => 'NOT CONFIRMED — CONTRADICTED (Phase 8) AND NOT NOTIFIED: no notified minimum administrative charge was found; EPFO FAQ Q13 (explanatory) states ₹500 per month with a contributing member and ₹75 without. The "five hundred rupees" in EPF Scheme, 2026 para 29(2) is a late fee per day for a delayed return, not a minimum charge.',
                     'round' => 'EPF Scheme, 2026 para 18(5), EPS, 2026 para 4(3) and EDLI Scheme, 2026 para 5(3): each contribution "calculated to the nearest rupee, … fifty paise or more to be counted as the next higher rupee and fraction of a rupee less than fifty paise to be ignored" — the payload rounds to the nearest rupee, half up.',
                 ],
-                'evidence_reference' => 'database/data/compliance/evidence/epf (EPF Scheme sha256 4e062db5…, EDLI Scheme sha256 a4a61bcf…, EPS sha256 6bd9d6fb…, S.O. 3580(E) sha256 893a07e9…, S.O. 3581(E) sha256 17dd4c74…, S.O. 3582(E) sha256 9dfc4512…, corrigenda sha256 053c7ce5… / 642aded8… / 8e739f4b…, S.O. 2702(E) sha256 62dbc6c2…)',
+                'evidence_reference' => 'database/data/compliance/evidence/epf (EPF Scheme 4e062db5…, EDLI a4a61bcf…, EPS 6bd9d6fb…, S.O. 3580-3582(E) 893a07e9… / 17dd4c74… / 9dfc4512…, S.O. 2702(E) 62dbc6c2…; full SHA-256 in the README)',
                 'notes' => 'Phase 9 evidence maintenance. The September 2026 split-period treatment is still not established by notified text: EPF Scheme para 18(4) bases contributions on "wages actually drawn or payable during the month", and EPS para 11(1) computes pensionable wages pro rata per wage-ceiling period for pension (not for contributions). No EPFO ECR instruction or circular after 25 Sep 2026 was found (the EPFO "Wage Ceiling Circular 28.09.2026" re-posts circular E-1345653 and S.O. 5109(E)). Recorded for the future payroll remediation phase; the September notice stays open and payroll is unchanged. For EPF v1: from 29 Jun 2026 the legal basis is the Code and the 2026 Schemes (S.O. 2702(E) ₹15,000), not the EPF & MP Act, 1952 its source names; v1 is not changed. eGazette served an incomplete TLS chain; every gazette PDF was retrieved without chain verification and its SHA-256 recorded.',
             ],
             'evidence_documents' => [

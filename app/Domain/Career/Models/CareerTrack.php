@@ -23,6 +23,7 @@ class CareerTrack extends Model
                 throw new \RuntimeException("Unknown career track type '{$t->track_type}'.");
             }
         });
+        static::deleting(fn () => throw new \RuntimeException('Career tracks are retired, never deleted.'));
     }
 
     public function auditModule(): string

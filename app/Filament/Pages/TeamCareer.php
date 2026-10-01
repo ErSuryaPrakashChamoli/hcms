@@ -9,7 +9,6 @@ use App\Domain\Development\Models\DevelopmentPlan;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Performance\Services\PerformanceRelationships;
-use App\Domain\Succession\Models\ReadinessAssessment;
 use App\Domain\Succession\Models\Successor;
 use App\Domain\Talent\Models\TalentReviewSession;
 use App\Filament\Resources\TalentReviews\TalentReviewResource;
@@ -83,11 +82,8 @@ class TeamCareer extends Page
             return collect();
         }
 
-        return Successor::query()->withoutGlobalScope(AccessScope::class)->with(['employee.person', 'plan.position'])->whereIn('employee_id', $this->teamIds())->where('status', 'active')->get()
-            ->map(fn (Successor $s) => [
-                'name' => $s->employee?->person?->full_name, 'position' => $s->plan?->position?->title,
-                'readiness' => ReadinessAssessment::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $s->employee_id)->where('target_key', ReadinessAssessment::targetKey($s->plan?->critical_position_id, null))->where('status', 'current')->value('readiness_level'),
-            ]);
+        return Successor::query()->withoutGlobalScope(AccessScope::class)->with(['employee.person', 'plan.position'])->withCurrentReadiness()->whereIn('successors.employee_id', $this->teamIds())->where('successors.status', 'active')->get()
+            ->map(fn (Successor $s) => ['name' => $s->employee?->person?->full_name, 'position' => $s->plan?->position?->title, 'readiness' => $s->current_readiness]);
     }
 
     public function reviews(): Collection

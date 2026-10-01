@@ -102,3 +102,20 @@ it('ships evidence files whose bytes match their recorded SHA-256', function () 
         expect(hash_file('sha256', database_path("data/compliance/evidence/{$path}")))->toBe($sha256, $path);
     }
 });
+
+it('keeps every pack evidence field within the MySQL column limits (SQLite does not enforce them)', function () {
+    $limits = ['source_title' => 255, 'evidence_reference' => 255, 'source_url' => 500, 'authority' => 32];
+    $tooLong = [];
+    foreach (require database_path('data/compliance/in.php') as $definition) {
+        $submissions = array_merge(isset($definition['evidence']) ? [['revision' => 'initial', 'evidence' => $definition['evidence']]] : [], $definition['evidence_revisions'] ?? []);
+        foreach ($submissions as $submission) {
+            foreach ($limits as $field => $max) {
+                if (mb_strlen((string) ($submission['evidence'][$field] ?? '')) > $max) {
+                    $tooLong[] = "{$definition['code']} v{$definition['version']} {$submission['revision']}: {$field}";
+                }
+            }
+            expect(mb_strlen('pack:in.php#'.$submission['revision']))->toBeLessThanOrEqual(128);
+        }
+    }
+    expect($tooLong)->toBe([]);
+});

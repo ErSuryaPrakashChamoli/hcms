@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\SuccessionPlans;
 
 use App\Domain\Employment\Models\Employee;
-use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Succession\Models\SuccessionPlan;
 use App\Domain\Succession\Models\Successor;
 use App\Domain\Succession\Services\Readiness;
@@ -59,10 +58,10 @@ class SuccessionPlanResource extends Resource
             ->recordActions([
                 Action::make('successors')->label('Successors')->icon(Heroicon::OutlinedListBullet)->color('gray')->modalSubmitAction(false)
                     ->schema(fn (SuccessionPlan $record) => [
-                        ...$record->successors()->with('employee.person')->orderBy('status')->get()->filter(fn (Successor $s) => auth()->user()->can('view', $s))->map(fn (Successor $s) => TextEntry::make("s{$s->id}")
+                        ...$record->successors()->with('employee.person')->withCurrentReadiness()->orderBy('status')->get()->filter(fn (Successor $s) => auth()->user()->can('view', $s))->map(fn (Successor $s) => TextEntry::make("s{$s->id}")
                             ->label(($s->employee?->employee_code ?? '').' · '.($s->employee?->person?->full_name ?? '').' — '.$s->status)
                             ->state(trim(($s->strengths ? "Strengths: {$s->strengths}. " : '').($s->development_gaps ? "Gaps: {$s->development_gaps}." : '')) ?: '—')
-                            ->helperText('Readiness: '.(app(Readiness::class)->current(Employee::query()->withoutGlobalScopes([AccessScope::class])->find($s->employee_id), $record->critical_position_id, null)?->readiness_level ?? 'not assessed')))->all(),
+                            ->helperText('Readiness: '.config("peopleos.talent.readiness_levels.{$s->current_readiness}", 'not assessed')))->all(),
                         TextEntry::make('notes')->label('Confidential notes')->state(fn () => TalentActions::confidential($record, 'confidential_notes'))->visible(fn () => auth()->user()->can('talent.confidential')),
                     ]),
                 Action::make('addSuccessor')->label('Add successor')->icon(Heroicon::OutlinedUserPlus)->color('primary')

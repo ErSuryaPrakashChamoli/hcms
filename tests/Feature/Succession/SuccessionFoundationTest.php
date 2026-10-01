@@ -150,7 +150,8 @@ it('turns development actions into Phase 8 development-plan items without assign
     $plan = $this->plans->create($position, [], $this->hr->user);
     $successor = $this->plans->addSuccessor($plan, $this->candidate, null, null, null, $this->hr->user);
 
-    expect(fn () => $this->plans->addDevelopmentAction($successor, 'teleport', 'x', [], $this->hr->user))->toThrow(RuntimeException::class, 'Unknown development action type');
+    expect(fn () => $this->plans->addDevelopmentAction($successor, 'teleport', 'x', [], $this->hr->user))->toThrow(RuntimeException::class, 'Unknown development action type')
+        ->and(fn () => $this->plans->addDevelopmentAction($successor, 'rotation', 'Prepare as successor to the Head of Operations', [], $this->hr->user))->toThrow(RuntimeException::class, 'neutral');
     $action = $this->plans->addDevelopmentAction($successor, 'certification', 'Plant finance certificate', ['course_id' => $course->id], $this->hr->user);
     $second = $this->plans->addDevelopmentAction($successor, 'rotation', 'Six months at the second plant', [], $this->hr->user);
 

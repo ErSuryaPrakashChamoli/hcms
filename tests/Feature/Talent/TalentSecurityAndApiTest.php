@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Audit\Models\AuditEvent;
+use App\Domain\Audit\Models\AuditEventChange;
 use App\Domain\Career\Services\CareerProfiles;
 use App\Domain\Employment\Actions\AssignPositionAction;
 use App\Domain\Employment\Models\ReportingRelationship;
@@ -170,4 +172,17 @@ it('reports factual coverage and suppresses small people counts in analytics', f
     $coverage = app(TalentAnalytics::class)->coverage();
     expect($coverage[0])->toMatchArray(['title' => 'Plant Head', 'criticality' => 'critical', 'open_plan' => true, 'successors' => 1, 'ready_now' => 1, 'incumbent_exit_on' => null])
         ->and(app(TalentAnalytics::class)->summary()['pools'][0])->toBe(['pool' => 'Operations leaders', 'count' => 1, 'suppressed' => false]);
+});
+
+it('masks confidential talent fields in the audit trail and keeps the audit log behind its own permission', function () {
+    $changes = AuditEventChange::query()->where('field', 'confidential_notes')->get();
+    expect($changes)->not->toBeEmpty();
+    foreach ($changes as $change) {
+        expect((string) $change->after)->not->toContain('NDA')->not->toContain('Health matter')->not->toContain('Board succession memo');
+    }
+    expect(AuditEventChange::query()->where('after', 'like', '%Candidate under NDA%')->orWhere('after', 'like', '%Health matter%')->exists())->toBeFalse()
+        // Talent and succession access does not include the audit log.
+        ->and($this->hr->user->can('viewAny', AuditEvent::class))->toBeFalse()
+        ->and($this->manager->user->can('viewAny', AuditEvent::class))->toBeFalse()
+        ->and(tenantUser($this->tenant, ['audit.view'])->can('viewAny', AuditEvent::class))->toBeTrue();
 });

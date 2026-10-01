@@ -2,6 +2,7 @@
 
 namespace App\Domain\Career\Services;
 
+use App\Domain\Career\Models\RoleRequirementVersion;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Identity\Scopes\AccessScope;
@@ -44,11 +45,38 @@ final class RoleGaps
             return ['requirements' => null, 'skills' => [], 'competencies' => [], 'learning' => [], 'certifications' => [], 'experience' => null];
         }
 
+        $skills = $this->skillGaps($employee, $requirements);
+
+        $evidence = $this->competencies->latestFinalized($employee->id);
+        $competencyNames = Competency::query()->whereIn('id', collect($requirements->competencies)->pluck('competency_id'))->pluck('name', 'id');
+        $competencies = collect($requirements->competencies)->map(fn ($req) => [
+            'competency_id' => (int) $req['competency_id'], 'competency' => $competencyNames[(int) $req['competency_id']] ?? null, 'required' => (bool) ($req['required'] ?? true),
+            'required_level' => isset($req['level']) ? (float) $req['level'] : null, 'latest_finalized' => $evidence[(int) $req['competency_id']] ?? null,
+        ])->values()->all();
+
+        return [
+            'requirements' => ['id' => $requirements->id, 'version' => $requirements->version, 'designation_id' => $requirements->designation_id, 'organisation_node_id' => $requirements->organisation_node_id, 'effective_from' => $requirements->effective_from->toDateString()],
+            'skills' => $skills,
+            'competencies' => $competencies,
+            'learning' => collect($requirements->learning)->map(fn ($req) => ['type' => $req['type'], 'id' => (int) $req['id'], 'required' => (bool) ($req['required'] ?? true)] + ($req['type'] === 'path' ? $this->pathStatus($employee, (int) $req['id']) : $this->courseStatus($employee, (int) $req['id'])))->values()->all(),
+            'certifications' => $this->certificationGaps($employee, $requirements),
+            'experience' => $this->experience($employee, $requirements->min_experience_years),
+        ];
+    }
+
+    /**
+     * Required skills of one requirement version against the employee's best-evidenced levels (Phase 8
+     * SkillProfiles). Levels on a different scale are flagged, never compared. Facts only.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function skillGaps(Employee $employee, RoleRequirementVersion $requirements): array
+    {
         $profile = collect($this->skills->profile($employee))->keyBy('skill_id');
         $scaleVersions = SkillScaleVersion::query()->whereIn('id', collect($requirements->skills)->pluck('skill_scale_version_id')->merge($profile->pluck('scale_version_id'))->unique())->get()->keyBy('id');
         $skillNames = Skill::query()->whereIn('id', collect($requirements->skills)->pluck('skill_id'))->pluck('name', 'id');
 
-        $skills = collect($requirements->skills)->map(function ($req) use ($profile, $scaleVersions, $skillNames) {
+        return collect($requirements->skills)->map(function ($req) use ($profile, $scaleVersions, $skillNames) {
             $have = $profile->get($req['skill_id']);
             $required = $scaleVersions->get($req['skill_scale_version_id']);
             $held = $have ? $scaleVersions->get($have['scale_version_id']) : null;
@@ -63,22 +91,17 @@ final class RoleGaps
                 'gap' => $sameScale ? max(0.0, (float) $req['level'] - (float) ($current ?? 0)) : null,
             ];
         })->values()->all();
+    }
 
-        $evidence = $this->competencies->latestFinalized($employee->id);
-        $competencyNames = Competency::query()->whereIn('id', collect($requirements->competencies)->pluck('competency_id'))->pluck('name', 'id');
-        $competencies = collect($requirements->competencies)->map(fn ($req) => [
-            'competency_id' => (int) $req['competency_id'], 'competency' => $competencyNames[(int) $req['competency_id']] ?? null, 'required' => (bool) ($req['required'] ?? true),
-            'required_level' => isset($req['level']) ? (float) $req['level'] : null, 'latest_finalized' => $evidence[(int) $req['competency_id']] ?? null,
-        ])->values()->all();
-
-        return [
-            'requirements' => ['id' => $requirements->id, 'version' => $requirements->version, 'designation_id' => $requirements->designation_id, 'organisation_node_id' => $requirements->organisation_node_id, 'effective_from' => $requirements->effective_from->toDateString()],
-            'skills' => $skills,
-            'competencies' => $competencies,
-            'learning' => collect($requirements->learning)->map(fn ($req) => ['type' => $req['type'], 'id' => (int) $req['id'], 'required' => (bool) ($req['required'] ?? true)] + ($req['type'] === 'path' ? $this->pathStatus($employee, (int) $req['id']) : $this->courseStatus($employee, (int) $req['id'])))->values()->all(),
-            'certifications' => collect($requirements->certifications)->map(fn ($req) => ['course_id' => (int) $req['course_id']] + $this->certificateStatus($employee, (int) $req['course_id']))->values()->all(),
-            'experience' => $this->experience($employee, $requirements->min_experience_years),
-        ];
+    /**
+     * Required certifications of one requirement version: held / expired / in progress / missing,
+     * with whether a held certificate is verified. Facts only; nothing is enrolled.
+     *
+     * @return list<array{course_id: int, title: ?string, status: string, verified: ?bool}>
+     */
+    public function certificationGaps(Employee $employee, RoleRequirementVersion $requirements): array
+    {
+        return collect($requirements->certifications)->map(fn ($req) => ['course_id' => (int) $req['course_id']] + $this->certificateStatus($employee, (int) $req['course_id']))->values()->all();
     }
 
     /** @return array{title: ?string, status: string} */

@@ -19,6 +19,7 @@ class TalentAssessmentModel extends Model
     protected static function booted(): void
     {
         static::saving(fn (self $m) => $m->code = strtoupper(trim((string) $m->code)));
+        static::deleting(fn () => throw new \RuntimeException('Assessment models are retired, never deleted (assessments pin their versions).'));
     }
 
     public function auditModule(): string

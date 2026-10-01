@@ -25,6 +25,7 @@
             ['Current aspirations by term', $s['aspirations'], 'peopleos.career.aspiration_terms'],
             ['Active mobility interest', $s['mobility_interest'], 'peopleos.career.mobility_interest_types'],
             ['Successor skill gaps (required skills)', $this->getGaps(), 'x'],
+            ['Successor certification gaps (missing or expired)', $this->getCertificationGaps(), 'x'],
         ] as [$heading, $rows, $labels])
             <x-filament::section :heading="$heading" :description="'Groups below '.$s['min_group'].' are suppressed.'">
                 <ul class="text-sm">

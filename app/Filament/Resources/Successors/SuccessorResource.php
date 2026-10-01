@@ -8,7 +8,6 @@ use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\LearningPath;
 use App\Domain\People\Models\Skill;
 use App\Domain\Performance\Services\PerformanceRelationships;
-use App\Domain\Succession\Models\ReadinessAssessment;
 use App\Domain\Succession\Models\Successor;
 use App\Domain\Succession\Services\Readiness;
 use App\Domain\Succession\Services\SuccessionPlans;
@@ -48,7 +47,7 @@ class SuccessorResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['employee.person', 'plan.position']);
+        $query = parent::getEloquentQuery()->with(['employee.person', 'plan.position'])->withCurrentReadiness();
         $user = auth()->user();
         if ($user->can('succession.view') || $user->can('succession.manage')) {
             return $query->whereNot('successors.employee_id', TalentActions::me()?->id ?? 0);
@@ -64,8 +63,7 @@ class SuccessorResource extends Resource
             ->columns([
                 TextColumn::make('employee.person.full_name')->label('Employee')->searchable()->description(fn (Successor $record) => $record->employee?->employee_code),
                 TextColumn::make('plan.position.title')->label('Critical position')->wrap(),
-                TextColumn::make('readiness')->label('Readiness')->state(fn (Successor $record) => ReadinessAssessment::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $record->employee_id)
-                    ->where('target_key', ReadinessAssessment::targetKey($record->plan?->critical_position_id, null))->where('status', 'current')->latest('id')->value('readiness_level'))
+                TextColumn::make('current_readiness')->label('Readiness')
                     ->formatStateUsing(fn (?string $state) => config("peopleos.talent.readiness_levels.{$state}", $state))->placeholder('Not assessed')->badge()->color('gray'),
                 TextColumn::make('added_at')->date(),
                 TextColumn::make('status')->badge()->color(fn (string $state) => $state === 'active' ? 'success' : 'gray'),

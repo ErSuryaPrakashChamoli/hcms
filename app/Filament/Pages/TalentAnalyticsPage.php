@@ -52,6 +52,12 @@ class TalentAnalyticsPage extends Page
         return app(TalentAnalytics::class)->successorGaps();
     }
 
+    /** @return list<array<string, mixed>> */
+    public function getCertificationGaps(): array
+    {
+        return app(TalentAnalytics::class)->successorCertificationGaps();
+    }
+
     public function label(string $configKey, string $key): string
     {
         return (string) config("{$configKey}.{$key}", str_replace('_', ' ', $key));

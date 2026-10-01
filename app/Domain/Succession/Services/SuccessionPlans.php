@@ -155,6 +155,10 @@ final class SuccessionPlans
         if (! array_key_exists($type, config('peopleos.talent.development_action_types'))) {
             throw new RuntimeException("Unknown development action type '{$type}'.");
         }
+        // The employee sees the item in their own development plan, so the title must not disclose candidacy.
+        if (preg_match('~succession|successor|candida|critical position|talent pool~i', $title)) {
+            throw new RuntimeException('Keep development-action titles neutral: the employee sees them in their development plan, and candidacy is confidential.');
+        }
         $employee = Employee::query()->withoutGlobalScope(AccessScope::class)->findOrFail($successor->employee_id);
 
         return DB::transaction(function () use ($successor, $type, $title, $data, $actor, $employee) {

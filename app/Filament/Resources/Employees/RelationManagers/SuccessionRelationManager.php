@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
-use App\Domain\Succession\Models\ReadinessAssessment;
 use App\Domain\Succession\Models\Successor;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -23,15 +22,12 @@ class SuccessionRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        $employeeId = $this->getOwnerRecord()->id;
-
         return $table
             ->description('Confidential. Readiness is a label recorded by an authorised person, not a prediction.')
-            ->modifyQueryUsing(fn ($query) => $query->with('plan.position'))
+            ->modifyQueryUsing(fn ($query) => $query->with('plan.position')->withCurrentReadiness())
             ->columns([
                 TextColumn::make('plan.position.title')->label('Critical position'),
-                TextColumn::make('readiness')->label('Readiness')->state(fn (Successor $record) => ReadinessAssessment::query()->where('employee_id', $employeeId)
-                    ->where('target_key', ReadinessAssessment::targetKey($record->plan?->critical_position_id, null))->where('status', 'current')->value('readiness_level'))
+                TextColumn::make('current_readiness')->label('Readiness')
                     ->formatStateUsing(fn (?string $state) => config("peopleos.talent.readiness_levels.{$state}", $state))->placeholder('Not assessed'),
                 TextColumn::make('added_at')->date(),
                 TextColumn::make('removed_at')->date()->placeholder('—'),

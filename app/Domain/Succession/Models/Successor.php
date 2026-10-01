@@ -5,8 +5,11 @@ namespace App\Domain\Succession\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -80,5 +83,22 @@ class Successor extends Model
     public function readiness(): HasMany
     {
         return $this->hasMany(ReadinessAssessment::class)->orderByDesc('id');
+    }
+
+    /** Adds `current_readiness`: the current readiness label for this successor's critical position, in one correlated subquery (no per-row lookups). */
+    #[Scope]
+    protected function withCurrentReadiness(Builder $query): Builder
+    {
+        if ($query->getQuery()->columns === null) {
+            $query->select('successors.*');
+        }
+
+        return $query->addSelect(['current_readiness' => ReadinessAssessment::query()->withoutGlobalScope(AccessScope::class)
+            ->select('readiness_assessments.readiness_level')
+            ->join('succession_plans as readiness_plan', 'readiness_plan.critical_position_id', '=', 'readiness_assessments.critical_position_id')
+            ->whereColumn('readiness_plan.id', 'successors.succession_plan_id')
+            ->whereColumn('readiness_assessments.employee_id', 'successors.employee_id')
+            ->where('readiness_assessments.status', 'current')
+            ->orderByDesc('readiness_assessments.id')->limit(1)]);
     }
 }

@@ -19,11 +19,11 @@ use App\Domain\Skills\Models\SkillAssessment;
 use App\Domain\Skills\Services\SkillAssessments;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 
 require_once __DIR__.'/../Feature/Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/../Feature/Performance/PerformanceTestHelpers.php';
 require_once __DIR__.'/../Feature/Learning/LearningTestHelpers.php';
+require_once __DIR__.'/ConcurrencyHelpers.php';
 
 /*
  | Phase 8 §49: real concurrency on MySQL. Each race forks processes that hit the same row at the
@@ -49,52 +49,10 @@ beforeEach(function () {
     $this->actingAs($this->admin);
 });
 
-/**
- * Run each callback in its own forked process, all starting together. Each child opens its own
- * MySQL connection; results come back through temp files ('ok' or the exception message).
- *
- * @param  list<callable>  $callbacks
- * @return list<string>
- */
-function race(array $callbacks, float $pause = 0.4): array
+/** The Phase 8 rows whose write is slowed down so a missing row lock would let both writers through. */
+function learningSlowEvents(): array
 {
-    DB::disconnect();
-    $start = microtime(true) + 0.5;
-    $files = [];
-    $pids = [];
-    foreach ($callbacks as $i => $callback) {
-        $files[$i] = tempnam(sys_get_temp_dir(), 'race');
-        $pid = pcntl_fork();
-        if ($pid === 0) {
-            DB::purge();
-            // Widen the window between reading state and writing it: without a row lock, both writers pass.
-            foreach (['eloquent.creating: '.TrainingSessionAttendee::class, 'eloquent.creating: '.LearningCompletion::class, 'eloquent.creating: '.CourseVersion::class, 'eloquent.updating: '.SkillAssessment::class, 'eloquent.updating: '.DevelopmentPlan::class] as $event) {
-                Event::listen($event, fn () => usleep((int) ($pause * 1_000_000)));
-            }
-            while (microtime(true) < $start) {
-                usleep(1000);
-            }
-            try {
-                $callback();
-                file_put_contents($files[$i], 'ok');
-            } catch (Throwable $e) {
-                file_put_contents($files[$i], $e->getMessage());
-            }
-            posix_kill(getmypid(), SIGKILL); // skip shutdown handlers inherited from the test runner
-        }
-        $pids[] = $pid;
-    }
-    foreach ($pids as $pid) {
-        pcntl_waitpid($pid, $status);
-    }
-    DB::purge();
-
-    return array_map(function ($file) {
-        $result = (string) file_get_contents($file);
-        unlink($file);
-
-        return $result;
-    }, $files);
+    return ['eloquent.creating: '.TrainingSessionAttendee::class, 'eloquent.creating: '.LearningCompletion::class, 'eloquent.creating: '.CourseVersion::class, 'eloquent.updating: '.SkillAssessment::class, 'eloquent.updating: '.DevelopmentPlan::class];
 }
 
 it('lets only one of two simultaneous registrations take the last seat; the other is waitlisted', function () {
@@ -106,7 +64,7 @@ it('lets only one of two simultaneous registrations take the last seat; the othe
     $results = race([
         fn () => app(TrainingSessions::class)->register(TrainingSession::query()->findOrFail($session->id), $a),
         fn () => app(TrainingSessions::class)->register(TrainingSession::query()->findOrFail($session->id), $b),
-    ]);
+    ], slow: learningSlowEvents());
 
     expect($results)->toBe(['ok', 'ok'])
         ->and(TrainingSessionAttendee::query()->where('training_session_id', $session->id)->where('status', 'registered')->count())->toBe(1)
@@ -120,7 +78,7 @@ it('pins one course version when two first enrolments on a legacy course race', 
     $results = race([
         fn () => app(Learning::class)->enrol($a, Course::query()->findOrFail($course->id)),
         fn () => app(Learning::class)->enrol($b, Course::query()->findOrFail($course->id)),
-    ]);
+    ], slow: learningSlowEvents());
 
     expect($results)->toBe(['ok', 'ok'])
         ->and(CourseVersion::query()->where('course_id', $course->id)->count())->toBe(1)
@@ -134,7 +92,7 @@ it('finalizes a completion once and issues one certificate when two people compl
     $results = race([
         fn () => app(Completions::class)->finalize(LearningEnrolment::query()->findOrFail($enrolment->id), 80.0, $this->admin),
         fn () => app(Completions::class)->finalize(LearningEnrolment::query()->findOrFail($enrolment->id), 90.0, $this->admin),
-    ]);
+    ], slow: learningSlowEvents());
 
     expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
         ->and(collect($results)->first(fn ($r) => $r !== 'ok'))->toContain('already completed')
@@ -151,7 +109,7 @@ it('finalizes a skill assessment once and completes a development plan once unde
     $results = race([
         fn () => app(SkillAssessments::class)->finalize(SkillAssessment::query()->findOrFail($assessment->id), $manager->user),
         fn () => app(SkillAssessments::class)->finalize(SkillAssessment::query()->findOrFail($assessment->id), $manager->user),
-    ]);
+    ], slow: learningSlowEvents());
     expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
         ->and(EmployeeSkill::query()->where('skill_assessment_id', $assessment->id)->count())->toBe(1);
 
@@ -162,7 +120,7 @@ it('finalizes a skill assessment once and completes a development plan once unde
     $results = race([
         fn () => $plans->transition(DevelopmentPlan::query()->findOrFail($plan->id), 'completed', null, $manager->user),
         fn () => $plans->transition(DevelopmentPlan::query()->findOrFail($plan->id), 'on_hold', 'Paused', $manager->user),
-    ]);
+    ], slow: learningSlowEvents());
     expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
         ->and(in_array($plan->refresh()->status, ['completed', 'on_hold'], true))->toBeTrue();
 });
