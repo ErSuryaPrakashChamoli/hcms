@@ -2,10 +2,18 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Communication\Models\Announcement;
+use App\Domain\Communication\Models\AnnouncementRead;
+use App\Domain\Communication\Services\CommunicationPreferences;
+use App\Domain\Communication\Services\Communications;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Documents\Policies\EmployeeDocumentPolicy;
 use App\Domain\Documents\Services\Documents;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Engagement\Models\SurveyVersion;
+use App\Domain\Engagement\Services\EngagementAnalytics;
+use App\Domain\Engagement\Services\Feedback;
+use App\Domain\Engagement\Services\SurveyResponses;
 use App\Domain\Experience\Services\ExperienceTasks;
 use App\Domain\Experience\Services\NeedsAttention;
 use App\Domain\Knowledge\Models\Article;
@@ -15,6 +23,7 @@ use App\Domain\ServiceDesk\Models\ServiceDefinitionVersion;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Services\CaseAccess;
 use App\Domain\ServiceDesk\Services\ServiceCatalogue;
+use App\Filament\Support\EngagementActions;
 use App\Filament\Support\ServiceDeskActions;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -32,7 +41,9 @@ use UnitEnum;
  * - Documents and letters;
  * - Policies;
  * - Services;
- * - Notifications.
+ * - Notifications;
+ * - Phase 13: Surveys, Feedback, Communications and Preferences (engagement and communication, read
+ *   and acted on through their own services).
  *
  * Every tab reads through the owning domain:
  * - CaseAccess for requests;
@@ -60,7 +71,10 @@ class MyHr extends Page
 
     protected string $view = 'filament.pages.my-hr';
 
-    public const TABS = ['requests' => 'Requests', 'tasks' => 'Tasks', 'approvals' => 'Approvals', 'documents' => 'Documents', 'policies' => 'Policies', 'services' => 'Services', 'notifications' => 'Notifications'];
+    public const TABS = [
+        'requests' => 'Requests', 'tasks' => 'Tasks', 'approvals' => 'Approvals', 'documents' => 'Documents', 'policies' => 'Policies', 'services' => 'Services',
+        'surveys' => 'Surveys', 'feedback' => 'Feedback', 'communications' => 'Communications', 'preferences' => 'Preferences', 'notifications' => 'Notifications',
+    ];
 
     #[Url]
     public string $tab = 'requests';
@@ -162,6 +176,82 @@ class MyHr extends Page
         return auth()->user()->notifications()->latest()->limit(20)->get();
     }
 
+    /** Phase 13: my surveys — open ones to take, and my history (status only for anonymous / confidential). */
+    public function getSurveys(): Collection
+    {
+        return auth()->user()->hasPermission('engagement.participate') ? app(SurveyResponses::class)->mySurveys(auth()->user()) : collect();
+    }
+
+    public function canSeeSurveyResults(int $versionId): bool
+    {
+        $version = SurveyVersion::query()->find($versionId);
+
+        return $version !== null && app(EngagementAnalytics::class)->access($version, auth()->user()) !== null && app(EngagementAnalytics::class)->released($version);
+    }
+
+    public function takeSurveyAction(): Action
+    {
+        return EngagementActions::takeSurvey();
+    }
+
+    /** My identified feedback (confidential and anonymous items cannot be listed back to anyone). */
+    public function getMyFeedback(): Collection
+    {
+        return app(Feedback::class)->mine(auth()->user())->orderByDesc('submitted_on')->limit(20)->get();
+    }
+
+    public function giveFeedbackAction(): Action
+    {
+        return EngagementActions::giveFeedback()->visible(fn () => auth()->user()->hasPermission('engagement.participate'));
+    }
+
+    /** @return Collection<int, array{announcement: Announcement, read: ?AnnouncementRead}> */
+    public function getCommunications(): Collection
+    {
+        $me = self::me();
+        if ($me === null || ! auth()->user()->hasPermission('communication.view')) {
+            return collect();
+        }
+        $feed = app(Communications::class)->feedFor($me);
+        $reads = AnnouncementRead::query()->where('employee_id', $me->id)->whereIn('announcement_id', $feed->pluck('id'))->get()->keyBy('announcement_id');
+
+        return $feed->map(fn (Announcement $a) => ['announcement' => $a, 'read' => $reads->get($a->id), 'attachment' => app(Communications::class)->attachmentUrl($a)]);
+    }
+
+    public function readAnnouncement(int $id): void
+    {
+        ServiceDeskActions::run(fn () => app(Communications::class)->markRead(Announcement::query()->findOrFail($id), self::me()), 'Marked as read');
+    }
+
+    public function acknowledgeAnnouncement(int $id): void
+    {
+        ServiceDeskActions::run(fn () => app(Communications::class)->acknowledge(Announcement::query()->findOrFail($id), self::me()), 'Acknowledged');
+    }
+
+    /** @return array{optional: array<string, array{label: string, in_app: bool, email: bool}>, mandatory: array<string, string>} */
+    public function getPreferences(): array
+    {
+        $me = self::me();
+        $service = app(CommunicationPreferences::class);
+        $current = $me ? $service->for($me) : [];
+
+        return [
+            'optional' => collect($service->categories())->map(fn ($label, $category) => ['label' => $label] + ($current[$category] ?? ['in_app' => true, 'email' => true]))->all(),
+            'mandatory' => collect(config('peopleos.communication.mandatory_types'))->mapWithKeys(fn ($t) => [$t => config("peopleos.communication.types.{$t}", $t)])->all(),
+        ];
+    }
+
+    public function setPreference(string $category, string $channel, bool $on): void
+    {
+        $me = self::me();
+        $current = app(CommunicationPreferences::class)->for($me)[$category] ?? ['in_app' => true, 'email' => true];
+        if (! in_array($channel, ['in_app', 'email'], true)) {
+            return;
+        }
+        $current[$channel] = $on;
+        ServiceDeskActions::run(fn () => app(CommunicationPreferences::class)->set($me, $category, $current['in_app'], $current['email'], auth()->user()), 'Preference saved');
+    }
+
     public function requestServiceAction(): Action
     {
         return ServiceDeskActions::requestService();
@@ -169,6 +259,6 @@ class MyHr extends Page
 
     protected function getHeaderActions(): array
     {
-        return [ServiceDeskActions::askHr()];
+        return [ServiceDeskActions::askHr(), $this->giveFeedbackAction()];
     }
 }

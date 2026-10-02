@@ -4,9 +4,11 @@ use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AttendancePunchController;
 use App\Http\Controllers\Api\V1\BgvCallbackController;
 use App\Http\Controllers\Api\V1\CareerController;
+use App\Http\Controllers\Api\V1\CommunicationController;
 use App\Http\Controllers\Api\V1\CompensationController;
 use App\Http\Controllers\Api\V1\ComplianceController;
 use App\Http\Controllers\Api\V1\EmployeeController;
+use App\Http\Controllers\Api\V1\EngagementController;
 use App\Http\Controllers\Api\V1\LearningController;
 use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\OrganisationController;
@@ -151,6 +153,23 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('requests/{number}/comments', [ServiceDeskController::class, 'comments'])->name('requests.comments');
         Route::get('knowledge', [ServiceDeskController::class, 'knowledge'])->name('knowledge');
         Route::get('tasks', [ServiceDeskController::class, 'tasks'])->name('tasks');
+    });
+
+    // Phase 13 engagement API: read-only. Definitions, aggregate participation and overall results under
+    // the application's privacy rules; never responses, comments or anyone's anonymous participation.
+    Route::middleware('api.key:engagement.read')->prefix('engagement')->name('engagement.')->group(function () {
+        Route::get('surveys', [EngagementController::class, 'surveys'])->name('surveys');
+        Route::get('surveys/{code}', [EngagementController::class, 'survey'])->name('surveys.show');
+        Route::get('surveys/{code}/participation', [EngagementController::class, 'participation'])->name('surveys.participation');
+        Route::get('surveys/{code}/versions/{version}/results', [EngagementController::class, 'results'])->whereNumber('version')->name('surveys.results');
+        Route::get('my-surveys', [EngagementController::class, 'mySurveys'])->name('my-surveys');
+    });
+
+    // Phase 13 communications API: read-only; published items with aggregate counts and preferences.
+    Route::middleware('api.key:communications.read')->prefix('communications')->name('communications.')->group(function () {
+        Route::get('/', [CommunicationController::class, 'index'])->name('index');
+        Route::get('preferences', [CommunicationController::class, 'preferences'])->name('preferences');
+        Route::get('{communication}', [CommunicationController::class, 'show'])->whereNumber('communication')->name('show');
     });
 
     // Phase 11 compensation API: read-only. Definitions with compensation.read; employee amounts also

@@ -71,6 +71,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Alumni'),
                 NavigationGroup::make('Workflows'),
                 NavigationGroup::make('Policies'),
+                NavigationGroup::make('Engagement'),
                 NavigationGroup::make('Communication'),
                 NavigationGroup::make('Configuration'),
                 NavigationGroup::make('Integrations'),

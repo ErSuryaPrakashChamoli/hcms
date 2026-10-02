@@ -123,6 +123,102 @@
                 @endforelse
             </div>
         </x-filament::section>
+    @elseif ($tab === 'surveys')
+        <x-filament::section heading="My surveys" description="Surveys you are invited to. Anonymous answers are stored without any link to you, so they are not shown back here.">
+            <ul class="divide-y divide-gray-200 text-sm dark:divide-gray-700">
+                @forelse ($this->getSurveys() as $row)
+                    @php($v = $row['version'])
+                    @php($p = $row['participation'])
+                    <li class="flex flex-wrap items-center justify-between gap-3 py-2">
+                        <span>
+                            <span class="font-medium">{{ $v->survey->name }}</span>
+                            <x-filament::badge :color="$v->anonymity_mode === 'anonymous' ? 'success' : ($v->anonymity_mode === 'confidential' ? 'warning' : 'gray')">{{ ucfirst($v->anonymity_mode) }}</x-filament::badge>
+                            <span class="text-xs text-gray-500">· {{ $v->status === 'open' ? 'closes '.$v->closes_at?->toDateString() : config('peopleos.engagement.statuses.'.$v->status) }}</span>
+                        </span>
+                        <span class="flex items-center gap-3">
+                            @if ($v->status === 'open' && in_array($p->status, ['invited', 'opened'], true))
+                                {{ ($this->takeSurveyAction)(['version' => $v->id]) }}
+                            @elseif ($v->status === 'open' && $p->status === 'submitted' && $v->response_rule !== 'once')
+                                <x-filament::badge color="success">Submitted</x-filament::badge> {{ ($this->takeSurveyAction)(['version' => $v->id]) }}
+                            @else
+                                <x-filament::badge :color="$p->status === 'submitted' ? 'success' : 'gray'">{{ config('peopleos.engagement.participation_statuses.'.$p->status, $p->status) }}</x-filament::badge>
+                            @endif
+                            @if ($this->canSeeSurveyResults($v->id))
+                                <x-filament::link :href="\App\Filament\Pages\SurveyResults::getUrl(['version' => $v->id])">Results</x-filament::link>
+                            @endif
+                        </span>
+                    </li>
+                @empty
+                    <li class="py-3 text-gray-500">No surveys for you right now.</li>
+                @endforelse
+            </ul>
+        </x-filament::section>
+    @elseif ($tab === 'feedback')
+        <x-filament::section heading="My feedback" description="Identified feedback you sent. Confidential and anonymous feedback is not listed back, by design.">
+            <div class="mb-3">{{ $this->giveFeedbackAction }}</div>
+            <ul class="divide-y divide-gray-200 text-sm dark:divide-gray-700">
+                @forelse ($this->getMyFeedback() as $item)
+                    <li class="flex items-center justify-between gap-3 py-2">
+                        <span>{{ \Illuminate\Support\Str::limit($item->body, 120) }} <span class="text-xs text-gray-500">· {{ config('peopleos.engagement.feedback_categories.'.$item->category) }} · {{ $item->submitted_on?->toDateString() }}</span></span>
+                        <x-filament::badge>{{ config('peopleos.engagement.feedback_statuses.'.$item->status, $item->status) }}</x-filament::badge>
+                    </li>
+                @empty
+                    <li class="py-3 text-gray-500">No identified feedback yet.</li>
+                @endforelse
+            </ul>
+        </x-filament::section>
+    @elseif ($tab === 'communications')
+        <x-filament::section heading="Communications" description="Announcements, circulars and policy publications addressed to you.">
+            <div class="space-y-3">
+                @forelse ($this->getCommunications() as $row)
+                    @php($a = $row['announcement'])
+                    <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="font-medium">@if ($a->is_pinned)📌 @endif{{ $a->title }}</span>
+                            <span class="flex items-center gap-2 text-xs text-gray-500">
+                                <x-filament::badge color="gray">{{ config('peopleos.communication.types.'.$a->type, $a->type) }}</x-filament::badge>
+                                @if ($a->priority !== 'normal')<x-filament::badge :color="$a->priority === 'critical' ? 'danger' : 'warning'">{{ ucfirst($a->priority) }}</x-filament::badge>@endif
+                                {{ $a->publish_at?->toDateString() }}
+                            </span>
+                        </div>
+                        <div class="prose prose-sm mt-2 max-w-none dark:prose-invert">{!! \Illuminate\Support\Str::markdown($a->body, ['html_input' => 'escape', 'allow_unsafe_links' => false]) !!}</div>
+                        <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                            @if ($a->article_id)<x-filament::link :href="\App\Filament\Resources\Articles\ArticleResource::getUrl('view', ['record' => $a->article_id])">Read the policy</x-filament::link>@endif
+                            @if ($row['attachment'])<x-filament::link :href="$row['attachment']" target="_blank">Attachment</x-filament::link>@endif
+                            @if ($a->requires_acknowledgement && ! $row['read']?->acknowledged_at)
+                                <x-filament::button size="sm" wire:click="acknowledgeAnnouncement({{ $a->id }})" wire:confirm="Confirm you have read {{ $a->title }}?">Acknowledge</x-filament::button>
+                            @elseif ($a->requires_acknowledgement)
+                                <x-filament::badge color="success">Acknowledged</x-filament::badge>
+                            @elseif (! $row['read'])
+                                <x-filament::button size="sm" color="gray" wire:click="readAnnouncement({{ $a->id }})">Mark as read</x-filament::button>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-sm text-gray-500">Nothing has been published for you.</p>
+                @endforelse
+            </div>
+        </x-filament::section>
+    @elseif ($tab === 'preferences')
+        @php($prefs = $this->getPreferences())
+        <x-filament::section heading="Communication preferences" description="Choose how optional communication reaches you. You can always read everything in Communications.">
+            <table class="w-full text-sm">
+                <thead><tr class="text-left text-gray-500"><th class="py-1">Communication</th><th>In-app</th><th>Email</th></tr></thead>
+                <tbody>
+                    @foreach ($prefs['optional'] as $category => $p)
+                        <tr class="border-t border-gray-200 dark:border-gray-700">
+                            <td class="py-2">{{ $p['label'] }}</td>
+                            <td><x-filament::input.checkbox :checked="$p['in_app']" wire:click="setPreference('{{ $category }}', 'in_app', {{ $p['in_app'] ? 'false' : 'true' }})" /></td>
+                            <td><x-filament::input.checkbox :checked="$p['email']" wire:click="setPreference('{{ $category }}', 'email', {{ $p['email'] ? 'false' : 'true' }})" /></td>
+                        </tr>
+                    @endforeach
+                    @foreach ($prefs['mandatory'] as $label)
+                        <tr class="border-t border-gray-200 dark:border-gray-700"><td class="py-2">{{ $label }}</td><td colspan="2" class="text-gray-500">Always delivered (mandatory)</td></tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <p class="mt-3 text-xs text-gray-500">Notifications about your own requests, leave, tasks and cases are operational and are not affected by these choices.</p>
+        </x-filament::section>
     @else
         <x-filament::section heading="Notifications">
             <ul class="divide-y divide-gray-200 text-sm dark:divide-gray-700">
