@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\ExitTenantController;
+use App\Http\Controllers\GrievanceAttachmentController;
 use App\Http\Controllers\LearningCertificateDownloadController;
 use App\Http\Controllers\Sso\SsoController;
 use App\Http\Controllers\TicketAttachmentController;
@@ -26,6 +27,11 @@ Route::get('/learning/certificates/{certificate}/download', LearningCertificateD
 Route::get('/tickets/{ticket}/attachments/{comment}', TicketAttachmentController::class)
     ->middleware(['web', 'auth', ResolveTenant::class])
     ->name('tickets.attachment');
+
+Route::get('/grievances/{grievance}/attachments/{note}', GrievanceAttachmentController::class)
+    ->middleware(['web', 'auth', ResolveTenant::class])
+    ->whereNumber(['grievance', 'note'])
+    ->name('grievances.attachment');
 
 Route::get('/sso/{connection}/redirect', [SsoController::class, 'redirect'])->middleware('web')->name('sso.redirect');
 Route::get('/sso/{connection}/callback', [SsoController::class, 'callback'])->middleware('web')->name('sso.callback');

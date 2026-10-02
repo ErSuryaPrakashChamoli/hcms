@@ -10,19 +10,29 @@ use App\Domain\Grievance\Models\GrievanceCategory;
 use App\Domain\Grievance\Models\GrievanceNote;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
-use App\Domain\ServiceDesk\Services\ServiceDesk;
+use App\Support\Numbering\NumberSequences;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use RuntimeException;
 
 /**
- * Grievance handling (§49). Confidential by design: access is the assignee, explicitly granted users,
- * holders of the category's handler roles, and (for non-anonymous cases) the employee who raised it.
- * Every read of a case is audited as sensitive access.
+ * Grievance handling (§49, extended in Phase 12). Confidential by design. A case is open to:
+ * - its assignee;
+ * - explicitly granted users;
+ * - holders of the category's handler roles;
+ * - for non-anonymous cases, the employee who raised it;
+ * - for non-confidential categories only, grievance managers within their organisation scope.
+ *
+ * There is no blanket access: not for HR roles, not for platform administrators, not for managers,
+ * mentors, buddies or project leads. Every read of a case is audited as sensitive access, and case
+ * numbers come from a locked sequence.
  */
 final class Grievances
 {
-    public function __construct(private readonly AuditRecorder $audit, private readonly ServiceDesk $numbers) {}
+    public function __construct(private readonly AuditRecorder $audit) {}
 
     public function raise(GrievanceCategory $category, ?Employee $employee, string $subject, string $details, string $severity = 'medium', bool $anonymous = false, ?User $raiser = null): Grievance
     {
@@ -32,10 +42,11 @@ final class Grievances
         if (! $anonymous && $employee === null) {
             throw new RuntimeException('A named grievance needs the employee.');
         }
+        app(NumberSequences::class)->ensure('GRV', NumberSequences::highest(Grievance::class));
 
         return DB::transaction(function () use ($category, $employee, $subject, $details, $severity, $anonymous, $raiser) {
             $grievance = Grievance::create([
-                'number' => $this->numbers->nextNumber('GRV'),
+                'number' => app(NumberSequences::class)->next('GRV', NumberSequences::highest(Grievance::class)),
                 'grievance_category_id' => $category->id,
                 'employee_id' => $anonymous ? null : $employee?->id,
                 'is_anonymous' => $anonymous,
@@ -72,9 +83,6 @@ final class Grievances
 
     public function canAccess(User $user, Grievance $grievance): bool
     {
-        if ($user->is_platform_admin) {
-            return true;
-        }
         if ($grievance->assignee_id === $user->id || in_array($user->id, $grievance->access_user_ids ?? [], true)) {
             return true;
         }
@@ -83,9 +91,9 @@ final class Grievances
         if ($handlerRoles !== [] && $user->roles()->whereIn('roles.id', $handlerRoles)->exists()) {
             return true;
         }
-        // Grievance managers see non-confidential cases, and confidential ones only where no handler
-        // roles are configured yet (otherwise nobody could work the case).
-        if ($category && (! $category->is_confidential || $handlerRoles === []) && $user->hasPermission('grievance.manage')) {
+        // Grievance managers see non-confidential cases in their organisation scope, and confidential
+        // ones only where no handler roles are configured yet (otherwise nobody could work the case).
+        if ($category && (! $category->is_confidential || $handlerRoles === []) && $user->hasPermission('grievance.manage') && $this->inScope($user, $grievance)) {
             return true;
         }
         if (! $grievance->is_anonymous && $grievance->employee_id && Employee::query()->where('user_id', $user->id)->where('id', $grievance->employee_id)->exists()) {
@@ -93,6 +101,24 @@ final class Grievances
         }
 
         return false;
+    }
+
+    /** Anonymous cases have no employee to scope by; named cases follow the employee's organisation scope. */
+    private function inScope(User $user, Grievance $grievance): bool
+    {
+        if ($grievance->employee_id === null) {
+            return true;
+        }
+        $employee = Employee::query()->withoutGlobalScope(AccessScope::class)->find($grievance->employee_id);
+
+        return $employee !== null && app(AccessScopes::class)->allows($user, $employee);
+    }
+
+    /** Temporary signed link to a case-file attachment; the route re-authorises the case and the note's visibility. */
+    public function attachmentUrl(GrievanceNote $note, int $minutes = 15): ?string
+    {
+        return $note->attachment_path === null ? null
+            : URL::temporarySignedRoute('grievances.attachment', now()->addMinutes($minutes), ['grievance' => $note->grievance_id, 'note' => $note->id]);
     }
 
     public function recordAccess(Grievance $grievance, User $user): void
@@ -115,6 +141,14 @@ final class Grievances
 
     public function grantAccess(Grievance $grievance, User $user, string $reason, ?User $actor = null): Grievance
     {
+        // Phase 12: only someone working the case grants access, with a reason, to a grievance viewer.
+        $actor ??= auth()->user();
+        if ($actor === null || ! $this->canAccess($actor, $grievance) || ! ($actor->hasPermission('grievance.manage') || (int) $grievance->assignee_id === (int) $actor->id)) {
+            throw new RuntimeException('Only the case handler or a grievance manager with access can grant access.');
+        }
+        if (blank($reason) || ! $user->isActive() || ! ($user->hasPermission('grievance.view') || $user->hasPermission('grievance.manage'))) {
+            throw new RuntimeException('Access is granted, with a reason, only to an active grievance viewer.');
+        }
         $ids = collect($grievance->access_user_ids ?? [])->push($user->id)->unique()->values()->all();
         $grievance->withAuditReason($reason)->update(['access_user_ids' => $ids]);
         $this->audit->record(AuditAction::PermissionChanged, 'grievance', $grievance, [['field' => 'access_user_ids', 'before' => null, 'after' => $user->email]], $reason, actor: $actor);

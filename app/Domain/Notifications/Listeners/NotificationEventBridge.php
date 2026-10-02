@@ -132,20 +132,34 @@ final class NotificationEventBridge
         }
 
         $c = $event->context;
+        // Phase 12: references only (number, service, status). Never the free-text subject, form data,
+        // comments, resolutions or grievance details.
+        $ref = fn () => ($c['number'] ?? '').(isset($c['service']) ? ' ('.$c['service'].')' : '');
         $title = match ($event->name) {
-            'servicedesk.ticket.created' => 'New request '.$c['number'].': '.$c['subject'],
-            'servicedesk.ticket.assigned' => 'Ticket assigned to you: '.$c['number'].' '.$c['subject'],
-            'servicedesk.ticket.commented' => ($c['internal'] ? 'Internal note on ' : 'Reply on ').$c['number'].' from '.$c['by'],
-            'servicedesk.ticket.resolved' => 'Resolved: '.$c['number'].' '.$c['subject'],
-            'servicedesk.ticket.closed' => 'Closed: '.$c['number'],
-            'servicedesk.ticket.reopened' => 'Reopened: '.$c['number'].' '.$c['subject'],
-            'servicedesk.ticket.escalated' => 'SLA breached: '.$c['number'].' '.$c['subject'],
+            'servicedesk.ticket.created' => 'New HR request '.$ref(),
+            'servicedesk.ticket.assigned' => 'HR request assigned to you: '.$ref(),
+            'servicedesk.ticket.reassigned' => 'HR request reassigned: '.$ref(),
+            'servicedesk.ticket.acknowledged' => 'HR has acknowledged your request '.$ref(),
+            'servicedesk.ticket.commented' => (($c['internal'] ?? false) ? 'Internal note on ' : 'New message on ').$ref().(isset($c['by']) ? ' from '.$c['by'] : ''),
+            'servicedesk.ticket.waiting_for_employee' => 'HR needs your input on request '.$ref(),
+            'servicedesk.ticket.approval_required' => 'HR request '.$ref().' is waiting for approval',
+            'servicedesk.ticket.ready_to_execute' => 'Approved — HR request '.$ref().' is ready to execute',
+            'servicedesk.ticket.resolved' => 'Resolved: HR request '.$ref(),
+            'servicedesk.ticket.closed' => 'Closed: HR request '.$ref(),
+            'servicedesk.ticket.cancelled' => 'Cancelled: HR request '.$ref(),
+            'servicedesk.ticket.reopened' => 'Reopened: HR request '.$ref(),
+            'servicedesk.ticket.sla_warning' => 'SLA approaching: HR request '.$ref(),
+            'servicedesk.ticket.escalated' => 'SLA breached: HR request '.$ref().(isset($c['level']) ? ' (level '.$c['level'].')' : ''),
+            'servicedesk.reminder.waiting_for_employee' => 'Reminder: HR is waiting for your input on request '.$ref(),
+            'servicedesk.reminder.waiting_for_hr' => 'Reminder: HR request '.$ref().' is waiting for HR',
             'grievance.raised' => 'New grievance case '.$c['number'].' ('.$c['severity'].')',
             'grievance.assigned' => 'Grievance case assigned to you: '.$c['number'],
             'grievance.updated' => 'Update on grievance case '.$c['number'],
             'grievance.resolved' => 'Your grievance case '.$c['number'].' has been resolved',
             'grievance.escalated' => 'Grievance case overdue: '.$c['number'],
             'kb.article.published' => ($c['mandatory'] ? 'Mandatory reading: ' : 'Please acknowledge: ').$c['title'],
+            'kb.article.review_requested' => 'Knowledge article to review: '.$c['title'],
+            'kb.reminder.acknowledgement' => 'Reminder: please acknowledge '.$c['title'],
             'communication.published' => $c['type'].': '.$c['title'],
             default => str_replace('.', ' ', $event->name),
         };

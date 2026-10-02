@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\PerformanceController;
 use App\Http\Controllers\Api\V1\PositionController;
 use App\Http\Controllers\Api\V1\PreEmployeeController;
 use App\Http\Controllers\Api\V1\ReadController;
+use App\Http\Controllers\Api\V1\ServiceDeskController;
 use App\Http\Controllers\Api\V1\SuccessionController;
 use App\Http\Controllers\Api\V1\TalentController;
 use App\Http\Controllers\Api\V1\WorkforceController;
@@ -140,6 +141,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('scenarios', [WorkforceController::class, 'scenarios'])->name('scenarios');
         Route::get('headcount', [WorkforceController::class, 'headcount'])->name('headcount');
         Route::get('snapshot', [WorkforceController::class, 'snapshot'])->name('snapshot');
+    });
+
+    // Phase 12 HR service desk API: read-only; never restricted cases, internal notes, sensitive fields or attachments.
+    Route::middleware('api.key:servicedesk.read')->prefix('service-desk')->name('service-desk.')->group(function () {
+        Route::get('services', [ServiceDeskController::class, 'services'])->name('services');
+        Route::get('requests', [ServiceDeskController::class, 'requests'])->name('requests');
+        Route::get('requests/{number}', [ServiceDeskController::class, 'request'])->name('requests.show');
+        Route::get('requests/{number}/comments', [ServiceDeskController::class, 'comments'])->name('requests.comments');
+        Route::get('knowledge', [ServiceDeskController::class, 'knowledge'])->name('knowledge');
+        Route::get('tasks', [ServiceDeskController::class, 'tasks'])->name('tasks');
     });
 
     // Phase 11 compensation API: read-only. Definitions with compensation.read; employee amounts also
