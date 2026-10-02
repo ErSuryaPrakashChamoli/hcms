@@ -149,6 +149,8 @@ use App\Domain\Exit\Models\ExitInterview;
 use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Exit\Policies\ExitCasePolicy;
 use App\Domain\Exit\Policies\SettlementPolicy;
+use App\Domain\Experience\Contracts\SurveyTaskProvider;
+use App\Domain\Experience\Sources\NullSurveyTaskProvider;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Grievance\Models\GrievanceCategory;
 use App\Domain\Grievance\Policies\GrievanceConfigPolicy;
@@ -294,6 +296,11 @@ use App\Domain\Performance\Services\PerformanceOutcomes;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
+use App\Domain\ServiceDesk\Listeners\ServiceDeskDomainListener;
+use App\Domain\ServiceDesk\Listeners\ServiceDeskWorkflowBridge;
+use App\Domain\ServiceDesk\Models\ServiceDefinition;
+use App\Domain\ServiceDesk\Models\ServiceDefinitionVersion;
+use App\Domain\ServiceDesk\Models\ServiceSlaPolicy;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Models\TicketCategory;
 use App\Domain\ServiceDesk\Policies\ServiceDeskConfigPolicy;
@@ -360,6 +367,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Phase 12: the survey task hook; Phase 13 binds the real provider.
+        $this->app->bindIf(SurveyTaskProvider::class, NullSurveyTaskProvider::class);
         $this->app->bind(LeaveDayResolver::class, AttendanceLeaveDayResolver::class);
         $this->app->bind(DevelopmentNeedsReader::class, DevelopmentNeeds::class);
         $this->app->bind(PerformanceOutcomesReader::class, PerformanceOutcomes::class);
@@ -412,6 +421,9 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(WorkflowCompleted::class, LearningWorkflowBridge::class);
         Event::listen(WorkflowCompleted::class, SuccessionWorkflowBridge::class);
         Event::listen(WorkflowCompleted::class, WorkforceWorkflowBridge::class);
+        // Phase 12: service request approvals (SOD re-checked) and domain outcomes of handed-off requests.
+        Event::listen(WorkflowCompleted::class, ServiceDeskWorkflowBridge::class);
+        Event::subscribe(ServiceDeskDomainListener::class);
     }
 
     /** API limits are per key (falls back to IP for unauthenticated calls). */
@@ -440,6 +452,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AlumniRequest::class, AlumniPolicy::class);
         Gate::policy(Ticket::class, TicketPolicy::class);
         Gate::policy(TicketCategory::class, ServiceDeskConfigPolicy::class);
+        Gate::policy(ServiceDefinition::class, ServiceDeskConfigPolicy::class);
+        Gate::policy(ServiceDefinitionVersion::class, ServiceDeskConfigPolicy::class);
+        Gate::policy(ServiceSlaPolicy::class, ServiceDeskConfigPolicy::class);
         Gate::policy(Grievance::class, GrievancePolicy::class);
         Gate::policy(GrievanceCategory::class, GrievanceConfigPolicy::class);
         Gate::policy(Article::class, ArticlePolicy::class);
