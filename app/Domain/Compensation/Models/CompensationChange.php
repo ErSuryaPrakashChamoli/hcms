@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
  * The proposed compensation is content: it is editable only while the change is a draft. Reasons and
  * internal notes are confidential: internal notes are encrypted and never shown to the employee.
  */
-#[Fillable(['tenant_id', 'reference', 'employee_id', 'change_type', 'source', 'status', 'effective_from', 'salary_structure_id', 'ctc_annual', 'currency', 'pay_frequency', 'component_values', 'variable_target_annual', 'previous_assignment_id', 'previous_ctc_annual', 'previous_currency', 'previous_salary_structure_id', 'previous_component_values', 'from_grade_id', 'to_grade_id', 'from_position_id', 'to_position_id', 'reason', 'internal_notes', 'proposed_by', 'submitted_at', 'reviewed_by', 'reviewed_at', 'review_note', 'approved_by', 'approved_at', 'rejected_by', 'rejected_at', 'decision_note', 'scheduled_by', 'scheduled_at', 'effected_by', 'effective_at', 'cancelled_by', 'cancelled_at', 'cancel_reason', 'employee_salary_assignment_id', 'lock_version'])]
+#[Fillable(['tenant_id', 'reference', 'employee_id', 'change_type', 'source', 'compensation_cycle_id', 'compensation_budget_id', 'performance_label', 'increase_percent', 'status', 'effective_from', 'salary_structure_id', 'ctc_annual', 'currency', 'pay_frequency', 'component_values', 'variable_target_annual', 'previous_assignment_id', 'previous_ctc_annual', 'previous_currency', 'previous_salary_structure_id', 'previous_component_values', 'from_grade_id', 'to_grade_id', 'from_position_id', 'to_position_id', 'reason', 'internal_notes', 'proposed_by', 'submitted_at', 'reviewed_by', 'reviewed_at', 'review_note', 'approved_by', 'approved_at', 'rejected_by', 'rejected_at', 'decision_note', 'scheduled_by', 'scheduled_at', 'effected_by', 'effective_at', 'cancelled_by', 'cancelled_at', 'cancel_reason', 'employee_salary_assignment_id', 'lock_version'])]
 class CompensationChange extends Model
 {
     use Auditable, BelongsToTenant;
@@ -33,7 +33,7 @@ class CompensationChange extends Model
     public const STATUSES = ['draft' => 'Draft', 'submitted' => 'Submitted', 'under_review' => 'Under review', 'approved' => 'Approved', 'scheduled' => 'Scheduled', 'effective' => 'Effective', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled'];
 
     /** The proposal itself; frozen from submission (a returned change goes back to draft). */
-    public const CONTENT = ['employee_id', 'change_type', 'effective_from', 'salary_structure_id', 'ctc_annual', 'currency', 'pay_frequency', 'component_values', 'variable_target_annual', 'from_grade_id', 'to_grade_id', 'from_position_id', 'to_position_id', 'reason'];
+    public const CONTENT = ['employee_id', 'change_type', 'effective_from', 'salary_structure_id', 'ctc_annual', 'currency', 'pay_frequency', 'component_values', 'variable_target_annual', 'from_grade_id', 'to_grade_id', 'from_position_id', 'to_position_id', 'reason', 'compensation_budget_id'];
 
     /** Statuses whose compensation is approved (the canonical row exists from scheduling). */
     public const APPROVED = ['approved', 'scheduled', 'effective'];
@@ -68,6 +68,7 @@ class CompensationChange extends Model
             'ctc_annual' => 'decimal:2',
             'variable_target_annual' => 'decimal:2',
             'previous_ctc_annual' => 'decimal:2',
+            'increase_percent' => 'decimal:2',
             'component_values' => 'array',
             'previous_component_values' => 'array',
             'internal_notes' => 'encrypted',
@@ -120,6 +121,16 @@ class CompensationChange extends Model
     public function assignment(): BelongsTo
     {
         return $this->belongsTo(EmployeeSalaryAssignment::class, 'employee_salary_assignment_id');
+    }
+
+    public function cycle(): BelongsTo
+    {
+        return $this->belongsTo(CompensationCycle::class, 'compensation_cycle_id');
+    }
+
+    public function budget(): BelongsTo
+    {
+        return $this->belongsTo(CompensationBudget::class, 'compensation_budget_id');
     }
 
     public function fromGrade(): BelongsTo

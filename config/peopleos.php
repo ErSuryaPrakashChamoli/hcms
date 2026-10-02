@@ -7,7 +7,9 @@ use App\Domain\Attendance\Adapters\EsslAdapter;
 use App\Domain\Attendance\Adapters\GenericJsonAdapter;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Providers\ManualProvider;
+use App\Domain\Compensation\Models\CompensationBudget;
 use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Compensation\Models\CompensationCycle;
 use App\Domain\Compensation\Models\CompensationRange;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
@@ -1590,7 +1592,7 @@ return [
         ],
         'financial' => [
             // Phase 11: employee compensation, compensation changes and pay ranges (amounts masked in audit).
-            EmployeeSalaryAssignment::class, CompensationChange::class, CompensationRange::class,
+            EmployeeSalaryAssignment::class, CompensationChange::class, CompensationRange::class, CompensationBudget::class,
             PayrollEntry::class, ParallelPayrollLine::class,
             Payslip::class, FinalSettlement::class, LearningCost::class,
             // Phase 10: workforce budgets (amounts masked in audit; workforce.costs only).
@@ -1611,6 +1613,8 @@ return [
             ReadinessAssessment::class,
             // Phase 10: workforce plans and scenarios are management-confidential planning records.
             WorkforcePlanVersion::class, WorkforcePlanLine::class, WorkforceScenario::class,
+            // Phase 11: compensation cycles (proposed pay for many people) are management-confidential.
+            CompensationCycle::class,
         ],
     ],
 

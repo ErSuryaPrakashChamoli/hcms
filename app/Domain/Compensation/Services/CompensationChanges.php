@@ -6,6 +6,7 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Events\CompensationEvent;
 use App\Domain\Compensation\Exceptions\CompensationRuleViolation;
+use App\Domain\Compensation\Models\CompensationBudget;
 use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
@@ -38,7 +39,29 @@ use Throwable;
  */
 final class CompensationChanges
 {
+    /** Per-change events are held back while a bulk cycle step runs (the cycle emits one event). */
+    private static bool $quiet = false;
+
     public function __construct(private readonly AssignmentWriter $writer, private readonly AuditRecorder $audit, private readonly AccessScopes $scopes) {}
+
+    /**
+     * Run bulk steps without one notification per line; audit is unaffected.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function quietly(callable $callback): mixed
+    {
+        $previous = self::$quiet;
+        self::$quiet = true;
+        try {
+            return $callback();
+        } finally {
+            self::$quiet = $previous;
+        }
+    }
 
     /** @param  array<string, mixed>  $data */
     public function propose(Employee $employee, array $data, User $actor, string $source = 'manual'): CompensationChange
@@ -121,6 +144,9 @@ final class CompensationChanges
             }
             $this->assertNotActor($change, $actor, ['proposer', 'reviewer'], 'approve');
             $this->assertPreviousUnchanged($change, $employee);
+            if ($change->compensation_budget_id) {
+                app(CompensationBudgets::class)->charge($change);
+            }
             $change->update(['status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'decision_note' => $note ?: null]);
             $this->audit->record(AuditAction::Approved, 'compensation', $change, [['field' => 'status', 'before' => 'under_review', 'after' => 'approved']], null, actor: $actor, effectiveDate: $change->effective_from, metadata: ['reference' => $change->reference]);
             $this->event('compensation.change.approved', $change, $employee, [(int) $change->proposed_by, ...$this->holders('compensation.execute', $employee, [$change->proposed_by, $change->reviewed_by, $actor->id])]);
@@ -177,6 +203,9 @@ final class CompensationChanges
             if ($before === 'scheduled') {
                 $row = EmployeeSalaryAssignment::query()->withoutGlobalScope(AccessScope::class)->findOrFail($change->employee_salary_assignment_id);
                 $this->writer->cancel($row, $change, $actor);
+            }
+            if (in_array($before, ['approved', 'scheduled'], true) && $change->compensation_budget_id) {
+                app(CompensationBudgets::class)->release($change);
             }
             $change->update(['status' => 'cancelled', 'cancelled_by' => $actor->id, 'cancelled_at' => now(), 'cancel_reason' => mb_substr($reason, 0, 255)]);
             $this->audit->record(AuditAction::Cancelled, 'compensation', $change, [['field' => 'status', 'before' => $before, 'after' => 'cancelled']], $reason, actor: $actor, effectiveDate: $change->effective_from, metadata: ['reference' => $change->reference]);
@@ -362,7 +391,7 @@ final class CompensationChanges
         $reason = trim((string) ($data['reason'] ?? ''));
         $this->requireText($reason, 'A compensation change needs a reason.');
 
-        foreach (['from_grade_id' => Grade::class, 'to_grade_id' => Grade::class, 'from_position_id' => Position::class, 'to_position_id' => Position::class] as $column => $model) {
+        foreach (['from_grade_id' => Grade::class, 'to_grade_id' => Grade::class, 'from_position_id' => Position::class, 'to_position_id' => Position::class, 'compensation_budget_id' => CompensationBudget::class] as $column => $model) {
             if (filled($data[$column] ?? null) && ! $model::query()->withoutGlobalScope(AccessScope::class)->whereKey($data[$column])->exists()) {
                 throw new CompensationRuleViolation("The {$column} reference does not exist.");
             }
@@ -375,6 +404,7 @@ final class CompensationChanges
             'reason' => mb_substr($reason, 0, 2000),
             'from_grade_id' => $data['from_grade_id'] ?? null, 'to_grade_id' => $data['to_grade_id'] ?? null,
             'from_position_id' => $data['from_position_id'] ?? null, 'to_position_id' => $data['to_position_id'] ?? null,
+            'compensation_budget_id' => filled($data['compensation_budget_id'] ?? null) ? (int) $data['compensation_budget_id'] : null,
         ];
     }
 
@@ -493,6 +523,9 @@ final class CompensationChanges
     /** @param  list<int>  $recipients */
     private function event(string $name, CompensationChange $change, Employee $employee, array $recipients): void
     {
+        if (self::$quiet) {
+            return;
+        }
         CompensationEvent::dispatch($name, $employee, $change, [
             'reference' => $change->reference, 'change_type' => $change->change_type, 'status' => $change->status,
             'effective_date' => $change->effective_from->toDateString(), 'employee_code' => $employee->employee_code,

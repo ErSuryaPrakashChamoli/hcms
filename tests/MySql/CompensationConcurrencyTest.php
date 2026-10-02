@@ -2,9 +2,12 @@
 
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Compensation\Models\CompensationCycle;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
+use App\Domain\Compensation\Services\CompensationBudgets;
 use App\Domain\Compensation\Services\CompensationChanges;
+use App\Domain\Compensation\Services\CompensationCycles;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Payroll\Models\PayrollRun;
@@ -63,7 +66,7 @@ beforeEach(function () {
 /** Compensation writes slowed down so a missing lock would let both writers through. */
 function compensationSlowEvents(): array
 {
-    return ['eloquent.updating: '.CompensationChange::class, 'eloquent.creating: '.EmployeeSalaryAssignment::class, 'eloquent.updating: '.EmployeeSalaryAssignment::class, 'eloquent.updating: '.PayrollRun::class];
+    return ['eloquent.updating: '.CompensationChange::class, 'eloquent.creating: '.EmployeeSalaryAssignment::class, 'eloquent.updating: '.EmployeeSalaryAssignment::class, 'eloquent.updating: '.PayrollRun::class, 'eloquent.updating: '.CompensationCycle::class];
 }
 
 /** Active rows never overlap and leave no gap between consecutive rows. */
@@ -108,6 +111,48 @@ it('2. never lets two executions create overlapping compensation for one employe
     }
     assertContiguous($rows);
     expect($rows->count())->toBe(1 + collect($results)->filter(fn ($r) => $r === 'ok')->count());
+});
+
+it('3. lets only one of two approvals spend the last of a compensation budget', function () {
+    $planner = tenantUser($this->tenant, ['compensation.budget']);
+    $budgets = app(CompensationBudgets::class);
+    $budget = $budgets->approve($budgets->create(['code' => 'B-'.uniqid(), 'name' => 'Race budget', 'company_id' => $this->company->id, 'period_start' => '2026-04-01', 'period_end' => '2027-03-31', 'currency' => 'INR', 'amount' => 100000], $planner), tenantUser($this->tenant, ['compensation.budget', 'compensation.approve']));
+    $other = salariedEmployee(500000, ['task.view'], '2026-04-01');
+    $pending = [];
+    foreach ([[$this->employee, 660000], [$other, 560000]] as [$employee, $ctc]) {   // +60,000 each: only one fits
+        $c = $this->changes->propose($employee, ['change_type' => 'annual_increment', 'effective_from' => '2026-10-01', 'salary_structure_id' => $this->structure->id, 'ctc_annual' => $ctc, 'reason' => 'Race', 'compensation_budget_id' => $budget->id], $this->actors['proposer']);
+        $this->changes->submit($c, $this->actors['proposer']);
+        $pending[] = $this->changes->review($c, $this->actors['reviewer']);
+    }
+    [$a1, $a2] = [tenantUser($this->tenant, ['compensation.approve']), tenantUser($this->tenant, ['compensation.approve'])];
+
+    $results = race([fn () => $this->changes->approve(($this->fresh)($pending[0]->id), $a1), fn () => $this->changes->approve(($this->fresh)($pending[1]->id), $a2)], slow: compensationSlowEvents());
+
+    expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
+        ->and(collect($results)->first(fn ($r) => $r !== 'ok'))->toContain('would exceed budget')
+        ->and($budgets->measures($budget->refresh())['approved'])->toBe(60000.0);
+});
+
+it('4. executes a bulk cycle exactly once when two executors run it at the same time', function () {
+    collect(range(1, 2))->each(fn () => salariedEmployee(500000, ['task.view'], '2026-04-01'));
+    $cycles = app(CompensationCycles::class);
+    $preparer = tenantUser($this->tenant, ['compensation.cycles', 'compensation.propose']);
+    $cycle = $cycles->create(['code' => 'C-'.uniqid(), 'name' => 'Race cycle', 'cycle_type' => 'annual_increment', 'company_id' => $this->company->id, 'effective_from' => '2026-10-01', 'default_increase_percent' => 4], $preparer);
+    $cycles->populate($cycle, $preparer);
+    $cycles->submit($cycle->refresh(), $preparer);
+    $cycles->review($cycle->refresh(), tenantUser($this->tenant, ['compensation.review']));
+    $cycles->approve($cycle->refresh(), tenantUser($this->tenant, ['compensation.approve']));
+    [$e1, $e2] = [tenantUser($this->tenant, ['compensation.execute']), tenantUser($this->tenant, ['compensation.execute'])];
+    $fresh = fn () => CompensationCycle::query()->withoutGlobalScope(AccessScope::class)->findOrFail($cycle->id);
+
+    $results = race([fn () => $cycles->execute($fresh(), $e1), fn () => $cycles->execute($fresh(), $e2)], slow: compensationSlowEvents());
+
+    $cycle = $fresh();
+    expect($results)->toBe(['ok', 'ok'])   // the second run is an idempotent no-op
+        ->and($cycle->status)->toBe('executed')
+        ->and(AuditEvent::query()->where('action', 'BULK_OPERATION')->where('operation_id', $cycle->operation_id)->count())->toBe(1)
+        ->and(AuditEvent::query()->where('action', 'SCHEDULED')->where('entity_type', CompensationChange::class)->where('operation_id', $cycle->operation_id)->count())->toBe(3)
+        ->and(EmployeeSalaryAssignment::query()->withoutGlobalScope(AccessScope::class)->whereIn('compensation_change_id', CompensationChange::query()->withoutGlobalScope(AccessScope::class)->where('compensation_cycle_id', $cycle->id)->select('id'))->count())->toBe(3);
 });
 
 it('5. resolves a cancellation racing the effective-date processor to exactly one outcome', function () {

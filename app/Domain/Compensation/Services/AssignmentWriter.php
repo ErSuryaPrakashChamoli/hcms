@@ -56,6 +56,7 @@ final class AssignmentWriter
         if ($change->status !== 'approved') {
             throw new CompensationRuleViolation('Only an approved compensation change is executed.');
         }
+        $change->loadMissing(['structure:id,code', 'previousStructure:id,code']);
 
         // Lock order matches payroll finalisation (run row, then the employee row its payslips reference),
         // so a compensation write and a finalisation wait for each other instead of deadlocking.
