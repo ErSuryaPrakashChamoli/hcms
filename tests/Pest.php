@@ -1,8 +1,12 @@
 <?php
 
+use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
+use App\Domain\Compensation\Models\SalaryStructure;
+use App\Domain\Compensation\Services\CompensationChanges;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Services\LifecycleEngine;
@@ -78,4 +82,52 @@ function forceLifecycle(Employee $employee, LifecycleState|string $state, array 
     LifecycleEngine::unguarded(fn () => $employee->update(['lifecycle_state' => $state] + $extra));
 
     return $employee;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Compensation helpers (Phase 11)
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Four users, one per duty, for the current tenant (created once per test application): compensation
+ * is written only through propose → review → approve → execute by different people.
+ *
+ * @return array{proposer: User, reviewer: User, approver: User, executor: User}
+ */
+function compensationActors(): array
+{
+    $tenant = app(TenantContext::class)->current();
+    $key = 'tests.compensation.actors.'.$tenant->id;
+    if (! app()->bound($key)) {
+        app()->instance($key, [
+            'proposer' => tenantUser($tenant, ['compensation.propose', 'compensation.view'], ['name' => 'Comp Proposer']),
+            'reviewer' => tenantUser($tenant, ['compensation.review', 'compensation.view'], ['name' => 'Comp Reviewer']),
+            'approver' => tenantUser($tenant, ['compensation.approve', 'compensation.view'], ['name' => 'Comp Approver']),
+            'executor' => tenantUser($tenant, ['compensation.execute', 'compensation.view'], ['name' => 'Comp Executor']),
+        ]);
+    }
+
+    return app($key);
+}
+
+/**
+ * Give an employee compensation the only way PeopleOS allows: a change proposed, reviewed, approved
+ * and executed by four different people. Returns the canonical row the change wrote.
+ *
+ * @param  array<string, float>  $componentValues
+ */
+function compensate(Employee $employee, float $ctcAnnual, string $from, array $componentValues = ['CONV' => 1600], string $changeType = 'hire', string $reason = 'test', string $structureCode = 'STANDARD'): EmployeeSalaryAssignment
+{
+    $actors = compensationActors();
+    $changes = app(CompensationChanges::class);
+    $structure = SalaryStructure::query()->where('code', $structureCode)->firstOrFail();
+    $change = $changes->propose($employee, ['change_type' => $changeType, 'effective_from' => $from, 'salary_structure_id' => $structure->id, 'ctc_annual' => $ctcAnnual, 'component_values' => $componentValues, 'reason' => $reason], $actors['proposer']);
+    $changes->submit($change, $actors['proposer']);
+    $changes->review($change, $actors['reviewer']);
+    $changes->approve($change, $actors['approver']);
+    $changes->schedule($change, $actors['executor']);
+
+    return EmployeeSalaryAssignment::query()->withoutGlobalScopes([AccessScope::class])->findOrFail($change->employee_salary_assignment_id);
 }

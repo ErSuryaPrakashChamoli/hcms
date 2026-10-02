@@ -151,5 +151,5 @@ it('exposes the rule reference needed to reproduce every statutory line', functi
     foreach (['PF_EE', 'TDS'] as $code) {
         expect(($this->line)($c, $code)['basis'])->toHaveKeys(['rule_id', 'rule_code', 'rule_version', 'effective_from', 'effective_to', 'verification_status', 'rule_checksum', 'evidence_reference']);
     }
-    expect(PayrollCalculator::VERSION)->toBe('payroll-2.2');
+    expect(PayrollCalculator::VERSION)->toBe('payroll-2.3');   // Phase 11: 2.3 reads compensation through CompensationOutput; statutory lines unchanged
 });

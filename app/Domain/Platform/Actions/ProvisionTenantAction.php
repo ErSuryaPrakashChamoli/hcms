@@ -6,6 +6,7 @@ use App\Domain\Analytics\Services\AnalyticsDefaults;
 use App\Domain\Assets\Services\AssetDefaults;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compensation\Services\CompensationDefaults;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Role;
@@ -140,6 +141,7 @@ final class ProvisionTenantAction
         }
 
         app(PayrollDefaults::class)->seed();
+        app(CompensationDefaults::class)->seed();
         app(PerformanceDefaults::class)->seed();
         app(AssetDefaults::class)->seed();
         app(ServiceDeskDefaults::class)->seed();

@@ -17,6 +17,9 @@ use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Attendance\Models\WorkScheduleRule;
 use App\Domain\Communication\Models\Announcement;
 use App\Domain\Communication\Services\Communications;
+use App\Domain\Compensation\Contracts\CompensationOutput;
+use App\Domain\Compensation\Models\SalaryStructure;
+use App\Domain\Compensation\Services\CompensationChanges;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Services\Blueprints;
@@ -50,9 +53,7 @@ use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\OrganisationNode;
 use App\Domain\Organisation\Services\OrganisationTree;
 use App\Domain\Payroll\Models\PayrollRun;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\Payroll\Services\PayrollRuns;
-use App\Domain\Payroll\Services\Salaries;
 use App\Domain\Performance\Models\CareerPath;
 use App\Domain\Performance\Models\Competency;
 use App\Domain\Performance\Models\PerformanceCycle;
@@ -318,15 +319,25 @@ class DatabaseSeeder extends Seeder
         // ADR-0001: every company gets an explicit legal entity and establishment (state from the profile).
         app(Kernel::class)->call('peopleos:legal-entities:backfill');
 
+        // Phase 11: compensation is written only through an approved change, by four different people.
         $structure = SalaryStructure::query()->where('code', 'STANDARD')->first();
-        $salaries = app(Salaries::class);
+        $actors = [];
+        foreach (['proposer' => 'tenant-hr-admin', 'reviewer' => 'hr-manager', 'approver' => 'tenant-hr-admin', 'executor' => 'payroll-admin'] as $duty => $role) {
+            $actors[$duty] = User::query()->firstOrCreate(['email' => "compensation.{$duty}@demo.local"], ['tenant_id' => app(TenantContext::class)->id(), 'name' => 'Compensation '.ucfirst($duty).' (demo)', 'password' => 'password', 'status' => 'active']);
+            $actors[$duty]->roles()->syncWithoutDetaching(Role::query()->where('slug', $role)->pluck('id'));
+        }
+        $changes = app(CompensationChanges::class);
         $ctc = ['anita.rao@demo.local' => 4800000, 'amit.verma@demo.local' => 2400000, 'rahul.sharma@demo.local' => 600000, 'priya.nair@demo.local' => 900000, 'vikram.singh@demo.local' => 480000];
 
         foreach ($ctc as $email => $annual) {
             $employee = Employee::query()->where('work_email', $email)->first();
 
-            if ($employee && $salaries->current($employee) === null) {
-                $salaries->assign($employee, $structure, $annual, $employee->joining_date ?? '2025-04-01', ['CONV' => 1600], 'hire', 'Development seed');
+            if ($employee && app(CompensationOutput::class)->history($employee)->isEmpty()) {
+                $change = $changes->propose($employee, ['change_type' => 'hire', 'effective_from' => ($employee->joining_date ?? '2025-04-01'), 'salary_structure_id' => $structure->id, 'ctc_annual' => $annual, 'currency' => 'INR', 'component_values' => ['CONV' => 1600], 'reason' => 'Development seed'], $actors['proposer']);
+                $changes->submit($change, $actors['proposer']);
+                $changes->review($change, $actors['reviewer']);
+                $changes->approve($change, $actors['approver']);
+                $changes->schedule($change, $actors['executor']);
             }
         }
 

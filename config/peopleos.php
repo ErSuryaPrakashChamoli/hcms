@@ -7,6 +7,9 @@ use App\Domain\Attendance\Adapters\EsslAdapter;
 use App\Domain\Attendance\Adapters\GenericJsonAdapter;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Providers\ManualProvider;
+use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
+use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Compliance\Models\EpfReturnEntry;
@@ -68,11 +71,9 @@ use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\ProfitCentre;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Models\SalaryComponent;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\People\Models\Skill;
 use App\Domain\Performance\Models\CalibrationAdjustment;
 use App\Domain\Performance\Models\CalibrationSession;
@@ -381,6 +382,21 @@ return [
             'workforce.team' => 'View headcount, open and planned positions and vacancies under the positions I hold or for employees I manage',
             'workforce.analytics' => 'View workforce analytics and dashboards',
         ],
+        // Phase 11: Compensation owns employee compensation; payroll permissions grant none of this.
+        'compensation' => [
+            'compensation.view' => 'View employee compensation, history, scheduled changes and change details within organisation scope (field security; audited)',
+            'compensation.propose' => 'Propose compensation changes (never for oneself)',
+            'compensation.review' => 'Review submitted compensation changes (never one\'s own proposal)',
+            'compensation.approve' => 'Approve, reject or cancel compensation changes (never one\'s own proposal or review)',
+            'compensation.execute' => 'Execute approved compensation changes into the effective-dated compensation history (never a change one proposed, reviewed or approved)',
+            'compensation.configure' => 'Maintain compensation structures, components and ranges (drafts; approval by another person)',
+            'compensation.cycles' => 'Prepare compensation cycles (annual increment, promotion, market adjustment)',
+            'compensation.budget' => 'Maintain compensation budgets',
+            'compensation.team' => 'View the approved compensation of employees I manage (configured manager relationships only)',
+            'compensation.self' => 'View my own approved compensation (when the tenant allows it)',
+            'compensation.analytics' => 'View compensation analytics (aggregates with small-group suppression)',
+            'compensation.export' => 'Export compensation data (audited)',
+        ],
         'asset' => [
             'asset.view' => 'View the asset register',
             'asset.manage' => 'Configure categories/models, procure, repair and dispose of assets',
@@ -444,12 +460,12 @@ return [
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
             'description' => 'Operates HR processes.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view'],
         ],
         'hr-executive' => [
             'name' => 'HR Executive',
@@ -459,7 +475,7 @@ return [
         'payroll-admin' => [
             'name' => 'Payroll Admin',
             'description' => 'Runs and approves payroll.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.sensitive.view', 'employee.sensitive.update', 'attendance.view', 'leave.view', 'payroll.*', 'compliance.view', 'ai.use', 'ai.payroll_auditor', 'task.view', 'task.act', 'audit.view'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.sensitive.view', 'employee.sensitive.update', 'attendance.view', 'leave.view', 'payroll.*', 'compensation.view', 'compensation.execute', 'compliance.view', 'ai.use', 'ai.payroll_auditor', 'task.view', 'task.act', 'audit.view'],
         ],
         'attendance-admin' => [
             'name' => 'Attendance Admin',
@@ -484,12 +500,12 @@ return [
         'employee' => [
             'name' => 'Employee',
             'description' => 'Standard employee access.',
-            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
+            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
         ],
         'executive' => [
             'name' => 'Executive',
             'description' => 'Workforce Command Centre and dashboards; no transactional access.',
-            'permissions' => ['analytics.view', 'analytics.executive', 'analytics.reports', 'ai.workforce', 'company.view', 'organisation.view', 'workforce.analytics'],
+            'permissions' => ['analytics.view', 'analytics.executive', 'analytics.reports', 'ai.workforce', 'company.view', 'organisation.view', 'workforce.analytics', 'compensation.analytics'],
         ],
         'alumni' => [
             'name' => 'Alumni',
@@ -499,7 +515,7 @@ return [
         'auditor' => [
             'name' => 'Auditor',
             'description' => 'Read-only access with full audit visibility.',
-            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'workforce.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
+            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compensation.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'workforce.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
         ],
     ],
 
@@ -543,6 +559,8 @@ return [
         'payroll.adjustments.require_approval' => false,
         'attendance.process_on_punch' => true,
         'tenant.base_currency' => 'INR',
+        // Phase 11: employees see their own approved compensation (with compensation.self).
+        'compensation.self_service' => true,
         'tenant.locale' => 'en',
         'security.ip_allowlist' => '',
         'security.session_idle_minutes' => 0,
@@ -1350,6 +1368,40 @@ return [
         'plan_workflow_key' => env('PEOPLEOS_WORKFORCE_PLAN_WORKFLOW'),
     ],
 
+    /*
+    | Phase 11: compensation. Compensation owns employee compensation (employee_salary_assignments is
+    | its canonical history) and reaches Payroll only through the CompensationOutput contract. Every
+    | change is proposed, reviewed, approved and executed by four different people.
+    */
+    'compensation' => [
+        // Change types tenants may use (labels may be renamed; "correction" replaces a row on the same date).
+        'change_types' => [
+            'hire' => 'Hire / first compensation', 'annual_increment' => 'Annual increment', 'promotion' => 'Promotion-related increase',
+            'market_adjustment' => 'Market adjustment', 'correction' => 'Correction', 'allowance_change' => 'Allowance change',
+            'role_grade_adjustment' => 'Role / grade adjustment', 'retention_adjustment' => 'Retention adjustment', 'transfer' => 'Transfer',
+            'rehire' => 'Rehire', 'revision' => 'Revision', 'other' => 'Other',
+        ],
+        'sources' => ['manual' => 'Proposed by a person', 'cycle' => 'Compensation cycle', 'position' => 'From a position', 'plan' => 'From a workforce plan'],
+        // Payroll calculates monthly; other frequencies are refused until Payroll supports them.
+        'pay_frequencies' => ['monthly' => 'Monthly'],
+        // ISO 4217 codes accepted for compensation amounts.
+        'currencies' => ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'QAR', 'KWD', 'OMR', 'BHD', 'SGD', 'MYR', 'IDR', 'THB', 'PHP', 'VND', 'JPY', 'CNY', 'HKD', 'KRW', 'AUD', 'NZD', 'CAD', 'MXN', 'BRL', 'ZAR', 'KES', 'NGN', 'EGP', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 'TRY', 'ILS', 'LKR', 'BDT', 'NPR', 'PKR'],
+        /*
+        | Lifecycle (§41). "current": may receive compensation effective today or earlier; "future": may
+        | receive compensation effective later; "cycles": take part in compensation cycles. Exited and
+        | alumni employees receive nothing new (rehire returns the same employee record to an employed
+        | state and keeps every earlier row); a correction effective on or before the exit date is still
+        | allowed for the states in "correction_after_exit".
+        */
+        'lifecycle' => [
+            'current' => ['preboarding', 'onboarding', 'joined', 'probation', 'confirmed', 'active', 'on_leave', 'suspended', 'notice_period'],
+            'future' => ['pre_employee', 'preboarding', 'onboarding', 'joined', 'probation', 'confirmed', 'active', 'on_leave', 'suspended', 'notice_period'],
+            'cycles' => ['probation', 'confirmed', 'active', 'on_leave'],
+            'correction_after_exit' => ['exited'],
+        ],
+        'analytics_min_group' => (int) env('PEOPLEOS_COMPENSATION_MIN_GROUP', 5),
+    ],
+
     'development' => [
         'item_statuses' => ['open' => 'Open', 'done' => 'Done', 'cancelled' => 'Cancelled'],
         'milestone_reminder_days' => 7,
@@ -1519,9 +1571,13 @@ return [
             TalentAssessment::class => ['confidential_notes'],
             SuccessionPlan::class => ['confidential_notes'],
             Successor::class => ['confidential_notes'],
+            // Phase 11: internal compensation proposal notes (encrypted, masked in audit, never shown to the employee).
+            CompensationChange::class => ['internal_notes'],
         ],
         'financial' => [
-            EmployeeSalaryAssignment::class, PayrollEntry::class, ParallelPayrollLine::class,
+            // Phase 11: employee compensation and compensation changes (amounts and reasons masked in audit).
+            EmployeeSalaryAssignment::class, CompensationChange::class,
+            PayrollEntry::class, ParallelPayrollLine::class,
             Payslip::class, FinalSettlement::class, LearningCost::class,
             // Phase 10: workforce budgets (amounts masked in audit; workforce.costs only).
             WorkforceBudget::class,

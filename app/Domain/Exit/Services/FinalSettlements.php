@@ -4,6 +4,7 @@ namespace App\Domain\Exit\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\FinalSettlement;
@@ -16,7 +17,6 @@ use App\Domain\Leave\Services\LeaveYear;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Services\PayrollCalculator;
-use App\Domain\Payroll\Services\Salaries;
 use App\Domain\Platform\Services\SettingsRepository;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -31,7 +31,7 @@ final class FinalSettlements
 {
     public function __construct(
         private readonly PayrollCalculator $calculator,
-        private readonly Salaries $salaries,
+        private readonly CompensationOutput $compensation,
         private readonly LeaveEntitlements $entitlements,
         private readonly LeaveBalances $balances,
         private readonly LeaveYear $leaveYear,
@@ -66,7 +66,7 @@ final class FinalSettlements
             };
 
             $companyId = $employee->currentPosition?->company_id;
-            $assignment = $this->salaries->current($employee, $lwd);
+            $assignment = $this->compensation->on($employee, $lwd);
             $monthlyBasic = 0.0;
             $monthlyGross = 0.0;
 

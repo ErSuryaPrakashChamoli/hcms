@@ -25,6 +25,11 @@ enum AuditAction: string
     case Cancelled = 'CANCELLED';
     case Escalated = 'ESCALATED';
     case Delegated = 'DELEGATED';
+    // Phase 11: the review, scheduling, effective-date and correction steps of a controlled change.
+    case Reviewed = 'REVIEWED';
+    case Scheduled = 'SCHEDULED';
+    case Effected = 'EFFECTED';
+    case Corrected = 'CORRECTED';
 
     // Security
     case Login = 'LOGIN';

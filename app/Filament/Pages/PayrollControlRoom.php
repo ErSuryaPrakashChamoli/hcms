@@ -2,12 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Organisation\Models\Company;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
@@ -73,7 +73,8 @@ class PayrollControlRoom extends Page implements HasTable
             $period = PayrollPeriod::query()->where('company_id', $company->id)->where('year', $now->year)->where('month', $now->month)->first();
             $run = $period?->runs()->orderByDesc('id')->first();
             $headcount = Employee::query()->employed()->whereHas('positions', fn (Builder $q) => $q->where('company_id', $company->id)->currentlyEffective())->count();
-            $withSalary = EmployeeSalaryAssignment::query()->currentlyEffective()->whereHas('employee', fn (Builder $q) => $q->employed()->whereHas('positions', fn (Builder $p) => $p->where('company_id', $company->id)->currentlyEffective()))->distinct('employee_id')->count('employee_id');
+            $withSalary = Employee::query()->employed()->whereHas('positions', fn (Builder $q) => $q->where('company_id', $company->id)->currentlyEffective())
+                ->whereIn('employees.id', app(CompensationOutput::class)->coveredEmployeeIds())->count();
 
             return [
                 'company' => $company,
@@ -94,7 +95,7 @@ class PayrollControlRoom extends Page implements HasTable
         $employed = Employee::query()->employed();
 
         return [
-            'no_salary' => (clone $employed)->whereDoesntHave('salaryAssignments', fn (Builder $q) => $q->currentlyEffective())->count(),
+            'no_salary' => (clone $employed)->whereNotIn('employees.id', app(CompensationOutput::class)->coveredEmployeeIds())->count(),
             'no_bank' => (clone $employed)->whereDoesntHave('bankAccounts', fn (Builder $q) => $q->where('is_primary', true))->count(),
             'no_pan' => (clone $employed)->where(fn (Builder $q) => $q->whereDoesntHave('statutoryDetail')->orWhereHas('statutoryDetail', fn (Builder $s) => $s->whereNull('pan')))->count(),
             'rules' => ComplianceRule::query()->where('status', 'active')->currentlyEffective()->count(),

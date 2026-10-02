@@ -35,8 +35,12 @@ trait Auditable
     /** The "What changed?" history of this record (blueprint §104). */
     public function auditEvents(): HasMany
     {
+        // A model that moved namespace lists its former class names (auditEntityAliases) so audit rows
+        // written before the move stay in its history; stored rows are never rewritten (hash chain).
+        $types = [static::class, ...(method_exists($this, 'auditEntityAliases') ? $this->auditEntityAliases() : [])];
+
         return $this->hasMany(AuditEvent::class, 'entity_id')
-            ->where('entity_type', static::class)
+            ->whereIn('entity_type', $types)
             ->orderByDesc('occurred_at')
             ->orderByDesc('id');
     }

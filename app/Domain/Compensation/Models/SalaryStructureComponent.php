@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Domain\Payroll\Models;
+namespace App\Domain\Compensation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Payroll\Models\SalaryComponent;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -20,7 +21,13 @@ class SalaryStructureComponent extends Model
 
     public function auditModule(): string
     {
-        return 'payroll';
+        return 'compensation';
+    }
+
+    /** Audit rows written before Phase 11 name the class's previous (Payroll) location. */
+    public function auditEntityAliases(): array
+    {
+        return ['App\\Domain\\Payroll\\Models\\SalaryStructureComponent'];
     }
 
     public function auditLabel(): string

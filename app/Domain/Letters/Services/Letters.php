@@ -4,6 +4,7 @@ namespace App\Domain\Letters\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Services\Documents;
 use App\Domain\Employment\Models\Employee;
@@ -12,7 +13,6 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Letters\Models\Letter;
 use App\Domain\Letters\Models\LetterTemplate;
 use App\Domain\Notifications\Services\TemplateRenderer;
-use App\Domain\Payroll\Services\Salaries;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -22,21 +22,21 @@ use RuntimeException;
 /** The letter factory (§40): render a template for an employee, approve if required, issue as a stored document. */
 final class Letters
 {
-    public function __construct(private readonly TemplateRenderer $renderer, private readonly Documents $documents, private readonly Salaries $salaries, private readonly AuditRecorder $audit) {}
+    public function __construct(private readonly TemplateRenderer $renderer, private readonly Documents $documents, private readonly CompensationOutput $compensation, private readonly AuditRecorder $audit) {}
 
     /** @return array<string, mixed> the variables a template may reference */
     public function context(Employee $employee, array $extra = []): array
     {
         $employee->loadMissing(['person', 'currentPosition.designation', 'currentPosition.department', 'currentPosition.company', 'currentPosition.location']);
         $position = $employee->currentPosition ?? $employee->positions()->orderByDesc('effective_from')->with(['designation', 'department', 'company', 'location'])->first();
-        $salary = $this->salaries->current($employee, $employee->exit_date ?? now());
+        $salary = $this->compensation->on($employee, $employee->exit_date ?? now());
 
         return array_replace_recursive([
             'employee' => [
                 'name' => $employee->person?->full_name, 'first_name' => $employee->person?->first_name, 'code' => $employee->employee_code,
                 'designation' => $position?->designation?->name, 'department' => $position?->department?->name, 'location' => $position?->location?->name,
                 'joining_date' => $employee->joining_date, 'exit_date' => $employee->exit_date, 'gender' => $employee->person?->gender,
-                'ctc_annual' => $salary ? number_format((float) $salary->ctc_annual, 2) : null, 'ctc_monthly' => $salary ? number_format($salary->monthlyCtc(), 2) : null,
+                'ctc_annual' => $salary ? number_format($salary->ctcAnnual, 2) : null, 'ctc_monthly' => $salary ? number_format($salary->monthlyCtc(), 2) : null,
                 'work_email' => $employee->work_email,
             ],
             'company' => ['name' => $position?->company?->legal_name ?: $position?->company?->name, 'short_name' => $position?->company?->name],

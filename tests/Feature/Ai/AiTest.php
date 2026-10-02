@@ -14,9 +14,7 @@ use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Services\KnowledgeBase;
 use App\Domain\Leave\Services\LeaveAccrual;
 use App\Domain\Organisation\Models\Location;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\Payroll\Services\PayrollRuns;
-use App\Domain\Payroll\Services\Salaries;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Services\FeatureFlags;
 use Illuminate\Support\Facades\Http;
@@ -95,7 +93,7 @@ it('flags payroll anomalies with evidence and never changes the run', function (
     EmployeeBankAccount::create(['employee_id' => $this->employee->id, 'account_holder_name' => 'A', 'bank_name' => 'HDFC', 'account_number' => '999', 'ifsc' => 'HDFC0000001', 'is_primary' => true]);
     $twin = salariedEmployee(1200000, ['task.view']);
     EmployeeBankAccount::create(['employee_id' => $twin->id, 'account_holder_name' => 'B', 'bank_name' => 'HDFC', 'account_number' => '999', 'ifsc' => 'HDFC0000001', 'is_primary' => true]);
-    app(Salaries::class)->assign($twin, SalaryStructure::query()->where('code', 'STANDARD')->first(), 2400000, '2026-09-10', ['CONV' => 1600], 'revision', 'Retention');
+    compensate($twin, 2400000, '2026-09-10', ['CONV' => 1600], 'revision', 'Retention');
 
     $runs = app(PayrollRuns::class);
     $run = $runs->calculate($runs->open($this->company, 2026, 9));

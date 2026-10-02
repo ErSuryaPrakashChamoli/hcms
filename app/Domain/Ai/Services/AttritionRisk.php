@@ -3,10 +3,10 @@
 namespace App\Domain\Ai\Services;
 
 use App\Domain\Attendance\Models\AttendanceRecord;
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Learning\Models\LearningEnrolment;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\FeedbackEntry;
 use App\Domain\Performance\Models\OneOnOne;
@@ -33,8 +33,8 @@ final class AttritionRisk
         if ($employee->joining_date && $employee->joining_date->diffInMonths(now()) < 12) {
             $hit('short_tenure');
         }
-        $lastRevision = EmployeeSalaryAssignment::query()->where('employee_id', $employee->id)->orderByDesc('effective_from')->first();
-        if ($lastRevision && $lastRevision->effective_from->diffInMonths(now()) >= 24) {
+        $lastRevision = app(CompensationOutput::class)->history($employee)->last();
+        if ($lastRevision && $lastRevision->effectiveFrom->diffInMonths(now()) >= 24) {
             $hit('no_revision');
         }
         $latest = Appraisal::query()->where('employee_id', $employee->id)->whereNotNull('final_rating')->orderByDesc('finalized_at')->first();

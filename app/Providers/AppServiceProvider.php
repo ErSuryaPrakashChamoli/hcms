@@ -52,6 +52,14 @@ use App\Domain\Career\Policies\CareerArchitecturePolicy;
 use App\Domain\Career\Policies\CareerRecordPolicy;
 use App\Domain\Communication\Models\Announcement;
 use App\Domain\Communication\Policies\AnnouncementPolicy;
+use App\Domain\Compensation\Contracts\CompensationOutput;
+use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
+use App\Domain\Compensation\Models\SalaryStructure;
+use App\Domain\Compensation\Models\SalaryStructureComponent;
+use App\Domain\Compensation\Policies\CompensationConfigPolicy;
+use App\Domain\Compensation\Policies\CompensationPolicy;
+use App\Domain\Compensation\Services\CompensationLedger;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\ComplianceEvidenceDocument;
 use App\Domain\Compliance\Models\ComplianceRule;
@@ -230,17 +238,17 @@ use App\Domain\Organisation\Policies\EstablishmentPolicy;
 use App\Domain\Organisation\Policies\LegalEntityPolicy;
 use App\Domain\Organisation\Policies\OrganisationStructurePolicy;
 use App\Domain\Organisation\Policies\PeopleSetupPolicy;
+use App\Domain\Payroll\Contracts\PayrollClosureReader;
 use App\Domain\Payroll\Contracts\WorkforceCostReader;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollAdjustment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Models\SalaryComponent;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\Payroll\Policies\PayrollConfigPolicy;
 use App\Domain\Payroll\Policies\PayrollRunPolicy;
 use App\Domain\Payroll\Policies\PayslipPolicy;
+use App\Domain\Payroll\Services\PayrollClosure;
 use App\Domain\Payroll\Services\WorkforceCost;
 use App\Domain\People\Models\Person;
 use App\Domain\People\Models\PersonAddress;
@@ -334,6 +342,7 @@ use App\Domain\Workforce\Services\PositionSeats;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Log\Context\Repository as ContextRepository;
 use Illuminate\Support\Facades\Context;
@@ -353,6 +362,9 @@ class AppServiceProvider extends ServiceProvider
         // Phase 10: employment assignments that name a position are validated by the workforce module.
         $this->app->bind(PositionAssignmentGuard::class, PositionSeats::class);
         $this->app->bind(WorkforceCostReader::class, WorkforceCost::class);
+        // Phase 11: Compensation is read through its contract; Payroll answers closure questions through its own.
+        $this->app->bind(CompensationOutput::class, CompensationLedger::class);
+        $this->app->bind(PayrollClosureReader::class, PayrollClosure::class);
         $this->app->singleton(AccessScopes::class);
         // Phase 5: one statutory rule cache per request / job, cleared at the start of each run calculation.
         $this->app->scoped(ComplianceRules::class);
@@ -373,6 +385,18 @@ class AppServiceProvider extends ServiceProvider
         $this->registerGateShortcuts();
         $this->registerRateLimits();
         $this->propagateTenantToQueuedJobs();
+
+        // Phase 11: the salary models moved from Payroll to Compensation. Polymorphic references stored
+        // before the move (timeline sources, configuration changes) keep resolving; new rows use the
+        // neutral aliases. Stored rows are never rewritten.
+        Relation::morphMap([
+            'compensation.salary_assignment' => EmployeeSalaryAssignment::class,
+            'compensation.salary_structure' => SalaryStructure::class,
+            'compensation.salary_structure_component' => SalaryStructureComponent::class,
+            'App\\Domain\\Payroll\\Models\\EmployeeSalaryAssignment' => EmployeeSalaryAssignment::class,
+            'App\\Domain\\Payroll\\Models\\SalaryStructure' => SalaryStructure::class,
+            'App\\Domain\\Payroll\\Models\\SalaryStructureComponent' => SalaryStructureComponent::class,
+        ]);
 
         Event::subscribe(RecordAuthenticationEvents::class);
         Event::subscribe(WorkflowTrigger::class);
@@ -475,8 +499,10 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, EmployeeOwnedPolicy::class);
         }
         Gate::policy(SalaryComponent::class, PayrollConfigPolicy::class);
-        Gate::policy(SalaryStructure::class, PayrollConfigPolicy::class);
-        Gate::policy(EmployeeSalaryAssignment::class, PayrollConfigPolicy::class);
+        // Phase 11: structures and employee compensation are Compensation's.
+        Gate::policy(SalaryStructure::class, CompensationConfigPolicy::class);
+        Gate::policy(EmployeeSalaryAssignment::class, CompensationPolicy::class);
+        Gate::policy(CompensationChange::class, CompensationPolicy::class);
         Gate::policy(PayrollAdjustment::class, PayrollConfigPolicy::class);
         Gate::policy(CompanyStatutoryProfile::class, PayrollConfigPolicy::class);
         Gate::policy(PayrollRun::class, PayrollRunPolicy::class);

@@ -61,6 +61,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Learning'),
                 NavigationGroup::make('Talent'),
                 NavigationGroup::make('Workforce'),
+                NavigationGroup::make('Compensation'),
                 NavigationGroup::make('Assets'),
                 NavigationGroup::make('Service Desk'),
                 NavigationGroup::make('Grievances'),

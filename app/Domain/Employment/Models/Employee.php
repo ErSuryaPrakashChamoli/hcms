@@ -11,6 +11,8 @@ use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Career\Models\CareerAspirationEntry;
 use App\Domain\Career\Models\CareerGoal;
+use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Configuration\Concerns\HasCustomFields;
 use App\Domain\Development\Models\DevelopmentPlan;
 use App\Domain\Documents\Models\EmployeeDocument;
@@ -28,7 +30,6 @@ use App\Domain\Lifecycle\Models\EmployeeLifecycleTransition;
 use App\Domain\Lifecycle\Models\EmployeeTimelineEntry;
 use App\Domain\Lifecycle\Services\LifecycleEngine;
 use App\Domain\Onboarding\Models\OnboardingPlan;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\People\Models\Person;
@@ -204,9 +205,16 @@ class Employee extends Model
         return $this->hasMany(LeaveRequest::class)->orderByDesc('from_date');
     }
 
+    /** Phase 11: the canonical compensation history (Compensation owns it; Employee 360 presentation only). */
     public function salaryAssignments(): HasMany
     {
         return $this->hasMany(EmployeeSalaryAssignment::class);
+    }
+
+    /** Phase 11: compensation proposals and their decisions (Employee 360 presentation only). */
+    public function compensationChanges(): HasMany
+    {
+        return $this->hasMany(CompensationChange::class);
     }
 
     public function payrollEntries(): HasMany

@@ -5,9 +5,11 @@ namespace App\Domain\Payroll\Services;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Payroll\Models\PayrollEntry;
@@ -30,6 +32,7 @@ final class PayrollRuns
         private readonly AuditRecorder $audit,
         private readonly ComplianceRules $complianceRules,
         private readonly PayrollReconciliation $reconciliation,
+        private readonly CompensationOutput $compensation,
     ) {}
 
     public function open(Company $company, int $year, int $month, ?User $actor = null): PayrollRun
@@ -103,7 +106,7 @@ final class PayrollRuns
                 $entry = PayrollEntry::create([
                     'payroll_run_id' => $run->id,
                     'employee_id' => $employee->id,
-                    'employee_salary_assignment_id' => $c->assignment?->id,
+                    'employee_salary_assignment_id' => $c->compensation?->compensation->assignmentId,
                     'legal_entity_id' => $c->inputs['statutory_context']['legal_entity_id'] ?? null,
                     'establishment_id' => $c->inputs['statutory_context']['establishment_id'] ?? null,
                     'days_in_period' => $c->daysInPeriod,
@@ -225,6 +228,10 @@ final class PayrollRuns
             if (! $reconciliation['balanced']) {
                 throw new RuntimeException('Run totals do not reconcile with its entries; recalculate before finalizing.');
             }
+            // Phase 11: every entry must still match the approved compensation it was calculated on.
+            // Compensation locks this run row before writing compensation for a period it covers, so
+            // such a write has either committed (and is seen here) or waits and then sees the run final.
+            $this->assertCompensationUnchanged($run);
             $employeeIds = $run->entries()->pluck('employee_id');
 
             AttendanceRecord::query()->whereIn('employee_id', $employeeIds)
@@ -242,6 +249,16 @@ final class PayrollRuns
 
             return $run->refresh();
         });
+    }
+
+    private function assertCompensationUnchanged(PayrollRun $run): void
+    {
+        $entries = $run->entries()->withoutGlobalScope(AccessScope::class)->get(['id', 'employee_id', 'inputs']);
+        $current = $this->compensation->fingerprints($entries->pluck('employee_id')->map(fn ($id) => (int) $id)->all(), $run->period->start_date, $run->period->end_date);
+        $stale = $entries->filter(fn (PayrollEntry $e) => ($e->inputs['compensation']['fingerprint'] ?? null) !== ($current[(int) $e->employee_id] ?? null))->count();
+        if ($stale > 0) {
+            throw new RuntimeException("Compensation changed for {$stale} employee(s) since the run was calculated; recalculate before finalizing.");
+        }
     }
 
     /**

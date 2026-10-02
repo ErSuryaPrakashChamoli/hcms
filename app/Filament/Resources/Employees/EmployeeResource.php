@@ -15,6 +15,8 @@ use App\Filament\Resources\Employees\RelationManagers\BankAccountsRelationManage
 use App\Filament\Resources\Employees\RelationManagers\BgvRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\CareerRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\CertificationsRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\CompensationChangesRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\CompensationRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\DevelopmentRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\DocumentsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\EmergencyContactsRelationManager;
@@ -28,7 +30,6 @@ use App\Filament\Resources\Employees\RelationManagers\PositionsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\QualificationsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\ReportingRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\RequestsRelationManager;
-use App\Filament\Resources\Employees\RelationManagers\SalaryRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\SkillsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\SuccessionRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\TalentRelationManager;
@@ -100,7 +101,8 @@ class EmployeeResource extends Resource
             AssetsRelationManager::class,
             RequestsRelationManager::class,
             PositionsRelationManager::class,
-            SalaryRelationManager::class,
+            CompensationRelationManager::class,
+            CompensationChangesRelationManager::class,
             ReportingRelationManager::class,
             AddressesRelationManager::class,
             FamilyMembersRelationManager::class,

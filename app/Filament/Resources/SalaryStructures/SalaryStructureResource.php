@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\SalaryStructures;
 
+use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Organisation\Enums\ActiveStatus;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\SalaryStructures\Pages\CreateSalaryStructure;
 use App\Filament\Resources\SalaryStructures\Pages\EditSalaryStructure;
@@ -22,14 +22,14 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use UnitEnum;
 
-/** Salary structures (§30): which components, in which order, with optional formula overrides. */
+/** Compensation structures (§30; Phase 11: owned by Compensation): which payroll components, in which order, with optional formula overrides. */
 class SalaryStructureResource extends Resource
 {
     protected static ?string $model = SalaryStructure::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Payroll';
+    protected static string|UnitEnum|null $navigationGroup = 'Compensation';
 
     protected static ?string $navigationLabel = 'Salary structures';
 

@@ -47,7 +47,9 @@ abstract class Dataset
     {
         $sensitiveOk = $user === null || $this->sensitivePermission() === null || $user->hasPermission($this->sensitivePermission()) || $user->is_platform_admin;
 
-        return array_filter($this->fields(), fn ($f) => $sensitiveOk || empty($f['sensitive']));
+        // A field may also name its own permission (Phase 11: compensation fields need compensation.view).
+        return array_filter($this->fields(), fn ($f) => ($sensitiveOk || empty($f['sensitive']))
+            && (empty($f['permission']) || $user === null || $user->is_platform_admin || $user->hasPermission($f['permission'])));
     }
 
     public function value(string $field, Model $row): mixed
