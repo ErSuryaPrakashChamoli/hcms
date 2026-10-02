@@ -85,6 +85,10 @@ final class Letters
         if ($letter->status !== 'pending_approval') {
             throw new RuntimeException('The letter is not waiting for approval.');
         }
+        // Phase 12: separation of duties — whoever asked for a letter does not approve it.
+        if ($letter->requested_by !== null && (int) $letter->requested_by === (int) $approver->id) {
+            throw new RuntimeException('The person who requested a letter cannot approve it.');
+        }
         $letter->update(['status' => 'approved', 'approved_by' => $approver->id, 'approved_at' => now(), 'review_note' => $note]);
         $this->audit->record(AuditAction::Approved, 'letters', $letter, [], $note, actor: $approver);
         ExitEvent::dispatch('letter.approved', $letter->employee()->first(), $letter, ['number' => $letter->number], array_filter([$letter->requested_by]));

@@ -7,8 +7,9 @@ use App\Domain\Attendance\Models\WorkScheduleAssignment;
 use App\Domain\Bgv\Services\Bgv;
 use App\Domain\Employment\Actions\AssignPositionAction;
 use App\Domain\Employment\Actions\ChangeManagerAction;
+use App\Domain\Employment\Actions\ChangeStatutoryApplicabilityAction;
+use App\Domain\Employment\Actions\ChangeStatutoryIdentityAction;
 use App\Domain\Employment\Models\Employee;
-use App\Domain\Employment\Models\EmployeeStatutoryDetail;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Exceptions\InvalidLifecycleTransitionException;
@@ -22,6 +23,7 @@ use App\Domain\Workforce\Models\Position;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\ProfileChangeActions;
 use App\Filament\Support\SavesCustomFields;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -38,6 +40,7 @@ use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /** Employee 360. Header actions are the life-event entry points (blueprint §20). */
@@ -127,7 +130,7 @@ class ViewEmployee extends ViewRecord
                 $reason = AuditReasonField::extract($data);
 
                 try {
-                    app(ChangeManagerAction::class)->handle($record, Employee::query()->findOrFail($data['manager_id']), $data['type'], $data['effective_from'], $reason);
+                    app(ChangeManagerAction::class)->change($record, Employee::query()->findOrFail($data['manager_id']), auth()->user(), $data['type'], $data['effective_from'], $reason);
                     Notification::make()->success()->title('Reporting line updated')->send();
                 } catch (InvalidArgumentException $e) {
                     Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
@@ -350,8 +353,11 @@ class ViewEmployee extends ViewRecord
             ])
             ->action(function (Employee $record, array $data) {
                 $reason = AuditReasonField::extract($data);
-                $detail = $record->statutoryDetail ?? new EmployeeStatutoryDetail(['employee_id' => $record->id]);
-                $detail->fill($data)->withAuditReason($reason)->save();
+                // Phase 12: identifiers and applicability each go through their Employment change action.
+                ProfileChangeActions::run(fn () => DB::transaction(function () use ($record, $data, $reason) {
+                    app(ChangeStatutoryIdentityAction::class)->handle($record, array_intersect_key($data, array_flip(ChangeStatutoryIdentityAction::FIELDS)), auth()->user(), $reason);
+                    app(ChangeStatutoryApplicabilityAction::class)->handle($record, array_intersect_key($data, array_flip(ChangeStatutoryApplicabilityAction::FIELDS)), auth()->user(), $reason);
+                }));
 
                 Notification::make()->success()->title('Statutory details saved')->send();
             });

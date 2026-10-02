@@ -146,7 +146,9 @@ it('generates, approves and issues letters as documents, and serves alumni reque
     $experience = $letters->generate('experience', $this->employee, [], $this->hr);
     expect($experience->status)->toBe('pending_approval');
     expect(fn () => $letters->issue($experience, $this->hr))->toThrow(RuntimeException::class, 'approved');
-    $letters->approve($experience, $this->hr, 'ok');
+    // Phase 12: the requester does not approve their own letter; a second person does.
+    expect(fn () => $letters->approve($experience, $this->hr, 'mine'))->toThrow(RuntimeException::class, 'requested a letter cannot approve it');
+    $letters->approve($experience, tenantUser($this->tenant, ['letter.issue']), 'ok');
     $letters->issue($experience->refresh(), $this->hr);
     expect($experience->refresh()->status)->toBe('issued')->and($experience->document_id)->not->toBeNull()
         ->and($experience->document->title)->toBe($experience->subject)

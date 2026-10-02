@@ -227,6 +227,7 @@ return [
         ],
         'document' => [
             'document.view' => 'View and download employee documents',
+            'document.own' => 'View and download my own documents (Phase 12 self-service)',
             'document.upload' => 'Upload employee documents',
             'document.verify' => 'Verify or reject documents',
             'document.delete' => 'Delete documents',
@@ -503,7 +504,7 @@ return [
         'employee' => [
             'name' => 'Employee',
             'description' => 'Standard employee access.',
-            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
+            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'document.own', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
         ],
         'executive' => [
             'name' => 'Executive',

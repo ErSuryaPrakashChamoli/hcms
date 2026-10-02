@@ -29,9 +29,10 @@ class AttendanceRecordPolicy
         return $user->hasPermission('attendance.manage') && $this->inScope($user, $model);
     }
 
+    /** Phase 12: approvers never approve their own attendance. */
     public function approve(User $user, Model $model): bool
     {
-        return $user->hasPermission('attendance.approve') && $this->inScope($user, $model);
+        return $user->hasPermission('attendance.approve') && $this->inScope($user, $model) && ! $this->isOwn($user, $model);
     }
 
     public function regularise(User $user, Model $model): bool

@@ -112,6 +112,27 @@ final class AuditRecorder
     }
 
     /**
+     * Run a callback with every audit event inside carrying the given operation id (no summary row).
+     * Phase 12: a service request's domain execution shares the request's operation id, so the
+     * domain's own audit trail answers "which request caused this change".
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function withinOperation(string $operationId, callable $callback): mixed
+    {
+        $previous = Context::get('audit.operation_id');
+        Context::add('audit.operation_id', $operationId);
+        try {
+            return $callback();
+        } finally {
+            $previous === null ? Context::forget('audit.operation_id') : Context::add('audit.operation_id', $previous);
+        }
+    }
+
+    /**
      * Run a bulk operation: every audit event recorded inside carries the same operation id and a
      * BULK_OPERATION summary (counts, entity type, reason) closes it. The callback returns
      * ['succeeded' => n, 'failed' => n] (or an int treated as succeeded) and may throw; the

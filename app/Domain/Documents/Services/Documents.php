@@ -7,6 +7,7 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Services\Timeline;
 use App\Domain\Notifications\Services\NotificationContext;
 use App\Domain\Notifications\Services\NotificationEngine;
@@ -15,6 +16,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Document management core (§39, §83): private storage, versions per type, verification,
@@ -67,17 +69,22 @@ final class Documents
         return $document;
     }
 
-    public function review(EmployeeDocument $document, bool $verified, ?string $note = null): EmployeeDocument
+    public function review(EmployeeDocument $document, bool $verified, ?string $note = null, ?User $actor = null): EmployeeDocument
     {
+        $actor ??= auth()->user();
+        // Phase 12: separation of duties — whoever uploaded a document does not verify it.
+        if ($actor !== null && $document->uploaded_by !== null && (int) $document->uploaded_by === (int) $actor->id) {
+            throw new RuntimeException('The person who uploaded a document cannot verify it.');
+        }
         $document->loadMissing(['employee', 'type']);
         $document->withAuditReason($note)->update([
             'status' => $verified ? 'verified' : 'rejected',
-            'verified_by' => auth()->id(),
+            'verified_by' => $actor?->id,
             'verified_at' => now(),
             'review_note' => $note,
         ]);
 
-        $this->audit->record($verified ? AuditAction::Approved : AuditAction::Rejected, 'documents', $document, reason: $note);
+        $this->audit->record($verified ? AuditAction::Approved : AuditAction::Rejected, 'documents', $document, reason: $note, actor: $actor);
 
         if ($verified) {
             $this->timeline->record($document->employee, 'document', "{$document->title} verified", now(), $note, $document);

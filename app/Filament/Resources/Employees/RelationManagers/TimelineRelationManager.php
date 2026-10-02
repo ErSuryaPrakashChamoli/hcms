@@ -22,7 +22,7 @@ class TimelineRelationManager extends RelationManager
     }
 
     /** Timeline categories whose entries describe classified data (contract §6): shown only with the sensitive permission. */
-    public const SENSITIVE_CATEGORIES = ['compensation', 'bank', 'statutory'];
+    public const SENSITIVE_CATEGORIES = ['compensation', 'bank', 'statutory', 'personal'];
 
     public function table(Table $table): Table
     {

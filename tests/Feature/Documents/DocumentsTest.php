@@ -39,13 +39,16 @@ it('stores files privately, versions per type and archives the previous version'
 it('verifies or rejects with a timeline entry', function () {
     $doc = $this->documents->store($this->employee, UploadedFile::fake()->create('a.pdf', 10, 'application/pdf'), $this->pan);
 
-    $this->documents->review($doc, true, 'Matches');
+    // Phase 12: the uploader does not verify their own upload; a second person does.
+    expect(fn () => $this->documents->review($doc, true, 'Mine'))->toThrow(RuntimeException::class, 'uploaded a document cannot verify it');
+    $verifier = tenantUser($this->tenant, ['document.view', 'document.verify']);
+    $this->documents->review($doc, true, 'Matches', $verifier);
     expect($doc->fresh()->status)->toBe('verified')
-        ->and($doc->fresh()->verified_by)->toBe($this->hr->id)
+        ->and($doc->fresh()->verified_by)->toBe($verifier->id)
         ->and($this->employee->timelineEntries()->where('category', 'document')->value('title'))->toBe('PAN card verified');
 
     $other = $this->documents->store($this->employee, UploadedFile::fake()->create('b.pdf', 10, 'application/pdf'), null, 'Random');
-    $this->documents->review($other, false, 'Blurry');
+    $this->documents->review($other, false, 'Blurry', $verifier);
     expect($other->fresh()->status)->toBe('rejected')->and($other->fresh()->review_note)->toBe('Blurry');
 });
 
