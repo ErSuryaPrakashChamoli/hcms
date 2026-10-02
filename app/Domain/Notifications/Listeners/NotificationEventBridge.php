@@ -5,6 +5,7 @@ namespace App\Domain\Notifications\Listeners;
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Career\Events\CareerEvent;
+use App\Domain\Compensation\Events\CompensationEvent;
 use App\Domain\Configuration\Events\ConfigurationChangeProposed;
 use App\Domain\Configuration\Events\FormSubmitted;
 use App\Domain\Development\Events\DevelopmentEvent;
@@ -74,6 +75,7 @@ final class NotificationEventBridge
             TalentEvent::class => 'onTalent',
             SuccessionEvent::class => 'onTalent',
             WorkforceEvent::class => 'onWorkforce',
+            CompensationEvent::class => 'onCompensation',
         ];
     }
 
@@ -285,6 +287,36 @@ final class NotificationEventBridge
             'workforce.reminder.plan_expiry' => 'Workforce plan '.($c['plan'] ?? '').' ends on '.($c['period_end'] ?? ''),
             'workforce.plan.published' => 'Workforce plan '.($c['plan'] ?? '').' v'.($c['version'] ?? '').' is now active',
             default => ucfirst(str_replace(['workforce.', '.', '_'], ['', ' ', ' '], $event->name)).(isset($c['code']) ? ': '.$c['code'] : (isset($c['plan']) ? ': '.$c['plan'] : '')),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 11 compensation events: in-app to the users the event names only (the next person in the
+     * approval chain, the proposer, the approver). Titles carry references and dates, never amounts,
+     * reasons or notes; nothing is sent to the employee concerned.
+     */
+    public function onCompensation(CompensationEvent $event): void
+    {
+        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive() && ($event->employee === null || (int) $event->employee->user_id !== (int) $u->id))->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $who = isset($c['employee_code']) ? ' for '.$c['employee_code'] : '';
+        $title = match ($event->name) {
+            'compensation.change.submitted' => 'Compensation change'.$who.' is waiting for review',
+            'compensation.change.reviewed' => 'Compensation change'.$who.' is waiting for approval',
+            'compensation.change.approved' => 'Compensation change'.$who.' was approved and is ready to execute',
+            'compensation.change.rejected' => 'Compensation change'.$who.' was rejected',
+            'compensation.change.returned' => 'Compensation change'.$who.' was returned to you',
+            'compensation.change.cancelled' => 'Compensation change'.$who.' was cancelled',
+            'compensation.change.scheduled', 'compensation.change.corrected' => 'Compensation change'.$who.' is scheduled from '.($c['effective_date'] ?? ''),
+            'compensation.change.effective' => 'Compensation change'.$who.' is effective from '.($c['effective_date'] ?? ''),
+            'compensation.reminder.pending_change' => 'Compensation change'.$who.' is still waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
+            'compensation.reminder.pending_cycle' => 'Compensation cycle '.($c['cycle'] ?? '').' is still waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
+            default => ucfirst(str_replace(['compensation.', '.', '_'], ['', ' ', ' '], $event->name)).(isset($c['cycle']) ? ': '.$c['cycle'] : (isset($c['structure']) ? ': '.$c['structure'] : '')),
         };
 
         $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);

@@ -6,7 +6,13 @@ use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\CompensationAccess;
 use App\Domain\Compensation\Services\CompensationChanges;
+use App\Domain\Compensation\Services\CompensationPlanning;
+use App\Domain\Compensation\Services\CompensationRanges;
+use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
+use App\Domain\Workforce\Models\Position;
+use App\Filament\Support\CompensationActions;
+use App\Filament\Support\WorkforceActions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\KeyValue;
@@ -73,11 +79,22 @@ class CompensationRelationManager extends RelationManager
                 TextColumn::make('variable_target_annual')->label('Variable target')->numeric(2)->placeholder('—')->toggleable(),
                 TextColumn::make('component_values')->label('Fixed components (monthly)')->toggleable()
                     ->state(fn (EmployeeSalaryAssignment $record) => collect($record->component_values ?? [])->map(fn ($v, $k) => $k.' '.number_format((float) $v, 2))->implode(', ') ?: '—'),
+                // Descriptive only (range position and compa-ratio against the applicable approved range).
+                TextColumn::make('range')->label('Range position')->visible($full)->toggleable()
+                    ->state(fn (EmployeeSalaryAssignment $record) => $record->isActive() && $record->isEffectiveOn() ? $this->rangeLabel($record) : null)->placeholder('—'),
                 TextColumn::make('reason')->placeholder('—')->wrap()->toggleable()->visible($full),
                 TextColumn::make('approver.name')->label('Approved by')->placeholder('—')->toggleable()->visible($full),
             ])
             ->defaultSort('effective_from', 'desc')
             ->headerActions([
+                Action::make('proposeFromPosition')->label('Propose from position')->icon('heroicon-m-briefcase')->color('gray')
+                    ->visible(fn () => auth()->user()->can('compensation.propose') && (int) $this->getOwnerRecord()->user_id !== (int) auth()->id())
+                    ->schema([
+                        Select::make('position_id')->label('Position')->required()->searchable()->options(fn () => WorkforceActions::positionOptions()),
+                        DatePicker::make('effective_from')->native(false)->required()->default(now()->startOfMonth()->addMonth()),
+                    ])
+                    ->modalDescription('Prefills a draft from the position\'s approved pay range. It changes nobody\'s position and still needs review, approval and execution.')
+                    ->action(fn (array $data) => CompensationActions::run(fn () => app(CompensationPlanning::class)->proposeFromPosition($this->getOwnerRecord(), Position::query()->findOrFail($data['position_id']), auth()->user(), ['effective_from' => $data['effective_from']]), fn ($c) => 'Draft compensation change '.$c->reference.' created')),
                 Action::make('propose')->label('Propose compensation change')->icon('heroicon-m-banknotes')
                     ->visible(fn () => auth()->user()->can('compensation.propose') && (int) $this->getOwnerRecord()->user_id !== (int) auth()->id())
                     ->schema([
@@ -106,5 +123,17 @@ class CompensationRelationManager extends RelationManager
                         }
                     }),
             ]);
+    }
+
+    private function rangeLabel(EmployeeSalaryAssignment $record): string
+    {
+        $held = EmployeePosition::query()->where('employee_id', $record->employee_id)->effectiveOn()->orderByDesc('effective_from')->first();
+        if ($held?->grade_id === null) {
+            return 'No grade';
+        }
+        $ranges = app(CompensationRanges::class);
+        $p = $ranges->position((float) $record->ctc_annual, $ranges->rangeFor((int) $held->grade_id, null, $held->company_id, null, $held->designation_id, (int) $record->salary_structure_id, $record->currency), $record->currency);
+
+        return $p['band'] === null ? $p['note'] : ucfirst($p['band']).($p['compa_ratio'] !== null ? ' · compa-ratio '.$p['compa_ratio'] : '').($p['range_position'] !== null ? ' · position '.$p['range_position'] : '');
     }
 }

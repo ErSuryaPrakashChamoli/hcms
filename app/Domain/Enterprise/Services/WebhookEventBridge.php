@@ -5,6 +5,7 @@ namespace App\Domain\Enterprise\Services;
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Career\Events\CareerEvent;
+use App\Domain\Compensation\Events\CompensationEvent;
 use App\Domain\Compliance\Events\ComplianceEvent;
 use App\Domain\Development\Events\DevelopmentEvent;
 use App\Domain\Documents\Events\DocumentExpiring;
@@ -38,6 +39,8 @@ final class WebhookEventBridge
             CareerEvent::class => 'onNamed', TalentEvent::class => 'onNamed', SuccessionEvent::class => 'onNamed',
             // Phase 10: position capacity events only (no costs, no plan content).
             WorkforceEvent::class => 'onNamed',
+            // Phase 11: allow-listed compensation lifecycle facts only (no amounts, reasons or notes).
+            CompensationEvent::class => 'onNamed',
             WorkflowCompleted::class => 'onWorkflowCompleted', DocumentExpiring::class => 'onDocumentExpiring',
         ];
     }

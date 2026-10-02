@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AttendancePunchController;
 use App\Http\Controllers\Api\V1\BgvCallbackController;
 use App\Http\Controllers\Api\V1\CareerController;
+use App\Http\Controllers\Api\V1\CompensationController;
 use App\Http\Controllers\Api\V1\ComplianceController;
 use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\LearningController;
@@ -139,6 +140,17 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('scenarios', [WorkforceController::class, 'scenarios'])->name('scenarios');
         Route::get('headcount', [WorkforceController::class, 'headcount'])->name('headcount');
         Route::get('snapshot', [WorkforceController::class, 'snapshot'])->name('snapshot');
+    });
+
+    // Phase 11 compensation API: read-only. Definitions with compensation.read; employee amounts also
+    // need compensation.sensitive (audited). No writes: changes need the approval chain in PeopleOS.
+    Route::middleware('api.key:compensation.read')->prefix('compensation')->name('compensation.')->group(function () {
+        Route::get('structures', [CompensationController::class, 'structures'])->name('structures');
+        Route::get('grades', [CompensationController::class, 'grades'])->name('grades');
+        Route::get('ranges', [CompensationController::class, 'ranges'])->name('ranges');
+        Route::get('cycles', [CompensationController::class, 'cycles'])->name('cycles');
+        Route::get('employees/{code}', [CompensationController::class, 'employee'])->name('employee');
+        Route::get('employees/{code}/history', [CompensationController::class, 'history'])->name('employee.history');
     });
 
     // Phase 7 performance API: metadata and finalized outcomes only; see PerformanceController.

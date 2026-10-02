@@ -21,6 +21,7 @@ Schedule::command('peopleos:talent:send-reminders')->dailyAt('07:45')->withoutOv
 Schedule::command('peopleos:workforce:send-reminders')->dailyAt('08:00')->withoutOverlapping()->onOneServer();
 // Phase 11: scheduled compensation changes become effective on their date (each change locked, made effective once).
 Schedule::command('peopleos:compensation:effect')->dailyAt('00:20')->withoutOverlapping()->onOneServer();
+Schedule::command('peopleos:compensation:send-reminders')->dailyAt('08:15')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:servicedesk:tick')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:exit:tick')->dailyAt('04:00')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:reports:run-due')->hourly()->withoutOverlapping()->onOneServer();
