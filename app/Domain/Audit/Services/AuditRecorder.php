@@ -31,6 +31,9 @@ final class AuditRecorder
     /**
      * @param  array<int, array{field: string, before: mixed, after: mixed, sensitive?: bool}>  $changes
      * @param  array<string, mixed>  $metadata
+     * @param  bool  $anonymous  Phase 13: record the event without anything that identifies who caused it
+     *                           (no actor, IP, user agent or request id) — used for anonymous survey
+     *                           responses and anonymous feedback, whose content must never be linkable to a person
      */
     public function record(
         AuditAction $action,
@@ -45,9 +48,10 @@ final class AuditRecorder
         ?int $tenantId = null,
         ?User $actor = null,
         ?string $operationId = null,
+        bool $anonymous = false,
     ): AuditEvent {
         $tenantId ??= ($entity?->getAttributes()['tenant_id'] ?? null) ?? $this->tenants->id();
-        $actor ??= $this->resolveActor();
+        $actor = $anonymous ? null : ($actor ?? $this->resolveActor());
         $occurredAt = Carbon::now();
 
         $normalisedChanges = array_values(array_map(fn (array $change) => [
@@ -69,10 +73,10 @@ final class AuditRecorder
             'entity_id' => $entity ? (string) $entity->getKey() : null,
             'entity_label' => $entityLabel ?? $this->labelFor($entity),
             'occurred_at' => $occurredAt->format('Y-m-d H:i:s.u'),
-            'ip_address' => $this->request->ip(),
-            'user_agent' => Str::limit((string) $this->request->userAgent(), 500, ''),
-            'source' => $this->resolveSource(),
-            'request_id' => Context::get('request_id'),
+            'ip_address' => $anonymous ? null : $this->request->ip(),
+            'user_agent' => $anonymous ? null : Str::limit((string) $this->request->userAgent(), 500, ''),
+            'source' => $anonymous ? 'anonymous' : $this->resolveSource(),
+            'request_id' => $anonymous ? null : Context::get('request_id'),
             'operation_id' => $operationId ?? Context::get('audit.operation_id'),
             'reason' => $reason,
             'approval_reference' => $approvalReference,
