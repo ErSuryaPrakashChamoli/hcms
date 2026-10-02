@@ -8,6 +8,7 @@ use App\Domain\Attendance\Adapters\GenericJsonAdapter;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Providers\ManualProvider;
 use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Compensation\Models\CompensationRange;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
@@ -1399,7 +1400,20 @@ return [
             'cycles' => ['probation', 'confirmed', 'active', 'on_leave'],
             'correction_after_exit' => ['exited'],
         ],
+        // Structure version components: fixed or variable pay, and how often the component is paid.
+        'pay_natures' => ['fixed' => 'Fixed', 'variable' => 'Variable'],
+        'component_frequencies' => ['monthly' => 'Monthly', 'annual' => 'Annual', 'one_time' => 'One-time'],
+        // Range model: "min_mid_max" requires a midpoint; "min_max" makes it optional (compa-ratio then undefined).
+        'range_model' => env('PEOPLEOS_COMPENSATION_RANGE_MODEL', 'min_mid_max'),
+        // Bulk cycles and the change type their lines carry.
+        'cycle_types' => [
+            'annual_increment' => ['label' => 'Annual increment cycle', 'change_type' => 'annual_increment'],
+            'promotion' => ['label' => 'Promotion cycle', 'change_type' => 'promotion'],
+            'market_adjustment' => ['label' => 'Market adjustment cycle', 'change_type' => 'market_adjustment'],
+        ],
         'analytics_min_group' => (int) env('PEOPLEOS_COMPENSATION_MIN_GROUP', 5),
+        // Reminders: changes waiting for a decision longer than this (days); throttled per change.
+        'approval_reminder_days' => 3,
     ],
 
     'development' => [
@@ -1575,8 +1589,8 @@ return [
             CompensationChange::class => ['internal_notes'],
         ],
         'financial' => [
-            // Phase 11: employee compensation and compensation changes (amounts and reasons masked in audit).
-            EmployeeSalaryAssignment::class, CompensationChange::class,
+            // Phase 11: employee compensation, compensation changes and pay ranges (amounts masked in audit).
+            EmployeeSalaryAssignment::class, CompensationChange::class, CompensationRange::class,
             PayrollEntry::class, ParallelPayrollLine::class,
             Payslip::class, FinalSettlement::class, LearningCost::class,
             // Phase 10: workforce budgets (amounts masked in audit; workforce.costs only).

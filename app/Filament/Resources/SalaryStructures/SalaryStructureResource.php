@@ -8,7 +8,7 @@ use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\SalaryStructures\Pages\CreateSalaryStructure;
 use App\Filament\Resources\SalaryStructures\Pages\EditSalaryStructure;
 use App\Filament\Resources\SalaryStructures\Pages\ListSalaryStructures;
-use App\Filament\Resources\SalaryStructures\RelationManagers\ItemsRelationManager;
+use App\Filament\Resources\SalaryStructures\RelationManagers\VersionsRelationManager;
 use App\Filament\Support\AuditReasonField;
 use BackedEnum;
 use Filament\Actions\EditAction;
@@ -52,7 +52,8 @@ class SalaryStructureResource extends Resource
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code'),
-                TextColumn::make('items_count')->counts('items')->label('Components'),
+                TextColumn::make('current_version')->label('Version in force')->state(fn (SalaryStructure $record) => ($v = $record->versionOn()) ? 'v'.$v->version.' since '.$v->effective_from->toDateString() : '—'),
+                TextColumn::make('versions_count')->counts('versions')->label('Versions'),
                 TextColumn::make('assignments_count')->counts('assignments')->label('Employees'),
                 TextColumn::make('status')->badge(),
             ])
@@ -61,7 +62,7 @@ class SalaryStructureResource extends Resource
 
     public static function getRelations(): array
     {
-        return [ItemsRelationManager::class, AuditHistoryRelationManager::class];
+        return [VersionsRelationManager::class, AuditHistoryRelationManager::class];
     }
 
     public static function getPages(): array

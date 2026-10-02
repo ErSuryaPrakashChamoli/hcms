@@ -3,6 +3,7 @@
 namespace App\Domain\Compensation\Jobs;
 
 use App\Domain\Compensation\Services\CompensationChanges;
+use App\Domain\Compensation\Services\CompensationStructures;
 use App\Support\Tenancy\Jobs\BindTenantContext;
 use App\Support\Tenancy\Jobs\TenantAwareJob;
 use App\Support\Tenancy\TenantContext;
@@ -43,8 +44,9 @@ class EffectDueCompensation implements ShouldBeUnique, ShouldQueue, TenantAwareJ
         return [new BindTenantContext];
     }
 
-    public function handle(CompensationChanges $changes): void
+    public function handle(CompensationChanges $changes, CompensationStructures $structures): void
     {
+        $structures->promoteDue($this->on);
         $changes->effectDue($this->on);
     }
 }

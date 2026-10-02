@@ -29,7 +29,7 @@ final class CompensationSnapshot
         public readonly ?string $reason = null,
     ) {}
 
-    public static function fromRow(EmployeeSalaryAssignment $row, ?string $structureCode = null): self
+    public static function fromRow(EmployeeSalaryAssignment $row, ?string $structureCode = null, ?int $structureVersionId = null): self
     {
         return new self(
             assignmentId: (int) $row->id,
@@ -37,7 +37,7 @@ final class CompensationSnapshot
             changeId: $row->compensation_change_id ? (int) $row->compensation_change_id : null,
             changeType: (string) $row->change_type,
             structureId: (int) $row->salary_structure_id,
-            structureVersionId: isset($row->getAttributes()['salary_structure_version_id']) ? (int) $row->getAttributes()['salary_structure_version_id'] : null,
+            structureVersionId: $structureVersionId,
             structureCode: $structureCode,
             currency: (string) $row->currency,
             payFrequency: (string) ($row->pay_frequency ?? 'monthly'),

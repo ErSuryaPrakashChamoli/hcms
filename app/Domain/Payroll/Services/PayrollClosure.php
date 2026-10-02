@@ -39,4 +39,11 @@ final class PayrollClosure implements PayrollClosureReader
 
         return $ends->isEmpty() ? null : $ends->max();
     }
+
+    public function latestClosedPeriodEnd(): ?CarbonInterface
+    {
+        $end = PayrollPeriod::query()->whereIn('id', PayrollRun::query()->whereIn('status', ['finalized', 'paid'])->select('payroll_period_id'))->max('end_date');
+
+        return $end === null ? null : Carbon::parse($end);
+    }
 }

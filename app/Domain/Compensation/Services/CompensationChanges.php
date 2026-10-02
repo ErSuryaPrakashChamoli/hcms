@@ -10,6 +10,7 @@ use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
@@ -306,12 +307,22 @@ final class CompensationChanges
         }
         $this->assertEligible($employee, $from, $type);
 
-        $structure = SalaryStructure::query()->with('items.component')->find($data['salary_structure_id'] ?? null);
+        $structure = SalaryStructure::query()->find($data['salary_structure_id'] ?? null);
         if ($structure === null) {
             throw new CompensationRuleViolation('The compensation structure does not exist.');
         }
         if ($structure->status->value !== 'active') {
             throw new CompensationRuleViolation('The salary structure is not active.');
+        }
+        // The structure's approved version in force on the effective date decides the components, and it
+        // must apply to the employee's company and grade on that date.
+        $version = $structure->versionOn($from);
+        if ($version === null) {
+            throw new CompensationRuleViolation("Structure {$structure->code} has no approved version in force on {$from->toDateString()}.");
+        }
+        $held = EmployeePosition::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->effectiveOn($from)->orderByDesc('effective_from')->first(['company_id', 'grade_id']);
+        if ($held && ! $version->appliesTo($held->company_id ? (int) $held->company_id : null, $held->grade_id ? (int) $held->grade_id : null)) {
+            throw new CompensationRuleViolation("Structure {$structure->code} v{$version->version} does not apply to this employee's company or grade.");
         }
 
         $ctc = $data['ctc_annual'] ?? null;
@@ -332,7 +343,7 @@ final class CompensationChanges
             throw new CompensationRuleViolation("Pay frequency [{$frequency}] is not supported by Payroll.");
         }
 
-        $codes = $structure->items->map(fn ($i) => $i->component?->code)->filter()->map(fn ($c) => strtoupper($c))->all();
+        $codes = $version->components()->with('component:id,code')->get()->map(fn ($i) => $i->component?->code)->filter()->map(fn ($c) => strtoupper($c))->all();
         $values = [];
         foreach ((array) ($data['component_values'] ?? []) as $code => $amount) {
             $code = strtoupper(trim((string) $code));
@@ -340,7 +351,7 @@ final class CompensationChanges
                 continue;
             }
             if (! in_array($code, $codes, true)) {
-                throw new CompensationRuleViolation("Component [{$code}] is not part of structure {$structure->code}.");
+                throw new CompensationRuleViolation("Component [{$code}] is not part of structure {$structure->code} v{$version->version}.");
             }
             if (! is_numeric($amount) || (float) $amount < 0) {
                 throw new CompensationRuleViolation("The amount for component [{$code}] must be zero or more.");

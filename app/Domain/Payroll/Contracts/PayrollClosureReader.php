@@ -17,4 +17,10 @@ interface PayrollClosureReader
      * of such a period whose finalized or paid run holds the employee — null when none does.
      */
     public function closedOnOrAfter(int $employeeId, CarbonInterface $from): ?CarbonInterface;
+
+    /**
+     * The latest end date of any finalized or paid payroll period of the tenant (null when none). A
+     * structure version affects everyone on the structure, so it must start after this date.
+     */
+    public function latestClosedPeriodEnd(): ?CarbonInterface;
 }

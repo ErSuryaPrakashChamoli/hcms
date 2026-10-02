@@ -3,7 +3,6 @@
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Compensation\Models\SalaryStructure;
-use App\Domain\Compensation\Models\SalaryStructureComponent;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Integration\Services\ApiKeys;
@@ -104,7 +103,8 @@ it('pays approved overtime only through a configured component and flags it othe
     expect(collect($c->exceptions)->pluck('type'))->toContain('overtime_unpaid')->and($c->has('OT'))->toBeFalse();
 
     $ot = SalaryComponent::create(['name' => 'Overtime', 'code' => 'OT', 'type' => 'earning', 'classification' => 'other', 'calculation_method' => 'formula', 'formula' => 'overtime_hours * 250', 'taxable' => true, 'include_in_gross' => true, 'is_recurring' => true, 'is_proratable' => false, 'sort_order' => 90, 'status' => 'active']);
-    SalaryStructureComponent::create(['salary_structure_id' => $this->structure->id, 'salary_component_id' => $ot->id, 'sort_order' => 90]);
+    // Phase 11: structures are versioned; the overtime component arrives in an approved version from 1 September.
+    approveStructureVersion('STANDARD', '2026-09-01', [$ot->id => 90]);
 
     $c = app(PayrollCalculator::class)->calculate($employee->fresh(), $this->period);
     expect($c->amount('OT'))->toBe(500.0)->and(collect($c->exceptions)->pluck('type'))->not->toContain('overtime_unpaid');

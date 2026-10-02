@@ -2,7 +2,9 @@
 
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
+use App\Domain\Compensation\Models\SalaryStructureVersion;
 use App\Domain\Compensation\Services\CompensationChanges;
+use App\Domain\Compensation\Services\CompensationStructures;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
@@ -130,4 +132,28 @@ function compensate(Employee $employee, float $ctcAnnual, string $from, array $c
     $changes->schedule($change, $actors['executor']);
 
     return EmployeeSalaryAssignment::query()->withoutGlobalScopes([AccessScope::class])->findOrFail($change->employee_salary_assignment_id);
+}
+
+/**
+ * A new approved version of a structure (prepared and approved by two different people) with extra
+ * components: approved versions are immutable, so a change is always a new version.
+ *
+ * @param  array<int, int>  $addComponents  salary_component_id => sort_order
+ * @param  array<string, mixed>  $attributes
+ */
+function approveStructureVersion(string $structureCode, string $from, array $addComponents = [], array $attributes = []): SalaryStructureVersion
+{
+    $tenant = app(TenantContext::class)->current();
+    $preparer = tenantUser($tenant, ['compensation.configure']);
+    $approver = tenantUser($tenant, ['compensation.approve']);
+    $structures = app(CompensationStructures::class);
+    $version = $structures->newVersion(SalaryStructure::query()->where('code', $structureCode)->firstOrFail(), $preparer, $from);
+    $rows = $version->components()->get()->map(fn ($c) => $c->only(['salary_component_id', 'formula_override', 'pay_nature', 'frequency', 'sort_order']))->all();
+    foreach ($addComponents as $componentId => $sort) {
+        $rows[] = ['salary_component_id' => $componentId, 'sort_order' => $sort];
+    }
+    $structures->updateDraft($version, ['components' => $rows] + $attributes, $preparer);
+    $structures->submit($version, $preparer);
+
+    return $structures->approve($version, $approver);
 }
