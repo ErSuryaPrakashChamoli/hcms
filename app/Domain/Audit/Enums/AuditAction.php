@@ -137,6 +137,23 @@ enum AuditAction: string
     case ExitCompleted = 'EXIT_COMPLETED';
     case AlumniCreated = 'ALUMNI_CREATED';
 
+    // Phase 12: HR service delivery (requests / cases, knowledge, policy acknowledgement).
+    case RequestCreated = 'REQUEST_CREATED';
+    case RequestSubmitted = 'REQUEST_SUBMITTED';
+    case RequestAssigned = 'REQUEST_ASSIGNED';
+    case RequestReassigned = 'REQUEST_REASSIGNED';
+    case RequestStatusChanged = 'REQUEST_STATUS_CHANGED';
+    case RequestEscalated = 'REQUEST_ESCALATED';
+    case RequestResolved = 'REQUEST_RESOLVED';
+    case RequestClosed = 'REQUEST_CLOSED';
+    case RequestCancelled = 'REQUEST_CANCELLED';
+    case CommentCreated = 'COMMENT_CREATED';
+    case AttachmentUploaded = 'ATTACHMENT_UPLOADED';
+    case AttachmentDownloaded = 'ATTACHMENT_DOWNLOADED';
+    case ConfidentialCaseViewed = 'CONFIDENTIAL_CASE_VIEWED';
+    case KnowledgePublished = 'KNOWLEDGE_PUBLISHED';
+    case PolicyAcknowledged = 'POLICY_ACKNOWLEDGED';
+
     public function label(): string
     {
         return ucwords(strtolower(str_replace('_', ' ', $this->value)));

@@ -50,6 +50,7 @@ use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Knowledge\Services\PolicyAcknowledgementTaskSource;
 use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\LearningCost;
 use App\Domain\Learning\Models\LearningEvidence;
@@ -90,6 +91,17 @@ use App\Domain\Performance\Models\OneOnOne;
 use App\Domain\Performance\Models\PerformanceCheckIn;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
+use App\Domain\ServiceDesk\DomainActions\AddressChange;
+use App\Domain\ServiceDesk\DomainActions\BankAccountChange;
+use App\Domain\ServiceDesk\DomainActions\CompensationProposalLink;
+use App\Domain\ServiceDesk\DomainActions\EmergencyContactChange;
+use App\Domain\ServiceDesk\DomainActions\FamilyMemberChange;
+use App\Domain\ServiceDesk\DomainActions\LeaveRequestAction;
+use App\Domain\ServiceDesk\DomainActions\LetterRequestAction;
+use App\Domain\ServiceDesk\DomainActions\ManagerChange;
+use App\Domain\ServiceDesk\DomainActions\RegularisationAction;
+use App\Domain\ServiceDesk\DomainActions\StatutoryIdentityChange;
+use App\Domain\ServiceDesk\Services\ServiceDeskTaskSource;
 use App\Domain\Skills\Models\SkillAssessment;
 use App\Domain\Succession\Models\ReadinessAssessment;
 use App\Domain\Succession\Models\SuccessionPlan;
@@ -98,6 +110,7 @@ use App\Domain\Talent\Models\TalentAssessment;
 use App\Domain\Talent\Models\TalentPoolMembership;
 use App\Domain\Talent\Models\TalentProfile;
 use App\Domain\Talent\Models\TalentReviewItem;
+use App\Domain\Workflow\Services\WorkflowTaskSource;
 use App\Domain\Workforce\Models\WorkforceBudget;
 use App\Domain\Workforce\Models\WorkforcePlanLine;
 use App\Domain\Workforce\Models\WorkforcePlanVersion;
@@ -313,9 +326,15 @@ return [
             'alumni.portal' => 'Use the alumni portal (own profile, documents, requests)',
         ],
         'servicedesk' => [
-            'servicedesk.view' => 'View and work every HR service desk ticket (agent)',
-            'servicedesk.manage' => 'Configure ticket categories, SLAs and assignment',
+            'servicedesk.view' => 'View HR service desk cases in your organisation scope (read only)',
+            'servicedesk.agent' => 'Work HR service desk cases in your organisation scope: acknowledge, assign, respond, resolve (Phase 12)',
+            'servicedesk.manage' => 'Configure ticket categories, SLA policies, assignment and draft service catalogue versions',
+            'servicedesk.catalogue_approve' => 'Approve service catalogue versions — never one you prepared (Phase 12)',
             'servicedesk.request' => 'Raise and follow own tickets',
+            'servicedesk.team' => 'See the status of HR requests raised by the people you manage — never sensitive or confidential cases (Phase 12)',
+            'servicedesk.confidential' => 'Work restricted (confidential / employee-relations) cases you are assigned or explicitly granted (Phase 12)',
+            'servicedesk.analytics' => 'View HR service analytics (aggregates, small groups suppressed) (Phase 12)',
+            'servicedesk.bulk' => 'Run bulk case operations (each case still authorised individually) (Phase 12)',
         ],
         'grievance' => [
             'grievance.view' => 'View grievance cases you are assigned to or granted access to',
@@ -324,7 +343,8 @@ return [
         ],
         'kb' => [
             'kb.view' => 'Read published knowledge base articles',
-            'kb.manage' => 'Write and publish knowledge base articles',
+            'kb.manage' => 'Write knowledge base articles, submit them for review and publish approved ones',
+            'kb.review' => 'Review and approve knowledge base articles — never your own (Phase 12)',
         ],
         'communication' => [
             'communication.view' => 'Read announcements',
@@ -499,7 +519,7 @@ return [
         'manager' => [
             'name' => 'Manager',
             'description' => 'People manager.',
-            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'workforce.team', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
+            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'workforce.team', 'asset.own', 'servicedesk.request', 'servicedesk.team', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
         ],
         'employee' => [
             'name' => 'Employee',
@@ -900,6 +920,10 @@ return [
             'learning.assigned', 'learning.due_soon', 'learning.overdue', 'learning.completed', 'learning.failed', 'learning.certificate_expiring', 'learning.session.registered',
             'asset.assigned', 'asset.returned', 'asset.transferred', 'asset.repair', 'asset.disposed', 'asset.lost',
             'servicedesk.ticket.created', 'servicedesk.ticket.assigned', 'servicedesk.ticket.commented', 'servicedesk.ticket.resolved', 'servicedesk.ticket.closed', 'servicedesk.ticket.escalated', 'servicedesk.ticket.reopened',
+            // Phase 12 service requests (references and statuses only — never form data, comments or resolutions).
+            'servicedesk.ticket.acknowledged', 'servicedesk.ticket.reassigned', 'servicedesk.ticket.waiting_for_employee', 'servicedesk.ticket.cancelled', 'servicedesk.ticket.approval_required',
+            'servicedesk.ticket.ready_to_execute', 'servicedesk.ticket.sla_warning', 'servicedesk.reminder.waiting_for_employee', 'servicedesk.reminder.waiting_for_hr',
+            'kb.article.review_requested', 'kb.policy.acknowledged', 'kb.reminder.acknowledgement',
             'grievance.raised', 'grievance.assigned', 'grievance.updated', 'grievance.resolved', 'grievance.escalated',
             'kb.article.published', 'communication.published',
             'exit.initiated', 'exit.withdrawn', 'exit.clearance.pending', 'exit.clearance.cleared', 'exit.clearance.blocked', 'exit.settlement.calculated', 'exit.settlement.approved', 'exit.settlement.paid', 'exit.interview.submitted', 'exit.completed', 'exit.alumni_created',
@@ -956,6 +980,8 @@ return [
             'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'learning.read' => 'Read the learning catalogue, paths, programs, enrolments, assignments, completions, certificates (no codes or documents), skills, finalized assessment levels (no comments), development plan metadata and suppressed analytics', 'learning.write' => 'Enrol employees and record learning progress (idempotent)', 'learning.costs' => 'Include learning costs in learning API responses', 'career.read' => 'Read career architecture, career profiles (shared fields only), goals, skill gaps and mobility interests', 'talent.read' => 'Read talent pools and memberships, talent reviews (decisions only) and suppressed talent analytics — never confidential notes or assessments', 'succession.read' => 'Read critical positions, succession plans, successors and readiness — never confidential notes or deliberations', 'positions.read' => 'Read positions, their effective-dated versions, occupancy (employee codes) and vacancies', 'workforce.read' => 'Read workforce plans, scenarios, headcount, vacancies, snapshots and analytics (no costs)', 'workforce.costs' => 'Include planned, budget and actual workforce costs in workforce API responses', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
             // Phase 11: compensation definitions; employee amounts need the second scope (audited reads).
+            // Phase 12: the HR service desk read API — never internal or restricted notes, confidential cases, sensitive form fields or attachments.
+            'servicedesk.read' => 'Read the HR service catalogue, service requests (status and employee-visible fields only), employee-visible comments, published knowledge and request tasks',
             'compensation.read' => 'Read compensation structures, grades, pay ranges and cycles (read-only)', 'compensation.sensitive' => 'With compensation.read: read employee compensation and history by employee code (audited)',
         ],
     ],
@@ -1055,6 +1081,8 @@ return [
             'employee.salary_changed', 'employee.transferred', 'employee.promoted', 'employee.manager_changed', 'employee.rehired', 'leave.requested', 'leave.approved', 'leave.rejected', 'leave.cancelled', 'attendance.regularisation_requested',
             'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'performance.appraisal.finalized', 'performance.cycle.published', 'performance.goal.created', 'performance.goal.progress_updated', 'performance.review.submitted', 'performance.check_in.submitted', 'performance.feedback.received', 'learning.completed', 'learning.enrolment.requested', 'learning.enrolment.approved', 'learning.started', 'learning.certificate.issued', 'learning.certificate_expired', 'skill.assessed', 'development.plan.created', 'development.plan.completed',
             'asset.assigned', 'asset.returned', 'servicedesk.ticket.created', 'servicedesk.ticket.resolved', 'grievance.raised', 'exit.initiated', 'exit.completed',
+            // Phase 12: request lifecycle facts (number, service code, status, priority — never form data, comments or resolutions).
+            'servicedesk.ticket.assigned', 'servicedesk.ticket.closed', 'servicedesk.ticket.cancelled', 'servicedesk.ticket.escalated', 'kb.article.published', 'kb.policy.acknowledged',
             'letter.issued', 'workflow.completed', 'document.expiring',
             'compliance.establishment_verified', 'compliance.return_reconciled', 'compliance.return_approved', 'compliance.return_exported', 'compliance.return_filed',
             // Phase 9: architecture-level events only. Candidacy, pool membership, readiness and talent
@@ -1203,8 +1231,71 @@ return [
     */
     'servicedesk' => [
         'priorities' => ['low' => 'Low', 'normal' => 'Normal', 'high' => 'High', 'urgent' => 'Urgent'],
-        'statuses' => ['new' => 'New', 'open' => 'Open', 'pending' => 'Waiting on employee', 'resolved' => 'Resolved', 'closed' => 'Closed'],
+        /*
+        | Phase 12 request / case lifecycle. A status moves only along `transitions` (RequestLifecycle).
+        | Every move is authorised, locked, audited, timestamped and attributed, and some need a reason.
+        | `awaiting_approval` extends the suggested foundation, so that a workflow approval wait is not
+        | counted as service time.
+        */
+        'statuses' => [
+            'draft' => 'Draft', 'submitted' => 'Submitted', 'acknowledged' => 'Acknowledged', 'assigned' => 'Assigned', 'in_progress' => 'In progress',
+            'awaiting_approval' => 'Awaiting approval', 'waiting_employee' => 'Waiting for employee', 'waiting_hr' => 'Waiting for HR',
+            'resolved' => 'Resolved', 'closed' => 'Closed', 'cancelled' => 'Cancelled',
+        ],
+        'transitions' => [
+            'draft' => ['submitted', 'cancelled'],
+            'submitted' => ['acknowledged', 'assigned', 'in_progress', 'awaiting_approval', 'waiting_employee', 'resolved', 'cancelled'],
+            'acknowledged' => ['submitted', 'assigned', 'in_progress', 'awaiting_approval', 'waiting_employee', 'resolved', 'cancelled'],
+            'assigned' => ['acknowledged', 'submitted', 'in_progress', 'awaiting_approval', 'waiting_employee', 'waiting_hr', 'resolved', 'cancelled'],
+            'in_progress' => ['acknowledged', 'submitted', 'awaiting_approval', 'waiting_employee', 'waiting_hr', 'resolved', 'cancelled'],
+            'awaiting_approval' => ['in_progress', 'resolved', 'cancelled'],
+            'waiting_employee' => ['in_progress', 'waiting_hr', 'resolved', 'cancelled'],
+            'waiting_hr' => ['in_progress', 'waiting_employee', 'resolved', 'cancelled'],
+            'resolved' => ['closed', 'in_progress'],
+            'closed' => ['in_progress'],
+            'cancelled' => [],
+        ],
+        // Transitions that need a reason (cancel, reopen); resolving needs a resolution.
+        'reason_required' => ['cancelled', 'reopen'],
+        // Statuses in which the SLA clock stops (configurable; an SLA policy may override).
+        'sla_pause_statuses' => ['waiting_employee', 'awaiting_approval'],
+        /*
+        | Default service hours for business-hours SLAs (an SLA policy may override). Holidays come from
+        | the employee's attendance holiday calendar, and the timezone from their work location. There
+        | is no second holiday calendar.
+        */
+        'business_hours' => ['days' => [1, 2, 3, 4, 5], 'start' => '09:00', 'end' => '18:00'],
+        'confidentiality' => ['standard' => 'Standard', 'sensitive' => 'Sensitive (protected fields)', 'restricted' => 'Restricted (explicit access only)'],
+        'comment_visibilities' => ['employee' => 'Visible to the employee', 'internal' => 'Internal HR note', 'restricted' => 'Restricted (people with explicit case access)'],
+        'sources' => ['web' => 'Employee self-service', 'hr' => 'Raised by HR', 'manager' => 'Raised by a manager', 'api' => 'API', 'system' => 'System'],
+        'field_classes' => ['standard' => 'Standard', 'sensitive' => 'Sensitive', 'restricted' => 'Restricted'],
+        'attachment_rules' => ['none' => 'No attachments', 'optional' => 'Optional', 'required' => 'Required'],
+        'domain_action_statuses' => ['awaiting_approval' => 'Awaiting approval', 'ready' => 'Ready to execute', 'executed' => 'Executed', 'rejected' => 'Not approved', 'refused' => 'Approval refused (separation of duties)', 'cancelled' => 'Cancelled'],
+        /*
+        | Domain actions a service may hand off to. Service Delivery never writes another module's
+        | tables: each handler calls the owning domain's action / contract (see
+        | docs/architecture/employee-experience.md).
+        */
+        'domain_actions' => [
+            'leave.request' => LeaveRequestAction::class,
+            'attendance.regularisation' => RegularisationAction::class,
+            'letter.request' => LetterRequestAction::class,
+            'compensation.proposal' => CompensationProposalLink::class,
+            'profile.bank_account' => BankAccountChange::class,
+            'profile.statutory_identity' => StatutoryIdentityChange::class,
+            'profile.address' => AddressChange::class,
+            'profile.emergency_contact' => EmergencyContactChange::class,
+            'profile.family_member' => FamilyMemberChange::class,
+            'employment.manager_change' => ManagerChange::class,
+        ],
         'auto_close_days' => 5,
+        // Reminders (idempotent through service_desk_reminder_logs; a reminder never triggers another).
+        'waiting_employee_reminder_days' => 3,
+        'waiting_employee_max_reminders' => 3,
+        'waiting_hr_reminder_hours' => 24,
+        'sla_risk_hours' => 8,
+        'policy_acknowledgement_reminder_days' => 7,
+        'analytics_min_group' => (int) env('PEOPLEOS_SERVICEDESK_MIN_GROUP', 5),
         'defaults' => [
             ['code' => 'LETTER', 'name' => 'Letters & certificates', 'description' => 'Experience, salary, address, NOC and other letters', 'sla_hours' => 72],
             ['code' => 'PAYROLL', 'name' => 'Payroll & tax query', 'sla_hours' => 48],
@@ -1213,6 +1304,32 @@ return [
             ['code' => 'IT', 'name' => 'IT & assets', 'sla_hours' => 24],
             ['code' => 'POLICY', 'name' => 'Policy question', 'sla_hours' => 48],
             ['code' => 'OTHER', 'name' => 'Something else', 'sla_hours' => 72],
+        ],
+        // Starter SLA policy (business hours; HR may replace it). Examples only — configurable, not code.
+        'sla_defaults' => [
+            'code' => 'STANDARD', 'name' => 'Standard HR service', 'calendar' => 'business', 'warn_percent' => 75,
+            'targets' => [
+                'low' => ['first_response_hours' => 8, 'resolution_hours' => 27],
+                'normal' => ['first_response_hours' => 4, 'resolution_hours' => 18],
+                'high' => ['first_response_hours' => 2, 'resolution_hours' => 9],
+                'urgent' => ['first_response_hours' => 1, 'resolution_hours' => 4],
+            ],
+        ],
+        // Starter catalogue: seeded as DRAFT service versions; HR completes, submits and approves them.
+        'service_defaults' => [
+            ['code' => 'LEAVE_QUERY', 'name' => 'Leave query', 'category' => 'ATTENDANCE'],
+            ['code' => 'ATTENDANCE_CORRECTION', 'name' => 'Attendance correction', 'category' => 'ATTENDANCE', 'domain_action' => 'attendance.regularisation'],
+            ['code' => 'SALARY_CERTIFICATE', 'name' => 'Salary certificate', 'category' => 'LETTER', 'domain_action' => 'letter.request'],
+            ['code' => 'EMPLOYMENT_CERTIFICATE', 'name' => 'Employment certificate', 'category' => 'LETTER', 'domain_action' => 'letter.request'],
+            ['code' => 'ADDRESS_CHANGE', 'name' => 'Address change', 'category' => 'PROFILE', 'domain_action' => 'profile.address', 'confidentiality' => 'sensitive'],
+            ['code' => 'BANK_ACCOUNT_CHANGE', 'name' => 'Bank account change', 'category' => 'PROFILE', 'domain_action' => 'profile.bank_account', 'confidentiality' => 'sensitive', 'approval_required' => true],
+            ['code' => 'PAN_UPDATE', 'name' => 'PAN / UAN update', 'category' => 'PROFILE', 'domain_action' => 'profile.statutory_identity', 'confidentiality' => 'sensitive', 'approval_required' => true],
+            ['code' => 'EMERGENCY_CONTACT_UPDATE', 'name' => 'Emergency contact update', 'category' => 'PROFILE', 'domain_action' => 'profile.emergency_contact', 'confidentiality' => 'sensitive'],
+            ['code' => 'PAYROLL_QUERY', 'name' => 'Payroll query', 'category' => 'PAYROLL'],
+            ['code' => 'COMPENSATION_QUERY', 'name' => 'Compensation query', 'category' => 'PAYROLL', 'confidentiality' => 'sensitive'],
+            ['code' => 'HR_POLICY_QUERY', 'name' => 'HR policy query', 'category' => 'POLICY'],
+            ['code' => 'EXPERIENCE_LETTER', 'name' => 'Experience letter request', 'category' => 'LETTER', 'domain_action' => 'letter.request'],
+            ['code' => 'MANAGER_CHANGE', 'name' => 'Manager change request', 'category' => 'PROFILE', 'domain_action' => 'employment.manager_change', 'approval_required' => true, 'availability' => ['employee' => false, 'manager' => true, 'hr' => true]],
         ],
     ],
     'grievance' => [
@@ -1227,6 +1344,18 @@ return [
             ['code' => 'MANAGER', 'name' => 'Manager relationship', 'is_confidential' => true, 'allow_anonymous' => true, 'sla_days' => 30],
             ['code' => 'SAFETY', 'name' => 'Health & safety', 'is_confidential' => false, 'allow_anonymous' => true, 'sla_days' => 14],
             ['code' => 'OTHER', 'name' => 'Other', 'is_confidential' => true, 'allow_anonymous' => true, 'sla_days' => 30],
+        ],
+    ],
+    /*
+    | Phase 12 employee experience: the domains that contribute to "My tasks" (each reads its own
+    | records through its own authorisation; the experience layer stores nothing). Surveys plug in
+    | through the SurveyTaskProvider binding in Phase 13.
+    */
+    'experience' => [
+        'task_sources' => [
+            WorkflowTaskSource::class,
+            ServiceDeskTaskSource::class,
+            PolicyAcknowledgementTaskSource::class,
         ],
     ],
     'kb' => [
