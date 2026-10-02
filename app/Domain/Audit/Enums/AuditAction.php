@@ -154,6 +154,32 @@ enum AuditAction: string
     case KnowledgePublished = 'KNOWLEDGE_PUBLISHED';
     case PolicyAcknowledged = 'POLICY_ACKNOWLEDGED';
 
+    // Phase 13: engagement and communication. Anonymous survey responses and anonymous feedback are
+    // recorded without any actor, IP, user agent or request id (AuditRecorder::record(anonymous: true)).
+    case SurveyCreated = 'SURVEY_CREATED';
+    case SurveyVersionCreated = 'SURVEY_VERSION_CREATED';
+    case SurveyApproved = 'SURVEY_APPROVED';
+    case SurveyPublished = 'SURVEY_PUBLISHED';
+    case SurveyOpened = 'SURVEY_OPENED';
+    case SurveyClosed = 'SURVEY_CLOSED';
+    case SurveyArchived = 'SURVEY_ARCHIVED';
+    case SurveyInvitationSent = 'SURVEY_INVITATION_SENT';
+    case SurveyResponseSubmitted = 'SURVEY_RESPONSE_SUBMITTED';
+    case ConfidentialResponseIdentified = 'CONFIDENTIAL_RESPONSE_IDENTIFIED';
+    case FeedbackSubmitted = 'FEEDBACK_SUBMITTED';
+    case CampaignCreated = 'CAMPAIGN_CREATED';
+    case CampaignApproved = 'CAMPAIGN_APPROVED';
+    case CampaignPublished = 'CAMPAIGN_PUBLISHED';
+    case CampaignScheduled = 'CAMPAIGN_SCHEDULED';
+    case CampaignCancelled = 'CAMPAIGN_CANCELLED';
+    case AnnouncementCreated = 'ANNOUNCEMENT_CREATED';
+    case AnnouncementApproved = 'ANNOUNCEMENT_APPROVED';
+    case AnnouncementPublished = 'ANNOUNCEMENT_PUBLISHED';
+    case AnnouncementAcknowledged = 'ANNOUNCEMENT_ACKNOWLEDGED';
+    case AudienceCreated = 'AUDIENCE_CREATED';
+    case AudienceUsed = 'AUDIENCE_USED';
+    case CommunicationPreferenceChanged = 'COMMUNICATION_PREFERENCE_CHANGED';
+
     public function label(): string
     {
         return ucwords(strtolower(str_replace('_', ' ', $this->value)));

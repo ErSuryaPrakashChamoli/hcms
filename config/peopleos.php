@@ -348,7 +348,20 @@ return [
         ],
         'communication' => [
             'communication.view' => 'Read announcements',
-            'communication.manage' => 'Publish announcements, circulars and newsletters',
+            'communication.manage' => 'Prepare announcements, circulars and newsletters for the people in your scope, and publish approved ones',
+            'communication.approve' => 'Approve announcements — never one you prepared (Phase 13)',
+        ],
+        'engagement' => [
+            'engagement.view' => 'View surveys, audiences and campaigns (configuration only — never responses)',
+            'engagement.manage' => 'Prepare surveys, audiences and campaigns for the people in your scope',
+            'engagement.approve' => 'Approve surveys and campaigns — never one you prepared',
+            'engagement.analytics' => 'See survey results for surveys within your scope (aggregates only; small groups suppressed)',
+            'engagement.comments' => 'Read free-text survey comments above the privacy threshold (never attributed)',
+            'engagement.responses' => 'View individual responses to IDENTIFIED surveys within your scope (never confidential or anonymous)',
+            'engagement.confidential_identity' => 'Identify the author of one confidential response or feedback item, with a reason (audited). Anonymous responses can never be identified',
+            'engagement.team_results' => 'Managers: see your team\'s aggregate results where the survey allows it',
+            'engagement.participate' => 'Take surveys and give feedback',
+            'engagement.feedback' => 'Handle employee feedback and refer identified feedback to the service desk',
         ],
         'learning' => [
             'learning.view' => 'View courses, paths, sessions and every enrolment',
@@ -484,12 +497,12 @@ return [
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
             'description' => 'Operates HR processes.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.view', 'engagement.manage', 'engagement.approve', 'engagement.analytics', 'engagement.comments', 'engagement.responses', 'engagement.participate', 'engagement.feedback', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view'],
         ],
         'hr-executive' => [
             'name' => 'HR Executive',
@@ -519,12 +532,12 @@ return [
         'manager' => [
             'name' => 'Manager',
             'description' => 'People manager.',
-            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'workforce.team', 'asset.own', 'servicedesk.request', 'servicedesk.team', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
+            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'workforce.team', 'asset.own', 'servicedesk.request', 'servicedesk.team', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'engagement.team_results', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
         ],
         'employee' => [
             'name' => 'Employee',
             'description' => 'Standard employee access.',
-            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'document.own', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
+            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'document.own', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'exit.resign', 'ai.use'],
         ],
         'executive' => [
             'name' => 'Executive',
@@ -539,7 +552,7 @@ return [
         'auditor' => [
             'name' => 'Auditor',
             'description' => 'Read-only access with full audit visibility.',
-            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compensation.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'workforce.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
+            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compensation.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'workforce.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'engagement.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
         ],
     ],
 
@@ -924,6 +937,8 @@ return [
             'servicedesk.ticket.acknowledged', 'servicedesk.ticket.reassigned', 'servicedesk.ticket.waiting_for_employee', 'servicedesk.ticket.cancelled', 'servicedesk.ticket.approval_required',
             'servicedesk.ticket.ready_to_execute', 'servicedesk.ticket.sla_warning', 'servicedesk.reminder.waiting_for_employee', 'servicedesk.reminder.waiting_for_hr',
             'kb.article.review_requested', 'kb.policy.acknowledged', 'kb.reminder.acknowledgement',
+            // Phase 13 engagement and communication (identity-free for anonymous surveys; never answers or message bodies).
+            'survey.published', 'survey.opened', 'survey.closed', 'survey.review_requested', 'campaign.launched', 'communication.review_requested', 'communication.published',
             'grievance.raised', 'grievance.assigned', 'grievance.updated', 'grievance.resolved', 'grievance.escalated',
             'kb.article.published', 'communication.published',
             'exit.initiated', 'exit.withdrawn', 'exit.clearance.pending', 'exit.clearance.cleared', 'exit.clearance.blocked', 'exit.settlement.calculated', 'exit.settlement.approved', 'exit.settlement.paid', 'exit.interview.submitted', 'exit.completed', 'exit.alumni_created',
@@ -980,6 +995,9 @@ return [
             'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'learning.read' => 'Read the learning catalogue, paths, programs, enrolments, assignments, completions, certificates (no codes or documents), skills, finalized assessment levels (no comments), development plan metadata and suppressed analytics', 'learning.write' => 'Enrol employees and record learning progress (idempotent)', 'learning.costs' => 'Include learning costs in learning API responses', 'career.read' => 'Read career architecture, career profiles (shared fields only), goals, skill gaps and mobility interests', 'talent.read' => 'Read talent pools and memberships, talent reviews (decisions only) and suppressed talent analytics — never confidential notes or assessments', 'succession.read' => 'Read critical positions, succession plans, successors and readiness — never confidential notes or deliberations', 'positions.read' => 'Read positions, their effective-dated versions, occupancy (employee codes) and vacancies', 'workforce.read' => 'Read workforce plans, scenarios, headcount, vacancies, snapshots and analytics (no costs)', 'workforce.costs' => 'Include planned, budget and actual workforce costs in workforce API responses', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
             // Phase 11: compensation definitions; employee amounts need the second scope (audited reads).
+            // Phase 13: engagement (survey definitions, own participation for identified surveys, suppressed aggregates) and communications (published content, preferences).
+            'engagement.read' => 'Read survey definitions, an employee\'s surveys, aggregate participation and overall privacy-suppressed results — never responses, comments, respondents or anyone\'s participation in anonymous or confidential surveys',
+            'communications.read' => 'Read published communications with aggregate delivery counts and an employee\'s communication preferences — never audience criteria, recipient lists or delivery records',
             // Phase 12: the HR service desk read API — never internal or restricted notes, confidential cases, sensitive form fields or attachments.
             'servicedesk.read' => 'Read the HR service catalogue, service requests (status and employee-visible fields only), employee-visible comments, published knowledge and request tasks',
             'compensation.read' => 'Read compensation structures, grades, pay ranges and cycles (read-only)', 'compensation.sensitive' => 'With compensation.read: read employee compensation and history by employee code (audited)',
@@ -1083,6 +1101,8 @@ return [
             'asset.assigned', 'asset.returned', 'servicedesk.ticket.created', 'servicedesk.ticket.resolved', 'grievance.raised', 'exit.initiated', 'exit.completed',
             // Phase 12: request lifecycle facts (number, service code, status, priority — never form data, comments or resolutions).
             'servicedesk.ticket.assigned', 'servicedesk.ticket.closed', 'servicedesk.ticket.cancelled', 'servicedesk.ticket.escalated', 'kb.article.published', 'kb.policy.acknowledged',
+            // Phase 13: lifecycle facts only (codes, versions, counts) — never respondents, answers, audience members or message bodies.
+            'survey.published', 'survey.opened', 'survey.closed', 'campaign.launched', 'communication.published',
             'letter.issued', 'workflow.completed', 'document.expiring',
             'compliance.establishment_verified', 'compliance.return_reconciled', 'compliance.return_approved', 'compliance.return_exported', 'compliance.return_filed',
             // Phase 9: architecture-level events only. Candidacy, pool membership, readiness and talent
@@ -1363,6 +1383,47 @@ return [
     ],
     'communication' => [
         'types' => ['announcement' => 'Announcement', 'circular' => 'Circular', 'newsletter' => 'Newsletter', 'policy' => 'Policy publication', 'instruction' => 'Instruction'],
+        /*
+        | Phase 13. Communication is an intentional organisational message, delivered through the
+        | existing Notifier (no second notification engine). Mandatory types cannot be switched off in
+        | preferences; transactional notifications are never subject to these preferences at all.
+        */
+        'mandatory_types' => ['policy', 'instruction'],
+        'priorities' => ['normal' => 'Normal', 'high' => 'High', 'critical' => 'Critical'],
+        'statuses' => ['draft' => 'Draft', 'in_review' => 'In review', 'approved' => 'Approved', 'scheduled' => 'Scheduled', 'published' => 'Published', 'archived' => 'Archived', 'cancelled' => 'Cancelled'],
+        // Real channels only: SMS / WhatsApp / push are log stubs in notifications.channels and are not offered.
+        'channels' => ['in_app' => 'In-app', 'email' => 'Email'],
+        'delivery_batch' => 200,
+        'recipient_statuses' => ['pending' => 'Pending', 'queued' => 'Queued', 'sent' => 'Sent', 'failed' => 'Failed', 'skipped' => 'Skipped (preference)'],
+    ],
+
+    /*
+    | Phase 13 engagement: surveys, feedback, campaigns. Descriptive only — no employee scores, no
+    | sentiment or attrition inference, no AI. Anonymity is architectural (docs/architecture/
+    | engagement-communication.md §3).
+    */
+    'engagement' => [
+        'survey_types' => ['engagement' => 'Engagement', 'pulse' => 'Pulse', 'feedback' => 'Feedback', 'culture' => 'Culture', 'onboarding' => 'Onboarding feedback', 'exit' => 'Exit feedback', 'event' => 'Event feedback', 'custom' => 'Custom'],
+        'categories' => ['engagement' => 'Engagement', 'wellbeing' => 'Wellbeing', 'culture' => 'Culture', 'operations' => 'Operations', 'events' => 'Events', 'other' => 'Other'],
+        'question_types' => ['single_choice' => 'Single choice', 'multiple_choice' => 'Multiple choice', 'rating' => 'Rating', 'likert' => 'Agreement scale (5 points)', 'yes_no' => 'Yes / No', 'text' => 'Free text', 'number' => 'Number', 'date' => 'Date'],
+        'likert_options' => ['1' => 'Strongly disagree', '2' => 'Disagree', '3' => 'Neutral', '4' => 'Agree', '5' => 'Strongly agree'],
+        'anonymity_modes' => ['anonymous' => 'Anonymous — nobody can link answers to a person', 'confidential' => 'Confidential — identity kept apart, revealed only by a reasoned, audited request', 'identified' => 'Identified'],
+        'response_rules' => ['once' => 'One response', 'multiple' => 'Several responses (identified only)', 'per_period' => 'One response per period (identified only)'],
+        'response_periods' => ['week' => 'Week', 'month' => 'Month', 'quarter' => 'Quarter'],
+        'statuses' => ['draft' => 'Draft', 'in_review' => 'In review', 'approved' => 'Approved', 'scheduled' => 'Scheduled', 'open' => 'Open', 'closed' => 'Closed', 'archived' => 'Archived'],
+        'breakdown_dimensions' => ['company' => 'Company', 'location' => 'Location', 'department' => 'Department', 'business_unit' => 'Business unit', 'grade' => 'Grade', 'manager' => 'Line manager'],
+        'participation_statuses' => ['invited' => 'Invited', 'opened' => 'Opened', 'submitted' => 'Submitted', 'expired' => 'Expired'],
+        // Small-group privacy (the PeopleOS principle); free text needs more respondents.
+        'analytics_min_group' => (int) env('PEOPLEOS_ENGAGEMENT_MIN_GROUP', 5),
+        'text_min_group' => (int) env('PEOPLEOS_ENGAGEMENT_TEXT_MIN_GROUP', 10),
+        // Default reminder policy (a version may override): reminders N days after opening, one closing reminder, then stop.
+        'reminders' => ['after_days' => [3], 'closing_days_before' => 2, 'max' => 2],
+        'feedback_modes' => ['identified' => 'Identified', 'confidential' => 'Confidential', 'anonymous' => 'Anonymous'],
+        'feedback_categories' => ['workplace' => 'Workplace', 'process' => 'Processes & tools', 'wellbeing' => 'Wellbeing', 'communication' => 'Communication', 'idea' => 'Idea / suggestion', 'other' => 'Other'],
+        'feedback_statuses' => ['new' => 'New', 'in_review' => 'In review', 'referred' => 'Referred to HR service desk', 'closed' => 'Closed'],
+        'campaign_statuses' => ['draft' => 'Draft', 'in_review' => 'In review', 'approved' => 'Approved', 'scheduled' => 'Scheduled', 'active' => 'Active', 'completed' => 'Completed', 'cancelled' => 'Cancelled'],
+        // Optional approval workflows (existing engine); empty = maker-checker by a second person.
+        'approval_workflows' => ['survey' => null, 'announcement' => null, 'campaign' => null],
     ],
 
     /*
