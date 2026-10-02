@@ -127,6 +127,14 @@ it('audits every domain model except the documented append-only or derived table
         // Phase 12: request status history is append-only (each move is audited on the ticket);
         // reminder logs are derived de-duplication rows.
         'ServiceDesk\Models\TicketTransition', 'ServiceDesk\Models\ServiceDeskReminderLog',
+        // Phase 13: the anonymity boundary. Automatic auditing stamps the authenticated user and the exact
+        // time, which would link a respondent to their answers. Responses, answers, participations,
+        // confidential identities and feedback are therefore audited explicitly (anonymous mode, no actor
+        // and no response id) by their services. Recipients are derived delivery rows (the snapshot is
+        // audited as AUDIENCE_USED); reminder logs are derived de-duplication rows.
+        'Engagement\Models\SurveyResponse', 'Engagement\Models\SurveyAnswer', 'Engagement\Models\SurveyParticipation',
+        'Engagement\Models\EngagementIdentity', 'Engagement\Models\EmployeeFeedback', 'Engagement\Models\EngagementReminderLog',
+        'Communication\Models\CommunicationRecipient',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

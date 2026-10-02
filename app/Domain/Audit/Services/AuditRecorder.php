@@ -52,7 +52,6 @@ final class AuditRecorder
     ): AuditEvent {
         $tenantId ??= ($entity?->getAttributes()['tenant_id'] ?? null) ?? $this->tenants->id();
         $actor = $anonymous ? null : ($actor ?? $this->resolveActor());
-        $occurredAt = Carbon::now();
 
         $normalisedChanges = array_values(array_map(fn (array $change) => [
             'field' => $change['field'],
@@ -62,7 +61,6 @@ final class AuditRecorder
         ], $changes));
 
         $attributes = [
-            'id' => (string) Str::ulid(),
             'tenant_id' => $tenantId,
             'actor_id' => $actor?->getKey(),
             'actor_name' => $actor?->name,
@@ -72,7 +70,6 @@ final class AuditRecorder
             'entity_type' => $entity ? $entity::class : null,
             'entity_id' => $entity ? (string) $entity->getKey() : null,
             'entity_label' => $entityLabel ?? $this->labelFor($entity),
-            'occurred_at' => $occurredAt->format('Y-m-d H:i:s.u'),
             'ip_address' => $anonymous ? null : $this->request->ip(),
             'user_agent' => $anonymous ? null : Str::limit((string) $this->request->userAgent(), 500, ''),
             'source' => $anonymous ? 'anonymous' : $this->resolveSource(),
@@ -86,8 +83,17 @@ final class AuditRecorder
 
         // Writes cross tenant boundaries by design (platform events have no tenant), so the
         // tenant scope is bypassed here and only here.
-        return $this->tenants->bypass(fn () => DB::transaction(function () use ($attributes, $normalisedChanges, $occurredAt) {
-            $previousHash = AuditEvent::query()
+        return $this->tenants->bypass(fn () => DB::transaction(function () use ($attributes, $normalisedChanges) {
+            // Phase 13: chain writers queue on their chain's row in audit_chain_locks first.
+            // - Before, they met on the "last audit row FOR UPDATE" read. Its next-key / gap locks let two
+            //   writers deadlock on MySQL (one inserting into the gap the other held while waiting).
+            // - The tenants row is no alternative: every insert's foreign-key check holds a shared lock on
+            //   it.
+            // - No foreign key points at audit_chain_locks, so only chain writers ever lock its rows.
+            // The serialisation point is unchanged. The last-hash read below stays a locking (current)
+            // read, so it never reads from an older snapshot.
+            $this->lockChain($attributes['tenant_id']);
+            $previous = AuditEvent::query()
                 ->when(
                     $attributes['tenant_id'] === null,
                     fn ($q) => $q->whereNull('tenant_id'),
@@ -95,8 +101,16 @@ final class AuditRecorder
                 )
                 ->orderByDesc('id')
                 ->lockForUpdate()
-                ->value('hash');
+                ->first(['id', 'hash']);
+            $previousHash = $previous?->hash;
 
+            // Phase 13: the id (a time-ordered ULID) and the time are taken here, inside the chain lock.
+            // Taken before it, a writer that waited for the lock could carry an earlier id than the event
+            // it links to, and the chain (verified in id order) would read as broken under concurrent
+            // writes. The id is also kept strictly after the previous event's id.
+            $occurredAt = Carbon::now();
+            $attributes['id'] = $this->nextId($previous?->id);
+            $attributes['occurred_at'] = $occurredAt->format('Y-m-d H:i:s.u');
             $attributes['previous_hash'] = $previousHash;
             $attributes['hash'] = AuditEvent::computeHash(
                 $previousHash,
@@ -113,6 +127,29 @@ final class AuditRecorder
 
             return $event;
         }));
+    }
+
+    /** A ULID that sorts after the chain's previous event (a new millisecond is awaited in the rare same-millisecond case). */
+    private function nextId(?string $previousId): string
+    {
+        $id = (string) Str::ulid();
+        for ($try = 0; $previousId !== null && strcmp($id, $previousId) <= 0 && $try < 50; $try++) {
+            usleep(1000);
+            $id = (string) Str::ulid();
+        }
+
+        return $id;
+    }
+
+    /** One row per chain ("tenant:{id}" or "platform"); created on a chain's first event. */
+    private function lockChain(?int $tenantId): void
+    {
+        $chain = $tenantId === null ? 'platform' : 'tenant:'.$tenantId;
+        $lock = fn () => DB::table('audit_chain_locks')->where('chain', $chain)->lockForUpdate()->exists();
+        if (! $lock()) {
+            DB::table('audit_chain_locks')->insertOrIgnore(['chain' => $chain]);
+            $lock();
+        }
     }
 
     /**
