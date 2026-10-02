@@ -5,11 +5,13 @@ namespace App\Domain\Enterprise\Services;
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Career\Events\CareerEvent;
+use App\Domain\Communication\Events\CommunicationEvent;
 use App\Domain\Compensation\Events\CompensationEvent;
 use App\Domain\Compliance\Events\ComplianceEvent;
 use App\Domain\Development\Events\DevelopmentEvent;
 use App\Domain\Documents\Events\DocumentExpiring;
 use App\Domain\Employment\Events\EmploymentEvent;
+use App\Domain\Engagement\Events\EngagementEvent;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Learning\Events\LearningEvent;
 use App\Domain\Leave\Events\LeaveEvent;
@@ -41,6 +43,8 @@ final class WebhookEventBridge
             WorkforceEvent::class => 'onNamed',
             // Phase 11: allow-listed compensation lifecycle facts only (no amounts, reasons or notes).
             CompensationEvent::class => 'onNamed',
+            // Phase 13: allow-listed survey / campaign / communication lifecycle facts (never responses, feedback or recipients).
+            EngagementEvent::class => 'onNamed', CommunicationEvent::class => 'onNamed',
             WorkflowCompleted::class => 'onWorkflowCompleted', DocumentExpiring::class => 'onDocumentExpiring',
         ];
     }

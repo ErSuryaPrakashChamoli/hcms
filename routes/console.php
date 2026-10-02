@@ -24,6 +24,9 @@ Schedule::command('peopleos:compensation:effect')->dailyAt('00:20')->withoutOver
 Schedule::command('peopleos:compensation:send-reminders')->dailyAt('08:15')->withoutOverlapping()->onOneServer();
 // Phase 12: SLA warnings / escalations, reminders, auto-close, catalogue promotion (idempotent reminder log).
 Schedule::command('peopleos:service-desk:process')->hourly()->withoutOverlapping()->onOneServer();
+// Phase 13: surveys open / close on their dates, invitations and reminders (idempotent log), campaigns; announcements publish and deliver.
+Schedule::command('peopleos:engagement:process')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command('peopleos:communication:process')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:exit:tick')->dailyAt('04:00')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:reports:run-due')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:webhooks:deliver')->everyMinute()->withoutOverlapping()->onOneServer();

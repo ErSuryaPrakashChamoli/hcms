@@ -216,8 +216,15 @@ class DatabaseSeeder extends Seeder
 
         if (Announcement::query()->doesntExist()) {
             $comms = app(Communications::class);
-            $comms->publish(Announcement::create(['title' => 'Welcome to MY PEOPLEOS', 'type' => 'announcement', 'body' => 'Your new employee portal is live. Check in, apply leave, read your payslip and ask HR from **My Day**.', 'is_pinned' => true, 'requires_acknowledgement' => true, 'author_id' => $admin?->id]), $admin);
-            $comms->publish(Announcement::create(['title' => 'Quarterly fire drill', 'type' => 'circular', 'body' => 'Register for the drill from Learning → Training sessions.', 'author_id' => $admin?->id]), $admin);
+            // Phase 13: an announcement is approved by someone other than its preparer before it is published.
+            $approver = $this->demoActor('communication.approver@demo.local', 'Communication Approver (demo)', 'hr-manager');
+            foreach ([
+                ['title' => 'Welcome to MY PEOPLEOS', 'type' => 'announcement', 'body' => 'Your new employee portal is live. Check in, apply leave, read your payslip and ask HR from **My Day**.', 'is_pinned' => true, 'requires_acknowledgement' => true],
+                ['title' => 'Quarterly fire drill', 'type' => 'circular', 'body' => 'Register for the drill from Learning → Training sessions.'],
+            ] as $row) {
+                $draft = $comms->create($row, $admin);
+                $comms->publish($comms->approve($comms->submit($draft, $admin), 'Development seed', $approver), $admin);
+            }
         }
 
         if (Ticket::query()->doesntExist()) {

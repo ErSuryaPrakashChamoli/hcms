@@ -51,7 +51,10 @@ use App\Domain\Career\Models\RoleRequirementVersion;
 use App\Domain\Career\Policies\CareerArchitecturePolicy;
 use App\Domain\Career\Policies\CareerRecordPolicy;
 use App\Domain\Communication\Models\Announcement;
+use App\Domain\Communication\Models\CommunicationPreference;
+use App\Domain\Communication\Models\CommunicationRecipient;
 use App\Domain\Communication\Policies\AnnouncementPolicy;
+use App\Domain\Communication\Policies\CommunicationRecordPolicy;
 use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compensation\Models\CompensationBudget;
 use App\Domain\Compensation\Models\CompensationChange;
@@ -137,6 +140,22 @@ use App\Domain\Employment\Policies\EmployeeDataPolicy;
 use App\Domain\Employment\Policies\EmployeeImportPolicy;
 use App\Domain\Employment\Policies\EmployeePolicy;
 use App\Domain\Employment\Policies\SensitiveEmployeeDataPolicy;
+use App\Domain\Engagement\Listeners\EngagementWorkflowBridge;
+use App\Domain\Engagement\Models\Audience;
+use App\Domain\Engagement\Models\CampaignItem;
+use App\Domain\Engagement\Models\EmployeeFeedback;
+use App\Domain\Engagement\Models\EngagementCampaign;
+use App\Domain\Engagement\Models\EngagementIdentity;
+use App\Domain\Engagement\Models\Survey;
+use App\Domain\Engagement\Models\SurveyAnswer;
+use App\Domain\Engagement\Models\SurveyParticipation;
+use App\Domain\Engagement\Models\SurveyQuestion;
+use App\Domain\Engagement\Models\SurveyResponse;
+use App\Domain\Engagement\Models\SurveyVersion;
+use App\Domain\Engagement\Policies\EmployeeFeedbackPolicy;
+use App\Domain\Engagement\Policies\EngagementConfigPolicy;
+use App\Domain\Engagement\Policies\EngagementRecordPolicy;
+use App\Domain\Engagement\Services\SurveyTasks;
 use App\Domain\Enterprise\Models\ExchangeRate;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Enterprise\Models\WebhookDelivery;
@@ -150,7 +169,6 @@ use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Exit\Policies\ExitCasePolicy;
 use App\Domain\Exit\Policies\SettlementPolicy;
 use App\Domain\Experience\Contracts\SurveyTaskProvider;
-use App\Domain\Experience\Sources\NullSurveyTaskProvider;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Grievance\Models\GrievanceCategory;
 use App\Domain\Grievance\Policies\GrievanceConfigPolicy;
@@ -367,8 +385,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Phase 12: the survey task hook; Phase 13 binds the real provider.
-        $this->app->bindIf(SurveyTaskProvider::class, NullSurveyTaskProvider::class);
+        // Phase 12 hook, bound in Phase 13 to the engagement domain's own survey tasks.
+        $this->app->bind(SurveyTaskProvider::class, SurveyTasks::class);
         $this->app->bind(LeaveDayResolver::class, AttendanceLeaveDayResolver::class);
         $this->app->bind(DevelopmentNeedsReader::class, DevelopmentNeeds::class);
         $this->app->bind(PerformanceOutcomesReader::class, PerformanceOutcomes::class);
@@ -424,6 +442,8 @@ class AppServiceProvider extends ServiceProvider
         // Phase 12: service request approvals (SOD re-checked) and domain outcomes of handed-off requests.
         Event::listen(WorkflowCompleted::class, ServiceDeskWorkflowBridge::class);
         Event::subscribe(ServiceDeskDomainListener::class);
+        // Phase 13: survey / announcement / campaign approvals through a configured workflow (SOD re-checked).
+        Event::listen(WorkflowCompleted::class, EngagementWorkflowBridge::class);
     }
 
     /** API limits are per key (falls back to IP for unauthenticated calls). */
@@ -459,6 +479,16 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GrievanceCategory::class, GrievanceConfigPolicy::class);
         Gate::policy(Article::class, ArticlePolicy::class);
         Gate::policy(Announcement::class, AnnouncementPolicy::class);
+        // Phase 13: configuration through the engagement services; response-side records have no generic access at all.
+        foreach ([Survey::class, SurveyVersion::class, SurveyQuestion::class, Audience::class, EngagementCampaign::class, CampaignItem::class] as $model) {
+            Gate::policy($model, EngagementConfigPolicy::class);
+        }
+        foreach ([SurveyParticipation::class, SurveyResponse::class, SurveyAnswer::class, EngagementIdentity::class] as $model) {
+            Gate::policy($model, EngagementRecordPolicy::class);
+        }
+        Gate::policy(EmployeeFeedback::class, EmployeeFeedbackPolicy::class);
+        Gate::policy(CommunicationRecipient::class, CommunicationRecordPolicy::class);
+        Gate::policy(CommunicationPreference::class, CommunicationRecordPolicy::class);
         foreach ([Course::class, LearningPath::class, LearningAssignment::class, TrainingSession::class, Assessment::class] as $model) {
             Gate::policy($model, LearningConfigPolicy::class);
         }

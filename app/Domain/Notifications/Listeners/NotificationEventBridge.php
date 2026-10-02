@@ -5,6 +5,7 @@ namespace App\Domain\Notifications\Listeners;
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Career\Events\CareerEvent;
+use App\Domain\Communication\Events\CommunicationEvent;
 use App\Domain\Compensation\Events\CompensationEvent;
 use App\Domain\Configuration\Events\ConfigurationChangeProposed;
 use App\Domain\Configuration\Events\FormSubmitted;
@@ -12,6 +13,7 @@ use App\Domain\Development\Events\DevelopmentEvent;
 use App\Domain\Documents\Events\DocumentExpiring;
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Engagement\Events\EngagementEvent;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
@@ -76,6 +78,8 @@ final class NotificationEventBridge
             SuccessionEvent::class => 'onTalent',
             WorkforceEvent::class => 'onWorkforce',
             CompensationEvent::class => 'onCompensation',
+            EngagementEvent::class => 'onEngagement',
+            CommunicationEvent::class => 'onCommunication',
         ];
     }
 
@@ -160,7 +164,6 @@ final class NotificationEventBridge
             'kb.article.published' => ($c['mandatory'] ? 'Mandatory reading: ' : 'Please acknowledge: ').$c['title'],
             'kb.article.review_requested' => 'Knowledge article to review: '.$c['title'],
             'kb.reminder.acknowledgement' => 'Reminder: please acknowledge '.$c['title'],
-            'communication.published' => $c['type'].': '.$c['title'],
             default => str_replace('.', ' ', $event->name),
         };
 
@@ -331,6 +334,59 @@ final class NotificationEventBridge
             'compensation.reminder.pending_change' => 'Compensation change'.$who.' is still waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
             'compensation.reminder.pending_cycle' => 'Compensation cycle '.($c['cycle'] ?? '').' is still waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
             default => ucfirst(str_replace(['compensation.', '.', '_'], ['', ' ', ' '], $event->name)).(isset($c['cycle']) ? ': '.$c['cycle'] : (isset($c['structure']) ? ': '.$c['structure'] : '')),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 13 engagement events: in-app to the users the event names (approvers, the preparer,
+     * feedback handlers). Tenant rules are not fired. Titles carry survey / campaign references only,
+     * never answers, respondents, feedback text or authors. Survey invitations and reminders are sent
+     * by SurveyNotices, and response submissions are never bridged.
+     */
+    public function onEngagement(EngagementEvent $event): void
+    {
+        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $survey = ($c['survey'] ?? '').(isset($c['version']) ? ' v'.$c['version'] : '');
+        $title = match ($event->name) {
+            'survey.review_requested' => 'Survey to review: '.$survey,
+            'survey.approved' => 'Survey approved: '.$survey,
+            'survey.returned' => 'Survey returned to you: '.$survey,
+            'survey.published' => 'Survey scheduled: '.$survey,
+            'survey.opened' => 'Survey is open: '.$survey,
+            'survey.closed' => 'Survey closed: '.$survey,
+            'campaign.review_requested' => 'Campaign to review: '.($c['campaign'] ?? ''),
+            'campaign.launched' => 'Campaign launched: '.($c['campaign'] ?? '').(($c['partial'] ?? false) ? ' (some items were not ready)' : ''),
+            'feedback.submitted' => 'New employee feedback: '.($c['category'] ?? ''),
+            default => ucfirst(str_replace(['.', '_'], ' ', $event->name)).(isset($c['survey']) ? ': '.$survey : (isset($c['campaign']) ? ': '.$c['campaign'] : '')),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 13 communication lifecycle events: in-app to the approvers / preparer they name. The
+     * announcement itself reaches its audience through CommunicationDelivery (preferences, tracking),
+     * never through this bridge, so tenant rules are not fired here.
+     */
+    public function onCommunication(CommunicationEvent $event): void
+    {
+        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $title = match ($event->name) {
+            'communication.review_requested' => 'Announcement to review: '.($c['title'] ?? ''),
+            'communication.approved' => 'Announcement approved: '.($c['title'] ?? ''),
+            'communication.returned' => 'Announcement returned to you: '.($c['title'] ?? ''),
+            'communication.published' => 'Announcement published: '.($c['title'] ?? ''),
+            default => ucfirst(str_replace(['communication.', '.', '_'], ['', ' ', ' '], $event->name)).': '.($c['title'] ?? ''),
         };
 
         $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);

@@ -1,7 +1,9 @@
 <?php
 
-use App\Domain\Communication\Models\Announcement;
+use App\Domain\Audit\Models\AuditEvent;
+use App\Domain\Communication\Services\CommunicationProcessor;
 use App\Domain\Communication\Services\Communications;
+use App\Domain\Engagement\Exceptions\EngagementRuleViolation;
 use App\Domain\Experience\Services\NeedsAttention;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Services\KnowledgeBase;
@@ -57,29 +59,39 @@ it('versions articles on publish, targets audiences, and tracks reads and acknow
     expect($this->employee->user->can('view', $onboarding))->toBeTrue()->and($this->employee->user->can('view', Article::create(['title' => 'Draft', 'body' => 'x'])))->toBeFalse();
 });
 
-it('publishes announcements to a targeted audience with a feed, read and acknowledgement tracking', function () {
+it('publishes approved announcements to a snapshotted audience with a feed, read and acknowledgement tracking', function () {
     $comms = app(Communications::class);
-    $all = Announcement::create(['title' => 'Office closed on Friday', 'type' => 'circular', 'body' => 'Deep cleaning.', 'requires_acknowledgement' => true, 'is_pinned' => true]);
-    $probationOnly = Announcement::create(['title' => 'Buddy programme', 'body' => 'Meet your buddy.', 'audience' => [['field' => 'lifecycle_state', 'operator' => 'equals', 'value' => 'probation']]]);
-    $expired = Announcement::create(['title' => 'Old news', 'body' => 'x', 'expires_at' => now()->subDay()]);
-    $future = Announcement::create(['title' => 'Later', 'body' => 'x', 'publish_at' => now()->addDay()]);
+    $preparer = tenantUser($this->tenant, ['communication.manage']);
+    $approver = tenantUser($this->tenant, ['communication.approve']);
+    // Phase 13: prepared by one person, approved by another, then published (audience snapshot + delivery).
+    $publish = function (array $data) use ($comms, $preparer, $approver) {
+        $draft = $comms->create($data, $preparer);
+        $approved = $comms->approve($comms->submit($draft, $preparer), null, $approver);
 
-    foreach ([$all, $probationOnly, $expired, $future] as $a) {
-        $comms->publish($a, $this->hr);
-    }
+        return $comms->publish($approved, $preparer);
+    };
+    $all = $publish(['title' => 'Office closed on Friday', 'type' => 'circular', 'body' => 'Deep cleaning.', 'requires_acknowledgement' => true, 'is_pinned' => true]);
+    $probationOnly = $publish(['title' => 'Buddy programme', 'body' => 'Meet your buddy.', 'audience_criteria' => ['lifecycle_states' => ['probation']]]);
+    $shortLived = $publish(['title' => 'Lift maintenance today', 'body' => 'x', 'expires_at' => now()->addHours(2)]);
+    $future = $publish(['title' => 'Later', 'body' => 'x', 'publish_at' => now()->addDay()]);
 
-    expect($comms->feedFor($this->employee)->pluck('id')->all())->toBe([$all->id])
-        ->and($comms->feedFor($this->probation)->pluck('id')->all())->toBe([$all->id, $probationOnly->id])
-        ->and($this->employee->user->notifications()->count())->toBe(1)
-        ->and($this->probation->user->notifications()->count())->toBe(2)
+    expect($future->status)->toBe('scheduled')->and($all->status)->toBe('published')->and($all->recipients_count)->toBe(2)
+        ->and($comms->feedFor($this->employee)->pluck('id')->all())->toBe([$all->id, $shortLived->id])
+        ->and($comms->feedFor($this->probation)->pluck('id')->all())->toBe([$all->id, $shortLived->id, $probationOnly->id])
+        ->and($this->employee->user->notifications()->count())->toBe(2)
+        ->and($this->probation->user->notifications()->count())->toBe(3)
         ->and($comms->pendingAcknowledgements($this->employee))->toHaveCount(1);
 
     $comms->markRead($all, $this->employee);
     $comms->acknowledge($all, $this->employee);
+    $comms->acknowledge($all, $this->employee);
     expect($comms->pendingAcknowledgements($this->employee))->toHaveCount(0)
-        ->and($comms->stats($all))->toBe(['audience' => 2, 'read' => 1, 'acknowledged' => 1]);
+        ->and($comms->stats($all))->toMatchArray(['audience' => 2, 'read' => 1, 'acknowledged' => 1, 'sent' => 2, 'failed' => 0])
+        ->and(AuditEvent::query()->where('action', 'ANNOUNCEMENT_ACKNOWLEDGED')->count())->toBe(1);
+    expect(fn () => $comms->acknowledge($probationOnly, $this->employee))->toThrow(EngagementRuleViolation::class);
 
     $this->travelTo('2026-09-23 09:00:00');
+    app(CommunicationProcessor::class)->run();
     expect($comms->feedFor($this->employee)->pluck('id')->all())->toBe([$all->id, $future->id]);
 });
 

@@ -7,6 +7,7 @@ use App\Domain\Attendance\Adapters\EsslAdapter;
 use App\Domain\Attendance\Adapters\GenericJsonAdapter;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Providers\ManualProvider;
+use App\Domain\Communication\Services\CommunicationTaskSource;
 use App\Domain\Compensation\Models\CompensationBudget;
 use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\CompensationCycle;
@@ -1376,6 +1377,7 @@ return [
             WorkflowTaskSource::class,
             ServiceDeskTaskSource::class,
             PolicyAcknowledgementTaskSource::class,
+            CommunicationTaskSource::class,
         ],
     ],
     'kb' => [

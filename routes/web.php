@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnnouncementAttachmentController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\ExitTenantController;
 use App\Http\Controllers\GrievanceAttachmentController;
@@ -32,6 +33,11 @@ Route::get('/grievances/{grievance}/attachments/{note}', GrievanceAttachmentCont
     ->middleware(['web', 'auth', ResolveTenant::class])
     ->whereNumber(['grievance', 'note'])
     ->name('grievances.attachment');
+
+Route::get('/announcements/{announcement}/attachment', AnnouncementAttachmentController::class)
+    ->middleware(['web', 'auth', ResolveTenant::class])
+    ->whereNumber('announcement')
+    ->name('announcements.attachment');
 
 Route::get('/sso/{connection}/redirect', [SsoController::class, 'redirect'])->middleware('web')->name('sso.redirect');
 Route::get('/sso/{connection}/callback', [SsoController::class, 'callback'])->middleware('web')->name('sso.callback');
