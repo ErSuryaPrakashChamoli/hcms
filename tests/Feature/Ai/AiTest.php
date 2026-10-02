@@ -11,7 +11,6 @@ use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Grievance\Models\GrievanceCategory;
 use App\Domain\Knowledge\Models\Article;
-use App\Domain\Knowledge\Services\KnowledgeBase;
 use App\Domain\Leave\Services\LeaveAccrual;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Payroll\Services\PayrollRuns;
@@ -23,6 +22,7 @@ require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/../Performance/PerformanceTestHelpers.php';
 require_once __DIR__.'/../Payroll/PayrollTestHelpers.php';
 require_once __DIR__.'/../Leave/LeaveTestHelpers.php';
+require_once __DIR__.'/../ServiceDesk/ServiceDeskTestHelpers.php';
 
 beforeEach(function () {
     $this->travelTo('2026-09-21 09:00:00');
@@ -67,7 +67,7 @@ it('answers employee, policy, manager and HR questions from live data only', fun
     expect($ask($this->employee->user, 'employee', 'tell me about rockets'))->toContain('I can help with');
 
     $article = Article::create(['title' => 'Work from home guidelines', 'category' => 'wfh', 'body' => "# WFH\n\nAgree remote days with your manager and mark them in attendance."]);
-    app(KnowledgeBase::class)->publish($article, $this->hr);
+    kbPublishForTests($article);
     $policy = $this->gateway->ask($this->employee->user, 'policy', 'How does work from home work?');
     expect($policy->intent)->toBe('kb_match')->and($policy->answer)->toContain('Agree remote days')->and(collect($policy->sources)->pluck('label')->all())->toContain('Work from home guidelines');
     expect($ask($this->employee->user, 'policy', 'What is the notice period?'))->toContain('30 days');

@@ -43,8 +43,10 @@ final class NeedsAttention
         $add('learning', LearningEnrolment::query()->where('employee_id', $employee->id)->where('status', 'overdue')->count(), 'Overdue learning', 'Mandatory training past its due date', 'danger', $this->url('learning-enrolments'));
         $add('learning_due', LearningEnrolment::query()->where('employee_id', $employee->id)->whereIn('status', ['enrolled', 'in_progress'])->whereNotNull('due_on')->whereDate('due_on', '<=', now()->addDays(7))->count(), 'Learning due this week', 'Finish before the due date', 'warning', $this->url('learning-enrolments'));
         $add('reviews', AppraisalReview::query()->where('reviewer_id', $employee->id)->where('status', 'pending')->whereHas('appraisal.cycle', fn ($q) => $q->where('status', 'active')->whereIn('current_stage', ['self_review', 'manager_review', 'peer_review']))->count(), 'Reviews to complete', 'Self, manager or peer reviews waiting for you', 'warning', $this->url('appraisals'));
-        $add('tickets', Ticket::query()->where('employee_id', $employee->id)->where('status', 'pending')->count(), 'HR is waiting on you', 'Reply on your open requests', 'warning', $this->url('tickets'));
-        $add('tickets_resolved', Ticket::query()->where('employee_id', $employee->id)->where('status', 'resolved')->count(), 'Requests resolved', 'Close them or reopen if not fixed', 'info', $this->url('tickets'));
+        // Phase 12: only requests the employee may see (never a confidential case raised about them).
+        $mine = fn () => Ticket::query()->where('employee_id', $employee->id)->where('visible_to_employee', true);
+        $add('tickets', $mine()->where('status', 'waiting_employee')->count(), 'HR is waiting on you', 'Reply on your open requests', 'warning', $this->url('tickets'));
+        $add('tickets_resolved', $mine()->where('status', 'resolved')->count(), 'Requests resolved', 'Close them or reopen if not fixed', 'info', $this->url('tickets'));
         $add('assets', AssetAssignment::query()->where('employee_id', $employee->id)->where('status', 'active')->whereNull('acknowledged_at')->count(), 'Assets to acknowledge', 'Confirm receipt of company property', 'info', $this->url('assets'));
         $add('tasks', WorkflowTask::query()->where('assignee_id', $user->id)->where('status', TaskStatus::Pending)->count(), 'Approvals waiting', 'Workflow tasks assigned to you', 'warning', $this->url('task-inbox'));
 

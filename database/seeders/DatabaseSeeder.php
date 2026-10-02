@@ -183,8 +183,12 @@ class DatabaseSeeder extends Seeder
         app(ExitInterviews::class)->submit($case, ['reason_for_leaving' => 'relocation', 'ratings' => ['manager_experience' => 4, 'compensation' => 3, 'culture' => 5, 'workload' => 3, 'career_opportunities' => 4, 'work_environment' => 4], 'would_recommend' => true, 'would_rejoin' => true, 'suggestions' => 'Offer more remote roles.'], $admin, false);
         $exits->complete($case->refresh(), $admin);
         $letters = app(Letters::class);
-        $letter = $letters->generate('experience', $vikram->refresh(), [], $admin, $case);
-        $letters->approve($letter, $admin, 'Development seed');
+        // Phase 12: whoever requests a letter never approves it — an HR executive asks, the admin approves.
+        $requester = $this->demoActor('hr.requester@demo.local', 'HR Requester (demo)', 'hr-executive');
+        $letter = $letters->generate('experience', $vikram->refresh(), [], $requester, $case);
+        if ($letter->status === 'pending_approval') {
+            $letters->approve($letter, $admin, 'Development seed');
+        }
         $letters->issue($letter->refresh(), $admin);
         $exits->createAlumni($case->refresh(), $admin, ['personal_email' => 'vikram.singh@example.test']);
     }
@@ -202,7 +206,11 @@ class DatabaseSeeder extends Seeder
                 ['title' => 'Work from home guidelines', 'category' => 'wfh', 'summary' => 'When and how to work remotely.', 'body' => "# Work from home\n\nAgree the days with your manager and mark them in attendance.", 'requires_acknowledgement' => false],
                 ['title' => 'Prevention of sexual harassment (PoSH)', 'category' => 'posh', 'summary' => 'Your rights, the Internal Committee and how to raise a complaint.', 'body' => "# PoSH\n\nComplaints go to the Internal Committee within three months of the incident. Raise a grievance under the PoSH category; it is confidential.", 'requires_acknowledgement' => true, 'is_mandatory_reading' => true],
             ] as $row) {
-                $kb->publish(Article::create($row + ['author_id' => $admin?->id]), $admin);
+                // Phase 12: an article is reviewed and approved by someone other than its author before it is published.
+                $article = Article::create($row + ['author_id' => $admin?->id]);
+                $kb->submitForReview($article, $admin);
+                $kb->review($article->refresh(), $this->demoActor('knowledge.reviewer@demo.local', 'Knowledge Reviewer (demo)', 'hr-manager'), true, 'Development seed');
+                $kb->publish($article->refresh(), $admin);
             }
         }
 
@@ -481,5 +489,14 @@ class DatabaseSeeder extends Seeder
         $hire('Rahul', 'Sharma', 'rahul.sharma@demo.local', '2025-05-28', $se, $eng, $amit);
         $hire('Priya', 'Nair', 'priya.nair@demo.local', '2024-08-19', $se, $eng, $amit);
         $hire('Vikram', 'Singh', 'vikram.singh@demo.local', '2024-11-04', $fa, $fin, $anita);
+    }
+
+    /** A demo user holding one system role (separation-of-duties steps need a second person). */
+    private function demoActor(string $email, string $name, string $role): User
+    {
+        $user = User::query()->firstOrCreate(['email' => $email], ['tenant_id' => app(TenantContext::class)->id(), 'name' => $name, 'password' => 'password', 'status' => 'active']);
+        $user->roles()->syncWithoutDetaching(Role::query()->where('slug', $role)->pluck('id'));
+
+        return $user;
     }
 }

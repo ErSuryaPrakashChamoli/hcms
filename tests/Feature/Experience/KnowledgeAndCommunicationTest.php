@@ -11,6 +11,7 @@ use App\Domain\Leave\Services\Leaves;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/../Performance/PerformanceTestHelpers.php';
+require_once __DIR__.'/../ServiceDesk/ServiceDeskTestHelpers.php';
 
 beforeEach(function () {
     $this->travelTo('2026-09-21 09:00:00');
@@ -28,7 +29,7 @@ it('versions articles on publish, targets audiences, and tracks reads and acknow
     $article = Article::create(['title' => 'Leave policy', 'category' => 'leave', 'body' => '# Leave\nTake it.', 'requires_acknowledgement' => true, 'is_mandatory_reading' => true]);
     expect($article->slug)->toBe('leave-policy')->and($kb->visibleTo($this->employee))->toHaveCount(0);
 
-    $kb->publish($article, $this->hr);
+    kbPublishForTests($article);
     expect($article->refresh()->status)->toBe('published')->and($article->version)->toBe(1)->and($article->versions()->count())->toBe(1)
         ->and($this->employee->user->notifications()->count())->toBe(1)
         ->and($kb->visibleTo($this->employee)->pluck('id')->all())->toBe([$article->id])
@@ -41,15 +42,16 @@ it('versions articles on publish, targets audiences, and tracks reads and acknow
     expect($kb->pendingAcknowledgements($this->employee))->toHaveCount(0)
         ->and($kb->stats($article))->toBe(['audience' => 2, 'read' => 1, 'acknowledged' => 1]);
 
-    // A new version asks everyone again.
-    $article->update(['body' => '# Leave v2']);
-    $kb->publish($article, $this->hr);
+    // A new version (a revision, reviewed again) asks everyone again.
+    $kb->startRevision($article->refresh(), $this->hr);
+    $article->refresh()->update(['body' => '# Leave v2']);
+    kbPublishForTests($article->refresh());
     expect($article->refresh()->version)->toBe(2)->and($article->versions()->count())->toBe(2)
         ->and($kb->pendingAcknowledgements($this->employee))->toHaveCount(1);
 
     // Audience by rule: only probation employees.
     $onboarding = Article::create(['title' => 'Probation guide', 'category' => 'hr_policy', 'body' => 'Welcome', 'audience' => [['field' => 'lifecycle_state', 'operator' => 'equals', 'value' => 'probation']]]);
-    $kb->publish($onboarding);
+    kbPublishForTests($onboarding);
     expect($kb->visibleTo($this->employee)->pluck('id')->all())->toBe([$article->id])
         ->and($kb->visibleTo($this->probation)->pluck('id')->sort()->values()->all())->toBe([$article->id, $onboarding->id]);
     expect($this->employee->user->can('view', $onboarding))->toBeTrue()->and($this->employee->user->can('view', Article::create(['title' => 'Draft', 'body' => 'x'])))->toBeFalse();
@@ -87,7 +89,7 @@ it('builds the Needs Attention list for an employee and a manager', function () 
     expect($items->has('bank'))->toBeTrue()->and($items->has('pan'))->toBeTrue()->and($items->has('tax_declaration'))->toBeTrue()->and($items->has('kb_ack'))->toBeFalse();
 
     $article = Article::create(['title' => 'Code of conduct', 'category' => 'conduct', 'body' => 'Be kind.', 'is_mandatory_reading' => true]);
-    app(KnowledgeBase::class)->publish($article);
+    kbPublishForTests($article);
     expect($attention->forEmployee($this->employee, $this->employee->user)->firstWhere('key', 'kb_ack')['count'])->toBe(1);
 
     $manager = activeEmployee(null, ['performance.team', 'leave.approve', 'task.view']);

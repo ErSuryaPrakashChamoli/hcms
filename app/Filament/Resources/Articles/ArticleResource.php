@@ -35,7 +35,15 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-/** Knowledge base (§50). Writers manage under "Knowledge"; readers browse published articles under "Me". */
+/**
+ * Knowledge base (§50, Phase 12). Writers manage under "Knowledge"; readers browse under "Me".
+ *
+ * Writers: an article moves Draft → Review (a kb.review holder, never the author, approves or returns
+ * it) → Approved → Published (a new immutable version) → Archived. A published article is changed by
+ * starting a revision; the published version keeps being served meanwhile.
+ *
+ * Readers see only the published version of articles addressed to them, never a working copy.
+ */
 class ArticleResource extends Resource
 {
     protected static ?string $model = Article::class;
@@ -99,13 +107,25 @@ class ArticleResource extends Resource
         ]);
     }
 
+    /** What a reader is shown: the published version (writers see the working copy and its status). */
+    public static function content(Article $record): array
+    {
+        if (auth()->user()?->can('kb.manage')) {
+            return ['title' => $record->title, 'summary' => $record->summary, 'body' => $record->body, 'label' => 'Working copy · '.(Article::STATUSES[$record->status] ?? $record->status).($record->published_version ? ' · v'.$record->published_version.' published' : '')];
+        }
+        $version = app(KnowledgeBase::class)->publishedVersion($record);
+
+        return ['title' => $version?->title ?? $record->title, 'summary' => $version?->summary, 'body' => $version?->body ?? '', 'label' => 'Version '.($version?->version ?? '—').($version?->published_at ? ' · published '.$version->published_at->toDateString() : '')];
+    }
+
     public static function infolist(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make(fn (Article $record) => $record->title)->description(fn (Article $record) => config("peopleos.kb.categories.{$record->category}").' · v'.$record->version.($record->effective_from ? ' · effective '.$record->effective_from->toDateString() : '').($record->published_at ? ' · published '.$record->published_at->toDateString() : ''))->schema([
-                TextEntry::make('summary')->hiddenLabel()->placeholder('')->visible(fn (Article $record) => filled($record->summary)),
-                TextEntry::make('body')->hiddenLabel()->markdown(),
+            Section::make(fn (Article $record) => self::content($record)['title'])->description(fn (Article $record) => config("peopleos.kb.categories.{$record->category}").' · '.self::content($record)['label'].($record->effective_from ? ' · effective '.$record->effective_from->toDateString() : ''))->schema([
+                TextEntry::make('summary')->hiddenLabel()->placeholder('')->state(fn (Article $record) => self::content($record)['summary'])->visible(fn (Article $record) => filled(self::content($record)['summary'])),
+                TextEntry::make('body')->hiddenLabel()->markdown()->state(fn (Article $record) => self::content($record)['body']),
                 TextEntry::make('tags')->badge()->placeholder('')->visible(fn (Article $record) => ! empty($record->tags)),
+                TextEntry::make('review_note')->label('Review note')->placeholder('—')->visible(fn (Article $record) => auth()->user()?->can('kb.manage') && filled($record->review_note)),
             ]),
         ]);
     }
@@ -116,13 +136,15 @@ class ArticleResource extends Resource
 
         return $table
             ->columns([
-                TextColumn::make('title')->searchable()->sortable()->description(fn (Article $record) => $record->summary)->wrap(),
+                TextColumn::make('title')->searchable()->sortable()->wrap()
+                    ->state(fn (Article $record) => $writer ? $record->title : self::content($record)['title'])
+                    ->description(fn (Article $record) => $writer ? $record->summary : self::content($record)['summary']),
                 TextColumn::make('category')->badge()->color('gray')->formatStateUsing(fn (string $state) => config("peopleos.kb.categories.{$state}", $state)),
-                TextColumn::make('version')->formatStateUsing(fn ($state) => "v{$state}")->visible($writer),
+                TextColumn::make('published_version')->label('Published')->formatStateUsing(fn ($state) => "v{$state}")->placeholder('—')->visible($writer),
                 IconColumn::make('requires_acknowledgement')->label('Ack')->boolean(),
                 IconColumn::make('is_mandatory_reading')->label('Mandatory')->boolean(),
-                TextColumn::make('status')->badge()->color(fn (string $state) => match ($state) {
-                    'published' => 'success', 'archived' => 'gray', default => 'warning'
+                TextColumn::make('status')->badge()->formatStateUsing(fn (string $state) => Article::STATUSES[$state] ?? $state)->color(fn (string $state) => match ($state) {
+                    'published' => 'success', 'approved' => 'info', 'archived' => 'gray', default => 'warning'
                 })->visible($writer),
                 TextColumn::make('reads')->label('Read / ack')->state(function (Article $record) {
                     $s = app(KnowledgeBase::class)->stats($record);
@@ -135,13 +157,25 @@ class ArticleResource extends Resource
             ->filters([SelectFilter::make('category')->options(config('peopleos.kb.categories')), SelectFilter::make('status')->options(Article::STATUSES)->visible($writer)])
             ->recordActions([
                 ViewAction::make()->label('Read'),
-                EditAction::make()->visible($writer),
-                Action::make('publish')->label(fn (Article $record) => $record->status === 'published' ? 'Publish new version' : 'Publish')->icon('heroicon-m-paper-airplane')->color('success')
-                    ->visible(fn (Article $record) => $writer && $record->status !== 'archived')
-                    ->requiresConfirmation()->modalDescription('Publishing creates a new version; employees who must acknowledge will be asked again.')
-                    ->action(fn (Article $record) => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->publish($record, auth()->user()), fn ($a) => "Published v{$a->version}")),
-                Action::make('archive')->label('Archive')->icon('heroicon-m-archive-box')->color('gray')
+                EditAction::make()->visible(fn (Article $record) => $writer && $record->status === 'draft'),
+                Action::make('submitReview')->label('Submit for review')->icon('heroicon-m-paper-airplane')
+                    ->visible(fn (Article $record) => $writer && $record->status === 'draft')
+                    ->requiresConfirmation()->modalDescription('A reviewer (not you) approves or returns it before it can be published.')
+                    ->action(fn (Article $record) => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->submitForReview($record, auth()->user()), 'Sent for review')),
+                Action::make('review')->label('Review')->icon('heroicon-m-check-badge')->color('success')
+                    ->visible(fn (Article $record) => $record->status === 'in_review' && auth()->user()->can('kb.review') && (int) $record->author_id !== (int) auth()->id())
+                    ->schema([Toggle::make('approve')->label('Approve for publication')->default(true), Textarea::make('note')->label('Note (required to return)')->rows(2)])
+                    ->action(fn (Article $record, array $data) => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->review($record, auth()->user(), (bool) $data['approve'], $data['note'] ?? null), fn ($a) => $a->status === 'approved' ? 'Approved' : 'Returned to the author')),
+                Action::make('publish')->label('Publish')->icon('heroicon-m-megaphone')->color('success')
+                    ->visible(fn (Article $record) => $writer && $record->status === 'approved')
+                    ->requiresConfirmation()->modalDescription('Publishing creates a new immutable version; employees who must acknowledge will be asked again.')
+                    ->action(fn (Article $record) => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->publish($record, auth()->user()), fn ($a) => "Published v{$a->published_version}")),
+                Action::make('revise')->label('Start a revision')->icon('heroicon-m-pencil')
                     ->visible(fn (Article $record) => $writer && $record->status === 'published')
+                    ->requiresConfirmation()->modalDescription('Opens a new draft; readers keep seeing the published version until the revision is approved and published.')
+                    ->action(fn (Article $record) => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->startRevision($record, auth()->user()), 'Revision started')),
+                Action::make('archive')->label('Archive')->icon('heroicon-m-archive-box')->color('gray')
+                    ->visible(fn (Article $record) => $writer && $record->status !== 'archived')
                     ->requiresConfirmation()
                     ->action(fn (Article $record) => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->archive($record, auth()->user()), 'Archived')),
             ]);

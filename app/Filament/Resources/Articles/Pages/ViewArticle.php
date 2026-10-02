@@ -32,10 +32,10 @@ class ViewArticle extends ViewRecord
                     $me = ServiceDeskActions::me();
 
                     return $me && $article->isPublished() && $article->requires_acknowledgement
-                        && ! ArticleRead::query()->where('article_id', $article->id)->where('employee_id', $me->id)->where('version', $article->version)->whereNotNull('acknowledged_at')->exists();
+                        && ! ArticleRead::query()->where('article_id', $article->id)->where('employee_id', $me->id)->where('version', $article->published_version)->whereNotNull('acknowledged_at')->exists();
                 })
-                ->requiresConfirmation()->modalDescription('Your acknowledgement of this version is recorded with the date and time.')
-                ->action(fn () => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->acknowledge($this->getRecord(), ServiceDeskActions::me()), 'Acknowledged')),
+                ->requiresConfirmation()->modalDescription(fn () => 'Your acknowledgement of version '.$this->getRecord()->published_version.' is recorded with the date, time and source.')
+                ->action(fn () => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->acknowledge($this->getRecord(), ServiceDeskActions::me(), 'web', request()->ip()), 'Acknowledged')),
         ];
     }
 }
