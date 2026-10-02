@@ -94,8 +94,10 @@ final class ChangeBankAccountAction
 
     private function assertNotDuplicate(Employee $employee, string $number, ?int $except = null): void
     {
+        // A locking read: under MySQL REPEATABLE READ a plain read could use a snapshot taken before
+        // the employee lock was granted and miss an account another request has just added.
         $candidates = EmployeeBankAccount::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)
-            ->where('account_number_last4', mb_substr($number, -4))->when($except, fn ($q) => $q->whereKeyNot($except))->get();
+            ->where('account_number_last4', mb_substr($number, -4))->when($except, fn ($q) => $q->whereKeyNot($except))->lockForUpdate()->get();
         if ($candidates->contains(fn (EmployeeBankAccount $a) => (string) $a->account_number === $number)) {
             throw new ProfileChangeRefused('That bank account is already on file for this employee.');
         }

@@ -124,6 +124,9 @@ it('audits every domain model except the documented append-only or derived table
         'Learning\Models\LearningCompletion', 'Learning\Models\LearningReminderLog',
         // Phase 9 / 10 / 11: reminder logs are derived de-duplication rows.
         'Talent\Models\TalentReminderLog', 'Workforce\Models\WorkforceReminderLog', 'Compensation\Models\CompensationReminderLog',
+        // Phase 12: request status history is append-only (each move is audited on the ticket);
+        // reminder logs are derived de-duplication rows.
+        'ServiceDesk\Models\TicketTransition', 'ServiceDesk\Models\ServiceDeskReminderLog',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
