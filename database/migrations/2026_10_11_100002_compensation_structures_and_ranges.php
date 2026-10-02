@@ -121,15 +121,18 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('compensation_ranges');
+        // The version foreign key goes first: MySQL let the unique key below serve as its index.
         Schema::table('salary_structure_components', function (Blueprint $table) {
-            $table->dropUnique('ssc_version_component_unique');
-            $table->unique(['salary_structure_id', 'salary_component_id'], 'structure_component_unique');
+            $table->dropForeign('ssc_version_fk');
         });
         // Rows of later versions would break the restored (structure, component) key: keep version 1 only.
         $later = DB::table('salary_structure_versions')->where('version', '>', 1)->pluck('id');
         DB::table('salary_structure_components')->whereIn('salary_structure_version_id', $later)->delete();
         Schema::table('salary_structure_components', function (Blueprint $table) {
-            $table->dropForeign('ssc_version_fk');
+            $table->dropUnique('ssc_version_component_unique');
+            $table->unique(['salary_structure_id', 'salary_component_id'], 'structure_component_unique');
+        });
+        Schema::table('salary_structure_components', function (Blueprint $table) {
             $table->dropIndex('ssc_structure_index');
             $table->dropColumn(['salary_structure_version_id', 'pay_nature', 'frequency']);
         });

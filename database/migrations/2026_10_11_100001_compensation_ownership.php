@@ -99,6 +99,12 @@ return new class extends Migration
             $table->unique(['employee_id', 'effective_from', 'active_key'], 'salary_assignments_active_start_unique');
             $table->index(['tenant_id', 'employee_id', 'status', 'effective_from'], 'salary_assignments_status_index');
         });
+        // MySQL drops the employee foreign key's implicit index once the unique key above can serve it; a
+        // database that was rolled back and re-migrated has an explicit copy instead. Drop it so every
+        // database ends with the same indexes.
+        if (DB::getDriverName() === 'mysql' && Schema::hasIndex('employee_salary_assignments', 'employee_salary_assignments_employee_id_foreign')) {
+            Schema::table('employee_salary_assignments', fn (Blueprint $table) => $table->dropIndex('employee_salary_assignments_employee_id_foreign'));
+        }
 
         // MySQL 8 enforces CHECK constraints; SQLite tests rely on the model guards and services.
         if (DB::getDriverName() === 'mysql') {
@@ -124,6 +130,11 @@ return new class extends Migration
             DB::statement('ALTER TABLE employee_salary_assignments DROP CHECK salary_assignments_status_check');
         }
         Schema::table('employee_salary_assignments', function (Blueprint $table) {
+            // MySQL silently dropped the employee foreign key's implicit index when the wider unique key
+            // below took over that role; give it back (same name) before the unique key goes.
+            if (DB::getDriverName() === 'mysql' && ! Schema::hasIndex('employee_salary_assignments', 'employee_salary_assignments_employee_id_foreign')) {
+                $table->index('employee_id', 'employee_salary_assignments_employee_id_foreign');
+            }
             $table->dropForeign('salary_assignments_change_fk');
             $table->dropForeign('salary_assignments_superseded_by_fk');
             $table->dropForeign('salary_assignments_approved_by_fk');

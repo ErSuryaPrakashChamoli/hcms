@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
@@ -61,15 +62,15 @@ beforeEach(function () {
 });
 
 /** Strip comments so docblocks that state a boundary are not hits. */
-function compensationCode(string $path): string
+function compensationOwnershipCode(string $path): string
 {
     return collect(token_get_all((string) file_get_contents($path)))->reject(fn ($t) => is_array($t) && in_array($t[0], [T_COMMENT, T_DOC_COMMENT], true))->map(fn ($t) => is_array($t) ? $t[1] : $t)->implode('');
 }
 
 /** @return list<string> app files (relative) whose code matches the pattern */
-function appFilesMatching(string $pattern, string $dir = 'app'): array
+function compensationOwnershipFilesMatching(string $pattern, string $dir = 'app'): array
 {
-    return collect(File::allFiles(base_path($dir)))->filter(fn ($f) => $f->getExtension() === 'php' && preg_match($pattern, compensationCode($f->getPathname())))
+    return collect(File::allFiles(base_path($dir)))->filter(fn ($f) => $f->getExtension() === 'php' && preg_match($pattern, compensationOwnershipCode($f->getPathname())))
         ->map(fn ($f) => str_replace(base_path().'/', '', $f->getPathname()))->sort()->values()->all();
 }
 
@@ -103,6 +104,10 @@ it('1b. never lets Payroll consume draft, submitted, approved-but-unexecuted, re
 
 it('2. refuses every direct write to the canonical table, from Payroll or anywhere else', function () {
     $row = ($this->rows)()->sole();
+    // Its creation was audited with the amounts and the reason masked (§21).
+    $created = AuditEvent::query()->where('entity_type', EmployeeSalaryAssignment::class)->where('entity_id', (string) $row->id)->where('action', 'CREATE')->with('fieldChanges')->sole();
+    expect($created->fieldChanges->whereIn('field', ['ctc_annual', 'component_values', 'reason'])->every(fn ($c) => $c->is_sensitive && $c->after === config('peopleos.audit.mask')))->toBeTrue()
+        ->and($created->fieldChanges->whereIn('field', ['ctc_annual', 'component_values', 'reason']))->toHaveCount(3);
 
     expect(fn () => EmployeeSalaryAssignment::query()->create(['employee_id' => $this->employee->id, 'salary_structure_id' => $this->structure->id, 'ctc_annual' => 1, 'currency' => 'INR', 'change_type' => 'hire', 'effective_from' => '2027-01-01']))->toThrow(RuntimeException::class, 'approved compensation change')
         ->and(fn () => $row->update(['ctc_annual' => 999999]))->toThrow(RuntimeException::class, 'approved compensation change')
@@ -110,14 +115,14 @@ it('2. refuses every direct write to the canonical table, from Payroll or anywhe
         ->and((float) $row->refresh()->ctc_annual)->toBe(600000.0);
 
     // Static boundary: Payroll names neither the assignment model nor Compensation's writers.
-    expect(appFilesMatching('~\b(EmployeeSalaryAssignment|AssignmentWriter|CompensationChanges|SalaryStructure|SalaryStructureComponent)\b~', 'app/Domain/Payroll'))->toBe([])
-        ->and(appFilesMatching('~employee_salary_assignments~', 'app/Domain/Payroll'))->toBe([]);
+    expect(compensationOwnershipFilesMatching('~\b(EmployeeSalaryAssignment|AssignmentWriter|CompensationChanges|SalaryStructure|SalaryStructureComponent)\b~', 'app/Domain/Payroll'))->toBe([])
+        ->and(compensationOwnershipFilesMatching('~employee_salary_assignments~', 'app/Domain/Payroll'))->toBe([]);
 });
 
 it('3. makes Compensation the sole write authority: only the executor writes, only the change engine calls it', function () {
-    expect(appFilesMatching('~EmployeeSalaryAssignment::(query\(\)->)?(create|insert|upsert|forceCreate|updateOrCreate|firstOrCreate)\b|DB::table\([\'"]employee_salary_assignments~'))
+    expect(compensationOwnershipFilesMatching('~EmployeeSalaryAssignment::(query\(\)->)?(create|insert|upsert|forceCreate|updateOrCreate|firstOrCreate)\b|DB::table\([\'"]employee_salary_assignments~'))
         ->toBe(['app/Domain/Compensation/Services/AssignmentWriter.php'])
-        ->and(appFilesMatching('~\bAssignmentWriter\b~'))->toBe([
+        ->and(compensationOwnershipFilesMatching('~\bAssignmentWriter\b~'))->toBe([
             'app/Domain/Compensation/Models/EmployeeSalaryAssignment.php',   // the guard asks whether it is writing
             'app/Domain/Compensation/Services/AssignmentWriter.php',
             'app/Domain/Compensation/Services/CompensationChanges.php',
@@ -153,7 +158,16 @@ it('5. never deletes future compensation when an earlier change is executed late
             ['2027-01-01', null, 720000.0, 'active'],
         ])
         ->and($january->refresh()->only(['id', 'ctc_annual', 'effective_from', 'effective_to', 'status']))->toEqual($januarySnapshot)
-        ->and($july->compensation_change_id)->not->toBeNull();
+        ->and($july->compensation_change_id)->not->toBeNull()
+        // Past, current (today is 2026-09-21) and future dates each resolve to the compensation then in force.
+        ->and($this->output->on($this->employee, '2026-05-01')->ctcAnnual)->toBe(600000.0)
+        ->and($this->output->on($this->employee, now())->ctcAnnual)->toBe(660000.0)
+        ->and($this->output->on($this->employee, '2027-02-01')->ctcAnnual)->toBe(720000.0);
+
+    // A new proposal dated after the future row changes nothing until it is approved and executed.
+    $later = ($this->propose)(['effective_from' => '2027-06-01', 'ctc_annual' => 800000]);
+    $this->changes->submit($later, $this->actors['proposer']);
+    expect(($this->rows)()->map(fn ($r) => [$r->id, $r->effective_to?->toDateString(), $r->status])->all())->toBe($rows->map(fn ($r) => [$r->id, $r->effective_to?->toDateString(), $r->status])->all());
 });
 
 it('6. keeps history reconstructable: every date resolves to the compensation then in force, corrections included', function () {

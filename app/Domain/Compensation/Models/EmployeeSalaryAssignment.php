@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * One row of an employee's canonical compensation history (§70, §100; Phase 11 ADR: Compensation is
  * the domain owner and sole write authority of employee_salary_assignments). Sensitive: CTC, variable
- * target and component amounts are masked in audit.
+ * target, component amounts and the reason are masked in audit.
  *
  * Rows are written only by AssignmentWriter while it executes an approved compensation change. Once
  * written, the compensation itself (structure, amounts, currency, start date) never changes: only the
@@ -88,7 +88,8 @@ class EmployeeSalaryAssignment extends Model
 
     public function auditSensitiveAttributes(): array
     {
-        return ['ctc_annual', 'variable_target_annual', 'component_values'];
+        // Phase 11 §21: compensation reasons are sensitive too.
+        return ['ctc_annual', 'variable_target_annual', 'component_values', 'reason'];
     }
 
     /** Audit rows written before Phase 11 name the class's previous (Payroll) location. */
