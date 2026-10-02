@@ -2,13 +2,19 @@
 
 For: engineers extending PeopleOS employee experience and the HR service desk.
 
-**Status:** in progress. The §69 stop (§4) was resolved by the owner's decision of 2026-10-02: add
-minimal People / Employment domain actions (§5). Those actions and the domain control fixes are built
-(Phase 12.1); the service-desk sections below §5 are completed as they are built.
+**Status:**
+- Phase 12 is implemented and validated (see `docs/PeopleOS-Phase-12-Report.md`), awaiting
+  architectural review.
+- Production readiness is NOT DECLARED.
+- Statutory status is unchanged: 24 rule versions, 0 verified, 5 open notices.
 
-Baseline `8448291` (Phase 11 approved). Discovery covered the repository itself; the earlier Phase 12
-note (`phase-12-employee-experience.md`, blueprint build of 2026-09-27) describes the first version of
-these modules.
+Baseline `8448291` (Phase 11 approved).
+
+**How Phase 12 was built:**
+1. Discovery came first (§1, §2, Appendix A). It stopped at §69 because bank, statutory and person data
+   had no safe domain entry point.
+2. The owner decided on 2026-10-02 to add minimal People / Employment domain actions (§6).
+3. The service desk was then built on top of the existing modules, not beside them.
 
 ## 1. Current employee-experience architecture
 
@@ -49,67 +55,80 @@ these modules.
 
 ## 3. What Phase 12 adds
 
-- **Canonical request model:** extend `tickets` as the one HR service request / case, with:
-  - service and pinned service version;
-  - structured form data (encrypted, field-classified);
-  - the full controlled lifecycle (transition map);
-  - team (role) and agent assignment with organisation scope;
-  - confidentiality classification with explicit grants;
-  - business-hours SLA with pause;
-  - escalation levels;
-  - idempotency key;
-  - domain-action hand-off;
-  - locked numbering and `lock_version`.
-- **Service catalogue:** effective-dated, versioned service definitions (Draft → Pending Approval →
-  Approved → Scheduled → Active → Superseded → Archived, as in Phase 11). They reuse Configuration Form
-  versions for fields and `ticket_categories` as the category level.
-- **Workflow bridge:** approvals stay in the existing engine; a service-desk `WorkflowCompleted` bridge
-  re-checks separation of duties.
-- **SLA calendar contract:** reuses the attendance holiday calendars (`HolidayResolver`) and location
-  timezone (`AttendanceTimezone`), with configured service hours. No second holiday calendar.
-- **Knowledge base:** a review / approval lifecycle, immutable published versions, and acknowledgement
-  with version hash and source.
-- **Experience layer:** My HR hub (requests, tasks, approvals, documents, policies, services,
-  notifications), manager Team requests, HR queue, analytics, read API `/api/v1/service-desk`,
-  reminders and escalation processor, audit, events.
-
-## 4. Service-to-domain interaction (the stop condition)
-
-| Service | Domain entry point | Status |
+| Area | What was built | Where |
 |---|---|---|
-| Leave application / query | `Leaves::request(...)` (idempotency key, balance, overlap), approvals via `LeaveRequestPolicy` (not own, in scope) | Safe |
-| Attendance correction | `Regularisations::request(...)` | Safe. **12.1:** the reviewer is recorded and can never review their own |
-| Salary / employment / experience letters | `Letters::generate(template, employee, extra, requester, source)`, `approve`, `issue` | Safe. **12.1:** `approve` refuses approver = requester (a template without approval is still issued on the requester's behalf, as before) |
-| Compensation query | `CompensationOutput::on()` with `CompensationAccess::level()` | Safe (read) |
-| Salary change request | `CompensationChanges::propose(employee, data, actor)` (proposer ≠ reviewer ≠ approver ≠ executor; never own) | Safe when proposed by an HR proposer, not by the employee |
-| Policy acknowledgement | `KnowledgeBase::acknowledge(article, employee)` | Safe (caller must check audience) |
-| Manager change | `ChangeManagerAction::handle(employee, manager, type, from, reason)` | **12.1:** `ChangeManagerAction::change` requires `employee.position` and both people in scope |
-| Document request / upload | `Documents::store(...)`, `review(...)` | **12.1:** `review` refuses verifier = uploader and records the verifier. Employees open their own documents with `document.own` |
-| Payroll query / payslip | `ViewPayslip` page (audited), API `payroll/payslips/{number}` | No payslip download action. A payroll query is a case only |
-| **Bank account change** | Direct `EmployeeBankAccount` save in the Employee 360 relation manager | **12.1:** `ChangeBankAccountAction` (§5) |
-| **PAN / UAN update** | Direct `EmployeeStatutoryDetail` save in the Employee 360 action | **12.1:** `ChangeStatutoryIdentityAction` / `ChangeStatutoryApplicabilityAction` (§5) |
-| **Address / emergency contact / family** | Direct saves in Employee 360 relation managers (`UpdatePersonAction` covers core person fields only, without approval) | **12.1:** `ChangeAddressAction` / `ChangeEmergencyContactAction` / `ChangeFamilyMemberAction` (§5) |
+| Canonical request / case | `tickets` extended (not replaced) as the one HR service request / case:<br>- pinned service version;<br>- encrypted, field-classified form data;<br>- transition-mapped lifecycle;<br>- team / agent / owner;<br>- confidentiality;<br>- business-hours SLA with pause;<br>- escalation level;<br>- domain-action hand-off;<br>- idempotency, correlation and operation ids;<br>- `lock_version`.<br>Supporting tables: `ticket_transitions` (status history), `ticket_access_grants` (explicit access) and `service_desk_reminder_logs` | `ServiceDesk\Models\Ticket`, `RequestLifecycle` |
+| Service catalogue | `service_definitions` and `service_definition_versions`, with the Phase 11 configuration lifecycle (Draft → Pending approval → Scheduled / Active → Superseded, or Archived):<br>- prepared by one person, approved by another;<br>- frozen from submission;<br>- checksummed;<br>- requests pinned to the version.<br>Thirteen starter services are seeded as drafts | `ServiceCatalogue`, `ServiceDefinitionResource` |
+| Forms | A service's form is a published Configuration Form version plus its domain action's fields. Field security (standard / sensitive / restricted, employee-visible) is set on the version. Unknown keys are dropped | `ServiceForms` |
+| Intake | Checks who may raise what for whom, eligibility (lifecycle states, organisation scope, rule), the form and attachments. Idempotent per employee and key. Locked numbering | `ServiceRequests`, `Support\Numbering\NumberSequences` |
+| Domain hand-off | Ten handlers call the owning domain's action (§5) and run once under the request lock, with separation of duties | `DomainActions`, `DomainActionExecutor`, `ServiceDesk\DomainActions\*` |
+| Workflow | Approvals in the existing engine. `ServiceDeskWorkflowBridge` re-checks separation of duties | §8 |
+| SLA | `SlaCalendar` contract with business-hours (holiday calendar, location timezone, service hours) and calendar-hours implementations. `ServiceSlaPolicy` (effective-dated, per-priority targets). `SlaClock` pauses, resumes and restarts the clock | §11 |
+| Assignment | Team (role), agent and owner, in organisation scope. Claim, assign, reassign and unassign run under the lock. Least-loaded auto-assignment | `CaseAssignment` |
+| Escalation and reminders | `peopleos:service-desk:process` (hourly, `withoutOverlapping()->onOneServer()`, tenant-bound job) | `ServiceDeskProcessor`, §12 |
+| Access | One access model for policy, queries, search, comments, attachments, fields and the API | `CaseAccess`, §7 |
+| Knowledge | Draft → Review → Approved → Published → Archived. Immutable versions with a hash. Readers and search see the published version only. Per-version acknowledgement with hash, source and IP, never deleted | `KnowledgeBase`, §15 |
+| Grievances | Organisation scope for grievance managers. No blanket platform-admin access. Checked access grants. Signed, audited attachment route. Locked numbering | `Grievances`, `GrievanceAttachmentController` |
+| Experience layer | My HR (Requests, Tasks, Approvals, Documents, Policies, Services, Notifications). Team HR requests. Unified tasks through domain sources and a Phase 13 survey hook. Employee 360 Requests tab. Timeline references | §17 |
+| Analytics and bulk | Service analytics with small-group and complementary suppression. Bulk assign / move / escalate with operation ids | `ServiceDeskAnalytics`, `ServiceDeskBulk` |
+| API | Read-only `/api/v1/service-desk/*` (scope `servicedesk.read`) | §13 |
 
-Phase 12 §11 requires "Service Request → Approval → **Existing** People Domain Action". For bank, PAN /
-UAN, address, emergency contact and family data no such action existed, and Service Delivery must not
-write those tables itself. This was the §69 stop condition.
+## 4. What existing modules continue to own
 
-**Owner's decision (2026-10-02):**
-- Add the minimal People / Employment domain actions (§5); "manual HR fulfilment only" is rejected.
-- Fix the control gaps in their own domains:
-  - letter approver ≠ requester;
-  - regularisation reviewer recorded, never one's own;
-  - document verifier ≠ uploader;
-  - manager change needs `employee.position` and both people in scope;
-  - employees can open their own documents (`document.own`).
+Service Delivery owns:
+- requests, cases and the catalogue;
+- intake, routing, assignment and SLA;
+- case communication and service status;
+- the employee-facing request experience;
+- service analytics.
 
-Discovery confirmed the expected owners, so the stop did not recur:
-- Employment owns `employee_bank_accounts` and `employee_statutory_details`.
-- People owns `person_addresses`, `person_emergency_contacts` and `person_family_members` (they belong
-  to the lifetime Person).
-- The Employee 360 screens were the only writers. No seeder, import, console command or API wrote them.
+Every other module stays the system of record:
 
-## 5. People Domain Change Actions
+| Domain | Owner, and how the desk reaches it |
+|---|---|
+| Employee, Person, bank, statutory, address, emergency contact, family | People / Employment, through the §6 actions |
+| Reporting lines | Employment (`ChangeManagerAction::change`) |
+| Leave | Leave (`Leaves::request`). The desk never touches requests, the ledger, balances or accruals |
+| Attendance | Attendance (`Regularisations::request`). Never punches or records directly |
+| Letters | Letters (`Letters::generate` / `approve` / `issue`). The desk retrieves no salary or employment data |
+| Compensation | Compensation. The desk links a proposal made in Compensation and never writes `employee_salary_assignments` |
+| Payroll | Payroll. A payroll query is a case; a correction is made with Payroll's own approved actions and may be referenced in the case |
+| Documents | Documents. My Documents reads through `EmployeeDocumentPolicy` (own documents need `document.own`); case attachments use the same private disk |
+| Workflow | Workflow (approvals) |
+| Knowledge, grievances | Knowledge and Grievance, extended in place |
+| Performance, learning, career, talent, succession | Their modules. They appear only through task sources and Needs Attention, never copied |
+
+There is no RecruitmentEdge / RMS dependency.
+
+## 5. Service-to-domain interaction
+
+| Handler key | Owning domain entry point | Timing | Approval | Executor permission |
+|---|---|---|---|---|
+| `leave.request` | `Leaves::request` (idempotency key `sd-{correlation}`) | At submission | The Leave domain's own | — (requester `leave.apply`) |
+| `attendance.regularisation` | `Regularisations::request` | At submission | The Attendance domain's own (reviewer ≠ subject) | — (requester `attendance.regularise`) |
+| `letter.request` | `Letters::generate` (source = the request) | At submission | Letters' own (approver ≠ requester) | — |
+| `compensation.proposal` | Links a `CompensationChange` the executor proposed in Compensation | Link | Compensation's own chain | `compensation.propose` |
+| `profile.bank_account` | `ChangeBankAccountAction::add` | After approval / ready | Per service (workflow) | `employee.sensitive.update` |
+| `profile.statutory_identity` | `ChangeStatutoryIdentityAction::handle` | After approval / ready | Per service | `employee.sensitive.update` |
+| `profile.address` | `ChangeAddressAction::add` / `update` | After approval / ready | Per service | `employee.update` (add: `employee.create`) |
+| `profile.emergency_contact` | `ChangeEmergencyContactAction` | After approval / ready | Per service | as above |
+| `profile.family_member` | `ChangeFamilyMemberAction` | After approval / ready | Per service | as above |
+| `employment.manager_change` | `ChangeManagerAction::change` | After approval / ready | Per service | `employee.position` |
+
+**Approval rules:**
+- A service whose domain approves itself (at-submission handlers) cannot add a second approval: the
+  catalogue refuses the version.
+- A service needing approval must name an active, published workflow.
+- The catalogue refuses audiences a handler does not accept. For example, profile changes are never
+  offered to managers for their reports.
+
+**Status tracking:** the case follows its domain through `ServiceDeskDomainListener`, which reads only
+the domain's own events:
+- a leave or regularisation decision resolves the case;
+- a letter approval moves the case back to work;
+- an issued letter resolves it.
+
+## 6. People Domain Change Actions
 
 ### Ownership
 
@@ -247,19 +266,385 @@ Security → Record, enforced inside each action whatever the caller:
 - **Sensitive data:** the Timeline tab treats `bank`, `statutory` and `personal` entries as sensitive
   (hidden without `employee.sensitive.view`).
 
-## 6. Remaining design topics
+## 7. Security model
 
-The remaining topics depend on the decision above. They will be completed with the implementation:
-- security model, workflow model, notification model;
-- case lifecycle, SLA model, escalation model;
-- API boundary, audit boundary.
+The chain is Auth → Tenant → Role → Permission → Organisation scope → Relationship scope → Field
+security → Record. It is enforced by `CaseAccess`, which every layer uses:
+- **Queries:** `visible()` restricts any Ticket query in SQL. It is used by the HR queue, My HR, search,
+  Employee 360, bulk operations and the task sources. The ticket's `ScopedByEmployee` global scope
+  applies organisation scope first.
+- **Records:** `canView()` / `canWork()` back `TicketPolicy`.
+- **Services:** every operation calls `canWork()`, and `RequestLifecycle` checks it again under the row
+  lock (`asWorker`).
+- **The API:** its own fixed filter (§13).
 
-The non-negotiable boundaries already established:
-- **Ownership:** Service Desk owns requests, cases, catalogue, intake, routing, assignment, SLA, case
-  communication and service analytics. Every other module stays the system of record.
-- **Security chain:** Auth → Tenant → Role → Permission → Organisation Scope → Relationship Scope →
-  Field Security → Record, enforced in services, policies, queries and the API (not only in Filament).
-- **No direct domain writes:** no direct write to another module's tables, and no salary mutation
-  outside Compensation.
-- **Statutory:** unchanged (24 rule versions, 0 verified, 5 open notices); production readiness NOT
-  DECLARED.
+| Who | Sees | Works |
+|---|---|---|
+| Requester / employee | Own requests visible to the employee (drafts only if they raised them); employee-visible comments; own form values, sensitive ones masked | Comment, close & rate, reopen, cancel |
+| Agent (`servicedesk.agent`) | Standard and sensitive cases of employees in their organisation scope, never their own case as its subject | Acknowledge, claim, assign, move, reply, resolve |
+| Read-only (`servicedesk.view`, e.g. auditor) | As the agent | Nothing |
+| Restricted cases | Only `servicedesk.confidential` holders who are the assignee, the owner (HR who opened it) or explicitly granted (`ticket_access_grants`, reasoned, revocable, audited). No "HR sees everything", no platform-admin bypass | As seen |
+| Manager (`servicedesk.team`) | Status of standard cases of manager-visible services, for people they manage through the configured reporting relationships (`PerformanceRelationships`; never mentor / buddy / project). No comments, no form data | Raise manager-available services for a report |
+
+**Field security:**
+- The service version classifies each field; a domain action's stricter class wins.
+- **Sensitive** values are masked unless the reader holds the action's view permission (for example
+  `employee.sensitive.view`).
+- **Restricted** values need explicit case access.
+- HR-only fields are never shown to the employee.
+- Form data is encrypted at rest and masked entirely in audit.
+- Values for a domain change are purged once the change is executed, rejected or cancelled.
+
+**Reads:** every read of a sensitive or restricted case is audited (`CONFIDENTIAL_CASE_VIEWED`).
+
+**Grants:** the reason given for an access grant is masked in the audit field diff, because it can
+describe the case.
+
+## 8. Workflow model
+
+- The catalogue version names the workflow (`approval_required`, `workflow_key`). Submission starts
+  the existing `WorkflowEngine` with the request as subject, and the case waits in `awaiting_approval`
+  (SLA paused).
+- `ServiceDeskWorkflowBridge` (a `WorkflowCompleted` listener, like the Leave, Learning, Succession and
+  Workforce bridges) decides under the request lock:
+  - **approved by someone other than the requester or the employee:** a domain change becomes `ready`
+    and a plain case returns to work;
+  - **approved by the requester or the employee:** refused (`REQUEST_APPROVAL_SOD_REFUSED`), and HR
+    may restart approval;
+  - **rejected:** resolved as not approved, with values purged.
+- The executor of a change is a third person: never the requester, the employee concerned or an
+  approver (`DomainActionExecutor`).
+- Workflow waiting is not service time: `awaiting_approval` pauses the SLA by default.
+- Legacy categories with a `workflow_key` still start their workflow as automation, without gating the
+  request.
+
+## 9. Notification model
+
+- Events: `ServiceDeskEvent` → `NotificationEventBridge::onServiceDesk` (tenant rules first, else
+  in-app to the named users) and `WebhookEventBridge` (allow-listed names, scalar context only).
+- The context is the number, service name and code, status, priority, employee id and, for
+  escalations, due time and level. It never carries the free-text subject, description, form data,
+  comments, resolutions or grievance details.
+- Titles read like "Resolved: HR request TKT-2026-00001 (Bank account change)".
+- New event names, mapped to the prompt's examples:
+
+| Prompt example | Event name |
+|---|---|
+| ServiceRequestSubmitted | `servicedesk.ticket.created` |
+| Assigned | `servicedesk.ticket.assigned` |
+| Reassigned | `servicedesk.ticket.reassigned` |
+| Escalated | `servicedesk.ticket.escalated` |
+| Waiting for employee | `servicedesk.ticket.waiting_for_employee` |
+| Resolved | `servicedesk.ticket.resolved` |
+| Closed | `servicedesk.ticket.closed` |
+| Cancelled | `servicedesk.ticket.cancelled` |
+| KnowledgeArticlePublished | `kb.article.published` |
+| PolicyAcknowledged | `kb.policy.acknowledged` |
+
+  Further new events: `acknowledged`, `approval_required`, `ready_to_execute`, `sla_warning`, the
+  `servicedesk.reminder.*` reminders, `kb.article.review_requested` and `kb.reminder.acknowledgement`.
+- Profile changes emit the six `EmploymentEvent` names (§6) with references only.
+
+## 10. Case lifecycle
+
+| Status | Next statuses (`peopleos.servicedesk.transitions`) |
+|---|---|
+| draft | submitted, cancelled |
+| submitted | acknowledged, assigned, in_progress, awaiting_approval, waiting_employee, resolved, cancelled |
+| acknowledged | submitted, assigned, in_progress, awaiting_approval, waiting_employee, resolved, cancelled |
+| assigned | acknowledged, submitted, in_progress, awaiting_approval, waiting_employee, waiting_hr, resolved, cancelled |
+| in_progress | acknowledged, submitted, awaiting_approval, waiting_employee, waiting_hr, resolved, cancelled |
+| awaiting_approval | in_progress, resolved, cancelled |
+| waiting_employee | in_progress, waiting_hr, resolved, cancelled |
+| waiting_hr | in_progress, waiting_employee, resolved, cancelled |
+| resolved | closed, in_progress (reopen) |
+| closed | in_progress (reopen) |
+| cancelled | — |
+
+`awaiting_approval` extends the suggested foundation so that approval time is distinct from service
+time. Existing rows were renamed reversibly (new → submitted, open → in_progress, pending →
+waiting_employee).
+
+`RequestLifecycle::move` is the only status writer. Each move:
+1. locks the row and checks the caller's `lock_version`;
+2. refuses moves outside the map and same-state moves;
+3. requires a reason for cancel and reopen, and a resolution to resolve;
+4. stamps the lifecycle timestamps and pauses / resumes / restarts the SLA;
+5. appends `ticket_transitions` (from, to, actor, via user / system / workflow / bulk, reason,
+   operation id);
+6. writes exactly one audit event and dispatches a value-free event.
+
+Comments and the status history are append-only.
+
+## 11. SLA model
+
+**Policy.** `service_sla_policies` holds, effective-dated:
+- per-priority first-response and resolution targets in hours;
+- business or calendar mode;
+- the warning share;
+- escalation role, repeat interval and maximum level;
+- optional pause statuses and service hours.
+
+A policy referenced by an approved service version cannot be edited; a change is a new policy row.
+
+**Calendar.** `SlaCalendar` is the smallest reusable contract (`addMinutes`, `minutesBetween`). It has
+two implementations:
+- **BusinessHoursCalendar** counts only:
+  - configured service days and hours (`peopleos.servicedesk.business_hours` or the policy's);
+  - outside the employee's attendance holidays (`HolidayResolver`): public and company holidays stop
+    the clock, optional ones do not, and a half day keeps the first half;
+  - in the work location's timezone (`AttendanceTimezone`).
+- **CalendarHoursCalendar** counts 24 × 7. Legacy categories use it, keeping their old hours.
+
+There is no second holiday calendar.
+
+**Clock (`SlaClock`):**
+- The due times are snapshotted at submission.
+- Pause statuses stop the clock; the defaults are `waiting_employee` and `awaiting_approval`, and they
+  are configurable per policy.
+- Resuming moves the due times later by the paused service minutes (`sla_paused_minutes` records
+  them).
+- Reopening restarts the resolution clock.
+- Done statuses stop it.
+
+## 12. Escalation model
+
+`peopleos:service-desk:process` runs hourly, `withoutOverlapping()->onOneServer()`, per tenant. With
+`--queue` it dispatches `ProcessServiceDesk`, a `TenantAwareJob` with `BindTenantContext` that is unique
+per tenant. The legacy `peopleos:servicedesk:tick` is an alias.
+
+**Each run:**
+- promotes due catalogue versions;
+- warns once when the share of SLA used reaches the policy's threshold;
+- escalates breached requests by one level per repeat interval up to the policy's maximum (legacy: one
+  level), notifying the escalation role holders who can see the case and the assignee;
+- reminds requests waiting for the employee (every N days, at most M times) and for HR (every H hours);
+- auto-closes resolved requests after `auto_close_days`;
+- escalates overdue grievances daily;
+- sends a weekly policy-acknowledgement reminder (one tenant sweep per week).
+
+**Idempotency:**
+- Every notification first claims a `service_desk_reminder_logs` row, unique on tenant, kind, subject
+  and a deterministic bucket (due time, level, waiting-period number, day, week).
+- Escalation levels move under the request lock, and the guard re-checks "still open, not paused,
+  level not reached".
+- A reminder never triggers another.
+
+**Bounded work:** reads go through the `(tenant, status, due_at)` index in id chunks, and each request
+is moved in its own transaction.
+
+## 13. API boundary
+
+`/api/v1/service-desk/{services, requests, requests/{number}, requests/{number}/comments, knowledge, tasks}`
+is read-only, uses scope `servicedesk.read`, and keeps the v1 page shape. API keys belong to a tenant,
+and the integration has no employee context. It never receives:
+- restricted cases (404, like another tenant's ids) or drafts;
+- internal or restricted notes, or comments on sensitive cases;
+- attachments (only `has_attachment`);
+- free-text subjects, descriptions or resolutions;
+- sensitive or HR-only form fields (only standard, employee-visible fields of standard cases);
+- workflow internals (tasks are request number, type, status and due time).
+
+Knowledge returns only published articles with no audience rule.
+
+There are no write endpoints. Profile data has no API write path; a future one must expose explicit
+action endpoints that call the §6 actions.
+
+## 14. Audit boundary
+
+The existing immutable, hash-chained audit is used; there is no new audit table.
+
+**Actions:**
+- REQUEST_CREATED, REQUEST_SUBMITTED, REQUEST_ASSIGNED, REQUEST_REASSIGNED, REQUEST_STATUS_CHANGED,
+  REQUEST_ESCALATED, REQUEST_RESOLVED, REQUEST_CLOSED, REQUEST_CANCELLED;
+- COMMENT_CREATED, ATTACHMENT_UPLOADED, ATTACHMENT_DOWNLOADED, CONFIDENTIAL_CASE_VIEWED;
+- KNOWLEDGE_PUBLISHED, POLICY_ACKNOWLEDGED.
+
+These are `AuditAction` cases. Metadata `event` names finer steps (REQUEST_CLAIMED, REQUEST_APPROVED,
+REQUEST_APPROVAL_SOD_REFUSED, DOMAIN_ACTION_EXECUTED, CASE_ACCESS_GRANTED / REVOKED).
+
+**What each record carries:**
+- Ticket audits carry the correlation id. The ticket's subject, description, resolution and form data
+  are masked.
+- Profile changes carry the request number (`approval_reference`) and the request's operation id.
+- Comment bodies are never audited.
+- Bulk runs carry one operation id and a BULK_OPERATION summary.
+
+`ticket_transitions` is the case's own status history (domain data shown on the case), not an audit
+table.
+
+## 15. Knowledge base and policy acknowledgement
+
+**Lifecycle:**
+- An author (`kb.manage`) writes a draft and submits it.
+- A reviewer (`kb.review`, never the author) approves it or returns it with a note.
+- The author publishes an approved article as a new `article_versions` row: title, summary, body,
+  SHA-256 content hash, reviewer and approver. Versions are never updated or deleted.
+- Readers, search and acknowledgement use `published_version`. A revision is a new draft while the
+  published version keeps being served.
+
+**Acknowledgement:**
+- It is per version and records the version id, hash, source and IP address.
+- It is locked: a concurrent repeat records nothing more.
+- Version 1 never counts for version 2, and history is never changed or deleted.
+
+**Audience:** the rule-engine audience (company / location / lifecycle conditions) decides who reads an
+article. It is evaluated per article over the small published set, after an SQL search on the
+published versions.
+
+## 16. Confidential cases and grievances
+
+**Employee-relations cases:**
+- Disciplinary matters, harassment and investigations are catalogue services with confidentiality
+  `restricted`, usually not visible to the employee and available to HR only.
+- Access follows Tenant → `servicedesk.confidential` → classification → explicit scope (assignee,
+  owner, grant) → record.
+- Grants and revocations lock the case, are reasoned and are audited.
+
+**Grievances** stay their own module, extended:
+- grievance managers see non-confidential cases only in their organisation scope;
+- confidential categories are open only to handler roles, the assignee and grantees, with no
+  platform-admin bypass;
+- only a handler with access grants access;
+- note attachments use a signed, re-authorised, audited route, and employees get only notes marked
+  visible to them;
+- numbers come from the locked sequence.
+
+## 17. Experience layer
+
+- **My HR** (`MyHr`, Me → My HR) has seven tabs:
+  - **Requests:** CaseAccess.
+  - **Tasks:** `ExperienceTasks`, combining the domain sources `WorkflowTaskSource`,
+    `ServiceDeskTaskSource`, `PolicyAcknowledgementTaskSource` and the Phase 13 `SurveyTaskProvider`
+    hook (null now), plus Needs Attention.
+  - **Approvals:** workflow tasks.
+  - **Documents:** own documents through `EmployeeDocumentPolicy::isOwn` and signed downloads, plus
+    letter status.
+  - **Policies:** published versions and acknowledgement.
+  - **Services:** the catalogue's `availableTo` with eligibility, and Request.
+  - **Notifications.**
+
+  The experience layer stores nothing.
+- **Team HR requests** (`TeamRequests`) is the manager view (§7). It is status only, and lets a
+  manager raise manager-available services.
+- **Employee 360 → Requests** shows service history through CaseAccess: service and status, never
+  subjects.
+- **Timeline** gets references only ("HR request TKT-… raised / resolved / cancelled") for standard,
+  employee-visible cases. Sensitive and restricted cases are omitted. Profile changes record their own
+  `bank` / `statutory` / `personal` entries, which are hidden without `employee.sensitive.view`.
+- **HR side:**
+  - HR queue (`TicketResource`): filters for unassigned, mine, team, SLA risk, overdue, priority,
+    service and dates; bulk actions.
+  - Case detail: request, protected form data, assignment and SLA, domain change, conversation, status
+    history, audit.
+  - Catalogue with versions.
+  - SLA policies.
+  - Analytics.
+  - Knowledge review actions.
+
+## 18. Analytics, reporting privacy and bulk operations
+
+**Analytics** (`ServiceDeskAnalytics`, `servicedesk.analytics`, organisation scope):
+- **Metrics:** received, open, overdue backlog, resolved, average first response and resolution
+  (excluding paused time), SLA compliance, breached.
+- **Breakdowns:** by status, priority, service, team and department.
+- **Suppression:**
+  - A group with fewer than `servicedesk.analytics_min_group` distinct employees is suppressed.
+  - If only one group would be suppressed, the next smallest is too (complementary).
+  - Restricted cases appear only as a suppressed total.
+  - The dimensions are fixed and combined only with the date range.
+
+**Bulk operations** (`ServiceDeskBulk`, `servicedesk.bulk`):
+- assign, move to a working status, and escalate;
+- at most 500 cases, each authorised and moved in its own transaction;
+- an idempotent skip when a case is already in the target state;
+- one operation id and a BULK_OPERATION summary;
+- a per-case result (done / skipped / refused + reason).
+
+Resolve, close and cancel are never bulk.
+
+## 19. Concurrency and locks
+
+**Lock order** (deadlock-free with Phase 11 payroll / compensation):
+1. request row;
+2. employee row (submission, profile actions);
+3. number sequence row;
+4. the owning domain's own locks;
+5. the audit chain, always last.
+
+One request per transaction. `NumberSequences::ensure` creates a sequence row outside the
+transaction, so two first-of-year inserts cannot deadlock on the gap lock.
+
+**Read after the lock with a locking read.** Under MySQL REPEATABLE READ, a transaction's snapshot is
+taken at its first plain read, which can come before it waits for a lock. A check made after the lock
+(duplicate bank account, idempotency key) must therefore be a locking read, which always sees the
+latest committed rows. The first MySQL run found exactly this:
+- the bank-account duplicate check was a plain read and missed an account added by a concurrent
+  request;
+- it is now `lockForUpdate`, as is the idempotency re-check.
+
+Proven on MySQL (`tests/MySql/ServiceDeskConcurrencyTest.php`, run twice, with lock-removal proofs; see
+the Phase 12 report):
+- idempotent submission;
+- claim, double resolve, reassign vs resolve, assignment vs assignment;
+- escalation vs pause, overlapping SLA runs;
+- duplicate execution and execution retry;
+- concurrent acknowledgement;
+- revoked grant mid-flight;
+- duplicate bank account;
+- simultaneous statutory changes;
+- concurrent catalogue approval.
+
+## 20. Limits and deferred work
+
+- **Surveys:** the hook only (Phase 13).
+- **Payroll corrections:** cases only; the correction is made in Payroll.
+- **Document requests:** cases (HR replies with a private attachment). Employees upload documents only
+  where `document.upload` already allows.
+- **Compensation:** link only (the proposal is created in Compensation).
+- **Write API:** none for the service desk.
+- **Business hours:** come from the employee's holiday calendar and location timezone; per-team service
+  calendars are not modelled.
+- **Knowledge audience:** evaluated per article in PHP over the published set (bounded, tenant-bound).
+- **Manager visibility:** reuses `peopleos.performance.manager_relationship_types` (via
+  `PerformanceRelationships`), as Phase 11 does.
+- **Starter catalogue:** the starter SLA policy and draft services are seeded when a tenant is
+  provisioned (and by `db:seed`). Tenants that existed before Phase 12 are not backfilled; HR creates
+  their services in the catalogue.
+
+## Appendix A. Discovery: the §69 stop and its resolution
+
+| Service | Domain entry point | Status |
+|---|---|---|
+| Leave application / query | `Leaves::request(...)` (idempotency key, balance, overlap), approvals via `LeaveRequestPolicy` (not own, in scope) | Safe |
+| Attendance correction | `Regularisations::request(...)` | Safe. **12.1:** the reviewer is recorded and can never review their own |
+| Salary / employment / experience letters | `Letters::generate(template, employee, extra, requester, source)`, `approve`, `issue` | Safe. **12.1:** `approve` refuses approver = requester (a template without approval is still issued on the requester's behalf, as before) |
+| Compensation query | `CompensationOutput::on()` with `CompensationAccess::level()` | Safe (read) |
+| Salary change request | `CompensationChanges::propose(employee, data, actor)` (proposer ≠ reviewer ≠ approver ≠ executor; never own) | Safe when proposed by an HR proposer, not by the employee |
+| Policy acknowledgement | `KnowledgeBase::acknowledge(article, employee)` | Safe (caller must check audience) |
+| Manager change | `ChangeManagerAction::handle(employee, manager, type, from, reason)` | **12.1:** `ChangeManagerAction::change` requires `employee.position` and both people in scope |
+| Document request / upload | `Documents::store(...)`, `review(...)` | **12.1:** `review` refuses verifier = uploader and records the verifier. Employees open their own documents with `document.own` |
+| Payroll query / payslip | `ViewPayslip` page (audited), API `payroll/payslips/{number}` | No payslip download action. A payroll query is a case only |
+| **Bank account change** | Direct `EmployeeBankAccount` save in the Employee 360 relation manager | **12.1:** `ChangeBankAccountAction` (§5) |
+| **PAN / UAN update** | Direct `EmployeeStatutoryDetail` save in the Employee 360 action | **12.1:** `ChangeStatutoryIdentityAction` / `ChangeStatutoryApplicabilityAction` (§5) |
+| **Address / emergency contact / family** | Direct saves in Employee 360 relation managers (`UpdatePersonAction` covers core person fields only, without approval) | **12.1:** `ChangeAddressAction` / `ChangeEmergencyContactAction` / `ChangeFamilyMemberAction` (§5) |
+
+Phase 12 §11 requires "Service Request → Approval → **Existing** People Domain Action". For bank, PAN /
+UAN, address, emergency contact and family data no such action existed, and Service Delivery must not
+write those tables itself. This was the §69 stop condition.
+
+**Owner's decision (2026-10-02):**
+- Add the minimal People / Employment domain actions (§5); "manual HR fulfilment only" is rejected.
+- Fix the control gaps in their own domains:
+  - letter approver ≠ requester;
+  - regularisation reviewer recorded, never one's own;
+  - document verifier ≠ uploader;
+  - manager change needs `employee.position` and both people in scope;
+  - employees can open their own documents (`document.own`).
+
+Discovery confirmed the expected owners, so the stop did not recur:
+- Employment owns `employee_bank_accounts` and `employee_statutory_details`.
+- People owns `person_addresses`, `person_emergency_contacts` and `person_family_members` (they belong
+  to the lifetime Person).
+- The Employee 360 screens were the only writers. No seeder, import, console command or API wrote them.
+
