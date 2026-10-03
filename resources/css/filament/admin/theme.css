@@ -1337,6 +1337,10 @@ html {
     .pos-legend-inline span { display: inline-flex; align-items: center; gap: 6px; width: auto; height: auto; border-radius: 0; }
     .pos-legend-inline i { width: 9px; height: 9px; border-radius: 3px; }
 
+    /* Notification center */
+    .pos-notif.is-read { opacity: 0.78; }
+    .pos-unread-dot { display: inline-block; width: 8px; height: 8px; margin-inline-end: 8px; border-radius: 999px; background: var(--pos-primary); vertical-align: 2px; }
+
     /* Stepper (guided flows) */
     .pos-stepper { display: flex; flex-wrap: wrap; gap: 6px 14px; }
     .pos-stepper > li { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--pos-text-muted); }

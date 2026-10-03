@@ -25,7 +25,7 @@
                     </header>
                     <div class="pos-approval-list mt-3">
                         @foreach ($groups[$key] as $item)
-                            <x-pos.approval-card :item="$item" wire:key="appr-{{ $item->id }}" />
+                            <x-pos.approval-card :item="$item" wire:key="appr-{{ $item->id }}" wire:transition />
                         @endforeach
                     </div>
                 </section>

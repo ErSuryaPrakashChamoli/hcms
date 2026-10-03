@@ -1,5 +1,6 @@
 {{-- Today: attendance, the leave request and the latest payslip (one tap each). --}}
-<section class="pos-card pos-today" aria-labelledby="pos-today-title-{{ $suffix }}">
+<section class="pos-card pos-today" aria-labelledby="pos-today-title-{{ $suffix }}" x-data="{ pulse: false }"
+    x-on:pos-success.window="pulse = true; setTimeout(() => pulse = false, 800)" :class="pulse && 'pos-success-pulse'">
     <p class="pos-label">Today</p>
     <h2 id="pos-today-title-{{ $suffix }}" class="pos-h3 mt-1">
         @if ($me['checked_in'])

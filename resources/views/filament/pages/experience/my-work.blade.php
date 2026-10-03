@@ -24,7 +24,7 @@
             @else
                 <ul class="pos-card pos-list" aria-label="{{ \App\Filament\Pages\MyWork::TABS[$active] }}">
                     @foreach ($rows as $row)
-                        <li class="pos-list-row pos-work-row pos-attention" data-severity="{{ $row['severity'] }}" tabindex="-1" wire:key="work-{{ $row['key'] }}">
+                        <li class="pos-list-row pos-work-row pos-attention" data-severity="{{ $row['severity'] }}" tabindex="-1" wire:key="work-{{ $row['key'] }}" wire:transition>
                             <span class="pos-severity" aria-hidden="true"></span>
                             <div class="min-w-0 flex-1">
                                 <p class="pos-body font-medium">{{ $row['title'] }}@if (($row['count'] ?? 0) > 1) <span class="pos-count">{{ $row['count'] }}</span>@endif</p>
