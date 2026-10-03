@@ -132,6 +132,17 @@ final class Letters
         });
     }
 
+    /** Phase 14: the issued letter as a download, audited (who downloaded which letter). */
+    public function download(Letter $letter, User $user): string
+    {
+        if ($letter->status !== 'issued') {
+            throw new RuntimeException('Only an issued letter can be downloaded.');
+        }
+        $this->audit->record(AuditAction::Download, 'letters', $letter, [], null, actor: $user, metadata: ['number' => $letter->number]);
+
+        return $this->html($letter);
+    }
+
     public function html(Letter $letter): string
     {
         $company = e($letter->context['company']['name'] ?? '');

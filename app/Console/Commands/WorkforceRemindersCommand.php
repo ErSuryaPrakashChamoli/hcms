@@ -6,6 +6,7 @@ use App\Domain\Platform\Models\Tenant;
 use App\Domain\Workforce\Jobs\SendWorkforceReminders;
 use App\Domain\Workforce\Services\WorkforceReminders;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 
 class WorkforceRemindersCommand extends Command
@@ -16,10 +17,11 @@ class WorkforceRemindersCommand extends Command
 
     public function handle(WorkforceReminders $reminders, TenantContext $tenants): int
     {
+        $runner = TenantRunner::for($this);
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each(function (Tenant $tenant) use ($reminders, $tenants) {
+            ->each($runner->isolate(function (Tenant $tenant) use ($reminders, $tenants) {
                 $tenants->runAs($tenant, function () use ($reminders, $tenant) {
                     if ($this->option('queue')) {
                         SendWorkforceReminders::dispatch();
@@ -30,8 +32,8 @@ class WorkforceRemindersCommand extends Command
                     $r = $reminders->tick();
                     $this->info("{$tenant->slug}: {$r['pending_approval']} approval, {$r['plan_expiry']} plan expiry, {$r['vacancies']} vacancy reminder(s)");
                 });
-            });
+            }));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

@@ -103,11 +103,12 @@ final class Documents
 
     public function recordAccess(EmployeeDocument $document, string $purpose = 'download'): void
     {
-        if (! $document->isSensitive()) {
+        // Phase 14: every download is audited; previews only for sensitive documents.
+        if ($purpose !== 'download' && ! $document->isSensitive()) {
             return;
         }
 
-        $this->audit->record($purpose === 'download' ? AuditAction::Download : AuditAction::View, 'documents', $document, metadata: ['purpose' => $purpose, 'employee_id' => $document->employee_id], reason: $purpose);
+        $this->audit->record($purpose === 'download' ? AuditAction::Download : AuditAction::View, 'documents', $document, metadata: ['purpose' => $purpose, 'employee_id' => $document->employee_id, 'sensitive' => $document->isSensitive()], reason: $purpose);
     }
 
     public function delete(EmployeeDocument $document, ?string $reason = null): void

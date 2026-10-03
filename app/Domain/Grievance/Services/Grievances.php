@@ -15,7 +15,9 @@ use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
 use App\Support\Numbering\NumberSequences;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -114,6 +116,38 @@ final class Grievances
         return $employee !== null && app(AccessScopes::class)->allows($user, $employee);
     }
 
+    /**
+     * Phase 14: evidence moves from the upload area into the case's tenant folder
+     * (`tenants/{tenant}/grievances/{case}/{ulid}.{ext}`). The file type and size are checked against the
+     * document rules, and its SHA-256 is recorded and verified on every download. The case file never
+     * points at an arbitrary path.
+     *
+     * @return array{attachment_path: string, attachment_name: string, attachment_sha256: string}
+     */
+    private function storeEvidence(Grievance $grievance, string $upload, ?string $name): array
+    {
+        $disk = Storage::disk(config('peopleos.documents.disk', 'local'));
+        $source = ltrim(str_replace(['\\', '..'], ['/', ''], $upload), '/');
+        $directory = "tenants/{$grievance->tenant_id}/grievances/{$grievance->id}";
+        if (! (str_starts_with($source, 'grievances/') || str_starts_with($source, $directory.'/')) || ! $disk->exists($source)) {
+            throw new RuntimeException('The evidence upload was not found.');
+        }
+        $original = $name ?? basename($source);
+        $extension = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+        if (! in_array($extension, config('peopleos.documents.mimes', []), true)) {
+            $disk->delete($source);
+            throw new RuntimeException('That file type is not accepted ('.implode(', ', config('peopleos.documents.mimes', [])).').');
+        }
+        if ((int) $disk->size($source) > 1024 * (int) config('peopleos.documents.max_kb', 10240)) {
+            $disk->delete($source);
+            throw new RuntimeException('The evidence file is too large.');
+        }
+        $path = $directory.'/'.Str::ulid().'.'.$extension;
+        $disk->move($source, $path);
+
+        return ['attachment_path' => $path, 'attachment_name' => Str::limit($original, 250, ''), 'attachment_sha256' => hash('sha256', (string) $disk->get($path))];
+    }
+
     /** Temporary signed link to a case-file attachment; the route re-authorises the case and the note's visibility. */
     public function attachmentUrl(GrievanceNote $note, int $minutes = 15): ?string
     {
@@ -162,7 +196,8 @@ final class Grievances
             throw new RuntimeException('The case is closed.');
         }
 
-        $note = GrievanceNote::create(['grievance_id' => $grievance->id, 'author_id' => $author->id, 'type' => $type, 'body' => $body, 'visible_to_employee' => $visibleToEmployee || $type === 'employee', 'attachment_path' => $attachmentPath, 'attachment_name' => $attachmentName]);
+        $evidence = $attachmentPath !== null ? $this->storeEvidence($grievance, $attachmentPath, $attachmentName) : ['attachment_path' => null, 'attachment_name' => null, 'attachment_sha256' => null];
+        $note = GrievanceNote::create(['grievance_id' => $grievance->id, 'author_id' => $author->id, 'type' => $type, 'body' => $body, 'visible_to_employee' => $visibleToEmployee || $type === 'employee', ...$evidence]);
 
         if ($type === 'action' && in_array($grievance->status, ['under_review', 'investigating'], true)) {
             $grievance->update(['status' => 'action_taken']);

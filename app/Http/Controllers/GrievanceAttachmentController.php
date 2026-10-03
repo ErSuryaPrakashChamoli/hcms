@@ -31,6 +31,8 @@ class GrievanceAttachmentController extends Controller
         }
         $disk = config('peopleos.documents.disk', 'local');
         abort_unless(Storage::disk($disk)->exists($entry->attachment_path), 404);
+        // Phase 14: evidence must still match the fingerprint recorded when it was added.
+        abort_unless($entry->attachment_sha256 === null || hash_equals($entry->attachment_sha256, hash('sha256', (string) Storage::disk($disk)->get($entry->attachment_path))), 409, 'The evidence no longer matches its fingerprint.');
 
         $audit->record(AuditAction::AttachmentDownloaded, 'grievance', $case, metadata: ['note_id' => $entry->id, 'file' => $entry->attachment_name, 'sensitive' => true], reason: 'attachment download');
 

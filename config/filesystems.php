@@ -33,7 +33,9 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Phase 14: private files are served only through authorised, audited download routes,
+            // never through framework temporary URLs.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

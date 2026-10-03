@@ -23,6 +23,11 @@ class ProcessAttendanceDay implements ShouldQueue, TenantAwareJob
 
     public int $tries = 3;
 
+    public int $timeout = 300;
+
+    /** @var list<int> Phase 14: retry with backoff instead of hammering a failing dependency. */
+    public array $backoff = [60, 300];
+
     public ?int $tenantId;
 
     public function __construct(public readonly int $employeeId, public readonly string $date, public readonly ?string $reason = null)

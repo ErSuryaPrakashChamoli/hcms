@@ -8,6 +8,8 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Phase 14: the scheduler heartbeat (read by /health/ready and peopleos:readiness).
+Schedule::command('peopleos:scheduler:heartbeat')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:configuration:publish-due')->dailyAt('00:05')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:workflows:tick')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:lifecycle:reminders')->dailyAt('06:00')->withoutOverlapping()->onOneServer();

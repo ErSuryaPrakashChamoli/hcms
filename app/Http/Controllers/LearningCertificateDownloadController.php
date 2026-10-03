@@ -23,6 +23,6 @@ class LearningCertificateDownloadController extends Controller
 
         $certificates->recordDownload($certificate, $request->user());
 
-        return Storage::disk(Certificates::DISK)->download($certificate->document_path, $certificate->document_name ?? 'certificate.pdf');
+        return Storage::disk(Certificates::disk())->download($certificate->document_path, $certificate->document_name ?? 'certificate.pdf');
     }
 }

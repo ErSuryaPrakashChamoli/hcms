@@ -580,6 +580,17 @@ return [
     /*
     | Default setting values seeded per tenant.
     */
+    // Phase 14 observability. The health token reveals counts and timings on /health/ready (never secrets).
+    'health' => [
+        'token' => env('PEOPLEOS_HEALTH_TOKEN', ''),
+        'heartbeat_max_age' => (int) env('PEOPLEOS_HEARTBEAT_MAX_AGE', 180),
+        'queue_backlog_warn' => (int) env('PEOPLEOS_QUEUE_BACKLOG_WARN', 1000),
+    ],
+    'observability' => [
+        // Queries slower than this are logged (SQL text only, never bindings). 0 disables.
+        'slow_query_ms' => (int) env('PEOPLEOS_SLOW_QUERY_MS', 1000),
+    ],
+
     'settings' => [
         'branding.display_name' => null,
         'branding.primary_colour' => '#f59e0b',
@@ -924,6 +935,8 @@ return [
             'whatsapp' => ['label' => 'WhatsApp', 'driver' => LogChannel::class],
             'push' => ['label' => 'Push', 'driver' => LogChannel::class],
         ],
+        // Phase 14: external channels are delivered by a tenant-bound job after the business transaction commits.
+        'async_channels' => ['email', 'sms', 'whatsapp', 'push'],
         'audience_types' => [
             'subject' => 'The subject employee', 'manager' => "Subject's line manager", 'initiator' => 'Who started it',
             'role' => 'Everyone with a role', 'user' => 'A specific user', 'assignee' => 'Task assignee',

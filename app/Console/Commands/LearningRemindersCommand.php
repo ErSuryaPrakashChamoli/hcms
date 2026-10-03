@@ -6,6 +6,7 @@ use App\Domain\Learning\Jobs\SendLearningReminders;
 use App\Domain\Learning\Services\LearningReminders;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 
 class LearningRemindersCommand extends Command
@@ -16,10 +17,11 @@ class LearningRemindersCommand extends Command
 
     public function handle(LearningReminders $reminders, TenantContext $tenants): int
     {
+        $runner = TenantRunner::for($this);
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each(function (Tenant $tenant) use ($reminders, $tenants) {
+            ->each($runner->isolate(function (Tenant $tenant) use ($reminders, $tenants) {
                 $tenants->runAs($tenant, function () use ($reminders, $tenant) {
                     if ($this->option('queue')) {
                         SendLearningReminders::dispatch();
@@ -30,8 +32,8 @@ class LearningRemindersCommand extends Command
                     $r = $reminders->tick();
                     $this->info("{$tenant->slug}: {$r['due']} due, {$r['overdue_mandatory']} mandatory overdue, {$r['assessments']} assessment, {$r['milestones']} milestone reminder(s)");
                 });
-            });
+            }));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

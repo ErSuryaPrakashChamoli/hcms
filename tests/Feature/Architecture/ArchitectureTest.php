@@ -162,6 +162,8 @@ it('bypasses tenant scoping only in the documented platform services', function 
         'app/Http/Controllers/Sso/SsoController.php',
         'app/Support/Tenancy/Jobs/BindTenantContext.php',
         'app/Support/Tenancy/TenantContext.php',
+        // Phase 14: readiness counts platform-wide dead letters (counts only, no tenant data leaves).
+        'app/Support/Observability/HealthChecks.php',
     ];
 
     expect(array_values(array_diff(appFilesMatching('/->bypass\(|withoutTenancy\(/'), $allowed)))->toBe([]);

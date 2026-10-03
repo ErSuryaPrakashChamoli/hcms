@@ -6,6 +6,7 @@ use App\Domain\Platform\Models\Tenant;
 use App\Domain\Talent\Jobs\SendTalentReminders;
 use App\Domain\Talent\Services\TalentReminders;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 
 class TalentRemindersCommand extends Command
@@ -16,10 +17,11 @@ class TalentRemindersCommand extends Command
 
     public function handle(TalentReminders $reminders, TenantContext $tenants): int
     {
+        $runner = TenantRunner::for($this);
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each(function (Tenant $tenant) use ($reminders, $tenants) {
+            ->each($runner->isolate(function (Tenant $tenant) use ($reminders, $tenants) {
                 $tenants->runAs($tenant, function () use ($reminders, $tenant) {
                     if ($this->option('queue')) {
                         SendTalentReminders::dispatch();
@@ -30,8 +32,8 @@ class TalentRemindersCommand extends Command
                     $r = $reminders->tick();
                     $this->info("{$tenant->slug}: {$r['position_reviews']} position review, {$r['plan_reviews']} plan review, {$r['readiness_expiring']} readiness, {$r['talent_reviews']} talent review reminder(s)");
                 });
-            });
+            }));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

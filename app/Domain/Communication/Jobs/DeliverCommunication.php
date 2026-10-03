@@ -21,6 +21,11 @@ class DeliverCommunication implements ShouldBeUnique, ShouldQueue, TenantAwareJo
 
     public int $tries = 3;
 
+    public int $timeout = 300;
+
+    /** @var list<int> Phase 14: retry with backoff instead of hammering a failing dependency. */
+    public array $backoff = [60, 300];
+
     public function __construct(public ?int $tenantId, public int $announcementId) {}
 
     public function tenantId(): ?int

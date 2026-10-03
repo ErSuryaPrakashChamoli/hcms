@@ -376,15 +376,22 @@ use App\Domain\Workforce\Policies\WorkforcePlanningPolicy;
 use App\Domain\Workforce\Services\PositionSeats;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Request;
 use Illuminate\Log\Context\Repository as ContextRepository;
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -422,6 +429,7 @@ class AppServiceProvider extends ServiceProvider
         $this->registerGateShortcuts();
         $this->registerRateLimits();
         $this->propagateTenantToQueuedJobs();
+        $this->registerObservability();
 
         // Phase 11: the salary models moved from Payroll to Compensation. Polymorphic references stored
         // before the move (timeline sources, configuration changes) keep resolving; new rows use the
@@ -691,6 +699,38 @@ class AppServiceProvider extends ServiceProvider
 
             return null;
         });
+    }
+
+    /**
+     * Phase 14 observability:
+     * - every artisan command run gets a correlation id (request_id in Context), so its logs, audit rows
+     *   and notifications are traceable, and notification dedupe works per run;
+     * - failed queue jobs are logged with job, connection, queue and exception class (redacted channel);
+     * - slow queries are logged with their SQL text only, never bindings.
+     */
+    private function registerObservability(): void
+    {
+        Event::listen(CommandStarting::class, function (): void {
+            if (! Context::has('request_id')) {
+                Context::add('request_id', (string) Str::ulid());
+            }
+        });
+
+        Queue::failing(function (JobFailed $event): void {
+            Log::error('Queue job failed', [
+                'job' => $event->job->resolveName(), 'connection' => $event->connectionName, 'queue' => $event->job->getQueue(),
+                'attempts' => $event->job->attempts(), 'exception' => $event->exception::class,
+            ]);
+        });
+
+        $threshold = (int) config('peopleos.observability.slow_query_ms', 1000);
+        if ($threshold > 0) {
+            DB::listen(function (QueryExecuted $query) use ($threshold): void {
+                if ($query->time >= $threshold) {
+                    Log::warning('Slow query', ['ms' => round($query->time, 1), 'connection' => $query->connectionName, 'sql' => mb_substr($query->sql, 0, 2000)]);
+                }
+            });
+        }
     }
 
     /**

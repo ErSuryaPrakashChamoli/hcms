@@ -6,6 +6,7 @@ use App\Domain\Engagement\Jobs\ProcessEngagement;
 use App\Domain\Engagement\Services\EngagementProcessor;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 
 class ProcessEngagementCommand extends Command
@@ -16,10 +17,11 @@ class ProcessEngagementCommand extends Command
 
     public function handle(EngagementProcessor $processor, TenantContext $tenants): int
     {
+        $runner = TenantRunner::for($this);
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each(function (Tenant $tenant) use ($processor, $tenants) {
+            ->each($runner->isolate(function (Tenant $tenant) use ($processor, $tenants) {
                 $tenants->runAs($tenant, function () use ($processor, $tenant) {
                     if ($this->option('queue')) {
                         ProcessEngagement::dispatch();
@@ -30,8 +32,8 @@ class ProcessEngagementCommand extends Command
                     $r = $processor->run();
                     $this->info("{$tenant->slug}: ".collect($r)->map(fn ($n, $k) => "{$k} {$n}")->implode(', '));
                 });
-            });
+            }));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

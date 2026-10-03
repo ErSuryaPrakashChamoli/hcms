@@ -31,7 +31,11 @@ use RuntimeException;
  */
 final class Certificates
 {
-    public const DISK = 'local';
+    /** Phase 14: the certificate store follows the document disk (configurable), not a hard-coded disk. */
+    public static function disk(): string
+    {
+        return (string) config('peopleos.documents.disk', 'local');
+    }
 
     public function __construct(private readonly AuditRecorder $audit) {}
 
@@ -152,7 +156,7 @@ final class Certificates
         }
         $name = preg_replace('/[^A-Za-z0-9._-]/', '_', basename($fileName)) ?: 'certificate.pdf';
         $path = sprintf('learning/certificates/%d/%d/%s', $certificate->tenant_id, $certificate->id, $name);
-        Storage::disk(self::DISK)->put($path, $contents);
+        Storage::disk(self::disk())->put($path, $contents);
         // Write through a fresh copy so unrelated unsaved changes on the caller's instance never ride along.
         $fresh = LearningCertificate::query()->withoutGlobalScope(AccessScope::class)->whereKey($certificate->id)->firstOrFail();
         $fresh->update(['document_path' => $path, 'document_name' => $name, 'document_sha256' => hash('sha256', $contents)]);

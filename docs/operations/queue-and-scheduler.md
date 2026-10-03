@@ -1,45 +1,105 @@
 # Queue, scheduler and worker requirements
 
-Verified in Phase 0.2 (27 September 2026).
+Phase 14 revision (3 October 2026). This replaces the Phase 0.2 note. The rules below are enforced by
+`tests/Feature/Platform/OperationsHardeningTest.php` and the architecture tests. A new job or schedule
+entry that breaks them fails the build.
 
-## What is queued
+## Rules every job follows
 
-| Work | How | Notes |
+| Rule | Enforcement |
+|---|---|
+| Implements `TenantAwareJob`, captures the tenant at dispatch, and returns `[new BindTenantContext]` from `middleware()` | Architecture test (ADR-0013) |
+| A tenant-aware job without a tenant **fails**; it never runs unscoped | `BindTenantContext` (Phase 14) |
+| A job for a **suspended** tenant is skipped and logged (`Queued job skipped: tenant suspended`) | `BindTenantContext` |
+| Per-user organisation-scope caches are cleared before and after each job (long-running workers) | `BindTenantContext` |
+| Declares `$tries` and `$timeout`; jobs with more than one try declare `$backoff` | OperationsHardeningTest |
+| `$timeout` is lower than every queue connection's `retry_after` (default **3900 s**, above the 3600 s payroll calculation), so a running job is never handed to a second worker | OperationsHardeningTest + `config/queue.php` |
+| Work that must happen once is claimed (conditional update or unique key) inside the job, so a duplicate or retried job does nothing | Per domain (payroll run lock, inbound event lease, delivery claim, reminder logs) |
+| Failed jobs are logged (`Queue job failed`: job, connection, queue, attempts, exception class) through the redacted log channels | `AppServiceProvider::registerObservability` |
+
+## Job inventory
+
+| Job | Tries / timeout / backoff | Purpose |
 |---|---|---|
-| Filament in-app notifications (`Notification::make()->sendToDatabase()`) | `Filament\Notifications\DatabaseNotification` queued job | Every in-app notice from the notification engine's `InAppChannel` and from action feedback. **Without a running worker the bell never fills.** Ten such jobs from 26 September were found pending in the development database, which is how this requirement was discovered. |
-| Workflow webhook node | `App\Domain\Workflow\Jobs\SendWebhook` (`tries = 3`) | Captures `tenantId` at dispatch and re-binds it in the worker through `BindTenantContext` (fixed in Phase 0.2: before, the action log written by the worker would have thrown `MissingTenantException`). |
-| Everything else | synchronous, inside the request or the scheduled command | Attendance processing, leave accrual, payroll calculation/finalisation, report runs and exports, warehouse export, learning tick, SCIM operations, notification fan-out (email through the mailer). Moving these to jobs is infrastructure roadmap work, not a Phase 0.2 change. |
+| `Payroll\Jobs\CalculatePayrollRun` | 2 / 3600 s / 60 | Calculate a payroll run (unique per run) |
+| `Compliance\Jobs\StatutoryReturnJob` | 2 / 1800 s / 60 | Build a statutory return (unique) |
+| `Notifications\Jobs\DeliverNotification` | 3 / 60 s / 60, 300 | **Phase 14.** One email / SMS / push delivery, dispatched after commit, claimed queued → sending |
+| `Integration\Jobs\ProcessInboundEvent` | 1 / 120 s | Apply one inbound integration event (leased claim; the scheduler retries) |
+| `Workflow\Jobs\SendWebhook` | 3 / 300 s / 60, 300 | Workflow webhook node |
+| `Communication\Jobs\ProcessCommunication`, `DeliverCommunication` | 2–3 / 300 s | Announcement publishing and recipient delivery (idempotent recipients) |
+| `Engagement\Jobs\ProcessEngagement`, `SendSurveyInvitations` | 2–3 / 300 s | Survey lifecycle and invitations (idempotent log) |
+| `Attendance\Jobs\ProcessAttendanceDay` | 3 / 300 s | Process one attendance day |
+| `Learning\Jobs\GenerateCertificateDocument`, `SendLearningReminders` | 2–3 / 300 s | Certificates and reminders |
+| `Performance`, `Talent`, `Workforce`, `Compensation` reminder jobs, `EffectDueCompensation`, `ServiceDesk\Jobs\ProcessServiceDesk` | 2 / 300 s / 60 | Per-tenant `--queue` variants of the scheduled sweeps (unique per tenant) |
 
-Failed jobs land in `failed_jobs` (0 at verification). Retries: `SendWebhook` 3 tries; notification jobs use the default (1). Outbound enterprise webhooks (`peopleos:webhooks:deliver`) are not queue jobs: deliveries are rows with exponential backoff, attempted by the scheduler every minute.
+In-app notifications are **no longer queued**. Phase 14 stores them at once (`notifyNow`), so a
+delivery marked `sent` is really in the bell. Email and the other external channels go through
+`DeliverNotification` after the business transaction commits.
+
+## Scheduler inventory
+
+Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterates tenants goes through
+`App\Support\Tenancy\TenantRunner`:
+
+- **Suspended tenants are skipped.** Retention purge is the only exception: purging is an obligation.
+- **One tenant's failure is isolated.** It is reported and logged with the tenant id and exception class, the
+  next tenant still runs, and the command exits non-zero.
+- **Every run gets a correlation id** (`request_id` in Context), carried by its logs, audit rows and notifications.
+
+| Command | Frequency | Idempotency | Purpose |
+|---|---|---|---|
+| `peopleos:scheduler:heartbeat` | every minute | overwrite | Heartbeat read by `/health/ready` and `peopleos:readiness` |
+| `peopleos:configuration:publish-due` | daily 00:05 | per change status | Publish approved configuration changes whose date arrived |
+| `peopleos:compensation:effect` | daily 00:20 | per change lock | Make scheduled compensation changes / structure versions effective |
+| `peopleos:leave:accrue` | daily 01:00 | ledger keys | Post leave accruals; close leave years |
+| `peopleos:attendance:process` | daily 02:00 | recompute (deterministic) | Compute attendance records |
+| `peopleos:learning:tick` | daily 03:00 | per enrolment state | Rule assignments, overdue, certificate expiry |
+| `peopleos:retention:purge` | daily 03:30 | delete-by-age | Purge operational logs past retention (runs for suspended tenants too) |
+| `peopleos:exit:tick` | daily 04:00 | per exit state | Start clearance inside the lead window |
+| `peopleos:warehouse:export` | daily 05:00 | overwrite per day | Warehouse feed (non-sensitive fields unless enabled) |
+| `peopleos:lifecycle:reminders` | daily 06:00 | **`scheduler_claims` per tenant per day (Phase 14)**; `--force` to re-run | Joining, probation and document-expiry reminder events |
+| `peopleos:performance:reminders` | daily 07:00 | reminder log | Performance reminders |
+| `peopleos:learning:send-reminders` | daily 07:30 | reminder log | Learning reminders |
+| `peopleos:talent:send-reminders` | daily 07:45 | reminder log | Talent / succession reminders |
+| `peopleos:workforce:send-reminders` | daily 08:00 | reminder log | Workforce reminders |
+| `peopleos:compensation:send-reminders` | daily 08:15 | reminder log | Compensation reminders |
+| `peopleos:compliance:sync` | weekly Mon 00:30 | upsert by rule key | Load statutory rule packs (rules stay unverified; see statutory readiness) |
+| `peopleos:workflows:tick` | every 5 min | per instance state | Resume waiting workflows, escalate tasks |
+| `peopleos:communication:process` | every 5 min | recipient rows | Publish / deliver announcements |
+| `peopleos:engagement:process` | every 15 min | reminder log | Survey open / close, invitations, campaigns |
+| `peopleos:service-desk:process` | hourly | reminder log | SLA warnings / escalations, auto-close, catalogue promotion |
+| `peopleos:reports:run-due` | hourly | **conditional claim of `next_run_at` (Phase 14)**; runs as the report owner | Scheduled report exports |
+| `peopleos:integrations:process` | every minute | leased claim | Apply due inbound integration events, retries, expired leases |
+| `peopleos:webhooks:deliver` | every minute | leased claim | Outbound webhook deliveries, retries, dead letters |
 
 ## Configuration
 
 | Setting | Development | Tests | Production requirement |
 |---|---|---|---|
 | `QUEUE_CONNECTION` | `database` | `sync` (phpunit.xml) | `redis` (Horizon) or `database` with supervised workers |
-| `CACHE_STORE` | `database` | `array` | `redis` |
+| `DB_QUEUE_RETRY_AFTER` / `REDIS_QUEUE_RETRY_AFTER` | 3900 | — | ≥ 3900 (longest job timeout + margin) |
+| `CACHE_STORE` | `database` | `array` | `redis` or `database` (the scheduler heartbeat lives in the cache) |
 | `SESSION_DRIVER` | `database` | `array` | `redis` or `database` |
-
-Business code depends only on the `ShouldQueue` contract and job middleware; nothing is coupled to the database driver.
 
 ## Operational requirements
 
-1. **At least one queue worker must run in every environment where in-app notifications or workflow webhooks are expected**, including development:
+1. **Workers.** At least one worker per environment where email, webhooks, integrations or queued sweeps are expected:
    ```bash
-   php artisan queue:work --tries=3 --timeout=120
+   php artisan queue:work --tries=3 --timeout=3700
    ```
-   In production run workers under a supervisor (systemd or Supervisor), one process per CPU-bound unit, restarted on deploy (`php artisan queue:restart`). With Redis, install Horizon and run `php artisan horizon` instead.
-2. **The scheduler must run every minute** on exactly one node:
+   The worker `--timeout` must exceed the longest job `$timeout` and stay below `retry_after`. Run workers under a supervisor (systemd / Supervisor) and restart them on deploy (`php artisan queue:restart`). With Redis, use Horizon.
+2. **Scheduler.** It runs every minute; `onOneServer()` requires a shared cache (database or Redis) when more than one node runs cron:
    ```
    * * * * * cd /path/to/peopleos && php artisan schedule:run >> /dev/null 2>&1
    ```
-   Thirteen `peopleos:*` commands depend on it (see `routes/console.php`). Before running on more than one node, add `withoutOverlapping()` and `onOneServer()` to the schedule entries (recorded as TD-08 in the Phase 0.1 report).
-3. **Failed jobs**: monitor `php artisan queue:failed`; retry with `queue:retry`. Alerting is part of the observability roadmap.
-4. **Tenant safety in jobs**: any new job that reads or writes tenant-owned models must follow the `SendWebhook` pattern (`public ?int $tenantId`, `middleware(): [new BindTenantContext]`). The architecture test suite does not yet enforce this mechanically; reviewers must.
+   `/health/ready` reports `scheduler: warn` when the heartbeat is older than `PEOPLEOS_HEARTBEAT_MAX_AGE` (180 s).
+3. **Failed jobs.** `/health/ready` and `peopleos:readiness` warn on any failed job. Inspect them with `php artisan queue:failed` and retry with `queue:retry` once the cause is fixed.
+4. **Dead letters.** Inbound integration events and webhook deliveries that exhaust their retries become `dead_letter` (audited). Reprocess them or replay from the Integration Hub screens.
 
 ## Production topology (target)
 
 ```
-Web / API (php-fpm)  ──dispatch──►  Redis queue  ──►  Horizon workers  ──►  Job (tenant re-bound)  ──►  Audit / result
-Scheduler (cron, one node) ──► peopleos:* commands (iterate tenants with runAs)
+Web / API (php-fpm) ──dispatch (after commit)──► Redis / DB queue ──► supervised workers ──► Job (tenant re-bound, scopes reset) ──► Audit / result
+Scheduler (cron, one node + shared cache lock) ──► peopleos:* commands ──► TenantRunner (active tenants, isolated failures)
+Probes: /health/live (process)  /health/ready (database, cache, storage critical; queue, failed jobs, scheduler, dead letters warn)
 ```

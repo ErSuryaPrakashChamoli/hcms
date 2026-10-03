@@ -22,6 +22,9 @@ class CalculatePayrollRun implements ShouldBeUnique, ShouldQueue, TenantAwareJob
 
     public int $tries = 2;
 
+    /** @var list<int> Phase 14: retry with backoff instead of hammering a failing dependency. */
+    public array $backoff = [60];
+
     public int $timeout = 3600;
 
     public ?int $tenantId;

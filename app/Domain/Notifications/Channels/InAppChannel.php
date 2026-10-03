@@ -12,9 +12,7 @@ final class InAppChannel implements Channel
     {
         $user = $delivery->user ?? throw new \RuntimeException('In-app notifications need a user.');
 
-        Notification::make()
-            ->title($delivery->subject)
-            ->body($delivery->body)
-            ->sendToDatabase($user);
+        // Phase 14: stored now (Filament's database notification is queued by default), so "sent" is true.
+        $user->notifyNow(Notification::make()->title($delivery->subject)->body($delivery->body)->toDatabase());
     }
 }

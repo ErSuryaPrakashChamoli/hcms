@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Domain\Configuration\Services\ConfigurationChanges;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 
 class PublishDueConfigurationChanges extends Command
@@ -15,19 +16,20 @@ class PublishDueConfigurationChanges extends Command
 
     public function handle(ConfigurationChanges $changes, TenantContext $tenants): int
     {
+        $runner = TenantRunner::for($this);
         $total = 0;
 
-        Tenant::query()->orderBy('id')->each(function (Tenant $tenant) use ($changes, $tenants, &$total) {
+        Tenant::query()->orderBy('id')->each($runner->isolate(function (Tenant $tenant) use ($changes, $tenants, &$total) {
             $published = $tenants->runAs($tenant, fn () => $changes->publishDue());
             $total += $published;
 
             if ($published > 0) {
                 $this->info("{$tenant->slug}: published {$published} change(s)");
             }
-        });
+        }));
 
         $this->info("Done. {$total} change(s) published.");
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }
