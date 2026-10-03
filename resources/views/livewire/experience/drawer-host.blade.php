@@ -1,4 +1,4 @@
-<div x-data="{ open: @js($type !== null), lastFocus: null }"
+<div x-data="{ open: false, lastFocus: null }"
     x-on:pos-drawer-open.window="lastFocus = document.activeElement; open = true"
     x-effect="document.documentElement.classList.toggle('pos-drawer-is-open', open)">
     <div x-show="open" x-cloak class="pos-overlay" x-on:click="open = false; $wire.close(); $nextTick(() => lastFocus?.focus?.())" x-transition.opacity.duration.200ms aria-hidden="true"></div>

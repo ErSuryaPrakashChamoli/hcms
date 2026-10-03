@@ -1,4 +1,4 @@
-<div x-data="posCommand(@js($mode))" x-on:pos-command-open.window="open($event.detail)" x-on:keydown.window="globalKey($event)" class="pos-command-root">
+<div x-data="posCommand('all')" x-on:pos-command-open.window="open($event.detail)" x-on:keydown.window="globalKey($event)" class="pos-command-root">
     <div x-show="isOpen" x-cloak class="pos-overlay" x-on:click="close()" x-transition.opacity.duration.150ms aria-hidden="true"></div>
 
     <div x-show="isOpen" x-cloak x-trap.noscroll.inert="isOpen" role="dialog" aria-modal="true" aria-labelledby="pos-command-title"

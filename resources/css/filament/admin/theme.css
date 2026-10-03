@@ -1259,6 +1259,13 @@ html {
     .pos-hero .pos-lens-chip { height: 34px; padding: 0 16px; background: color-mix(in srgb, var(--pos-surface) 85%, transparent); backdrop-filter: blur(6px); }
     .pos-hero .pos-lens-chip[aria-selected='true'] { background: var(--pos-primary); box-shadow: 0 8px 18px -8px rgb(70 59 166 / 0.7); }
 
+    /* First-login welcome */
+    .pos-welcome { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-start; padding: 20px 22px; border-radius: var(--pos-radius-lg);
+        background: linear-gradient(120deg, var(--pos-primary-soft), var(--pos-surface) 70%); box-shadow: var(--pos-shadow-1), inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 18%, transparent); }
+    .pos-welcome-list { display: grid; gap: 8px; font-size: 14px; color: var(--pos-text-secondary); }
+    .pos-welcome-list li { display: flex; align-items: center; gap: 10px; }
+    .pos-welcome-list b { color: var(--pos-text); font-weight: 600; }
+
     /* KPI strip */
     .pos-kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
     .pos-kpi { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-1); transition: box-shadow var(--pos-dur-2) var(--pos-ease), transform var(--pos-dur-2) var(--pos-ease); }

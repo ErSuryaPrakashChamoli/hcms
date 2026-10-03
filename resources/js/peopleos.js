@@ -14,11 +14,14 @@ const go = (url) => {
     else window.location.assign(url);
 };
 
-document.addEventListener('alpine:init', () => {
-    const Alpine = window.Alpine;
+/*
+ * Components are plain factories exposed on window (so x-data="posCommand(...)" resolves even when a page
+ * arrives through wire:navigate) and are also registered with Alpine.data when Alpine starts.
+ */
+const components = {};
 
-    /* Command center (⌘K / Ctrl+K) */
-    Alpine.data('posCommand', (initialMode = 'all') => ({
+/* Command center (⌘K / Ctrl+K) */
+components.posCommand = (initialMode = 'all') => ({
         isOpen: false,
         activeId: null,
         actionIndex: -1,
@@ -115,10 +118,10 @@ document.addEventListener('alpine:init', () => {
             if (e.key === '/') { e.preventDefault(); this.open({ mode: 'all' }); }
             if (e.key === 'n' && !document.querySelector('.fi-modal-open')) { e.preventDefault(); this.open({ mode: 'actions' }); }
         },
-    }));
+    });
 
-    /* Keyboard list navigation for inboxes: J/K move, Enter opens, A/R decide (approvals). */
-    Alpine.data('posListNav', (selector) => ({
+/* Keyboard list navigation for inboxes: J/K move, Enter opens, A/R decide (approvals). */
+components.posListNav = (selector) => ({
         index: -1,
         handle(e) {
             if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey || document.documentElement.classList.contains('pos-command-open')) return;
@@ -141,18 +144,18 @@ document.addEventListener('alpine:init', () => {
             rows[i].focus({ preventScroll: true });
             rows[i].scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         },
-    }));
+    });
 
-    /* Drawer shell: focus trap, Esc, return focus, stacking (data-depth). */
-    Alpine.data('posDrawer', () => ({
+/* Drawer shell: focus trap, Esc, return focus, stacking (data-depth). */
+components.posDrawer = () => ({
         open: false,
         lastFocus: null,
         show() { this.lastFocus = document.activeElement; this.open = true; },
         hide() { this.open = false; this.$wire.close(); this.$nextTick(() => this.lastFocus?.focus?.()); },
-    }));
+    });
 
-    /* Organisation map: pan and zoom with mouse, touch and keyboard. */
-    Alpine.data('posPanZoom', () => ({
+/* Organisation map: pan and zoom with mouse, touch and keyboard. */
+components.posPanZoom = () => ({
         scale: 1, x: 0, y: 0, dragging: false, sx: 0, sy: 0,
         zoom(step) { this.scale = Math.min(2, Math.max(0.4, +(this.scale + step).toFixed(2))); },
         reset() { this.scale = 1; this.x = 0; this.y = 0; },
@@ -171,8 +174,12 @@ document.addEventListener('alpine:init', () => {
             e.preventDefault();
         },
         get style() { return `transform: translate(${this.x}px, ${this.y}px) scale(${this.scale})`; },
-    }));
-});
+    });
+
+Object.assign(window, components);
+const registerAll = () => Object.entries(components).forEach(([name, factory]) => window.Alpine?.data(name, factory));
+if (window.Alpine) registerAll();
+document.addEventListener('alpine:init', registerAll);
 
 /* Global shortcuts that are not the command center: G then H/W/P/O/A. */
 (() => {

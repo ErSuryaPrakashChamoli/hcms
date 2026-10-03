@@ -67,7 +67,7 @@ class AdminPanelProvider extends PanelProvider
                 // its hover #463ba6; generated palettes are too saturated for an elegant interface.
                 'primary' => [
                     50 => 'oklch(0.975 0.010 290)', 100 => 'oklch(0.955 0.019 292)', 200 => 'oklch(0.905 0.042 290)',
-                    300 => 'oklch(0.825 0.080 287)', 400 => 'oklch(0.733 0.123 287)', 500 => 'oklch(0.610 0.160 284)',
+                    300 => 'oklch(0.825 0.080 287)', 400 => 'oklch(0.733 0.123 287)', 500 => 'oklch(0.53 0.175 283)',
                     600 => 'oklch(0.4958 0.1815 281.98)', 700 => 'oklch(0.4306 0.1651 281.57)', 800 => 'oklch(0.370 0.140 281)',
                     900 => 'oklch(0.310 0.110 280)', 950 => 'oklch(0.220 0.075 279)',
                 ],

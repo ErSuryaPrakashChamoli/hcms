@@ -111,6 +111,17 @@ class Home extends Dashboard
         unset($this->home);
     }
 
+    /** First-login welcome (§47): shown once, until the person dismisses it. */
+    public function showWelcome(): bool
+    {
+        return app(TenantContext::class)->has() && (app(ExperiencePreferences::class)->for(auth()->user())['welcomed_at'] ?? null) === null;
+    }
+
+    public function dismissWelcome(): void
+    {
+        app(ExperiencePreferences::class)->update(auth()->user(), ['welcomed_at' => now()->toIso8601String()]);
+    }
+
     /** "Not now": hide a next-best-action card until tomorrow (the item itself is unchanged). */
     public function notNow(string $key): void
     {

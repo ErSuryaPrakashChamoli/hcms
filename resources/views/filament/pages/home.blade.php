@@ -68,6 +68,26 @@
                     <p class="pos-hero-quote" aria-hidden="true">Every decision,<br>with its context.</p>
                 </section>
 
+                {{-- First-login welcome: what is different here, in four lines, dismissed for good --}}
+                @if ($this->showWelcome())
+                    <section class="pos-welcome pos-enter-2" aria-labelledby="pos-welcome-title" x-data="{ shown: true }" x-show="shown">
+                        <div class="min-w-0 flex-1">
+                            <p class="pos-label">Welcome to PeopleOS</p>
+                            <h2 id="pos-welcome-title" class="pos-h2 mt-1">Your work comes to you here.</h2>
+                            <ul class="pos-welcome-list mt-3">
+                                <li><x-pos.tile-icon tone="rose" icon="heroicon-o-sparkles" size="sm" /><span><b>What matters now</b> is ranked on Home, with the reason for each item.</span></li>
+                                <li><x-pos.tile-icon tone="indigo" icon="heroicon-o-magnifying-glass" size="sm" /><span>Press <span class="pos-kbd">Ctrl K</span> to find anyone or start anything. <span class="pos-kbd">?</span> shows every shortcut.</span></li>
+                                <li><x-pos.tile-icon tone="amber" icon="heroicon-o-check-badge" size="sm" /><span><b>My work</b> holds approvals and tasks, each with the context to decide.</span></li>
+                                <li><x-pos.tile-icon tone="violet" icon="heroicon-o-chat-bubble-left-right" size="sm" /><span>The <b>assistant</b> explains, with sources. It never decides for you.</span></li>
+                            </ul>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <button type="button" class="pos-btn pos-btn-primary pos-btn-sm" wire:click="dismissWelcome" x-on:click="shown = false">Got it</button>
+                            <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" x-data x-on:click="$dispatch('pos-shortcuts')">See shortcuts</button>
+                        </div>
+                    </section>
+                @endif
+
                 {{-- KPI strip --}}
                 @if (count($h['kpis']) > 0)
                     <section class="pos-kpis pos-enter-2" aria-label="At a glance">
