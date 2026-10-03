@@ -72,6 +72,21 @@ final class HealthChecks
             }),
         ];
 
+        // Production readiness closure: configuration safety is critical in production (an unsafe setting
+        // is not ready for production traffic); elsewhere it is reported only.
+        $checks['configuration'] = $this->timed(app()->environment('production'), function () {
+            $s = app(ProductionConfigValidator::class)->summary();
+
+            return ['status' => $s['errors'] > 0 ? 'fail' : ($s['warnings'] > 0 ? 'warn' : 'ok'), 'detail' => $s];
+        });
+        // Distributed locks (scheduler onOneServer / withoutOverlapping) must work on the shared store.
+        $checks['locks'] = $this->timed(false, function () {
+            $lock = Cache::lock('peopleos:health:lock:'.Str::random(8), 10);
+            $ok = $lock->get();
+            $ok && $lock->release();
+
+            return ['status' => $ok ? 'ok' : 'fail', 'detail' => config('cache.default')];
+        });
         if (in_array('redis', [config('cache.default'), config('queue.default'), config('session.driver')], true)) {
             $checks['redis'] = $this->timed(true, fn () => ['status' => Redis::connection()->ping() ? 'ok' : 'fail']);
         }

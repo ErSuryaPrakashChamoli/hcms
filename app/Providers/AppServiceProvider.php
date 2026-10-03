@@ -382,6 +382,7 @@ use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Log\Context\Repository as ContextRepository;
 use Illuminate\Queue\Events\JobFailed;
@@ -412,6 +413,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CompensationOutput::class, CompensationLedger::class);
         $this->app->bind(PayrollClosureReader::class, PayrollClosure::class);
         $this->app->singleton(AccessScopes::class);
+        // Production readiness closure: debug mode can never be on in production, whatever APP_DEBUG says
+        // (the validator still reports the setting so it gets fixed).
+        if ($this->app->environment('production') && config('app.debug')) {
+            config(['app.debug' => false]);
+            $this->app->booted(fn () => Log::critical('APP_DEBUG=true was ignored in production; fix the environment.'));
+        }
         // Production readiness closure: DNS for the outbound SSRF guard (tests bind a fake).
         $this->app->bind(HostResolver::class, DnsHostResolver::class);
         // Phase 5: one statutory rule cache per request / job, cleared at the start of each run calculation.
@@ -434,6 +441,7 @@ class AppServiceProvider extends ServiceProvider
         $this->registerRateLimits();
         $this->propagateTenantToQueuedJobs();
         $this->registerObservability();
+        $this->trustConfiguredProxies();
 
         // Phase 11: the salary models moved from Payroll to Compensation. Polymorphic references stored
         // before the move (timeline sources, configuration changes) keep resolving; new rows use the
@@ -703,6 +711,19 @@ class AppServiceProvider extends ServiceProvider
 
             return null;
         });
+    }
+
+    /**
+     * Production readiness closure: trust X-Forwarded-* only from the configured load balancer(s), so a
+     * TLS-terminating proxy yields https URLs, Secure cookies and valid signed links, and clients cannot
+     * spoof their IP through the headers.
+     */
+    private function trustConfiguredProxies(): void
+    {
+        $proxies = trim((string) config('peopleos.http.trusted_proxies', ''));
+        if ($proxies !== '') {
+            TrustProxies::at($proxies === '*' ? '*' : array_values(array_filter(array_map('trim', explode(',', $proxies)))));
+        }
     }
 
     /**

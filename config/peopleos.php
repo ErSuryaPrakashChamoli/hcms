@@ -581,6 +581,12 @@ return [
     /*
     | Default setting values seeded per tenant.
     */
+    // Production readiness closure: the load balancer / TLS terminator addresses whose X-Forwarded-* headers are
+    // trusted (comma-separated IPs or CIDRs, or * when only the proxy can reach the app). Empty = trust none.
+    'http' => [
+        'trusted_proxies' => env('PEOPLEOS_TRUSTED_PROXIES', ''),
+    ],
+
     // Production readiness closure: outbound requests to tenant-configured destinations (webhooks, workflow
     // webhook nodes, SSO endpoints) pass the SSRF guard. Operators may exempt exact host names (never tenants).
     'outbound' => [

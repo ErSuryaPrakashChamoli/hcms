@@ -89,6 +89,11 @@ final class PlatformReadiness
         $provider = (string) config('peopleos.ai.provider', 'none');
         $add('ai', 'AI provider and data boundary', $provider === 'none' || filled(config('peopleos.ai.anthropic.key')) ? self::PASS : self::WARN, $provider === 'none' ? 'deterministic only (no external provider)' : "provider {$provider}; tenant data policy applies");
 
+        // Production readiness closure: the configuration validator (peopleos:config:validate --as-production).
+        $validator = app(ProductionConfigValidator::class)->summary(asProduction: true);
+        $add('configuration', 'Production configuration validator (as production)', $validator['errors'] === 0 ? self::PASS : ($production ? self::FAIL : self::WARN),
+            "{$validator['errors']} error(s), {$validator['warnings']} warning(s): run peopleos:config:validate --as-production");
+
         // Runtime health
         $health = $this->health->run();
         foreach ($health['checks'] as $name => $c) {
