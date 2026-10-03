@@ -49,6 +49,10 @@ final class ModuleCatalogue
         if (isset($this->cache[$user->id])) {
             return $this->cache[$user->id];
         }
+        // Each module's canAccess() reads the signed-in user: answer only for that user (fail-closed).
+        if ((int) auth()->id() !== (int) $user->id) {
+            return [];
+        }
         if (isset($this->building[$user->id])) {
             return [];
         }

@@ -4,6 +4,7 @@ namespace App\Domain\Experience\Services;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\AccessScopes;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -25,7 +26,11 @@ final class PeopleVisibility
     public function query(User $user): Builder
     {
         if ($user->hasPermission('employee.view')) {
-            return Employee::query();
+            // The AccessScope global scope follows the authenticated user; constrain explicitly for $user too,
+            // so the answer is right whoever is signed in (fail-closed for organisation-scoped viewers).
+            $scopes = app(AccessScopes::class);
+
+            return $scopes->isScoped($user) ? $scopes->constrainEmployees(Employee::query(), $user) : Employee::query();
         }
 
         return Employee::query()->whereKey($this->circle($user));

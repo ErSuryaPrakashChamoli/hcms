@@ -45,6 +45,11 @@ final class QuickActions
      */
     public function for(User $user): array
     {
+        // Destinations check access with static canAccess()/canCreate(), which read the signed-in user:
+        // answer only for that user (fail-closed for anyone else).
+        if ((int) auth()->id() !== (int) $user->id) {
+            return [];
+        }
         $me = $this->lenses->employee($user);
         $actions = [];
         $add = function (string $key, string $verb, string $label, string $hint, string $icon, array $keywords, Closure $url, string $lens, bool $allowed) use (&$actions) {

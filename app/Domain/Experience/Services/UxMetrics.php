@@ -4,6 +4,7 @@ namespace App\Domain\Experience\Services;
 
 use App\Domain\Experience\Models\UxMetric;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -27,7 +28,16 @@ final class UxMetrics
         }
         try {
             $day = now()->toDateString();
-            $row = UxMetric::query()->firstOrCreate(['day' => $day, 'metric' => $metric], ['count' => 0, 'total_ms' => 0]);
+            // whereDate: the date column compares the same on MySQL and SQLite.
+            $find = fn () => UxMetric::query()->whereDate('day', $day)->where('metric', $metric)->first();
+            try {
+                $row = $find() ?? UxMetric::query()->create(['day' => $day, 'metric' => $metric, 'count' => 0, 'total_ms' => 0]);
+            } catch (UniqueConstraintViolationException) {
+                $row = $find(); // created concurrently
+            }
+            if ($row === null) {
+                return;
+            }
             UxMetric::query()->whereKey($row->id)->update(['count' => DB::raw('count + 1'), 'total_ms' => DB::raw('total_ms + '.max(0, (int) $milliseconds))]);
         } catch (Throwable) {
             // Instrumentation must never affect the experience.

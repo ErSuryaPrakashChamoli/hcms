@@ -73,26 +73,38 @@ final class BeforeAfterPreview
                     return $empty;
                 }
                 try {
-                    $emp = $employee();
-                    $from = Carbon::parse($get('from_date'))->startOfDay();
-                    $to = Carbon::parse($get('to_date'))->startOfDay();
-                    if ($to->lt($from)) {
-                        return ['changes' => [], 'note' => null, 'empty' => 'The end date is before the start date.'];
-                    }
-                    $counter = app(LeaveDayCounter::class);
-                    $days = $counter->total($counter->dates($emp, $from, $to, $get('from_session') ?? 'full', $from->equalTo($to) ? ($get('from_session') ?? 'full') : ($get('to_session') ?? 'full')));
-                    $changes = [['label' => 'Working days', 'before' => null, 'after' => rtrim(rtrim(number_format($days, 1), '0'), '.')]];
-                    if ($type->category !== 'unpaid') {
-                        $available = app(LeaveBalances::class)->balance($emp, $type, app(LeaveYear::class)->periodFor($from))->available();
-                        $after = $available - $days;
-                        $changes[] = ['label' => $type->name.' available', 'before' => rtrim(rtrim(number_format($available, 1), '0'), '.'), 'after' => rtrim(rtrim(number_format($after, 1), '0'), '.')];
-                    }
-
-                    return ['changes' => $changes, 'note' => $type->category !== 'unpaid' && isset($after) && $after < 0 ? 'This is more than your balance; the request may be refused or need an approval.' : 'Weekends and holidays follow your leave policy.', 'empty' => ''];
+                    return self::leaveChanges($employee(), $type, (string) $get('from_date'), (string) $get('to_date'), $get('from_session') ?? 'full', $get('to_session') ?? 'full') + ['empty' => ''];
                 } catch (\Throwable) {
                     return $empty;
                 }
             });
+    }
+
+    /**
+     * The leave preview itself: working days (the same LeaveDayCounter the request uses) and the balance
+     * before → after. Display only.
+     *
+     * @return array{changes: list<array{label: string, before: ?string, after: string}>, note: ?string}
+     */
+    public static function leaveChanges(Employee $employee, LeaveType $type, string $fromDate, string $toDate, string $fromSession = 'full', string $toSession = 'full'): array
+    {
+        $from = Carbon::parse($fromDate)->startOfDay();
+        $to = Carbon::parse($toDate)->startOfDay();
+        if ($to->lt($from)) {
+            return ['changes' => [], 'note' => 'The end date is before the start date.'];
+        }
+        $counter = app(LeaveDayCounter::class);
+        $days = $counter->total($counter->dates($employee, $from, $to, $fromSession, $from->equalTo($to) ? $fromSession : $toSession));
+        $fmt = fn (float $v) => rtrim(rtrim(number_format($v, 1), '0'), '.');
+        $changes = [['label' => 'Working days', 'before' => null, 'after' => $fmt($days)]];
+        $after = null;
+        if ($type->category !== 'unpaid') {
+            $available = app(LeaveBalances::class)->balance($employee, $type, app(LeaveYear::class)->periodFor($from))->available();
+            $after = $available - $days;
+            $changes[] = ['label' => $type->name.' available', 'before' => $fmt($available), 'after' => $fmt($after)];
+        }
+
+        return ['changes' => $changes, 'note' => $after !== null && $after < 0 ? 'This is more than your balance; the request may be refused or need an approval.' : 'Weekends and holidays follow your leave policy.'];
     }
 
     /** @return list<array{label: string, before: ?string, after: string}> */

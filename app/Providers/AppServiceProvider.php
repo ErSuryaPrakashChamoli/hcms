@@ -169,6 +169,12 @@ use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Exit\Policies\ExitCasePolicy;
 use App\Domain\Exit\Policies\SettlementPolicy;
 use App\Domain\Experience\Contracts\SurveyTaskProvider;
+use App\Domain\Experience\Services\ApprovalCenter;
+use App\Domain\Experience\Services\ExperienceNavigation;
+use App\Domain\Experience\Services\ExperiencePreferences;
+use App\Domain\Experience\Services\ModuleCatalogue;
+use App\Domain\Experience\Services\PeopleVisibility;
+use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Grievance\Models\GrievanceCategory;
 use App\Domain\Grievance\Policies\GrievanceConfigPolicy;
@@ -382,6 +388,7 @@ use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Log\Context\Repository as ContextRepository;
@@ -398,8 +405,26 @@ use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /** @var list<class-string> */
+    private const EXPERIENCE_SCOPED = [
+        ModuleCatalogue::class, RoleLens::class,
+        ExperiencePreferences::class, ExperienceNavigation::class,
+        PeopleVisibility::class, ApprovalCenter::class,
+    ];
+
     public function register(): void
     {
+        // Experience Transformation: per-request read models (the shell asks them several times per page).
+        // Scoped, and forgotten after every handled request so no answer outlives its request.
+        foreach (self::EXPERIENCE_SCOPED as $service) {
+            $this->app->scoped($service);
+        }
+        $this->app['events']->listen(RequestHandled::class, function () {
+            foreach (self::EXPERIENCE_SCOPED as $service) {
+                $this->app->forgetInstance($service);
+            }
+        });
+
         // Phase 12 hook, bound in Phase 13 to the engagement domain's own survey tasks.
         $this->app->bind(SurveyTaskProvider::class, SurveyTasks::class);
         $this->app->bind(LeaveDayResolver::class, AttendanceLeaveDayResolver::class);
