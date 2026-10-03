@@ -141,6 +141,10 @@ it('audits every domain model except the documented append-only or derived table
         // Phase 14: API idempotency keys are a short-lived replay cache (request fingerprint plus an
         // encrypted response); the domain action they guard is audited by its own service.
         'Integration\Models\ApiIdempotencyKey',
+        // Experience Transformation: personal display preferences (density, lens, pins, recents) are not
+        // business records; UX metrics are anonymous per-tenant daily counters, and automatic auditing
+        // would stamp the user on them and undo the anonymity.
+        'Experience\Models\ExperiencePreference', 'Experience\Models\UxMetric',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
