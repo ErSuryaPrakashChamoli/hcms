@@ -25,7 +25,7 @@ final class ReportSchedules
             }
             $run = $this->runAsOwner($schedule);
 
-            $users = User::query()->whereIn('id', $schedule->recipient_user_ids ?? [])->get()->filter(fn (User $u) => $u->isActive());
+            $users = User::forCurrentTenant()->whereIn('id', $schedule->recipient_user_ids ?? [])->get()->filter(fn (User $u) => $u->isActive());
             if ($users->isNotEmpty()) {
                 $title = $run->status === 'completed' ? "Report ready: {$schedule->report->name} ({$run->row_count} rows)" : "Report failed: {$schedule->report->name}";
                 $this->notifier->send($users, ['in_app'], $title, $run->status === 'completed' ? 'Download it from Analytics → Reports → '.$schedule->report->name.' → Runs.' : ($run->error ?? 'Unknown error'), 'analytics.report.scheduled', $run);

@@ -46,7 +46,8 @@ final class HireEmployeeAction
                 $allowDuplicate = (bool) ($person['allow_duplicate'] ?? false);
                 unset($person['allow_duplicate']);
                 $definite = $this->matcher->definite($person, $employee);
-                if ($definite->isNotEmpty() && ! $allowDuplicate) {
+                // Phase 14: a definite match outside the caller's scope can never be overridden by them.
+                if ($definite->isNotEmpty() && (! $allowDuplicate || $definite->contains(fn (array $c) => $c['outside_scope'] ?? false))) {
                     throw new DuplicatePersonException($definite);
                 }
                 $personModel = new Person($person);

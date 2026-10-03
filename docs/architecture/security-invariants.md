@@ -106,3 +106,43 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
   `compliance.sensitive.view` and is recorded as `STATUTORY_OUTPUT_ACCESSED`.
 - Statutory returns are visible only with `compliance.returns.view` and within the company access
   scope; a reporting line never grants access.
+
+## Phase 14 additions
+
+23. **Livewire requests carry the full tenant chain.** `ResolveTenant` and `EnforceSecurityPolicy` are
+    persistent panel middleware, so `/livewire/update` binds the tenant and enforces the IP allow-list and
+    idle timeout like a page load (`TenantIsolationHardeningTest`).
+24. **User ids from input are resolved inside the tenant.** Form pickers and actions use
+    `User::forCurrentTenant()`; talent review participants are validated in the domain; report
+    schedule and event-bridge recipients are filtered to the tenant.
+25. **Identity checks see the whole tenant, disclose minimally.** `PersonMatcher` and
+    `EmployeeCodeGenerator` ignore the caller's organisation scope (never the tenant). A match outside
+    the caller's scope is returned without name, code or ids, and the caller cannot override it.
+26. **SCIM never leaks another tenant's login.** A userName held anywhere returns 409 with a neutral
+    message (create, replace, patch).
+27. **Scoped audit reads.** Change Intelligence and the audit list apply the organisation scope
+    through employee- and person-linked records; classified values are masked without
+    `employee.sensitive.view`.
+28. **AI data boundary (ADR-0016).** Prohibited data (passwords, keys, tokens, secrets) never leaves
+    PeopleOS and is not stored in the AI log. Restricted data leaves only under the tenant's
+    `restricted` policy. Each external call is audited with counts only; the AI log is readable only with
+    `ai.admin` (or by its author).
+29. **Logs never carry secrets or protected identifiers.** Every channel has the
+    `RedactSensitiveLogData` tap (keys and values); slow-query logs never carry bindings; failed-job logs
+    carry the exception class.
+30. **Files are served only through authorised, audited routes.** `local.serve = false`. Grievance
+    evidence is tenant-prefixed and fingerprinted. Every document download is audited. A stored report
+    export is re-downloadable only by its producer (or the owner, for a scheduled run).
+31. **Queue and scheduler.** A tenant-aware job without a tenant fails; suspended tenants' jobs and
+    scheduled runs are skipped (retention excepted). Per-tenant failures are isolated.
+
+### Phase 14 review of raw queries and scope bypasses
+
+| Pattern | Count | Review result |
+|---|---|---|
+| `TenantContext::bypass()` | 9 | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only) |
+| `withoutGlobalScope(AccessScope::class)` (345 call sites in 110 files) and `AccessScope::withoutScoping()` (32) | Mechanically each removes only the **organisation** scope; the fail-closed tenant scope stays. Reviewed by category (not line by line): domain services checking a target by id after an explicit `AccessScopes::allows` check, background sweeps, aggregate analytics with small-group suppression, and identity checks (Phase 14: tenant-wide on purpose) |
+| `withoutGlobalScopes()` (all) | 1 | `NumberSequences::highest`. Phase 14 narrowed it to the access scope with an explicit `tenant_id` filter |
+| `DB::table()` | 13 | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only) |
+| Interpolated SQL fragments (`selectRaw` / `whereRaw` with `{$…}`) | 5 | Interpolated values come from code constants or allow-listed dimension names (workforce dimension columns, movement-type CASE built from config keys, PersonMatcher column names); user input is always bound |
+| `DB::select` / `statement` / `unprepared` | 1 | Health `select 1` |

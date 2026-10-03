@@ -2,6 +2,7 @@
 
 namespace App\Support\Numbering;
 
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Support\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Support\Facades\DB;
@@ -54,7 +55,7 @@ final class NumberSequences
     /** Highest issued sequence number among existing "PREFIX-YYYY-NNNNN" values of a column. */
     public static function highest(string $modelClass, string $column = 'number'): Closure
     {
-        return fn (string $sequence): int => (int) substr((string) $modelClass::query()->withoutGlobalScopes()->where('tenant_id', app(TenantContext::class)->id())
+        return fn (string $sequence): int => (int) substr((string) $modelClass::query()->withoutGlobalScope(AccessScope::class)->where('tenant_id', app(TenantContext::class)->id())
             ->where($column, 'like', $sequence.'-%')->orderByDesc($column)->value($column), -5);
     }
 

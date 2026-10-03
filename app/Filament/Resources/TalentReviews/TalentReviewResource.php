@@ -57,7 +57,7 @@ class TalentReviewResource extends Resource
                 ->schema([
                     TextInput::make('name')->required()->maxLength(255),
                     Select::make('organisation_node_id')->label('Scope (organisation unit)')->options(fn () => TalentActions::nodeOptions())->searchable(),
-                    Select::make('participants')->label('Participants')->multiple()->searchable()->options(fn () => User::query()->orderBy('name')->limit(500)->pluck('name', 'id')->all()),
+                    Select::make('participants')->label('Participants')->multiple()->searchable()->options(fn () => User::forCurrentTenant()->orderBy('name')->limit(500)->pluck('name', 'id')->all()),
                     DatePicker::make('scheduled_for')->native(false),
                 ])
                 ->action(fn (array $data) => TalentActions::run(fn () => app(TalentReviews::class)->create($data['name'], $data['organisation_node_id'] ?? null, array_map('intval', $data['participants'] ?? []), auth()->user(), $data['scheduled_for'] ?? null), 'Talent review created')),

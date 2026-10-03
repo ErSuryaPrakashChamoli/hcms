@@ -15,6 +15,7 @@ use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Services\LearningAnalytics;
 use App\Domain\Leave\Models\LeaveRequest;
+use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Services\PerformanceAnalytics;
 use App\Domain\ServiceDesk\Services\ServiceDeskAnalytics;
 use App\Domain\Talent\Services\TalentAnalytics;
@@ -153,12 +154,17 @@ final class PlatformAnalytics
 
     private function performance(User $viewer, string $day): array
     {
-        $o = $this->performance->summary()['overall'];
+        // The latest active or closed cycle: bounded by its participants, not the whole workforce.
+        $cycle = PerformanceCycle::query()->whereIn('status', ['active', 'closed'])->whereDate('period_start', '<=', $day)->orderByDesc('period_end')->first();
+        if ($cycle === null) {
+            return ['Note' => 'No active or closed performance cycle yet.'];
+        }
+        $o = $this->performance->summary($cycle)['overall'];
         if ($o['suppressed'] ?? false) {
             return ['Note' => 'Population below the privacy threshold; no figures are shown.'];
         }
 
-        return ['Employees' => $o['employees'], 'Appraisal completion (%)' => $o['appraisal_completion'], 'Average goal progress (%)' => $o['average_goal_progress'], 'Check-ins (90 days)' => $o['check_ins_90_days']];
+        return ['Cycle' => $cycle->code, 'Employees' => $o['employees'], 'Appraisal completion (%)' => $o['appraisal_completion'], 'Average goal progress (%)' => $o['average_goal_progress'], 'Check-ins (90 days)' => $o['check_ins_90_days']];
     }
 
     private function learning(User $viewer, string $day): array
@@ -212,7 +218,7 @@ final class PlatformAnalytics
         return [
             'Survey invitations' => $this->suppress($invited),
             'Survey response rate (%)' => $invited >= $this->minGroup() ? round($submitted / $invited * 100, 1) : null,
-            'Feedback received (90 days)' => $this->suppress(EmployeeFeedback::query()->where('created_at', '>=', $since)->count()),
+            'Feedback received (90 days)' => $this->suppress(EmployeeFeedback::query()->where('submitted_on', '>=', $since->toDateString())->count()),
             'Acknowledgement rate, 90 days (%)' => $ackRecipients >= $this->minGroup() ? min(100.0, round($acknowledged / $ackRecipients * 100, 1)) : null,
         ];
     }

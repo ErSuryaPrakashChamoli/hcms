@@ -31,6 +31,12 @@ final class TalentReviews
     public function create(string $name, ?int $organisationNodeId, array $participantUserIds, User $actor, ?string $scheduledFor = null): TalentReviewSession
     {
         $this->assertManager($actor);
+        // Phase 14: participants are users of this tenant only, whatever the form submitted.
+        $requested = array_values(array_unique(array_map('intval', $participantUserIds)));
+        $known = User::forCurrentTenant()->whereIn('id', $requested)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if (array_diff($requested, $known) !== []) {
+            throw new RuntimeException('Participants must be users of this organisation.');
+        }
 
         return TalentReviewSession::query()->create([
             'name' => $name, 'organisation_node_id' => $organisationNodeId, 'facilitator_user_id' => $actor->id,

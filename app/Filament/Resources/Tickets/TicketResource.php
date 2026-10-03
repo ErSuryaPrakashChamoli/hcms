@@ -204,7 +204,7 @@ class TicketResource extends Resource
                 BulkActionGroup::make([
                     BulkAction::make('bulkAssign')->label('Assign')->icon(Heroicon::OutlinedUserPlus)
                         ->schema([Select::make('assignee_id')->label('Agent')->required()->searchable()->options(fn () => User::forCurrentTenant()->get()->filter(fn (User $u) => $u->isActive() && $u->hasPermission('servicedesk.agent'))->pluck('name', 'id')->all()), TextInput::make('reason')->maxLength(255)])
-                        ->action(fn (Collection $records, array $data) => self::bulkReport(app(ServiceDeskBulk::class)->assign($records->pluck('id')->all(), User::query()->findOrFail($data['assignee_id']), auth()->user(), $data['reason'] ?? null))),
+                        ->action(fn (Collection $records, array $data) => self::bulkReport(app(ServiceDeskBulk::class)->assign($records->pluck('id')->all(), User::forCurrentTenant()->findOrFail($data['assignee_id']), auth()->user(), $data['reason'] ?? null))),
                     BulkAction::make('bulkMove')->label('Move status')->icon(Heroicon::OutlinedArrowsRightLeft)
                         ->schema([Select::make('status')->required()->options(collect(config('peopleos.servicedesk.statuses'))->only(['acknowledged', 'in_progress', 'waiting_employee', 'waiting_hr'])->all()), TextInput::make('reason')->maxLength(255)])
                         ->action(fn (Collection $records, array $data) => self::bulkReport(app(ServiceDeskBulk::class)->move($records->pluck('id')->all(), $data['status'], auth()->user(), $data['reason'] ?? null))),

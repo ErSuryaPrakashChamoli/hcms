@@ -162,7 +162,7 @@ final class ServiceDeskActions
                         app(CaseAssignment::class)->assignTeam($record, Role::query()->findOrFail($data['team_id']), auth()->user(), $data['reason'] ?? null);
                     }
 
-                    return app(CaseAssignment::class)->assign($record, User::query()->findOrFail($data['assignee_id']), auth()->user(), $data['reason'] ?? null);
+                    return app(CaseAssignment::class)->assign($record, User::forCurrentTenant()->findOrFail($data['assignee_id']), auth()->user(), $data['reason'] ?? null);
                 }, 'Assigned')),
             Action::make('start')->label('Start work')->icon(Heroicon::OutlinedPlay)->color('gray')
                 ->visible(fn (Ticket $record) => in_array($record->status, ['submitted', 'acknowledged', 'assigned', 'waiting_hr'], true) && $works($record))
@@ -214,7 +214,7 @@ final class ServiceDeskActions
                     Select::make('user_id')->label('Person')->required()->searchable()->options(fn () => User::forCurrentTenant()->get()->filter(fn (User $u) => $u->hasPermission('servicedesk.confidential'))->pluck('name', 'id')->all()),
                     Textarea::make('reason')->required()->maxLength(500),
                 ])
-                ->action(fn (Ticket $record, array $data) => self::run(fn () => app(ServiceDesk::class)->grantAccess($record, User::query()->findOrFail($data['user_id']), $data['reason'], auth()->user()), 'Access granted')),
+                ->action(fn (Ticket $record, array $data) => self::run(fn () => app(ServiceDesk::class)->grantAccess($record, User::forCurrentTenant()->findOrFail($data['user_id']), $data['reason'], auth()->user()), 'Access granted')),
         ];
     }
 

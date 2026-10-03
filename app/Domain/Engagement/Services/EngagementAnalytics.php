@@ -269,13 +269,13 @@ final class EngagementAnalytics
     private function questionStats(SurveyVersion $version): array
     {
         $rows = DB::table('survey_answers as a')->join('survey_responses as r', 'r.id', '=', 'a.response_id')
-            ->where('a.survey_version_id', $version->id)->where('r.status', 'submitted')
+            ->where('a.tenant_id', $version->tenant_id)->where('r.tenant_id', $version->tenant_id)->where('a.survey_version_id', $version->id)->where('r.status', 'submitted')
             ->groupBy('a.question_id', 'r.group_key', 'a.value_option')
             ->select('a.question_id', 'r.group_key', 'a.value_option', DB::raw('count(*) as n'), DB::raw('count(distinct a.response_id) as responses'),
                 DB::raw('sum(a.value_number) as total'), DB::raw('count(a.value_number) as numbers'))
             ->get();
         $answered = DB::table('survey_answers as a')->join('survey_responses as r', 'r.id', '=', 'a.response_id')
-            ->where('a.survey_version_id', $version->id)->where('r.status', 'submitted')
+            ->where('a.tenant_id', $version->tenant_id)->where('r.tenant_id', $version->tenant_id)->where('a.survey_version_id', $version->id)->where('r.status', 'submitted')
             ->groupBy('a.question_id', 'r.group_key')->select('a.question_id', 'r.group_key', DB::raw('count(distinct a.response_id) as n'))->get();
         $out = [];
         foreach ($answered as $row) {

@@ -110,11 +110,13 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
                 SetAuditSource::class.':admin_control_centre',
             ])
+            // Phase 14: persistent, so /livewire/update requests also bind the tenant and enforce the
+            // tenant security policy (IP allow-list, idle timeout), not only full page loads.
             ->authMiddleware([
                 Authenticate::class,
                 ResolveTenant::class,
                 EnforceSecurityPolicy::class,
-            ])
+            ], isPersistent: true)
             ->multiFactorAuthentication([AppAuthentication::make()->recoverable()], isRequired: fn () => app(TenantContext::class)->has() && app(SecurityPolicy::class)->mfaRequired());
     }
 }

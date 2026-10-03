@@ -92,7 +92,7 @@ final class NotificationEventBridge
             return;
         }
 
-        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive());
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive());
         if ($users->isEmpty()) {
             return;
         }
@@ -130,7 +130,7 @@ final class NotificationEventBridge
             return;
         }
 
-        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive());
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive());
         if ($users->isEmpty()) {
             return;
         }
@@ -259,7 +259,7 @@ final class NotificationEventBridge
     public function onTalent(CareerEvent|TalentEvent|SuccessionEvent $event): void
     {
         $subjectUserId = $event->employee?->user_id;
-        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()
             ->merge(Employee::query()->withoutGlobalScope(AccessScope::class)->with('user')->whereIn('id', $event->recipientEmployeeIds)->get()->pluck('user'))
             ->filter(fn ($u) => $u?->isActive())
             ->reject(fn (User $u) => ! $event instanceof CareerEvent && $subjectUserId !== null && (int) $u->id === (int) $subjectUserId)
@@ -291,7 +291,7 @@ final class NotificationEventBridge
      */
     public function onWorkforce(WorkforceEvent $event): void
     {
-        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
         if ($users->isEmpty()) {
             return;
         }
@@ -316,7 +316,7 @@ final class NotificationEventBridge
      */
     public function onCompensation(CompensationEvent $event): void
     {
-        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive() && ($event->employee === null || (int) $event->employee->user_id !== (int) $u->id))->values();
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive() && ($event->employee === null || (int) $event->employee->user_id !== (int) $u->id))->values();
         if ($users->isEmpty()) {
             return;
         }
@@ -347,7 +347,7 @@ final class NotificationEventBridge
      */
     public function onEngagement(EngagementEvent $event): void
     {
-        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
         if ($users->isEmpty()) {
             return;
         }
@@ -376,7 +376,7 @@ final class NotificationEventBridge
      */
     public function onCommunication(CommunicationEvent $event): void
     {
-        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
         if ($users->isEmpty()) {
             return;
         }
