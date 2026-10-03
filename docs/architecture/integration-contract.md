@@ -19,7 +19,9 @@ External system  ──►  PeopleOS Integration Hub  ──►  PeopleOS domain
 | External ids | `employees.source`, `employees.external_reference`, `bgv_cases.external_reference`, `attendance_punches.external_id`, `users.external_id` (SCIM) |
 | Adapters | `BgvProvider` (manual), attendance device `GenericJsonAdapter`, `AiProvider`, notification `Channel`s, SSO presets |
 
-## 2. External references (ADR-0011) — target
+## 2. External references (ADR-0011): implemented in Phase 14
+
+> **Phase 14:** built as `external_references` (`Integration\Models\ExternalReference`, `Services\ExternalReferences`). It is keyed by `integration_system_id` rather than a free-text system name. A reference is never re-pointed or deleted, only retired (audited). Linkable entities: employee, person, company, business unit, department, location, designation, grade, employment type, position. The design below is kept as the original contract.
 
 ```
 external_references
@@ -34,7 +36,9 @@ external_references
 - References are audited (`Auditable`) and tenant-scoped; deleting an entity cascades its references.
 - Until built, `employees.external_reference` (+ `source`) is the only reference slot and is limited to the recruitment hand-over.
 
-## 3. Inbound integration events (ADR-0012) — target
+## 3. Inbound integration events (ADR-0012): implemented in Phase 14
+
+> **Phase 14:** `POST /api/v1/integrations/{system}/events`, with an API key scoped `integrations.write` and bound to the system, and an HMAC signature over `timestamp.body` checked against the system's tolerance window. Unique `(tenant, system, idempotency key)`; the same key with a different body → 409. The payload is encrypted, its SHA-256 kept, and the body purged after `PEOPLEOS_INTEGRATION_PAYLOAD_DAYS`. Processing uses a leased claim plus an in-lock attempt check. Retry backoff is `min(60, 2^attempts)` minutes; dead letter at `max_attempts`; reprocess is audited. Built-in handlers: `reference.link`, `reference.retire`. Status: `GET /api/v1/integrations/{system}/events/{eventId}`.
 
 ```
 inbound_events
@@ -48,7 +52,9 @@ States: `received → processing → succeeded | failed → retrying → dead_le
 
 Rules: tenant-aware (key → tenant), authenticated, validated against the event's schema, idempotent (same key ⇒ same outcome, no duplicate employees / onboarding / documents / salary assignments / transitions), auditable (every state change is an audit event with the correlation id), traceable (correlation id propagates into audit metadata and outbound webhooks). Sensitive payload bodies are purged after processing plus a short retention window; metadata stays.
 
-## 4. Mappings (ADR-0014 addendum) — target
+## 4. Mappings (ADR-0014 addendum): dimension mappings implemented in Phase 14
+
+> **Phase 14:** `integration_mappings(tenant, system, dimension, external_value → PeopleOS code)`, with the PeopleOS code as the default mapping. Status and compensation mappings remain deferred: no handler needs them yet, and none may finalise pay.
 
 ```
 integration_mappings(tenant_id, external_system, dimension, external_value, peopleos_type, peopleos_id, status)
@@ -78,7 +84,7 @@ Documents hand-off: external document → signed, expiring pull URL (or push upl
 
 - Credentials: API keys (hashed, scoped, expiring) today; OAuth 2 client-credentials when a partner needs it.
 - Inbound webhooks: per-integration secret, HMAC-SHA256 over `timestamp.body`, `X-PeopleOS-Timestamp` within ±5 minutes, replay protection through the idempotency key, rate limit per key, payload validation, audit.
-- Outbound webhooks (current envelope): body `{id, event, occurred_at, subject{type,id}, data}`; headers `X-PeopleOS-Event`, `X-PeopleOS-Delivery` (event id), `X-PeopleOS-Timestamp`, `X-PeopleOS-Signature: sha256=HMAC(timestamp.body)`. Consumers must verify the signature, reject stale timestamps, dedupe on the delivery id, expect retries and keep their own dead-letter. The tenant and a correlation id are added to the envelope when the Integration Hub is built (additive fields).
+- Outbound webhooks (current envelope): body `{id, event, occurred_at, subject{type,id}, data}`; headers `X-PeopleOS-Event`, `X-PeopleOS-Delivery` (event id), `X-PeopleOS-Timestamp`, `X-PeopleOS-Signature: sha256=HMAC(timestamp.body)`. Consumers must verify the signature, reject stale timestamps, dedupe on the delivery id, expect retries and keep their own dead-letter. Phase 14 added the tenant slug and `correlation_id` to the envelope, an `X-Correlation-Id` header, leased delivery claims, `dead_letter` (audited) and replay (audited).
 - No integration path bypasses PeopleOS authorisation: keys carry scopes, tenant binding happens before any lookup, and (future) per-key organisation scope applies the same `AccessScopes`.
 
 ## 7. API conventions (ADR-0014)
@@ -87,9 +93,9 @@ Documents hand-off: external document → signed, expiring pull URL (or push upl
 - Authentication: API key; tenant resolved from the key before binding; scope per route (`api.key:<scope>`).
 - Responses: `{"data": [...], "meta": {pagination}}` for lists, `{"data": {...}}` for records; errors `{"message": "...", "errors": {field: [...]}}` with 401 (no/invalid key), 403 (scope, tenancy), 404 (unknown or other-tenant id), 422 (validation / business rule), 429 (rate limit).
 - Filtering by documented query parameters; sorting by `sort=field,-field` where offered; pagination `page`/`per_page` (max 200).
-- Idempotency: natural keys today (external reference); `Idempotency-Key` header for write endpoints when the Integration Hub lands.
+- Idempotency (Phase 14): an `Idempotency-Key` header on v1 write endpoints (`api_idempotency_keys`, encrypted replay with the `Idempotent-Replayed` header; another body → 422; in flight → 409). Endpoints with their own domain idempotency opt out.
 - Every write is audited with source `api:<key name>`; reads of sensitive resources require the sensitive scope and are audited as exports when bulk.
-- OpenAPI description to be generated in the API hardening phase; no endpoint is rewritten for cosmetics.
+- OpenAPI 3.1 (Phase 14): `docs/api/openapi.json`, generated by `peopleos:openapi`; CI checks drift with `--check`. The error envelope is `{message, code, request_id, errors?}`.
 
 ## Phase 5 — compliance API (read-only)
 
