@@ -5,6 +5,8 @@ use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Services\Bgv;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Integration\Services\ApiKeys;
+use App\Domain\Integration\Services\IntegrationSystems;
+use App\Domain\Integration\Support\Signature;
 use Illuminate\Support\Facades\Event;
 
 beforeEach(function () {
@@ -49,22 +51,28 @@ it('closes the case with the worst result once every check is in', function () {
     expect(fn () => $this->bgv->recordCheck($identity, 'bogus'))->toThrow(RuntimeException::class, 'Unknown check status');
 });
 
-it('accepts vendor results through the callback API', function () {
+it('accepts vendor results through the signed callback API', function () {
+    // Production readiness closure: the callback needs a bgv integration bound to the key and a valid signature.
     $case = $this->bgv->initiate($this->employee, ['identity', 'address'], 'manual', true);
     $case->update(['external_reference' => 'VENDOR-9']);
     $key = app(ApiKeys::class)->issue('Vendor', ['bgv.write']);
+    $secret = app(IntegrationSystems::class)->create(['code' => 'vendor', 'name' => 'Vendor', 'kind' => 'bgv', 'api_key_id' => $key['key']->id], tenantUser($this->tenant, ['integration.manage']))['secret'];
     auth()->logout();
     actAsTenant(null);
+    $post = function (array $payload) use ($key, $secret) {
+        $body = json_encode($payload);
+        $ts = (string) now()->getTimestamp();
 
-    $this->withHeader('X-Api-Key', $key['plaintext'])
-        ->postJson('/api/v1/bgv/cases/VENDOR-9/checks', ['checks' => [['type' => 'identity', 'status' => 'clear'], ['type' => 'address', 'status' => 'failed', 'notes' => 'Not found']]])
+        return $this->call('POST', '/api/v1/bgv/cases/VENDOR-9/checks', [], [], [], ['HTTP_X_API_KEY' => $key['plaintext'], 'CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_PEOPLEOS_TIMESTAMP' => $ts, 'HTTP_X_PEOPLEOS_SIGNATURE' => Signature::sign($secret, $ts, $body)], $body);
+    };
+
+    $post(['checks' => [['type' => 'identity', 'status' => 'clear'], ['type' => 'address', 'status' => 'failed', 'notes' => 'Not found']]])
         ->assertOk()
         ->assertJsonPath('data.status', 'completed')
         ->assertJsonPath('data.overall_result', 'failed');
 
-    $this->withHeader('X-Api-Key', $key['plaintext'])
-        ->postJson('/api/v1/bgv/cases/VENDOR-9/checks', ['checks' => [['type' => 'nope', 'status' => 'clear']]])
-        ->assertStatus(422);
+    $post(['checks' => [['type' => 'nope', 'status' => 'clear']]])->assertStatus(422);
 });
 
 it('closes an open case manually, skipping open checks', function () {

@@ -1618,7 +1618,7 @@
                 "tags": [
                     "bgv"
                 ],
-                "summary": "POST bgv checks store",
+                "summary": "Report background-verification results (signed by the bound bgv integration; replay-safe and idempotent)",
                 "x-scope": "bgv.write",
                 "x-audience": "integration",
                 "x-data-classification": "internal",
@@ -1632,10 +1632,35 @@
                         }
                     },
                     {
-                        "$ref": "#/components/parameters/IdempotencyKey"
+                        "$ref": "#/components/parameters/CorrelationId"
                     },
                     {
-                        "$ref": "#/components/parameters/CorrelationId"
+                        "name": "X-PeopleOS-Timestamp",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Unix seconds; must be within the bound bgv integration's window (default ±300 s)."
+                    },
+                    {
+                        "name": "X-PeopleOS-Signature",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "sha256=<hex HMAC-SHA256(integration secret, \"timestamp.body\")>; verified before the body is read."
+                    },
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 191
+                        },
+                        "description": "Else X-PeopleOS-Event-Id, else a digest of the signed timestamp and body. A repeat returns the stored outcome (Idempotent-Replayed: true)."
                     }
                 ],
                 "responses": {
@@ -1708,7 +1733,35 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "type": "object"
+                                "type": "object",
+                                "required": [
+                                    "checks"
+                                ],
+                                "properties": {
+                                    "checks": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "items": {
+                                            "type": "object",
+                                            "required": [
+                                                "type",
+                                                "status"
+                                            ],
+                                            "properties": {
+                                                "type": {
+                                                    "type": "string"
+                                                },
+                                                "status": {
+                                                    "type": "string"
+                                                },
+                                                "notes": {
+                                                    "type": "string",
+                                                    "maxLength": 2000
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -11735,7 +11788,8 @@
                         "pattern": "^[a-z0-9_.-]{1,64}$",
                         "examples": [
                             "reference.link",
-                            "reference.retire"
+                            "reference.retire",
+                            "bgv.results"
                         ]
                     },
                     "correlation_id": {

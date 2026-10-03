@@ -13,7 +13,7 @@ External system  ──►  PeopleOS Integration Hub  ──►  PeopleOS domain
 |---|---|
 | Credentials | `api_keys` (tenant, hashed secret with prefix, `scopes`, expiry, status); `X-Api-Key` or Bearer; 120 req/min per key |
 | Read API | `/api/v1/{employees, attendance/records, leave/requests, leave/balances, payroll/runs, payroll/payslips, documents, assets, performance/appraisals, performance/goals, workflows/instances, workflows/tasks, reports/{id}/run}` — paginated, filtered by simple query parameters, tenant bound by the key |
-| Write API | `POST /api/v1/pre-employees` (recruitment hand-over, idempotent on `offer.external_reference`), `POST /api/v1/bgv/cases/{reference}/checks`, `POST /api/v1/attendance/devices/{device}/punches` |
+| Write API | `POST /api/v1/pre-employees` (recruitment hand-over, idempotent on `offer.external_reference`), `POST /api/v1/bgv/cases/{reference}/checks` (**signed since the production readiness closure**, see §6), `POST /api/v1/attendance/devices/{device}/punches` |
 | SCIM 2.0 | `/api/scim/v2/Users` with key scope `scim` |
 | Outbound webhooks | `webhook_endpoints` subscriptions; `webhook_deliveries` with exponential backoff (5 attempts), delivery log, test ping |
 | External ids | `employees.source`, `employees.external_reference`, `bgv_cases.external_reference`, `attendance_punches.external_id`, `users.external_id` (SCIM) |
@@ -81,6 +81,19 @@ Payload: person (name, contacts, identity metadata), candidate/application/requi
 Documents hand-off: external document → signed, expiring pull URL (or push upload) → quarantine document type → classification → verification → `EmployeeDocument`; the existing verification flow is reused.
 
 ## 6. Security
+
+**BGV callback (production readiness closure).** `POST /api/v1/bgv/cases/{reference}/checks` needs:
+1. an API key with scope `bgv.write`;
+2. an active Integration Hub system of kind `bgv` bound to that key;
+3. `X-PeopleOS-Timestamp` and `X-PeopleOS-Signature: sha256=HMAC-SHA256(secret, "timestamp.body")`, verified in constant time inside the system's window before the body is read.
+
+Results are stored once as a `bgv.results` hub event (encrypted payload, audited) under
+`Idempotency-Key`, else `X-PeopleOS-Event-Id`, else a digest of the signed timestamp and body. A replay
+or duplicate returns the stored outcome (`Idempotent-Replayed: true`); the same key with a different
+body is a 409. Missing or invalid signatures and stale timestamps return 401; a key without a bound
+`bgv` integration returns 403; a case outside the tenant returns 404. Provider-specific signature
+schemes are **pending**: none is implemented, because no provider contract is available.
+
 
 - Credentials: API keys (hashed, scoped, expiring) today; OAuth 2 client-credentials when a partner needs it.
 - Inbound webhooks: per-integration secret, HMAC-SHA256 over `timestamp.body`, `X-PeopleOS-Timestamp` within ±5 minutes, replay protection through the idempotency key, rate limit per key, payload validation, audit.

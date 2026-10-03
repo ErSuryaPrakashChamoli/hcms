@@ -35,6 +35,7 @@ final class OpenApiGenerator
     public const SUMMARIES = [
         'api.v1.integrations.events.store' => 'Post a signed event to an integration (idempotent, processed asynchronously)',
         'api.v1.integrations.events.show' => 'Status of an inbound event by its external event id',
+        'api.v1.bgv.checks.store' => 'Report background-verification results (signed by the bound bgv integration; replay-safe and idempotent)',
         'api.v1.integrations.references.show' => 'Resolve this integration\'s external id to the PeopleOS record',
         'api.v1.employees.index' => 'List employees (sensitive fields never included in lists)',
         'api.v1.employees.show' => 'One employee (sensitive block only with ?include=sensitive and employees.sensitive.read; audited)',
@@ -113,7 +114,8 @@ final class OpenApiGenerator
             $parameters[] = ['name' => 'sort', 'in' => 'query', 'required' => false, 'description' => 'Comma-separated; prefix - for descending. Allowed: id, '.implode(', ', self::SORTABLE[$name]), 'schema' => ['type' => 'string']];
         }
         $isWrite = in_array($method, ['post', 'put', 'patch', 'delete'], true);
-        if ($isWrite && ! $isScim && $name !== 'api.v1.integrations.events.store') {
+        $signed = in_array($name, ['api.v1.integrations.events.store', 'api.v1.bgv.checks.store'], true);
+        if ($isWrite && ! $isScim && ! $signed) {
             $parameters[] = ['$ref' => '#/components/parameters/IdempotencyKey'];
         }
         $parameters[] = ['$ref' => '#/components/parameters/CorrelationId'];
@@ -128,7 +130,12 @@ final class OpenApiGenerator
             'parameters' => $parameters,
             'responses' => $this->responses($method, $isList, $name),
         ];
-        if ($name === 'api.v1.integrations.events.store') {
+        if ($name === 'api.v1.bgv.checks.store') {
+            $operation['parameters'][] = ['name' => 'X-PeopleOS-Timestamp', 'in' => 'header', 'required' => true, 'schema' => ['type' => 'string'], 'description' => 'Unix seconds; must be within the bound bgv integration\'s window (default ±300 s).'];
+            $operation['parameters'][] = ['name' => 'X-PeopleOS-Signature', 'in' => 'header', 'required' => true, 'schema' => ['type' => 'string'], 'description' => 'sha256=<hex HMAC-SHA256(integration secret, "timestamp.body")>; verified before the body is read.'];
+            $operation['parameters'][] = ['name' => 'Idempotency-Key', 'in' => 'header', 'required' => false, 'schema' => ['type' => 'string', 'maxLength' => 191], 'description' => 'Else X-PeopleOS-Event-Id, else a digest of the signed timestamp and body. A repeat returns the stored outcome (Idempotent-Replayed: true).'];
+            $operation['requestBody'] = ['required' => true, 'content' => ['application/json' => ['schema' => ['type' => 'object', 'required' => ['checks'], 'properties' => ['checks' => ['type' => 'array', 'minItems' => 1, 'items' => ['type' => 'object', 'required' => ['type', 'status'], 'properties' => ['type' => ['type' => 'string'], 'status' => ['type' => 'string'], 'notes' => ['type' => 'string', 'maxLength' => 2000]]]]]]]]];
+        } elseif ($name === 'api.v1.integrations.events.store') {
             $operation['parameters'][] = ['name' => 'X-PeopleOS-Timestamp', 'in' => 'header', 'required' => true, 'schema' => ['type' => 'string'], 'description' => 'Unix seconds; must be within the integration\'s window (default ±300 s).'];
             $operation['parameters'][] = ['name' => 'X-PeopleOS-Signature', 'in' => 'header', 'required' => true, 'schema' => ['type' => 'string'], 'description' => 'sha256=<hex HMAC-SHA256(secret, "timestamp.body")>'];
             $operation['parameters'][] = ['name' => 'Idempotency-Key', 'in' => 'header', 'required' => false, 'schema' => ['type' => 'string', 'maxLength' => 191], 'description' => 'Defaults to event_id.'];

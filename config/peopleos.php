@@ -51,6 +51,7 @@ use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Integration\Handlers\BgvResultsHandler;
 use App\Domain\Integration\Handlers\LinkReferenceHandler;
 use App\Domain\Integration\Handlers\RetireReferenceHandler;
 use App\Domain\Knowledge\Services\PolicyAcknowledgementTaskSource;
@@ -1123,6 +1124,8 @@ return [
         'handlers' => [
             'reference.link' => LinkReferenceHandler::class,
             'reference.retire' => RetireReferenceHandler::class,
+            // Production readiness closure: background-verification results (signed, idempotent; `bgv` integrations only).
+            'bgv.results' => BgvResultsHandler::class,
         ],
         'max_attempts' => (int) env('PEOPLEOS_INTEGRATION_MAX_ATTEMPTS', 5),
         // Payload bodies of finished events are purged after this many days; metadata stays.

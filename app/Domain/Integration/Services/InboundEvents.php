@@ -49,19 +49,7 @@ final class InboundEvents
      */
     public function receive(IntegrationSystem $system, ApiKey $key, string $rawBody, array $headers): array
     {
-        if (! $system->isActive()) {
-            throw new IntegrationRejected('This integration is not active.', 'integration_inactive', 409);
-        }
-        if ($system->api_key_id !== null && (int) $system->api_key_id !== (int) $key->id) {
-            throw new IntegrationRejected('This API key may not post events for this integration.', 'forbidden', 403);
-        }
-        if ($system->require_signature) {
-            $check = Signature::check((string) $system->inbound_secret, $headers['x-peopleos-timestamp'] ?? null, $rawBody, $headers['x-peopleos-signature'] ?? null, (int) $system->signature_tolerance_seconds);
-            if ($check !== 'valid') {
-                $this->audit->record(AuditAction::IntegrationSignatureRejected, 'integration', $system, [], null, metadata: ['reason' => $check, 'api_key_id' => $key->id]);
-                throw new IntegrationRejected($check === 'stale_timestamp' ? 'The request timestamp is outside the allowed window.' : 'The request signature is not valid.', $check, 401);
-            }
-        }
+        $this->authenticate($system, $key, $rawBody, $headers);
         $envelope = json_decode($rawBody, true);
         if (! is_array($envelope)) {
             throw new IntegrationRejected('The body must be a JSON object.', 'invalid_payload');
@@ -72,14 +60,49 @@ final class InboundEvents
         if ($eventId === '' || mb_strlen($eventId) > 191 || ! preg_match('/^[a-z0-9_.-]{1,64}$/', $type) || ! is_array($data)) {
             throw new IntegrationRejected('The event needs event_id (≤191), event_type (letters, digits, _ . -) and a data object.', 'invalid_payload');
         }
+
+        return $this->record($system, $type, $eventId, trim((string) ($headers['idempotency-key'] ?? $eventId)), $data, $rawBody,
+            $headers['x-correlation-id'] ?? ($envelope['correlation_id'] ?? null));
+    }
+
+    /**
+     * Integration identity, key binding, and the HMAC signature within the timestamp window. Nothing is
+     * read from the body before this passes. $forceSignature verifies the signature even when the system
+     * does not require one (the BGV callback always does).
+     */
+    public function authenticate(IntegrationSystem $system, ApiKey $key, string $rawBody, array $headers, bool $forceSignature = false): void
+    {
+        if (! $system->isActive()) {
+            throw new IntegrationRejected('This integration is not active.', 'integration_inactive', 409);
+        }
+        if ($system->api_key_id !== null && (int) $system->api_key_id !== (int) $key->id) {
+            throw new IntegrationRejected('This API key may not post events for this integration.', 'forbidden', 403);
+        }
+        if ($system->require_signature || $forceSignature) {
+            $check = Signature::check((string) $system->inbound_secret, $headers['x-peopleos-timestamp'] ?? null, $rawBody, $headers['x-peopleos-signature'] ?? null, (int) $system->signature_tolerance_seconds);
+            if ($check !== 'valid') {
+                $this->audit->record(AuditAction::IntegrationSignatureRejected, 'integration', $system, [], null, metadata: ['reason' => $check, 'api_key_id' => $key->id]);
+                throw new IntegrationRejected($check === 'stale_timestamp' ? 'The request timestamp is outside the allowed window.' : 'The request signature is not valid.', $check, 401);
+            }
+        }
+    }
+
+    /**
+     * Store an authenticated event once per (tenant, system, idempotency key) and queue its processing
+     * after commit. A repeat returns the stored event; the same key with a different body is a conflict.
+     *
+     * @return array{duplicate: bool, event: InboundEvent}
+     */
+    public function record(IntegrationSystem $system, string $type, string $eventId, string $idempotencyKey, array $data, string $rawBody, mixed $correlation = null): array
+    {
         if (! $system->accepts($type) || ! array_key_exists($type, config('peopleos.integration.handlers', []))) {
             throw new IntegrationRejected("This integration does not accept [{$type}] events.", 'unsupported_event_type');
         }
-        $idempotencyKey = trim((string) ($headers['idempotency-key'] ?? $eventId));
+        $idempotencyKey = trim($idempotencyKey);
         if ($idempotencyKey === '' || mb_strlen($idempotencyKey) > 191) {
             throw new IntegrationRejected('The idempotency key must be 1–191 characters.', 'invalid_payload');
         }
-        $correlation = $this->correlationId($headers['x-correlation-id'] ?? ($envelope['correlation_id'] ?? null));
+        $correlation = $this->correlationId($correlation);
         $sha = hash('sha256', $rawBody);
 
         try {
@@ -138,7 +161,7 @@ final class InboundEvents
 
             return $result ?? 'skipped';
         } catch (IntegrationRejected $e) {
-            return $this->finish($event, 'failed', $e->getMessage(), AuditAction::IntegrationEventFailed);
+            return $this->finish($event, 'failed', $e->getMessage(), AuditAction::IntegrationEventFailed, result: ['rejected' => $e->reason, 'http_status' => $e->status]);
         } catch (Throwable $e) {
             report($e);
             $max = (int) config('peopleos.integration.max_attempts', 5);
@@ -210,14 +233,15 @@ final class InboundEvents
             ->update(['status' => 'processing', 'attempts' => DB::raw('attempts + 1'), 'next_attempt_at' => now()->addMinutes(10), 'updated_at' => now()]) === 1;
     }
 
-    private function finish(InboundEvent $event, string $status, string $error, ?AuditAction $action, mixed $next = null): string
+    private function finish(InboundEvent $event, string $status, string $error, ?AuditAction $action, mixed $next = null, ?array $result = null): string
     {
-        DB::transaction(function () use ($event, $status, $error, $action, $next) {
+        DB::transaction(function () use ($event, $status, $error, $action, $next, $result) {
             $current = InboundEvent::query()->whereKey($event->id)->lockForUpdate()->firstOrFail();
             if ($current->status !== 'processing') {
                 return;
             }
-            $current->update(['status' => $status, 'last_error' => Str::limit($error, 480, ''), 'next_attempt_at' => $next, 'processed_at' => $status === 'retrying' ? null : now()]);
+            $current->update(['status' => $status, 'last_error' => Str::limit($error, 480, ''), 'next_attempt_at' => $next, 'processed_at' => $status === 'retrying' ? null : now()]
+                + ($result !== null ? ['result' => $result] : []));
             if ($action !== null) {
                 $this->audit->record($action, 'integration', $current, [['field' => 'status', 'before' => 'processing', 'after' => $status]], Str::limit($error, 250, ''),
                     metadata: ['event_type' => $current->event_type, 'correlation_id' => $current->correlation_id, 'attempts' => $current->attempts]);
