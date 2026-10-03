@@ -5,6 +5,7 @@ namespace App\Domain\Enterprise\Services;
 use App\Domain\Ai\Models\AiInteraction;
 use App\Domain\Analytics\Models\ReportRun;
 use App\Domain\Enterprise\Models\WebhookDelivery;
+use App\Domain\Integration\Services\InboundEvents;
 use App\Domain\Notifications\Models\NotificationDelivery;
 use App\Domain\Platform\Services\SettingsRepository;
 use Illuminate\Support\Facades\Storage;
@@ -33,7 +34,9 @@ final class Retention
             $run->delete();
         }
         $out['report_runs'] = $runs->count();
-        $out['webhook_deliveries'] = WebhookDelivery::query()->whereIn('status', ['delivered', 'failed'])->where('created_at', '<', now()->subDays(90))->delete();
+        $out['webhook_deliveries'] = WebhookDelivery::query()->whereIn('status', ['delivered', 'failed', 'dead_letter'])->where('created_at', '<', now()->subDays(90))->delete();
+        // Phase 14: inbound event payload bodies are purged after the retention window; the event rows (metadata) stay.
+        $out['inbound_payloads'] = app(InboundEvents::class)->purgePayloads();
 
         return $out;
     }

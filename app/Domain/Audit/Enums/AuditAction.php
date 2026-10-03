@@ -179,6 +179,18 @@ enum AuditAction: string
     case AudienceCreated = 'AUDIENCE_CREATED';
     case AudienceUsed = 'AUDIENCE_USED';
     case CommunicationPreferenceChanged = 'COMMUNICATION_PREFERENCE_CHANGED';
+    // Phase 14: Integration Hub (inbound events, references, signing) and outbound webhook dead letters.
+    case IntegrationSecretRotated = 'INTEGRATION_SECRET_ROTATED';
+    case IntegrationSignatureRejected = 'INTEGRATION_SIGNATURE_REJECTED';
+    case IntegrationEventReceived = 'INTEGRATION_EVENT_RECEIVED';
+    case IntegrationEventProcessed = 'INTEGRATION_EVENT_PROCESSED';
+    case IntegrationEventFailed = 'INTEGRATION_EVENT_FAILED';
+    case IntegrationEventDeadLettered = 'INTEGRATION_EVENT_DEAD_LETTERED';
+    case IntegrationEventReprocessed = 'INTEGRATION_EVENT_REPROCESSED';
+    case ExternalReferenceLinked = 'EXTERNAL_REFERENCE_LINKED';
+    case ExternalReferenceRetired = 'EXTERNAL_REFERENCE_RETIRED';
+    case WebhookDeadLettered = 'WEBHOOK_DEAD_LETTERED';
+    case WebhookReplayed = 'WEBHOOK_REPLAYED';
 
     public function label(): string
     {

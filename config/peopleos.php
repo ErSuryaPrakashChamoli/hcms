@@ -51,6 +51,8 @@ use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Integration\Handlers\LinkReferenceHandler;
+use App\Domain\Integration\Handlers\RetireReferenceHandler;
 use App\Domain\Knowledge\Services\PolicyAcknowledgementTaskSource;
 use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\LearningCost;
@@ -253,6 +255,10 @@ return [
         ],
         'api_key' => [
             'api_key.manage' => 'Create and revoke integration API keys',
+        ],
+        'integration' => [
+            'integration.view' => 'View integrations, external references, mappings and inbound events (never payload bodies)',
+            'integration.manage' => 'Register integrations, rotate their signing secrets, map values, retire references and reprocess events (Phase 14)',
         ],
         'payroll' => [
             'payroll.view' => 'View payroll runs, entries and payslips (all employees)',
@@ -498,7 +504,7 @@ return [
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'integration.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
@@ -997,6 +1003,8 @@ return [
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
             // Phase 11: compensation definitions; employee amounts need the second scope (audited reads).
             // Phase 13: engagement (survey definitions, own participation for identified surveys, suppressed aggregates) and communications (published content, preferences).
+            'integrations.write' => 'Post signed events to an integration registered in PeopleOS (Integration Hub inbound endpoint)',
+            'integrations.read' => 'Look up an integration\'s external references and the status of its inbound events',
             'engagement.read' => 'Read survey definitions, an employee\'s surveys, aggregate participation and overall privacy-suppressed results — never responses, comments, respondents or anyone\'s participation in anonymous or confidential surveys',
             'communications.read' => 'Read published communications with aggregate delivery counts and an employee\'s communication preferences — never audience criteria, recipient lists or delivery records',
             // Phase 12: the HR service desk read API — never internal or restricted notes, confidential cases, sensitive form fields or attachments.
@@ -1088,6 +1096,22 @@ return [
     /*
     | Enterprise & international (§87, §96, §109, §110).
     */
+    /*
+    | Phase 14 Integration Hub (ADR-0011, ADR-0012, ADR-0014). Generic: vendor adapters are handlers
+    | registered here, each applying its events through the owning domain's actions.
+    */
+    'integration' => [
+        'kinds' => ['recruitment' => 'Recruitment / ATS', 'payroll_provider' => 'Payroll provider', 'attendance' => 'Attendance devices', 'finance' => 'Finance / ERP', 'identity' => 'Identity provider', 'benefits' => 'Benefits provider', 'learning' => 'Learning provider', 'bgv' => 'Background verification', 'hr_system' => 'External HR system', 'other' => 'Other'],
+        // event type => handler (App\Domain\Integration\Contracts\InboundEventHandler)
+        'handlers' => [
+            'reference.link' => LinkReferenceHandler::class,
+            'reference.retire' => RetireReferenceHandler::class,
+        ],
+        'max_attempts' => (int) env('PEOPLEOS_INTEGRATION_MAX_ATTEMPTS', 5),
+        // Payload bodies of finished events are purged after this many days; metadata stays.
+        'payload_retention_days' => (int) env('PEOPLEOS_INTEGRATION_PAYLOAD_DAYS', 7),
+    ],
+
     'enterprise' => [
         'sso_providers' => ['entra' => 'Microsoft Entra ID', 'google' => 'Google Workspace', 'okta' => 'Okta', 'oidc' => 'Generic OpenID Connect'],
         'sso_presets' => [

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\CompensationController;
 use App\Http\Controllers\Api\V1\ComplianceController;
 use App\Http\Controllers\Api\V1\EmployeeController;
 use App\Http\Controllers\Api\V1\EngagementController;
+use App\Http\Controllers\Api\V1\IntegrationController;
 use App\Http\Controllers\Api\V1\LearningController;
 use App\Http\Controllers\Api\V1\LeaveController;
 use App\Http\Controllers\Api\V1\OrganisationController;
@@ -153,6 +154,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('requests/{number}/comments', [ServiceDeskController::class, 'comments'])->name('requests.comments');
         Route::get('knowledge', [ServiceDeskController::class, 'knowledge'])->name('knowledge');
         Route::get('tasks', [ServiceDeskController::class, 'tasks'])->name('tasks');
+    });
+
+    // Phase 14 Integration Hub: signed, idempotent inbound events (processed asynchronously) and
+    // lookups of an integration's own external references. Systems of other tenants are 404.
+    Route::post('integrations/{system}/events', [IntegrationController::class, 'receive'])->middleware('api.key:integrations.write')->name('integrations.events.store');
+    Route::middleware('api.key:integrations.read')->prefix('integrations')->name('integrations.')->group(function () {
+        Route::get('{system}/events/{eventId}', [IntegrationController::class, 'event'])->name('events.show');
+        Route::get('{system}/references', [IntegrationController::class, 'reference'])->name('references.show');
     });
 
     // Phase 13 engagement API: read-only. Definitions, aggregate participation and overall results under

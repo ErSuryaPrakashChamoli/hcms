@@ -19,7 +19,7 @@ class DeliverWebhooks extends Command
             ->each(fn (Tenant $tenant) => $tenants->runAs($tenant, function () use ($webhooks, $tenant) {
                 $r = $webhooks->deliverDue();
                 if (array_sum($r) > 0) {
-                    $this->info("{$tenant->slug}: {$r['delivered']} delivered, {$r['retrying']} retrying, {$r['failed']} failed");
+                    $this->info("{$tenant->slug}: {$r['delivered']} delivered, {$r['retrying']} retrying, {$r['dead_letter']} dead-lettered");
                 }
             }));
 

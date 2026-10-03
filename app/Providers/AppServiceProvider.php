@@ -184,7 +184,12 @@ use App\Domain\Identity\Policies\UserPolicy;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Integration\Models\ApiKey;
+use App\Domain\Integration\Models\ExternalReference;
+use App\Domain\Integration\Models\InboundEvent;
+use App\Domain\Integration\Models\IntegrationMapping;
+use App\Domain\Integration\Models\IntegrationSystem;
 use App\Domain\Integration\Policies\ApiKeyPolicy;
+use App\Domain\Integration\Policies\IntegrationPolicy;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Policies\ArticlePolicy;
 use App\Domain\Learning\Listeners\LearningWorkflowBridge;
@@ -489,6 +494,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(EmployeeFeedback::class, EmployeeFeedbackPolicy::class);
         Gate::policy(CommunicationRecipient::class, CommunicationRecordPolicy::class);
         Gate::policy(CommunicationPreference::class, CommunicationRecordPolicy::class);
+        // Phase 14: Integration Hub records.
+        foreach ([IntegrationSystem::class, ExternalReference::class, IntegrationMapping::class, InboundEvent::class] as $model) {
+            Gate::policy($model, IntegrationPolicy::class);
+        }
         foreach ([Course::class, LearningPath::class, LearningAssignment::class, TrainingSession::class, Assessment::class] as $model) {
             Gate::policy($model, LearningConfigPolicy::class);
         }

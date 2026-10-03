@@ -180,11 +180,11 @@ it('publishes signed webhooks for domain events, retries and records deliveries'
         ->and($delivery->payload['data']['employee_code'])->toBe($employee->employee_code);
 
     $webhooks = app(Webhooks::class);
-    expect($webhooks->deliverDue())->toBe(['delivered' => 0, 'failed' => 0, 'retrying' => 1]);
+    expect($webhooks->deliverDue())->toBe(['delivered' => 0, 'dead_letter' => 0, 'retrying' => 1, 'skipped' => 0]);
     expect($delivery->refresh()->attempts)->toBe(1)->and($delivery->response_code)->toBe(500)->and($delivery->next_attempt_at->isFuture())->toBeTrue();
-    expect($webhooks->deliverDue())->toBe(['delivered' => 0, 'failed' => 0, 'retrying' => 0]); // not due yet
+    expect($webhooks->deliverDue())->toBe(['delivered' => 0, 'dead_letter' => 0, 'retrying' => 0, 'skipped' => 0]); // not due yet
     $this->travelTo(now()->addMinutes(3));
-    expect($webhooks->deliverDue())->toBe(['delivered' => 1, 'failed' => 0, 'retrying' => 0]);
+    expect($webhooks->deliverDue())->toBe(['delivered' => 1, 'dead_letter' => 0, 'retrying' => 0, 'skipped' => 0]);
     expect($delivery->refresh()->status)->toBe('delivered')->and($endpoint->refresh()->last_delivered_at)->not->toBeNull();
 
     Http::assertSent(function ($request) {
@@ -196,7 +196,8 @@ it('publishes signed webhooks for domain events, retries and records deliveries'
 
     Http::fake(['https://erp.example.test/*' => Http::response('', 503)]);
     $dead = WebhookDelivery::create(['webhook_endpoint_id' => $endpoint->id, 'event' => 'leave.requested', 'event_id' => 'x', 'payload' => ['event' => 'leave.requested'], 'status' => 'pending', 'attempts' => 4, 'next_attempt_at' => now()]);
-    expect($webhooks->deliverDue()['failed'])->toBe(1)->and($dead->refresh()->status)->toBe('failed')->and($endpoint->refresh()->failure_count)->toBe(1);
+    // Phase 14: after the maximum attempts a delivery is dead-lettered (audited) and can be replayed.
+    expect($webhooks->deliverDue()['dead_letter'])->toBe(1)->and($dead->refresh()->status)->toBe('dead_letter')->and($endpoint->refresh()->failure_count)->toBe(1);
 });
 
 it('purges by retention windows and exports the warehouse feed', function () {

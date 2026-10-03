@@ -29,6 +29,8 @@ Schedule::command('peopleos:engagement:process')->everyFifteenMinutes()->without
 Schedule::command('peopleos:communication:process')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:exit:tick')->dailyAt('04:00')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:reports:run-due')->hourly()->withoutOverlapping()->onOneServer();
+// Phase 14: inbound integration events (the queue applies them at once; this run picks up retries and expired leases).
+Schedule::command('peopleos:integrations:process')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:webhooks:deliver')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:retention:purge')->dailyAt('03:30')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:warehouse:export')->dailyAt('05:00')->withoutOverlapping()->onOneServer();
