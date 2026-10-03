@@ -6,6 +6,7 @@ use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Grievance\Models\Grievance;
+use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Models\LearningEnrolment;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Payroll\Models\PayrollRun;
@@ -21,10 +22,45 @@ use Illuminate\Support\Carbon;
 /** The KPI catalogue behind dashboards and the Workforce Command Centre (§56, §85). */
 final class WorkforceMetrics
 {
-    /** @return array{key: string, label: string, value: float|int|null, format: string, hint: ?string} */
-    public function metric(string $key): array
+    /**
+     * Phase 14: metrics that come from a protected domain need that domain's permission. A dashboard
+     * viewer with only analytics.view sees these as "restricted", never the figure.
+     */
+    public const PERMISSIONS = [
+        'people_cost' => ['payroll.view', 'compensation.analytics'], 'cost_per_head' => ['payroll.view', 'compensation.analytics'],
+        'high_performers' => ['performance.analytics', 'performance.view'], 'learning_completion' => ['learning.analytics', 'learning.view'],
+        'open_grievances' => ['grievance.view', 'grievance.manage'], 'open_tickets' => ['servicedesk.view', 'servicedesk.analytics'],
+        'exits_in_progress' => ['exit.view'], 'pending_approvals' => ['workflow.view'],
+    ];
+
+    /** Phase 14: shares of a small population are suppressed (the PeopleOS small-group principle). */
+    public const SUPPRESSED_BELOW_GROUP = ['women_share', 'high_performers', 'avg_tenure_months'];
+
+    public function allowed(string $key, ?User $viewer): bool
+    {
+        if ($viewer === null || ! isset(self::PERMISSIONS[$key])) {
+            return true;
+        }
+        foreach (self::PERMISSIONS[$key] as $permission) {
+            if ($viewer->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return array{key: string, label: string, value: float|int|null, format: string, hint: ?string, restricted?: bool} */
+    public function metric(string $key, ?User $viewer = null): array
     {
         $label = config("peopleos.analytics.metrics.{$key}", $key);
+        $viewer ??= auth()->user();
+        if (! $this->allowed($key, $viewer)) {
+            return ['key' => $key, 'label' => $label, 'value' => null, 'format' => 'number', 'hint' => 'Restricted: needs '.implode(' or ', self::PERMISSIONS[$key]), 'restricted' => true];
+        }
+        if (in_array($key, self::SUPPRESSED_BELOW_GROUP, true) && $this->headcount() < (int) config('peopleos.performance.analytics_min_group', 5)) {
+            return ['key' => $key, 'label' => $label, 'value' => null, 'format' => 'number', 'hint' => 'Suppressed: population below the privacy threshold'];
+        }
         [$value, $format, $hint] = match ($key) {
             'headcount' => [$this->headcount(), 'number', null],
             'joiners_30d' => [Employee::query()->whereDate('joining_date', '>=', now()->subDays(30))->whereDate('joining_date', '<=', now())->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])->count(), 'number', null],
@@ -49,11 +85,11 @@ final class WorkforceMetrics
     }
 
     /** @return array<string, array{key: string, label: string, value: mixed, format: string, hint: ?string}> */
-    public function all(array $keys): array
+    public function all(array $keys, ?User $viewer = null): array
     {
         $out = [];
         foreach ($keys as $key) {
-            $out[$key] = $this->metric($key);
+            $out[$key] = $this->metric($key, $viewer);
         }
 
         return $out;

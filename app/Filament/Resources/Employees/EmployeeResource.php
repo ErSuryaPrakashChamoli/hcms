@@ -109,12 +109,16 @@ class EmployeeResource extends Resource
             EmergencyContactsRelationManager::class,
             QualificationsRelationManager::class,
             ExperiencesRelationManager::class,
-            CertificationsRelationManager::class,
-            SkillsRelationManager::class,
             DocumentsRelationManager::class,
             BgvRelationManager::class,
             BankAccountsRelationManager::class,
             WorkflowsRelationManager::class,
+            // Phase 14: the remaining domains, each read under its own policy.
+            RelationManagers\GoalsRelationManager::class,
+            RelationManagers\PayslipsRelationManager::class,
+            RelationManagers\LettersRelationManager::class,
+            RelationManagers\ExitRelationManager::class,
+            RelationManagers\CommunicationsRelationManager::class,
             AuditHistoryRelationManager::class,
         ];
     }

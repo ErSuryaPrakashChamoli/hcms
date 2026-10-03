@@ -11,6 +11,7 @@ use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Career\Models\CareerAspirationEntry;
 use App\Domain\Career\Models\CareerGoal;
+use App\Domain\Communication\Models\CommunicationRecipient;
 use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Configuration\Concerns\HasCustomFields;
@@ -310,6 +311,12 @@ class Employee extends Model
     public function alumniProfile(): HasOne
     {
         return $this->hasOne(AlumniProfile::class);
+    }
+
+    /** Phase 14: announcements addressed to this employee (the Communication domain's snapshot rows; read-only here). */
+    public function communicationRecipients(): HasMany
+    {
+        return $this->hasMany(CommunicationRecipient::class);
     }
 
     public function leaveBalances(): HasMany

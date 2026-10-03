@@ -186,6 +186,11 @@ final class AccessScopes
             return $this->constrainOrganisation($model->newQueryWithoutScope(AccessScope::class)->whereKey($model->getKey()), $user, $dimension)->exists();
         }
 
+        // Phase 14: a model with no employee link (e.g. an audit event, scoped by its own query) is not
+        // employee-constrained here; reading a missing attribute would throw under strict models.
+        if (! array_key_exists('employee_id', $model->getAttributes()) && ! in_array('employee_id', $model->getFillable(), true)) {
+            return true;
+        }
         $employeeId = $model->getAttribute('employee_id');
 
         return $employeeId === null || $this->allowsEmployeeId($user, (int) $employeeId);

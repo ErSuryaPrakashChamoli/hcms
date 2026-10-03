@@ -626,6 +626,8 @@ return [
         'leave.exclude_holidays' => true,
         // Lowest risk level that needs approval when the configuration.approval feature is on.
         'configuration.approval.minimum_risk' => 'medium',
+        // Phase 14: the warehouse feed carries non-sensitive dataset fields unless this is explicitly enabled.
+        'warehouse.include_sensitive' => false,
     ],
 
     /*
@@ -1230,6 +1232,8 @@ return [
         'visualizations' => ['table' => 'Table', 'bar' => 'Bar chart', 'line' => 'Line chart', 'pie' => 'Pie chart', 'kpi' => 'Single number'],
         'formats' => ['csv' => 'CSV (Excel-compatible)'],
         'max_rows' => 10000,
+        // Phase 14: the privacy threshold for cross-domain People analytics (counts below it are suppressed).
+        'min_group' => (int) env('PEOPLEOS_ANALYTICS_MIN_GROUP', 5),
         'schedule_frequencies' => ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly'],
         'widget_types' => ['kpi' => 'KPI number', 'trend' => 'Trend (last 12 months)', 'chart' => 'Chart from a report', 'table' => 'Table from a report', 'leaderboard' => 'Leaderboard (top rows of a report)', 'alerts' => 'Needs attention counts'],
         'widget_sizes' => ['1' => 'Small', '2' => 'Half width', '4' => 'Full width'],

@@ -4,9 +4,11 @@ namespace App\Filament\Resources\Employees\Schemas;
 
 use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Experience\Services\Employee360;
 use App\Filament\Support\CustomFieldsSchema;
 use Carbon\CarbonInterface;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -57,6 +59,15 @@ class EmployeeInfolist
                             TextEntry::make('confirmation_date')->date()->placeholder('Not confirmed'),
                         ]),
                 ]),
+                // Phase 14: the 360 overview, one permission-aware summary per domain (Employee360). Each domain
+                // still owns its data; the tabs below are the detail.
+                Section::make('360 overview')
+                    ->description('A summary from each domain you are allowed to see for this employee.')
+                    ->collapsible()
+                    ->schema([
+                        ViewEntry::make('overview_360')->hiddenLabel()->view('filament.employees.overview-360')
+                            ->state(fn (Employee $record) => app(Employee360::class)->for(auth()->user(), $record)),
+                    ]),
                 CustomFieldsSchema::infolistSection(Employee::class),
                 Section::make('Applicable policies')
                     ->description('Resolved today from the tenant\'s assignment rules.')

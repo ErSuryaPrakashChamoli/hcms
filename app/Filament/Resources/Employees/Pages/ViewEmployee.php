@@ -20,6 +20,7 @@ use App\Domain\Workflow\Exceptions\WorkflowException;
 use App\Domain\Workflow\Models\Workflow;
 use App\Domain\Workflow\Services\WorkflowEngine;
 use App\Domain\Workforce\Models\Position;
+use App\Filament\Pages\ChangeIntelligencePage;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
 use App\Filament\Support\AuditReasonField;
@@ -59,6 +60,10 @@ class ViewEmployee extends ViewRecord
     {
         return [
             EditAction::make(),
+            // Phase 14: every audited change to this employee's records (employee, person and linked rows), in Change Intelligence.
+            Action::make('changes')->label('All changes')->icon('heroicon-m-magnifying-glass-circle')->color('gray')
+                ->visible(fn () => auth()->user()?->hasPermission('audit.view') ?? false)
+                ->url(fn () => ChangeIntelligencePage::getUrl(['employee' => $this->getRecord()->getKey()])),
             ActionGroup::make([
                 $this->assignPositionAction(),
                 $this->changeManagerAction(),
