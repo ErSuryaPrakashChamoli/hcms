@@ -64,9 +64,12 @@ document.addEventListener('alpine:init', () => {
             const next = items[(i + step + items.length) % items.length];
             this.activate(next.id);
         },
-        actionMove(e, step) {
+        currentActions() {
             const el = document.getElementById(this.activeId);
-            const actions = el ? el.querySelectorAll('.pos-command-action') : [];
+            try { return JSON.parse(el?.dataset.actions || '[]'); } catch (e) { return []; }
+        },
+        actionMove(e, step) {
+            const actions = this.currentActions();
             if (!actions.length) return;
             e.preventDefault();
             this.actionIndex = Math.max(-1, Math.min(actions.length - 1, this.actionIndex + step));
@@ -82,8 +85,8 @@ document.addEventListener('alpine:init', () => {
             el = el ?? document.getElementById(this.activeId);
             if (!el) return;
             if (this.actionIndex >= 0) {
-                const action = el.querySelectorAll('.pos-command-action')[this.actionIndex];
-                if (action) return this.runAction(action, el.dataset.id);
+                const action = this.currentActions()[this.actionIndex];
+                if (action) return this.runActionData(action, el.dataset.id);
             }
             const drawer = JSON.parse(el.dataset.drawer || 'null');
             const url = el.dataset.url;
@@ -95,12 +98,12 @@ document.addEventListener('alpine:init', () => {
             }
             if (url) { this.close(); go(url); }
         },
-        runAction(btn, id) {
-            const drawer = JSON.parse(btn.dataset.drawer || 'null');
-            this.$wire.remember(id);
+        runActionData(action, id = null) {
+            const el = document.getElementById(this.activeId);
+            this.$wire.remember(id ?? el?.dataset.id ?? '');
             this.close();
-            if (drawer) window.dispatchEvent(new CustomEvent('pos-drawer-open', { detail: drawer }));
-            else go(btn.dataset.url);
+            if (action.drawer) window.dispatchEvent(new CustomEvent('pos-drawer-open', { detail: action.drawer }));
+            else go(action.url);
         },
         globalKey(e) {
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -110,7 +113,7 @@ document.addEventListener('alpine:init', () => {
             }
             if (this.isOpen || isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return;
             if (e.key === '/') { e.preventDefault(); this.open({ mode: 'all' }); }
-            if (e.key === 'n' && !document.querySelector('.fi-modal-window')) { e.preventDefault(); this.open({ mode: 'actions' }); }
+            if (e.key === 'n' && !document.querySelector('.fi-modal-open')) { e.preventDefault(); this.open({ mode: 'actions' }); }
         },
     }));
 
@@ -119,7 +122,8 @@ document.addEventListener('alpine:init', () => {
         index: -1,
         handle(e) {
             if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey || document.documentElement.classList.contains('pos-command-open')) return;
-            if (document.querySelector('.fi-modal-window, .pos-drawer[data-open="true"]')) return;
+            // Closed Filament modals stay in the DOM; only an open one (or an open drawer) pauses list keys.
+            if (document.querySelector('.fi-modal-open, .pos-drawer[data-open="true"], .pos-ai-panel[data-open="true"]')) return;
             const rows = Array.from(this.$root.querySelectorAll(selector));
             if (!rows.length) return;
             const key = e.key.toLowerCase();

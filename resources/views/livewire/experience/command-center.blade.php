@@ -27,8 +27,9 @@
                     <p id="cmd-g-{{ $group['key'] }}" class="pos-command-group">{{ $group['label'] }}</p>
                     @foreach ($group['items'] as $item)
                         @php($domId = 'cmd-'.md5($group['key'].$item['id']))
+                        {{-- Options hold no buttons; the highlighted result's actions appear in the toolbar below the list. --}}
                         <div role="option" id="{{ $domId }}" class="pos-command-item" wire:key="{{ $domId }}"
-                            data-id="{{ $item['id'] }}" data-url="{{ $item['url'] ?? '' }}" data-drawer='@json($item['drawer'] ?? null)'
+                            data-id="{{ $item['id'] }}" data-url="{{ $item['url'] ?? '' }}" data-drawer='@json($item['drawer'] ?? null)' data-actions='@json($item['actions'] ?? [])'
                             :aria-selected="(activeId === '{{ $domId }}').toString()" x-on:mousemove="activate('{{ $domId }}')" x-on:click="choose($el, $event.metaKey || $event.ctrlKey)">
                             @if (isset($item['avatar']))
                                 <x-pos.avatar :name="$item['avatar']" size="sm" />
@@ -46,16 +47,7 @@
                                     </ul>
                                 @endif
                             </div>
-                            @if (($item['actions'] ?? []) !== [])
-                                <div class="pos-command-actions" x-show="activeId === '{{ $domId }}'" role="group" aria-label="Actions for {{ $item['title'] }}">
-                                    @foreach ($item['actions'] as $i => $action)
-                                        <button type="button" tabindex="-1" class="pos-command-action" :data-active="(actionIndex === {{ $i }}).toString()"
-                                            data-url="{{ $action['url'] ?? '' }}" data-drawer='@json($action['drawer'] ?? null)' x-on:click.stop="runAction($el, '{{ $item['id'] }}')">{{ $action['label'] }}</button>
-                                    @endforeach
-                                </div>
-                            @else
-                                <span class="pos-command-enter-hint" x-show="activeId === '{{ $domId }}'" aria-hidden="true">↵</span>
-                            @endif
+                            <span class="pos-command-enter-hint" x-show="activeId === '{{ $domId }}'" aria-hidden="true">@if (($item['actions'] ?? []) !== [])→ actions @else ↵ @endif</span>
                         </div>
                     @endforeach
                 </div>
@@ -69,6 +61,11 @@
                     @endif
                 </div>
             @endforelse
+        </div>
+        <div class="pos-command-actionbar" role="toolbar" aria-label="Actions for the highlighted result" x-show="currentActions().length > 0" x-cloak>
+            <template x-for="(a, i) in currentActions()" :key="i">
+                <button type="button" tabindex="-1" class="pos-command-action" :data-active="(actionIndex === i).toString()" x-on:click="runActionData(a)" x-text="a.label"></button>
+            </template>
         </div>
         <footer class="pos-command-hint" aria-hidden="true">
             <span><span class="pos-kbd"><x-filament::icon icon="heroicon-m-arrow-up" class="size-3" /></span><span class="pos-kbd"><x-filament::icon icon="heroicon-m-arrow-down" class="size-3" /></span> move</span>

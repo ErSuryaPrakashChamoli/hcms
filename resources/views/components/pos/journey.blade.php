@@ -6,9 +6,9 @@
 {{-- Journey map: stages with done / current / upcoming states; selecting a stage reveals its events. --}}
 @if ($stages !== [])
     <div {{ $attributes->class(['pos-journey']) }} x-data="{ open: @js($currentKey) }" id="journey">
-        <ol class="pos-journey-track" role="tablist" aria-label="Journey stages">
+        <div class="pos-journey-track" role="tablist" aria-label="Journey stages">
             @foreach ($stages as $stage)
-                <li class="pos-journey-stage" data-state="{{ $stage['state'] }}">
+                <div class="pos-journey-stage" role="presentation" data-state="{{ $stage['state'] }}">
                     <button type="button" role="tab" class="pos-journey-btn" :aria-selected="(open === @js($stage['key'])).toString()" aria-controls="journey-{{ $stage['key'] }}"
                         x-on:click="open = @js($stage['key'])">
                         <span class="pos-journey-dot" aria-hidden="true">
@@ -18,9 +18,9 @@
                         <span class="sr-only">({{ ['done' => 'completed', 'current' => 'current stage', 'upcoming' => 'not reached', 'skipped' => 'skipped'][$stage['state']] ?? $stage['state'] }})</span>
                         @if ($stage['date'])<span class="pos-journey-date">{{ $stage['date']->format('M Y') }}</span>@endif
                     </button>
-                </li>
+                </div>
             @endforeach
-        </ol>
+        </div>
         @foreach ($stages as $stage)
             <section id="journey-{{ $stage['key'] }}" role="tabpanel" class="pos-journey-panel" x-show="open === @js($stage['key'])" x-cloak>
                 <div class="flex flex-wrap items-baseline justify-between gap-2">
