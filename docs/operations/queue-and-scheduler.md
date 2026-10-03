@@ -85,9 +85,23 @@ Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterat
 
 1. **Workers.** At least one worker per environment where email, webhooks, integrations or queued sweeps are expected:
    ```bash
-   php artisan queue:work --tries=3 --timeout=3700
+   php artisan queue:work --sleep=3 --tries=3 --timeout=3700 --memory=512 --max-time=3600
    ```
-   The worker `--timeout` must exceed the longest job `$timeout` and stay below `retry_after`. Run workers under a supervisor (systemd / Supervisor) and restart them on deploy (`php artisan queue:restart`). With Redis, use Horizon.
+   Production readiness closure, the relationship that prevents a running job from being picked up
+   by a second worker:
+
+   | Value | Setting | Rule |
+   |---|---|---|
+   | Job timeout | `$timeout` per job (60–3600 s) | The worker kills a job that exceeds it |
+   | Worker `--timeout` | 3700 s | Above the longest job timeout |
+   | `retry_after` | 3900 s (`DB_QUEUE_RETRY_AFTER` / `REDIS_QUEUE_RETRY_AFTER`) | Above the worker timeout, so a job is re-delivered only after its worker has given up |
+   | Backoff | `$backoff` per retried job (60 / 300 / 900 s) | Retries are spaced |
+   | `--memory` / `--max-time` | 512 MB / 3600 s | The worker restarts cleanly (the supervisor brings it back) |
+
+   Run workers under a supervisor (systemd / Supervisor, `autorestart=true`, `stopwaitsecs=3720`) and
+   restart them on deploy (`php artisan queue:restart`). With Redis, use Horizon with the same limits.
+   `peopleos:config:validate` refuses `retry_after` ≤ 3600; work that must happen once is claimed
+   inside the job, so a duplicate delivery does nothing.
 2. **Scheduler.** It runs every minute; `onOneServer()` requires a shared cache (database or Redis) when more than one node runs cron:
    ```
    * * * * * cd /path/to/peopleos && php artisan schedule:run >> /dev/null 2>&1
