@@ -5,6 +5,7 @@ namespace App\Domain\ServiceDesk\Services;
 use App\Domain\ServiceDesk\Exceptions\ServiceDeskRuleViolation;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Models\TicketComment;
+use App\Support\Storage\FileSafety;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -28,7 +29,7 @@ final class CaseAttachments
         $directory = "tenants/{$ticket->tenant_id}/servicedesk/{$ticket->id}";
         if ($file instanceof UploadedFile) {
             $original = $name ?? $file->getClientOriginalName();
-            $this->assertAllowed($original, (int) $file->getSize());
+            $this->assertAllowed($original, (int) $file->getSize(), FileSafety::sniffFile((string) $file->getRealPath()) ?? $file->getMimeType());
             $path = $file->storeAs($directory, Str::ulid().'.'.strtolower($file->getClientOriginalExtension()), config('peopleos.documents.disk', 'local'));
         } else {
             // A file a Filament upload already placed on the private disk (its temporary upload directory).
@@ -37,7 +38,7 @@ final class CaseAttachments
                 throw new ServiceDeskRuleViolation('The attachment upload was not found.');
             }
             $original = $name ?? basename($source);
-            $this->assertAllowed($original, (int) $disk->size($source));
+            $this->assertAllowed($original, (int) $disk->size($source), FileSafety::sniff((string) $disk->get($source)));
             $path = $directory.'/'.Str::ulid().'.'.strtolower(pathinfo($source, PATHINFO_EXTENSION));
             $disk->move($source, $path);
         }
@@ -55,14 +56,12 @@ final class CaseAttachments
             : URL::temporarySignedRoute('tickets.attachment', now()->addMinutes($minutes), ['ticket' => $comment->ticket_id, 'comment' => $comment->id]);
     }
 
-    private function assertAllowed(string $name, int $bytes): void
+    private function assertAllowed(string $name, int $bytes, ?string $sniffed = null): void
     {
-        $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-        if (! in_array($extension, config('peopleos.documents.mimes', []), true)) {
-            throw new ServiceDeskRuleViolation('That file type is not accepted ('.implode(', ', config('peopleos.documents.mimes', [])).').');
-        }
-        if ($bytes > 1024 * (int) config('peopleos.documents.max_kb', 10240)) {
-            throw new ServiceDeskRuleViolation('The attachment is too large.');
+        try {
+            FileSafety::assertAllowed($name, $bytes, $sniffed);
+        } catch (\RuntimeException $e) {
+            throw new ServiceDeskRuleViolation($e->getMessage());
         }
     }
 }

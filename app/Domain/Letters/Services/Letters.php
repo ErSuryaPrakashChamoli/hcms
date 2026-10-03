@@ -121,7 +121,7 @@ final class Letters
             file_put_contents($tmp, $html);
             $file = new UploadedFile($tmp, Str::slug($letter->number).'.html', 'text/html', null, true);
             $type = DocumentType::query()->firstOrCreate(['code' => 'LETTER_'.strtoupper($letter->type)], ['name' => config("peopleos.letters.types.{$letter->type}", ucfirst($letter->type)).' letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false]);
-            $document = $this->documents->store($employee, $file, $type, $letter->subject, null, now()->toDateString(), 'Issued letter '.$letter->number);
+            $document = $this->documents->store($employee, $file, $type, $letter->subject, null, now()->toDateString(), 'Issued letter '.$letter->number, generatedBySystem: true);
             @unlink($tmp);
 
             $letter->update(['status' => 'issued', 'issued_by' => $issuer?->id ?? auth()->id(), 'issued_at' => now(), 'document_id' => $document->id]);

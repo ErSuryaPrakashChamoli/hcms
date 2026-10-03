@@ -14,6 +14,7 @@ use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
 use App\Support\Numbering\NumberSequences;
+use App\Support\Storage\FileSafety;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -133,14 +134,11 @@ final class Grievances
             throw new RuntimeException('The evidence upload was not found.');
         }
         $original = $name ?? basename($source);
-        $extension = strtolower(pathinfo($original, PATHINFO_EXTENSION));
-        if (! in_array($extension, config('peopleos.documents.mimes', []), true)) {
+        try {
+            $extension = FileSafety::assertAllowed($original, (int) $disk->size($source), FileSafety::sniff((string) $disk->get($source)));
+        } catch (RuntimeException $e) {
             $disk->delete($source);
-            throw new RuntimeException('That file type is not accepted ('.implode(', ', config('peopleos.documents.mimes', [])).').');
-        }
-        if ((int) $disk->size($source) > 1024 * (int) config('peopleos.documents.max_kb', 10240)) {
-            $disk->delete($source);
-            throw new RuntimeException('The evidence file is too large.');
+            throw $e;
         }
         $path = $directory.'/'.Str::ulid().'.'.$extension;
         $disk->move($source, $path);

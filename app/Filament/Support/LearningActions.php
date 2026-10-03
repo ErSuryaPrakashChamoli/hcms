@@ -12,6 +12,7 @@ use App\Domain\Learning\Services\Completions;
 use App\Domain\Learning\Services\Learning;
 use App\Domain\Learning\Services\LearningEvidenceService;
 use App\Domain\Performance\Services\PerformanceRelationships;
+use App\Support\Storage\StagedUpload;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -23,7 +24,6 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
 
@@ -130,9 +130,9 @@ final class LearningActions
                 }, fn ($m) => $m)),
             Action::make('evidence')->label('Upload evidence')->icon(Heroicon::OutlinedPaperClip)->color('gray')
                 ->visible(fn (LearningEnrolment $record) => ($record->isOpen() || $record->status === 'completed') && ($own($record) || auth()->user()->can('learning.manage')))
-                ->schema([FileUpload::make('file')->disk('local')->directory('tmp/learning-evidence')->visibility('private')->acceptedFileTypes(config('peopleos.learning.evidence_mimes'))->maxSize((int) config('peopleos.learning.evidence_max_kb'))->required()])
+                ->schema([FileUpload::make('file')->disk(StagedUpload::disk())->directory('tmp/learning-evidence')->visibility('private')->acceptedFileTypes(config('peopleos.learning.evidence_mimes'))->maxSize((int) config('peopleos.learning.evidence_max_kb'))->required()])
                 ->action(fn (LearningEnrolment $record, array $data) => self::run(function () use ($record, $data) {
-                    $disk = Storage::disk('local');
+                    $disk = StagedUpload::storage();
                     try {
                         return app(LearningEvidenceService::class)->upload($record, (string) $disk->get($data['file']), basename($data['file']), (string) $disk->mimeType($data['file']), auth()->user());
                     } finally {

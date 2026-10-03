@@ -32,10 +32,12 @@ final class LearningEvidenceService
             throw new RuntimeException('This enrolment is closed.');
         }
         $path = sprintf('learning/evidence/%d/%d/%s-%s', $enrolment->tenant_id, $enrolment->id, Str::ulid(), preg_replace('/[^A-Za-z0-9._-]/', '_', basename($originalName)));
-        Storage::disk('local')->put($path, $contents);
+        // Production readiness closure: the document disk (private object storage in production), recorded on the row.
+        $disk = (string) config('peopleos.documents.disk', 'local');
+        Storage::disk($disk)->put($path, $contents);
 
         return LearningEvidence::query()->create([
-            'employee_id' => $enrolment->employee_id, 'learning_enrolment_id' => $enrolment->id, 'disk' => 'local', 'path' => $path,
+            'employee_id' => $enrolment->employee_id, 'learning_enrolment_id' => $enrolment->id, 'disk' => $disk, 'path' => $path,
             'original_name' => basename($originalName), 'mime' => $mime, 'size' => strlen($contents), 'sha256' => hash('sha256', $contents),
             'status' => 'submitted', 'uploaded_by' => $actor->id,
         ]);

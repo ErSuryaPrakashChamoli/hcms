@@ -11,6 +11,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Services\Timeline;
 use App\Domain\Notifications\Services\NotificationContext;
 use App\Domain\Notifications\Services\NotificationEngine;
+use App\Support\Storage\FileSafety;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -31,11 +32,18 @@ final class Documents
         private readonly NotificationContext $context,
     ) {}
 
-    public function store(Employee $employee, UploadedFile $file, ?DocumentType $type = null, ?string $title = null, ?string $expiresOn = null, ?string $issuedOn = null, ?string $reason = null): EmployeeDocument
+    /**
+     * $generatedBySystem is for files PeopleOS itself produced (issued letters); every other file is a
+     * user upload and passes the server-side file safety checks.
+     */
+    public function store(Employee $employee, UploadedFile $file, ?DocumentType $type = null, ?string $title = null, ?string $expiresOn = null, ?string $issuedOn = null, ?string $reason = null, bool $generatedBySystem = false): EmployeeDocument
     {
         $disk = config('peopleos.documents.disk');
         $tenantId = $employee->tenant_id;
-        $path = $file->storeAs("tenants/{$tenantId}/employees/{$employee->id}", Str::ulid().'.'.$file->getClientOriginalExtension(), $disk);
+        // Production readiness closure: extension allowlist, size limit and content sniffing on the server.
+        $extension = $generatedBySystem ? strtolower($file->getClientOriginalExtension())
+            : FileSafety::assertAllowed($file->getClientOriginalName(), (int) $file->getSize(), FileSafety::sniffFile((string) $file->getRealPath()) ?? $file->getMimeType());
+        $path = $file->storeAs("tenants/{$tenantId}/employees/{$employee->id}", Str::ulid().'.'.$extension, $disk);
 
         $version = $type
             ? (int) EmployeeDocument::query()->where('employee_id', $employee->id)->where('document_type_id', $type->id)->max('version') + 1

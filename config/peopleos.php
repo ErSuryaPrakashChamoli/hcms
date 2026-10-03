@@ -589,6 +589,17 @@ return [
         'allowed_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('PEOPLEOS_OUTBOUND_ALLOWED_HOSTS', ''))))),
     ],
 
+    // Production readiness closure: storage roles. Every role defaults to the local private disk for
+    // development; production on more than one node points them at shared private object storage (s3)
+    // and sets PEOPLEOS_SHARED_STORAGE_REQUIRED=true, so the validator refuses any local role.
+    'storage' => [
+        // Upload staging (Filament form uploads before the domain stores them).
+        'staging_disk' => env('PEOPLEOS_STAGING_DISK', 'local'),
+        // Statutory evidence, verification copies and generated return files (platform-level).
+        'compliance_disk' => env('PEOPLEOS_COMPLIANCE_DISK', 'local'),
+        'shared_required' => (bool) env('PEOPLEOS_SHARED_STORAGE_REQUIRED', false),
+    ],
+
     // Phase 14 observability. The health token reveals counts and timings on /health/ready (never secrets).
     'health' => [
         'token' => env('PEOPLEOS_HEALTH_TOKEN', ''),

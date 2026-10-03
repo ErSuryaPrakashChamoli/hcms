@@ -9,6 +9,7 @@ use App\Domain\Learning\Services\Certificates;
 use App\Domain\Performance\Services\PerformanceRelationships;
 use App\Filament\Resources\LearningCertificates\Pages\ListLearningCertificates;
 use App\Filament\Support\LearningActions;
+use App\Support\Storage\StagedUpload;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -22,7 +23,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Storage;
 use UnitEnum;
 
 /** Certificates issued on completion; expiry drives re-training (§37). */
@@ -81,9 +81,9 @@ class LearningCertificateResource extends Resource
                     ->url(fn (LearningCertificate $record) => app(Certificates::class)->downloadUrl($record), shouldOpenInNewTab: true),
                 Action::make('attach')->label('Attach document')->icon(Heroicon::OutlinedPaperClip)->color('gray')
                     ->visible(fn (LearningCertificate $record) => $record->document_path === null && $record->status !== 'revoked' && auth()->user()->can('learning.certificates'))
-                    ->schema([FileUpload::make('file')->disk('local')->directory('tmp/certificates')->visibility('private')->acceptedFileTypes(['application/pdf'])->maxSize(10240)->required()])
+                    ->schema([FileUpload::make('file')->disk(StagedUpload::disk())->directory('tmp/certificates')->visibility('private')->acceptedFileTypes(['application/pdf'])->maxSize(10240)->required()])
                     ->action(fn (LearningCertificate $record, array $data) => LearningActions::run(function () use ($record, $data) {
-                        $disk = Storage::disk('local');
+                        $disk = StagedUpload::storage();
                         try {
                             return app(Certificates::class)->attachDocument($record, (string) $disk->get($data['file']), basename($data['file']), auth()->user());
                         } finally {
@@ -117,14 +117,14 @@ class LearningCertificateResource extends Resource
                 DatePicker::make('issued_on')->native(false)->required(),
                 DatePicker::make('expires_on')->native(false)->afterOrEqual('issued_on'),
                 TextInput::make('credential_url')->url()->maxLength(255),
-                FileUpload::make('file')->disk('local')->directory('tmp/certificates')->visibility('private')->acceptedFileTypes(['application/pdf', 'image/png', 'image/jpeg'])->maxSize(10240),
+                FileUpload::make('file')->disk(StagedUpload::disk())->directory('tmp/certificates')->visibility('private')->acceptedFileTypes(['application/pdf', 'image/png', 'image/jpeg'])->maxSize(10240),
             ])
             ->action(fn (array $data) => LearningActions::run(function () use ($data) {
                 $employee = Employee::query()->findOrFail($data['employee_id']);
                 if ($employee->id !== LearningActions::me()?->id && ! auth()->user()->can('learning.certificates')) {
                     throw new \RuntimeException('You can record only your own external certificates.');
                 }
-                $disk = Storage::disk('local');
+                $disk = StagedUpload::storage();
                 $file = $data['file'] ?? null;
                 try {
                     return app(Certificates::class)->recordExternal($employee, $data, $file ? (string) $disk->get($file) : null, $file ? basename($file) : null, auth()->user());
