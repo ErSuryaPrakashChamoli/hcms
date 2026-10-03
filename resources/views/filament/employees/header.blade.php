@@ -27,9 +27,16 @@
             </div>
         </div>
     </div>
-    @if (count($actions))
-        <div class="pos-360-actions">
+    <div class="pos-360-actions">
+        @if (isset(app(\App\Domain\Ai\Services\AiGateway::class)->assistantsFor(auth()->user())['hr']))
+            {{-- Contextual AI (§27): a summary from the Employee 360, which applies every domain's own rule. --}}
+            <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm me-1" x-data
+                x-on:click="$dispatch('pos-ai-open', { assistant: 'hr', prompt: @js('Summarise '.$employee->employee_code), context: [@js('Summarise '.$employee->employee_code), 'What changed this week?'] })">
+                <span class="pos-ai-orb pos-ai-orb-sm" aria-hidden="true"></span> Summarise
+            </button>
+        @endif
+        @if (count($actions))
             <x-filament::actions :actions="$actions" />
-        </div>
-    @endif
+        @endif
+    </div>
 </header>

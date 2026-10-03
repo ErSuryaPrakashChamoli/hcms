@@ -1,6 +1,12 @@
 <x-filament-panels::page>
     @php($groups = $this->groups)
     <div class="pos-approvals" x-data="posListNav('.pos-approval')" x-on:keydown.window="handle($event)">
+        @php($posAi = app(\App\Domain\Ai\Services\AiGateway::class)->assistantsFor(auth()->user()))
+        @if (isset($posAi['manager']))
+            <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm mb-2" x-data x-on:click="$dispatch('pos-ai-open', { assistant: 'manager', prompt: 'What is pending for me?' })">
+                <span class="pos-ai-orb pos-ai-orb-sm" aria-hidden="true"></span> Summarise what is pending
+            </button>
+        @endif
         <p class="pos-caption pos-muted hidden md:block" aria-hidden="true">
             <span class="pos-kbd">J</span> <span class="pos-kbd">K</span> move · <span class="pos-kbd">A</span> approve · <span class="pos-kbd">R</span> reject · <span class="pos-kbd">Esc</span> cancel
         </p>
