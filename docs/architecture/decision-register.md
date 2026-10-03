@@ -1,6 +1,6 @@
 # Architecture Decision Register
 
-Consolidated register (Phase 0.3, 27 September 2026). ADR-0001 has its own file because it carries a migration plan; ADR-0002 to ADR-0015 are recorded here. Status values: **Accepted** (in force now), **Accepted / deferred implementation** (contract fixed, code later). The architecture contract (`peopleos-architecture-contract.md`) is the narrative; this register is the index of decisions.
+Consolidated register (Phase 0.3, 27 September 2026). ADR-0001 has its own file because it carries a migration plan; ADR-0002 to ADR-0016 are recorded here. Status values: **Accepted** (in force now), **Accepted / deferred implementation** (contract fixed, code later). The architecture contract (`peopleos-architecture-contract.md`) is the narrative; this register is the index of decisions.
 
 | ADR | Title | Status | Decision (one line) | Enforced by |
 |---|---|---|---|---|
@@ -19,6 +19,7 @@ Consolidated register (Phase 0.3, 27 September 2026). ADR-0001 has its own file 
 | 0013 | Queue tenant context | Accepted | Every `ShouldQueue` class implements `TenantAwareJob` and runs through `BindTenantContext`; scheduler entries guarded with `withoutOverlapping()->onOneServer()` and iterate tenants explicitly | Architecture test, `BindTenantContext`, `routes/console.php` |
 | 0014 | API & webhook contract | Accepted | `/api/v1` conventions frozen (key auth, tenant by key, JSON errors, pagination, filters, rate limit); outbound webhook envelope `{id, event, occurred_at, subject, data}` + timestamp/HMAC headers; per-key organisation scope data contract defined, deferred | `routes/api.php`, `Webhooks`, `integration-contract.md` |
 | 0015 | AI security boundary | Accepted | AI runs as the user through the same tenant/permission/scope/classification layers; redacted facts only; no writes; deterministic rules untouched | `AiGateway`, `AiTest` |
+| 0016 | AI data boundary & assistive actions (Phase 14) | Accepted | Facts / question / draft classified allowed · restricted · prohibited before any external call; tenant `ai.external_data_policy` none · allowed (default) · restricted; prohibited never sent nor stored; external calls audited with counts only; model text marked AI-generated; suggested actions are proposals (internal links, confirmed on the domain screen); per-user rate limit; no employee scoring or prediction (AttritionRisk retired) | `AiDataPolicy`, `AiGateway`, `AiAssistiveControlsTest` |
 
 ## Notes on individual decisions
 

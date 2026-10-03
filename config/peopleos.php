@@ -304,7 +304,7 @@ return [
             'ai.manager' => 'Use the Manager Assistant for direct reports',
             'ai.hr' => 'Use the HR Copilot (workforce questions, pending HR work, natural-language people search)',
             'ai.payroll_auditor' => 'Run the AI Payroll Auditor on payroll runs',
-            'ai.workforce' => 'Use Workforce Intelligence (trends, attrition risk, capacity)',
+            'ai.workforce' => 'Use Workforce Intelligence (trends, capacity, skills — aggregate facts; no individual risk scoring)',
             'ai.admin' => 'Review AI interaction logs and governance settings',
         ],
         'analytics' => [
@@ -628,6 +628,8 @@ return [
         'configuration.approval.minimum_risk' => 'medium',
         // Phase 14: the warehouse feed carries non-sensitive dataset fields unless this is explicitly enabled.
         'warehouse.include_sensitive' => false,
+        // Phase 14: what may leave the tenant for an external AI provider: none | allowed | restricted (prohibited data never does).
+        'ai.external_data_policy' => 'allowed',
     ],
 
     /*
@@ -1164,20 +1166,21 @@ return [
             'manager' => ['label' => 'Manager Assistant', 'permission' => 'ai.manager', 'feature' => 'ai.assistants', 'description' => 'Your team: attendance, leave, reviews, pending actions'],
             'hr' => ['label' => 'HR Copilot', 'permission' => 'ai.hr', 'feature' => 'ai.assistants', 'description' => 'Pending HR work and natural-language people questions'],
             'payroll_auditor' => ['label' => 'Payroll Auditor', 'permission' => 'ai.payroll_auditor', 'feature' => 'ai.payroll_auditor', 'description' => 'Anomalies in the latest payroll run'],
-            'workforce' => ['label' => 'Workforce Analyst', 'permission' => 'ai.workforce', 'feature' => 'ai.workforce_intelligence', 'description' => 'Trends, cost, attrition risk, skills, capacity'],
+            'workforce' => ['label' => 'Workforce Analyst', 'permission' => 'ai.workforce', 'feature' => 'ai.workforce_intelligence', 'description' => 'Trends, cost, skills, capacity — aggregate facts, never individual predictions'],
         ],
         'payroll_audit' => ['net_change_pct' => 30, 'deduction_share_pct' => 60, 'lop_days' => 10, 'tds_jump_pct' => 100, 'salary_revision_pct' => 50],
-        'attrition_risk' => ['bands' => ['low' => 2, 'medium' => 4], 'signals' => [
-            'short_tenure' => ['points' => 1, 'label' => 'Less than 12 months of tenure'],
-            'no_revision' => ['points' => 2, 'label' => 'No salary revision in 24 months'],
-            'low_rating' => ['points' => 2, 'label' => 'Latest final rating of 2 or below'],
-            'learning_overdue' => ['points' => 1, 'label' => 'Mandatory learning overdue'],
-            'no_one_on_one' => ['points' => 1, 'label' => 'No one-on-one in 90 days'],
-            'absences' => ['points' => 1, 'label' => 'Three or more unexplained absences in 30 days'],
-            'constructive_feedback' => ['points' => 1, 'label' => 'Constructive feedback in the last 60 days'],
-            'stalled_high_performer' => ['points' => 1, 'label' => 'High performer without promotion for 24 months'],
-            'open_grievance' => ['points' => 2, 'label' => 'Has an open grievance'],
-        ]],
+        // Phase 14: the per-employee attrition-risk score was retired (no employee scoring or prediction).
+        // AI data boundary: what may be sent to an external provider (ADR-0016). Prohibited data never
+        // leaves PeopleOS and is also never stored in the AI log; restricted data leaves only when the
+        // tenant setting ai.external_data_policy is "restricted"; everything else is allowed.
+        'data_policy' => [
+            'policies' => ['none' => 'Never send anything to an external AI provider', 'allowed' => 'Send allowed facts only (default)', 'restricted' => 'Also send restricted personal data (never prohibited data)'],
+            'prohibited_keys' => ['password', 'passcode', 'secret', 'token', 'api_key', 'apikey', 'private_key', 'encryption', 'credential', 'bearer', 'signature', 'otp', 'totp', 'mfa', 'recovery_code'],
+            'prohibited_values' => ['/\\b(?:pk|sk|whsec|sk-ant)[_-][A-Za-z0-9_\\-]{8,}/', '/\\beyJ[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{5,}/', '/\\bbase64:[A-Za-z0-9+\\/=]{20,}/', '/-----BEGIN [A-Z ]*PRIVATE KEY-----/', '/(?i)\\b(?:password|passcode|pwd)\\s*[:=]\\s*\\S+/'],
+            'restricted_keys' => ['bank', 'account_number', 'ifsc', 'pan', 'uan', 'aadhaar', 'esic', 'passport', 'tax', 'salary', 'ctc', 'amount', 'gross', 'net_pay', 'cost', 'compensation', 'rating', 'grievance', 'medical', 'health', 'date_of_birth', 'dob', 'personal_email', 'phone', 'address', 'note'],
+            'restricted_values' => ['/\\b[A-Z]{5}[0-9]{4}[A-Z]\\b/', '/\\b[0-9]{4}\\s?[0-9]{4}\\s?[0-9]{4}\\b/', '/\\b[A-Z]{4}0[A-Z0-9]{6}\\b/', '/\\b[0-9]{9,18}\\b/', '/[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}/'],
+        ],
+        'rate_limit_per_minute' => (int) env('PEOPLEOS_AI_RATE_LIMIT', 20),
         'config_search' => [
             ['keywords' => 'working hours shift timing schedule roster', 'label' => 'Shifts', 'url' => '/admin/shifts'],
             ['keywords' => 'working hours schedule week pattern roster', 'label' => 'Work schedules', 'url' => '/admin/work-schedules'],

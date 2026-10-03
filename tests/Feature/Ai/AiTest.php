@@ -3,7 +3,6 @@
 use App\Domain\Ai\Models\AiInteraction;
 use App\Domain\Ai\Providers\AiProvider;
 use App\Domain\Ai\Services\AiGateway;
-use App\Domain\Ai\Services\AttritionRisk;
 use App\Domain\Ai\Services\ConfigurationSearch;
 use App\Domain\Ai\Services\PayrollAnomalyDetector;
 use App\Domain\Ai\Services\PeopleQuery;
@@ -74,9 +73,11 @@ it('answers employee, policy, manager and HR questions from live data only', fun
     expect($ask($this->employee->user, 'employee', 'how do I apply for work from home'))->toContain('Agree remote days'); // employee assistant delegates policy questions
 
     expect($ask($this->manager->user, 'manager', 'who is on leave today?'))->toContain('1 in your team');
-    expect($ask($this->manager->user, 'manager', 'who in my team is at risk?'))->toContain('inference');
+    // Phase 14: no scoring or prediction; the assistant says so and points to facts the manager can act on.
     $risky = $this->gateway->ask($this->manager->user, 'manager', 'who in my team is at risk?');
-    expect($risky->is_inference)->toBeTrue();
+    expect($risky->intent)->toBe('no_prediction')->and($risky->is_inference)->toBeFalse()->and($risky->answer)->toContain('does not score')
+        ->and($risky->answer)->not->toContain($this->employee->person->full_name);
+    expect($ask($this->manager->user, 'manager', 'who has had no one on one?'))->toContain($this->employee->person->full_name);
 
     $delhi = Location::factory()->create(['name' => 'Delhi', 'code' => 'DEL']);
     $this->employee->currentPosition()->update(['location_id' => $delhi->id]);
@@ -111,20 +112,16 @@ it('flags payroll anomalies with evidence and never changes the run', function (
     expect($this->gateway->ask($this->hr, 'payroll_auditor', 'Any duplicate bank accounts?')->answer)->not->toContain('Salary revised');
 });
 
-it('scores attrition risk transparently and searches the configuration map', function () {
-    $risk = app(AttritionRisk::class);
-    $baseline = $risk->score($this->employee);
-    expect($baseline['signals'])->toContain('No one-on-one in 90 days')->and($baseline['band'])->toBe('low');
-
-    $this->employee->update(['joining_date' => now()->subMonths(3)]);
+it('never scores attrition risk, answers attrition as an aggregate fact, and searches the configuration map', function () {
+    // Phase 14: the per-employee attrition-risk score is retired.
+    expect(class_exists('App\\Domain\\Ai\\Services\\AttritionRisk'))->toBeFalse()->and(config('peopleos.ai.attrition_risk'))->toBeNull();
     Grievance::create(['number' => 'GRV-1', 'grievance_category_id' => GrievanceCategory::query()->value('id'), 'employee_id' => $this->employee->id, 'subject' => 'x', 'details' => 'y', 'status' => 'under_review']);
-    $scored = $risk->score($this->employee->refresh());
-    expect($scored['score'])->toBe(4)->and($scored['band'])->toBe('medium')->and($scored['signals'])->toContain('Less than 12 months of tenure', 'Has an open grievance');
-    expect($risk->rank(1)->first()['employee_id'])->toBe($this->employee->id);
+    $leaving = $this->gateway->ask($this->hr, 'workforce', 'who is at risk of leaving?');
+    expect($leaving->intent)->toBe('attrition')->and($leaving->is_inference)->toBeFalse()->and($leaving->answer)->toContain('does not score or predict')
+        ->and($leaving->answer)->not->toContain($this->employee->person->full_name)->not->toContain($this->employee->employee_code);
 
     $workforce = $this->gateway->ask($this->hr, 'workforce', 'Give me a workforce summary');
     expect($workforce->answer)->toContain('Headcount is 2');
-    expect($this->gateway->ask($this->hr, 'workforce', 'who is at risk of leaving?')->is_inference)->toBeTrue();
 
     $results = app(ConfigurationSearch::class)->search('working hours');
     expect(collect($results)->pluck('label')->take(3)->all())->toContain('Shifts', 'Work schedules')

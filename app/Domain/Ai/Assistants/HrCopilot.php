@@ -5,17 +5,34 @@ namespace App\Domain\Ai\Assistants;
 use App\Domain\Ai\Services\AiAnswer;
 use App\Domain\Ai\Services\PeopleQuery;
 use App\Domain\Analytics\Services\WorkforceMetrics;
+use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Audit\Services\ChangeIntelligence;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Experience\Services\Employee360;
 use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Onboarding\Models\OnboardingTask;
 
-/** HR Copilot (§94): pending HR work, headcount / attrition questions, and natural-language people search. */
+/**
+ * HR Copilot (§94): pending HR work, headcount / attrition questions, and natural-language people search.
+ *
+ * Phase 14:
+ * - Each topic needs the owning domain's permission, so ai.hr alone opens nothing it guards.
+ * - An employee record summary comes from the Employee 360, which applies every domain's rule.
+ * - A change summary comes from Change Intelligence (audit.view, organisation-scoped, masked).
+ * - Read-only throughout.
+ */
 final class HrCopilot implements Assistant
 {
-    public function __construct(private readonly PeopleQuery $people, private readonly WorkforceMetrics $metrics) {}
+    /** intent => permissions (any) */
+    private const NEEDS = [
+        'probation' => ['employee.view'], 'onboarding' => ['onboarding.view', 'onboarding.manage'], 'documents' => ['document.view'],
+        'bgv' => ['bgv.view'], 'changes' => ['audit.view'], 'summary' => ['employee.view'], 'search' => ['employee.view'],
+    ];
+
+    public function __construct(private readonly PeopleQuery $people, private readonly WorkforceMetrics $metrics, private readonly Employee360 $employee360, private readonly ChangeIntelligence $changes) {}
 
     public function key(): string
     {
@@ -24,7 +41,7 @@ final class HrCopilot implements Assistant
 
     public function examples(): array
     {
-        return ['Employees in Delhi who joined this year', 'Whose probation ends this month?', 'What onboarding is pending?', 'Documents expiring soon', 'What is our attrition?'];
+        return ['Employees in Delhi who joined this year', 'Whose probation ends this month?', 'What onboarding is pending?', 'Documents expiring soon', 'What is our attrition?', 'Summarise EMP00001', 'What changed this week?'];
     }
 
     public function answer(User $user, ?Employee $employee, string $question): AiAnswer
@@ -35,17 +52,61 @@ final class HrCopilot implements Assistant
             'documents' => ['document', 'expiring', 'expiry', 'expire'],
             'bgv' => ['verification', 'bgv', 'background'],
             'metrics' => ['attrition', 'headcount', 'absenteeism', 'people cost', 'how many employees', 'cost per head', 'women', 'tenure'],
+            'summary' => ['summarise', 'summarize', 'summary of', 'overview of', 'profile of', 'tell me about'],
+            'changes' => ['what changed', 'changes', 'changed this', 'audit', 'who changed', 'modified'],
             'search' => ['employees in', 'employees who', 'who joined', 'list employees', 'find', 'show me', 'people in', 'staff in', 'reporting to', 'everyone in'],
         ]);
+
+        $intent ??= 'search';
+        $needs = self::NEEDS[$intent] ?? [];
+        if ($needs !== [] && ! collect($needs)->contains(fn (string $p) => $user->hasPermission($p))) {
+            return AiAnswer::text('That needs '.implode(' or ', $needs).', which you do not have. I only answer from data you may already see.', 'not_permitted');
+        }
 
         return match ($intent) {
             'probation' => $this->probation($question),
             'onboarding' => $this->onboarding(),
             'documents' => $this->documents($question),
             'bgv' => $this->bgv(),
-            'metrics' => $this->metrics($question),
+            'metrics' => $this->metrics($user, $question),
+            'summary' => $this->summary($user, $question),
+            'changes' => $this->changeSummary($user, $question),
             default => $this->search($user, $question),
         };
+    }
+
+    /** Record summarisation through the Employee 360: one line per domain section the asker may see. */
+    private function summary(User $user, string $question): AiAnswer
+    {
+        $code = preg_match('/\b([A-Z]{2,6}[-_]?\d{2,})\b/i', $question, $m) ? strtoupper($m[1]) : null;
+        $target = $code ? Employee::query()->with('person')->where('employee_code', $code)->first() : null;
+        if ($target === null) {
+            return AiAnswer::text('Name the employee by code, for example "Summarise EMP00001". I can only summarise people in your scope.', 'summary');
+        }
+        $sections = $this->employee360->for($user, $target);
+        if ($sections === []) {
+            return AiAnswer::text('You may not see that employee.', 'summary');
+        }
+        $lines = collect($sections)->map(fn ($s) => $s['label'].': '.collect($s['facts'])->filter(fn ($v) => $v !== null && $v !== '')->map(fn ($v, $k) => "{$k} {$v}")->implode('; '))->all();
+
+        return new AiAnswer(($target->person?->display_name ?? $target->employee_code)." — summary from the Employee 360 (only the sections you may see):\n- ".implode("\n- ", $lines),
+            [['label' => 'Employee 360', 'detail' => count($sections).' domain section(s)']], [['label' => 'Open the employee', 'url' => url('/admin/employees/'.$target->id)]], 'summary', false,
+            ['sections' => collect($sections)->mapWithKeys(fn ($s) => [$s['label'] => $s['facts']])->all()]);
+    }
+
+    /** Change summary through Change Intelligence: counts by module and action, never field values. */
+    private function changeSummary(User $user, string $question): AiAnswer
+    {
+        $days = str_contains(strtolower($question), 'today') ? 1 : (str_contains(strtolower($question), 'month') ? 30 : 7);
+        $events = $this->changes->query($user, ['from' => now()->subDays($days - 1)->toDateString()])->reorder()->toBase()
+            ->selectRaw('module, action, count(*) as n')->groupBy('module', 'action')->orderByDesc('n')->limit(15)->get();
+        if ($events->isEmpty()) {
+            return AiAnswer::text("No recorded changes in your scope in the last {$days} day(s).", 'changes');
+        }
+        $lines = $events->map(fn ($e) => "{$e->module}: ".(AuditAction::tryFrom($e->action)?->label() ?? $e->action)." × {$e->n}")->all();
+
+        return new AiAnswer("Changes in your scope in the last {$days} day(s):\n- ".implode("\n- ", $lines), [['label' => 'Audit trail via Change Intelligence', 'detail' => 'Counts only; open the page for details']],
+            [['label' => 'Change intelligence', 'url' => url('/admin/change-intelligence')]], 'changes', false, ['changes' => $lines]);
     }
 
     private function probation(string $question): AiAnswer
@@ -91,12 +152,12 @@ final class HrCopilot implements Assistant
         return AiAnswer::text($open === 0 ? 'No background verifications are open.' : "{$open} background verification(s) are open.", 'bgv', [['label' => 'BGV cases']], [['label' => 'Verifications', 'url' => url('/admin/bgv-cases')]]);
     }
 
-    private function metrics(string $question): AiAnswer
+    private function metrics(User $user, string $question): AiAnswer
     {
         $q = strtolower($question);
         $keys = array_values(array_filter(['headcount', 'attrition_rate', 'absenteeism_rate', 'people_cost', 'cost_per_head', 'women_share', 'avg_tenure_months', 'joiners_30d', 'exits_30d'], fn ($k) => str_contains($q, explode('_', $k)[0]) || ($k === 'headcount' && str_contains($q, 'how many'))));
         $keys = $keys ?: ['headcount', 'attrition_rate', 'absenteeism_rate'];
-        $facts = $this->metrics->all($keys);
+        $facts = $this->metrics->all($keys, $user);
         $lines = collect($facts)->map(fn ($m) => $m['label'].': '.($m['value'] === null ? 'not available yet' : ($m['format'] === 'percent' ? $m['value'].'%' : number_format((float) $m['value'], $m['format'] === 'currency' ? 0 : 1))).($m['hint'] ? " ({$m['hint']})" : ''))->all();
 
         return new AiAnswer(implode("\n", $lines), [['label' => 'Workforce metrics', 'detail' => 'Computed live from employee, exit, attendance and payroll data']], [['label' => 'Workforce Command Centre', 'url' => url('/admin/workforce-command-centre')]], 'metrics', false, ['metrics' => $lines]);
