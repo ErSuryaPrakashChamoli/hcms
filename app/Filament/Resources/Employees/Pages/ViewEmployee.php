@@ -11,11 +11,14 @@ use App\Domain\Employment\Actions\ChangeStatutoryApplicabilityAction;
 use App\Domain\Employment\Actions\ChangeStatutoryIdentityAction;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
+use App\Domain\Letters\Models\LetterTemplate;
+use App\Domain\Letters\Services\Letters;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Exceptions\InvalidLifecycleTransitionException;
 use App\Domain\Lifecycle\Services\LifecycleEngine;
 use App\Domain\Onboarding\Models\OnboardingTemplate;
 use App\Domain\Onboarding\Services\Onboarding;
+use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\Workflow\Exceptions\WorkflowException;
 use App\Domain\Workflow\Models\Workflow;
 use App\Domain\Workflow\Services\WorkflowEngine;
@@ -24,8 +27,10 @@ use App\Filament\Pages\ChangeIntelligencePage;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\BeforeAfterPreview;
 use App\Filament\Support\ProfileChangeActions;
 use App\Filament\Support\SavesCustomFields;
+use App\Filament\Support\ServiceDeskActions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -40,11 +45,16 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
-/** Employee 360. Header actions are the life-event entry points (blueprint §20). */
+/**
+ * Employee 360 (blueprint §17, §20; Experience Transformation §14). The signature header and the
+ * Snapshot / Journey / 360 overview sections present existing data; header actions are the existing
+ * life-event entry points, grouped as Message · Request · Action · More.
+ */
 class ViewEmployee extends ViewRecord
 {
     use SavesCustomFields;
@@ -56,14 +66,28 @@ class ViewEmployee extends ViewRecord
         return $this->getRecord()->person->display_name.' · '.$this->getRecord()->employee_code;
     }
 
+    /** UX: the signature Employee 360 header (identity, context and the four action groups). */
+    public function getHeader(): ?View
+    {
+        $record = $this->getRecord()->loadMissing(['person', 'currentPosition.designation', 'currentPosition.department', 'currentPosition.location', 'currentManager.manager.person']);
+
+        return view('filament.employees.header', ['employee' => $record, 'actions' => $this->getCachedHeaderActions()]);
+    }
+
+    /**
+     * UX §14: Message · Request · Action · More. Every action keeps its name, authorisation and domain
+     * service; only the grouping changed (Life events became "Action", edit / history / statutory "More").
+     */
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make(),
-            // Phase 14: every audited change to this employee's records (employee, person and linked rows), in Change Intelligence.
-            Action::make('changes')->label('All changes')->icon('heroicon-m-magnifying-glass-circle')->color('gray')
-                ->visible(fn () => auth()->user()?->hasPermission('audit.view') ?? false)
-                ->url(fn () => ChangeIntelligencePage::getUrl(['employee' => $this->getRecord()->getKey()])),
+            Action::make('message')->label('Message')->icon(Heroicon::OutlinedEnvelope)->color('gray')
+                ->visible(fn () => filled($this->getRecord()->work_email))
+                ->url(fn () => 'mailto:'.$this->getRecord()->work_email),
+            ActionGroup::make([
+                $this->raiseRequestAction(),
+                $this->generateLetterAction(),
+            ])->label('Request')->icon(Heroicon::OutlinedPaperAirplane)->button()->color('gray'),
             ActionGroup::make([
                 $this->assignPositionAction(),
                 $this->changeManagerAction(),
@@ -73,12 +97,38 @@ class ViewEmployee extends ViewRecord
                 $this->initiateBgvAction(),
                 $this->assignScheduleAction(),
                 $this->startWorkflowAction(),
-            ])->label('Life events')->icon(Heroicon::OutlinedBolt)->button(),
+            ])->label('Action')->icon(Heroicon::OutlinedBolt)->button(),
             ActionGroup::make([
+                EditAction::make()->label('Edit profile'),
+                // Phase 14: every audited change to this employee's records (employee, person and linked rows), in Change Intelligence.
+                Action::make('changes')->label('All changes')->icon('heroicon-m-magnifying-glass-circle')
+                    ->visible(fn () => auth()->user()?->hasPermission('audit.view') ?? false)
+                    ->url(fn () => ChangeIntelligencePage::getUrl(['employee' => $this->getRecord()->getKey()])),
                 $this->viewStatutoryAction(),
                 $this->editStatutoryAction(),
-            ])->label('Statutory')->icon(Heroicon::OutlinedLockClosed)->button()->color('gray'),
+            ])->label('More')->icon(Heroicon::OutlinedEllipsisHorizontal)->button()->color('gray'),
         ];
+    }
+
+    /** An HR agent raises a request on this person's behalf (the existing Ask HR action, pre-filled). */
+    private function raiseRequestAction(): Action
+    {
+        return ServiceDeskActions::askHr()->name('raiseRequest')->label('Raise an HR request')
+            ->visible(fn () => auth()->user()->can('servicedesk.agent') && auth()->user()->can('create', Ticket::class))
+            ->fillForm(fn () => ['employee_id' => $this->getRecord()->getKey(), 'priority' => 'normal']);
+    }
+
+    /** Generate a letter for this person through the Letters service (same rules as the Letters screen). */
+    private function generateLetterAction(): Action
+    {
+        return Action::make('generateLetter')->label('Generate a letter')->icon(Heroicon::OutlinedDocumentPlus)
+            ->visible(fn () => auth()->user()->can('letter.issue'))
+            ->schema([
+                Select::make('template_id')->label('Template')->required()
+                    ->options(fn () => LetterTemplate::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all()),
+            ])
+            ->action(fn (array $data) => ServiceDeskActions::run(fn () => app(Letters::class)->generate(LetterTemplate::query()->findOrFail($data['template_id']), $this->getRecord(), [], auth()->user()),
+                fn ($l) => "Letter {$l->number} ".($l->status === 'approved' ? 'ready to issue' : 'sent for approval')));
     }
 
     private function assignPositionAction(): Action
@@ -93,17 +143,18 @@ class ViewEmployee extends ViewRecord
             ->schema([
                 Grid::make(3)->schema([
                     Select::make('change_type')->options(config('peopleos.people.position_change_types'))->required(),
-                    DatePicker::make('effective_from')->native(false)->required(),
+                    DatePicker::make('effective_from')->native(false)->required()->live(),
                 ]),
-                Grid::make(3)->schema(CreateEmployee::positionFields()),
+                Grid::make(3)->schema(array_map(fn ($field) => $field->live(), CreateEmployee::positionFields())),
                 // Phase 10: occupy a position (seat) — validated for status and capacity — or vacate it.
                 Grid::make(3)->schema([
                     Select::make('position_id')->label('Position (seat)')->searchable()
                         ->options(fn () => Position::query()->where('status', 'open')->orderBy('code')->limit(500)->get(['id', 'code', 'title'])->mapWithKeys(fn ($p) => [$p->id => "{$p->code} · {$p->title}"])->all())
                         ->visible(fn () => auth()->user()->can('workforce.view') || auth()->user()->can('workforce.manage')),
                     TextInput::make('fte')->label('FTE')->numeric()->minValue(0.01)->maxValue(1.5)->step(0.05),
-                    Toggle::make('vacate_position')->label('Vacate current position'),
+                    Toggle::make('vacate_position')->label('Vacate current position')->live(),
                 ]),
+                BeforeAfterPreview::position(),
                 AuditReasonField::make()->required(),
             ])
             ->action(function (Employee $record, array $data) {
@@ -127,8 +178,9 @@ class ViewEmployee extends ViewRecord
             ->fillForm(fn () => ['effective_from' => now()->toDateString(), 'type' => 'line'])
             ->schema([
                 Select::make('type')->options(config('peopleos.people.reporting_types'))->required(),
-                Select::make('manager_id')->label('Manager')->options(fn (Employee $record) => CreateEmployee::managerOptions($record->id))->searchable()->required(),
-                DatePicker::make('effective_from')->native(false)->required(),
+                Select::make('manager_id')->label('Manager')->options(fn (Employee $record) => CreateEmployee::managerOptions($record->id))->searchable()->required()->live(),
+                DatePicker::make('effective_from')->native(false)->required()->live(),
+                BeforeAfterPreview::manager(),
                 AuditReasonField::make(),
             ])
             ->action(function (Employee $record, array $data) {
@@ -304,7 +356,7 @@ class ViewEmployee extends ViewRecord
     private function viewStatutoryAction(): Action
     {
         return Action::make('viewStatutory')
-            ->label('View statutory details')
+            ->label('Statutory details')
             ->icon(Heroicon::OutlinedEye)
             ->authorize(fn () => auth()->user()->can('viewSensitive', $this->getRecord()))
             ->mountUsing(fn (Employee $record) => app(SensitiveAccessAuditor::class)->recordView($record, 'statutory'))

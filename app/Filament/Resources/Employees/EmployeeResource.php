@@ -39,6 +39,7 @@ use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Resources\Employees\Schemas\EmployeeInfolist;
 use App\Filament\Resources\Employees\Tables\EmployeesTable;
 use BackedEnum;
+use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -83,42 +84,26 @@ class EmployeeResource extends Resource
         return EmployeesTable::configure($table);
     }
 
+    /**
+     * Experience Transformation §14: the thirty record tabs are grouped into the 360 sections, so the
+     * profile reads as a person rather than a list of tables. Each manager keeps its own
+     * canViewForRecord(); a group with nothing visible disappears.
+     */
     public static function getRelations(): array
     {
         return [
             TimelineRelationManager::class,
-            OnboardingRelationManager::class,
-            AttendanceRelationManager::class,
-            LeaveRelationManager::class,
-            PerformanceRelationManager::class,
-            LearningRelationManager::class,
-            SkillsRelationManager::class,
-            CareerRelationManager::class,
-            TalentRelationManager::class,
-            SuccessionRelationManager::class,
-            CertificationsRelationManager::class,
-            DevelopmentRelationManager::class,
-            AssetsRelationManager::class,
-            RequestsRelationManager::class,
-            PositionsRelationManager::class,
-            CompensationRelationManager::class,
-            CompensationChangesRelationManager::class,
-            ReportingRelationManager::class,
-            AddressesRelationManager::class,
-            FamilyMembersRelationManager::class,
-            EmergencyContactsRelationManager::class,
-            QualificationsRelationManager::class,
-            ExperiencesRelationManager::class,
-            DocumentsRelationManager::class,
-            BgvRelationManager::class,
-            BankAccountsRelationManager::class,
-            WorkflowsRelationManager::class,
-            // Phase 14: the remaining domains, each read under its own policy.
-            RelationManagers\GoalsRelationManager::class,
-            RelationManagers\PayslipsRelationManager::class,
-            RelationManagers\LettersRelationManager::class,
-            RelationManagers\ExitRelationManager::class,
-            RelationManagers\CommunicationsRelationManager::class,
+            RelationGroup::make('Employment', [PositionsRelationManager::class, ReportingRelationManager::class, OnboardingRelationManager::class,
+                RelationManagers\ExitRelationManager::class, WorkflowsRelationManager::class]),
+            RelationGroup::make('Time', [AttendanceRelationManager::class, LeaveRelationManager::class]),
+            RelationGroup::make('Growth', [PerformanceRelationManager::class, RelationManagers\GoalsRelationManager::class, LearningRelationManager::class,
+                SkillsRelationManager::class, CareerRelationManager::class, TalentRelationManager::class, SuccessionRelationManager::class,
+                CertificationsRelationManager::class, DevelopmentRelationManager::class]),
+            RelationGroup::make('Rewards', [CompensationRelationManager::class, CompensationChangesRelationManager::class, RelationManagers\PayslipsRelationManager::class]),
+            RelationGroup::make('Operations', [DocumentsRelationManager::class, RelationManagers\LettersRelationManager::class, RequestsRelationManager::class,
+                AssetsRelationManager::class, BgvRelationManager::class, RelationManagers\CommunicationsRelationManager::class]),
+            RelationGroup::make(fn (?Model $ownerRecord) => $ownerRecord !== null && BankAccountsRelationManager::canViewForRecord($ownerRecord, ViewEmployee::class) ? 'Bank & personal' : 'Personal', [AddressesRelationManager::class, FamilyMembersRelationManager::class, EmergencyContactsRelationManager::class,
+                QualificationsRelationManager::class, ExperiencesRelationManager::class, BankAccountsRelationManager::class]),
             AuditHistoryRelationManager::class,
         ];
     }
