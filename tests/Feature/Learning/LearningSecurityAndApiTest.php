@@ -121,6 +121,7 @@ it('serves the learning API with field filtering, idempotent writes and no cross
     $first = $this->withHeaders(['X-Api-Key' => $this->write['plaintext'], 'Idempotency-Key' => 'lms-1'])->postJson('/api/v1/learning/enrolments', $payload)->assertCreated();
     $again = $this->withHeaders(['X-Api-Key' => $this->write['plaintext'], 'Idempotency-Key' => 'lms-1'])->postJson('/api/v1/learning/enrolments', $payload)->assertOk();
     expect($first->json('data.id'))->toBe($again->json('data.id'))->and($first->json('data.status'))->toBe('assigned');
+    $this->flushHeaders(); // headers persist across test requests; the progress calls below carry no Idempotency-Key
 
     $this->withHeaders(['X-Api-Key' => $this->write['plaintext']])->postJson("/api/v1/learning/enrolments/{$first->json('data.id')}/progress", ['progress' => 40])->assertOk()->assertJsonPath('data.progress', 40);
     $this->withHeaders(['X-Api-Key' => $this->write['plaintext']])->postJson("/api/v1/learning/enrolments/{$first->json('data.id')}/progress", ['progress' => 140])->assertStatus(422);

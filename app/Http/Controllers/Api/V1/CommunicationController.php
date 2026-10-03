@@ -31,8 +31,10 @@ class CommunicationController extends Controller
 
     public function index(Request $request, Communications $communications): JsonResponse
     {
-        $query = Announcement::query()->with('article')->whereIn('status', ['published', 'archived'])->orderByDesc('published_at')->orderByDesc('id')
+        $query = Announcement::query()->with('article')->whereIn('status', ['published', 'archived'])
             ->when($request->query('type'), fn ($q, $t) => $q->whereIn('type', explode(',', (string) $t)));
+
+        $this->sorted($query, $request, ['published_at' => 'announcements.published_at', 'title' => 'announcements.title'], '-published_at');
 
         return $this->page($query, $request, fn (Announcement $a) => $this->summary($a, $communications));
     }

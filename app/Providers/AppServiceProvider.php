@@ -451,10 +451,24 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(WorkflowCompleted::class, EngagementWorkflowBridge::class);
     }
 
-    /** API limits are per key (falls back to IP for unauthenticated calls). */
+    /**
+     * API limits are per key. Phase 14: the limiter key is the key's public prefix (or a hash of
+     * anything else presented), never the raw secret, so cache entries hold no credential.
+     */
     private function registerRateLimits(): void
     {
-        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->header('X-Api-Key') ?: $request->ip()));
+        RateLimiter::for('api', function (Request $request) {
+            $presented = (string) ($request->header('X-Api-Key') ?: $request->bearerToken() ?: '');
+            $bucket = match (true) {
+                $presented === '' => 'ip:'.$request->ip(),
+                (bool) preg_match('/^(pk_[a-z0-9]{10})\./', $presented, $m) => 'key:'.$m[1],
+                default => 'token:'.hash('sha256', $presented),
+            };
+
+            return Limit::perMinute((int) config('peopleos.api.rate_limit_per_minute', 120))->by($bucket);
+        });
+        // AI questions: per user, so one person cannot exhaust a provider budget (Phase 14).
+        RateLimiter::for('ai', fn () => Limit::perMinute((int) config('peopleos.ai.rate_limit_per_minute', 20))->by('ai:'.(auth()->id() ?? 'guest')));
     }
 
     private function registerPolicies(): void

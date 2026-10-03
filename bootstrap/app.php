@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Middleware\ApiResponseContract;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\AuthenticateApiKey;
+use App\Http\Middleware\EnforceIdempotency;
 use App\Http\Middleware\ResolveTenant;
 use App\Support\Tenancy\Exceptions\MissingTenantException;
 use App\Support\Tenancy\Exceptions\TenantMismatchException;
@@ -20,8 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
-        $middleware->alias(['api.key' => AuthenticateApiKey::class]);
+        $middleware->alias(['api.key' => AuthenticateApiKey::class, 'api.idempotent' => EnforceIdempotency::class]);
         $middleware->throttleApi();
+        // Phase 14: one error envelope for every /api/* error; idempotency only after the key has bound the tenant.
+        $middleware->api(prepend: [ApiResponseContract::class]);
+        $middleware->appendToPriorityList(AuthenticateApiKey::class, EnforceIdempotency::class);
         // Bind the tenant before implicit route-model binding so scoped lookups never run unbound.
         $middleware->prependToPriorityList(SubstituteBindings::class, ResolveTenant::class);
         $middleware->prependToPriorityList(SubstituteBindings::class, AuthenticateApiKey::class);

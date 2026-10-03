@@ -38,8 +38,10 @@ class EngagementController extends Controller
 
     public function surveys(Request $request): JsonResponse
     {
-        $query = Survey::query()->with('versions')->orderBy('code')
+        $query = Survey::query()->with('versions')
             ->when($request->query('type'), fn ($q, $t) => $q->whereIn('survey_type', explode(',', (string) $t)));
+
+        $this->sorted($query, $request, ['code' => 'surveys.code', 'name' => 'surveys.name', 'created_at' => 'surveys.created_at'], 'code');
 
         return $this->page($query, $request, fn (Survey $s) => $this->summary($s));
     }

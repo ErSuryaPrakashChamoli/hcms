@@ -27,7 +27,8 @@ use Illuminate\Support\Facades\Route;
 /*
 | Versioned integration API (§87). Every route is tenant-aware through the API key.
 */
-Route::prefix('v1')->name('api.v1.')->group(function () {
+// Phase 14: every v1 write honours an Idempotency-Key (EnforceIdempotency runs after the key binds the tenant).
+Route::prefix('v1')->name('api.v1.')->middleware('api.idempotent')->group(function () {
     Route::middleware('api.key:employees.read')->group(function () {
         Route::get('employees', [EmployeeController::class, 'index'])->name('employees.index');
         Route::get('employees/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
@@ -58,7 +59,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('leave/calendar', [LeaveController::class, 'calendar'])->name('leave.calendar');
     });
     Route::middleware('api.key:leave.write')->group(function () {
-        Route::post('leave/requests', [LeaveController::class, 'store'])->name('leave.requests.store');
+        Route::post('leave/requests', [LeaveController::class, 'store'])->withoutMiddleware('api.idempotent')->name('leave.requests.store'); // domain-level Idempotency-Key (Phase 4)
         Route::post('leave/requests/{leaveRequest}/cancel', [LeaveController::class, 'cancel'])->name('leave.requests.cancel');
     });
     Route::get('payroll/runs', [ReadController::class, 'payrollRuns'])->middleware('api.key:payroll.read')->name('payroll.runs');
@@ -99,7 +100,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('analytics', [LearningController::class, 'analytics'])->name('analytics');
     });
     Route::middleware('api.key:learning.write')->prefix('learning')->name('learning.')->group(function () {
-        Route::post('enrolments', [LearningController::class, 'enrol'])->name('enrolments.store');
+        Route::post('enrolments', [LearningController::class, 'enrol'])->withoutMiddleware('api.idempotent')->name('enrolments.store'); // domain-level dedupe: one open enrolment (Phase 8)
         Route::post('enrolments/{enrolment}/progress', [LearningController::class, 'progress'])->whereNumber('enrolment')->name('enrolments.progress');
     });
 
@@ -158,7 +159,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
     // Phase 14 Integration Hub: signed, idempotent inbound events (processed asynchronously) and
     // lookups of an integration's own external references. Systems of other tenants are 404.
-    Route::post('integrations/{system}/events', [IntegrationController::class, 'receive'])->middleware('api.key:integrations.write')->name('integrations.events.store');
+    Route::post('integrations/{system}/events', [IntegrationController::class, 'receive'])->middleware('api.key:integrations.write')->withoutMiddleware('api.idempotent')->name('integrations.events.store');
     Route::middleware('api.key:integrations.read')->prefix('integrations')->name('integrations.')->group(function () {
         Route::get('{system}/events/{eventId}', [IntegrationController::class, 'event'])->name('events.show');
         Route::get('{system}/references', [IntegrationController::class, 'reference'])->name('references.show');
@@ -204,14 +205,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('pips', [PerformanceController::class, 'pips'])->name('pips');
         Route::get('analytics', [PerformanceController::class, 'analytics'])->name('analytics');
     });
-    Route::post('performance/goals/{goal}/progress', [PerformanceController::class, 'recordGoalProgress'])->whereNumber('goal')->middleware('api.key:performance.write')->name('performance.goals.progress.store');
+    Route::post('performance/goals/{goal}/progress', [PerformanceController::class, 'recordGoalProgress'])->whereNumber('goal')->middleware('api.key:performance.write')->withoutMiddleware('api.idempotent')->name('performance.goals.progress.store'); // domain-level Idempotency-Key (Phase 7)
     Route::get('workflows/instances', [ReadController::class, 'workflowInstances'])->middleware('api.key:workflows.read')->name('workflows.instances');
     Route::get('workflows/tasks', [ReadController::class, 'workflowTasks'])->middleware('api.key:workflows.read')->name('workflows.tasks');
     Route::get('reports/{report}/run', [ReadController::class, 'runReport'])->middleware('api.key:reports.run')->name('reports.run');
     Route::post('pre-employees', [PreEmployeeController::class, 'store'])->middleware('api.key:rms.write')->name('pre-employees.store');
     Route::get('pre-employees/{reference}', [PreEmployeeController::class, 'show'])->middleware('api.key:rms.read')->name('pre-employees.show');
     Route::post('bgv/cases/{reference}/checks', [BgvCallbackController::class, 'store'])->middleware('api.key:bgv.write')->name('bgv.checks.store');
-    Route::post('attendance/devices/{device}/punches', [AttendancePunchController::class, 'store'])->middleware('api.key:attendance.write')->name('attendance.punches.store');
+    Route::post('attendance/devices/{device}/punches', [AttendancePunchController::class, 'store'])->middleware('api.key:attendance.write')->name('attendance.devices.punches.store');
 });
 
 Route::prefix('scim/v2')->middleware('api.key:scim')->name('scim.')->group(function () {

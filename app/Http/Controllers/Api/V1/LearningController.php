@@ -32,6 +32,8 @@ use RuntimeException;
  */
 class LearningController extends Controller
 {
+    use PaginatesApi;
+
     public function catalogue(Request $request): JsonResponse
     {
         $query = Course::query()->with(['currentVersion', 'provider'])->whereIn('status', Course::ENROLLABLE)
@@ -237,16 +239,5 @@ class LearningController extends Controller
     private function mayReadCosts(Request $request): bool
     {
         return (bool) $request->attributes->get('api_key')?->hasScope('learning.costs');
-    }
-
-    private function page(Builder $query, Request $request, callable $map): JsonResponse
-    {
-        $perPage = min(max((int) $request->query('per_page', 50), 1), 200);
-        $paginator = $query->paginate($perPage)->appends($request->query());
-
-        return response()->json([
-            'data' => collect($paginator->items())->map($map)->values()->all(),
-            'meta' => ['page' => $paginator->currentPage(), 'per_page' => $paginator->perPage(), 'total' => $paginator->total(), 'last_page' => $paginator->lastPage()],
-        ]);
     }
 }

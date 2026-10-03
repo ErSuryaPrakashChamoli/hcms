@@ -64,8 +64,8 @@ class ServiceDeskController extends Controller
             ->when($request->query('service'), fn (Builder $q, $c) => $q->whereIn('tickets.service_definition_id', ServiceDefinition::query()->select('id')->where('code', strtoupper((string) $c))))
             ->when($request->query('employee'), fn (Builder $q, $c) => $q->whereIn('tickets.employee_id', Employee::query()->select('id')->where('employee_code', (string) $c)))
             ->when($request->query('from'), fn (Builder $q, $d) => $q->whereDate('tickets.created_at', '>=', $d))
-            ->when($request->query('to'), fn (Builder $q, $d) => $q->whereDate('tickets.created_at', '<=', $d))
-            ->orderByDesc('tickets.id');
+            ->when($request->query('to'), fn (Builder $q, $d) => $q->whereDate('tickets.created_at', '<=', $d));
+        $this->sorted($query, $request, ['created_at' => 'tickets.created_at', 'status' => 'tickets.status', 'priority' => 'tickets.priority'], '-id');
 
         return $this->page($query, $request, fn (Ticket $t) => $this->summary($t));
     }
