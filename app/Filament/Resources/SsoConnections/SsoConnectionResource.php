@@ -9,6 +9,7 @@ use App\Filament\Resources\SsoConnections\Pages\CreateSsoConnection;
 use App\Filament\Resources\SsoConnections\Pages\EditSsoConnection;
 use App\Filament\Resources\SsoConnections\Pages\ListSsoConnections;
 use App\Filament\Support\AuditReasonField;
+use App\Support\Validation\SafeOutboundUrl;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -63,8 +64,8 @@ class SsoConnectionResource extends Resource
                 TextInput::make('client_secret')->password()->revealable()->required(fn (string $operation) => $operation === 'create')->dehydrated(fn ($state) => filled($state))->maxLength(2000),
                 TextInput::make('scopes')->default('openid profile email')->required(),
                 TextInput::make('authorization_url')->label('Authorization endpoint')->url()->required()->columnSpan(3)->helperText('Replace {tenant} / {domain} placeholders from the preset'),
-                TextInput::make('token_url')->label('Token endpoint')->url()->required()->columnSpan(3),
-                TextInput::make('userinfo_url')->label('Userinfo endpoint')->url()->required()->columnSpan(3),
+                TextInput::make('token_url')->label('Token endpoint')->url()->rule(new SafeOutboundUrl)->required()->columnSpan(3),
+                TextInput::make('userinfo_url')->label('Userinfo endpoint')->url()->rule(new SafeOutboundUrl)->required()->columnSpan(3),
             ]),
             Section::make('Provisioning & policy')->columns(3)->schema([
                 TagsInput::make('allowed_domains')->placeholder('example.com')->helperText('Empty = any domain'),

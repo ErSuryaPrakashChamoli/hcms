@@ -19,7 +19,7 @@ beforeEach(function () {
     actAsTenant($this->tenant);
     $this->admin = tenantUser($this->tenant, ['*']);
     $this->actingAs($this->admin);
-    $this->sso = SsoConnection::create(['name' => 'Google', 'provider' => 'google', 'client_id' => 'x', 'client_secret' => 'y', 'authorization_url' => 'https://a', 'token_url' => 'https://t', 'userinfo_url' => 'https://u']);
+    $this->sso = SsoConnection::create(['name' => 'Google', 'provider' => 'google', 'client_id' => 'x', 'client_secret' => 'y', 'authorization_url' => 'https://idp.example.test/authorize', 'token_url' => 'https://idp.example.test/token', 'userinfo_url' => 'https://idp.example.test/userinfo']);
     $this->hook = WebhookEndpoint::create(['name' => 'ERP', 'url' => 'https://erp.example.test', 'secret' => 's', 'events' => ['payroll.finalized']]);
     $this->employee = activeEmployee(null, ['task.view']);
     actAsTenant(null);

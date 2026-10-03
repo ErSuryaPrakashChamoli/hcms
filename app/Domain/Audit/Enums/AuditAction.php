@@ -182,6 +182,8 @@ enum AuditAction: string
     // Phase 14: Integration Hub (inbound events, references, signing) and outbound webhook dead letters.
     // Phase 14: an AI request left PeopleOS for an external provider (counts only; never content).
     case AiExternalRequest = 'AI_EXTERNAL_REQUEST';
+    // Production readiness closure: an outbound request to a tenant-configured destination was refused by the SSRF guard.
+    case OutboundDestinationBlocked = 'OUTBOUND_DESTINATION_BLOCKED';
     case IntegrationSecretRotated = 'INTEGRATION_SECRET_ROTATED';
     case IntegrationSignatureRejected = 'INTEGRATION_SIGNATURE_REJECTED';
     case IntegrationEventReceived = 'INTEGRATION_EVENT_RECEIVED';

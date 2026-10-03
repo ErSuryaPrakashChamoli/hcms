@@ -581,6 +581,14 @@ return [
     /*
     | Default setting values seeded per tenant.
     */
+    // Production readiness closure: outbound requests to tenant-configured destinations (webhooks, workflow
+    // webhook nodes, SSO endpoints) pass the SSRF guard. Operators may exempt exact host names (never tenants).
+    'outbound' => [
+        'allow_http' => (bool) env('PEOPLEOS_OUTBOUND_ALLOW_HTTP', false),
+        'allowed_ports' => array_map('intval', array_filter(explode(',', (string) env('PEOPLEOS_OUTBOUND_ALLOWED_PORTS', '443,80,8443,8080')))),
+        'allowed_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('PEOPLEOS_OUTBOUND_ALLOWED_HOSTS', ''))))),
+    ],
+
     // Phase 14 observability. The health token reveals counts and timings on /health/ready (never secrets).
     'health' => [
         'token' => env('PEOPLEOS_HEALTH_TOKEN', ''),

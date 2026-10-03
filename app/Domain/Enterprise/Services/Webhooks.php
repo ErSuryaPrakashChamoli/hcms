@@ -9,10 +9,11 @@ use App\Domain\Enterprise\Models\WebhookEndpoint;
 use App\Domain\Identity\Models\User;
 use App\Domain\Integration\Support\PayloadGuard;
 use App\Domain\Integration\Support\Signature;
+use App\Support\Http\SafeHttp;
+use App\Support\Http\UnsafeOutboundUrl;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Context;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -114,7 +115,8 @@ final class Webhooks
         $timestamp = (string) now()->timestamp;
 
         try {
-            $response = Http::timeout(10)->withHeaders([
+            // Production readiness closure: SSRF guard after DNS, connection pinned, no redirects.
+            $response = app(SafeHttp::class)->to($endpoint->url)->timeout(10)->withHeaders([
                 'Content-Type' => 'application/json', 'User-Agent' => 'PeopleOS-Webhooks/1.0',
                 'X-PeopleOS-Event' => $delivery->event, 'X-PeopleOS-Delivery' => $delivery->event_id,
                 'X-PeopleOS-Timestamp' => $timestamp, 'X-PeopleOS-Signature' => Signature::sign((string) $endpoint->secret, $timestamp, $json),
@@ -122,9 +124,14 @@ final class Webhooks
             ])->withBody($json, 'application/json')->post($endpoint->url);
             $code = $response->status();
             $excerpt = Str::limit($response->body(), 500);
+        } catch (UnsafeOutboundUrl $e) {
+            $code = 0;
+            $excerpt = 'Blocked: '.$e->getMessage();
+            $this->audit->record(AuditAction::OutboundDestinationBlocked, 'enterprise', $endpoint, [], null, metadata: ['reason' => $e->reason, 'destination' => SafeHttp::redact((string) $endpoint->url), 'event' => $delivery->event]);
         } catch (\Throwable $e) {
             $code = 0;
-            $excerpt = Str::limit($e->getMessage(), 500);
+            // Transport errors can quote the full URL (paths may carry tokens): keep only scheme and host.
+            $excerpt = Str::limit(str_replace((string) $endpoint->url, SafeHttp::redact((string) $endpoint->url), $e->getMessage()), 500);
         }
 
         $ok = $code >= 200 && $code < 300;

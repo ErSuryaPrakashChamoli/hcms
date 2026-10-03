@@ -7,8 +7,10 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\User;
+use App\Support\Http\SafeHttp;
+use App\Support\Http\UnsafeOutboundUrl;
 use App\Support\Tenancy\TenantContext;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -35,7 +37,7 @@ final class Sso
     /** Exchanges the code and returns the provider identity (sub, email, name). */
     public function identity(SsoConnection $connection, string $code, string $redirectUri): array
     {
-        $token = Http::asForm()->timeout(15)->post($connection->token_url, [
+        $token = $this->http($connection->token_url)->asForm()->timeout(15)->post($connection->token_url, [
             'grant_type' => 'authorization_code', 'code' => $code, 'redirect_uri' => $redirectUri,
             'client_id' => $connection->client_id, 'client_secret' => $connection->client_secret,
         ]);
@@ -43,7 +45,7 @@ final class Sso
             throw new RuntimeException('The identity provider rejected the login code.');
         }
 
-        $info = Http::withToken($token->json('access_token'))->timeout(15)->get($connection->userinfo_url);
+        $info = $this->http($connection->userinfo_url)->withToken($token->json('access_token'))->timeout(15)->get($connection->userinfo_url);
         if (! $info->successful()) {
             throw new RuntimeException('Could not read the user profile from the identity provider.');
         }
@@ -54,6 +56,16 @@ final class Sso
         }
 
         return ['sub' => $sub, 'email' => $email, 'name' => (string) ($info->json('name') ?? Str::before($email, '@'))];
+    }
+
+    /** Production readiness closure: the IdP endpoints are tenant-configured, so they pass the SSRF guard (after DNS, pinned, no redirects). */
+    private function http(string $url): PendingRequest
+    {
+        try {
+            return app(SafeHttp::class)->to($url);
+        } catch (UnsafeOutboundUrl $e) {
+            throw new RuntimeException('The identity provider endpoint is not an allowed destination: '.$e->getMessage());
+        }
     }
 
     /** Finds the tenant user for this identity, provisioning one when allowed. */

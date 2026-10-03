@@ -374,6 +374,8 @@ use App\Domain\Workforce\Policies\PositionPolicy;
 use App\Domain\Workforce\Policies\WorkforceBudgetPolicy;
 use App\Domain\Workforce\Policies\WorkforcePlanningPolicy;
 use App\Domain\Workforce\Services\PositionSeats;
+use App\Support\Http\DnsHostResolver;
+use App\Support\Http\HostResolver;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
@@ -410,6 +412,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CompensationOutput::class, CompensationLedger::class);
         $this->app->bind(PayrollClosureReader::class, PayrollClosure::class);
         $this->app->singleton(AccessScopes::class);
+        // Production readiness closure: DNS for the outbound SSRF guard (tests bind a fake).
+        $this->app->bind(HostResolver::class, DnsHostResolver::class);
         // Phase 5: one statutory rule cache per request / job, cleared at the start of each run calculation.
         $this->app->scoped(ComplianceRules::class);
         // One tenant context per request / job / command execution.
