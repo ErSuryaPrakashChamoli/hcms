@@ -1337,6 +1337,14 @@ html {
     .pos-legend-inline span { display: inline-flex; align-items: center; gap: 6px; width: auto; height: auto; border-radius: 0; }
     .pos-legend-inline i { width: 9px; height: 9px; border-radius: 3px; }
 
+    /* Stepper (guided flows) */
+    .pos-stepper { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .pos-stepper > li { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--pos-text-muted); }
+    .pos-stepper-dot { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--pos-surface-muted); color: var(--pos-text-secondary); box-shadow: inset 0 0 0 1px var(--pos-border-strong); }
+    .pos-stepper > li[data-state='done'] .pos-stepper-dot { background: var(--pos-tile-emerald-bg); color: var(--pos-tile-emerald); box-shadow: none; }
+    .pos-stepper > li[data-state='current'] { color: var(--pos-text); font-weight: 600; }
+    .pos-stepper > li[data-state='current'] .pos-stepper-dot { background: var(--pos-primary); color: #fff; box-shadow: 0 0 0 4px var(--pos-primary-soft); }
+
     /* What changed (rail) */
     .pos-wc { position: relative; display: grid; gap: 2px; }
     .pos-wc::before { content: ''; position: absolute; top: 10px; bottom: 10px; inset-inline-start: 50px; width: 2px; background: var(--pos-border); border-radius: 2px; }
@@ -1364,6 +1372,7 @@ html {
     .pos-ai-head { position: relative; display: flex; align-items: center; gap: 10px; }
     .pos-ai-panel .pos-ai-head { padding: 16px 20px; border-bottom: 1px solid var(--pos-border); }
     .pos-ai-orb { width: 30px; height: 30px; flex: none; border-radius: 999px; background: radial-gradient(circle at 35% 30%, #ffffff 0%, #bdb7f6 22%, #6d5fe0 58%, #2e2a6e 100%); box-shadow: 0 6px 16px -6px rgb(87 75 196 / 0.8); }
+    .pos-ai-orb-sm { width: 16px; height: 16px; box-shadow: none; }
     .pos-ai-hello { position: relative; margin-top: 14px; font-family: var(--font-display); font-size: 24px; line-height: 1.1; color: var(--pos-text); }
     .pos-ai-prompts { display: grid; gap: 6px; }
     .pos-ai-prompt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; border-radius: 10px; font-size: 13px; text-align: start; color: var(--pos-text-secondary); box-shadow: inset 0 0 0 1px var(--pos-border); background: var(--pos-surface); }
@@ -1464,4 +1473,11 @@ html {
 /* Mobile: leave room for the bottom navigation */
 @media (max-width: 1023px) {
     .fi-main { padding-bottom: 84px; }
+}
+
+/* Inputs embedded in a focus-styled container show the container's focus ring, not their own. */
+.pos-command-input:focus-visible,
+.pos-ai-ask input:focus-visible,
+.pos-search input:focus-visible {
+    outline: none;
 }

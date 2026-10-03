@@ -1,0 +1,108 @@
+<div x-data="{ open: @js($type !== null), lastFocus: null }"
+    x-on:pos-drawer-open.window="lastFocus = document.activeElement; open = true"
+    x-effect="document.documentElement.classList.toggle('pos-drawer-is-open', open)">
+    <div x-show="open" x-cloak class="pos-overlay" x-on:click="open = false; $wire.close(); $nextTick(() => lastFocus?.focus?.())" x-transition.opacity.duration.200ms aria-hidden="true"></div>
+
+    <aside x-show="open" x-cloak x-trap.noscroll.inert="open" role="dialog" aria-modal="true" aria-labelledby="pos-drawer-title"
+        class="pos-drawer" :data-open="open.toString()" data-depth="{{ count($stack) }}"
+        x-on:keydown.escape.prevent.stop="open = false; $wire.close(); $nextTick(() => lastFocus?.focus?.())"
+        x-transition:enter="pos-drawer-in" x-transition:leave="pos-drawer-out">
+
+        <header class="pos-drawer-header">
+            @if (count($stack) > 0)
+                <button type="button" class="pos-icon-btn" wire:click="back" aria-label="Back to the previous panel"><x-filament::icon icon="heroicon-m-arrow-left" class="size-5" /></button>
+            @endif
+            <h2 id="pos-drawer-title" class="pos-h3 flex-1 truncate">
+                @switch($type)
+                    @case('person') Person @break
+                    @case('person-action') Start a change @break
+                    @case('approval') Decision @break
+                    @default Details
+                @endswitch
+            </h2>
+            <button type="button" class="pos-icon-btn" x-on:click="open = false; $wire.close(); $nextTick(() => lastFocus?.focus?.())" aria-label="Close panel"><x-filament::icon icon="heroicon-m-x-mark" class="size-5" /></button>
+        </header>
+
+        <div class="pos-drawer-body">
+            <div wire:loading.delay.short wire:target="show, back" class="w-full">
+                @include('livewire.experience.skeleton', ['rows' => 3, 'title' => 'details'])
+            </div>
+            <div wire:loading.remove wire:target="show, back">
+                @if ($type === 'person' || $type === 'person-action')
+                    @php($p = $this->person)
+                    @if ($p === null)
+                        <x-pos.empty icon="heroicon-o-eye-slash" title="Not available" why="This person is not in your directory view, or the record no longer exists." />
+                    @else
+                        <div class="flex items-start gap-4">
+                            <x-pos.avatar :name="$p['name']" size="xl" />
+                            <div class="min-w-0 flex-1">
+                                <p class="pos-h2">{{ $p['name'] }}</p>
+                                <p class="pos-body-sm pos-secondary">{{ collect([$p['title'], $p['department']])->filter()->implode(' · ') ?: $p['code'] }}</p>
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    @if ($p['status'])<x-pos.status tone="primary" :label="$p['status']" />@endif
+                                    @if ($p['location'])<span class="pos-caption pos-muted inline-flex items-center gap-1"><x-filament::icon icon="heroicon-m-map-pin" class="size-3.5" />{{ $p['location'] }}</span>@endif
+                                </div>
+                            </div>
+                        </div>
+
+                        @if ($type === 'person')
+                            <div class="mt-5 flex flex-wrap gap-2">
+                                @if ($p['profile'])<a href="{{ $p['profile'] }}" wire:navigate class="pos-btn pos-btn-primary pos-btn-sm">Open profile</a>@endif
+                                @if ($p['email'])<a href="mailto:{{ $p['email'] }}" class="pos-btn pos-btn-secondary pos-btn-sm">Message</a>@endif
+                                @if ($p['org'])<a href="{{ $p['org'] }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Org map</a>@endif
+                                <button type="button" wire:click="togglePin" class="pos-btn pos-btn-ghost pos-btn-sm" aria-pressed="{{ $p['pinned'] ? 'true' : 'false' }}">
+                                    <x-filament::icon :icon="$p['pinned'] ? 'heroicon-s-star' : 'heroicon-o-star'" class="size-4" />{{ $p['pinned'] ? 'Pinned' : 'Pin' }}
+                                </button>
+                            </div>
+
+                            <dl class="pos-facts mt-6">
+                                @if ($p['manager'])
+                                    <div><dt>Manager</dt><dd><button type="button" class="pos-person-inline" wire:click="show('person', {{ $p['manager']['id'] }})"><x-pos.avatar :name="$p['manager']['name']" size="xs" />{{ $p['manager']['name'] }}</button></dd></div>
+                                @endif
+                                @if ($p['email'])<div><dt>Work email</dt><dd><a class="pos-link" href="mailto:{{ $p['email'] }}">{{ $p['email'] }}</a></dd></div>@endif
+                                @if ($p['phone'])<div><dt>Work phone</dt><dd>{{ $p['phone'] }}</dd></div>@endif
+                                @if ($p['tenure'])<div><dt>With us for</dt><dd>{{ $p['tenure'] }}</dd></div>@endif
+                                <div><dt>Employee ID</dt><dd class="pos-num">{{ $p['code'] }}</dd></div>
+                            </dl>
+
+                            @if ($p['changes'] !== [])
+                                <button type="button" class="pos-inline-callout mt-6 w-full" wire:click="show('person-action', {{ $p['id'] }})">
+                                    <x-filament::icon icon="heroicon-m-bolt" class="size-4" /> Start a change for {{ \Illuminate\Support\Str::before($p['name'], ' ') }}
+                                    <span aria-hidden="true" class="ms-auto">→</span>
+                                </button>
+                            @endif
+                        @else
+                            <x-pos.stepper class="mt-5" :steps="['Choose the change', 'Fill in', 'Review Before → After', 'Confirm']" :current="0" />
+                            <p class="pos-body-sm pos-muted mt-3">Choose what changes. The form opens on {{ \Illuminate\Support\Str::before($p['name'], ' ') }}’s profile with today’s values, and shows the Before → After before you save. Every change is audited.</p>
+                            <ul class="mt-4 space-y-2">
+                                @forelse ($p['changes'] as $change)
+                                    <li>
+                                        <a href="{{ $p['profile'] }}?action={{ $change['key'] }}" wire:navigate class="pos-action-tile" data-pos-action="{{ $change['key'] }}">
+                                            <span class="pos-icon-tile" aria-hidden="true"><x-filament::icon :icon="$change['icon']" class="size-5" /></span>
+                                            <span class="pos-action-text"><span class="pos-body font-medium">{{ $change['label'] }}</span><span class="pos-caption pos-muted">{{ $change['hint'] }}</span></span>
+                                        </a>
+                                    </li>
+                                @empty
+                                    <li><x-pos.empty icon="heroicon-o-lock-closed" title="No changes available" why="Your role cannot change this person’s record." /></li>
+                                @endforelse
+                            </ul>
+                        @endif
+                    @endif
+                @elseif ($type === 'approval')
+                    @if ($done)
+                        <div class="pos-done" role="status">
+                            <svg class="pos-check pos-check-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>
+                            <p class="pos-h3 mt-3">{{ $done }}</p>
+                            <p class="pos-body-sm pos-muted mt-1">The requester is notified. It moves to Completed in your approvals.</p>
+                            <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm mt-4" x-on:click="open = false; $wire.close(); $nextTick(() => lastFocus?.focus?.())">Close</button>
+                        </div>
+                    @elseif ($this->approval === null)
+                        <x-pos.empty icon="heroicon-o-check-circle" title="Nothing to decide" why="This item was already decided, withdrawn, or is not yours to decide." />
+                    @else
+                        <x-pos.approval-card :item="$this->approval" class="pos-approval-flat" />
+                    @endif
+                @endif
+            </div>
+        </div>
+    </aside>
+</div>
