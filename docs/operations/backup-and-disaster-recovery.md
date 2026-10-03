@@ -1,5 +1,7 @@
 # Backup and disaster recovery
 
+> **Superseded** by `docs/production/disaster-recovery.md` (production readiness closure), which adds a full local rehearsal of the runbook. This file remains the Phase 14 record. The Phase 14 restore schema `hcm_p14_restore` and its dump were deleted in the closure, because they held copies of development data.
+
 Phase 14 (3 October 2026). **Status: documented, locally restore-tested, NOT production-verified.**
 The strategy below has been exercised once, on the development machine (§8). It has not been run
 against a production database, object storage, or a second site. Disaster recovery may be called
