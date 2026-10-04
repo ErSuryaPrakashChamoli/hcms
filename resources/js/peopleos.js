@@ -27,6 +27,7 @@ components.posCommand = (initialMode = 'all') => ({
         actionIndex: -1,
         mode: initialMode,
         lastFocus: null,
+        onViewport: null,
 
         init() {
             // Keep the highlighted row valid when results re-render.
@@ -49,11 +50,28 @@ components.posCommand = (initialMode = 'all') => ({
             if (mode !== this.mode) { this.mode = mode; }
             this.$wire.opened(mode).then(() => { if (detail?.pick) this.$wire.pick(detail.pick); });
             this.$nextTick(() => { this.$refs.input?.focus(); this.$refs.input?.select(); this.ensureActive(); });
+            this.trackViewport(true);
         },
         close() {
             this.isOpen = false;
             this.actionIndex = -1;
+            this.trackViewport(false);
             this.$nextTick(() => this.lastFocus?.focus?.());
+        },
+        // UX.17: on phones the sheet takes the visible viewport, which shrinks when the on-screen keyboard opens.
+        trackViewport(on) {
+            const vv = window.visualViewport;
+            const dialog = this.$refs.dialog;
+            if (!vv || !dialog) return;
+            if (on && !this.onViewport) {
+                this.onViewport = () => dialog.style.setProperty('--pos-vvh', `${Math.round(vv.height)}px`);
+                this.onViewport();
+                vv.addEventListener('resize', this.onViewport);
+            } else if (!on && this.onViewport) {
+                vv.removeEventListener('resize', this.onViewport);
+                this.onViewport = null;
+                dialog.style.removeProperty('--pos-vvh');
+            }
         },
         activate(id) {
             if (this.activeId !== id) this.actionIndex = -1;

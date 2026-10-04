@@ -1,7 +1,8 @@
 <div x-data="posCommand('all')" x-on:pos-command-open.window="open($event.detail)" x-on:keydown.window="globalKey($event)" class="pos-command-root">
     <div x-show="isOpen" x-cloak class="pos-overlay" x-on:click="close()" x-transition.opacity.duration.150ms aria-hidden="true"></div>
 
-    <div x-show="isOpen" x-cloak x-trap.noscroll.inert="isOpen" role="dialog" aria-modal="true" aria-labelledby="pos-command-title"
+    {{-- UX.17: on phones a full-screen sheet sized to the visible viewport (the keyboard never covers results), with Cancel --}}
+    <div x-show="isOpen" x-cloak x-ref="dialog" x-trap.noscroll.inert="isOpen" role="dialog" aria-modal="true" aria-labelledby="pos-command-title"
         class="pos-command pos-command-enter" x-on:keydown.escape.prevent.stop="close()" x-transition:enter="pos-command-in" x-transition:leave="pos-command-out">
         <h2 id="pos-command-title" class="sr-only">Command center</h2>
         <div class="pos-command-head">
@@ -13,6 +14,7 @@
                 x-on:keydown.arrow-right="actionMove($event, 1)" x-on:keydown.arrow-left="actionMove($event, -1)"
                 x-on:keydown.enter.prevent="choose(null, $event.metaKey || $event.ctrlKey)" x-on:keydown.tab="cycleMode($event)" />
             <span wire:loading.delay.short wire:target="query" class="pos-spinner" aria-hidden="true"></span>
+            <button type="button" class="pos-command-cancel" x-on:click="close()">Cancel</button>
         </div>
         @if ($this->pickLabel())
             <div class="pos-command-pick" role="status">

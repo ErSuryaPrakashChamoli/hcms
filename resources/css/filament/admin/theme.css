@@ -2017,3 +2017,13 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-table-cards td.pos-card-meta { flex: none; font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
     .pos-table-cards td.pos-card-meta + td.pos-card-meta::before { content: '·'; margin-inline-end: var(--pos-space-2); }
 }
+
+/* Command center on phones: a full-screen sheet sized to the visible viewport (the on-screen keyboard never covers
+   the results), safe-area aware, with Cancel. Desktop ⌘K/Ctrl+K and its card are unchanged. */
+.pos-command-cancel { display: none; }
+@media (max-width: 767px) {
+    .pos-command { top: 0; width: 100vw; height: var(--pos-vvh, 100dvh); border-radius: 0; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+    .pos-command-list { flex: 1 1 auto; min-height: 0; max-height: none; }
+    .pos-command-head { padding-inline: var(--pos-space-4) var(--pos-space-2); }
+    .pos-command-cancel { display: inline-flex; align-items: center; flex: none; height: 40px; padding-inline: var(--pos-space-2); border-radius: var(--pos-radius-md); font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); color: var(--pos-primary); }
+}
