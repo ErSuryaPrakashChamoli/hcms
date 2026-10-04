@@ -62,6 +62,7 @@
                 </x-pos.section>
             </div>
             <aside class="pos-ws-side" aria-label="People snapshot">
+                <x-pos.intelligence :intel="method_exists($getLivewire(), 'intelligence') ? $getLivewire()->intelligence : null" />
                 <x-pos.section title="People snapshot">
                     <dl class="pos-panel pos-panel-pad pos-facts">
                         <div><dt>Employee ID</dt><dd class="pos-num">{{ $record->employee_code }}</dd></div>

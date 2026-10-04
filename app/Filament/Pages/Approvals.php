@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Experience\Services\ApprovalCenter;
 use App\Domain\Experience\Services\ApprovalDecisions;
+use App\Domain\Experience\Services\ContextualIntelligence;
 use App\Domain\Experience\Services\RoleLens;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
@@ -77,6 +78,15 @@ class Approvals extends Page
         ]);
 
         return ucfirst(implode(' · ', $parts)).'. Most urgent first; the context comes with each decision.';
+    }
+
+    /** UX.15: PeopleOS Intelligence for the queue (contextual, sourced, gated by the AI policy). */
+    #[Computed]
+    public function intelligence(): ?array
+    {
+        $g = $this->groups;
+
+        return app(ContextualIntelligence::class)->forApprovals(auth()->user(), collect(['urgent', 'today', 'upcoming'])->flatMap(fn ($k) => $g[$k])->values());
     }
 
     #[Computed]

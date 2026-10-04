@@ -28,6 +28,7 @@
             <div class="pos-decide-ws">
                 {{-- The queue: most urgent first; selecting shows the decision beside it (a drawer on smaller screens) --}}
                 <div class="pos-queue">
+                    <x-pos.intelligence :intel="$this->intelligence" />
                     @foreach ($labels as $key => [$label, $hint])
                         @if ($groups[$key]->isNotEmpty())
                             <section class="pos-sec" aria-labelledby="pos-q-{{ $key }}">

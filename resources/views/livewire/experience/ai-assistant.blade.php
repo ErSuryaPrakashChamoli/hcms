@@ -1,5 +1,4 @@
 @php
-    $first = strtok((string) auth()->user()?->name, ' ');
     $available = $this->assistants;
 @endphp
 <div @if (! $embedded) x-data="{ open: false, lastFocus: null }" x-on:pos-ai-open.window="lastFocus = document.activeElement; open = true; $nextTick(() => $refs.ask?.focus())" @endif>
@@ -22,8 +21,8 @@
                 <x-pos.empty icon="heroicon-o-sparkles" title="The assistant is not available to you" why="It is switched off for your organisation or your role does not include it." />
             @else
                 @if ($this->interactions->isEmpty())
-                    <p class="pos-ai-hello">Hi {{ $first }},</p>
-                    <p class="pos-body-sm">How can I help today? I answer from what you can already see, and I never decide for you.</p>
+                    <p class="pos-section-title">Ask about what you can see</p>
+                    <p class="pos-body-sm">Answers come with their key facts and sources, from records you already have access to. Suggestions only open screens; you decide.</p>
                 @endif
 
                 @if (count($available) > 1)

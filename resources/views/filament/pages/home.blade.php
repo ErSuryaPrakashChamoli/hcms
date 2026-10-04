@@ -299,6 +299,7 @@
                 </div>
 
                 <aside class="pos-ws-side" aria-label="Your people and momentum">
+                    <x-pos.intelligence :intel="$this->intelligence" />
                     {{-- Team pulse (managers): who is in, who needs you --}}
                     @if ($h['pulse_team'])
                         @php($tp = $h['pulse_team'])

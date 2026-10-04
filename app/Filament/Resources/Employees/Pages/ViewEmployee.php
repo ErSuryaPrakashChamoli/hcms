@@ -11,6 +11,7 @@ use App\Domain\Employment\Actions\ChangeStatutoryApplicabilityAction;
 use App\Domain\Employment\Actions\ChangeStatutoryIdentityAction;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
+use App\Domain\Experience\Services\ContextualIntelligence;
 use App\Domain\Experience\Services\PersonWorkspace;
 use App\Domain\Letters\Models\LetterTemplate;
 use App\Domain\Letters\Services\Letters;
@@ -74,6 +75,13 @@ class ViewEmployee extends ViewRecord
         $record = $this->getRecord()->loadMissing(['person', 'currentPosition.designation', 'currentPosition.department', 'currentPosition.location', 'currentManager.manager.person']);
 
         return view('filament.employees.header', ['employee' => $record, 'actions' => $this->getCachedHeaderActions(), 'workspace' => $this->workspace]);
+    }
+
+    /** UX.15: PeopleOS Intelligence for this person (contextual, sourced, gated by the AI policy). */
+    #[Computed]
+    public function intelligence(): ?array
+    {
+        return app(ContextualIntelligence::class)->forPerson(auth()->user(), $this->getRecord(), $this->workspace);
     }
 
     /** UX.15: the person workspace (one lifetime record, now, next, relationships, changes, summaries), once per request. */

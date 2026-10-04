@@ -16,6 +16,7 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Platform\Services\FeatureFlags;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use RuntimeException;
 
@@ -139,6 +140,42 @@ final class AiGateway
         }
 
         return $interaction;
+    }
+
+    /**
+     * UX.15 contextual intelligence: record what PeopleOS showed a person in a context (an Employee 360, Home,
+     * the Approval Center), so contextual answers stay auditable like questions. Deterministic statements
+     * over data the viewer may already see; nothing is sent to an external model; prohibited values are
+     * removed before logging. One record per viewer and context per hour.
+     *
+     * @param  list<array{text: string, source: string, action?: ?array}>  $insights
+     */
+    public function recordContext(User $user, string $context, array $insights): void
+    {
+        if ($insights === [] || $this->assistantsFor($user) === []) {
+            return;
+        }
+        $key = 'ai-context:'.$user->tenant_id.':'.$user->id.':'.md5($context.'|'.implode('|', array_column($insights, 'text')));
+        if (! Cache::add($key, true, now()->addHour())) {
+            return;
+        }
+        AiInteraction::create([
+            'user_id' => $user->id,
+            'assistant' => 'intelligence',
+            'question' => $this->policy->forLog('Context: '.$context),
+            'answer' => $this->policy->forLog(implode("\n", array_map(fn (array $i) => '- '.$i['text'], $insights))),
+            'sources' => array_values(array_unique(array_map(fn (array $i) => ['label' => $i['source']], $insights), SORT_REGULAR)),
+            'actions' => array_values(array_filter(array_map(fn (array $i) => isset($i['action']['label']) ? ['label' => $i['action']['label'], 'url' => $i['action']['url'] ?? null] : null, $insights))),
+            'intent' => 'context',
+            'provider' => 'deterministic',
+            'model' => null,
+            'input_tokens' => 0,
+            'output_tokens' => 0,
+            'latency_ms' => 0,
+            'is_inference' => false,
+            'ai_generated' => false,
+            'data_policy' => ['policy' => $this->policy->tenantPolicy(), 'sent' => false, 'removed' => 0, 'redacted' => 0],
+        ]);
     }
 
     public function feedback(AiInteraction $interaction, string $feedback, ?string $note = null): AiInteraction

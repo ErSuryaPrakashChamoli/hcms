@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Attendance\Services\PunchIngestion;
 use App\Domain\Attendance\Services\Regularisations;
+use App\Domain\Experience\Services\ContextualIntelligence;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\HomeComposer;
 use App\Domain\Experience\Services\RoleLens;
@@ -99,6 +100,13 @@ class Home extends Dashboard
             'tenants_url' => TenantResource::canAccess() ? TenantResource::getUrl('index') : null,
             'readiness_url' => PlatformReadinessPage::canAccess() ? PlatformReadinessPage::getUrl() : null,
         ];
+    }
+
+    /** UX.15: PeopleOS Intelligence for Home (contextual, sourced, gated by the AI policy). */
+    #[Computed]
+    public function intelligence(): ?array
+    {
+        return app(TenantContext::class)->has() ? app(ContextualIntelligence::class)->forHome(auth()->user(), $this->home) : null;
     }
 
     /** UX.15: the brief of the day as one sentence; numbers emphasised, every part escaped. */
