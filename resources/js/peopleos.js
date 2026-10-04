@@ -247,6 +247,80 @@ components.posPanZoom = () => ({
         get style() { return `transform: translate(${this.x}px, ${this.y}px) scale(${this.scale})`; },
     });
 
+/*
+ * Form review (UX.15 closure): the Review step of Context → Information → Change → Review → Confirm on record
+ * forms. It reads only what is already in this form (labels and the values the person sees), lists each changed
+ * field as Before → After (create: what has been filled in), and masks anything that looks like a secret. It sends
+ * nothing anywhere and decides nothing: saving is still the page's own action.
+ */
+components.posFormReview = (mode = 'edit') => ({
+    mode,
+    items: [],
+    baseline: null,
+    form: null,
+    init() {
+        // A drawer form contains its review; a record page's review sits after the page form.
+        this.form = this.$root.closest('form') ?? this.$root.closest('.fi-page')?.querySelector('form');
+        if (!this.form) return;
+        const update = () => { clearTimeout(this.t); this.t = setTimeout(() => this.refresh(), 120); };
+        // Snapshot once Livewire and the field components have rendered their values.
+        setTimeout(() => { this.baseline = this.read(); this.refresh(); }, 400);
+        ['input', 'change', 'click', 'keyup'].forEach((e) => this.form.addEventListener(e, update));
+        new MutationObserver(update).observe(this.form, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-checked', 'value'] });
+        // After a successful save the saved values are the new baseline.
+        window.Livewire?.hook?.('commit', ({ component, succeed }) => {
+            if (component?.el?.contains?.(this.$root)) succeed(() => setTimeout(() => { if (!this.form.querySelector('.fi-fo-field-wrp-error-message, [data-validation-error]')) { this.baseline = this.read(); this.refresh(); } }, 300));
+        });
+    },
+    secret(w) {
+        const name = [...w.querySelectorAll('input,textarea,select')].map((i) => `${i.type} ${i.getAttribute('wire:model') ?? ''} ${i.id}`).join(' ');
+        return /password|secret|token|api[_-]?key|client[_-]?secret/i.test(name);
+    },
+    fieldValue(w) {
+        // Date pickers: only the date shown to the person (the month and year controls are the calendar's own).
+        const shown = w.querySelector('.fi-fo-date-time-picker-display-text-input');
+        if (shown) return shown.value.trim();
+        const sw = w.querySelector('[role=switch]');
+        if (sw) return sw.getAttribute('aria-checked') === 'true' ? 'Yes' : 'No';
+        const native = w.querySelector('select');
+        if (native) return [...native.selectedOptions].map((o) => o.textContent.trim()).filter((t) => t && !/^select an option$/i.test(t)).join(', ');
+        const custom = w.querySelector('.fi-select-input');
+        if (custom) {
+            const shown = custom.querySelector('.fi-select-input-value-label, .fi-select-input-value-ctn, .fi-select-input-btn');
+            return (shown?.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/^Select an option$/i, '');
+        }
+        const boxes = [...w.querySelectorAll('input[type=checkbox]')];
+        if (boxes.length === 1) return boxes[0].checked ? 'Yes' : 'No';
+        if (boxes.length > 1) return boxes.filter((b) => b.checked).map((b) => b.closest('label')?.textContent.trim() ?? b.value).join(', ');
+        const radio = w.querySelector('input[type=radio]:checked');
+        if (radio) return radio.closest('label')?.textContent.trim() ?? radio.value;
+        return [...w.querySelectorAll('input:not([type=hidden]):not([type=file]),textarea')].map((i) => i.value.trim()).filter(Boolean).join(' – ');
+    },
+    read() {
+        const out = new Map();
+        this.form.querySelectorAll('.fi-fo-field').forEach((w, i) => {
+            if (w.closest('[x-cloak]') || w.parentElement?.closest('.fi-fo-field')) return;
+            const label = (w.querySelector('.fi-fo-field-label-content')?.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/\s*\*$/, '');
+            if (!label) return;
+            out.set(`${i}:${label}`, { label, value: String(this.fieldValue(w) ?? ""), secret: this.secret(w) });
+        });
+        return out;
+    },
+    refresh() {
+        if (!this.baseline) return;
+        const now = this.read();
+        const items = [];
+        now.forEach((f, key) => {
+            const before = this.baseline.get(key)?.value ?? '';
+            if (this.mode === 'create' ? f.value !== '' : f.value !== before) {
+                items.push({ label: f.label, before: f.secret ? (before ? '••••' : '') : before, after: f.secret ? '••••' : f.value });
+            }
+        });
+        this.items = items;
+    },
+    submit() { this.form?.requestSubmit(); },
+});
+
 Object.assign(window, components);
 const registerAll = () => Object.entries(components).forEach(([name, factory]) => window.Alpine?.data(name, factory));
 if (window.Alpine) registerAll();

@@ -13,6 +13,10 @@ use App\Filament\Pages\MyHr;
 use App\Filament\Pages\MyLearning;
 use App\Filament\Pages\Preferences;
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Filament\Support\Pages\PeopleCreateRecord;
+use App\Filament\Support\Pages\PeopleEditRecord;
+use App\Filament\Support\PeopleOsText;
+use App\Filament\Support\PeopleOsUi;
 use App\Filament\Widgets\PeopleControlCentre;
 use App\Filament\Widgets\TenantOverview;
 use App\Http\Middleware\EnforceSecurityPolicy;
@@ -39,6 +43,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Livewire\Livewire;
 
 /**
  * The PeopleOS workspace (blueprint §6, §102). Experience Transformation: Filament keeps forms, tables,
@@ -102,6 +107,13 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::SIDEBAR_FOOTER, fn () => view('filament.shell.rail-footer'))
             ->renderHook(PanelsRenderHook::PAGE_START, fn () => view('filament.shell.space-bar'))
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.shell.body-end'))
+            // UX.15 closure: the PeopleOS module experience. Lists get their context and lens above the table; record
+            // forms get the review step. Both render inside the page component, from the page's own state.
+            ->renderHook(PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_BEFORE, fn () => ($page = Livewire::current()) !== null && method_exists($page, 'moduleContextView') ? $page->moduleContextView() : '')
+            ->renderHook(PanelsRenderHook::PAGE_END, fn () => ($page = Livewire::current()) instanceof PeopleEditRecord || $page instanceof PeopleCreateRecord
+                ? view('filament.shell.form-review', ['mode' => $page instanceof PeopleCreateRecord ? 'create' : 'edit', 'createLabel' => 'Create '.PeopleOsText::inline((string) $page::getResource()::getTitleCaseModelLabel())])
+                : '')
+            ->bootUsing(fn () => PeopleOsUi::register())
             ->navigationGroups([
                 NavigationGroup::make('Me'),
                 NavigationGroup::make('Analytics'),

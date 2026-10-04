@@ -1785,3 +1785,67 @@ html {
 .pos-search input:focus-visible {
     outline: none;
 }
+
+/* ------------------------------------------------------------------ D. UX.15 closure: the PeopleOS module experience
+   Every resource page now composes the same language as the workspaces: context first (the subheading says what you
+   can see), what matters as a lens, search before tools, people as chips, records opening in drawers, forms ending in
+   a review. These rules style that layer and quiet the Filament chrome around it. */
+
+/* List context: the lens and the Approval Center hand-off, between the header and the table */
+.pos-module-context { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-3) var(--pos-space-4); margin-block: calc(-1 * var(--pos-space-2)) var(--pos-space-4); }
+.pos-lens-row { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); min-width: 0; }
+.pos-module-context .pos-lens-chip { display: inline-flex; align-items: center; gap: var(--pos-space-2); cursor: pointer; }
+.pos-module-context .pos-lens-chip:hover { background: var(--pos-state-hover); }
+.pos-module-context .pos-lens-chip[aria-pressed='true'] { background: var(--pos-state-selected); color: var(--pos-state-selected-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 30%, transparent); }
+.pos-module-context .pos-lens-chip .pos-count { margin-inline-start: 0; }
+.pos-lens-dot { width: 6px; height: 6px; border-radius: var(--pos-radius-pill); background: var(--pos-text-muted); flex: none; }
+.pos-lens-chip[data-tone='warning'] .pos-lens-dot { background: var(--pos-warning); }
+.pos-lens-chip[data-tone='danger'] .pos-lens-dot { background: var(--pos-danger); }
+.pos-lens-chip[data-tone='success'] .pos-lens-dot { background: var(--pos-success); }
+.pos-lens-chip[data-tone='info'] .pos-lens-dot { background: var(--pos-info); }
+.pos-module-decide { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-1) var(--pos-space-2); padding: var(--pos-space-2) var(--pos-space-3); border-radius: var(--pos-radius-md); background: var(--pos-warning-soft); color: var(--pos-text); font-size: var(--pos-fs-meta); text-decoration: none; transition: box-shadow var(--pos-dur-1) var(--pos-ease); }
+.pos-module-decide:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-warning) 40%, transparent); }
+.pos-module-decide .fi-icon { color: var(--pos-warning); }
+.fi-header-subheading { max-width: 80ch; }
+
+/* Search before tools: the search field leads the table toolbar and takes the room */
+.fi-ta-header-toolbar { flex-wrap: wrap; gap: var(--pos-space-3); }
+.fi-ta-header-toolbar > div:last-child { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: flex-start; gap: var(--pos-space-2); }
+.fi-ta-search-field { order: -1; flex: 1 1 280px; max-width: 520px; margin-inline-end: auto; }
+
+/* Rows: people as chips; contextual actions stay quiet until the row is in focus (always visible on touch) */
+.pos-person-inline { display: inline-flex; align-items: center; gap: var(--pos-space-2); max-width: 100%; }
+.pos-person-inline-name { font-weight: var(--pos-fw-semibold); overflow-wrap: anywhere; }
+.pos-person-inline:hover .pos-person-inline-name { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--pos-primary) 45%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+    .fi-ta-row .fi-ta-actions { opacity: 0.62; transition: opacity var(--pos-dur-1) var(--pos-ease); }
+    .fi-ta-row:hover .fi-ta-actions, .fi-ta-row:focus-within .fi-ta-actions { opacity: 1; }
+}
+.fi-ta-empty-state-heading { font-size: var(--pos-fs-section) !important; }
+
+/* Records open beside the list: Filament slide-overs become PeopleOS drawers */
+.fi-modal-slide-over .fi-modal-window { border-radius: 0 !important; box-shadow: var(--pos-shadow-3) !important; border-inline-start: 1px solid var(--pos-border); background: var(--pos-surface-elevated) !important; }
+.fi-modal-slide-over .fi-modal-heading { font-family: var(--font-display); font-size: var(--pos-fs-title) !important; font-weight: 400 !important; letter-spacing: -0.01em; }
+
+/* Forms: Context → Information → Change → Review → Confirm */
+.pos-form-review { position: sticky; bottom: var(--pos-space-4); z-index: var(--pos-z-sticky); display: grid; gap: var(--pos-space-3); margin-top: var(--pos-space-6); padding: var(--pos-space-4) var(--pos-space-5); background: var(--pos-surface-elevated); border: 1px solid var(--pos-border); border-radius: var(--pos-radius-lg); box-shadow: var(--pos-shadow-2); }
+.pos-form-review-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-3); }
+.pos-form-review-head .pos-sec-title { margin: 0; }
+.pos-form-review-list { display: grid; gap: var(--pos-space-2); max-height: 34vh; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+.pos-form-review-list li { display: grid; grid-template-columns: minmax(120px, 220px) minmax(0, 1fr); gap: var(--pos-space-3); align-items: baseline; font-size: var(--pos-fs-body); }
+.pos-form-review-label { color: var(--pos-text-secondary); }
+.pos-form-review-values { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); min-width: 0; }
+@media (max-width: 640px) { .pos-form-review-list li { grid-template-columns: 1fr; gap: var(--pos-space-1); } .pos-form-review { bottom: calc(var(--pos-space-16) + env(safe-area-inset-bottom, 0px)); } }
+
+/* Phones: table rows stack into readable entries with their actions in reach */
+@media (max-width: 640px) {
+    .fi-ta-content-ctn .fi-ta-table thead { display: none; }
+    .fi-ta-content-ctn .fi-ta-table, .fi-ta-content-ctn .fi-ta-table tbody { display: block; width: 100%; }
+    .fi-ta-content-ctn .fi-ta-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); border-top: 1px solid var(--pos-border); }
+    .fi-ta-content-ctn .fi-ta-row > td { display: block; padding: 0; border: 0; min-width: 0; }
+    .fi-ta-content-ctn .fi-ta-row > td > *, .fi-ta-content-ctn .fi-ta-row > td [class*='fi-ta-']:not(.fi-badge):not(.fi-ta-actions) { padding-block: var(--pos-space-1) !important; padding-inline: 0 !important; }
+    .fi-ta-content-ctn .fi-ta-row { padding-block: var(--pos-space-3); row-gap: var(--pos-space-1); }
+    .fi-ta-content-ctn .fi-ta-row > td.fi-ta-cell:first-of-type { flex: 1 1 100%; }
+    .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-actions) { flex: 1 1 100%; }
+    .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-record-checkbox) { flex: 0 0 auto; }
+}
