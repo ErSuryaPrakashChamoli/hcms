@@ -1996,3 +1996,24 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-360-now > .pos-ws-main:last-child { grid-row: 2; }
     .pos-360-now > .pos-ws-side { grid-column: 2; grid-row: 1 / span 2; }
 }
+
+/* People directory on phones: filters behind one button; the list view reads as cards (no sideways scroll) */
+@media (max-width: 767px) {
+    .pos-toolbar-filters { display: none; }
+    .pos-toolbar-filters[data-open='true'] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pos-space-2); width: 100%; }
+    .pos-toolbar-filters .pos-select { width: 100%; min-width: 0; }
+}
+@media (min-width: 768px) { .pos-toolbar-filters { display: contents; } }
+@media (max-width: 640px) {
+    .pos-table-cards thead { display: none; }
+    .pos-table-cards, .pos-table-cards tbody { display: block; width: 100%; }
+    .pos-table-cards tr { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); }
+    .pos-table-cards tr + tr { border-top: 1px solid var(--pos-border); }
+    .pos-table-cards td { display: block; padding: 0; border: 0; }
+    .pos-table-cards td.hidden:not(.pos-card-meta) { display: none; }
+    .pos-table-cards td:first-child { flex: 1 1 auto; min-width: 0; }
+    .pos-table-cards td.pos-card-status { flex: none; margin-inline-start: auto; }
+    .pos-table-cards td:nth-child(2) { flex: 1 1 100%; font-size: var(--pos-fs-meta); }
+    .pos-table-cards td.pos-card-meta { flex: none; font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
+    .pos-table-cards td.pos-card-meta + td.pos-card-meta::before { content: '·'; margin-inline-end: var(--pos-space-2); }
+}

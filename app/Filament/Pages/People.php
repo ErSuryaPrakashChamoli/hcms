@@ -16,8 +16,10 @@ use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use UnitEnum;
@@ -105,17 +107,19 @@ class People extends Page
         return $me ? $me->directReports()->currentlyEffective()->pluck('employee_id')->map(fn ($id) => (int) $id)->values()->all() : [];
     }
 
-    public function getSubheading(): ?string
+    public function getSubheading(): string|Htmlable|null
     {
+        // UX.17: the hint matches the device (hover to peek with a mouse; tap on a touch screen).
+        $hint = '<span class="pos-for-fine">Hover a name to peek; select it for more.</span><span class="pos-for-touch">Tap a name for more.</span>';
         if (! auth()->user()->hasPermission('employee.view')) {
-            return 'Your manager, your team and you. Hover a name to peek; select it for more.';
+            return new HtmlString('Your manager, your team and you. '.$hint);
         }
         $teamFirst = $this->team !== [] ? 'Your team comes first. ' : '';
         $f = $this->filters;
 
         $n = fn (int $count, string $one, string $many) => $count.' '.($count === 1 ? $one : $many);
 
-        return number_format($this->total).' '.($this->total === 1 ? 'person' : 'people').' you can see across '.$n(count($f['departments']), 'department', 'departments').' and '.$n(count($f['locations']), 'location', 'locations').'. '.$teamFirst.'Hover a name to peek; select it for more.';
+        return new HtmlString(e(number_format($this->total).' '.($this->total === 1 ? 'person' : 'people').' you can see across '.$n(count($f['departments']), 'department', 'departments').' and '.$n(count($f['locations']), 'location', 'locations').'. '.$teamFirst).$hint);
     }
 
     public function updated(string $property): void

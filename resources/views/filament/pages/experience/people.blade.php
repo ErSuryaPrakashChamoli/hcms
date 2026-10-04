@@ -1,12 +1,20 @@
 <x-filament-panels::page>
     @php($f = $this->filters)
     <div class="pos-people">
-        <div class="pos-toolbar">
+        {{-- UX.17: on phones the filters sit behind one "Filters" button (with the number in use); wider screens are unchanged --}}
+        @php($activeFilters = count(array_filter([$department, $location, $status, $group])))
+        <div class="pos-toolbar" x-data="{ filters: false }">
             <label class="pos-search">
                 <span class="sr-only">Search people</span>
                 <x-filament::icon icon="heroicon-m-magnifying-glass" class="size-4 pos-muted" />
                 <input type="search" wire:model.live.debounce.250ms="search" placeholder="Name, employee ID or work email" autocomplete="off" />
             </label>
+            @if ($f['show'])
+                <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm pos-phone-only" x-on:click="filters = ! filters" :aria-expanded="filters.toString()" aria-expanded="false" aria-controls="pos-people-filters">
+                    <x-filament::icon icon="heroicon-m-funnel" class="size-4" /> Filters @if ($activeFilters > 0)<span class="pos-sec-count">{{ $activeFilters }}</span>@endif
+                </button>
+            @endif
+            <div id="pos-people-filters" class="pos-toolbar-filters" :data-open="filters.toString()">
             @if ($f['show'])
                 <select wire:model.live="department" class="pos-select" aria-label="Department">
                     <option value="">All departments</option>
@@ -29,6 +37,7 @@
                     <option value="manager" @selected($group === 'manager')>Group by manager</option>
                 </select>
             @endif
+            </div>
             <div class="pos-segmented ms-auto" role="group" aria-label="View">
                 <button type="button" wire:click="setDisplay('grid')" aria-pressed="{{ $display === 'grid' ? 'true' : 'false' }}" title="Cards"><x-filament::icon icon="heroicon-m-squares-2x2" class="size-4" /><span class="sr-only">Cards</span></button>
                 <button type="button" wire:click="setDisplay('list')" aria-pressed="{{ $display === 'list' ? 'true' : 'false' }}" title="Table"><x-filament::icon icon="heroicon-m-bars-3" class="size-4" /><span class="sr-only">Table</span></button>
@@ -85,8 +94,9 @@
                             <h2 class="pos-sec-title mb-2">{{ $groupLabel }}<span class="pos-sec-count">{{ $members->count() }}</span></h2>
                         @endif
                         @if ($display === 'list')
+                            {{-- UX.17: under 640 px each row reads as a card (name and status, role, department · location); no sideways scroll --}}
                             <div class="pos-panel overflow-x-auto">
-                                <table class="pos-table">
+                                <table class="pos-table pos-table-cards">
                                     <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col" class="hidden md:table-cell">Department</th><th scope="col" class="hidden lg:table-cell">Location</th><th scope="col" class="hidden lg:table-cell">Manager</th><th scope="col">Status</th></tr></thead>
                                     <tbody>
                                         @foreach ($members as $e)
@@ -95,10 +105,10 @@
                                             <tr wire:key="pl-{{ $e->id }}">
                                                 <td><x-pos.person :id="$e->id" :name="$e->display_name" /></td>
                                                 <td class="pos-secondary">{{ $p?->designation?->name ?? '—' }}</td>
-                                                <td class="hidden md:table-cell pos-secondary">{{ $p?->department?->name ?? '—' }}</td>
-                                                <td class="hidden lg:table-cell pos-secondary">{{ $p?->location?->name ?? '—' }}</td>
+                                                <td class="hidden md:table-cell pos-secondary pos-card-meta">{{ $p?->department?->name ?? '—' }}</td>
+                                                <td class="hidden lg:table-cell pos-secondary pos-card-meta">{{ $p?->location?->name ?? '—' }}</td>
                                                 <td class="hidden lg:table-cell">@if ($m)<x-pos.person :id="$m->id" :name="$m->person?->display_name" :avatar="false" />@else<span class="pos-muted">—</span>@endif</td>
-                                                <td>@if ($e->lifecycle_state)<x-pos.status :tone="in_array($e->lifecycle_state->value, ['notice_period', 'suspended'], true) ? 'warning' : (in_array($e->lifecycle_state->value, ['probation', 'onboarding', 'preboarding', 'pre_employee'], true) ? 'info' : 'neutral')" :label="$e->lifecycle_state->getLabel()" />@endif</td>
+                                                <td class="pos-card-status">@if ($e->lifecycle_state)<x-pos.status :tone="in_array($e->lifecycle_state->value, ['notice_period', 'suspended'], true) ? 'warning' : (in_array($e->lifecycle_state->value, ['probation', 'onboarding', 'preboarding', 'pre_employee'], true) ? 'info' : 'neutral')" :label="$e->lifecycle_state->getLabel()" />@endif</td>
                                             </tr>
                                         @endforeach
                                     </tbody>

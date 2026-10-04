@@ -14,6 +14,8 @@ use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use UnitEnum;
@@ -80,9 +82,10 @@ class OrganisationMap extends Page
         }
     }
 
-    public function getSubheading(): ?string
+    public function getSubheading(): string|Htmlable|null
     {
-        return 'Reporting lines you can see. Drag to pan, Ctrl + scroll or + / − to zoom, click a person to preview.';
+        // UX.17: the instructions match the device (mouse and keyboard, or touch).
+        return new HtmlString('Reporting lines you can see. <span class="pos-for-fine">Drag to pan, Ctrl + scroll or + / − to zoom, click a person to preview.</span><span class="pos-for-touch">Drag to pan, use + and − to zoom, tap a person to preview.</span>');
     }
 
     /** @return array<int, int|null> employee id => manager id, for visible, current employees */
