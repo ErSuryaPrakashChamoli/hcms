@@ -2027,3 +2027,23 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-command-head { padding-inline: var(--pos-space-4) var(--pos-space-2); }
     .pos-command-cancel { display: inline-flex; align-items: center; flex: none; height: 40px; padding-inline: var(--pos-space-2); border-radius: var(--pos-radius-md); font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); color: var(--pos-primary); }
 }
+
+/* Notification center on phones: the text takes the width; Open, read and snooze sit under it */
+@media (max-width: 767px) {
+    .pos-notif { flex-wrap: wrap; }
+    .pos-notif > :last-child { flex-basis: 100%; justify-content: flex-start; padding-inline-start: 44px; }
+}
+
+/* Forms in modals on phones: the submit row stays in reach at the bottom of the window */
+@media (max-width: 767px) {
+    .fi-modal-window .fi-modal-footer { position: sticky; bottom: 0; z-index: 1; background-color: inherit; padding-block: var(--pos-space-3); box-shadow: 0 -1px 0 var(--pos-border); }
+}
+
+/* Touch targets on coarse pointers (phones, tablets): comfortable without inflating desktop density */
+@media (pointer: coarse) {
+    .fi-topbar .fi-icon-btn, .fi-topbar .fi-topbar-open-sidebar-btn, .fi-topbar .pos-command-trigger, .fi-topbar .fi-user-menu-trigger { min-width: 40px; min-height: 40px; }
+    .pos-spacebar-link { display: inline-flex; align-items: center; min-height: 40px; }
+    .pos-command-action { height: 40px; padding-inline: var(--pos-space-4); }
+    .fi-ta-actions .fi-link, .fi-ta-actions .fi-icon-btn { min-height: 32px; min-width: 32px; }
+    .fi-ta-filter-indicators .fi-badge-delete-btn, .fi-badge .fi-badge-delete-btn { min-width: 24px; min-height: 24px; }
+}
