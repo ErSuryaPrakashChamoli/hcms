@@ -1,0 +1,131 @@
+{
+  "engine": "Playwright WebKit (WPE MiniBrowser) 26.5 — WebKit engine, not Apple Safari",
+  "results": [
+    {
+      "name": "login (employee) lands on Home",
+      "ok": true,
+      "ms": 4653,
+      "detail": "Good morning, Priya."
+    },
+    {
+      "name": "Home renders with the brief, no overflow",
+      "ok": true,
+      "ms": 825,
+      "detail": "Good morning, Priya."
+    },
+    {
+      "name": "Request leave opens the leave form",
+      "ok": true,
+      "ms": 1286,
+      "detail": null
+    },
+    {
+      "name": "no script errors (employee)",
+      "ok": true,
+      "ms": 1,
+      "detail": null
+    },
+    {
+      "name": "My Work: do this next",
+      "ok": true,
+      "ms": 1964,
+      "detail": "Start with Rahul Sharma’s casual leave · 1 day. 12 more things need you."
+    },
+    {
+      "name": "Approval Centre: decision workspace and keyboard J/K",
+      "ok": true,
+      "ms": 2752,
+      "detail": "6 decisions need you · 6 rows"
+    },
+    {
+      "name": "no script errors (manager)",
+      "ok": true,
+      "ms": 0,
+      "detail": null
+    },
+    {
+      "name": "People directory: search",
+      "ok": true,
+      "ms": 3396,
+      "detail": "1 card(s)"
+    },
+    {
+      "name": "People: peek on hover (list view)",
+      "ok": true,
+      "ms": 2735,
+      "detail": null
+    },
+    {
+      "name": "People: person drawer",
+      "ok": true,
+      "ms": 2435,
+      "detail": null
+    },
+    {
+      "name": "Employee 360: Now, Journey and Records views",
+      "ok": true,
+      "ms": 3563,
+      "detail": "journey → records"
+    },
+    {
+      "name": "Command palette: Ctrl+K, search, Esc",
+      "ok": true,
+      "ms": 3655,
+      "detail": "13 results"
+    },
+    {
+      "name": "Module list: context, lens narrows the table",
+      "ok": true,
+      "ms": 2504,
+      "detail": "4 leave requests you can see · 4 waiting for a decision · 4 changed th"
+    },
+    {
+      "name": "Keyboard: Tab reaches a focusable control with a visible focus ring",
+      "ok": true,
+      "ms": 1969,
+      "detail": "{\"tag\":\"BUTTON\",\"outline\":true}"
+    },
+    {
+      "name": "no script errors (HR)",
+      "ok": true,
+      "ms": 0,
+      "detail": null
+    },
+    {
+      "name": "Form: Context → Review → Confirm (department edit)",
+      "ok": true,
+      "ms": 2963,
+      "detail": "YOUR CHANGES 1 Save 1 change Name Engineering → Engineering & Platform 1 change "
+    },
+    {
+      "name": "Drawer form on a manage page (slide-over)",
+      "ok": true,
+      "ms": 3220,
+      "detail": null
+    },
+    {
+      "name": "Dark mode: graphite surfaces",
+      "ok": true,
+      "ms": 2383,
+      "detail": "rgb(14, 15, 19)"
+    },
+    {
+      "name": "iPhone viewport: Home with bottom bar, no overflow",
+      "ok": true,
+      "ms": 1133,
+      "detail": null
+    },
+    {
+      "name": "iPhone viewport: Approvals and a stacked module list",
+      "ok": true,
+      "ms": 5180,
+      "detail": null
+    },
+    {
+      "name": "iPhone viewport: Employee 360",
+      "ok": true,
+      "ms": 8377,
+      "detail": null
+    }
+  ]
+}
