@@ -18,6 +18,7 @@
                     @case('person-action') Start a change @break
                     @case('approval') Decision @break
                     @case('change') What changed @break
+                    @case('pulse') Workforce pulse @break
                     @default Details
                 @endswitch
             </h2>
@@ -121,6 +122,28 @@
                             <p class="pos-meta">Shown from the employee timeline, with the same visibility as their Employee 360. Sensitive categories need the matching permission.</p>
                             @if ($c['url'] && ! $c['person'])
                                 <a href="{{ $c['url'] }}" wire:navigate class="pos-btn pos-btn-secondary pos-btn-sm justify-self-start">Open</a>
+                            @endif
+                        </div>
+                    @endif
+                @elseif ($type === 'pulse')
+                    @php($d = $this->pulse)
+                    @if ($d === null)
+                        <x-pos.state variant="denied" title="Not available" why="Workforce figures need executive analytics access." />
+                    @else
+                        <div class="grid gap-4">
+                            <div class="grid gap-1"><p class="pos-section-title">{{ $d['title'] }}</p><p class="pos-meta">{{ $d['why'] }}</p></div>
+                            @if ($d['rows'] === [])
+                                <x-pos.state variant="empty" size="inline" title="No one to show." why="{{ $d['aggregated'] ? 'Nothing in this period.' : 'Nothing in this period that you can see.' }}" />
+                            @else
+                                <div class="pos-panel pos-stream">
+                                    @foreach ($d['rows'] as $row)
+                                        <div class="pos-stream-row">
+                                            @if ($row['person_id'])<x-pos.person :id="$row['person_id']" :name="$row['label']" size="sm" />@else<span class="pos-stream-title">{{ $row['label'] }}</span>@endif
+                                            <span class="pos-stream-meta">{{ $row['detail'] }}</span>
+                                            <span class="pos-stream-meta pos-num">{{ $row['date']?->format('j M') }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
                             @endif
                         </div>
                     @endif

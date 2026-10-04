@@ -8,7 +8,9 @@ use App\Domain\Experience\Services\ChangeFeed;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\PeopleVisibility;
 use App\Domain\Experience\Services\UxMetrics;
+use App\Domain\Experience\Services\WorkforcePulse;
 use App\Filament\Pages\OrganisationMap;
+use App\Filament\Pages\WorkforceCommandCentre;
 use App\Filament\Resources\Employees\EmployeeResource;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
@@ -38,7 +40,7 @@ class DrawerHost extends Component
     #[On('pos-drawer-open')]
     public function show(string $type, string|int $id): void
     {
-        if (! in_array($type, ['person', 'approval', 'person-action', 'change'], true)) {
+        if (! in_array($type, ['person', 'approval', 'person-action', 'change', 'pulse'], true)) {
             return;
         }
         if ($this->type !== null && ($this->type !== $type || $this->key !== (string) $id)) {
@@ -48,7 +50,7 @@ class DrawerHost extends Component
         $this->type = $type;
         $this->key = (string) $id;
         $this->done = null;
-        unset($this->person, $this->approval, $this->change);
+        unset($this->person, $this->approval, $this->change, $this->pulse);
         app(UxMetrics::class)->record('drawer.open');
     }
 
@@ -58,7 +60,7 @@ class DrawerHost extends Component
         $this->type = $previous['type'] ?? null;
         $this->key = $previous['key'] ?? null;
         $this->done = null;
-        unset($this->person, $this->approval, $this->change);
+        unset($this->person, $this->approval, $this->change, $this->pulse);
     }
 
     public function close(): void
@@ -144,6 +146,17 @@ class DrawerHost extends Component
         }
 
         return $item + ['person' => $person];
+    }
+
+    /** UX.15 Workforce pulse drill-down: the people (or departments) behind one figure, for viewers of the pulse only. */
+    #[Computed]
+    public function pulse(): ?array
+    {
+        if ($this->type !== 'pulse' || $this->key === null || ! WorkforceCommandCentre::canAccess()) {
+            return null;
+        }
+
+        return app(WorkforcePulse::class)->drill(auth()->user(), $this->key);
     }
 
     #[Computed]

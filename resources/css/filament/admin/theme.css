@@ -1530,6 +1530,7 @@ html {
     .pos-fact-grid { display: grid; gap: var(--pos-space-4) var(--pos-space-6); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
     .pos-fact-grid dt { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
     .pos-fact-grid dd { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); color: var(--pos-text); overflow-wrap: anywhere; }
+    .pos-ws-cols.pos-pulse-pair { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .pos-event-head { display: flex; align-items: center; gap: var(--pos-space-3); }
     .pos-stream-more { display: flex; justify-content: center; padding: var(--pos-space-2); box-shadow: inset 0 1px 0 var(--pos-border); }
 

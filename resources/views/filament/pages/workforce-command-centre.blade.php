@@ -1,134 +1,154 @@
 <x-filament-panels::page>
     @php
-        $m = $this->metrics;
-        $t = $this->trends;
+        $pulse = $this->pulse;
+        $m = $pulse['metrics'];
+        $mv = $pulse['movement'];
         $fmt = fn ($metric) => ($metric['restricted'] ?? false) || $metric['value'] === null ? '—' : \App\Filament\Pages\DashboardViewer::formatValue($metric['value'], $metric['format']);
-        $headline = [
-            ['headcount', 'heroicon-o-users', 'indigo'], ['joiners_30d', 'heroicon-o-user-plus', 'emerald'], ['exits_30d', 'heroicon-o-arrow-right-start-on-rectangle', 'rose'],
-            ['attrition_rate', 'heroicon-o-arrow-trending-down', 'amber'], ['absenteeism_rate', 'heroicon-o-calendar-days', 'sky'], ['people_cost', 'heroicon-o-banknotes', 'gold'],
-        ];
-        $series = fn (string $k) => array_values($t[$k]['series'])[0] ?? [];
+        // Change is coloured by meaning only where it has one (an internal move is neither good nor bad).
+        $delta = function (int|float $now, int|float $before, ?bool $risingIsBad) {
+            $d = $now - $before;
+            if ($d == 0) {
+                return ['same as last month', null];
+            }
+
+            return [($d > 0 ? '+' : '−').rtrim(rtrim(number_format(abs($d), 1), '0'), '.').' vs last month', $risingIsBad === null ? null : (($d > 0) === $risingIsBad ? 'bad' : 'good')];
+        };
+        $drill = fn (string $key) => "\$dispatch('pos-drawer-open', { type: 'pulse', id: '{$key}' })";
+        $headcountSeries = array_values($pulse['size']['series']['series'] ?? [])[0] ?? [];
     @endphp
 
-    {{-- Headline --}}
-    <section class="pos-kpis" aria-label="Headline metrics">
-        @foreach ($headline as [$key, $icon, $tone])
-            @if (isset($m[$key]))
-                <div class="pos-kpi" title="{{ $m[$key]['hint'] }}">
-                    <x-pos.tile-icon :tone="$tone" :icon="$icon" />
-                    <div class="min-w-0">
-                        <p class="pos-kpi-value pos-num">{{ $fmt($m[$key]) }}</p>
-                        <p class="pos-kpi-label">{{ $m[$key]['label'] }}</p>
+    <div class="pos-ws">
+        <div class="pos-ws-cols">
+            <div class="pos-ws-main">
+                {{-- Movement: the story of the month --}}
+                <x-pos.section title="Movement" sub="This month to date against last month. Select a figure to see the people behind it.">
+                    <div class="pos-panel pos-panel-pad grid gap-4">
+                        @if ($mv['rate'] !== null)
+                            <p class="pos-section-title"><span class="pos-num">{{ $mv['rate'] }}%</span> of headcount moved this month
+                                @if ($mv['rate_last'] !== null)<span class="pos-meta">· {{ $mv['rate_last'] }}% last month</span>@endif</p>
+                        @endif
+                        <div class="pos-figures">
+                            @foreach (['moves' => ['Internal moves', null], 'promotions' => ['Promotions', false], 'joiners' => ['Joiners', false], 'exits' => ['Exits', true]] as $key => [$label, $bad])
+                                @php([$text, $meaning] = $delta($mv['now'][$key], $mv['last'][$key], $bad))
+                                <x-pos.figure :value="$mv['now'][$key]" :label="$label" :delta="$text" :meaning="$meaning" :drill="$drill($key)" />
+                            @endforeach
+                            @if ($mv['critical'] !== null)
+                                <x-pos.figure :value="$mv['critical']" label="Critical positions affected" :delta="$mv['critical'] > 0 ? 'incumbent leaving or seat empty' : 'none at risk'" :meaning="$mv['critical'] > 0 ? 'bad' : 'good'" />
+                            @endif
+                        </div>
+                        <p class="pos-meta">Movement rate = joiners, exits, promotions and internal moves ÷ headcount. Moves and promotions are position changes effective in the month.</p>
                     </div>
+                </x-pos.section>
+
+                {{-- Size --}}
+                <x-pos.section title="Size">
+                    <div class="pos-panel pos-panel-pad grid gap-4">
+                        @php([$hcText, $hcMeaning] = $delta($pulse['size']['headcount'], $pulse['size']['last'], null))
+                        <div class="pos-figures">
+                            <x-pos.figure :value="number_format($pulse['size']['headcount'])" label="Headcount today" :delta="$hcText" />
+                            @if (isset($m['avg_tenure_months']))<x-pos.figure :value="$fmt($m['avg_tenure_months'])" label="Average tenure, months" />@endif
+                            @if (isset($m['attrition_rate']))<x-pos.figure :value="$fmt($m['attrition_rate'])" label="Attrition, 12 months" />@endif
+                        </div>
+                        @if (count($headcountSeries) > 1)
+                            <x-pos.sparkline :values="$headcountSeries" :labels="$pulse['size']['series']['labels']" label="Headcount, last 12 months" />
+                        @endif
+                    </div>
+                </x-pos.section>
+
+                {{-- Attendance, performance and capability --}}
+                <div class="pos-ws-cols pos-pulse-pair">
+                    <x-pos.section title="Attendance">
+                        <div class="pos-panel pos-panel-pad pos-figures">
+                            <x-pos.figure :value="$fmt($m['absenteeism_rate'])" label="Absenteeism, last 30 days" :meaning="(($m['absenteeism_rate']['value'] ?? 0) >= 5) ? 'bad' : null" :delta="(($m['absenteeism_rate']['value'] ?? 0) >= 5) ? 'above 5%' : null" />
+                            <x-pos.figure :value="$fmt($m['on_leave_today'])" label="On leave today" :drill="$drill('on_leave')" />
+                        </div>
+                    </x-pos.section>
+                    <x-pos.section title="Performance and capability">
+                        <div class="pos-panel pos-panel-pad grid gap-4">
+                            <div class="pos-figures">
+                                <x-pos.figure :value="$fmt($m['high_performers'])" label="High performers" />
+                                <x-pos.figure :value="$fmt($m['learning_completion'])" label="Mandatory learning done" :meaning="(($m['learning_completion']['value'] ?? 100) < 80) ? 'bad' : null" />
+                            </div>
+                            @if (($m['high_performers']['restricted'] ?? false) || ($m['learning_completion']['restricted'] ?? false))
+                                <p class="pos-meta">Some figures need the matching analytics permission and show “—”.</p>
+                            @endif
+                        </div>
+                    </x-pos.section>
                 </div>
-            @endif
-        @endforeach
-    </section>
 
-    <div class="pos-wcc">
-        {{-- What changed --}}
-        <section class="pos-card" aria-labelledby="wcc-changed">
-            <p class="pos-label">What changed</p>
-            <h2 id="wcc-changed" class="pos-h3 mt-1">This month against last month</h2>
-            <div class="pos-metrics mt-4">
-                @forelse ($this->getChanges() as $c)
-                    @php($d = $c['now'] - $c['before'])
-                    <div class="pos-metric-cell">
-                        <p class="pos-caption">{{ $c['label'] }}</p>
-                        <p class="pos-metric pos-num">{{ number_format($c['now']) }}</p>
-                        <p class="pos-caption {{ $d === 0.0 ? '' : (($d > 0) !== $c['rising_is_bad'] ? 'text-pos-success' : 'text-pos-danger') }}">{{ $d === 0.0 ? 'No change' : ($d > 0 ? '↑ '.number_format($d) : '↓ '.number_format(abs($d))).' vs last month' }}</p>
-                    </div>
-                @empty
-                    <p class="pos-body-sm">Not enough history yet.</p>
-                @endforelse
+                <x-pos.section title="Critical skills" sub="Skills with the fewest advanced or expert holders.">
+                    @if ($pulse['critical_skills'] === [])
+                        <x-pos.state variant="empty" size="inline" title="No skills recorded yet." />
+                    @else
+                        <div class="pos-panel pos-stream">
+                            @foreach (array_slice($pulse['critical_skills'], 0, 6) as $skill)
+                                <div class="pos-stream-row" data-tone="{{ ($skill['experts'] ?? 0) === 0 ? 'danger' : 'info' }}">
+                                    <span class="pos-stream-mark" aria-hidden="true"></span>
+                                    <span class="pos-stream-body"><span class="pos-stream-title">{{ $skill['name'] ?? $skill['skill'] ?? 'Skill' }}</span><span class="pos-stream-meta">{{ $skill['holders'] ?? 0 }} holders · {{ $skill['experts'] ?? 0 }} expert</span></span>
+                                    @if (($skill['experts'] ?? 0) === 0)<x-pos.status tone="danger" label="No expert" />@else<span></span>@endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </x-pos.section>
+
+                {{-- Exceptions --}}
+                <x-pos.section title="Exceptions" :count="count($this->getRisks()) ?: null">
+                    @if ($this->getRisks() === [])
+                        <x-pos.state variant="caught-up" size="inline" title="No workforce risk crosses its threshold." why="Attrition, absenteeism, mandatory learning, skills without an expert and open grievances are watched here." />
+                    @else
+                        <div class="pos-panel pos-stream">
+                            @foreach ($this->getRisks() as $r)
+                                <div class="pos-stream-row" data-tone="{{ $r['severity'] }}">
+                                    <span class="pos-figure-value w-16 text-center">{{ $r['value'] }}</span>
+                                    <span class="pos-stream-body"><span class="pos-stream-title">{{ $r['title'] }}</span><span class="pos-stream-meta">{{ $r['why'] }}</span></span>
+                                    @if ($r['url'])<a href="{{ $r['url'] }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Open</a>@else<span></span>@endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </x-pos.section>
             </div>
-        </section>
 
-        {{-- Requires a decision --}}
-        <section class="pos-card" aria-labelledby="wcc-decide">
-            <p class="pos-label">Requires a decision</p>
-            <h2 id="wcc-decide" class="pos-h3 mt-1">Waiting on you or your approval body</h2>
-            <ul class="mt-3 space-y-2">
-                @forelse ($this->getDecisions() as $dec)
-                    <li>
-                        <a @if ($dec['url']) href="{{ $dec['url'] }}" wire:navigate @endif class="pos-company-row">
-                            <x-pos.tile-icon :tone="$dec['tone']" icon="heroicon-o-check-badge" size="sm" />
-                            <span class="flex-1 pos-body-sm font-medium text-pos-text">{{ $dec['title'] }}</span>
-                            <span class="pos-count" data-tone="{{ $dec['count'] > 0 ? 'danger' : 'neutral' }}">{{ $dec['count'] }}</span>
-                        </a>
-                    </li>
-                @empty
-                    <li class="pos-body-sm">Nothing is waiting for a decision from you.</li>
-                @endforelse
-            </ul>
-        </section>
-    </div>
-
-    {{-- Needs attention --}}
-    <section class="pos-card" aria-labelledby="wcc-attention">
-        <p class="pos-label">Needs attention</p>
-        <h2 id="wcc-attention" class="pos-h3 mt-1">{{ count($this->getRisks()) === 0 ? 'No workforce risk crosses its threshold' : 'Risks above their thresholds' }}</h2>
-        @if (count($this->getRisks()) > 0)
-            <ul class="pos-list mt-3">
-                @foreach ($this->getRisks() as $r)
-                    <li class="pos-list-row pos-attention" data-severity="{{ $r['severity'] }}">
-                        <span class="pos-severity" aria-hidden="true"></span>
-                        <span class="pos-metric pos-num w-20 shrink-0">{{ $r['value'] }}</span>
-                        <div class="min-w-0 flex-1"><p class="pos-body font-medium">{{ $r['title'] }}</p><p class="pos-caption">{{ $r['why'] }}</p></div>
-                    </li>
-                @endforeach
-            </ul>
-        @endif
-    </section>
-
-    {{-- Trending --}}
-    <div class="pos-wcc">
-        <section class="pos-card" aria-labelledby="wcc-trend-hc">
-            <p class="pos-label">Trending</p>
-            <h2 id="wcc-trend-hc" class="pos-h3 mt-1">Headcount · last 12 months</h2>
-            @if (count($series('headcount')) > 1)
-                <x-pos.sparkline :values="$series('headcount')" :labels="$t['headcount']['labels']" label="Headcount, last 12 months" class="mt-4" />
-            @endif
-        </section>
-        <section class="pos-card" aria-labelledby="wcc-trend-flow">
-            <p class="pos-label">Trending</p>
-            <h2 id="wcc-trend-flow" class="pos-h3 mt-1">Joiners and leavers · last 12 months</h2>
-            <x-pos.columns class="mt-4" :labels="$t['joiners']['labels']" label="Joiners and leavers by month"
-                :series="[['name' => 'Joined', 'values' => $series('joiners'), 'color' => 2], ['name' => 'Left', 'values' => $series('exits'), 'color' => 4]]" />
-        </section>
-    </div>
-
-    @if (! ($m['people_cost']['restricted'] ?? false) && count($series('people_cost')) > 1 && array_sum($series('people_cost')) > 0)
-        <section class="pos-card" aria-labelledby="wcc-cost">
-            <p class="pos-label">Trending</p>
-            <h2 id="wcc-cost" class="pos-h3 mt-1">People cost · finalized payroll, last 12 months</h2>
-            <x-pos.sparkline :values="$series('people_cost')" :labels="$t['people_cost']['labels']" label="People cost, last 12 months" class="mt-4" />
-        </section>
-    @endif
-
-    <div class="pos-wcc">
-        <x-filament::section heading="Critical skills" description="Skills with the fewest advanced or expert holders — succession and training risk.">
-            <table class="pos-table">
-                <thead><tr><th scope="col">Skill</th><th scope="col" class="text-end">Holders</th><th scope="col" class="text-end">Advanced / expert</th></tr></thead>
-                <tbody>
-                    @forelse ($this->getCriticalSkills() as $s)
-                        <tr><td>{{ $s['skill'] }}</td><td class="text-end pos-num">{{ $s['holders'] }}</td><td class="text-end pos-num {{ $s['experts'] === 0 ? 'text-pos-danger font-semibold' : '' }}">{{ $s['experts'] }}</td></tr>
-                    @empty
-                        <tr><td colspan="3" class="pos-caption">No skills recorded yet.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </x-filament::section>
-
-        <section class="pos-card" aria-labelledby="wcc-more">
-            <p class="pos-label">All metrics</p>
-            <h2 id="wcc-more" class="pos-h3 mt-1">Definitions and privacy rules apply</h2>
-            <dl class="pos-facts mt-3">
-                @foreach ($m as $metric)
-                    <div><dt>{{ $metric['label'] }}</dt><dd class="pos-num">{{ $fmt($metric) }}@if ($metric['hint'])<span class="pos-caption block">{{ $metric['hint'] }}</span>@endif</dd></div>
-                @endforeach
-                <div><dt>Open positions</dt><dd>—<span class="pos-caption block">Requisitions arrive through the RMS integration</span></dd></div>
-            </dl>
-        </section>
+            <aside class="pos-ws-side" aria-label="Decisions and planning">
+                <x-pos.section title="Requires a decision">
+                    <div class="pos-panel pos-stream">
+                        @forelse ($this->getDecisions() as $d)
+                            <a @if ($d['url']) href="{{ $d['url'] }}" wire:navigate @endif class="pos-stream-row" data-tone="{{ $d['count'] > 0 ? 'warning' : 'neutral' }}">
+                                <span class="pos-figure-value w-10 text-center">{{ $d['count'] }}</span>
+                                <span class="pos-stream-body"><span class="pos-stream-title">{{ $d['title'] }}</span></span>
+                                <span aria-hidden="true" class="pos-muted">→</span>
+                            </a>
+                        @empty
+                            <x-pos.state variant="caught-up" size="inline" title="Nothing needs your decision." />
+                        @endforelse
+                    </div>
+                </x-pos.section>
+                @if ($pulse['planning']['open_positions'] !== null || $pulse['planning']['plans_in_review'] !== null)
+                    <x-pos.section title="Planning">
+                        <div class="pos-panel pos-panel-pad pos-figures">
+                            @if ($pulse['planning']['open_positions'] !== null)<x-pos.figure :value="$pulse['planning']['open_positions']" label="Open positions" />@endif
+                            @if ($pulse['planning']['plans_in_review'] !== null)<x-pos.figure :value="$pulse['planning']['plans_in_review']" label="Plans awaiting review" />@endif
+                        </div>
+                    </x-pos.section>
+                @endif
+                @if (isset($m['people_cost']) && ! ($m['people_cost']['restricted'] ?? false) && $m['people_cost']['value'] !== null)
+                    <x-pos.section title="People cost">
+                        <div class="pos-panel pos-panel-pad"><x-pos.figure :value="$fmt($m['people_cost'])" label="{{ $m['people_cost']['hint'] ?? 'Last finalised payroll' }}" /></div>
+                    </x-pos.section>
+                @endif
+                <x-pos.section title="Go deeper">
+                    <div class="pos-panel pos-stream">
+                        @foreach (array_filter([
+                            \App\Filament\Pages\ChangeIntelligencePage::canAccess() ? ['Change intelligence', 'Every recorded change, by person and date', \App\Filament\Pages\ChangeIntelligencePage::getUrl()] : null,
+                            \App\Filament\Pages\WorkforceIntelligence::canAccess() ? ['Workforce intelligence', 'Signals and their reasons', \App\Filament\Pages\WorkforceIntelligence::getUrl()] : null,
+                            \App\Filament\Pages\PeopleAnalyticsPage::canAccess() ? ['People analytics', 'Breakdowns with privacy thresholds', \App\Filament\Pages\PeopleAnalyticsPage::getUrl()] : null,
+                        ]) as [$label, $hint, $url])
+                            <a href="{{ $url }}" wire:navigate class="pos-stream-row"><span class="pos-stream-icon" aria-hidden="true"><x-filament::icon icon="heroicon-o-presentation-chart-line" class="size-4" /></span><span class="pos-stream-body"><span class="pos-stream-title">{{ $label }}</span><span class="pos-stream-meta">{{ $hint }}</span></span><span aria-hidden="true" class="pos-muted">→</span></a>
+                        @endforeach
+                    </div>
+                </x-pos.section>
+            </aside>
+        </div>
     </div>
 </x-filament-panels::page>

@@ -6,6 +6,7 @@ use App\Domain\Analytics\Services\WorkforceMetrics;
 use App\Domain\Configuration\Enums\ChangeStatus;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Experience\Services\ApprovalCenter;
+use App\Domain\Experience\Services\WorkforcePulse;
 use App\Domain\Workforce\Models\WorkforcePlanVersion;
 use App\Filament\Resources\ConfigurationChanges\ConfigurationChangeResource;
 use App\Filament\Resources\WorkforcePlans\WorkforcePlanResource;
@@ -57,9 +58,21 @@ class WorkforceCommandCentre extends Page
         return app(WorkforceMetrics::class)->criticalSkills();
     }
 
+    /** UX.15: the workforce told as a story ("Workforce pulse"). */
+    public function getHeading(): string
+    {
+        return 'Workforce pulse';
+    }
+
     public function getSubheading(): ?string
     {
-        return 'What changed, what needs attention, what is trending and what requires a decision.';
+        return $this->pulse['headline'];
+    }
+
+    #[Computed]
+    public function pulse(): array
+    {
+        return app(WorkforcePulse::class)->for(auth()->user());
     }
 
     /** What changed: this month against last month, from the 12-month series. @return list<array{label: string, now: float, before: float, rising_is_bad: bool}> */
