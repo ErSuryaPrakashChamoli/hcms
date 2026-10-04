@@ -79,7 +79,30 @@ class People extends Page
 
     public function mount(): void
     {
-        $this->display ??= app(ExperiencePreferences::class)->for(auth()->user())['density'] === 'compact' ? 'list' : 'grid';
+        // UX.16: the directory opens the way each role works with people (a URL choice always wins): HR, payroll and
+        // administrators on the list (employment context), executives grouped by department, everyone else on cards.
+        $experience = $this->experience();
+        $this->display ??= in_array($experience, ['hr', 'payroll', 'admin'], true) || app(ExperiencePreferences::class)->for(auth()->user())['density'] === 'compact' ? 'list' : 'grid';
+        if ($this->group === null && $experience === 'executive' && auth()->user()->hasPermission('employee.view')) {
+            $this->group = 'department';
+        }
+    }
+
+    public function experience(): string
+    {
+        $user = auth()->user();
+
+        return RoleLens::experienceOf(app(RoleLens::class)->primary($user, app(ExperiencePreferences::class)->for($user)['lens'] ?? null));
+    }
+
+    /** UX.16: a manager's current reports (already visible to them), to list first. @return list<int> */
+    #[Computed]
+    public function team(): array
+    {
+        $lenses = app(RoleLens::class);
+        $me = $lenses->has(auth()->user(), RoleLens::MANAGER) ? $lenses->employee(auth()->user()) : null;
+
+        return $me ? $me->directReports()->currentlyEffective()->pluck('employee_id')->map(fn ($id) => (int) $id)->values()->all() : [];
     }
 
     public function getSubheading(): ?string
@@ -87,11 +110,12 @@ class People extends Page
         if (! auth()->user()->hasPermission('employee.view')) {
             return 'Your manager, your team and you. Hover a name to peek; select it for more.';
         }
+        $teamFirst = $this->team !== [] ? 'Your team comes first. ' : '';
         $f = $this->filters;
 
         $n = fn (int $count, string $one, string $many) => $count.' '.($count === 1 ? $one : $many);
 
-        return number_format($this->total).' '.($this->total === 1 ? 'person' : 'people').' you can see across '.$n(count($f['departments']), 'department', 'departments').' and '.$n(count($f['locations']), 'location', 'locations').'. Hover a name to peek; select it for more.';
+        return number_format($this->total).' '.($this->total === 1 ? 'person' : 'people').' you can see across '.$n(count($f['departments']), 'department', 'departments').' and '.$n(count($f['locations']), 'location', 'locations').'. '.$teamFirst.'Hover a name to peek; select it for more.';
     }
 
     public function updated(string $property): void
@@ -187,7 +211,12 @@ class People extends Page
     #[Computed]
     public function people()
     {
-        return $this->query()->join('people', 'people.id', '=', 'employees.person_id')->orderBy('people.first_name')->orderBy('people.last_name')
+        $team = $this->team;
+
+        return $this->query()->join('people', 'people.id', '=', 'employees.person_id')
+            // UX.16: a manager's own team first (integer ids only; the query itself is the viewer's PeopleVisibility query).
+            ->when($team !== [], fn (Builder $q) => $q->orderByRaw('CASE WHEN employees.id IN ('.implode(',', array_map('intval', $team)).') THEN 0 ELSE 1 END'))
+            ->orderBy('people.first_name')->orderBy('people.last_name')
             ->select('employees.*')->limit($this->limit)->get();
     }
 
