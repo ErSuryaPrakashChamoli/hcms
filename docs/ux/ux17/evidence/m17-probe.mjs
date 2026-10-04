@@ -39,12 +39,19 @@ const measure = () => {
   const scrollers = [...document.querySelectorAll('main *')].filter((el) => { if (el.scrollWidth <= el.clientWidth + 1 || el.clientWidth === 0) return false; const o = getComputedStyle(el).overflowX; return o === 'auto' || o === 'scroll'; })
     .map((el) => ({ cls: String(el.className).split(' ').slice(0, 2).join('.'), hidden: el.scrollWidth - el.clientWidth }));
   const lead = document.querySelector('.pos-ws-main > *, .pos-360-viewer, [data-pos-lead]');
+  // UX.17 after-the-fact measures (identical on both servers): the 360 viewer panel and the lead section's first row.
+  const viewer = document.querySelector('.pos-360-viewer');
+  const firstSec = document.querySelector('.pos-home .pos-ws-main > *');
+  const leadRow = firstSec?.querySelector('.pos-stream-row, .pos-workforce-headline');
   const navItems = navVisible ? [...nav.querySelectorAll('.pos-bottom-item')].map((a) => (a.getAttribute('aria-current') ? '*' : '') + a.textContent.trim().replace(/\s+/g, ' ').replace(/\d+ waiting/, '').trim()) : [];
   return {
     overflow: document.documentElement.scrollWidth - innerWidth,
     fold, screens: +(document.documentElement.scrollHeight / innerHeight).toFixed(1),
     firstScreen, heads: heads.slice(0, 30),
     leadY: lead ? Math.round(lead.getBoundingClientRect().top + scrollY) : null,
+    viewerY: viewer ? Math.round(viewer.getBoundingClientRect().top + scrollY) : null,
+    leadRowY: leadRow ? Math.round(leadRow.getBoundingClientRect().top + scrollY) : null,
+    experience: document.querySelector('.pos-bottom-nav')?.dataset.experience ?? null,
     targets: inter.length, small24: small24.length, small40: small40.length,
     small24Samples: [...new Set(small24.map(label))].slice(0, 8), small40Samples: [...new Set(small40.map(label))].slice(0, 12),
     scrollers: scrollers.slice(0, 6), nav: navItems,
@@ -67,7 +74,7 @@ for (const vp of VPS.split(',')) {
       p.off('pageerror', onErr);
       const row = { vp, role, path, status: res?.status() ?? 'ERR', ...m, errors };
       rows.push(row);
-      console.log(vp, role, path, row.status, 'ovf', m.overflow, 'screens', m.screens, 'lead', m.leadY, '/', m.fold, 's24', m.small24, 's40', m.small40, 'first:', (m.firstScreen ?? []).slice(0, 6).join(' | '));
+      console.log(vp, role, path, row.status, 'ovf', m.overflow, 'screens', m.screens, 'lead', m.leadY, 'row', m.leadRowY, 'viewer', m.viewerY, '/', m.fold, 's24', m.small24, 's40', m.small40, 'first:', (m.firstScreen ?? []).slice(0, 6).join(' | '));
     }
     await ctx.close();
   }

@@ -1,0 +1,466 @@
+[
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "leave",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "palette",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin/my-work",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin/notifications",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "more",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin/approvals",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin/employees/3",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin/my-team",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin/notifications",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list",
+  "state": "filters",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/3",
+  "state": "ai",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin/employees",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "meera.iyer",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "meera.iyer",
+  "path": "/admin/organisation-map",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "kavya.menon",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "kavya.menon",
+  "path": "/admin/users",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "kavya.menon",
+  "path": "/admin",
+  "state": "menu",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "phone",
+  "who": "arjun.bose",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "tablet",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "tablet",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/3",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "tablet",
+  "who": "kavya.menon",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "desktop",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "desktop",
+  "who": "amit.verma",
+  "path": "/admin/employees/3",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "desktop",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "vp": "desktop",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "palette",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "leave",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "palette",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin/my-work",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "priya.nair",
+  "path": "/admin/notifications",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "more",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin/approvals",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin/employees/3",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin/my-team",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "amit.verma",
+  "path": "/admin/notifications",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list",
+  "state": "filters",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/3",
+  "state": "ai",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "neha.kapoor",
+  "path": "/admin/employees",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "meera.iyer",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "meera.iyer",
+  "path": "/admin/organisation-map",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "kavya.menon",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "kavya.menon",
+  "path": "/admin/users",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "kavya.menon",
+  "path": "/admin",
+  "state": "menu",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "phone",
+  "who": "arjun.bose",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "tablet",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "tablet",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/3",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "tablet",
+  "who": "kavya.menon",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "desktop",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "desktop",
+  "who": "amit.verma",
+  "path": "/admin/employees/3",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "desktop",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "vp": "desktop",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "palette",
+  "violations": []
+ }
+]

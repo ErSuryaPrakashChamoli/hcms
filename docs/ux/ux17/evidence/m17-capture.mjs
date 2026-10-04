@@ -29,6 +29,8 @@ export const LIST = [
   ['p5-admin-audit', A, '/admin/audit-events', 'phone', L], ['p5-admin-360', A, '/admin/employees/3', 'phone', L], ['p5-admin-centre', A, '/admin/admin-centre', 'phone', L],
   ['p6-payroll-home', Y, '/admin', 'phone', L], ['p6-payroll-people', Y, '/admin/people', 'phone', L],
   ['p7-manager-notifications', M, '/admin/notifications', 'phone', LD], ['p7-hr-menu', H, '/admin', 'phone', L, 'menu'],
+  // After only (UX.17 states that did not exist before): the directory filters open, a phone list expanded in place
+  ...(process.env.AFTER ? [['p8-hr-people-filters-open', H, '/admin/people', 'phone', L, 'filters'], ['p8-manager-home-show-more', M, '/admin', 'phone', L, 'more'], ['p8-manager-bell', M, '/admin', 'phone', L, 'bell']] : []),
   // Small phone 360 × 780: the five Homes
   ['s1-employee-home', E, '/admin', 'phone2', L], ['s2-manager-home', M, '/admin', 'phone2', L], ['s3-hr-home', H, '/admin', 'phone2', L],
   ['s4-executive-home', X, '/admin', 'phone2', L], ['s5-admin-home', A, '/admin', 'phone2', L],
@@ -67,6 +69,9 @@ for (const [name, email, path, vp, themes, action] of LIST) {
     if (action === 'leave') { await p.locator('[data-pos-action="request_leave_header"], [data-pos-action="request_leave"]').first().click(); await p.waitForTimeout(1500); }
     if (action === 'ai') { await p.locator('button:has-text("Summarise")').first().click().catch(() => {}); await p.waitForTimeout(3000); }
     if (action === 'menu') { await p.locator('.fi-topbar-open-sidebar-btn').first().click().catch(() => {}); await p.waitForTimeout(800); }
+    if (action === 'filters') { await p.locator('button[aria-controls="pos-people-filters"]').first().click().catch(() => {}); await p.waitForTimeout(500); }
+    if (action === 'more') { const m = p.locator('.pos-phone-more:visible').first(); await m.scrollIntoViewIfNeeded().catch(() => {}); await m.click().catch(() => {}); await p.waitForTimeout(500); await m.evaluate((e) => e.closest('.pos-phone-cap')?.scrollIntoView({ block: 'start' })).catch(() => {}); await p.waitForTimeout(300); }
+    if (action === 'bell') { await p.locator('.fi-topbar [aria-label^="Notifications"]').first().click().catch(() => {}); await p.waitForTimeout(1200); }
     const file = `${OUT}/${name}-${theme}.png`;
     await p.screenshot({ path: file });
     if (FULL) await p.screenshot({ path: `${FULL}/${name}-${theme}.png`, fullPage: true });

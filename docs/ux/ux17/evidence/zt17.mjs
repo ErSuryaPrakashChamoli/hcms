@@ -49,7 +49,7 @@ const TASKS = [
     ] },
   { role: 'Manager', email: 'amit.verma@demo.local', ask: 'Show me my team.',
     steps: [
-      async (p) => { const b = await tapIf(p, '.pos-bottom-nav a:has-text("Team"), .pos-bottom-nav a:has-text("People")'); return b ? { tap: b, then: '.fi-main :text("My team"), .fi-main :text("Your team")', firstScreen: true } : null; },
+      async (p) => { const b = await tapIf(p, '.pos-bottom-nav a:has-text("Team"), .pos-bottom-nav a:has-text("People")'); return b ? { tap: b, then: '.fi-main h1:has-text("My team"), .fi-main p:has-text("Your team comes first")', firstScreen: true } : null; },
     ] },
   { role: 'HR', email: 'neha.kapoor@demo.local', ask: 'Find Rahul Sharma.',
     steps: [
