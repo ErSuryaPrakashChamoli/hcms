@@ -75,6 +75,25 @@ final class ExperienceNavigation
         'admin' => ['AdminCentre'],
     ];
 
+    /**
+     * UX.16: section order per experience. Home first everywhere, then the person's own kind of work; every other
+     * section the person can open follows (nothing is hidden to look simpler, and each still checks canAccess()).
+     */
+    public const ORDER = [
+        'employee' => ['home', 'work', 'people', 'services', 'communication', 'organisation', 'insights', 'workflows', 'admin'],
+        'manager' => ['home', 'work', 'people', 'organisation', 'insights', 'services', 'communication', 'workflows', 'admin'],
+        'hr' => ['home', 'work', 'people', 'organisation', 'workflows', 'services', 'communication', 'insights', 'admin'],
+        'payroll' => ['home', 'work', 'people', 'insights', 'services', 'organisation', 'workflows', 'communication', 'admin'],
+        'executive' => ['home', 'insights', 'people', 'organisation', 'work', 'communication', 'services', 'workflows', 'admin'],
+        'admin' => ['home', 'admin', 'organisation', 'people', 'workflows', 'insights', 'work', 'services', 'communication'],
+    ];
+
+    /** UX.16: a role's preferred landing for a section, tried before LANDING (still only what the person can open). */
+    public const ROLE_LANDING = [
+        'manager' => ['people' => ['MyTeam']],
+        'admin' => ['organisation' => ['OrganisationDesigner'], 'insights' => ['ChangeIntelligencePage', 'AuditEventResource']],
+    ];
+
     /** Preferred landing per space or group (the context rail opens it). */
     private const AREA_LANDING = [
         'Lifecycle' => ['EmployeeResource', 'OnboardingPlanResource'],
@@ -130,8 +149,10 @@ final class ExperienceNavigation
         $items = [];
         $sort = 0;
         $current = $this->currentSection($user);
-        foreach (self::SECTIONS as $key => $section) {
-            $landing = $this->landing($user, $key);
+        $experience = $this->experience($user);
+        foreach (self::ORDER[$experience] ?? array_keys(self::SECTIONS) as $key) {
+            $section = self::SECTIONS[$key];
+            $landing = $this->landing($user, $key, $experience);
             if ($landing === null) {
                 continue;
             }
@@ -158,17 +179,27 @@ final class ExperienceNavigation
         return $items;
     }
 
-    /** @return list<string> sections the viewer can open, in order */
+    /** @return list<string> sections the viewer can open, in the order of their experience */
     public function sections(User $user): array
     {
-        return array_values(array_filter(array_keys(self::SECTIONS), fn (string $key) => $this->landing($user, $key) !== null));
+        $experience = $this->experience($user);
+
+        return array_values(array_filter(self::ORDER[$experience] ?? array_keys(self::SECTIONS), fn (string $key) => $this->landing($user, $key, $experience) !== null));
+    }
+
+    /** UX.16: the experience that orders the navigation (the same primary lens as Home, including "Home opens as"). */
+    public function experience(User $user): string
+    {
+        $lenses = app(RoleLens::class);
+
+        return RoleLens::experienceOf($lenses->primary($user, app(ExperiencePreferences::class)->for($user)['lens'] ?? null));
     }
 
     /** @return array{label: string, url: string}|null */
-    public function landing(User $user, string $section): ?array
+    public function landing(User $user, string $section, ?string $experience = null): ?array
     {
         $modules = $this->modulesIn($user, $section);
-        foreach (self::LANDING[$section] ?? [] as $basename) {
+        foreach ([...(self::ROLE_LANDING[$experience ?? ''][$section] ?? []), ...(self::LANDING[$section] ?? [])] as $basename) {
             foreach ($modules as $module) {
                 if (class_basename($module['key']) === $basename) {
                     return ['label' => $module['label'], 'url' => $module['url']];
