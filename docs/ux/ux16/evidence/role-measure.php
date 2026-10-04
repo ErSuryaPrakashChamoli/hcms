@@ -29,8 +29,12 @@ $boot = function (?Request $request = null) use ($root) {
 $personas = ['priya.nair' => 'Employee', 'amit.verma' => 'Manager', 'neha.kapoor' => 'HR', 'arjun.bose' => 'Payroll', 'meera.iyer' => 'Executive', 'kavya.menon' => 'Administrator'];
 $screens = ['Home' => '/admin', 'My work' => '/admin/my-work', 'People' => '/admin/people'];
 $out = [];
+$only = getenv('ONLY') ?: null; // optional "viewer:Screen" to repeat one case
 foreach ($personas as $who => $role) {
     foreach ($screens as $name => $path) {
+        if ($only !== null && $only !== $who.':'.$name) {
+            continue;
+        }
         $runs = [];
         foreach (range(1, 4) as $pass) {
             $request = Request::create($path, 'GET');

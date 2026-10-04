@@ -199,8 +199,14 @@ final class RoleSignals
                 'Probation ends within 14 days', 'Managers need to confirm, extend or end probation before the date passes.', 'warning', $this->url($probationUrl));
             $add('probation_overdue', $this->safe(fn () => $employees([LifecycleState::Probation->value])->where('probation_end_date', '<', $today)->count(), 0),
                 'Probation decisions overdue', 'These people are past their probation end date without a decision.', 'danger', $this->url($probationUrl));
-            $add('changes_ahead', $this->safe(fn () => EmployeePosition::query()->whereHas('employee')->where('change_type', '!=', 'hire')
-                ->whereDate('effective_from', '>', $today)->whereDate('effective_from', '<=', $today->copy()->addDays(7))->distinct()->count('employee_id'), 0),
+            // The few position rows in the window first, then those employees through the viewer's scoped query (a
+            // correlated exists over every position row cost ~165 ms at 10k employees).
+            $add('changes_ahead', $this->safe(function () use ($today) {
+                $ids = EmployeePosition::query()->where('change_type', '!=', 'hire')->whereDate('effective_from', '>', $today)
+                    ->whereDate('effective_from', '<=', $today->copy()->addDays(7))->distinct()->pluck('employee_id')->all();
+
+                return $ids === [] ? 0 : Employee::query()->whereKey($ids)->count();
+            }, 0),
                 'Employee changes take effect this week', 'Transfers, promotions and other changes scheduled for the next 7 days.', 'info',
                 $this->url(fn () => ChangeIntelligencePage::canAccess() ? ChangeIntelligencePage::getUrl() : EmployeeResource::getUrl('index')));
         }
@@ -268,12 +274,12 @@ final class RoleSignals
      *
      * @return array{headline: string, movement: array<string, mixed>, decisions: list<array<string, mixed>>}|null
      */
-    public function workforce(User $user): ?array
+    public function workforce(User $user, bool $withTrend = true): ?array
     {
         if (! $user->hasPermission('analytics.executive')) {
             return null;
         }
-        $pulse = $this->safe(fn () => app(WorkforcePulse::class)->movement($user));
+        $pulse = $this->safe(fn () => app(WorkforcePulse::class)->movement($user, $withTrend));
         if ($pulse === null) {
             return null;
         }

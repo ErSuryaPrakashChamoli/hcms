@@ -73,7 +73,7 @@ final class WorkforcePulse
      *
      * @return array{headline: string, movement: array<string, mixed>, size: array<string, mixed>}
      */
-    public function movement(User $viewer): array
+    public function movement(User $viewer, bool $withTrend = true): array
     {
         $now = now();
         $thisMonth = [$now->copy()->startOfMonth(), $now->copy()->endOfDay()];
@@ -95,7 +95,8 @@ final class WorkforcePulse
         return [
             'headline' => $this->headline($mNow, $rateNow, $rateLast),
             'movement' => ['now' => $mNow, 'last' => $mLast, 'rate' => $rateNow, 'rate_last' => $rateLast, 'critical' => $this->safe(fn () => $this->criticalAffected($viewer), null)],
-            'size' => ['headcount' => $headcount, 'last' => $headcountLast, 'series' => $this->safe(fn () => $this->metrics->series('headcount', 6), ['labels' => [], 'series' => []])],
+            // The six-month trend costs six headcount counts; only Home draws it.
+            'size' => ['headcount' => $headcount, 'last' => $headcountLast, 'series' => $withTrend ? $this->safe(fn () => $this->metrics->series('headcount', 6), ['labels' => [], 'series' => []]) : ['labels' => [], 'series' => []]],
         ];
     }
 

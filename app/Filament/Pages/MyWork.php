@@ -147,7 +147,7 @@ class MyWork extends Page
             'hr' => ['People operations', 'Lifecycle, service, documents and workflows for the people you look after.', $safe(fn () => $signals->operations($user), []), null, null],
             'payroll' => ['Payroll', 'The current run and what blocks sign-off.', $safe(fn () => $signals->payroll($user), []),
                 $url(fn () => PayrollControlRoom::canAccess() ? PayrollControlRoom::getUrl() : null), 'Control room'],
-            'executive' => $this->workforceLead($safe(fn () => $signals->workforce($user), null), $url),
+            'executive' => $this->workforceLead($safe(fn () => $signals->workforce($user, false), null), $url),
             'admin' => ['Governance', 'Configuration, access, security, integrations and failures that need an administrator.', $safe(fn () => $signals->governance($user)['attention'], []),
                 $url(fn () => AdminCentre::canAccess() ? AdminCentre::getUrl() : null), 'Admin Centre'],
             default => null,
