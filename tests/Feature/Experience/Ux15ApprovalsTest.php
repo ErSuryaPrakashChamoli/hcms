@@ -36,7 +36,7 @@ beforeEach(function () {
 it('heads the workspace with what needs the person and pairs the queue with the decision', function () {
     $html = $this->actingAs($this->manager->user)->get(Approvals::getUrl())->assertOk()
         ->assertSee('1 decision needs you')
-        ->assertSee('class="pos-stream-row pos-queue-row" data-approval-id="leave:'.$this->request->id.'"', false)
+        ->assertSee('class="pos-stream-row pos-queue-row pos-approval" data-approval-id="leave:'.$this->request->id.'"', false)
         ->assertSee('Cousin’s wedding', false)
         ->assertSee('Before → After')
         ->assertSee('data-person="'.$this->employee->id.'"', false)

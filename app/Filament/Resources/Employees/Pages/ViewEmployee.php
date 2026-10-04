@@ -11,6 +11,7 @@ use App\Domain\Employment\Actions\ChangeStatutoryApplicabilityAction;
 use App\Domain\Employment\Actions\ChangeStatutoryIdentityAction;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
+use App\Domain\Experience\Services\PersonWorkspace;
 use App\Domain\Letters\Models\LetterTemplate;
 use App\Domain\Letters\Services\Letters;
 use App\Domain\Lifecycle\Enums\LifecycleState;
@@ -49,6 +50,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use Livewire\Attributes\Computed;
 
 /**
  * Employee 360 (blueprint §17, §20; Experience Transformation §14). The signature header and the
@@ -71,7 +73,14 @@ class ViewEmployee extends ViewRecord
     {
         $record = $this->getRecord()->loadMissing(['person', 'currentPosition.designation', 'currentPosition.department', 'currentPosition.location', 'currentManager.manager.person']);
 
-        return view('filament.employees.header', ['employee' => $record, 'actions' => $this->getCachedHeaderActions()]);
+        return view('filament.employees.header', ['employee' => $record, 'actions' => $this->getCachedHeaderActions(), 'workspace' => $this->workspace]);
+    }
+
+    /** UX.15: the person workspace (one lifetime record, now, next, relationships, changes, summaries), once per request. */
+    #[Computed]
+    public function workspace(): array
+    {
+        return app(PersonWorkspace::class)->for(auth()->user(), $this->getRecord());
     }
 
     /**

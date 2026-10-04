@@ -20,12 +20,14 @@
             <span class="pos-meta ms-auto hidden md:inline" aria-hidden="true"><span class="pos-kbd">J</span> <span class="pos-kbd">K</span> move · <span class="pos-kbd">A</span> approve · <span class="pos-kbd">R</span> reject · <span class="pos-kbd">Esc</span> cancel</span>
         </div>
 
+        {{-- Keyboard list navigation (J/K move, A/R decide, Enter open) over the queue, always wired --}}
+        <div class="contents" x-data="posListNav('.pos-approval')" x-on:keydown.window="handle($event)">
         @if ($pending->isEmpty())
             <x-pos.state variant="caught-up" title="You’re all caught up." why="No decisions require your attention right now. Leave, attendance corrections, pay changes, letters and workflow steps that need you will appear here, with the context to decide." />
         @else
             <div class="pos-decide-ws">
                 {{-- The queue: most urgent first; selecting shows the decision beside it (a drawer on smaller screens) --}}
-                <div class="pos-queue" x-data="posListNav('.pos-queue-row')" x-on:keydown.window="handle($event)">
+                <div class="pos-queue">
                     @foreach ($labels as $key => [$label, $hint])
                         @if ($groups[$key]->isNotEmpty())
                             <section class="pos-sec" aria-labelledby="pos-q-{{ $key }}">
@@ -35,7 +37,7 @@
                                 </header>
                                 <div class="pos-panel pos-stream" role="list">
                                     @foreach ($groups[$key] as $item)
-                                        <button type="button" role="listitem" class="pos-stream-row pos-queue-row" data-approval-id="{{ $item->id }}" wire:key="q-{{ md5($item->id) }}"
+                                        <button type="button" role="listitem" class="pos-stream-row pos-queue-row pos-approval" data-approval-id="{{ $item->id }}" wire:key="q-{{ md5($item->id) }}"
                                             data-tone="{{ $key === 'urgent' ? 'danger' : ($key === 'today' ? 'warning' : 'info') }}"
                                             :aria-current="(selected === @js($item->id)).toString()" x-on:click="select(@js($item->id))" x-on:focus="select(@js($item->id), true)">
                                             <span class="pos-stream-mark" aria-hidden="true"></span>
@@ -62,6 +64,8 @@
                 </div>
             </div>
         @endif
+
+        </div>
 
         @if ($groups['completed']->isNotEmpty())
             <section class="pos-sec" aria-labelledby="pos-group-completed" x-data="{ open: false }">

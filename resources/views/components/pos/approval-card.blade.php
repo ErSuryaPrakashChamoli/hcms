@@ -9,7 +9,7 @@
     Before → After are beside the decision; deciding confirms in place with a note (a reason is required to
     reject or send back). Decisions go through ApprovalDecisions to the owning domain service.
 --}}
-<article {{ $attributes->class(['pos-approval', 'pos-card']) }} data-approval-id="{{ $item->id }}" data-group="{{ $group }}" tabindex="-1"
+<article {{ $attributes->class(['pos-approval-card', 'pos-card']) }} data-approval-id="{{ $item->id }}" data-group="{{ $group }}" tabindex="-1"
     x-data="{ mode: null, note: '' }"
     x-on:pos-approval-shortcut.window="if ($event.detail.id === @js($item->id)) { mode = $event.detail.decision; $nextTick(() => $refs.note?.focus()) }"
     aria-labelledby="pos-appr-{{ md5($item->id) }}">

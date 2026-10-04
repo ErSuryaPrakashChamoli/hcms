@@ -4,32 +4,35 @@
     $manager = $employee->currentManager?->manager;
     $state = $employee->lifecycle_state;
     $tone = match ($state?->value) { 'probation', 'onboarding', 'preboarding', 'pre_employee' => 'info', 'notice_period', 'suspended' => 'warning', 'exited', 'alumni' => 'neutral', default => 'success' };
+    $life = $workspace['lifetime'] ?? null;
+    $sectionsNav = ['now' => 'Now', 'journey' => 'Journey', 'work' => 'Work', 'growth' => 'Growth', 'rewards' => 'Rewards', 'documents' => 'Documents', 'records' => 'Records'];
 @endphp
+{{-- UX.15 Employee 360: a person workspace. One person, one lifetime record; actions grouped Message · Request · Action · More. --}}
 <header class="pos-360-header pos-enter">
     <div class="pos-360-identity">
         <x-pos.avatar :name="$employee->person?->display_name" size="xl" />
-        <div class="min-w-0">
-            <p class="pos-label">{{ $employee->employee_code }}</p>
-            <h1 class="fi-header-heading">{{ $employee->person?->display_name }}</h1>
-            <p class="pos-body-sm mt-1">{{ collect([$p?->designation?->name, $p?->department?->name, $p?->location?->name])->filter()->implode(' · ') ?: 'No current position' }}</p>
-            <div class="mt-3 flex flex-wrap items-center gap-2">
+        <div class="min-w-0 grid gap-1">
+            <p class="pos-ws-eyebrow">{{ $employee->employee_code }}</p>
+            <h1 class="pos-ws-title">{{ $employee->person?->display_name }}</h1>
+            <p class="pos-lead">{{ collect([$p?->designation?->name, $p?->department?->name, $p?->location?->name])->filter()->implode(' · ') ?: 'No current position' }}</p>
+            <div class="pos-360-ribbon">
                 @if ($state)<x-pos.status :tone="$tone" :label="$state->getLabel()" />@endif
-                @if ($employee->joining_date && $state?->isEmployed())
-                    <span class="pos-caption">{{ $employee->joining_date->diffForHumans(now(), ['parts' => 2, 'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE]) }} with us</span>
+                @if ($life && $life['joined'])
+                    <span class="pos-moment" title="A rehire continues the same record; nothing is duplicated.">
+                        <x-filament::icon icon="heroicon-m-sparkles" class="size-3.5" />One lifetime record
+                    </span>
+                    <span class="pos-meta">Joined {{ $life['joined']->format('M Y') }}@if ($life['tenure']) · {{ $life['tenure'] }}@endif @if ($life['employments'] > 1) · {{ $life['employments'] }} periods of employment @endif</span>
                 @endif
                 @if ($manager)
-                    <span class="pos-caption" aria-hidden="true">·</span>
-                    <span class="pos-caption">Reports to</span>
-                    <button type="button" class="pos-person-inline" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'person', id: {{ $manager->id }} })">
-                        <x-pos.avatar :name="$manager->person?->display_name" size="xs" />{{ $manager->person?->display_name }}
-                    </button>
+                    <span class="pos-meta">Reports to</span>
+                    <x-pos.person :id="$manager->id" :name="$manager->person?->display_name" />
                 @endif
             </div>
         </div>
     </div>
     <div class="pos-360-actions">
         @if (isset(app(\App\Domain\Ai\Services\AiGateway::class)->assistantsFor(auth()->user())['hr']))
-            {{-- Contextual AI (§27): a summary from the Employee 360, which applies every domain's own rule. --}}
+            {{-- Contextual AI: a summary from the Employee 360, which applies every domain's own rule. --}}
             <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm me-1" x-data
                 x-on:click="$dispatch('pos-ai-open', { assistant: 'hr', prompt: @js('Summarise '.$employee->employee_code), context: [@js('Summarise '.$employee->employee_code), 'What changed this week?'] })">
                 <span class="pos-ai-orb pos-ai-orb-sm" aria-hidden="true"></span> Summarise
@@ -40,3 +43,10 @@
         @endif
     </div>
 </header>
+<nav class="pos-sectnav pos-360-nav" aria-label="{{ $employee->person?->display_name }}" x-data="{ active: 'now' }"
+    x-init="const obs = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) active = e.target.id }), { rootMargin: '-20% 0px -70% 0px' });
+            $nextTick(() => document.querySelectorAll('.pos-360-sec[id]').forEach((el) => obs.observe(el)))">
+    @foreach ($sectionsNav as $id => $label)
+        <a href="#{{ $id }}" :aria-current="(active === '{{ $id }}').toString()" x-on:click="active = '{{ $id }}'">{{ $label }}</a>
+    @endforeach
+</nav>
