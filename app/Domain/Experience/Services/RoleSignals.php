@@ -21,6 +21,7 @@ use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Notifications\Models\NotificationDelivery;
 use App\Domain\Onboarding\Models\OnboardingTask;
+use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Performance\Services\PerformanceRelationships;
 use App\Domain\ServiceDesk\Models\Ticket;
@@ -33,6 +34,7 @@ use App\Filament\Pages\AttendanceExceptionCentre;
 use App\Filament\Pages\ChangeIntelligencePage;
 use App\Filament\Pages\MyHr;
 use App\Filament\Pages\MyTeam;
+use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Pages\PlatformReadinessPage;
 use App\Filament\Pages\SecurityPolicyPage;
 use App\Filament\Resources\AuditEvents\AuditEventResource;
@@ -231,6 +233,31 @@ final class RoleSignals
         }
 
         return $this->bySeverity($items);
+    }
+
+    /** The payroll side of HR operations: the latest run and what blocks it. @return list<array<string, mixed>> */
+    public function payroll(User $user): array
+    {
+        if (! $user->hasPermission('payroll.view') && ! $user->hasPermission('payroll.calculate')) {
+            return [];
+        }
+        $url = $this->url(fn () => PayrollControlRoom::canAccess() ? PayrollControlRoom::getUrl() : null);
+        $run = $this->safe(fn () => PayrollRun::query()->with('period')->latest('id')->first());
+        if ($run === null) {
+            return [$this->item('payroll_none', null, 'No payroll run is open', 'Open a run for the next pay period from the control room.', 'info', $url)];
+        }
+        $label = $run->period?->label() ?? 'Run #'.$run->id;
+        $status = (string) config("peopleos.payroll.run_statuses.{$run->status}", $run->status);
+        $items = [];
+        if ((int) $run->exception_count > 0) {
+            $items[] = $this->item('payroll_exceptions', (int) $run->exception_count, ((int) $run->exception_count === 1 ? 'payroll exception' : 'payroll exceptions').' to resolve in '.$label,
+                'The run cannot be signed off until they are resolved or accepted.', 'danger', $url);
+        }
+        if (! in_array($run->status, ['finalized', 'paid'], true)) {
+            $items[] = $this->item('payroll_status', null, 'Payroll for '.$label.' is '.mb_strtolower($status), 'Calculate, validate and approve before the pay date.', 'warning', $url);
+        }
+
+        return $items;
     }
 
     /**

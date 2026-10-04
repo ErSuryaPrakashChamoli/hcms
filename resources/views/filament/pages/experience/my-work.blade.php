@@ -13,6 +13,22 @@
             'completed' => ['Recently done', 'What you decided in the last two weeks.', 'heroicon-o-check-circle'],
         ];
         $verb = fn ($r) => $r['approval_id'] ? 'Review' : ($r['kind'] === 'task' ? 'Continue' : 'Open');
+        // UX.16: the person's own kind of work leads (RoleSignals); employees call their waiting stream "My requests".
+        $role = $this->role;
+        if ($role['experience'] === 'employee') {
+            $sections['waiting'] = ['My requests', 'Your requests and where each one stands.', 'heroicon-o-arrow-path'];
+        }
+        $lead = $role['lead'] && $role['lead']['items'] !== [] && $filter === 'all' ? $role['lead'] : null;
+        // UX.16: where this person's own kind of work lives (each shown only if they can open it).
+        $roleLinks = match ($role['experience']) {
+            'employee' => [[\App\Filament\Pages\MyLearning::class, 'My learning', 'Courses and certificates', 'heroicon-o-academic-cap'], [\App\Filament\Pages\MyCareer::class, 'My career', 'Goals, growth and your journey', 'heroicon-o-arrow-trending-up']],
+            'manager' => [[\App\Filament\Pages\MyTeam::class, 'My team', 'Your reports, who is in and who needs you', 'heroicon-o-user-group'], [\App\Filament\Pages\LeaveCalendar::class, 'Leave calendar', 'Who is away and when', 'heroicon-o-calendar-days']],
+            'hr' => [[\App\Filament\Pages\People::class, 'People', 'Find anyone you look after', 'heroicon-o-users'], [\App\Filament\Pages\AttendanceExceptionCentre::class, 'Attendance exceptions', 'Missed punches and absences to resolve', 'heroicon-o-clock']],
+            'payroll' => [[\App\Filament\Pages\PayrollControlRoom::class, 'Payroll control room', 'Runs, exceptions and sign-off', 'heroicon-o-banknotes']],
+            'executive' => [[\App\Filament\Pages\WorkforceCommandCentre::class, 'Workforce pulse', 'The workforce story, drillable', 'heroicon-o-chart-bar'], [\App\Filament\Pages\OrganisationMap::class, 'Organisation map', 'Structure and reporting lines', 'heroicon-o-share']],
+            'admin' => [[\App\Filament\Pages\AdminCentre::class, 'Admin Centre', 'Find a setting and manage PeopleOS', 'heroicon-o-cog-6-tooth'], [\App\Filament\Pages\ChangeIntelligencePage::class, 'Change history', 'Every audited change, searchable', 'heroicon-o-magnifying-glass-circle']],
+            default => [],
+        };
     @endphp
 
     <div class="pos-ws" x-data="posListNav('.pos-work-row')" x-on:keydown.window="handle($event)">
@@ -24,6 +40,14 @@
             @endforeach
             <span class="pos-meta ms-auto hidden md:inline" aria-hidden="true"><span class="pos-kbd">J</span> <span class="pos-kbd">K</span> move · <span class="pos-kbd">↵</span> open</span>
         </nav>
+
+        @if ($role['first'])
+        @if ($lead)
+            <div class="pos-work-lead" data-experience="{{ $role['experience'] }}">
+                @include('filament.pages.home.signals', ['items' => $lead['items'], 'title' => $lead['title'], 'sub' => $lead['sub'], 'link' => $lead['link'], 'linkLabel' => $lead['link_label'], 'verb' => 'Open'])
+            </div>
+        @endif
+        @endif
 
         {{-- Do this next: the single most important thing, with its reason --}}
         @if ($w['next'] && $filter === 'all')
@@ -47,7 +71,15 @@
             </section>
         @endif
 
-        @if (collect(['decisions', 'tasks', 'followups', 'waiting', 'upcoming', 'completed'])->every(fn ($k) => $w[$k]->isEmpty()))
+        @unless ($role['first'])
+        @if ($lead)
+            <div class="pos-work-lead" data-experience="{{ $role['experience'] }}">
+                @include('filament.pages.home.signals', ['items' => $lead['items'], 'title' => $lead['title'], 'sub' => $lead['sub'], 'link' => $lead['link'], 'linkLabel' => $lead['link_label'], 'verb' => 'Open'])
+            </div>
+        @endif
+        @endunless
+
+        @if (collect(['decisions', 'tasks', 'followups', 'waiting', 'upcoming', 'completed'])->every(fn ($k) => $w[$k]->isEmpty()) && ! $lead)
             <x-pos.state variant="caught-up" title="You’re all caught up." why="No decisions require your attention right now. New approvals, tasks and reminders will appear here first." />
         @endif
 
@@ -103,6 +135,11 @@
                 </x-pos.section>
                 <x-pos.section title="Elsewhere">
                     <div class="pos-panel pos-stream">
+                        @foreach ($roleLinks as [$page, $label, $hint, $icon])
+                            @if ($page::canAccess())
+                                <a href="{{ $page::getUrl() }}" wire:navigate class="pos-stream-row"><span class="pos-stream-icon" aria-hidden="true"><x-filament::icon :icon="$icon" class="size-4" /></span><span class="pos-stream-body"><span class="pos-stream-title">{{ $label }}</span><span class="pos-stream-meta">{{ $hint }}</span></span><span aria-hidden="true" class="pos-muted">→</span></a>
+                            @endif
+                        @endforeach
                         @if (\App\Filament\Pages\Approvals::canAccess())
                             <a href="{{ \App\Filament\Pages\Approvals::getUrl() }}" wire:navigate class="pos-stream-row"><span class="pos-stream-icon" aria-hidden="true"><x-filament::icon icon="heroicon-o-check-badge" class="size-4" /></span><span class="pos-stream-body"><span class="pos-stream-title">Approval Center</span><span class="pos-stream-meta">Decide with the full context side by side</span></span><span aria-hidden="true" class="pos-muted">→</span></a>
                         @endif
