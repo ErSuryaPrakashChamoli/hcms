@@ -455,30 +455,30 @@ The nine sections match the brief's structure and stay. What changes:
 
 ## 8. Screen audit matrix
 
-Priority: P0 = signature experience that fails the traditional-HRMS test; P1 = important gap; P2 = polish. Status is updated at the end of UX.15 in the final report.
+Priority: P0 = signature experience that fails the traditional-HRMS test; P1 = important gap; P2 = polish. Status updated at the end of UX.15 (see `PeopleOS-UX-15-Experience-Elevation-Report.md`).
 
 | Screen | Current experience | Problem | Traditional HRMS pattern | Proposed change | Priority | Implementation status |
 |---|---|---|---|---|---|---|
-| Home (all roles) | Hero, KPI strip, action cards, panels, charts, chat card | Card wall; generic chatbot; no since-last-visit | Title → KPI cards → cards → chart | Editorial workspace: brief, decisions, day timeline, what changed, people, momentum, suggested actions, intelligence | P0 | Planned (UX.15.6) |
-| My work | Tabs over a list | Must choose a tab to learn what to do | Tabbed list | Focus workspace with "do this next" and streams | P0 | Planned (UX.15.7) |
-| Approval Center | Grouped cards | Everything at once; no master–detail; context not beside the decision | Approval list | Decision workspace: queue + detail, "N decisions need you" | P0 | Planned (UX.15.8) |
-| Employee 360 | Header, sections, eight tabs of tables, module bar | Person reads as records | Profile header → tabs → tables | Person workspace; lifetime ribbon; relationships; what's next; intelligence; records demoted | P0 | Planned (UX.15.9) |
-| People directory | Cards or list, filters, drawer | No peek, grouping, table or recently changed | Directory grid | Peek → drawer → 360; group-by; table and recently-changed views | P1 | Planned (UX.15.10) |
-| Organisation map | Primary-line tree | No dotted, functional or matrix relationships; no peek | Static hierarchy | Relationship overlays; person and team peek | P1 | Planned (UX.15.11) |
-| Workforce Command Center | KPI tiles, blocks, charts | No story; no drill-down | KPI cards → charts | Workforce pulse narrative with drill-down drawers | P0 | Planned (UX.15.12) |
-| Contextual AI | Chat panel, greeting card | Generic chatbot | Chatbot widget | Contextual intelligence cards; questions through the gateway | P0 | Planned (UX.15.13) |
-| What changed | 30-day feed | Not since-last-visit; no context | Activity log | Since-your-last-visit summary with contextual drawers | P1 | Planned (UX.15.6) |
-| Forms (transfer / promote, change manager) | Modal forms with preview | Fields → save | Long modal form | Step flow: context → change → review → confirm | P1 | Planned (UX.15.14) |
-| Drawers | Person, change, approval | Not reachable from every person mention | — | One person chip everywhere; peek level added | P1 | Planned (UX.15.14) |
-| Services (My HR) | 11 tabs over tables | Module tabs | Tab strip of modules | Service front door | P1 | Planned (UX.15.5) |
-| Admin Centre | 37 boxes of module links | "What tables exist?" | Module directory | Governance workspace with plain-language finder | P1 | Planned (UX.15.5) |
-| Notifications | Grouped list, snooze | Fine | — | Token alignment only | P2 | Planned (UX.15.4) |
-| Preferences | Density, lens, theme | Fine | — | Token alignment only | P2 | Planned (UX.15.4) |
-| Command center | Grouped results, row actions | Lacks an "intelligence" group and verbs like "Start transfer" | — | Add intelligence and change verbs (authorised only) | P1 | Planned (UX.15.5) |
-| Module list, form and detail pages (~150) | Restyled Filament | Recognisably Filament | CRUD tables | Token alignment, quieter space bar, saved views where needed; full re-architecture deferred | P1 | Planned (UX.15.4, UX.15.14) |
-| Mobile (all) | Bottom bar, stacked pages | Decoration first; wrong active state | Shrunk desktop | Phone-first order; bottom bar Home / Work / Actions / People / Services | P1 | Planned (UX.15.16) |
-| Dark mode | Violet-tinted set | Purple everywhere | — | Graphite neutrals, indigo by meaning | P1 | Planned (UX.15.17) |
-| Error pages | Designed 403/404/419/429/500/503 | Fine | — | Token alignment | P2 | Planned (UX.15.4) |
+| Home (all roles) | Hero, KPI strip, action cards, panels, charts, chat card | Card wall; generic chatbot; no since-last-visit | Title → KPI cards → cards → chart | Editorial workspace: brief, decisions, day timeline, what changed, people, momentum, suggested actions, intelligence | P0 | Implemented (UX.15.6, c7a17d3; scale fixes e9dc7d1) |
+| My work | Tabs over a list | Must choose a tab to learn what to do | Tabbed list | Focus workspace with "do this next" and streams | P0 | Implemented (UX.15.7, 46decab; paging e9dc7d1) |
+| Approval Center | Grouped cards | Everything at once; no master–detail; context not beside the decision | Approval list | Decision workspace: queue + detail, "N decisions need you" | P0 | Implemented (UX.15.8, 660b568; batching, paging and "200+" e9dc7d1) |
+| Employee 360 | Header, sections, eight tabs of tables, module bar | Person reads as records | Profile header → tabs → tables | Person workspace; lifetime ribbon; relationships; what's next; intelligence; records demoted | P0 | Implemented (UX.15.9, 10eba82). Records tabs below the workspace are still Filament |
+| People directory | Cards or list, filters, drawer | No peek, grouping, table or recently changed | Directory grid | Peek → drawer → 360; group-by; table and recently-changed views | P1 | Implemented (UX.15.10, c6091fb; card names and codes e9dc7d1) |
+| Organisation map | Primary-line tree | No dotted, functional or matrix relationships; no peek | Static hierarchy | Relationship overlays; person and team peek | P1 | Implemented (UX.15.11, 4adb1ea; O(N) lines, preboarding off the map e9dc7d1) |
+| Workforce Command Center | KPI tiles, blocks, charts | No story; no drill-down | KPI cards → charts | Workforce pulse narrative with drill-down drawers | P0 | Implemented (UX.15.12, 6414973; 10k performance e9dc7d1) |
+| Contextual AI | Chat panel, greeting card | Generic chatbot | Chatbot widget | Contextual intelligence cards; questions through the gateway | P0 | Implemented (UX.15.13, 7f76795). Free-text assistant panel kept for questions |
+| What changed | 30-day feed | Not since-last-visit; no context | Activity log | Since-your-last-visit summary with contextual drawers | P1 | Implemented (UX.15.6, c7a17d3) |
+| Forms (transfer / promote, change manager) | Modal forms with preview | Fields → save | Long modal form | Step flow: context → change → review → confirm | P1 | Implemented for these two flows (UX.15.14, 1dc80de). Other module forms unchanged |
+| Drawers | Person, change, approval | Not reachable from every person mention | — | One person chip everywhere; peek level added | P1 | Implemented (UX.15.14, 1dc80de) |
+| Services (My HR) | 11 tabs over tables | Module tabs | Tab strip of modules | Service front door | P1 | Implemented (UX.15.5, af36e87) |
+| Admin Centre | 37 boxes of module links | "What tables exist?" | Module directory | Governance workspace with plain-language finder | P1 | Implemented (UX.15.5, af36e87) |
+| Notifications | Grouped list, snooze | Fine | — | Token alignment only | P2 | Implemented: tokens only (UX.15.4, 5cb7de8) |
+| Preferences | Density, lens, theme | Fine | — | Token alignment only | P2 | Implemented: tokens only (UX.15.4, 5cb7de8) |
+| Command center | Grouped results, row actions | Lacks an "intelligence" group and verbs like "Start transfer" | — | Add intelligence and change verbs (authorised only) | P1 | Implemented (UX.15.5, af36e87) |
+| Module list, form and detail pages (~150) | Restyled Filament | Recognisably Filament | CRUD tables | Token alignment, quieter space bar, saved views where needed; full re-architecture deferred | P1 | Partial: tokens and quieter chrome only (UX.15.4). Re-architecture deferred |
+| Mobile (all) | Bottom bar, stacked pages | Decoration first; wrong active state | Shrunk desktop | Phone-first order; bottom bar Home / Work / Actions / People / Services | P1 | Implemented (UX.15.16, 8664333; quick-launch icon fix in UX.15.21) |
+| Dark mode | Violet-tinted set | Purple everywhere | — | Graphite neutrals, indigo by meaning | P1 | Implemented (UX.15.17, 8664333) |
+| Error pages | Designed 403/404/419/429/500/503 | Fine | — | Token alignment | P2 | Implemented: tokens only (UX.15.4, 5cb7de8) |
 
 ## 9. Implementation plan
 
