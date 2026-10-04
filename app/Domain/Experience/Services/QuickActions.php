@@ -15,17 +15,22 @@ use App\Filament\Pages\MyTeam;
 use App\Filament\Pages\OrganisationMap;
 use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Pages\People;
+use App\Filament\Pages\SecurityPolicyPage;
 use App\Filament\Pages\WorkforceCommandCentre;
 use App\Filament\Resources\Announcements\AnnouncementResource;
+use App\Filament\Resources\AuditEvents\AuditEventResource;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\FeedbackEntries\FeedbackEntryResource;
+use App\Filament\Resources\IntegrationSystems\IntegrationSystemResource;
 use App\Filament\Resources\Letters\LetterResource;
 use App\Filament\Resources\OneOnOnes\OneOnOneResource;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\Payslips\PayslipResource;
+use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\Surveys\SurveyResource;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Resources\Workflows\WorkflowResource;
 use Closure;
 use Throwable;
 
@@ -76,18 +81,23 @@ final class QuickActions
         $add('services', 'Request', 'Browse HR services', 'Letters, certificates, changes and more', 'heroicon-o-squares-2x2', ['service', 'catalogue', 'letter', 'certificate'],
             fn () => MyHr::getUrl(['tab' => 'services']), RoleLens::EMPLOYEE, MyHr::canAccess());
         $payslip = $me ? Payslip::query()->where('employee_id', $me->id)->latest('generated_at')->first() : null;
-        $add('payslip', 'Review', 'Open my latest payslip', $payslip ? 'Generated '.$payslip->generated_at?->format('d M Y') : 'No payslip yet', 'heroicon-o-banknotes', ['payslip', 'salary', 'pay', 'slip'],
+        $add('payslip', 'Review', 'Open my latest payslip', $payslip ? 'Generated '.$payslip->generated_at?->format('d M Y') : 'No payslip yet', 'heroicon-o-banknotes', ['payslip', 'download payslip', 'salary', 'pay', 'slip'],
             fn () => PayslipResource::getUrl('view', ['record' => $payslip]), RoleLens::EMPLOYEE, $payslip !== null && $user->can('view', $payslip));
         $add('my_documents', 'Review', 'My documents', 'Letters, IDs and certificates', 'heroicon-o-document-text', ['document', 'documents', 'letter', 'files'],
             fn () => MyHr::getUrl(['tab' => 'documents']), RoleLens::EMPLOYEE, MyHr::canAccess());
+        // UX.16: bank details change through the governed service (approval required), never a direct edit.
+        $add('bank_details', 'Request', 'Update bank details', 'Request a bank account change; HR approves it', 'heroicon-o-building-library', ['bank', 'bank details', 'account', 'update bank', 'salary account', 'ifsc'],
+            fn () => MyHr::getUrl(['tab' => 'services']), RoleLens::EMPLOYEE, MyHr::canAccess() && $user->can('servicedesk.request'));
 
         // Manager.
         $pending = $this->approvals->count($user);
-        $add('approvals', 'Approve', $pending > 0 ? "Review {$pending} approval".($pending === 1 ? '' : 's') : 'Open approvals', 'Leave, attendance, compensation, letters, workflow steps', 'heroicon-o-check-badge', ['approve', 'approval', 'pending', 'decide'],
+        $add('approvals', 'Approve', $pending > 0 ? "Review {$pending} approval".($pending === 1 ? '' : 's') : 'Open approvals', 'Leave, attendance, compensation, letters, workflow steps', 'heroicon-o-check-badge', ['approve', 'approve leave', 'leave approval', 'approval', 'pending', 'decide'],
             fn () => Approvals::getUrl(), RoleLens::MANAGER, Approvals::canAccess());
         $add('team_leave', 'Review', 'Team leave calendar', 'Who is away and when', 'heroicon-o-calendar', ['leave', 'calendar', 'team', 'away', 'absence'],
             fn () => LeaveCalendar::getUrl(), RoleLens::MANAGER, LeaveCalendar::canAccess());
-        $add('my_team', 'Review', 'My team', 'Your direct reports today', 'heroicon-o-user-group', ['team', 'reports', 'my team'],
+        $add('my_team', 'Review', 'My team', 'Your direct reports today', 'heroicon-o-user-group', ['team', 'reports', 'my team', 'show my team', 'direct reports'],
+            fn () => MyTeam::getUrl(), RoleLens::MANAGER, MyTeam::canAccess());
+        $add('review_probation', 'Review', 'Review probation', 'Confirm, extend or end probation for your team', 'heroicon-o-check-circle', ['probation', 'review probation', 'confirm', 'confirmation', 'extend probation'],
             fn () => MyTeam::getUrl(), RoleLens::MANAGER, MyTeam::canAccess());
         $add('give_feedback', 'Send', 'Give feedback', 'Recognise or coach someone', 'heroicon-o-hand-thumb-up', ['feedback', 'praise', 'kudos', 'recognition'],
             fn () => FeedbackEntryResource::getUrl('index').'?action=give', RoleLens::MANAGER, FeedbackEntryResource::canAccess() && $user->can('create', FeedbackEntryResource::getModel()));
@@ -97,17 +107,17 @@ final class QuickActions
         // HR.
         $add('find_person', 'Review', 'Find a person', 'Directory with filters and previews', 'heroicon-o-users', ['people', 'directory', 'employee', 'find', 'search'],
             fn () => People::getUrl(), RoleLens::HR, People::canAccess());
-        $add('add_employee', 'Create', 'Add an employee', 'Hire into a position', 'heroicon-o-user-plus', ['hire', 'new joiner', 'add', 'employee', 'onboard'],
+        $add('add_employee', 'Create', 'Add an employee', 'Hire into a position', 'heroicon-o-user-plus', ['hire', 'new joiner', 'add', 'employee', 'create employee', 'new employee', 'onboard'],
             fn () => EmployeeResource::getUrl('create'), RoleLens::HR, EmployeeResource::canCreate());
         // Changes that need a person first: the command center asks whom, then opens the existing action on
         // that person's Employee 360 (?action=), where the form, Before → After and authorisation apply.
-        $add('start_transfer', 'Start', 'Start a transfer or promotion', 'Choose the person, then see the Before → After', 'heroicon-o-arrow-trending-up', ['transfer', 'promote', 'promotion', 'move', 'start transfer', 'relocate'],
+        $add('start_transfer', 'Start', 'Start a transfer or promotion', 'Choose the person, then see the Before → After', 'heroicon-o-arrow-trending-up', ['transfer', 'transfer employee', 'promote', 'promotion', 'move', 'start transfer', 'relocate'],
             fn () => '#pick:assignPosition', RoleLens::HR, $user->hasPermission('employee.position'));
         $add('change_manager', 'Start', 'Change someone’s manager', 'Choose the person, then the new reporting line', 'heroicon-o-user-circle', ['manager', 'reporting', 'change manager', 'reports to', 'line manager'],
             fn () => '#pick:changeManager', RoleLens::HR, $user->hasPermission('employee.position'));
         $add('generate_letter', 'Generate', 'Generate a letter', 'From an approved template', 'heroicon-o-document-plus', ['letter', 'certificate', 'experience', 'offer'],
             fn () => LetterResource::getUrl('index').'?action=generate', RoleLens::HR, LetterResource::canAccess() && $user->can('letter.issue'));
-        $add('hr_queue', 'Review', 'HR request queue', 'Cases by SLA', 'heroicon-o-lifebuoy', ['tickets', 'cases', 'queue', 'requests', 'sla'],
+        $add('hr_queue', 'Review', 'HR request queue', 'Cases by SLA', 'heroicon-o-lifebuoy', ['tickets', 'cases', 'queue', 'requests', 'service requests', 'open service requests', 'service desk', 'sla'],
             fn () => TicketResource::getUrl('index'), RoleLens::HR, TicketResource::canAccess() && $user->can('servicedesk.agent'));
         $add('announce', 'Send', 'Publish an announcement', 'Targeted, with acknowledgement', 'heroicon-o-megaphone', ['announcement', 'communicate', 'news', 'circular'],
             fn () => AnnouncementResource::getUrl('create'), RoleLens::HR, AnnouncementResource::canCreate());
@@ -121,10 +131,13 @@ final class QuickActions
             fn () => PayrollRunResource::getUrl('index').'?action=openRun', RoleLens::PAYROLL, PayrollRunResource::canAccess() && $user->can('payroll.calculate'));
 
         // Executive / insights.
-        $add('workforce', 'Review', 'Open Workforce pulse', 'What changed across the workforce, and what needs a decision', 'heroicon-o-presentation-chart-line', ['workforce', 'pulse', 'workforce pulse', 'command center', 'headcount', 'attrition', 'analytics', 'insights'],
+        $add('workforce', 'Review', 'Open Workforce pulse', 'What changed across the workforce, and what needs a decision', 'heroicon-o-presentation-chart-line', ['workforce', 'pulse', 'workforce pulse', 'show workforce pulse', 'command center', 'headcount', 'attrition', 'analytics', 'insights'],
             fn () => WorkforceCommandCentre::getUrl(), RoleLens::EXECUTIVE, WorkforceCommandCentre::canAccess());
         $add('changes', 'Review', 'What changed this month', 'Joiners, exits, moves, pay changes', 'heroicon-o-arrows-right-left', ['changes', 'what changed', 'movement', 'joiners', 'exits'],
             fn () => ChangeIntelligencePage::getUrl(), RoleLens::EXECUTIVE, ChangeIntelligencePage::canAccess());
+        // UX.16: executives without audit access still reach workforce movement (aggregates, small groups suppressed).
+        $add('workforce_changes', 'Review', 'Show workforce changes', 'Joiners, exits, moves and promotions this month', 'heroicon-o-arrows-right-left', ['workforce changes', 'show workforce changes', 'changes', 'movement', 'joiners', 'exits'],
+            fn () => WorkforceCommandCentre::getUrl(), RoleLens::EXECUTIVE, WorkforceCommandCentre::canAccess() && ! ChangeIntelligencePage::canAccess());
         $add('org_map', 'Review', 'Organisation map', 'Structure, headcount, vacancies', 'heroicon-o-building-office-2', ['org', 'chart', 'structure', 'hierarchy', 'organisation', 'organization'],
             fn () => OrganisationMap::getUrl(), RoleLens::EXECUTIVE, OrganisationMap::canAccess());
 
@@ -135,6 +148,17 @@ final class QuickActions
             fn () => ConfigurationFinder::getUrl(), RoleLens::SYSTEM_ADMIN, ConfigurationFinder::canAccess());
         $add('all_modules', 'Review', 'All modules', 'Everything you can open, by area', 'heroicon-o-squares-plus', ['modules', 'admin', 'all', 'apps'],
             fn () => AdminCentre::getUrl(), RoleLens::SYSTEM_ADMIN, AdminCentre::canAccess());
+        // UX.16: the administrator's own verbs. Each opens the governed screen; nothing changes from here.
+        $add('manage_permissions', 'Review', 'Manage roles and permissions', 'Who can do what, and on which records', 'heroicon-o-shield-check', ['permission', 'permissions', 'manage permissions', 'roles', 'role', 'access', 'rights', 'grant'],
+            fn () => RoleResource::getUrl('index'), RoleLens::SYSTEM_ADMIN, RoleResource::canAccess());
+        $add('open_audit', 'Review', 'Open audit', 'Every audited change, who and why', 'heroicon-o-magnifying-glass-circle', ['audit', 'open audit', 'audit trail', 'history', 'log', 'who changed'],
+            fn () => ChangeIntelligencePage::canAccess() ? ChangeIntelligencePage::getUrl() : AuditEventResource::getUrl('index'), RoleLens::SYSTEM_ADMIN, ChangeIntelligencePage::canAccess() || AuditEventResource::canAccess());
+        $add('configure_workflow', 'Review', 'Configure workflows', 'Approval routes and automation', 'heroicon-o-arrows-right-left', ['workflow', 'workflows', 'configure workflow', 'approval flow', 'routing', 'automation'],
+            fn () => WorkflowResource::getUrl('index'), RoleLens::SYSTEM_ADMIN, WorkflowResource::canAccess());
+        $add('security_policy', 'Review', 'Security policy', 'MFA, sign-in, sessions and retention', 'heroicon-o-lock-closed', ['security', 'mfa', 'two factor', 'password', 'session', 'ip allowlist'],
+            fn () => SecurityPolicyPage::getUrl(), RoleLens::SYSTEM_ADMIN, SecurityPolicyPage::canAccess());
+        $add('integrations', 'Review', 'Integration hub', 'Connected systems, messages and failures', 'heroicon-o-link', ['integration', 'integrations', 'webhook', 'api', 'dead letter', 'sync'],
+            fn () => IntegrationSystemResource::getUrl('index'), RoleLens::SYSTEM_ADMIN, IntegrationSystemResource::canAccess());
 
         return $actions;
     }
@@ -142,7 +166,9 @@ final class QuickActions
     /** The actions to feature for one lens (Home), keeping the launcher's order. */
     public function forLens(User $user, string $lens, int $limit = 6): array
     {
-        $own = array_values(array_filter($this->for($user), fn (array $a) => $a['lens'] === $lens));
+        // UX.16: match by experience, so the HR admin and system admin lenses share the administrator's actions.
+        $experience = RoleLens::experienceOf($lens);
+        $own = array_values(array_filter($this->for($user), fn (array $a) => RoleLens::experienceOf($a['lens']) === $experience));
 
         return array_slice($own, 0, $limit);
     }

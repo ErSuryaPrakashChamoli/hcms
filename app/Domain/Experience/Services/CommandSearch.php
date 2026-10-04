@@ -12,6 +12,7 @@ use App\Domain\Knowledge\Services\KnowledgeBase;
 use App\Domain\Letters\Models\Letter;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Location;
+use App\Domain\People\Models\Person;
 use App\Domain\ServiceDesk\Models\ServiceDefinition;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Services\CaseAccess;
@@ -42,6 +43,20 @@ use Throwable;
 final class CommandSearch
 {
     private const PER_GROUP = 6;
+
+    /**
+     * UX.16: result groups in the order each kind of person usually needs them. Intelligence answers lead
+     * everywhere; employees then see actions and their own requests, managers and HR people, executives and
+     * administrators navigation. Groups are only reordered: what each contains is unchanged.
+     */
+    private const GROUP_ORDER = [
+        'employee' => ['answers', 'actions', 'requests', 'knowledge', 'documents', 'services', 'people', 'modules', 'organisation', 'records'],
+        'manager' => ['answers', 'people', 'actions', 'requests', 'modules', 'knowledge', 'documents', 'organisation', 'records', 'services'],
+        'hr' => ['answers', 'people', 'actions', 'requests', 'documents', 'modules', 'knowledge', 'organisation', 'records', 'services'],
+        'payroll' => ['answers', 'actions', 'modules', 'people', 'requests', 'documents', 'records', 'knowledge', 'organisation', 'services'],
+        'executive' => ['answers', 'actions', 'modules', 'organisation', 'people', 'records', 'knowledge', 'requests', 'documents', 'services'],
+        'admin' => ['answers', 'actions', 'modules', 'records', 'people', 'organisation', 'knowledge', 'requests', 'documents', 'services'],
+    ];
 
     public function __construct(
         private readonly PeopleVisibility $people,
@@ -96,7 +111,17 @@ final class CommandSearch
         $add('records', 'Workflows & reports', fn () => $this->matchRecords($user, $q));
         $add('services', 'HR services', fn () => $this->matchServices($user, $q));
 
+        $order = self::GROUP_ORDER[$this->experience($user)] ?? [];
+        usort($groups, fn ($a, $b) => (array_search($a['key'], $order, true) === false ? 99 : array_search($a['key'], $order, true))
+            <=> (array_search($b['key'], $order, true) === false ? 99 : array_search($b['key'], $order, true)));
+
         return $groups;
+    }
+
+    /** UX.16: the experience that orders results (the same primary lens as Home, including "Home opens as"). */
+    private function experience(User $user): string
+    {
+        return RoleLens::experienceOf($this->lenses->primary($user, app(ExperiencePreferences::class)->for($user)['lens'] ?? null));
     }
 
     /** Before typing: recent items, then the viewer's most useful actions. */
@@ -109,9 +134,9 @@ final class CommandSearch
                 $groups[] = ['key' => 'recent', 'label' => 'Recent', 'items' => $recent];
             }
         }
-        $lens = $this->lenses->primary($user, app(ExperiencePreferences::class)->for($user)['lens'] ?? null);
+        $experience = $this->experience($user);
         $all = $this->actions->for($user);
-        usort($all, fn ($a, $b) => (int) ($b['lens'] === $lens) <=> (int) ($a['lens'] === $lens));
+        usort($all, fn ($a, $b) => (int) (RoleLens::experienceOf($b['lens']) === $experience) <=> (int) (RoleLens::experienceOf($a['lens']) === $experience));
         $groups[] = ['key' => 'actions', 'label' => $mode === 'actions' ? 'Start something' : 'Suggested', 'items' => array_map(fn ($a) => $this->actionRow($a), array_slice($all, 0, $mode === 'actions' ? 12 : 6))];
 
         return array_values(array_filter($groups, fn ($g) => $g['items'] !== []));
@@ -143,10 +168,12 @@ final class CommandSearch
     private function matchActions(User $user, string $q): array
     {
         $scored = [];
+        $experience = $this->experience($user);
         foreach ($this->actions->for($user) as $a) {
             $score = $this->score($q, $a['label'], [...$a['keywords'], $a['verb'], $a['hint']]);
             if ($score > 0) {
-                $scored[] = [$score, $a];
+                // UX.16: the viewer's own role's actions rank first among equal matches ("leave": an employee's request first).
+                $scored[] = [$score + (RoleLens::experienceOf($a['lens']) === $experience ? 15 : 0), $a];
             }
         }
         usort($scored, fn ($x, $y) => $y[0] <=> $x[0]);
@@ -160,14 +187,24 @@ final class CommandSearch
         if (mb_strlen($q) < 2) {
             return [];
         }
-        $people = PeopleVisibility::matchName($this->people->query($user)->with(['person', 'currentPosition.designation', 'currentPosition.department']), $q)
-            ->limit(self::PER_GROUP)->get();
+        // UX.16: a stable order by name; a manager's current reports come first (they are already visible to them, so
+        // this only ranks, it never widens visibility: both queries start from PeopleVisibility).
+        $base = fn () => PeopleVisibility::matchName($this->people->query($user)->with(['person', 'currentPosition.designation', 'currentPosition.department']), $q)
+            ->orderBy(Person::query()->select('first_name')->whereColumn('people.id', 'employees.person_id'))->orderBy('employees.id');
+        $me = $this->lenses->has($user, RoleLens::MANAGER) ? $this->lenses->employee($user) : null;
+        $team = $me ? $me->directReports()->currentlyEffective()->pluck('employee_id')->map(fn ($id) => (int) $id)->all() : [];
+        if ($team === []) {
+            $people = $base()->limit(self::PER_GROUP)->get();
+        } else {
+            $first = $base()->whereIn('employees.id', $team)->limit(self::PER_GROUP)->get();
+            $people = $first->concat($first->count() < self::PER_GROUP ? $base()->whereNotIn('employees.id', $team)->limit(self::PER_GROUP - $first->count())->get() : []);
+        }
 
-        return $people->map(fn (Employee $e) => $this->personRow($user, $e))->all();
+        return $people->map(fn (Employee $e) => $this->personRow($user, $e, in_array((int) $e->id, $team, true)))->all();
     }
 
     /** @return array<string, mixed> */
-    public function personRow(User $user, Employee $e): array
+    public function personRow(User $user, Employee $e, bool $inTeam = false): array
     {
         $open = $this->people->canOpenProfile($user, $e);
         $profile = $open ? EmployeeResource::getUrl('view', ['record' => $e]) : null;
@@ -183,7 +220,7 @@ final class CommandSearch
         return [
             'id' => 'person:'.$e->id, 'type' => 'person', 'person_id' => $e->id,
             'title' => $e->display_name ?? $e->employee_code,
-            'subtitle' => collect([$p?->designation?->name, $p?->department?->name])->filter()->implode(' · ') ?: $e->employee_code,
+            'subtitle' => collect([$inTeam ? 'Your team' : null, $p?->designation?->name, $p?->department?->name])->filter()->implode(' · ') ?: $e->employee_code,
             'avatar' => $e->display_name, 'url' => $profile, 'drawer' => ['type' => 'person', 'id' => $e->id], 'actions' => $actions,
         ];
     }
