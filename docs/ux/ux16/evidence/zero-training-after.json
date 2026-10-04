@@ -1,0 +1,76 @@
+{
+  "base": "http://127.0.0.1:8090",
+  "fold_px": 900,
+  "results": [
+    {
+      "role": "Employee",
+      "ask": "I need to take leave.",
+      "answered": true,
+      "clicks": 1,
+      "extra_screens": 0,
+      "wrong_attempts": 0,
+      "ms_to_answer": 1716,
+      "ms_landing": 1294,
+      "answer_in_first_screen": true,
+      "links_in_answer": 0,
+      "dead_ends": 0,
+      "path": "clicked \"Request leave\""
+    },
+    {
+      "role": "Manager",
+      "ask": "Show me what needs my attention.",
+      "answered": true,
+      "clicks": 0,
+      "extra_screens": 0,
+      "wrong_attempts": 0,
+      "ms_to_answer": 1677,
+      "ms_landing": 1649,
+      "answer_in_first_screen": true,
+      "links_in_answer": 3,
+      "dead_ends": 0,
+      "path": "on landing"
+    },
+    {
+      "role": "HR",
+      "ask": "Which employee changes need action?",
+      "answered": true,
+      "clicks": 0,
+      "extra_screens": 0,
+      "wrong_attempts": 0,
+      "ms_to_answer": 1711,
+      "ms_landing": 1689,
+      "answer_in_first_screen": true,
+      "links_in_answer": 8,
+      "dead_ends": 0,
+      "path": "on landing"
+    },
+    {
+      "role": "Executive",
+      "ask": "What's happening in my workforce?",
+      "answered": true,
+      "clicks": 0,
+      "extra_screens": 0,
+      "wrong_attempts": 0,
+      "ms_to_answer": 1322,
+      "ms_landing": 1299,
+      "answer_in_first_screen": true,
+      "links_in_answer": 0,
+      "dead_ends": 0,
+      "path": "on landing"
+    },
+    {
+      "role": "Administrator",
+      "ask": "What requires system attention?",
+      "answered": true,
+      "clicks": 0,
+      "extra_screens": 0,
+      "wrong_attempts": 0,
+      "ms_to_answer": 1447,
+      "ms_landing": 1417,
+      "answer_in_first_screen": true,
+      "links_in_answer": 3,
+      "dead_ends": 0,
+      "path": "on landing"
+    }
+  ]
+}
