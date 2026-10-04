@@ -59,7 +59,7 @@ final class ModuleContext
         'expired' => ['Expired', 'expired', 'neutral', 7],
     ];
 
-    /** Models whose pending rows are decided in the Approval Center (model => ApprovalItem types). */
+    /** Models whose pending rows are decided in the Approval Center (model => ApprovalItem types it produces). */
     private const APPROVAL_SOURCES = [
         LeaveRequest::class => ['leave', 'leave_cancellation'],
         AttendanceRegularisation::class => ['regularisation'],
@@ -134,10 +134,11 @@ final class ModuleContext
             }
         }
 
+        // Hand-off to the Approval Center for request lists: the viewer's own decision count, cached by the Approval
+        // Center for a minute, so a list never rebuilds the whole queue just to say it.
         $approvals = null;
         if ($viewer !== null && isset(self::APPROVAL_SOURCES[$model::class]) && $this->safe(fn () => Approvals::canAccess(), false)) {
-            $types = self::APPROVAL_SOURCES[$model::class];
-            $count = $this->safe(fn () => $this->approvals->pending($viewer)->filter(fn ($i) => in_array($i->type, $types, true))->count(), 0);
+            $count = $this->safe(fn () => $this->approvals->count($viewer), 0);
             if ($count > 0) {
                 $approvals = ['count' => $count, 'url' => Approvals::getUrl()];
             }

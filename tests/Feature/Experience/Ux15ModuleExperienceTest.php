@@ -92,7 +92,7 @@ it('shows people in module tables as person chips and points pending requests to
 
     $this->get(LeaveRequestResource::getUrl('index'))->assertOk()
         ->assertSee('data-person="'.$this->report->id.'"', false)
-        ->assertSee('for your decision', false)
+        ->assertSee('decision waiting', false)
         ->assertSee('Decide in the Approval Center');
 });
 

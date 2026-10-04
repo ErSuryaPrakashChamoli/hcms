@@ -19,7 +19,7 @@
         @if ($ctx['approvals'])
             <a href="{{ $ctx['approvals']['url'] }}" wire:navigate class="pos-module-decide">
                 <x-filament::icon icon="heroicon-m-check-badge" class="size-4" />
-                <span><strong class="pos-num">{{ $ctx['approvals']['count'] }}</strong> {{ $ctx['approvals']['count'] === 1 ? 'waits' : 'wait' }} for your decision</span>
+                <span>You have <strong class="pos-num">{{ $ctx['approvals']['count'] }}</strong> {{ $ctx['approvals']['count'] === 1 ? 'decision' : 'decisions' }} waiting</span>
                 <span class="pos-muted">Decide in the Approval Center →</span>
             </a>
         @endif
