@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Experience\Services\ChangeFeed;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\PeopleVisibility;
 use App\Domain\Experience\Services\RoleLens;
@@ -16,6 +17,7 @@ use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use UnitEnum;
@@ -62,6 +64,10 @@ class People extends Page
     #[Url(as: 'view')]
     public ?string $display = null;
 
+    /** UX.15: group the directory by department, location or manager (people stay people; groups are headings). */
+    #[Url]
+    public ?string $group = null;
+
     public int $limit = self::PAGE;
 
     public static function canAccess(): bool
@@ -78,9 +84,12 @@ class People extends Page
 
     public function getSubheading(): ?string
     {
-        return auth()->user()->hasPermission('employee.view')
-            ? 'Everyone you can see, with quick previews. The full register, imports and exports stay in Employees.'
-            : 'Your manager, your team and you.';
+        if (! auth()->user()->hasPermission('employee.view')) {
+            return 'Your manager, your team and you. Hover a name to peek; select it for more.';
+        }
+        $f = $this->filters;
+
+        return number_format($this->total).' '.($this->total === 1 ? 'person' : 'people').' you can see across '.count($f['departments']).' departments and '.count($f['locations']).' locations. Hover a name to peek; select it for more.';
     }
 
     public function updated(string $property): void
@@ -93,7 +102,45 @@ class People extends Page
 
     public function setDisplay(string $display): void
     {
-        $this->display = $display === 'list' ? 'list' : 'grid';
+        $this->display = in_array($display, ['list', 'changed'], true) ? $display : 'grid';
+    }
+
+    public function setGroup(?string $group): void
+    {
+        $this->group = in_array($group, ['department', 'location', 'manager'], true) ? $group : null;
+    }
+
+    /**
+     * The people shown, grouped when a grouping is chosen.
+     *
+     * @return array<string, Collection<int, Employee>>
+     */
+    public function grouped(): array
+    {
+        if ($this->group === null) {
+            return ['' => $this->people];
+        }
+        $key = fn (Employee $e) => match ($this->group) {
+            'department' => $e->currentPosition?->department?->name ?? 'No department',
+            'location' => $e->currentPosition?->location?->name ?? 'No location',
+            'manager' => $e->currentManager?->manager?->person?->display_name ? 'Reports to '.$e->currentManager->manager->person->display_name : 'No line manager',
+        };
+
+        return $this->people->groupBy($key)->sortKeys()->all();
+    }
+
+    /**
+     * Recently changed: people with changes in the last 30 days that the viewer may see (ChangeFeed applies the
+     * timeline categories and the people the viewer may see), newest first, one row per person.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    #[Computed]
+    public function changed()
+    {
+        return app(ChangeFeed::class)->for(auth()->user(), 60, 30)->filter(fn (array $i) => $i['subject_id'] !== null)
+            ->groupBy('subject_id')->map(fn ($items) => ['person_id' => $items->first()['subject_id'], 'name' => $items->first()['subject'], 'latest' => $items->first(), 'count' => $items->count()])
+            ->values()->take(40);
     }
 
     public function clearFilters(): void

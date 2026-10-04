@@ -21,9 +21,18 @@
                     @foreach ($f['statuses'] as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
                 </select>
             @endif
-            <div class="pos-segmented ms-auto" role="group" aria-label="Layout">
+            @if ($f['show'] && $display !== 'changed')
+                <select wire:change="setGroup($event.target.value || null)" class="pos-select" aria-label="Group by">
+                    <option value="" @selected(! $group)>No grouping</option>
+                    <option value="department" @selected($group === 'department')>Group by department</option>
+                    <option value="location" @selected($group === 'location')>Group by location</option>
+                    <option value="manager" @selected($group === 'manager')>Group by manager</option>
+                </select>
+            @endif
+            <div class="pos-segmented ms-auto" role="group" aria-label="View">
                 <button type="button" wire:click="setDisplay('grid')" aria-pressed="{{ $display === 'grid' ? 'true' : 'false' }}" title="Cards"><x-filament::icon icon="heroicon-m-squares-2x2" class="size-4" /><span class="sr-only">Cards</span></button>
-                <button type="button" wire:click="setDisplay('list')" aria-pressed="{{ $display === 'list' ? 'true' : 'false' }}" title="Compact list"><x-filament::icon icon="heroicon-m-bars-3" class="size-4" /><span class="sr-only">Compact list</span></button>
+                <button type="button" wire:click="setDisplay('list')" aria-pressed="{{ $display === 'list' ? 'true' : 'false' }}" title="Table"><x-filament::icon icon="heroicon-m-bars-3" class="size-4" /><span class="sr-only">Table</span></button>
+                <button type="button" wire:click="setDisplay('changed')" aria-pressed="{{ $display === 'changed' ? 'true' : 'false' }}" title="Recently changed"><x-filament::icon icon="heroicon-m-arrows-right-left" class="size-4" /><span class="max-md:sr-only">Recently changed</span></button>
             </div>
             @if ($url = $this->registerUrl())
                 <a href="{{ $url }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Employee register</a>
@@ -45,51 +54,79 @@
         </div>
 
         <div wire:loading.remove wire:target="search, department, location, status, manager">
-            @if ($this->people->isEmpty())
-                @if ($search !== '' || $department || $location || $status || $manager)
-                    <x-pos.empty class="mt-6" icon="heroicon-o-funnel" title="No one matches these filters" why="Try fewer filters or a shorter name." />
+            @if ($display === 'changed')
+                {{-- Recently changed: people with changes you may see in the last 30 days --}}
+                @if ($this->changed->isEmpty())
+                    <x-pos.state class="mt-6" variant="empty" title="No recent changes you can see." why="Joiners, moves, reporting changes and exits from the last 30 days appear here." />
                 @else
-                    <x-pos.empty class="mt-6" icon="heroicon-o-users" title="No people to show yet" why="People you can see appear here once they are added." />
+                    <div class="pos-panel pos-stream mt-4">
+                        @foreach ($this->changed as $c)
+                            <div class="pos-stream-row" data-tone="{{ $c['latest']['tone'] === 'primary' ? 'info' : $c['latest']['tone'] }}" wire:key="ch-{{ $c['person_id'] }}">
+                                <x-pos.person :id="$c['person_id']" :name="$c['name']" size="sm" />
+                                <span class="pos-stream-body"><span class="pos-stream-title">{{ $c['latest']['title'] }}</span>
+                                    <span class="pos-stream-meta">{{ $c['latest']['label'] }} · {{ $c['latest']['at']->diffForHumans() }}@if ($c['count'] > 1) · {{ $c['count'] - 1 }} more {{ $c['count'] - 1 === 1 ? 'change' : 'changes' }}@endif</span></span>
+                                <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'change', id: @js($c['latest']['id']) })">What changed</button>
+                            </div>
+                        @endforeach
+                    </div>
                 @endif
-            @elseif ($display === 'list')
-                <div class="pos-card mt-4 overflow-x-auto p-0">
-                    <table class="pos-table">
-                        <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col" class="hidden md:table-cell">Department</th><th scope="col" class="hidden lg:table-cell">Location</th><th scope="col" class="hidden lg:table-cell">Manager</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
-                        <tbody>
-                            @foreach ($this->people as $e)
-                                @php($p = $e->currentPosition)
-                                <tr wire:key="pl-{{ $e->id }}">
-                                    <td><button type="button" class="pos-person-inline" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'person', id: {{ $e->id }} })"><x-pos.avatar :name="$e->display_name" size="xs" /><span class="font-medium">{{ $e->display_name }}</span></button></td>
-                                    <td class="pos-secondary">{{ $p?->designation?->name ?? '—' }}</td>
-                                    <td class="hidden md:table-cell pos-secondary">{{ $p?->department?->name ?? '—' }}</td>
-                                    <td class="hidden lg:table-cell pos-secondary">{{ $p?->location?->name ?? '—' }}</td>
-                                    <td class="hidden lg:table-cell pos-secondary">{{ $e->currentManager?->manager?->person?->display_name ?? '—' }}</td>
-                                    <td class="text-end"><button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'person', id: {{ $e->id }} })">Preview</button></td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+            @elseif ($this->people->isEmpty())
+                @if ($search !== '' || $department || $location || $status || $manager)
+                    <x-pos.state class="mt-6" variant="filtered" title="No one matches these filters." why="Try fewer filters or a shorter name.">
+                        <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm" wire:click="clearFilters">Clear filters</button>
+                    </x-pos.state>
+                @else
+                    <x-pos.state class="mt-6" variant="empty" title="No people to show yet." why="People you can see appear here once they are added." />
+                @endif
             @else
-                <ul class="pos-people-grid mt-4">
-                    @foreach ($this->people as $e)
-                        @php($p = $e->currentPosition)
-                        <li wire:key="pg-{{ $e->id }}">
-                            <button type="button" class="pos-card pos-card-interactive pos-person-card" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'person', id: {{ $e->id }} })" aria-label="Preview {{ $e->display_name }}">
-                                <x-pos.avatar :name="$e->display_name" size="lg" />
-                                <span class="pos-body font-medium mt-3 block truncate">{{ $e->display_name }}</span>
-                                <span class="pos-caption pos-secondary block truncate">{{ $p?->designation?->name ?? $e->employee_code }}</span>
-                                <span class="pos-caption pos-muted block truncate">{{ collect([$p?->department?->name, $p?->location?->name])->filter()->implode(' · ') }}</span>
-                                @if (in_array($e->lifecycle_state?->value, ['probation', 'notice_period', 'on_leave', 'preboarding', 'pre_employee', 'onboarding'], true))
-                                    <x-pos.status class="mt-2" :tone="$e->lifecycle_state->value === 'notice_period' ? 'warning' : 'info'" :label="$e->lifecycle_state->getLabel()" />
-                                @endif
-                            </button>
-                        </li>
-                    @endforeach
-                </ul>
+                @foreach ($this->grouped() as $groupLabel => $members)
+                    <section class="mt-4" @if ($groupLabel !== '') aria-label="{{ $groupLabel }}" @endif>
+                        @if ($groupLabel !== '')
+                            <h2 class="pos-sec-title mb-2">{{ $groupLabel }}<span class="pos-sec-count">{{ $members->count() }}</span></h2>
+                        @endif
+                        @if ($display === 'list')
+                            <div class="pos-panel overflow-x-auto">
+                                <table class="pos-table">
+                                    <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col" class="hidden md:table-cell">Department</th><th scope="col" class="hidden lg:table-cell">Location</th><th scope="col" class="hidden lg:table-cell">Manager</th><th scope="col">Status</th></tr></thead>
+                                    <tbody>
+                                        @foreach ($members as $e)
+                                            @php($p = $e->currentPosition)
+                                            @php($m = $e->currentManager?->manager)
+                                            <tr wire:key="pl-{{ $e->id }}">
+                                                <td><x-pos.person :id="$e->id" :name="$e->display_name" /></td>
+                                                <td class="pos-secondary">{{ $p?->designation?->name ?? '—' }}</td>
+                                                <td class="hidden md:table-cell pos-secondary">{{ $p?->department?->name ?? '—' }}</td>
+                                                <td class="hidden lg:table-cell pos-secondary">{{ $p?->location?->name ?? '—' }}</td>
+                                                <td class="hidden lg:table-cell">@if ($m)<x-pos.person :id="$m->id" :name="$m->person?->display_name" :avatar="false" />@else<span class="pos-muted">—</span>@endif</td>
+                                                <td>@if ($e->lifecycle_state)<x-pos.status :tone="in_array($e->lifecycle_state->value, ['notice_period', 'suspended'], true) ? 'warning' : (in_array($e->lifecycle_state->value, ['probation', 'onboarding', 'preboarding', 'pre_employee'], true) ? 'info' : 'neutral')" :label="$e->lifecycle_state->getLabel()" />@endif</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <ul class="pos-people-grid">
+                                @foreach ($members as $e)
+                                    @php($p = $e->currentPosition)
+                                    <li wire:key="pg-{{ $e->id }}">
+                                        <button type="button" class="pos-card pos-card-interactive pos-person-card" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'person', id: {{ $e->id }} })" aria-label="Preview {{ $e->display_name }}">
+                                            <x-pos.avatar :name="$e->display_name" size="lg" />
+                                            <span class="pos-body font-medium mt-3 block truncate">{{ $e->display_name }}</span>
+                                            <span class="pos-caption pos-secondary block truncate">{{ $p?->designation?->name ?? $e->employee_code }}</span>
+                                            <span class="pos-caption pos-muted block truncate">{{ collect([$p?->department?->name, $p?->location?->name])->filter()->implode(' · ') }}</span>
+                                            @if (in_array($e->lifecycle_state?->value, ['probation', 'notice_period', 'on_leave', 'preboarding', 'pre_employee', 'onboarding'], true))
+                                                <x-pos.status class="mt-2" :tone="$e->lifecycle_state->value === 'notice_period' ? 'warning' : 'info'" :label="$e->lifecycle_state->getLabel()" />
+                                            @endif
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </section>
+                @endforeach
             @endif
 
-            @if ($this->people->count() < $this->total)
+            @if ($display !== 'changed' && $this->people->count() < $this->total)
                 <div class="mt-4 text-center"><button type="button" class="pos-btn pos-btn-secondary" wire:click="loadMore">Show more ({{ $this->total - $this->people->count() }} more)</button></div>
             @endif
         </div>
