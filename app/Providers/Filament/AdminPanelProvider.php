@@ -71,12 +71,13 @@ class AdminPanelProvider extends PanelProvider
                     600 => 'oklch(0.4958 0.1815 281.98)', 700 => 'oklch(0.4306 0.1651 281.57)', 800 => 'oklch(0.370 0.140 281)',
                     900 => 'oklch(0.310 0.110 280)', 950 => 'oklch(0.220 0.075 279)',
                 ],
-                // A cool, slightly violet gray that belongs to the PeopleOS canvas and the midnight rail.
+                // UX.15.4: a cool, almost colourless neutral (matches the --pos-n-* ramp). Neutral is the default for
+                // normal information; indigo is kept for identity, selection and primary action.
                 'gray' => [
-                    50 => 'oklch(0.974 0.005 286)', 100 => 'oklch(0.955 0.007 286)', 200 => 'oklch(0.915 0.010 284)',
-                    300 => 'oklch(0.855 0.014 282)', 400 => 'oklch(0.700 0.026 280)', 500 => 'oklch(0.560 0.038 279)',
-                    600 => 'oklch(0.500 0.046 278)', 700 => 'oklch(0.400 0.046 278)', 800 => 'oklch(0.285 0.044 278)',
-                    900 => 'oklch(0.216 0.045 278)', 950 => 'oklch(0.160 0.035 278)',
+                    50 => 'oklch(0.975 0.003 255)', 100 => 'oklch(0.956 0.004 255)', 200 => 'oklch(0.918 0.006 255)',
+                    300 => 'oklch(0.865 0.008 255)', 400 => 'oklch(0.712 0.013 255)', 500 => 'oklch(0.552 0.017 255)',
+                    600 => 'oklch(0.462 0.018 255)', 700 => 'oklch(0.378 0.017 255)', 800 => 'oklch(0.268 0.012 255)',
+                    900 => 'oklch(0.205 0.009 255)', 950 => 'oklch(0.150 0.007 255)',
                 ],
                 'success' => Color::hex('#0f7a55'),
                 'warning' => Color::hex('#9a5309'),

@@ -154,6 +154,72 @@ components.posDrawer = () => ({
         hide() { this.open = false; this.$wire.close(); this.$nextTick(() => this.lastFocus?.focus?.()); },
     });
 
+/*
+ * People peek (UX.15): the Peek level of Peek → Drawer → Workspace. Any [data-person] chip shows a small
+ * card after a short hover or keyboard focus; the card is drawn from PeekHost::peek(), which answers only
+ * with directory fields the viewer may already see. Touch devices skip the peek (a tap opens the drawer).
+ * Document listeners are bound once and always talk to the newest host (SPA navigation re-creates it).
+ */
+components.posPeek = (wire) => ({
+        open: false, data: null, loading: false, style: '', trigger: null, timer: null, hideTimer: null,
+        init() {
+            window.__posPeek = this;
+            this.cache = window.__posPeekCache ?? (window.__posPeekCache = {});
+            if (window.__posPeekBound) return;
+            window.__posPeekBound = true;
+            const canHover = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+            const host = () => window.__posPeek;
+            const chip = (e) => e.target?.closest?.('[data-person]');
+            document.addEventListener('mouseover', (e) => { const t = chip(e); if (t && canHover() && t !== host()?.trigger) host()?.schedule(t); });
+            document.addEventListener('mouseout', (e) => { const t = chip(e); if (t && !t.contains(e.relatedTarget)) host()?.leave(); });
+            document.addEventListener('focusin', (e) => { const t = chip(e); if (t && t.matches(':focus-visible')) host()?.schedule(t); });
+            document.addEventListener('focusout', (e) => { if (chip(e)) host()?.leave(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && host()?.open) host().hide(); });
+            window.addEventListener('scroll', () => { if (host()?.open) host().hide(); }, { passive: true, capture: true });
+        },
+        schedule(t) {
+            clearTimeout(this.timer); clearTimeout(this.hideTimer);
+            const delay = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--pos-peek-delay')) || 350;
+            this.timer = setTimeout(() => this.show(t), delay);
+        },
+        show(t) {
+            if (!document.body.contains(t)) return;
+            const id = parseInt(t.dataset.person, 10);
+            if (!id) return;
+            this.trigger?.removeAttribute('aria-describedby');
+            this.trigger = t;
+            t.setAttribute('aria-describedby', 'pos-peek');
+            this.place(t);
+            this.data = this.cache[id] ?? null;
+            this.loading = this.data === null;
+            this.open = true;
+            if (this.data === null) {
+                wire.peek(id).then((d) => { this.cache[id] = d; if (this.trigger === t) { this.data = d; this.loading = false; } })
+                    .catch(() => { if (this.trigger === t) { this.loading = false; } });
+            }
+        },
+        place(t) {
+            const r = t.getBoundingClientRect();
+            const left = Math.max(12, Math.min(r.left, window.innerWidth - 312));
+            this.style = r.bottom + 240 < window.innerHeight
+                ? `left:${left}px; top:${r.bottom + 8}px`
+                : `left:${left}px; bottom:${window.innerHeight - r.top + 8}px`;
+        },
+        keep() { clearTimeout(this.hideTimer); },
+        leave() { clearTimeout(this.timer); this.hideTimer = setTimeout(() => this.hide(), 180); },
+        hide() {
+            clearTimeout(this.timer); clearTimeout(this.hideTimer);
+            this.open = false;
+            this.trigger?.removeAttribute('aria-describedby');
+            this.trigger = null;
+        },
+        drawer() {
+            const id = this.data?.id;
+            this.hide();
+            if (id) window.dispatchEvent(new CustomEvent('pos-drawer-open', { detail: { type: 'person', id } }));
+        },
+    });
+
 /* Organisation map: pan and zoom with mouse, touch and keyboard. */
 components.posPanZoom = () => ({
         scale: 1, x: 0, y: 0, dragging: false, sx: 0, sy: 0,
