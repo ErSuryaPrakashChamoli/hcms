@@ -1,13 +1,13 @@
 <x-filament-panels::page>
     @php($s = $this->getSummary())
-    <div class="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
-        <x-filament::section compact><div class="text-sm text-gray-500">Exceptions (30d)</div><div class="text-2xl font-semibold">{{ $s['exceptions'] }}</div></x-filament::section>
-        <x-filament::section compact><div class="text-sm text-gray-500">Missing punch</div><div class="text-2xl font-semibold {{ $s['missing_punch'] > 0 ? 'text-warning-600' : '' }}">{{ $s['missing_punch'] }}</div></x-filament::section>
-        <x-filament::section compact><div class="text-sm text-gray-500">Late</div><div class="text-2xl font-semibold">{{ $s['late'] }}</div></x-filament::section>
-        <x-filament::section compact><div class="text-sm text-gray-500">Absent</div><div class="text-2xl font-semibold {{ $s['absent'] > 0 ? 'text-danger-600' : '' }}">{{ $s['absent'] }}</div></x-filament::section>
-        <x-filament::section compact><div class="text-sm text-gray-500">OT pending</div><div class="text-2xl font-semibold">{{ $s['overtime_pending'] }}</div></x-filament::section>
-        <x-filament::section compact><div class="text-sm text-gray-500">Regularisations</div><div class="text-2xl font-semibold">{{ $s['regularisations_pending'] }}</div></x-filament::section>
-        <x-filament::section compact><div class="text-sm text-gray-500">Failed punches</div><div class="text-2xl font-semibold {{ $s['failed_punches'] > 0 ? 'text-danger-600' : '' }}">{{ $s['failed_punches'] }}</div></x-filament::section>
+    <div class="pos-panel pos-panel-pad pos-figures">
+        <div class="pos-figure"><span class="pos-figure-value">{{ $s['exceptions'] }}</span><span class="pos-figure-label">Exceptions (30d)</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $s['missing_punch'] > 0 ? 'warning' : '' }}">{{ $s['missing_punch'] }}</span><span class="pos-figure-label">Missing punch</span></div>
+        <div class="pos-figure"><span class="pos-figure-value">{{ $s['late'] }}</span><span class="pos-figure-label">Late</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $s['absent'] > 0 ? 'bad' : '' }}">{{ $s['absent'] }}</span><span class="pos-figure-label">Absent</span></div>
+        <div class="pos-figure"><span class="pos-figure-value">{{ $s['overtime_pending'] }}</span><span class="pos-figure-label">OT pending</span></div>
+        <div class="pos-figure"><span class="pos-figure-value">{{ $s['regularisations_pending'] }}</span><span class="pos-figure-label">Regularisations</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $s['failed_punches'] > 0 ? 'bad' : '' }}">{{ $s['failed_punches'] }}</span><span class="pos-figure-label">Failed punches</span></div>
     </div>
 
     {{ $this->table }}

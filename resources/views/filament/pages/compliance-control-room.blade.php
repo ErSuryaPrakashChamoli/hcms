@@ -1,56 +1,21 @@
 <x-filament-panels::page>
     @php($rules = $this->getRuleSummary())
     @php($returns = $this->getReturnSummary())
-    <div class="grid gap-4 md:grid-cols-5">
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Rule versions verified</div>
-            <div class="text-2xl font-semibold {{ ($rules['verified'] ?? 0) === 0 ? 'text-danger-600' : '' }}">{{ $rules['verified'] ?? 0 }}</div>
-            <div class="text-xs text-gray-500">{{ $rules['review'] ?? 0 }} in review · {{ $rules['draft'] ?? 0 }} draft</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Returns with blocking issues</div>
-            <div class="text-2xl font-semibold {{ $returns['blocking'] > 0 ? 'text-danger-600' : '' }}">{{ $returns['blocking'] }}</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Awaiting approval</div>
-            <div class="text-2xl font-semibold">{{ $returns['awaiting_approval'] }}</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Exported, not yet filed</div>
-            <div class="text-2xl font-semibold {{ $returns['exported_not_filed'] > 0 ? 'text-warning-600' : '' }}">{{ $returns['exported_not_filed'] }}</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Reconciliation required</div>
-            <div class="text-2xl font-semibold {{ $returns['reconciliation_required'] > 0 ? 'text-danger-600' : '' }}">{{ $returns['reconciliation_required'] }}</div>
-            <div class="text-xs text-gray-500">{{ $returns['certificates_to_issue'] }} TDS certificate(s) to issue</div>
-        </x-filament::section>
+    <div class="pos-panel pos-panel-pad pos-figures">
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ ($rules['verified'] ?? 0) === 0 ? 'bad' : '' }}">{{ $rules['verified'] ?? 0 }}</span><span class="pos-figure-label">Rule versions verified</span><span class="pos-figure-delta">{{ $rules['review'] ?? 0 }} in review · {{ $rules['draft'] ?? 0 }} draft</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $returns['blocking'] > 0 ? 'bad' : '' }}">{{ $returns['blocking'] }}</span><span class="pos-figure-label">Returns with blocking issues</span></div>
+        <div class="pos-figure"><span class="pos-figure-value">{{ $returns['awaiting_approval'] }}</span><span class="pos-figure-label">Awaiting approval</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $returns['exported_not_filed'] > 0 ? 'warning' : '' }}">{{ $returns['exported_not_filed'] }}</span><span class="pos-figure-label">Exported, not yet filed</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $returns['reconciliation_required'] > 0 ? 'bad' : '' }}">{{ $returns['reconciliation_required'] }}</span><span class="pos-figure-label">Reconciliation required</span><span class="pos-figure-delta">{{ $returns['certificates_to_issue'] }} TDS certificate(s) to issue</span></div>
     </div>
 
     @php($ready = $this->getReadinessSummary())
-    <div class="grid gap-4 md:grid-cols-5">
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Required rules verified</div>
-            <div class="text-2xl font-semibold {{ $ready['required_verified'] < $ready['required_total'] ? 'text-danger-600' : '' }}">{{ $ready['required_verified'] }} / {{ $ready['required_total'] }}</div>
-            <div class="text-xs text-gray-500">for this tenant's active establishments</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Open regulatory notices</div>
-            <div class="text-2xl font-semibold {{ $ready['notices']->isNotEmpty() ? 'text-danger-600' : '' }}">{{ $ready['notices']->count() }}</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Export layouts verified</div>
-            <div class="text-2xl font-semibold {{ $ready['layouts_verified'] < $ready['layouts_total'] ? 'text-warning-600' : '' }}">{{ $ready['layouts_verified'] }} / {{ $ready['layouts_total'] }}</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Establishments / registrations verified</div>
-            <div class="text-2xl font-semibold">{{ $ready['establishments_verified'] }} / {{ $ready['establishments_total'] }}</div>
-            <div class="text-xs text-gray-500">registrations {{ $ready['registrations_verified'] }} / {{ $ready['registrations_total'] }}</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Returns passing the production gate</div>
-            <div class="text-2xl font-semibold">{{ $ready['eligible_returns'] }}</div>
-            <div class="text-xs text-gray-500">parallel runs reconciled {{ $ready['parallel_reconciled'] }} · in progress {{ $ready['parallel_open'] }}</div>
-        </x-filament::section>
+    <div class="pos-panel pos-panel-pad pos-figures">
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $ready['required_verified'] < $ready['required_total'] ? 'bad' : '' }}">{{ $ready['required_verified'] }} / {{ $ready['required_total'] }}</span><span class="pos-figure-label">Required rules verified</span><span class="pos-figure-delta">for this tenant's active establishments</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $ready['notices']->isNotEmpty() ? 'bad' : '' }}">{{ $ready['notices']->count() }}</span><span class="pos-figure-label">Open regulatory notices</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $ready['layouts_verified'] < $ready['layouts_total'] ? 'warning' : '' }}">{{ $ready['layouts_verified'] }} / {{ $ready['layouts_total'] }}</span><span class="pos-figure-label">Export layouts verified</span></div>
+        <div class="pos-figure"><span class="pos-figure-value">{{ $ready['establishments_verified'] }} / {{ $ready['establishments_total'] }}</span><span class="pos-figure-label">Establishments / registrations verified</span><span class="pos-figure-delta">registrations {{ $ready['registrations_verified'] }} / {{ $ready['registrations_total'] }}</span></div>
+        <div class="pos-figure"><span class="pos-figure-value">{{ $ready['eligible_returns'] }}</span><span class="pos-figure-label">Returns passing the production gate</span><span class="pos-figure-delta">parallel runs reconciled {{ $ready['parallel_reconciled'] }} · in progress {{ $ready['parallel_open'] }}</span></div>
     </div>
 
     <x-filament::section heading="Rules this tenant needs" description="Derived from active establishments, their statutory profiles and states.">
