@@ -7,403 +7,390 @@
             'payroll' => 'Payroll', 'executive' => 'Company', 'system_admin' => 'Platform',
         ];
         $num = fn ($v) => rtrim(rtrim(number_format((float) $v, 1), '0'), '.');
+        $kpi = fn (string $key) => collect($h['kpis'] ?? [])->firstWhere('key', $key);
     @endphp
 
     @if (! $tenant)
         {{-- Platform administrators outside a tenant --}}
-        <div class="grid gap-[var(--pos-gap)] lg:grid-cols-3">
-            <section class="pos-card lg:col-span-2 pos-enter" aria-labelledby="pos-tenants">
-                <header class="pos-card-head">
-                    <h2 id="pos-tenants" class="pos-h3">Tenants</h2>
-                    @if ($this->platform['tenants_url'])
-                        <a href="{{ $this->platform['tenants_url'] }}" wire:navigate class="pos-link">Manage tenants</a>
-                    @endif
-                </header>
-                <ul class="pos-list">
+        <div class="pos-ws-cols">
+            <x-pos.section title="Tenants" :link="$this->platform['tenants_url']" link-label="Manage tenants">
+                <div class="pos-panel pos-stream">
                     @forelse ($this->platform['tenants'] as $t)
-                        <li class="pos-list-row">
+                        @php($tStatus = $t->status instanceof \BackedEnum ? $t->status->value : (string) $t->status)
+                        <div class="pos-stream-row" data-tone="{{ $tStatus === 'active' ? 'success' : 'warning' }}">
                             <x-pos.avatar :name="$t->name" size="sm" />
-                            <div class="min-w-0 flex-1">
-                                <p class="pos-body font-medium truncate">{{ $t->name }}</p>
-                                <p class="pos-caption">{{ $t->slug }}</p>
-                            </div>
-                            @php($tStatus = $t->status instanceof \BackedEnum ? $t->status->value : (string) $t->status)
+                            <div class="pos-stream-body"><p class="pos-stream-title">{{ $t->name }}</p><p class="pos-stream-meta">{{ $t->slug }}</p></div>
                             <x-pos.status :tone="$tStatus === 'active' ? 'success' : 'warning'" :label="ucfirst($tStatus)" />
-                        </li>
+                        </div>
                     @empty
-                        <li><x-pos.empty title="No tenants yet" why="Provision the first tenant to start." icon="heroicon-o-building-office" /></li>
+                        <x-pos.state title="No tenants yet" why="Provision the first tenant to start." />
                     @endforelse
-                </ul>
-            </section>
-            <section class="pos-card pos-enter-2">
-                <h2 class="pos-h3">Platform health</h2>
-                <p class="pos-body-sm mt-1">Readiness, audit chains, queues and statutory status.</p>
-                @if ($this->platform['readiness_url'])
-                    <a href="{{ $this->platform['readiness_url'] }}" wire:navigate class="pos-btn pos-btn-secondary mt-4">Open readiness</a>
-                @endif
-            </section>
+                </div>
+            </x-pos.section>
+            <x-pos.section title="Platform health">
+                <div class="pos-panel pos-panel-pad grid gap-3">
+                    <p class="pos-body pos-secondary">Readiness, audit chains, queues and statutory status.</p>
+                    @if ($this->platform['readiness_url'])<a href="{{ $this->platform['readiness_url'] }}" wire:navigate class="pos-btn pos-btn-secondary pos-btn-sm justify-self-start">Open readiness</a>@endif
+                </div>
+            </x-pos.section>
         </div>
     @else
-        <div class="pos-home2">
-            <div class="pos-home2-main">
-                {{-- Hero: greeting, today, lens switch; original dusk illustration --}}
-                <section class="pos-hero pos-enter" aria-labelledby="pos-hero-title">
-                    <x-pos.hero-art />
-                    <div class="pos-hero-content">
-                        <div class="flex items-center gap-4">
-                            <x-pos.avatar :name="$h['employee']?->display_name ?? auth()->user()->name" size="xl" class="pos-hero-avatar" />
-                            <div class="min-w-0">
-                                <h1 id="pos-hero-title" class="pos-hero-title">{{ $this->getTitle() }}</h1>
-                                <p class="pos-hero-sub">{{ $this->getSubheading() }}</p>
-                            </div>
-                        </div>
-                        @if (count($h['lenses']) > 1)
-                            <div class="pos-lens mt-5" role="tablist" aria-label="View Home as">
-                                @foreach ($h['lenses'] as $lens)
-                                    <button type="button" role="tab" class="pos-lens-chip" aria-selected="{{ $h['lens'] === $lens ? 'true' : 'false' }}" wire:click="switchLens('{{ $lens }}')">{{ $lensLabels[$lens] ?? $lens }}</button>
-                                @endforeach
-                            </div>
-                        @endif
+        <div class="pos-ws pos-home">
+            {{-- Where am I, what matters, what can I do: the brief of the day comes from real counts only. --}}
+            <header class="pos-ws-head">
+                <div class="pos-ws-head-text">
+                    <p class="pos-ws-eyebrow">{{ now()->format('l, j F') }}@if ($h['tenant']) · {{ $h['tenant'] }}@endif</p>
+                    <h1 class="pos-ws-title pos-ws-title-display">{{ $this->getTitle() }}.</h1>
+                    <p class="pos-ws-brief">{!! $this->briefHtml() !!}</p>
+                </div>
+                <div class="pos-ws-actions">
+                    @if ($h['decision_count'] > 0 && \App\Filament\Pages\Approvals::canAccess())
+                        <a href="{{ \App\Filament\Pages\Approvals::getUrl() }}" wire:navigate class="pos-btn pos-btn-primary">Review {{ $h['decision_count'] }} {{ $h['decision_count'] === 1 ? 'decision' : 'decisions' }}</a>
+                    @elseif ($this->requestLeaveAction->isVisible() && $h['lens'] === 'employee')
+                        <button type="button" wire:click="mountAction('requestLeave')" class="pos-btn pos-btn-primary" data-pos-action="request_leave_header">Request leave</button>
+                    @endif
+                    <button type="button" class="pos-btn pos-btn-secondary" x-data x-on:click="$dispatch('pos-command-open', { mode: 'actions' })">
+                        <x-filament::icon icon="heroicon-m-plus" class="size-4" /> Start something
+                    </button>
+                </div>
+            </header>
+
+            @if (count($h['lenses']) > 1)
+                <div class="pos-lens -mt-4" role="tablist" aria-label="View Home as">
+                    <span class="pos-meta">View as</span>
+                    @foreach ($h['lenses'] as $lens)
+                        <button type="button" role="tab" class="pos-lens-chip" aria-selected="{{ $h['lens'] === $lens ? 'true' : 'false' }}" wire:click="switchLens('{{ $lens }}')">{{ $lensLabels[$lens] ?? $lens }}</button>
+                    @endforeach
+                </div>
+            @endif
+
+            {{-- First-login welcome: what is different here, once, then gone for good --}}
+            @if ($this->showWelcome())
+                <section class="pos-panel pos-panel-pad pos-welcome-note" aria-labelledby="pos-welcome-title" x-data="{ shown: true }" x-show="shown">
+                    <span class="pos-ai-orb" aria-hidden="true"></span>
+                    <div class="min-w-0 flex-1">
+                        <h2 id="pos-welcome-title" class="pos-stream-title font-semibold">Welcome to PeopleOS. Your work comes to you here.</h2>
+                        <p class="pos-stream-meta">What matters is ranked here with the reason for each item. Press <span class="pos-kbd">Ctrl K</span> to find anyone or start anything, and <span class="pos-kbd">?</span> for every shortcut. Hover a name to peek; click it for more.</p>
                     </div>
-                    <p class="pos-hero-quote" aria-hidden="true">Every decision,<br>with its context.</p>
+                    <div class="flex gap-2">
+                        <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" x-data x-on:click="$dispatch('pos-shortcuts')">Shortcuts</button>
+                        <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm" wire:click="dismissWelcome" x-on:click="shown = false">Got it</button>
+                    </div>
                 </section>
+            @endif
 
-                {{-- First-login welcome: what is different here, in four lines, dismissed for good --}}
-                @if ($this->showWelcome())
-                    <section class="pos-welcome pos-enter-2" aria-labelledby="pos-welcome-title" x-data="{ shown: true }" x-show="shown">
-                        <div class="min-w-0 flex-1">
-                            <p class="pos-label">Welcome to PeopleOS</p>
-                            <h2 id="pos-welcome-title" class="pos-h2 mt-1">Your work comes to you here.</h2>
-                            <ul class="pos-welcome-list mt-3">
-                                <li><x-pos.tile-icon tone="rose" icon="heroicon-o-sparkles" size="sm" /><span><b>What matters now</b> is ranked on Home, with the reason for each item.</span></li>
-                                <li><x-pos.tile-icon tone="indigo" icon="heroicon-o-magnifying-glass" size="sm" /><span>Press <span class="pos-kbd">Ctrl K</span> to find anyone or start anything. <span class="pos-kbd">?</span> shows every shortcut.</span></li>
-                                <li><x-pos.tile-icon tone="amber" icon="heroicon-o-check-badge" size="sm" /><span><b>My work</b> holds approvals and tasks, each with the context to decide.</span></li>
-                                <li><x-pos.tile-icon tone="violet" icon="heroicon-o-chat-bubble-left-right" size="sm" /><span>The <b>assistant</b> explains, with sources. It never decides for you.</span></li>
-                            </ul>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <button type="button" class="pos-btn pos-btn-primary pos-btn-sm" wire:click="dismissWelcome" x-on:click="shown = false">Got it</button>
-                            <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" x-data x-on:click="$dispatch('pos-shortcuts')">See shortcuts</button>
-                        </div>
-                    </section>
-                @endif
-
-                {{-- KPI strip --}}
-                @if (count($h['kpis']) > 0)
-                    <section class="pos-kpis pos-enter-2" aria-label="At a glance">
-                        @foreach ($h['kpis'] as $k)
-                            @php($tag = ($k['url'] ?? null) ? 'a' : 'div')
-                            <{{ $tag }} @if ($tag === 'a') href="{{ $k['url'] }}" wire:navigate @endif class="pos-kpi {{ $tag === 'a' ? 'pos-kpi-link' : '' }}" data-pos-kpi="{{ $k['key'] }}">
-                                @if (isset($k['ring']))
-                                    <div class="min-w-0 flex-1">
-                                        <p class="pos-kpi-label">{{ $k['label'] }}</p>
-                                        <p class="pos-kpi-value pos-num">{{ $k['value'] }}</p>
-                                        <p class="pos-caption">of {{ $num($k['ring']['total']) }} days</p>
-                                    </div>
-                                    <x-pos.ring :value="$k['ring']['value']" :total="$k['ring']['total']" :label="$k['label']" :size="56" />
-                                @else
-                                    <x-pos.tile-icon :tone="$k['tone']" :icon="$k['icon']" />
-                                    <div class="min-w-0">
-                                        <p class="pos-kpi-value pos-num">{{ $k['value'] }}</p>
-                                        <p class="pos-kpi-label">{{ $k['label'] }}</p>
-                                    </div>
-                                @endif
-                            </{{ $tag }}>
-                        @endforeach
-                    </section>
-                @endif
-
-                @if ($h['me'] ?? null)
-                    <div class="xl:hidden">@include('filament.pages.partials.home-today', ['me' => $h['me'], 'suffix' => 'main'])</div>
-                @endif
-
-                {{-- Next best actions --}}
-                @if (count($h['next']) > 0)
-                    <section class="pos-next pos-enter-2" aria-labelledby="pos-next-title">
-                        <h2 id="pos-next-title" class="sr-only">What to do next</h2>
-                        @foreach ($h['next'] as $n)
-                            <article class="pos-next-card" wire:key="next-{{ $n['key'] }}" data-severity="{{ $n['severity'] }}">
-                                <x-pos.tile-icon :tone="$n['tone']" :icon="$n['icon']" size="lg" />
-                                <div class="min-w-0 flex-1">
-                                    <h3 class="pos-h3 line-clamp-2">{{ $n['title'] }}</h3>
-                                    <p class="pos-body-sm line-clamp-1 mt-0.5">{{ $n['domain'] }}@if ($n['detail']) · {{ $n['detail'] }}@endif</p>
-                                    @if ($n['due'])
-                                        <p class="pos-caption mt-1 {{ $n['due']->isPast() ? 'text-pos-danger' : '' }}">
-                                            <x-filament::icon icon="heroicon-m-clock" class="inline size-3.5 -mt-0.5" />
-                                            {{ $n['due']->isPast() ? 'Overdue '.$n['due']->diffForHumans(null, true) : 'Due '.$n['due']->diffForHumans() }}
-                                        </p>
-                                    @endif
-                                    <div class="mt-3 flex flex-wrap gap-2">
-                                        @if ($n['approval_id'])
-                                            <button type="button" class="pos-btn pos-btn-primary pos-btn-sm" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'approval', id: @js($n['approval_id']) })">{{ $n['verb'] }}</button>
-                                        @else
-                                            <a href="{{ $n['url'] }}" wire:navigate class="pos-btn pos-btn-primary pos-btn-sm">{{ $n['verb'] }}</a>
-                                        @endif
-                                        <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm" wire:click="notNow(@js($n['key']))">Not now</button>
-                                    </div>
-                                </div>
-                            </article>
-                        @endforeach
-                    </section>
-                @elseif ($h['focus']['counts']['attention'] === 0 && $h['focus']['counts']['today'] === 0)
-                    <section class="pos-card pos-calm pos-enter-2" aria-live="polite">
-                        <svg class="pos-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" /></svg>
-                        <p class="pos-body-sm">You are up to date. New requests, approvals and reminders will appear here first.</p>
-                    </section>
-                @endif
-
-                {{-- Your day + journey / team pulse --}}
-                @if ($h['day'] !== null || $h['journey'] || $h['pulse_team'])
-                    <div class="pos-home2-row">
-                        @if ($h['day'] !== null)
-                            <section class="pos-card pos-enter-3" aria-labelledby="pos-day-title">
-                                <header class="pos-card-head">
-                                    <h2 id="pos-day-title" class="pos-h3">Your day</h2>
-                                    <a href="{{ \App\Filament\Pages\MyWork::getUrl(['tab' => 'today']) }}" wire:navigate class="pos-link">View all <span aria-hidden="true">→</span></a>
-                                </header>
-                                @if ($h['day'] === [])
-                                    <p class="pos-body-sm mt-3">Nothing scheduled in PeopleOS today. One-on-ones, training sessions and things due today appear here.</p>
-                                @else
-                                    <ol class="pos-day mt-3">
-                                        @foreach ($h['day'] as $d)
-                                            <li class="pos-day-row" data-tone="{{ $d['tone'] }}">
-                                                <span class="pos-day-time pos-num">{{ $d['time'] }}</span>
-                                                <span class="pos-day-dot" aria-hidden="true"></span>
-                                                <div class="min-w-0 flex-1">
-                                                    <p class="pos-body font-medium truncate">{{ $d['title'] }}</p>
-                                                    @if ($d['detail'])<p class="pos-caption truncate">{{ $d['detail'] }}</p>@endif
-                                                </div>
-                                                @if (($d['approval_id'] ?? null))
-                                                    <button type="button" class="pos-day-action" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'approval', id: @js($d['approval_id']) })">{{ $d['action'] }}</button>
-                                                @elseif ($d['action'] && $d['url'])
-                                                    <a href="{{ $d['url'] }}" @if (str_starts_with($d['url'], url('/')) || str_starts_with($d['url'], '/')) wire:navigate @else target="_blank" rel="noopener" @endif class="pos-day-action" data-action="{{ $d['action'] }}">{{ $d['action'] }}</a>
-                                                @endif
-                                            </li>
-                                        @endforeach
-                                    </ol>
-                                @endif
-                            </section>
-                        @endif
-
-                        @if ($h['pulse_team'])
-                            @php($tp = $h['pulse_team'])
-                            <section class="pos-card pos-enter-3" aria-labelledby="pos-tp-title">
-                                <header class="pos-card-head">
-                                    <h2 id="pos-tp-title" class="pos-h3">Team pulse</h2>
-                                    @if ($tp['url'])<a href="{{ $tp['url'] }}" wire:navigate class="pos-link">View team <span aria-hidden="true">→</span></a>@endif
-                                </header>
-                                <div class="pos-pulse mt-3">
-                                    <div><p class="pos-pulse-value pos-num">{{ $tp['size'] }}</p><p class="pos-caption">Direct reports</p></div>
-                                    <div data-tone="rose"><p class="pos-pulse-value pos-num">{{ $tp['attention'] }}</p><p class="pos-caption">Need attention</p></div>
-                                    <div><p class="pos-pulse-value pos-num">{{ $tp['away'] }}</p><p class="pos-caption">On leave</p></div>
-                                    <div data-tone="amber"><p class="pos-pulse-value pos-num">{{ $tp['reviews'] }}</p><p class="pos-caption">Reviews to write</p></div>
-                                </div>
-                                <ul class="pos-avatar-stack mt-4" aria-label="Team members">
-                                    @foreach ($tp['people'] as $p)
-                                        <li><button type="button" title="{{ $p['name'] }}{{ $p['away'] ? ' (on leave)' : '' }}" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'person', id: {{ $p['id'] }} })" class="{{ $p['away'] ? 'is-away' : '' }}"><x-pos.avatar :name="$p['name']" size="md" /><span class="sr-only">{{ $p['name'] }}</span></button></li>
-                                    @endforeach
-                                    @if ($tp['more'] > 0)<li><span class="pos-avatar pos-avatar-md pos-avatar-more">+{{ $tp['more'] }}</span></li>@endif
-                                </ul>
-                            </section>
-                        @elseif (($h['journey_nodes'] ?? []) !== [])
-                            @php($nodes = $h['journey_nodes'])
-                            <section class="pos-card pos-enter-3" aria-labelledby="pos-jr-title">
-                                <header class="pos-card-head">
-                                    <h2 id="pos-jr-title" class="pos-h3">Your journey</h2>
-                                    @if (\App\Filament\Pages\MyCareer::canAccess())<a href="{{ \App\Filament\Pages\MyCareer::getUrl() }}" wire:navigate class="pos-link">Career <span aria-hidden="true">→</span></a>@endif
-                                </header>
-                                <ol class="pos-journey-mini mt-4">
-                                    @foreach ($nodes as $node)
-                                        <li data-state="{{ $node['state'] }}"><span class="pos-journey-mini-dot" aria-hidden="true"></span><span class="pos-body-sm font-medium text-pos-text">{{ $node['label'] }}</span><span class="pos-caption">{{ $node['sub'] }}</span></li>
-                                    @endforeach
-                                </ol>
-                                <p class="pos-inline-callout mt-4"><x-filament::icon icon="heroicon-m-sparkles" class="size-4" /> Growth comes from goals, learning and conversations. Your career page shows where they lead.</p>
-                            </section>
-                        @endif
-                    </div>
-                @endif
-
-                {{-- Role panels kept from the operational Home (HR, executive, payroll, admin) --}}
-                @if (($h['operations'] ?? null) !== null)
-                    <section class="pos-card pos-enter-3" aria-labelledby="pos-ops-title">
-                        <header class="pos-card-head">
-                            <div><p class="pos-label">People operations</p><h2 id="pos-ops-title" class="pos-h3 mt-1">{{ count($h['operations']) === 0 ? 'Nothing is at risk today' : count($h['operations']).' areas need a look' }}</h2></div>
-                        </header>
-                        @if (count($h['operations']) > 0)
-                            <ul class="pos-list mt-3">
-                                @foreach ($h['operations'] as $op)
-                                    <li class="pos-list-row pos-attention" data-severity="{{ $op['severity'] }}">
-                                        <span class="pos-metric pos-num w-14 shrink-0 text-center">{{ $op['count'] }}</span>
-                                        <div class="min-w-0 flex-1"><p class="pos-body font-medium">{{ $op['title'] }}</p><p class="pos-caption">{{ $op['why'] }}</p></div>
-                                        @if ($op['url'])<a href="{{ $op['url'] }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Open</a>@endif
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @else
-                            <p class="pos-body-sm mt-2">Joiners, probation, onboarding, SLAs and exits are on track.</p>
-                        @endif
-                    </section>
-                @endif
-
-                @if ($h['pulse'] ?? null)
-                    <section class="pos-card pos-enter-3" aria-labelledby="pos-pulse-title">
-                        <header class="pos-card-head">
-                            <div><p class="pos-label">Workforce pulse</p><h2 id="pos-pulse-title" class="pos-h3 mt-1">Headcount over six months</h2></div>
-                            @if (\App\Filament\Pages\WorkforceCommandCentre::canAccess())<a href="{{ \App\Filament\Pages\WorkforceCommandCentre::getUrl() }}" wire:navigate class="pos-link">Command center <span aria-hidden="true">→</span></a>@endif
-                        </header>
-                        @if (count($h['pulse']['trend']) > 1)
-                            <x-pos.sparkline :values="$h['pulse']['trend']" :labels="$h['pulse']['labels']" label="Headcount, last six months" class="mt-4" />
-                        @endif
-                    </section>
-                @endif
-
-                @if ($h['payroll'] ?? null)
-                    <section class="pos-card pos-enter-3" aria-labelledby="pos-payroll-title">
-                        <header class="pos-card-head">
-                            <div><p class="pos-label">Payroll</p><h2 id="pos-payroll-title" class="pos-h3 mt-1">{{ $h['payroll']['run']['label'] ?? 'No payroll run yet' }}</h2></div>
-                            @if ($h['payroll']['url'])<a href="{{ $h['payroll']['url'] }}" wire:navigate class="pos-btn pos-btn-secondary pos-btn-sm">Control room</a>@endif
-                        </header>
-                        @if ($h['payroll']['run'])
-                            <div class="pos-metrics mt-4">
-                                <div class="pos-metric-cell"><p class="pos-caption">Status</p><p class="pos-h3">{{ $h['payroll']['run']['status'] }}</p></div>
-                                <div class="pos-metric-cell"><p class="pos-caption">Employees</p><p class="pos-metric pos-num">{{ number_format($h['payroll']['run']['employees']) }}</p></div>
-                                <div class="pos-metric-cell"><p class="pos-caption">Exceptions</p><p class="pos-metric pos-num {{ $h['payroll']['run']['exceptions'] > 0 ? 'text-pos-danger' : '' }}">{{ $h['payroll']['run']['exceptions'] }}</p></div>
-                            </div>
-                        @endif
-                    </section>
-                @endif
-
-                @if ($h['platform'] ?? null)
-                    <section class="pos-card pos-enter-3" aria-labelledby="pos-platform-title">
-                        <p class="pos-label">Platform</p>
-                        <h2 id="pos-platform-title" class="pos-h3 mt-1">Configuration and integrations</h2>
-                        <div class="pos-metrics mt-4">
-                            <div class="pos-metric-cell"><p class="pos-caption">Changes awaiting approval</p><p class="pos-metric pos-num">{{ $h['platform']['pending_config'] }}</p></div>
-                            <div class="pos-metric-cell"><p class="pos-caption">Integration dead letters</p><p class="pos-metric pos-num {{ $h['platform']['dead_letters'] > 0 ? 'text-pos-danger' : '' }}">{{ $h['platform']['dead_letters'] }}</p></div>
-                            <div class="pos-metric-cell"><p class="pos-caption">Failed jobs</p><p class="pos-metric pos-num {{ $h['platform']['failed_jobs'] > 0 ? 'text-pos-danger' : '' }}">{{ $h['platform']['failed_jobs'] }}</p></div>
-                        </div>
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            @isset($h['platform']['links']['readiness'])<a href="{{ $h['platform']['links']['readiness'] }}" wire:navigate class="pos-btn pos-btn-secondary pos-btn-sm">Readiness</a>@endisset
-                            @isset($h['platform']['links']['config'])<a href="{{ $h['platform']['links']['config'] }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Change Centre</a>@endisset
-                            @isset($h['platform']['links']['integrations'])<a href="{{ $h['platform']['links']['integrations'] }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Inbound events</a>@endisset
-                        </div>
-                    </section>
-                @endif
-
-                {{-- Insights + company pulse --}}
-                @if ($h['insights'] || $h['company'] !== [])
-                    <div class="pos-home2-row">
-                        @if ($h['insights'])
-                            @php($in = $h['insights'])
-                            <section class="pos-card pos-enter-3" aria-labelledby="pos-ins-title">
-                                <header class="pos-card-head">
-                                    <h2 id="pos-ins-title" class="pos-h3">Key insights</h2>
-                                    <span class="pos-chip">{{ $in['scope'] }}</span>
-                                </header>
-                                <div class="pos-insights mt-3">
-                                    @if ($in['attendance'])
-                                        @php($delta = $in['attendance']['previous'] !== null ? $in['attendance']['current'] - $in['attendance']['previous'] : null)
-                                        <div class="pos-insight">
-                                            <p class="pos-caption">Attendance</p>
-                                            <p class="pos-kpi-value pos-num">{{ $in['attendance']['current'] }}%</p>
-                                            @if ($delta !== null)<p class="pos-caption {{ $delta >= 0 ? 'text-pos-success' : 'text-pos-danger' }}">{{ $delta >= 0 ? '↑' : '↓' }} {{ abs($delta) }} pts vs last month</p>@endif
-                                            <x-pos.bars :items="$in['attendance']['months']" label="Attendance by month" class="mt-3" />
+            <div class="pos-ws-cols">
+                <div class="pos-ws-main">
+                    {{-- Decisions waiting for you --}}
+                    @if ($h['decision_count'] > 0 || in_array($h['lens'], ['manager', 'hr', 'hr_admin'], true))
+                        <x-pos.section title="Decisions waiting for you" :count="$h['decision_count'] ?: null" :link="\App\Filament\Pages\Approvals::canAccess() ? \App\Filament\Pages\Approvals::getUrl() : null" link-label="Approval Center">
+                            @if ($h['decisions']->isEmpty())
+                                <x-pos.state variant="caught-up" size="inline" title="No decisions are waiting for you." why="Leave, attendance corrections, pay changes, letters and workflow steps that need you will appear here first." />
+                            @else
+                                <div class="pos-panel pos-stream">
+                                    @foreach ($h['decisions'] as $item)
+                                        @php($group = $item->group())
+                                        <div class="pos-stream-row" data-tone="{{ $group === 'urgent' ? 'danger' : ($group === 'today' ? 'warning' : 'info') }}" wire:key="dec-{{ md5($item->id) }}">
+                                            <span class="pos-stream-mark" aria-hidden="true"></span>
+                                            <div class="pos-stream-body">
+                                                <p class="pos-stream-title">{{ $item->title }}</p>
+                                                <p class="pos-stream-meta flex flex-wrap items-center gap-x-2">
+                                                    @if ($item->subject)<x-pos.person :id="$item->subjectEmployeeId" :name="$item->subject" />@endif
+                                                    <span>{{ $item->typeLabel }}</span>
+                                                    @if ($item->effectiveOn)<span>· from {{ $item->effectiveOn->format('D j M') }}</span>@elseif ($item->dueAt)<span>· due {{ $item->dueAt->diffForHumans() }}</span>@endif
+                                                    @if ($group === 'urgent')<x-pos.status tone="danger" :label="$item->riskReason ?? 'Urgent'" />@endif
+                                                </p>
+                                            </div>
+                                            <div class="pos-stream-end">
+                                                <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'approval', id: @js($item->id) })">Review</button>
+                                            </div>
                                         </div>
+                                    @endforeach
+                                    @if ($h['decision_count'] > $h['decisions']->count())
+                                        <div class="pos-stream-more"><a href="{{ \App\Filament\Pages\Approvals::getUrl() }}" wire:navigate class="pos-link">{{ $h['decision_count'] - $h['decisions']->count() }} more in the Approval Center</a></div>
                                     @endif
-                                    @if ($in['learning'])
-                                        @php($l = $in['learning'])
-                                        <div class="pos-insight">
-                                            <p class="pos-caption">Learning completion</p>
-                                            <p class="pos-kpi-value pos-num">{{ $l['rate'] }}%</p>
-                                            <div class="mt-3 flex items-center gap-4">
-                                                <x-pos.donut :segments="[['label' => 'Completed', 'value' => $l['completed']], ['label' => 'In progress', 'value' => $l['in_progress']], ['label' => 'Not started', 'value' => $l['not_started']]]" label="Learning" :size="84" />
-                                                <ul class="pos-legend">
-                                                    <li><span style="background: var(--pos-chart-1)"></span>Completed <b class="pos-num">{{ $l['completed'] }}</b></li>
-                                                    <li><span style="background: var(--pos-chart-2)"></span>In progress <b class="pos-num">{{ $l['in_progress'] }}</b></li>
-                                                    <li><span style="background: var(--pos-chart-3)"></span>Not started <b class="pos-num">{{ $l['not_started'] }}</b></li>
-                                                </ul>
+                                </div>
+                            @endif
+                        </x-pos.section>
+                    @endif
+
+                    {{-- Need attention: ranked, each with its reason and one verb --}}
+                    @php($attention = collect($h['next'])->reject(fn ($n) => $n['approval_id']))
+                    @if ($attention->isNotEmpty())
+                        <x-pos.section title="Need attention" :count="$attention->count()" :link="\App\Filament\Pages\MyWork::getUrl()" link-label="My work">
+                            <div class="pos-panel pos-stream">
+                                @foreach ($attention as $n)
+                                    <div class="pos-stream-row" data-tone="{{ $n['severity'] }}" wire:key="next-{{ md5($n['key']) }}" wire:transition>
+                                        <span class="pos-stream-mark" aria-hidden="true"></span>
+                                        <div class="pos-stream-body">
+                                            <p class="pos-stream-title">{{ $n['title'] }}</p>
+                                            <p class="pos-stream-meta">{{ $n['domain'] }}@if ($n['detail']) · {{ $n['detail'] }}@endif
+                                                @if ($n['due']) · <span class="{{ $n['due']->isPast() ? 'text-pos-danger' : '' }}">{{ $n['due']->isPast() ? 'overdue '.$n['due']->diffForHumans(null, true) : 'due '.$n['due']->diffForHumans() }}</span>@endif</p>
+                                        </div>
+                                        <div class="pos-stream-end">
+                                            <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" wire:click="notNow(@js($n['key']))">Not now</button>
+                                            <a href="{{ $n['url'] }}" wire:navigate class="pos-btn pos-btn-secondary pos-btn-sm">{{ $n['verb'] }}</a>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </x-pos.section>
+                    @endif
+
+                    {{-- Your day: a timeline, with today's attendance as the first line (items already under Need attention are not repeated) --}}
+                    @php($dayRows = $h['day'] === null ? null : collect($h['day'])->reject(fn ($d) => $attention->pluck('title')->contains($d['title']))->values()->all())
+                    @if ($dayRows !== null)
+                        <x-pos.section title="Your day" :link="\App\Filament\Pages\MyWork::getUrl(['tab' => 'today'])" link-label="View all">
+                            <div class="pos-panel pos-panel-pad">
+                                <div class="pos-tl">
+                                    @if ($h['me'] ?? null)
+                                        @php($me = $h['me'])
+                                        <div class="pos-tl-row" data-now data-tone="{{ $me['checked_in'] ? 'success' : 'primary' }}" x-data="{ pulse: false }" x-on:pos-success.window="pulse = true; setTimeout(() => pulse = false, 800)" :class="pulse && 'pos-success-pulse'">
+                                            <span class="pos-tl-time">Now</span>
+                                            <span class="pos-tl-dot" aria-hidden="true"></span>
+                                            <div class="pos-stream-body">
+                                                <p class="pos-stream-title">
+                                                    @if ($me['checked_in']) Checked in at {{ $me['first_in']?->format('H:i') }}
+                                                    @elseif ($me['last_out']) Checked out at {{ $me['last_out']->format('H:i') }}
+                                                    @else Not checked in yet @endif
+                                                </p>
+                                                <p class="pos-stream-meta">
+                                                    @if ($me['status'])Attendance: {{ $me['status'] }}@endif
+                                                    @if ($me['next_leave'])@if ($me['status']) · @endif Next leave: {{ $me['next_leave']['label'] }} ({{ $me['next_leave']['status'] }})@endif
+                                                </p>
+                                            </div>
+                                            <div class="pos-stream-end">
+                                                @if ($me['checked_in'])
+                                                    <button type="button" wire:click="punch('out')" wire:loading.attr="disabled" class="pos-btn pos-btn-secondary pos-btn-sm">Check out</button>
+                                                @else
+                                                    <button type="button" wire:click="punch('in')" wire:loading.attr="disabled" class="pos-btn pos-btn-secondary pos-btn-sm">Check in</button>
+                                                @endif
+                                                @if ($me['payslip'] ?? null)
+                                                    <a href="{{ $me['payslip']['url'] }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm" data-pos-action="payslip">Payslip</a>
+                                                @endif
                                             </div>
                                         </div>
                                     @endif
+                                    @forelse ($dayRows as $d)
+                                        <div class="pos-tl-row" data-tone="{{ ['violet' => 'primary', 'teal' => 'info', 'sky' => 'info', 'amber' => 'warning', 'rose' => 'danger', 'emerald' => 'success'][$d['tone']] ?? 'primary' }}">
+                                            <span class="pos-tl-time">{{ $d['time'] }}</span>
+                                            <span class="pos-tl-dot" aria-hidden="true"></span>
+                                            <div class="pos-stream-body">
+                                                <p class="pos-stream-title">{{ $d['title'] }}</p>
+                                                @if ($d['detail'])<p class="pos-stream-meta">{{ $d['detail'] }}</p>@endif
+                                            </div>
+                                            <div class="pos-stream-end">
+                                                @if (($d['approval_id'] ?? null))
+                                                    <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'approval', id: @js($d['approval_id']) })">{{ $d['action'] }}</button>
+                                                @elseif ($d['action'] && $d['url'])
+                                                    <a href="{{ $d['url'] }}" @if (str_starts_with($d['url'], url('/')) || str_starts_with($d['url'], '/')) wire:navigate @else target="_blank" rel="noopener" @endif class="pos-btn pos-btn-ghost pos-btn-sm" data-action="{{ $d['action'] }}">{{ $d['action'] }}</a>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @empty
+                                        @if (! ($h['me'] ?? null))
+                                            <x-pos.state variant="empty" size="inline" title="Nothing scheduled in PeopleOS today." why="One-on-ones, training sessions, leave and things due today appear here." />
+                                        @else
+                                            <p class="pos-meta pos-tl-note">Nothing else is scheduled in PeopleOS today.</p>
+                                        @endif
+                                    @endforelse
                                 </div>
-                            </section>
-                        @endif
-                        @if ($h['company'] !== [])
-                            <section class="pos-card pos-enter-3" aria-labelledby="pos-cp-title">
-                                <header class="pos-card-head">
-                                    <h2 id="pos-cp-title" class="pos-h3">Company pulse</h2>
-                                    @if (\App\Filament\Pages\AnnouncementsFeed::canAccess())<a href="{{ \App\Filament\Pages\AnnouncementsFeed::getUrl() }}" wire:navigate class="pos-link">View all <span aria-hidden="true">→</span></a>@endif
-                                </header>
-                                <ul class="mt-3 space-y-1">
-                                    @foreach ($h['company'] as $c)
-                                        <li>
-                                            <a @if ($c['url']) href="{{ $c['url'] }}" wire:navigate @endif class="pos-company-row">
-                                                <x-pos.tile-icon :tone="$c['tone']" :icon="$c['icon']" size="sm" />
-                                                <span class="min-w-0 flex-1"><span class="pos-body-sm font-medium text-pos-text block truncate">{{ $c['title'] }}</span><span class="pos-caption block truncate">{{ $c['detail'] }}</span></span>
-                                                @if ($c['when'])<span class="pos-caption whitespace-nowrap">{{ $c['when'] }}</span>@endif
-                                            </a>
-                                        </li>
+                            </div>
+                        </x-pos.section>
+                    @endif
+
+                    {{-- What changed since your last visit (business events, each opens in context) --}}
+                    @if ($h['changes'] !== null)
+                        @php($c = $h['changes'])
+                        <x-pos.section title="What changed" :count="$c['count'] ?: null"
+                            :sub="$c['count'] === 0 ? null : (($c['since'] ? 'Since your last visit on '.$c['since']->format('j M') : 'In the last seven days').': '.$c['summary'].'.')">
+                            @if ($c['count'] === 0)
+                                <x-pos.state variant="caught-up" size="inline" :title="$c['since'] ? 'Nothing changed since your last visit.' : 'Nothing changed in the last seven days.'" why="Joiners, moves, reporting changes, exits and announcements you can see appear here." />
+                            @else
+                                <div class="pos-panel pos-stream">
+                                    @foreach ($c['items'] as $item)
+                                        <button type="button" class="pos-stream-row" data-tone="{{ $item['tone'] === 'primary' ? 'info' : $item['tone'] }}" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'change', id: @js($item['id']) })">
+                                            <span class="pos-stream-icon" aria-hidden="true"><x-filament::icon :icon="$item['icon']" class="size-4" /></span>
+                                            <span class="pos-stream-body">
+                                                <span class="pos-stream-title">{{ $item['title'] }}</span>
+                                                <span class="pos-stream-meta">{{ $item['label'] }}@if ($item['subject']) · {{ $item['subject'] }}@endif · {{ $item['at']->isToday() ? 'today' : $item['at']->diffForHumans() }}</span>
+                                            </span>
+                                            <span aria-hidden="true" class="pos-muted">→</span>
+                                        </button>
                                     @endforeach
-                                </ul>
-                            </section>
-                        @endif
-                    </div>
-                @endif
+                                    @if ($c['count'] > $c['items']->count() && \App\Filament\Pages\ChangeIntelligencePage::canAccess())
+                                        <div class="pos-stream-more"><a href="{{ \App\Filament\Pages\ChangeIntelligencePage::getUrl() }}" wire:navigate class="pos-link">All {{ $c['count'] }} changes</a></div>
+                                    @endif
+                                </div>
+                            @endif
+                        </x-pos.section>
+                    @endif
 
-                {{-- Quick actions (the launcher's top picks for this lens) --}}
-                @if (count($h['actions']) > 0)
-                    <section class="pos-card pos-enter-3" aria-labelledby="pos-actions-title">
-                        <header class="pos-card-head">
-                            <h2 id="pos-actions-title" class="pos-h3">Start something</h2>
-                            <button type="button" class="pos-link" x-data x-on:click="$dispatch('pos-command-open', { mode: 'actions' })">All actions <span aria-hidden="true">→</span></button>
-                        </header>
-                        <div class="pos-action-grid pos-action-grid-wide mt-3">
-                            @foreach ($h['actions'] as $a)
-                                @php($mount = ['request_leave' => 'requestLeave', 'regularise' => 'regularise', 'ask_hr' => 'askHr'][$a['key']] ?? null)
-                                @if ($mount)
-                                    <button type="button" wire:click="mountAction('{{ $mount }}')" class="pos-action-tile" data-pos-action="{{ $a['key'] }}">
-                                        <x-pos.tile-icon :tone="['request_leave' => 'sky', 'regularise' => 'teal', 'ask_hr' => 'violet'][$a['key']] ?? 'indigo'" :icon="$a['icon']" />
-                                        <span class="pos-action-text"><span class="pos-body font-medium">{{ $a['label'] }}</span><span class="pos-caption">{{ $a['hint'] }}</span></span>
-                                    </button>
+                    {{-- People operations (HR): figures for the lens, then the reasons --}}
+                    @if (($h['operations'] ?? null) !== null)
+                        <x-pos.section title="People operations" :count="count($h['operations']) ?: null">
+                            <div class="pos-panel">
+                                <div class="pos-panel-pad pos-figures">
+                                    @foreach (['attention', 'joining', 'on_leave', 'approvals', 'requests'] as $k)
+                                        @if ($f = $kpi($k))<x-pos.figure :value="$f['value']" :label="$f['label']" :href="$f['url'] ?? null" />@endif
+                                    @endforeach
+                                </div>
+                                @if (count($h['operations']) > 0)
+                                    <div class="pos-stream pos-stream-divided">
+                                        @foreach ($h['operations'] as $op)
+                                            <div class="pos-stream-row" data-tone="{{ $op['severity'] }}">
+                                                <span class="pos-figure-value w-14 text-center">{{ $op['count'] }}</span>
+                                                <div class="pos-stream-body"><p class="pos-stream-title">{{ $op['title'] }}</p><p class="pos-stream-meta">{{ $op['why'] }}</p></div>
+                                                @if ($op['url'])<a href="{{ $op['url'] }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Open</a>@else<span></span>@endif
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 @else
-                                    <a href="{{ $a['url'] }}" wire:navigate class="pos-action-tile" data-pos-action="{{ $a['key'] }}">
-                                        <x-pos.tile-icon :tone="['Approve' => 'amber', 'Review' => 'indigo', 'Create' => 'emerald', 'Send' => 'violet', 'Generate' => 'gold', 'Schedule' => 'teal', 'Request' => 'sky'][$a['verb']] ?? 'indigo'" :icon="$a['icon']" />
-                                        <span class="pos-action-text"><span class="pos-body font-medium">{{ $a['label'] }}</span><span class="pos-caption">{{ $a['hint'] }}</span></span>
-                                    </a>
+                                    <x-pos.state variant="caught-up" size="inline" title="Nothing is at risk today." why="Joiners, probation, onboarding, SLAs and exits are on track." />
                                 @endif
-                            @endforeach
-                        </div>
-                    </section>
-                @endif
+                            </div>
+                        </x-pos.section>
+                    @endif
+
+                    {{-- Workforce pulse (executive) --}}
+                    @if ($h['pulse'] ?? null)
+                        <x-pos.section title="Workforce pulse" :link="\App\Filament\Pages\WorkforceCommandCentre::canAccess() ? \App\Filament\Pages\WorkforceCommandCentre::getUrl() : null" link-label="Open Workforce pulse">
+                            <div class="pos-panel pos-panel-pad grid gap-4">
+                                <div class="pos-figures">
+                                    @foreach (['headcount', 'joiners', 'exits', 'attrition', 'on_leave'] as $k)
+                                        @if ($f = $kpi($k))<x-pos.figure :value="$f['value']" :label="$f['label']" :href="$f['url'] ?? null" />@endif
+                                    @endforeach
+                                </div>
+                                @if (count($h['pulse']['trend']) > 1)
+                                    <x-pos.sparkline :values="$h['pulse']['trend']" :labels="$h['pulse']['labels']" label="Headcount, last six months" />
+                                @endif
+                            </div>
+                        </x-pos.section>
+                    @endif
+
+                    {{-- Payroll --}}
+                    @if ($h['payroll'] ?? null)
+                        <x-pos.section title="Payroll" :link="$h['payroll']['url']" link-label="Control room">
+                            <div class="pos-panel pos-panel-pad grid gap-3">
+                                <p class="pos-section-title">{{ $h['payroll']['run']['label'] ?? 'No payroll run yet' }}</p>
+                                @if ($h['payroll']['run'])
+                                    <div class="pos-figures">
+                                        <x-pos.figure :value="$h['payroll']['run']['status']" label="Status" />
+                                        <x-pos.figure :value="number_format($h['payroll']['run']['employees'])" label="Employees" />
+                                        <x-pos.figure :value="$h['payroll']['run']['exceptions']" label="Exceptions" :meaning="$h['payroll']['run']['exceptions'] > 0 ? 'bad' : null" :delta="$h['payroll']['run']['exceptions'] > 0 ? 'Resolve before sign-off' : null" />
+                                    </div>
+                                @else
+                                    <p class="pos-meta">Open a run for the next pay period from the control room.</p>
+                                @endif
+                            </div>
+                        </x-pos.section>
+                    @endif
+
+                    {{-- Platform (administrators) --}}
+                    @if ($h['platform'] ?? null)
+                        <x-pos.section title="Platform" :link="$h['platform']['links']['readiness'] ?? null" link-label="Readiness">
+                            <div class="pos-panel pos-panel-pad pos-figures">
+                                <x-pos.figure :value="$h['platform']['pending_config']" label="Changes awaiting approval" :href="$h['platform']['links']['config'] ?? null" />
+                                <x-pos.figure :value="$h['platform']['dead_letters']" label="Integration dead letters" :href="$h['platform']['links']['integrations'] ?? null" />
+                                <x-pos.figure :value="$h['platform']['failed_jobs']" label="Failed jobs" />
+                            </div>
+                        </x-pos.section>
+                    @endif
+                </div>
+
+                <aside class="pos-ws-side" aria-label="Your people and momentum">
+                    {{-- Team pulse (managers): who is in, who needs you --}}
+                    @if ($h['pulse_team'])
+                        @php($tp = $h['pulse_team'])
+                        <x-pos.section title="Team pulse" :link="$tp['url']" link-label="Your team">
+                            <div class="pos-panel pos-panel-pad grid gap-4">
+                                <div class="pos-figures">
+                                    @foreach (['team_in', 'team_away', 'approvals', 'attention'] as $k)
+                                        @if ($f = $kpi($k))<x-pos.figure :value="$f['value']" :label="$f['label']" :href="$f['url'] ?? null" />@endif
+                                    @endforeach
+                                    @if (! $kpi('team_in'))<x-pos.figure :value="$tp['size']" label="Direct reports" />@endif
+                                </div>
+                                <ul class="pos-people-strip" aria-label="Your team">
+                                    @foreach ($tp['people'] as $p)
+                                        <li><x-pos.person :id="$p['id']" :name="$p['name']" :sub="$p['away'] ? 'away' : null" /></li>
+                                    @endforeach
+                                    @if ($tp['more'] > 0)<li class="pos-meta self-center">+{{ $tp['more'] }} more</li>@endif
+                                </ul>
+                                @if ($tp['reviews'] > 0)<p class="pos-meta">{{ $tp['reviews'] }} {{ $tp['reviews'] === 1 ? 'review' : 'reviews' }} to write.</p>@endif
+                            </div>
+                        </x-pos.section>
+                    @endif
+
+                    {{-- Your people (employees): the people you work with most --}}
+                    @if (($h['circle'] ?? []) !== [])
+                        <x-pos.section title="Your people">
+                            <div class="pos-panel pos-stream">
+                                @foreach ($h['circle'] as $p)
+                                    <div class="pos-stream-row">
+                                        <x-pos.person :id="$p['id']" :name="$p['name']" size="sm" />
+                                        <span class="pos-stream-meta">{{ $p['role'] }}</span>
+                                        <span></span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </x-pos.section>
+                    @endif
+
+                    {{-- Your momentum (employees): where you are and how things are moving --}}
+                    @if ($h['lens'] === 'employee')
+                        <x-pos.section title="Your momentum" :link="\App\Filament\Pages\MyCareer::canAccess() ? \App\Filament\Pages\MyCareer::getUrl() : null" link-label="Career">
+                            <div class="pos-panel pos-panel-pad grid gap-4">
+                                @if (($h['journey_nodes'] ?? []) !== [])
+                                    <ol class="pos-journey-mini" aria-label="Your journey">
+                                        @foreach ($h['journey_nodes'] as $node)
+                                            <li data-state="{{ $node['state'] }}"><span class="pos-journey-mini-dot" aria-hidden="true"></span><span class="pos-meta font-medium text-pos-text">{{ $node['label'] }}</span><span class="pos-caption">{{ $node['sub'] }}</span></li>
+                                        @endforeach
+                                    </ol>
+                                @endif
+                                <div class="pos-figures">
+                                    @if ($f = $kpi('balance'))
+                                        <x-pos.figure :value="$f['value'].' days'" :label="$f['label'].' left'.(isset($f['ring']) ? ' of '.$num($f['ring']['total']) : '')" />
+                                    @endif
+                                    @foreach (['attention', 'waiting', 'learning', 'present'] as $k)
+                                        @if ($f = $kpi($k))<x-pos.figure :value="$f['value']" :label="$f['label']" :href="$f['url'] ?? null" />@endif
+                                    @endforeach
+                                </div>
+                            </div>
+                        </x-pos.section>
+                    @endif
+
+                    {{-- Start something: the actions this person most often starts --}}
+                    @if (count($h['actions']) > 0)
+                        <x-pos.section title="Start something">
+                            <div class="pos-panel pos-stream">
+                                @foreach ($h['actions'] as $a)
+                                    @php($mount = ['request_leave' => 'requestLeave', 'regularise' => 'regularise', 'ask_hr' => 'askHr'][$a['key']] ?? null)
+                                    @if ($mount)
+                                        <button type="button" wire:click="mountAction('{{ $mount }}')" class="pos-stream-row" data-pos-action="{{ $a['key'] }}">
+                                            <span class="pos-stream-icon" aria-hidden="true"><x-filament::icon :icon="$a['icon']" class="size-4" /></span>
+                                            <span class="pos-stream-body"><span class="pos-stream-title">{{ $a['label'] }}</span><span class="pos-stream-meta">{{ $a['hint'] }}</span></span>
+                                            <span aria-hidden="true" class="pos-muted">→</span>
+                                        </button>
+                                    @elseif (str_starts_with($a['url'], '#pick:'))
+                                        <button type="button" class="pos-stream-row" data-pos-action="{{ $a['key'] }}" x-data x-on:click="$dispatch('pos-command-open', { mode: 'people', pick: @js(substr($a['url'], 6)) })">
+                                            <span class="pos-stream-icon" aria-hidden="true"><x-filament::icon :icon="$a['icon']" class="size-4" /></span>
+                                            <span class="pos-stream-body"><span class="pos-stream-title">{{ $a['label'] }}</span><span class="pos-stream-meta">{{ $a['hint'] }}</span></span>
+                                            <span aria-hidden="true" class="pos-muted">→</span>
+                                        </button>
+                                    @else
+                                        <a href="{{ $a['url'] }}" wire:navigate class="pos-stream-row" data-pos-action="{{ $a['key'] }}">
+                                            <span class="pos-stream-icon" aria-hidden="true"><x-filament::icon :icon="$a['icon']" class="size-4" /></span>
+                                            <span class="pos-stream-body"><span class="pos-stream-title">{{ $a['label'] }}</span><span class="pos-stream-meta">{{ $a['hint'] }}</span></span>
+                                            <span aria-hidden="true" class="pos-muted">→</span>
+                                        </a>
+                                    @endif
+                                @endforeach
+                                <div class="pos-stream-more"><button type="button" class="pos-link" x-data x-on:click="$dispatch('pos-command-open', { mode: 'actions' })">All actions</button></div>
+                            </div>
+                        </x-pos.section>
+                    @endif
+                </aside>
             </div>
-
-            {{-- Right rail: assistant, today, what changed --}}
-            <aside class="pos-home2-rail" aria-label="Assistant and updates">
-                @if (\App\Filament\Pages\AssistantPage::canAccess())
-                    <livewire:experience.ai-assistant :embedded="true" />
-                @endif
-
-                @if ($h['me'] ?? null)
-                    <div class="hidden xl:block">@include('filament.pages.partials.home-today', ['me' => $h['me'], 'suffix' => 'rail'])</div>
-                @endif
-
-                @if ($h['feed'])
-                    <livewire:experience.change-feed-panel lazy :compact="true" :limit="6" />
-                @endif
-            </aside>
         </div>
-
-        {{-- Organisation banner --}}
-        <section class="pos-banner pos-enter-3" aria-label="{{ $h['tenant'] ?? 'Organisation' }}">
-            <div class="min-w-0">
-                <p class="pos-banner-title">{{ $h['tenant'] ?? 'Your organisation' }}</p>
-                <p class="pos-banner-sub">People, work and decisions in one place. Everything here respects who can see what.</p>
-            </div>
-            @if ($h['banner'] !== [])
-                <dl class="pos-banner-stats">
-                    @foreach ($h['banner'] as $b)<div><dt>{{ $b['label'] }}</dt><dd class="pos-num">{{ $b['value'] }}</dd></div>@endforeach
-                </dl>
-            @endif
-        </section>
     @endif
 </x-filament-panels::page>

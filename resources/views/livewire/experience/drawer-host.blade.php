@@ -17,6 +17,7 @@
                     @case('person') Person @break
                     @case('person-action') Start a change @break
                     @case('approval') Decision @break
+                    @case('change') What changed @break
                     @default Details
                 @endswitch
             </h2>
@@ -87,6 +88,41 @@
                                 @endforelse
                             </ul>
                         @endif
+                    @endif
+                @elseif ($type === 'change')
+                    @php($c = $this->change)
+                    @if ($c === null)
+                        <x-pos.state variant="denied" title="Not available" why="This change is not in your view, or it is no longer recent." />
+                    @else
+                        <div class="grid gap-5">
+                            <div class="grid gap-2">
+                                <div class="pos-event-head" data-tone="{{ $c['tone'] }}">
+                                    <span class="pos-stream-icon" aria-hidden="true"><x-filament::icon :icon="$c['icon']" class="size-4" /></span>
+                                    <span class="pos-stream-body"><span class="pos-label">{{ $c['label'] }}</span><span class="pos-stream-meta">{{ $c['at']->format('l, j F Y') }} · {{ $c['at']->diffForHumans() }}</span></span>
+                                </div>
+                                <p class="pos-section-title">{{ $c['title'] }}</p>
+                                @if ($c['detail'])<p class="pos-body pos-secondary">{{ $c['detail'] }}</p>@endif
+                            </div>
+                            @if ($c['person'])
+                                <div class="pos-panel pos-panel-pad grid gap-3">
+                                    <p class="pos-label">Person</p>
+                                    <div class="flex items-center gap-3">
+                                        <x-pos.avatar :name="$c['person']['name']" size="lg" />
+                                        <div class="min-w-0"><p class="pos-stream-title">{{ $c['person']['name'] }}</p><p class="pos-stream-meta">{{ $c['person']['role'] ?: ' ' }}</p></div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm" wire:click="show('person', {{ $c['person']['id'] }})">Preview</button>
+                                        @if ($c['person']['profile'])
+                                            <a href="{{ $c['person']['profile'] }}#journey" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Their journey</a>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                            <p class="pos-meta">Shown from the employee timeline, with the same visibility as their Employee 360. Sensitive categories need the matching permission.</p>
+                            @if ($c['url'] && ! $c['person'])
+                                <a href="{{ $c['url'] }}" wire:navigate class="pos-btn pos-btn-secondary pos-btn-sm justify-self-start">Open</a>
+                            @endif
+                        </div>
                     @endif
                 @elseif ($type === 'approval')
                     @if ($done)

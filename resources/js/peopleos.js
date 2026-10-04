@@ -47,7 +47,7 @@ components.posCommand = (initialMode = 'all') => ({
             this.isOpen = true;
             const mode = detail?.mode ?? 'all';
             if (mode !== this.mode) { this.mode = mode; }
-            this.$wire.opened(mode);
+            this.$wire.opened(mode).then(() => { if (detail?.pick) this.$wire.pick(detail.pick); });
             this.$nextTick(() => { this.$refs.input?.focus(); this.$refs.input?.select(); this.ensureActive(); });
         },
         close() {

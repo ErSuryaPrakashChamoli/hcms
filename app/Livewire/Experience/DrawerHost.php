@@ -4,6 +4,7 @@ namespace App\Livewire\Experience;
 
 use App\Domain\Experience\Services\ApprovalCenter;
 use App\Domain\Experience\Services\ApprovalDecisions;
+use App\Domain\Experience\Services\ChangeFeed;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\PeopleVisibility;
 use App\Domain\Experience\Services\UxMetrics;
@@ -37,7 +38,7 @@ class DrawerHost extends Component
     #[On('pos-drawer-open')]
     public function show(string $type, string|int $id): void
     {
-        if (! in_array($type, ['person', 'approval', 'person-action'], true)) {
+        if (! in_array($type, ['person', 'approval', 'person-action', 'change'], true)) {
             return;
         }
         if ($this->type !== null && ($this->type !== $type || $this->key !== (string) $id)) {
@@ -47,7 +48,7 @@ class DrawerHost extends Component
         $this->type = $type;
         $this->key = (string) $id;
         $this->done = null;
-        unset($this->person, $this->approval);
+        unset($this->person, $this->approval, $this->change);
         app(UxMetrics::class)->record('drawer.open');
     }
 
@@ -57,7 +58,7 @@ class DrawerHost extends Component
         $this->type = $previous['type'] ?? null;
         $this->key = $previous['key'] ?? null;
         $this->done = null;
-        unset($this->person, $this->approval);
+        unset($this->person, $this->approval, $this->change);
     }
 
     public function close(): void
@@ -114,6 +115,35 @@ class DrawerHost extends Component
             'pinned' => in_array($e->id, app(ExperiencePreferences::class)->for($user)['pinned_people'] ?? [], true),
             'changes' => $changes,
         ];
+    }
+
+    /**
+     * UX.15 "What changed": one change in context, re-resolved through ChangeFeed for this viewer (the same
+     * timeline categories and people they may already see). Never raw audit records.
+     *
+     * @return array<string, mixed>|null
+     */
+    #[Computed]
+    public function change(): ?array
+    {
+        if ($this->type !== 'change' || $this->key === null) {
+            return null;
+        }
+        $item = app(ChangeFeed::class)->find(auth()->user(), $this->key);
+        if ($item === null) {
+            return null;
+        }
+        $person = null;
+        if ($item['subject_id'] !== null) {
+            $e = app(PeopleVisibility::class)->query(auth()->user())->with(['person', 'currentPosition.designation', 'currentPosition.department'])->find($item['subject_id']);
+            if ($e !== null) {
+                $open = app(PeopleVisibility::class)->canOpenProfile(auth()->user(), $e);
+                $person = ['id' => $e->id, 'name' => (string) $e->display_name, 'role' => collect([$e->currentPosition?->designation?->name, $e->currentPosition?->department?->name])->filter()->implode(' · '),
+                    'profile' => $open ? EmployeeResource::getUrl('view', ['record' => $e]) : null];
+            }
+        }
+
+        return $item + ['person' => $person];
     }
 
     #[Computed]

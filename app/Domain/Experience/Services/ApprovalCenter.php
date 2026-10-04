@@ -170,7 +170,8 @@ final class ApprovalCenter
         if (! $user->hasPermission('leave.approve')) {
             return [];
         }
-        $requests = LeaveRequest::query()->with(['employee.person', 'leaveType', 'requester'])->whereIn('status', ['pending', 'cancel_requested'])->orderBy('from_date')->limit(self::SCAN)->get();
+        // employee.currentManager is read by teamAway(); eager-loaded so strict mode (no lazy loading) never drops the source.
+        $requests = LeaveRequest::query()->with(['employee.person', 'employee.currentManager', 'leaveType', 'requester'])->whereIn('status', ['pending', 'cancel_requested'])->orderBy('from_date')->limit(self::SCAN)->get();
         // A request with a running workflow is decided through its workflow task (listed above).
         $inWorkflow = WorkflowInstance::query()->where('subject_type', (new LeaveRequest)->getMorphClass())->whereIn('subject_id', $requests->pluck('id'))
             ->whereIn('status', [InstanceStatus::Running, InstanceStatus::Waiting])->pluck('subject_id')->all();

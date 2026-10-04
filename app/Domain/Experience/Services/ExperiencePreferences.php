@@ -5,6 +5,8 @@ namespace App\Domain\Experience\Services;
 use App\Domain\Experience\Models\ExperiencePreference;
 use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\TenantContext;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 
 /**
  * UX: a person's presentation preferences. Only known keys are stored; values are normalised and
@@ -22,6 +24,9 @@ final class ExperiencePreferences
         'home_hidden' => [],
         'snoozed' => [],
         'welcomed_at' => null,
+        // UX.15: when Home was last opened, for "what changed since your last visit" (presentation only).
+        'home_seen_at' => null,
+        'home_prev_seen_at' => null,
     ];
 
     public const MAX_RECENT = 12;
@@ -60,7 +65,7 @@ final class ExperiencePreferences
                 'pinned_people', 'favourite_reports' => array_values(array_slice(array_unique(array_map('intval', (array) $value)), 0, self::MAX_PINNED)),
                 'home_hidden' => array_values(array_unique(array_filter((array) $value, 'is_string'))),
                 'snoozed' => collect((array) $value)->filter(fn ($until) => is_string($until) && strtotime($until) > time())->all(),
-                'welcomed_at' => is_string($value) && strtotime($value) !== false ? $value : null,
+                'welcomed_at', 'home_seen_at', 'home_prev_seen_at' => is_string($value) && strtotime($value) !== false ? $value : null,
                 default => $value,
             };
         }
@@ -85,6 +90,21 @@ final class ExperiencePreferences
         $this->update($user, ['pinned_people' => $isPinned ? array_values(array_diff($pinned, [$employeeId])) : [$employeeId, ...$pinned]]);
 
         return ! $isPinned;
+    }
+
+    /**
+     * UX.15: record a Home visit and answer "since when" for "what changed since your last visit". A visit
+     * within 30 minutes of the previous one keeps the earlier reference, so a refresh does not reset it.
+     */
+    public function markHomeVisit(User $user): ?CarbonInterface
+    {
+        $prefs = $this->for($user);
+        $seen = $prefs['home_seen_at'] ? Carbon::parse($prefs['home_seen_at']) : null;
+        if ($seen === null || $seen->lt(now()->subMinutes(30))) {
+            $prefs = $this->update($user, ['home_prev_seen_at' => $seen?->toIso8601String(), 'home_seen_at' => now()->toIso8601String()]);
+        }
+
+        return $prefs['home_prev_seen_at'] ? Carbon::parse($prefs['home_prev_seen_at']) : null;
     }
 
     public function snooze(User $user, string $notificationId, string $until): void

@@ -78,7 +78,19 @@ final class HomeComposer
             }
         };
 
+        // UX.15: decisions, changes since the last visit and the one-sentence brief of the day.
+        $approvals = app(ApprovalCenter::class);
+        $decisionCount = $safe(fn () => $approvals->count($user), 0);
+        $decisions = $decisionCount > 0 ? $safe(fn () => $approvals->pending($user)->take(4)->values(), collect()) : collect();
+        $changes = $primary !== RoleLens::SYSTEM_ADMIN && ! in_array('feed', $hidden, true)
+            ? $safe(fn () => app(ChangeFeed::class)->since($user, app(ExperiencePreferences::class)->markHomeVisit($user)), null) : null;
+
         return [
+            'brief' => $this->brief($work, $decisionCount, $changes),
+            'decisions' => $decisions,
+            'decision_count' => $decisionCount,
+            'changes' => $changes,
+            'circle' => $employee !== null && $primary === RoleLens::EMPLOYEE ? $safe(fn () => $this->circle($user, $employee), []) : [],
             'lens' => $primary,
             'lenses' => $lenses,
             'employee' => $employee,
@@ -103,6 +115,49 @@ final class HomeComposer
             'feed' => $primary !== RoleLens::SYSTEM_ADMIN && ! in_array('feed', $hidden, true),
             'hidden' => $hidden,
         ];
+    }
+
+    /**
+     * The one-sentence brief of the day, from real counts only: decisions waiting, things needing attention,
+     * things due today and changes since the last visit. Each part is [number, text] so the number can be
+     * emphasised; an empty list means nothing needs the person.
+     *
+     * @return list<array{0: int, 1: string}>
+     */
+    private function brief(array $work, int $decisions, ?array $changes): array
+    {
+        $parts = [];
+        if ($decisions > 0) {
+            $parts[] = [$decisions, $decisions === 1 ? 'decision is waiting for you' : 'decisions are waiting for you'];
+        }
+        $attention = $work['needs_attention']->where('kind', '!=', 'approval')->count();
+        if ($attention > 0) {
+            $parts[] = [$attention, $attention === 1 ? 'thing needs your attention' : 'things need your attention'];
+        }
+        $due = $work['today']->where('kind', '!=', 'approval')->count();
+        if ($due > 0) {
+            $parts[] = [$due, $due === 1 ? 'thing is due today' : 'things are due today'];
+        }
+        if (($changes['count'] ?? 0) > 0) {
+            $parts[] = [$changes['count'], ($changes['count'] === 1 ? 'thing changed' : 'things changed').($changes['since'] ? ' since your last visit' : ' this week')];
+        }
+
+        return $parts;
+    }
+
+    /** The employee's own people: their manager and anyone reporting to them (PeopleVisibility's circle). @return list<array{id: int, name: string, role: string}> */
+    private function circle(User $user, Employee $me): array
+    {
+        $ids = array_values(array_diff(app(PeopleVisibility::class)->circle($user), [$me->id]));
+        if ($ids === []) {
+            return [];
+        }
+        $managerId = $me->currentManager?->manager_id;
+
+        return Employee::query()->with(['person', 'currentPosition.designation'])->whereKey($ids)->get()
+            ->sortByDesc(fn (Employee $e) => $e->id === $managerId)
+            ->map(fn (Employee $e) => ['id' => $e->id, 'name' => (string) $e->display_name, 'role' => $e->id === $managerId ? 'Your manager' : ($e->currentPosition?->designation?->name ?? 'Reports to you')])
+            ->values()->all();
     }
 
     /** Four nodes for the compact journey: joined, now, growth, next. @return list<array{label: string, sub: ?string, state: string}> */

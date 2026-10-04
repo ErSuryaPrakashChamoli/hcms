@@ -57,6 +57,40 @@ final class ChangeFeed
         return $items->sortByDesc(fn (array $i) => $i['at']->timestamp)->take($limit)->values();
     }
 
+    /** Business phrases for the "since your last visit" summary (singular, plural). */
+    private const PHRASES = [
+        'lifecycle' => ['lifecycle change', 'lifecycle changes'], 'onboarding' => ['joiner', 'joiners'], 'exit' => ['exit', 'exits'],
+        'position' => ['move or promotion', 'moves and promotions'], 'reporting' => ['reporting change', 'reporting changes'],
+        'compensation' => ['pay change', 'pay changes'], 'performance' => ['performance update', 'performance updates'],
+        'learning' => ['learning completion', 'learning updates'], 'announcement' => ['announcement', 'announcements'],
+    ];
+
+    /**
+     * UX.15: what changed since a moment (the viewer's previous Home visit), with a one-line business summary
+     * ("2 moves and promotions, 1 pay change"). Without a previous visit, the last seven days.
+     *
+     * @return array{since: ?CarbonInterface, items: Collection<int, array<string, mixed>>, summary: string, count: int}
+     */
+    public function since(User $user, ?CarbonInterface $since, int $limit = 6): array
+    {
+        $from = ($since ?? now()->subDays(7))->copy()->startOfDay();
+        $items = $this->for($user, 40, max(1, (int) ceil($from->diffInDays(now())) + 1))->filter(fn (array $i) => $i['at']->gte($from))->values();
+        $summary = $items->groupBy('type')->map(function (Collection $g, string $type) {
+            [$one, $many] = self::PHRASES[$type] ?? [$g->first()['label'], $g->first()['label']];
+
+            return $g->count().' '.($g->count() === 1 ? $one : $many);
+        })->values()->all();
+        $text = count($summary) > 1 ? implode(', ', array_slice($summary, 0, -1)).' and '.end($summary) : ($summary[0] ?? '');
+
+        return ['since' => $since, 'items' => $items->take($limit), 'summary' => $text, 'count' => $items->count()];
+    }
+
+    /** One change, re-resolved for the viewer (the contextual drawer never trusts an id from the browser). */
+    public function find(User $user, string $id): ?array
+    {
+        return $this->for($user, 120, 120)->firstWhere('id', $id);
+    }
+
     /** @return Collection<int, array<string, mixed>> */
     private function timeline(User $user, int $limit, int $days): Collection
     {
@@ -94,6 +128,7 @@ final class ChangeFeed
             $profiles[$employee->id] ??= $user->can('view', $employee);
 
             return [
+                'id' => 'timeline:'.$entry->id,
                 'type' => $entry->category, 'label' => $label, 'icon' => $icon, 'tone' => $tone,
                 'title' => $entry->title, 'subject' => $employee->display_name, 'subject_id' => $employee->id,
                 'detail' => TimelineCategories::showsDescription($user, $entry->category) ? $entry->description : null,
@@ -114,7 +149,7 @@ final class ChangeFeed
         $url = AnnouncementsFeed::canAccess() ? AnnouncementsFeed::getUrl() : null;
 
         return app(Communications::class)->feedFor($me)->filter(fn ($a) => $a->published_at !== null && $a->published_at->gte(now()->subDays($days)))
-            ->take(5)->map(fn ($a) => ['type' => 'announcement', 'label' => $label, 'icon' => $icon, 'tone' => $tone, 'title' => $a->title, 'subject' => null, 'subject_id' => null,
+            ->take(5)->map(fn ($a) => ['id' => 'announcement:'.$a->id, 'type' => 'announcement', 'label' => $label, 'icon' => $icon, 'tone' => $tone, 'title' => $a->title, 'subject' => null, 'subject_id' => null,
                 'detail' => Str::limit(trim(preg_replace('/\s+/', ' ', strip_tags(Str::markdown((string) $a->body)))), 140), 'at' => $a->published_at, 'url' => $url])->values();
     }
 }

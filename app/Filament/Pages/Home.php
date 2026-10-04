@@ -101,6 +101,18 @@ class Home extends Dashboard
         ];
     }
 
+    /** UX.15: the brief of the day as one sentence; numbers emphasised, every part escaped. */
+    public function briefHtml(): string
+    {
+        $parts = array_map(fn (array $p) => '<b class="pos-num">'.e((string) $p[0]).'</b> '.e($p[1]), $this->home['brief'] ?? []);
+        if ($parts === []) {
+            return e('You’re all caught up. Nothing needs you right now.');
+        }
+        $text = count($parts) > 1 ? implode(', ', array_slice($parts, 0, -1)).' and '.end($parts) : $parts[0];
+
+        return e('Here’s what matters today:').' '.$text.'.';
+    }
+
     /** Switch the home lens (persisted; only lenses the person actually has). */
     public function switchLens(string $lens): void
     {
