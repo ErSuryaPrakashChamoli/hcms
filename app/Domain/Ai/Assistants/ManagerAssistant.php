@@ -5,9 +5,12 @@ namespace App\Domain\Ai\Assistants;
 use App\Domain\Ai\Services\AiAnswer;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Experience\Services\NeedsAttention;
 use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Models\LeaveRequest;
+use App\Domain\Lifecycle\Enums\LifecycleState;
+use App\Domain\Lifecycle\Models\EmployeeLifecycleTransition;
 use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\OneOnOne;
 
@@ -39,6 +42,8 @@ final class ManagerAssistant implements Assistant
             'goals' => ['goal', 'okr', 'progress', 'objective'],
             'risk' => ['risk', 'attrition', 'leave the company', 'retention', 'flight', 'likely to leave', 'promot', 'terminat', 'fire', 'underperform'],
             'one_on_one' => ['one-on-one', 'one on one', '1:1', 'check-in', 'check in'],
+            // UX.16: what changed for the people who report to you (moves, promotions, lifecycle), last 30 days.
+            'changes' => ['changes in my team', 'what changed', 'changes', 'changed', 'moved'],
             'team' => ['team', 'who reports', 'my people', 'headcount'],
         ]);
 
@@ -48,8 +53,29 @@ final class ManagerAssistant implements Assistant
             'goals' => $this->goals($reports),
             'risk' => $this->noPrediction(),
             'one_on_one' => $this->oneOnOnes($reports),
+            'changes' => $this->changes($reports),
             default => $this->team($reports),
         };
+    }
+
+    /** UX.16: changes to your current reports in the last 30 days (positions and lifecycle), names only for your own team. */
+    private function changes($reports): AiAnswer
+    {
+        $ids = $reports->pluck('id');
+        $since = now()->subDays(30)->startOfDay();
+        $moves = EmployeePosition::query()->with('employee.person')->whereIn('employee_id', $ids)->where('change_type', '!=', 'hire')
+            ->whereDate('effective_from', '>=', $since)->whereDate('effective_from', '<=', now())->orderByDesc('effective_from')->get();
+        $states = EmployeeLifecycleTransition::query()->with('employee.person')->whereIn('employee_id', $ids)->whereDate('effective_date', '>=', $since)->orderByDesc('effective_date')->get();
+        $lines = [
+            ...$moves->map(fn ($m) => ($m->employee?->display_name ?? 'Someone').': '.ucfirst(str_replace('_', ' ', (string) $m->change_type)).' from '.$m->effective_from->format('j M'))->all(),
+            ...$states->map(fn ($t) => ($t->employee?->display_name ?? 'Someone').': '.($t->to_state instanceof LifecycleState ? $t->to_state->getLabel() : (string) $t->to_state).' from '.$t->effective_date->format('j M'))->all(),
+        ];
+        if ($lines === []) {
+            return AiAnswer::text("No changes to your team's positions or lifecycle in the last 30 days.", 'changes');
+        }
+
+        return new AiAnswer("In the last 30 days:\n- ".implode("\n- ", array_slice($lines, 0, 8)), [['label' => 'Position history and lifecycle transitions for your current reports']],
+            [['label' => 'My Team', 'url' => url('/admin/my-team')]], 'changes', false, ['changes' => $lines]);
     }
 
     private function today($reports): AiAnswer

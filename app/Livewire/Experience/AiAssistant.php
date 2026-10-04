@@ -4,8 +4,10 @@ namespace App\Livewire\Experience;
 
 use App\Domain\Ai\Models\AiInteraction;
 use App\Domain\Ai\Services\AiGateway;
+use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Experience\Services\UxMetrics;
+use App\Domain\Identity\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -40,9 +42,33 @@ class AiAssistant extends Component
         $this->embedded = $embedded;
         $available = $this->assistants;
         $user = auth()->user();
-        $lens = app(RoleLens::class)->primary($user);
-        $preferred = ['employee' => 'employee', 'manager' => 'manager', 'hr' => 'hr', 'hr_admin' => 'hr', 'payroll' => 'payroll_auditor', 'executive' => 'workforce', 'system_admin' => 'policy'][$lens] ?? 'employee';
-        $this->assistant = isset($available[$preferred]) ? $preferred : array_key_first($available);
+        $this->assistant = self::preferredFor($user, $available);
+    }
+
+    /**
+     * UX.16: the assistant and opening question for each experience (same lens as Home, including "Home opens as").
+     * Only assistants the person may use are offered; the question is answered by that assistant's own
+     * deterministic intents under the same permissions, scope, AI policy and audit as any other question.
+     */
+    public const ROLE_PROMPTS = [
+        'employee' => ['employee', 'Explain my leave balance'],
+        'manager' => ['manager', 'Summarise changes in my team'],
+        'hr' => ['hr', 'What employee lifecycle actions need attention?'],
+        'payroll' => ['payroll_auditor', 'Audit the latest payroll'],
+        'executive' => ['workforce', 'What changed in my workforce?'],
+        'admin' => ['hr', 'Which configurations changed recently?'],
+    ];
+
+    /** @param array<string, string> $available */
+    public static function preferredFor(User $user, array $available): ?string
+    {
+        $experience = RoleLens::experienceOf(app(RoleLens::class)->primary($user, app(ExperiencePreferences::class)->for($user)['lens'] ?? null));
+        $preferred = self::ROLE_PROMPTS[$experience][0] ?? 'employee';
+        if (! isset($available[$preferred]) && $experience === 'admin') {
+            $preferred = 'policy';
+        }
+
+        return isset($available[$preferred]) ? $preferred : array_key_first($available);
     }
 
     /** @return array<string, string> */
@@ -60,7 +86,12 @@ class AiAssistant extends Component
             return [];
         }
 
-        return array_slice(array_values(array_unique([...$this->context, ...app(AiGateway::class)->examples($this->assistant)])), 0, 5);
+        $user = auth()->user();
+        $experience = $user ? RoleLens::experienceOf(app(RoleLens::class)->primary($user, app(ExperiencePreferences::class)->for($user)['lens'] ?? null)) : null;
+        [$owner, $question] = self::ROLE_PROMPTS[$experience] ?? [null, null];
+        $role = $owner === $this->assistant ? [$question] : [];
+
+        return array_slice(array_values(array_unique([...$this->context, ...$role, ...app(AiGateway::class)->examples($this->assistant)])), 0, 5);
     }
 
     /** @return Collection<int, AiInteraction> */

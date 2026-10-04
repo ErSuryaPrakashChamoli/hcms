@@ -7,6 +7,7 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Experience\Support\ApprovalItem;
 use App\Domain\Identity\Models\User;
 use App\Filament\Pages\Approvals;
+use App\Filament\Pages\WorkforceCommandCentre;
 use App\Filament\Resources\Employees\EmployeeResource;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -85,7 +86,7 @@ final class ContextualIntelligence
         if (! $this->allowed($viewer, ['employee', 'manager', 'hr', 'workforce', 'policy'])) {
             return null;
         }
-        $items = [];
+        $items = $this->roleStatements($home);
         $decisions = $home['decisions'] ?? collect();
         if (($home['decision_count'] ?? 0) > 0) {
             $oldest = collect($decisions)->filter(fn ($d) => $d->requestedAt !== null)->sortBy(fn ($d) => $d->requestedAt->timestamp)->first();
@@ -103,6 +104,35 @@ final class ContextualIntelligence
         }
 
         return $this->finish($viewer, 'Home', $items, 3);
+    }
+
+    /**
+     * UX.16: one statement for the person's own kind of work, from figures Home already composed for this viewer
+     * (so nothing here is wider than what their Home shows): an employee's leave balance, a manager's team, HR
+     * operations, the executive's workforce movement or the administrator's governance. Each names its source.
+     *
+     * @param  array<string, mixed>  $home
+     * @return list<array<string, mixed>>
+     */
+    private function roleStatements(array $home): array
+    {
+        $first = fn (array $items) => $items[0] ?? null;
+        $count = fn (array $s) => $s['count'] !== null ? $s['count'].' '.$s['title'] : $s['title'];
+
+        return array_values(array_filter(match ($home['experience'] ?? 'employee') {
+            'employee' => [($b = collect($home['me']['balances'] ?? [])->sortByDesc('total')->first())
+                ? ['text' => 'You have '.rtrim(rtrim(number_format((float) $b['available'], 1), '0'), '.').' days of '.$b['name'].' left this year, of '.rtrim(rtrim(number_format((float) $b['total'], 1), '0'), '.').'.',
+                    'source' => 'Your leave balances', 'tone' => 'info', 'action' => null] : null],
+            'manager' => [($t = $first(array_values(array_filter($home['team_signals'] ?? [], fn ($s) => $s['key'] !== 'decisions'))))
+                ? ['text' => ucfirst($count($t)).'.', 'source' => 'Your team (current reports)', 'tone' => $t['severity'] === 'danger' ? 'warning' : 'info', 'action' => $t['url'] ? ['label' => 'Open', 'url' => $t['url']] : null] : null],
+            'hr' => [($o = $first($home['operations'] ?? []))
+                ? ['text' => $o['count'].' '.mb_strtolower($o['title']).'. '.$o['why'], 'source' => 'People operations (your scope)', 'tone' => $o['severity'] === 'info' ? 'info' : 'warning', 'action' => $o['url'] ? ['label' => 'Open', 'url' => $o['url']] : null] : null],
+            'executive' => [($w = $home['workforce'] ?? null)
+                ? ['text' => $w['headline'], 'source' => 'Workforce pulse (positions, joiners, completed exits)', 'tone' => 'info', 'action' => WorkforceCommandCentre::canAccess() ? ['label' => 'Explore', 'url' => WorkforceCommandCentre::getUrl()] : null] : null],
+            'admin' => [($g = $first($home['governance']['attention'] ?? []))
+                ? ['text' => ucfirst($count($g)).'. '.$g['why'], 'source' => 'Governance (screens you administer)', 'tone' => $g['severity'] === 'info' ? 'info' : 'warning', 'action' => $g['url'] ? ['label' => 'Review', 'url' => $g['url']] : null] : null],
+            default => [],
+        }));
     }
 
     /**

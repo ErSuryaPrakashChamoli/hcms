@@ -11,6 +11,7 @@ use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Experience\Services\Employee360;
+use App\Domain\Experience\Services\RoleSignals;
 use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Onboarding\Models\OnboardingTask;
@@ -47,13 +48,15 @@ final class HrCopilot implements Assistant
     public function answer(User $user, ?Employee $employee, string $question): AiAnswer
     {
         $intent = Intents::detect($question, [
+            // UX.16: "what needs attention" answers from the same permission-gated signals as the HR Home.
+            'attention' => ['need attention', 'needs attention', 'lifecycle actions', 'what needs', 'operational', 'attention'],
             'probation' => ['probation'],
             'onboarding' => ['onboarding', 'joiner', 'new joiners', 'joining'],
             'documents' => ['document', 'expiring', 'expiry', 'expire'],
             'bgv' => ['verification', 'bgv', 'background'],
             'metrics' => ['attrition', 'headcount', 'absenteeism', 'people cost', 'how many employees', 'cost per head', 'women', 'tenure'],
             'summary' => ['summarise', 'summarize', 'summary of', 'overview of', 'profile of', 'tell me about'],
-            'changes' => ['what changed', 'changes', 'changed this', 'audit', 'who changed', 'modified'],
+            'changes' => ['what changed', 'changes', 'changed this', 'changed recently', 'changed', 'configurations', 'audit', 'who changed', 'modified'],
             'search' => ['employees in', 'employees who', 'who joined', 'list employees', 'find', 'show me', 'people in', 'staff in', 'reporting to', 'everyone in'],
         ]);
 
@@ -71,11 +74,25 @@ final class HrCopilot implements Assistant
             'metrics' => $this->metrics($user, $question),
             'summary' => $this->summary($user, $question),
             'changes' => $this->changeSummary($user, $question),
+            'attention' => $this->attention($user),
             default => $this->search($user, $question),
         };
     }
 
     /** Record summarisation through the Employee 360: one line per domain section the asker may see. */
+    /** UX.16: operational attention for HR, from RoleSignals::operations (each signal gated by its screen's permission). */
+    private function attention(User $user): AiAnswer
+    {
+        $items = app(RoleSignals::class)->operations($user);
+        if ($items === []) {
+            return AiAnswer::text('Nothing in people operations needs attention right now in your scope.', 'attention');
+        }
+        $lines = array_map(fn (array $i) => $i['count'].' · '.$i['title'].'. '.$i['why'], array_slice($items, 0, 6));
+
+        return new AiAnswer("Most urgent first:\n- ".implode("\n- ", $lines), [['label' => 'People operations', 'detail' => 'The same counts as your Home, within your permissions and scope']],
+            [['label' => 'My work', 'url' => url('/admin/my-work')]], 'attention', false, ['attention' => $lines]);
+    }
+
     private function summary(User $user, string $question): AiAnswer
     {
         $code = preg_match('/\b([A-Z]{2,6}[-_]?\d{2,})\b/i', $question, $m) ? strtoupper($m[1]) : null;
@@ -98,7 +115,9 @@ final class HrCopilot implements Assistant
     private function changeSummary(User $user, string $question): AiAnswer
     {
         $days = str_contains(strtolower($question), 'today') ? 1 : (str_contains(strtolower($question), 'month') ? 30 : 7);
-        $events = $this->changes->query($user, ['from' => now()->subDays($days - 1)->toDateString()])->reorder()->toBase()
+        // UX.16: "which configurations changed" narrows to the configuration module (same audit scope).
+        $module = str_contains(strtolower($question), 'configur') ? 'configuration' : null;
+        $events = $this->changes->query($user, ['from' => now()->subDays($days - 1)->toDateString(), 'module' => $module])->reorder()->toBase()
             ->selectRaw('module, action, count(*) as n')->groupBy('module', 'action')->orderByDesc('n')->limit(15)->get();
         if ($events->isEmpty()) {
             return AiAnswer::text("No recorded changes in your scope in the last {$days} day(s).", 'changes');

@@ -6,6 +6,7 @@ use App\Domain\Ai\Services\AiAnswer;
 use App\Domain\Analytics\Services\WorkforceMetrics;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
+use App\Domain\Experience\Services\WorkforcePulse;
 use App\Domain\Identity\Models\User;
 
 /**
@@ -30,6 +31,8 @@ final class WorkforceAnalyst implements Assistant
     public function answer(User $user, ?Employee $employee, string $question): AiAnswer
     {
         $intent = Intents::detect($question, [
+            // UX.16: "what changed in my workforce": this month's movement against last month (Workforce pulse aggregates).
+            'changes' => ['what changed', 'changed', 'changes', 'movement', 'moved'],
             'trend' => ['trend', 'trending', 'over time', 'last 12', 'growth', 'joiners', 'exits'],
             'skills' => ['skill', 'critical', 'capability', 'expert'],
             'risk' => ['at risk', 'attrition risk', 'leaving', 'retention', 'flight', 'likely to', 'predict', 'promot', 'terminat'],
@@ -38,6 +41,7 @@ final class WorkforceAnalyst implements Assistant
         ]);
 
         return match ($intent) {
+            'changes' => $this->changes($user),
             'trend' => $this->trend(),
             'skills' => $this->skills(),
             'risk' => $this->attrition($user),
@@ -45,6 +49,17 @@ final class WorkforceAnalyst implements Assistant
             'capacity' => $this->capacity(),
             default => $this->summary($user),
         };
+    }
+
+    /** UX.16: workforce movement this month against last, from WorkforcePulse (aggregates only; no names, no predictions). */
+    private function changes(User $user): AiAnswer
+    {
+        $pulse = app(WorkforcePulse::class)->for($user);
+        $m = $pulse['movement'];
+        $answer = $pulse['headline'].sprintf(' Last month: %d joiner(s), %d exit(s), %d promotion(s) and %d internal move(s).', $m['last']['joiners'], $m['last']['exits'], $m['last']['promotions'], $m['last']['moves']);
+
+        return new AiAnswer($answer, [['label' => 'Workforce pulse (positions, joiners and completed exits)']], [['label' => 'Workforce pulse', 'url' => url('/admin/workforce-command-centre')]],
+            'changes', false, ['movement' => $m]);
     }
 
     private function summary(User $user): AiAnswer
