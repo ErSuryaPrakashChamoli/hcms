@@ -4,14 +4,12 @@
     $posMe = $posLens->employee($posNavUser);
     $posRoute = (string) request()->route()?->getName();
     $posItems = array_values(array_filter([
-        ['label' => 'Home', 'icon' => 'heroicon-o-home', 'url' => \App\Filament\Pages\Home::getUrl(), 'active' => $posRoute === 'filament.admin.pages.home' || $posRoute === 'filament.admin.pages.dashboard'],
-        ['label' => 'Work', 'icon' => 'heroicon-o-inbox-stack', 'url' => \App\Filament\Pages\MyWork::getUrl(), 'active' => in_array($posRoute, ['filament.admin.pages.my-work', 'filament.admin.pages.approvals'], true),
+        ['label' => 'Home', 'icon' => 'heroicon-o-sun', 'url' => \App\Filament\Pages\Home::getUrl(), 'active' => $posRoute === 'filament.admin.pages.home' || $posRoute === 'filament.admin.pages.dashboard', 'hint' => 'Today'],
+        ['label' => 'Work', 'icon' => 'heroicon-o-inbox-stack', 'url' => \App\Filament\Pages\MyWork::getUrl(), 'active' => in_array($posRoute, ['filament.admin.pages.my-work', 'filament.admin.pages.approvals', 'filament.admin.pages.task-inbox'], true),
             'badge' => app(\App\Domain\Experience\Services\ApprovalCenter::class)->count($posNavUser)],
-        \App\Filament\Pages\People::canAccess() ? ['label' => 'People', 'icon' => 'heroicon-o-users', 'url' => \App\Filament\Pages\People::getUrl(), 'active' => $posRoute === 'filament.admin.pages.people'] : null,
-        \App\Filament\Pages\MyHr::canAccess() ? ['label' => 'Services', 'icon' => 'heroicon-o-lifebuoy', 'url' => \App\Filament\Pages\MyHr::getUrl(['tab' => 'services']), 'active' => $posRoute === 'filament.admin.pages.my-hr'] : null,
-        $posMe && $posNavUser->can('view', $posMe)
-            ? ['label' => 'Profile', 'icon' => 'heroicon-o-user-circle', 'url' => \App\Filament\Resources\Employees\EmployeeResource::getUrl('view', ['record' => $posMe]), 'active' => str_starts_with($posRoute, 'filament.admin.resources.employees.')]
-            : (\App\Filament\Pages\MyHr::canAccess() ? ['label' => 'Me', 'icon' => 'heroicon-o-user-circle', 'url' => \App\Filament\Pages\MyHr::getUrl(['tab' => 'documents']), 'active' => false] : null),
+        ['label' => 'Actions', 'icon' => 'heroicon-m-plus', 'action' => true],
+        \App\Filament\Pages\People::canAccess() ? ['label' => 'People', 'icon' => 'heroicon-o-users', 'url' => \App\Filament\Pages\People::getUrl(), 'active' => $posRoute === 'filament.admin.pages.people' || str_starts_with($posRoute, 'filament.admin.resources.employees.') || $posRoute === 'filament.admin.pages.organisation-map'] : null,
+        \App\Filament\Pages\MyHr::canAccess() ? ['label' => 'Services', 'icon' => 'heroicon-o-lifebuoy', 'url' => \App\Filament\Pages\MyHr::getUrl(), 'active' => $posRoute === 'filament.admin.pages.my-hr'] : null,
     ]));
     $posGoto = array_filter([
         'h' => \App\Filament\Pages\Home::getUrl(),
@@ -22,16 +20,26 @@
     ]);
 @endphp
 <script>window.PeopleOS = Object.assign(window.PeopleOS || {}, { goto: @js($posGoto) });</script>
-{{-- Mobile bottom navigation (§45): the five things people do on a phone. --}}
+{{--
+    Mobile bottom navigation (UX.15): Home (today), Work, Actions, People, Services. Notifications (the bell)
+    and your profile (the avatar) sit in the top bar, so the bar never mislabels whose page is open.
+--}}
 <nav class="pos-bottom-nav" aria-label="Primary">
     @foreach ($posItems as $item)
-        <a href="{{ $item['url'] }}" wire:navigate class="pos-bottom-item" @if ($item['active']) aria-current="page" @endif>
-            <span class="relative">
-                <x-filament::icon :icon="$item['icon']" class="size-6" />
-                @if (($item['badge'] ?? 0) > 0)<span class="pos-bottom-badge pos-num">{{ min($item['badge'], 99) }}</span>@endif
-            </span>
-            <span>{{ $item['label'] }}</span>
-        </a>
+        @if ($item['action'] ?? false)
+            <button type="button" class="pos-bottom-item pos-bottom-action" x-data x-on:click="$dispatch('pos-command-open', { mode: 'actions' })" aria-label="Start something: leave, requests, approvals and more">
+                <span class="pos-bottom-action-icon"><x-filament::icon :icon="$item['icon']" class="size-6" /></span>
+                <span>{{ $item['label'] }}</span>
+            </button>
+        @else
+            <a href="{{ $item['url'] }}" wire:navigate class="pos-bottom-item" @if ($item['active']) aria-current="page" @endif>
+                <span class="relative">
+                    <x-filament::icon :icon="$item['icon']" class="size-6" />
+                    @if (($item['badge'] ?? 0) > 0)<span class="pos-bottom-badge pos-num">{{ min($item['badge'], 99) }}<span class="sr-only"> waiting</span></span>@endif
+                </span>
+                <span>{{ $item['label'] }}</span>
+            </a>
+        @endif
     @endforeach
 </nav>
 

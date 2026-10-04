@@ -72,12 +72,15 @@ class MyHr extends Page
     protected string $view = 'filament.pages.my-hr';
 
     public const TABS = [
-        'requests' => 'Requests', 'tasks' => 'Tasks', 'approvals' => 'Approvals', 'documents' => 'Documents', 'policies' => 'Policies', 'services' => 'Services',
+        'overview' => 'Overview', 'requests' => 'Requests', 'tasks' => 'Tasks', 'approvals' => 'Approvals', 'documents' => 'Documents', 'policies' => 'Policies', 'services' => 'Services',
         'surveys' => 'Surveys', 'feedback' => 'Feedback', 'communications' => 'Communications', 'preferences' => 'Preferences', 'notifications' => 'Notifications',
     ];
 
     #[Url]
-    public string $tab = 'requests';
+    public string $tab = 'overview';
+
+    /** @var array<string, mixed>|null the front door, composed once per request */
+    private ?array $front = null;
 
     public static function canAccess(): bool
     {
@@ -91,7 +94,7 @@ class MyHr extends Page
 
     public function setTab(string $tab): void
     {
-        $this->tab = array_key_exists($tab, self::TABS) ? $tab : 'requests';
+        $this->tab = array_key_exists($tab, self::TABS) ? $tab : 'overview';
     }
 
     /** @return Collection<int, Ticket> */
@@ -250,6 +253,50 @@ class MyHr extends Page
         }
         $current[$channel] = $on;
         ServiceDeskActions::run(fn () => app(CommunicationPreferences::class)->set($me, $category, $current['in_app'], $current['email'], auth()->user()), 'Preference saved');
+    }
+
+    /**
+     * UX.15 Services front door: "How can HR help?". Composed from the same reads as the tabs (CaseAccess,
+     * the domain task sources, the knowledge base and the service catalogue); nothing new is queried.
+     *
+     * @return array{open: Collection, recent: Collection, tasks: Collection, attention: Collection, policies: int, services: Collection, letters: Collection}
+     */
+    public function frontDoor(): array
+    {
+        if ($this->front !== null) {
+            return $this->front;
+        }
+        $requests = $this->getRequests();
+
+        return $this->front = [
+            'open' => $requests->filter(fn (Ticket $t) => in_array($t->status, Ticket::OPEN, true))->values(),
+            'recent' => $requests->reject(fn (Ticket $t) => in_array($t->status, Ticket::OPEN, true))->take(3)->values(),
+            'tasks' => $this->getTasks(),
+            'attention' => $this->getAttention(),
+            'policies' => count($this->getPendingPolicyIds()),
+            'services' => $this->getServices(),
+            'letters' => $this->getLetters()->take(3),
+        ];
+    }
+
+    public function getHeading(): string
+    {
+        return $this->tab === 'overview' ? 'How can HR help?' : 'My HR';
+    }
+
+    public function getSubheading(): ?string
+    {
+        if ($this->tab !== 'overview') {
+            return null;
+        }
+        $f = $this->frontDoor();
+        $parts = array_filter([
+            $f['open']->count() > 0 ? $f['open']->count().' open '.($f['open']->count() === 1 ? 'request' : 'requests') : null,
+            $f['tasks']->count() > 0 ? $f['tasks']->count().' '.($f['tasks']->count() === 1 ? 'thing needs' : 'things need').' you' : null,
+            $f['policies'] > 0 ? $f['policies'].' '.($f['policies'] === 1 ? 'policy' : 'policies').' to acknowledge' : null,
+        ]);
+
+        return $parts === [] ? 'Nothing is waiting on you. Request a service, find a policy or ask HR a question.' : 'You have '.implode(', ', $parts).'.';
     }
 
     public function requestServiceAction(): Action

@@ -14,6 +14,7 @@ use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Services\CaseAccess;
 use App\Filament\Pages\Approvals;
+use App\Filament\Pages\ChangeIntelligencePage;
 use App\Filament\Pages\LeaveCalendar;
 use App\Filament\Pages\MyHr;
 use App\Filament\Pages\People;
@@ -81,6 +82,7 @@ final class IntentSearch
             'reporting_to' => ['/\b(reporting|reports?)\s+to\s+(?<manager>[a-z][a-z\'\- ]{1,40})$/', fn (User $u, array $m) => $this->reportingTo($u, trim($m['manager']), null)],
             'people_in_reporting' => ['/\bpeople\s+in\s+(?<dept>[a-z][a-z&\- ]{1,40}?)\s+(reporting|reports?)\s+to\s+(?<manager>[a-z][a-z\'\- ]{1,40})$/', fn (User $u, array $m) => $this->reportingTo($u, trim($m['manager']), trim($m['dept']))],
             'headcount' => ['/\bhead\s?count\b/', fn (User $u) => $this->headcount($u)],
+            'org_changes' => ['/\b(recent|latest)\s+(organi[sz]ation(al)?\s+|org\s+)?changes?\b|\b(organi[sz]ation(al)?|org)\s+changes?\b|\bwhat\s+changed\b|\bchanges?\s+(this|last)\s+(week|month)\b/', fn (User $u) => $this->orgChanges($u)],
         ];
     }
 
@@ -239,6 +241,24 @@ final class IntentSearch
 
         return ['title' => 'Headcount today', 'answer' => number_format((int) $m['value']).' people', 'rows' => [],
             'url' => WorkforceCommandCentre::canAccess() ? WorkforceCommandCentre::getUrl() : null];
+    }
+
+    /**
+     * "Show recent organisation changes": the viewer's own permission-aware change feed (ChangeFeed: the
+     * timeline categories they may see, for the people they may see), summarised in business language.
+     * Announcements are left out; nothing here reads raw audit records.
+     */
+    private function orgChanges(User $u): ?array
+    {
+        $items = app(ChangeFeed::class)->for($u, 50, 30)->reject(fn (array $i) => $i['type'] === 'announcement')->values();
+        if ($items->isEmpty()) {
+            return $u->hasPermission('employee.view') ? ['title' => 'Organisation changes, last 30 days', 'answer' => 'No changes you can see', 'rows' => [], 'url' => null] : null;
+        }
+        $summary = $items->groupBy('label')->map(fn ($g, $label) => $g->count().' '.mb_strtolower((string) $label))->values()->implode(', ');
+
+        return ['title' => 'Organisation changes, last 30 days', 'answer' => $items->count().' '.($items->count() === 1 ? 'change' : 'changes').' · '.$summary,
+            'rows' => $items->take(5)->map(fn (array $i) => ['label' => $i['subject'] ?? $i['title'], 'meta' => $i['title'].' · '.$i['at']->format('d M'), 'person_id' => $i['subject_id']])->all(),
+            'url' => ChangeIntelligencePage::canAccess() ? ChangeIntelligencePage::getUrl() : null];
     }
 
     /** @param Builder<Employee> $query */

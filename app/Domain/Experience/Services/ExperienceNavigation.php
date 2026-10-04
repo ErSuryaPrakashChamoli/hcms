@@ -91,6 +91,37 @@ final class ExperienceNavigation
         'My team' => ['MyTeam'],
     ];
 
+    /**
+     * UX.15: workspaces carry their own header (where am I, what matters, what can I do), so they show no
+     * module bar. The Employee 360 is a person workspace, not a module page.
+     */
+    public const WORKSPACES = ['Home', 'Dashboard', 'MyWork', 'Approvals', 'NotificationCenter', 'People', 'OrganisationMap', 'WorkforceCommandCentre', 'MyHr', 'AdminCentre', 'AnnouncementsFeed'];
+
+    private const WORKSPACE_ROUTES = ['filament.admin.resources.employees.view'];
+
+    /**
+     * UX.15: the everyday modules of an area (at most six, in this order). Everything else in the area —
+     * configuration, reference data and specialist tools — is one step away in "All in {area}", so the bar
+     * reads as a workspace rather than a list of tables.
+     */
+    public const EVERYDAY = [
+        'Lifecycle' => ['EmployeeResource', 'OnboardingPlanResource', 'ExitCaseResource', 'LetterResource', 'BgvCaseResource', 'AlumniProfileResource'],
+        'Growth' => ['AppraisalResource', 'GoalResource', 'OneOnOneResource', 'FeedbackEntryResource', 'LearningDashboard', 'TalentDashboard'],
+        'Time & leave' => ['LeaveRequestResource', 'LeaveCalendar', 'AttendanceRecordResource', 'AttendanceRegularisationResource', 'AttendanceExceptionCentre', 'LeaveBalanceResource'],
+        'Pay' => ['PayrollControlRoom', 'PayrollRunResource', 'PayslipResource', 'CompensationChangeResource', 'TaxDeclarationResource', 'ComplianceControlRoom'],
+        'Organisation' => ['OrganisationDesigner', 'DepartmentResource', 'LocationResource', 'TeamResource', 'CompanyResource'],
+        'Workforce' => ['WorkforceDashboard', 'PositionResource', 'WorkforcePlanResource', 'VacanciesPage', 'PositionHierarchyPage'],
+        'Analytics' => ['WorkforceCommandCentre', 'PeopleAnalyticsPage', 'ReportResource', 'DashboardViewer'],
+        'Audit' => ['ChangeIntelligencePage', 'AuditEventResource'],
+        'Service Desk' => ['TicketResource', 'ServiceDeskAnalyticsPage'],
+        'Engagement' => ['SurveyResource', 'EmployeeFeedbackResource', 'EngagementCampaignResource'],
+        'Communication' => ['AnnouncementResource'],
+        'Grievances' => ['GrievanceResource'],
+        'Assets' => ['AssetResource'],
+        'Setup' => ['ConfigurationFinder', 'ConfigurationChangeResource', 'UserResource', 'RoleResource', 'TenantSettingResource'],
+        'Platform' => ['IntegrationSystemResource', 'SecurityPolicyPage', 'InboundEventResource', 'ApiKeyResource'],
+    ];
+
     public function __construct(private readonly ModuleCatalogue $catalogue) {}
 
     /** @return list<NavigationItem> */
@@ -243,7 +274,7 @@ final class ExperienceNavigation
 
             return $mine !== [] ? ['section' => 'You', 'label' => 'Your pages', 'modules' => array_map(fn ($m) => ['group' => 'You'] + $m, $mine)] : null;
         }
-        if ($section === null || $section === 'work') {
+        if ($section === null || $section === 'work' || $this->onWorkspace($user)) {
             return null;
         }
         foreach ($this->children($user, $section) as $child) {
@@ -254,6 +285,60 @@ final class ExperienceNavigation
         }
 
         return null;
+    }
+
+    /** Is the current page a workspace (its own header, no module bar)? */
+    public function onWorkspace(User $user): bool
+    {
+        if (in_array((string) Route::currentRouteName(), self::WORKSPACE_ROUTES, true)) {
+            return true;
+        }
+        $current = $this->currentModule($user);
+
+        return $current !== null && in_array(class_basename($current['key']), self::WORKSPACES, true);
+    }
+
+    /**
+     * UX.15: the area bar of a module page: where you are, the area's everyday modules (plus the current one),
+     * and the rest of the area grouped by purpose behind "All in {area}".
+     *
+     * @return array{section: string, label: string, primary: list<array<string, mixed>>, more: array<string, list<array<string, mixed>>>, count: int, current: ?string}|null
+     */
+    public function areaBar(User $user): ?array
+    {
+        $area = $this->currentArea($user);
+        if ($area === null) {
+            return null;
+        }
+        $modules = $area['modules'];
+        $current = $this->currentModule($user);
+        $everyday = self::EVERYDAY[$area['label']] ?? null;
+        if ($everyday === null || count($modules) <= 6) {
+            $primary = $modules;
+        } else {
+            $byBase = [];
+            foreach ($modules as $m) {
+                $byBase[class_basename($m['key'])] = $m;
+            }
+            $primary = array_values(array_filter(array_map(fn (string $b) => $byBase[$b] ?? null, $everyday)));
+            if ($primary === []) {
+                $primary = array_slice($modules, 0, 6);
+            }
+        }
+        $primaryKeys = array_column($primary, 'key');
+        if ($current !== null && ! in_array($current['key'], $primaryKeys, true) && in_array($current['key'], array_column($modules, 'key'), true)) {
+            $primary[] = $current;
+            $primaryKeys[] = $current['key'];
+        }
+        $more = [];
+        foreach ($modules as $m) {
+            if (! in_array($m['key'], $primaryKeys, true)) {
+                $more[(string) $m['group']][] = $m;
+            }
+        }
+
+        return ['section' => $area['section'], 'label' => $area['label'], 'primary' => $primary, 'more' => $more,
+            'count' => count($modules), 'current' => $current['key'] ?? null];
     }
 
     /** Items waiting for the viewer: workflow tasks plus approvals (cheap counts only). */

@@ -2,12 +2,23 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Ai\Services\ConfigurationSearch;
+use App\Domain\Configuration\Enums\ChangeStatus;
+use App\Domain\Configuration\Models\ConfigurationChange;
+use App\Domain\Enterprise\Models\WebhookDelivery;
 use App\Domain\Experience\Services\ExperienceNavigation;
 use App\Domain\Experience\Services\RoleLens;
+use App\Domain\Integration\Models\InboundEvent;
+use App\Filament\Resources\ConfigurationChanges\ConfigurationChangeResource;
+use App\Filament\Resources\InboundEvents\InboundEventResource;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Computed;
 use UnitEnum;
 
@@ -59,9 +70,120 @@ class AdminCentre extends Page
         return false;
     }
 
+    /** UX.15: plain-language categories of what an administrator manages (Filament groups → category). */
+    public const CATEGORIES = [
+        'organisation' => ['Organisation and positions', 'Companies, departments, locations, positions and assets.', 'heroicon-o-building-office-2', ['Organisation', 'Workforce', 'Assets']],
+        'people' => ['People data and forms', 'Designations, grades, categories, document types, custom fields and forms.', 'heroicon-o-identification', ['People Setup', 'Customisation']],
+        'lifecycle' => ['Joining, letters and exit', 'Onboarding templates, letter templates, exit and alumni settings.', 'heroicon-o-arrow-path', ['People', 'Exit', 'Letters', 'Alumni']],
+        'time' => ['Time and leave rules', 'Leave types, holidays, shifts, schedules and attendance devices.', 'heroicon-o-calendar-days', ['Attendance', 'Leave']],
+        'pay' => ['Pay, compensation and compliance', 'Salary components and structures, pay ranges, statutory rules and returns.', 'heroicon-o-banknotes', ['Payroll', 'Compensation', 'Compliance']],
+        'growth' => ['Growth programmes', 'Performance cycles and templates, learning, skills and talent.', 'heroicon-o-arrow-trending-up', ['Performance', 'Learning', 'Talent']],
+        'workflows' => ['Workflows and policies', 'Approval workflows and the policies employees acknowledge.', 'heroicon-o-arrows-right-left', ['Workflows', 'Policies']],
+        'service' => ['Service and communication', 'The HR service catalogue, knowledge, grievances, announcements and surveys.', 'heroicon-o-lifebuoy', ['Service Desk', 'Knowledge', 'Grievances', 'Communication', 'Engagement']],
+        'access' => ['Access and security', 'Users, roles, single sign-on, security policy and API keys.', 'heroicon-o-key', ['Access', 'Enterprise']],
+        'data' => ['Integrations, data and audit', 'Integration hub, inbound events, reports, audit and configuration packs.', 'heroicon-o-circle-stack', ['Integrations', 'Analytics', 'Audit', 'Configuration', 'Platform']],
+    ];
+
+    /** Find a setting: plain words in, the configuration or module to open out. */
+    public string $find = '';
+
+    public function getHeading(): string
+    {
+        return 'What do you want to manage?';
+    }
+
     public function getSubheading(): ?string
     {
-        return 'Everything you can open, by area. Press / or Ctrl K anywhere to jump straight to a module.';
+        $g = $this->governance;
+        $parts = array_filter([
+            $g['pending'] !== null && $g['pending']->count() > 0 ? $g['pending']->count().' configuration '.($g['pending']->count() === 1 ? 'change awaits' : 'changes await').' approval' : null,
+            ($g['dead_letters'] ?? 0) > 0 ? $g['dead_letters'].' integration '.($g['dead_letters'] === 1 ? 'message needs' : 'messages need').' attention' : null,
+            ($g['failed_jobs'] ?? 0) > 0 ? $g['failed_jobs'].' background '.($g['failed_jobs'] === 1 ? 'job has' : 'jobs have').' failed' : null,
+        ]);
+
+        return $parts === [] ? 'Find a setting in plain words, or choose an area below. Nothing needs your attention right now.' : ucfirst(implode(' · ', $parts)).'.';
+    }
+
+    /**
+     * Best matches for the search box: the configuration map (§103) and module names, limited to what the
+     * viewer can open (the module catalogue already applies each destination's canAccess()).
+     *
+     * @return list<array{label: string, url: string, hint: string}>
+     */
+    #[Computed]
+    public function matches(): array
+    {
+        $term = trim($this->find);
+        if (mb_strlen($term) < 2) {
+            return [];
+        }
+        $all = collect(array_merge(...array_map(fn (string $k) => app(ExperienceNavigation::class)->modulesIn(auth()->user(), $k), array_keys(ExperienceNavigation::SECTIONS))));
+        // Only a module's own path (or a path below it) counts; the panel root (Home) never covers other screens.
+        $root = rtrim((string) parse_url(Filament::getPanel('admin')->getUrl(), PHP_URL_PATH), '/');
+        $paths = $all->map(fn (array $m) => rtrim((string) parse_url($m['url'], PHP_URL_PATH), '/'))->filter(fn ($p) => $p !== '' && $p !== $root)->unique()->all();
+        $out = [];
+        foreach (app(ConfigurationSearch::class)->search($term, 8) as $r) {
+            $path = rtrim((string) parse_url($r['url'], PHP_URL_PATH), '/');
+            $allowed = $path !== '' && collect($paths)->contains(fn ($p) => $path === $p || str_starts_with($path, $p.'/'));
+            if ($allowed) {
+                $out[$r['url']] = ['label' => $r['label'], 'url' => $r['url'], 'hint' => 'Setting'];
+            }
+        }
+        $needle = mb_strtolower($term);
+        foreach ($all as $m) {
+            if (str_contains(mb_strtolower($m['label'].' '.$m['group']), $needle) && ! isset($out[$m['url']])) {
+                $out[$m['url']] = ['label' => $m['label'], 'url' => $m['url'], 'hint' => $m['group']];
+            }
+        }
+
+        return array_slice(array_values($out), 0, 10);
+    }
+
+    /**
+     * Governance at a glance. Each figure appears only for viewers who may open the screen it summarises.
+     *
+     * @return array{pending: ?Collection, recent: ?Collection, dead_letters: ?int, failed_jobs: ?int, links: array<string, string>}
+     */
+    #[Computed]
+    public function governance(): array
+    {
+        $canConfig = rescue(fn () => ConfigurationChangeResource::canAccess(), false, false);
+        $canIntegrations = rescue(fn () => InboundEventResource::canAccess(), false, false);
+        $canReadiness = rescue(fn () => PlatformReadinessPage::canAccess(), false, false);
+
+        return [
+            'pending' => $canConfig ? ConfigurationChange::query()->where('status', ChangeStatus::PendingApproval)->latest('id')->limit(5)->get() : null,
+            'recent' => $canConfig ? ConfigurationChange::query()->where('status', ChangeStatus::Published)->latest('published_at')->limit(3)->get() : null,
+            'dead_letters' => $canIntegrations ? InboundEvent::query()->where('status', 'dead_letter')->count() + WebhookDelivery::query()->where('status', 'dead_letter')->count() : null,
+            'failed_jobs' => $canReadiness && Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->count() : null,
+            'links' => array_filter([
+                'config' => $canConfig ? ConfigurationChangeResource::getUrl('index') : null,
+                'integrations' => $canIntegrations ? InboundEventResource::getUrl('index') : null,
+                'readiness' => $canReadiness ? PlatformReadinessPage::getUrl() : null,
+            ]),
+        ];
+    }
+
+    /** @return list<array{key: string, label: string, why: string, icon: string, modules: list<array<string, mixed>>}> */
+    #[Computed]
+    public function categories(): array
+    {
+        $nav = app(ExperienceNavigation::class);
+        $byGroup = [];
+        foreach (array_keys(ExperienceNavigation::SECTIONS) as $key) {
+            foreach ($nav->modulesIn(auth()->user(), $key) as $m) {
+                $byGroup[(string) $m['group']][$m['key']] = $m;
+            }
+        }
+        $out = [];
+        foreach (self::CATEGORIES as $key => [$label, $why, $icon, $groups]) {
+            $modules = array_values(array_merge(...array_map(fn ($g) => array_values($byGroup[$g] ?? []), $groups)));
+            if ($modules !== []) {
+                $out[] = compact('key', 'label', 'why', 'icon', 'modules');
+            }
+        }
+
+        return $out;
     }
 
     /** @return array<string, array<string, list<array<string, mixed>>>> section label → group → modules */

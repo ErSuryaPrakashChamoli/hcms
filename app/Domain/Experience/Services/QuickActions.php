@@ -67,7 +67,7 @@ final class QuickActions
         };
 
         // Employee self-service: hosted on Home as real Filament actions.
-        $add('request_leave', 'Request', 'Request leave', 'Pick dates, see your balance, submit', 'heroicon-o-calendar-days', ['leave', 'holiday', 'vacation', 'time off', 'pto', 'sick'],
+        $add('request_leave', 'Request', 'Request leave', 'Pick dates, see your balance, submit', 'heroicon-o-calendar-days', ['leave', 'apply', 'apply leave', 'holiday', 'vacation', 'time off', 'pto', 'sick'],
             fn () => Home::getUrl().'?action=requestLeave', RoleLens::EMPLOYEE, $me !== null && $user->can('leave.apply'));
         $add('regularise', 'Request', 'Fix my attendance', 'Missed punch or wrong time', 'heroicon-o-clock', ['attendance', 'punch', 'regularise', 'regularize', 'missed'],
             fn () => Home::getUrl().'?action=regularise', RoleLens::EMPLOYEE, $me !== null && $user->can('attendance.regularise'));
@@ -99,6 +99,12 @@ final class QuickActions
             fn () => People::getUrl(), RoleLens::HR, People::canAccess());
         $add('add_employee', 'Create', 'Add an employee', 'Hire into a position', 'heroicon-o-user-plus', ['hire', 'new joiner', 'add', 'employee', 'onboard'],
             fn () => EmployeeResource::getUrl('create'), RoleLens::HR, EmployeeResource::canCreate());
+        // Changes that need a person first: the command center asks whom, then opens the existing action on
+        // that person's Employee 360 (?action=), where the form, Before → After and authorisation apply.
+        $add('start_transfer', 'Start', 'Start a transfer or promotion', 'Choose the person, then see the Before → After', 'heroicon-o-arrow-trending-up', ['transfer', 'promote', 'promotion', 'move', 'start transfer', 'relocate'],
+            fn () => '#pick:assignPosition', RoleLens::HR, $user->hasPermission('employee.position'));
+        $add('change_manager', 'Start', 'Change someone’s manager', 'Choose the person, then the new reporting line', 'heroicon-o-user-circle', ['manager', 'reporting', 'change manager', 'reports to', 'line manager'],
+            fn () => '#pick:changeManager', RoleLens::HR, $user->hasPermission('employee.position'));
         $add('generate_letter', 'Generate', 'Generate a letter', 'From an approved template', 'heroicon-o-document-plus', ['letter', 'certificate', 'experience', 'offer'],
             fn () => LetterResource::getUrl('index').'?action=generate', RoleLens::HR, LetterResource::canAccess() && $user->can('letter.issue'));
         $add('hr_queue', 'Review', 'HR request queue', 'Cases by SLA', 'heroicon-o-lifebuoy', ['tickets', 'cases', 'queue', 'requests', 'sla'],
@@ -115,7 +121,7 @@ final class QuickActions
             fn () => PayrollRunResource::getUrl('index').'?action=openRun', RoleLens::PAYROLL, PayrollRunResource::canAccess() && $user->can('payroll.calculate'));
 
         // Executive / insights.
-        $add('workforce', 'Review', 'Workforce command center', 'What changed, what needs a decision', 'heroicon-o-presentation-chart-line', ['workforce', 'headcount', 'attrition', 'analytics', 'insights'],
+        $add('workforce', 'Review', 'Open Workforce pulse', 'What changed across the workforce, and what needs a decision', 'heroicon-o-presentation-chart-line', ['workforce', 'pulse', 'workforce pulse', 'command center', 'headcount', 'attrition', 'analytics', 'insights'],
             fn () => WorkforceCommandCentre::getUrl(), RoleLens::EXECUTIVE, WorkforceCommandCentre::canAccess());
         $add('changes', 'Review', 'What changed this month', 'Joiners, exits, moves, pay changes', 'heroicon-o-arrows-right-left', ['changes', 'what changed', 'movement', 'joiners', 'exits'],
             fn () => ChangeIntelligencePage::getUrl(), RoleLens::EXECUTIVE, ChangeIntelligencePage::canAccess());

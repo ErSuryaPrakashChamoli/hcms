@@ -84,13 +84,13 @@ final class CommandSearch
             return $groups;
         }
 
-        $add('answers', 'Smart answers', fn () => array_map(fn ($a) => ['id' => 'answer:'.$a['key'], 'type' => 'answer', 'title' => $a['title'], 'subtitle' => $a['answer'],
+        $add('answers', 'Intelligence', fn () => array_map(fn ($a) => ['id' => 'answer:'.$a['key'], 'type' => 'answer', 'title' => $a['title'], 'subtitle' => $a['answer'],
             'icon' => 'heroicon-m-sparkles', 'url' => $a['url'], 'rows' => $a['rows']], $this->intents->answer($user, $q)));
         $add('actions', 'Actions', fn () => $this->matchActions($user, $q));
         $add('people', 'People', fn () => $this->matchPeople($user, $q));
-        $add('modules', 'Go to', fn () => $this->matchModules($user, $q));
+        $add('modules', 'Navigation', fn () => $this->matchModules($user, $q));
         $add('requests', 'Requests', fn () => $this->matchRequests($user, $q));
-        $add('knowledge', 'Policies & knowledge', fn () => $this->matchKnowledge($user, $q));
+        $add('knowledge', 'Knowledge', fn () => $this->matchKnowledge($user, $q));
         $add('documents', 'Documents', fn () => $this->matchDocuments($user, $q));
         $add('organisation', 'Organisation', fn () => $this->matchOrganisation($user, $q));
         $add('records', 'Workflows & reports', fn () => $this->matchRecords($user, $q));

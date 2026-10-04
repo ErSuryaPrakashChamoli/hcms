@@ -20,6 +20,15 @@ class CommandCenter extends Component
 
     public string $mode = 'all';
 
+    /** UX.15: a change waiting for its person ("Start a transfer" → choose whom). Re-checked on every use. */
+    public ?string $pick = null;
+
+    /** @var array<string, array{label: string, permission: string}> */
+    private const PICKS = [
+        'assignPosition' => ['label' => 'Transfer or promote', 'permission' => 'employee.position'],
+        'changeManager' => ['label' => 'Change manager', 'permission' => 'employee.position'],
+    ];
+
     public function setMode(string $mode): void
     {
         $this->mode = in_array($mode, ['all', 'actions', 'people'], true) ? $mode : 'all';
@@ -28,8 +37,22 @@ class CommandCenter extends Component
 
     public function opened(string $mode = 'all'): void
     {
+        $this->pick = null;
         $this->setMode($mode);
         app(UxMetrics::class)->record('command.open');
+    }
+
+    /** Choose whom a change is for; only changes the viewer may start (the profile action re-checks per person). */
+    public function pick(?string $action = null): void
+    {
+        $this->pick = $action !== null && isset(self::PICKS[$action]) && auth()->user()?->hasPermission(self::PICKS[$action]['permission']) ? $action : null;
+        $this->query = '';
+        $this->setMode($this->pick !== null ? 'people' : 'all');
+    }
+
+    public function pickLabel(): ?string
+    {
+        return $this->pick !== null ? self::PICKS[$this->pick]['label'] : null;
     }
 
     /** @return list<array<string, mixed>> */
@@ -38,6 +61,19 @@ class CommandCenter extends Component
     {
         $start = hrtime(true);
         $groups = app(CommandSearch::class)->search(auth()->user(), $this->query, $this->mode);
+        if ($this->pick !== null) {
+            // Each person result opens the chosen change on their Employee 360; people whose profile the
+            // viewer may not open are not offered (the 360 action would refuse them anyway).
+            $groups = array_values(array_filter(array_map(function (array $group) {
+                if ($group['key'] !== 'people') {
+                    return null;
+                }
+                $group['items'] = array_values(array_filter(array_map(fn (array $item) => empty($item['url']) ? null
+                    : ['url' => strtok($item['url'], '#').'?action='.$this->pick, 'drawer' => null, 'actions' => [], 'verb' => self::PICKS[$this->pick]['label']] + $item, $group['items'])));
+
+                return $group['items'] === [] ? null : $group;
+            }, $groups)));
+        }
         if (trim($this->query) !== '') {
             $metrics = app(UxMetrics::class);
             $metrics->record('command.search', (int) ((hrtime(true) - $start) / 1_000_000));

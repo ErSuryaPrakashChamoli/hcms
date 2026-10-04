@@ -1,11 +1,115 @@
 <x-filament-panels::page>
-    <x-filament::tabs label="My HR sections">
+    {{-- UX.15: the front door first; every tab stays one click away as quiet section navigation. --}}
+    <nav class="pos-sectnav" aria-label="Everything in My HR" role="tablist">
         @foreach (\App\Filament\Pages\MyHr::TABS as $key => $label)
-            <x-filament::tabs.item :active="$tab === $key" wire:click="setTab('{{ $key }}')">{{ $label }}</x-filament::tabs.item>
+            <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" wire:click="setTab('{{ $key }}')">{{ $label }}</button>
         @endforeach
-    </x-filament::tabs>
+    </nav>
 
-    @if ($tab === 'requests')
+    @if ($tab === 'overview')
+        @php($f = $this->frontDoor())
+        <div class="pos-ws-cols">
+            <div class="pos-ws-main">
+                <x-pos.section title="Start a request" :count="$f['services']->count()" sub="Letters, certificates, changes to your records and more. HR applies changes after any approval the service needs.">
+                    @if ($f['services']->isEmpty())
+                        <x-pos.state variant="empty" size="inline" title="No services are open to you yet." why="Use Ask HR at the top of the page for anything you need." />
+                    @else
+                        <div x-data="{ q: '' }" class="grid gap-3">
+                            <label class="pos-search" style="max-width: none">
+                                <x-filament::icon icon="heroicon-m-magnifying-glass" class="size-4 pos-muted" />
+                                <span class="sr-only">Find a service</span>
+                                <input x-model="q" type="search" placeholder="Find a service, for example “experience letter” or “bank”" autocomplete="off" />
+                            </label>
+                            <div class="pos-panel pos-stream">
+                                @foreach ($f['services'] as $version)
+                                    <div class="pos-stream-row" x-show="! q || {{ \Illuminate\Support\Js::from(mb_strtolower($version->service->name.' '.$version->description)) }}.includes(q.toLowerCase())">
+                                        <span class="pos-stream-icon" aria-hidden="true"><x-filament::icon icon="heroicon-o-document-text" class="size-4" /></span>
+                                        <div class="pos-stream-body">
+                                            <p class="pos-stream-title">{{ $version->service->name }}</p>
+                                            @if ($version->description)<p class="pos-stream-meta line-clamp-2">{{ $version->description }}</p>@endif
+                                        </div>
+                                        <div class="pos-stream-end">{{ ($this->requestServiceAction)(['service' => $version->service_definition_id, 'for' => 'self']) }}</div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                </x-pos.section>
+
+                <x-pos.section title="My requests" :count="$f['open']->count()" sub="Open requests first. Each one shows who has it now.">
+                    @if ($f['open']->isEmpty() && $f['recent']->isEmpty())
+                        <x-pos.state variant="empty" size="inline" title="You have no requests." why="When you request a service or ask HR, it appears here until it is closed." />
+                    @else
+                        <div class="pos-panel pos-stream">
+                            @foreach ($f['open']->concat($f['recent']) as $ticket)
+                                <a href="{{ \App\Filament\Resources\Tickets\TicketResource::getUrl('view', ['record' => $ticket]) }}" wire:navigate class="pos-stream-row"
+                                    data-tone="{{ in_array($ticket->status, \App\Domain\ServiceDesk\Models\Ticket::OPEN, true) ? (in_array($ticket->status, ['waiting_employee'], true) ? 'warning' : 'info') : 'success' }}">
+                                    <span class="pos-stream-mark" aria-hidden="true"></span>
+                                    <div class="pos-stream-body">
+                                        <p class="pos-stream-title">{{ $ticket->serviceName() }}</p>
+                                        <p class="pos-stream-meta">{{ $ticket->number }} · raised {{ $ticket->created_at->diffForHumans() }}</p>
+                                    </div>
+                                    <div class="pos-stream-end"><x-filament::badge :color="\App\Filament\Resources\Tickets\TicketResource::statusColor($ticket->status)">{{ \App\Filament\Resources\Tickets\TicketResource::statusLabel($ticket->status) }}</x-filament::badge></div>
+                                </a>
+                            @endforeach
+                        </div>
+                        <button type="button" class="pos-link justify-self-start" wire:click="setTab('requests')">All my requests <span aria-hidden="true">→</span></button>
+                    @endif
+                </x-pos.section>
+            </div>
+
+            <aside class="pos-ws-side" aria-label="What needs you">
+                <x-pos.section title="Needs you" :count="$f['tasks']->count()">
+                    @if ($f['tasks']->isEmpty() && $f['attention']->isEmpty())
+                        <x-pos.state variant="caught-up" size="inline" why="Tasks and reminders from HR appear here." />
+                    @else
+                        <div class="pos-panel pos-stream">
+                            @foreach ($f['tasks']->take(4) as $task)
+                                <a @if ($task->url) href="{{ $task->url }}" wire:navigate @endif class="pos-stream-row" data-tone="{{ $task->isOverdue() ? 'danger' : 'warning' }}">
+                                    <span class="pos-stream-mark" aria-hidden="true"></span>
+                                    <div class="pos-stream-body"><p class="pos-stream-title">{{ $task->title }}</p>
+                                        @if ($task->dueAt)<p class="pos-stream-meta">{{ $task->isOverdue() ? 'Overdue' : 'Due' }} {{ $task->dueAt->diffForHumans() }}</p>@endif</div>
+                                    <span></span>
+                                </a>
+                            @endforeach
+                            @foreach ($f['attention']->take(3) as $item)
+                                <div class="pos-stream-row" data-tone="{{ $item['severity'] ?? 'warning' }}">
+                                    <span class="pos-stream-mark" aria-hidden="true"></span>
+                                    <div class="pos-stream-body"><p class="pos-stream-title">{{ $item['title'] ?? $item['label'] ?? '' }}</p>@if (($item['why'] ?? null))<p class="pos-stream-meta">{{ $item['why'] }}</p>@endif</div>
+                                    <span></span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </x-pos.section>
+
+                @if ($f['policies'] > 0)
+                    <x-pos.section title="Policies to acknowledge" :count="$f['policies']">
+                        <button type="button" class="pos-panel pos-panel-pad pos-stream-row is-interactive text-start" wire:click="setTab('policies')">
+                            <span class="pos-stream-icon" aria-hidden="true"><x-filament::icon icon="heroicon-o-book-open" class="size-4" /></span>
+                            <span class="pos-stream-body"><span class="pos-stream-title">Read and acknowledge</span><span class="pos-stream-meta">Your organisation asks you to confirm you have read {{ $f['policies'] === 1 ? 'one policy' : $f['policies'].' policies' }}.</span></span>
+                            <span aria-hidden="true">→</span>
+                        </button>
+                    </x-pos.section>
+                @endif
+
+                @if ($f['letters']->isNotEmpty())
+                    <x-pos.section title="Letters">
+                        <div class="pos-panel pos-stream">
+                            @foreach ($f['letters'] as $letter)
+                                <div class="pos-stream-row" data-tone="{{ $letter->status === 'issued' ? 'success' : 'info' }}">
+                                    <span class="pos-stream-mark" aria-hidden="true"></span>
+                                    <div class="pos-stream-body"><p class="pos-stream-title">{{ \Illuminate\Support\Str::headline((string) $letter->type) }}</p><p class="pos-stream-meta">{{ ucfirst(str_replace('_', ' ', (string) $letter->status)) }}{{ $letter->issued_at ? ' · issued '.$letter->issued_at->format('j M Y') : '' }}</p></div>
+                                    <span></span>
+                                </div>
+                            @endforeach
+                        </div>
+                        <button type="button" class="pos-link justify-self-start" wire:click="setTab('documents')">Documents and letters <span aria-hidden="true">→</span></button>
+                    </x-pos.section>
+                @endif
+            </aside>
+        </div>
+    @elseif ($tab === 'requests')
         <x-filament::section heading="My requests" description="Requests you raised and requests about you that HR has made visible to you.">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">

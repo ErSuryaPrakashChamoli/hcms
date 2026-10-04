@@ -231,7 +231,7 @@ Icons are neutral by default and take a semantic colour only with a meaning (str
 
 | Name | Width | Shell |
 |---|---|---|
-| Phone | < 768 | Single column; bottom bar (Today, Work, People, Actions, Inbox); drawers as bottom sheets; search as an icon; 16 px gutter |
+| Phone | < 768 | Single column; bottom bar (Home, Work, Actions, People, Services) with notifications and profile in the top bar; drawers as bottom sheets; search as an icon; 16 px gutter |
 | Tablet | 768–1279 | Single or two columns; sidebar as an overlay or collapsed rail |
 | Desktop | ≥ 1280 | Rail plus workspace; workspaces may add a 352 px side column (`.pos-ws-cols`) |
 

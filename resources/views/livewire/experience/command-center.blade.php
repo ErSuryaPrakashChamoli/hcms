@@ -8,13 +8,20 @@
             <x-filament::icon icon="heroicon-m-magnifying-glass" class="size-5 shrink-0 pos-muted" />
             <input x-ref="input" type="text" wire:model.live.debounce.120ms="query" autocomplete="off" spellcheck="false"
                 role="combobox" aria-expanded="true" aria-controls="pos-command-list" aria-autocomplete="list" :aria-activedescendant="activeId"
-                class="pos-command-input" placeholder="{{ $mode === 'actions' ? 'What do you want to do?' : ($mode === 'people' ? 'Find a person by name, ID or email' : 'Search people, requests, policies… or type what you want to do') }}"
+                class="pos-command-input" placeholder="{{ $this->pickLabel() ? 'Whose change is it? Name, ID or email' : ($mode === 'actions' ? 'What do you want to do?' : ($mode === 'people' ? 'Find a person by name, ID or email' : 'Search people, requests, policies… or type what you want to do')) }}"
                 x-on:keydown.arrow-down.prevent="move(1)" x-on:keydown.arrow-up.prevent="move(-1)"
                 x-on:keydown.arrow-right="actionMove($event, 1)" x-on:keydown.arrow-left="actionMove($event, -1)"
                 x-on:keydown.enter.prevent="choose(null, $event.metaKey || $event.ctrlKey)" x-on:keydown.tab="cycleMode($event)" />
             <span wire:loading.delay.short wire:target="query" class="pos-spinner" aria-hidden="true"></span>
         </div>
-        <div class="pos-command-modes" role="tablist" aria-label="Search scope">
+        @if ($this->pickLabel())
+            <div class="pos-command-pick" role="status">
+                <x-filament::icon icon="heroicon-m-arrow-trending-up" class="size-4" />
+                <span><b>{{ $this->pickLabel() }}:</b> choose the person. The change opens on their profile, with the Before → After, before anything is saved.</span>
+                <button type="button" class="pos-link ms-auto" wire:click="pick(null)" x-on:click="$nextTick(() => $refs.input.focus())">Cancel</button>
+            </div>
+        @endif
+        <div class="pos-command-modes" role="tablist" aria-label="Search scope" @if ($this->pickLabel()) hidden @endif>
             @foreach (['all' => 'Everything', 'actions' => 'Actions', 'people' => 'People'] as $key => $label)
                 <button type="button" role="tab" class="pos-chip" aria-selected="{{ $mode === $key ? 'true' : 'false' }}" wire:click="setMode('{{ $key }}')" x-on:click="$nextTick(() => $refs.input.focus())">{{ $label }}</button>
             @endforeach

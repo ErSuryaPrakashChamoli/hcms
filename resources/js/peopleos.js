@@ -93,6 +93,11 @@ components.posCommand = (initialMode = 'all') => ({
             }
             const drawer = JSON.parse(el.dataset.drawer || 'null');
             const url = el.dataset.url;
+            if (url && url.startsWith('#pick:')) {
+                // A change that needs a person first: stay open and ask whom (the server re-checks access).
+                this.$wire.pick(url.slice(6)).then(() => this.$nextTick(() => { this.$refs.input?.focus(); this.ensureActive(); }));
+                return;
+            }
             this.$wire.remember(el.dataset.id);
             if ((preview || !url) && drawer) {
                 this.close();

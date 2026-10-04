@@ -109,7 +109,7 @@ The reference is the UX.14 report and its 20 references. The specification is th
 | Forms | Context → change → review → confirm | Filament modal forms with live previews on three actions | Complex changes are still "fields → save" | Turn the high-value changes (transfer / promote, change manager) into step flows with a review step |
 | Tables | Search, filter, sort, saved views, density, bulk, columns | Filament tables, restyled; density aware | No saved views; tables are the default answer on most pages | Saved views on the operator tables that need them; tables kept as the "records" level, not the first experience |
 | States | Loading, skeleton, empty, error, retry, permission denied, stale, partial failure | Empty states and skeletons on new surfaces; error pages | No partial-failure, stale or retry states inside pages | A state component with those variants; Home and workspace blocks fail independently with a retry |
-| Mobile | Intentional flows: Today, My work, People, Actions, Notifications, Profile | Bottom bar Home / Work / People / Services / Profile | Home on a phone shows a large hero and the welcome card first; nothing actionable above the fold. "Profile" lights up while viewing someone else's 360 | Bottom bar Today / Work / People / Actions / Inbox (profile in the top bar); phone-first Home order (decisions and today first); fix the active state |
+| Mobile | Intentional flows: Today, My work, People, Actions, Notifications, Profile | Bottom bar Home / Work / People / Services / Profile | Home on a phone shows a large hero and the welcome card first; nothing actionable above the fold. "Profile" lights up while viewing someone else's 360 | Bottom bar Home / Work / Actions / People / Services (notifications and profile in the top bar); phone-first Home order (decisions and today first); fix the active state |
 | Dark mode | A genuine design system | Separate tokens, but violet-tinted canvas, surfaces, hero and chips | Purple everywhere | Neutral graphite surfaces; indigo only for identity, primary action, selection and focus |
 | Navigation | A workspace, not a database | Nine sections; context rail of areas; a space bar of module names on every module page and on the 360; an assistant card in the rail footer | Module architecture shows through the space bar and Admin Centre | Keep the nine sections; demote module names; no space bar on workspaces; "Setup" modules grouped apart from everyday ones; a compact assistant entry |
 | Services | Plain-language help | My HR with 11 tabs over tables | A tab strip of modules | A service front door: search or ask, common requests, your open requests as a timeline, answers from knowledge |
@@ -336,7 +336,7 @@ Each topic separates what was **observed** (with product names that point to the
 | | |
 |---|---|
 | **Observed** | Bottom navigation plus a global create action (Linear, Notion, Stripe). Mobile = monitor + high-frequency actions (approve, request time off, clock in, payslips). A bottom action bar on detail screens (Stripe). Apple: at most five tabs, never hide tabs, explain empty states |
-| **PeopleOS decision** | Bottom bar: Today, Work, People, Actions (opens the authorised quick actions as a sheet), Inbox. Profile under the top-bar avatar. Phone-first ordering on Home (decisions and today first). Approvals in one tap from Work. Drawers become bottom sheets |
+| **PeopleOS decision** | Bottom bar: Home (today), Work, Actions (the authorised quick actions, centred), People, Services. Notifications on the top-bar bell; profile under the top-bar avatar. Phone-first ordering on Home (decisions and today first). Approvals in one tap from Work. Drawers become bottom sheets |
 | **Rejected** | A separate mobile app or feature subset |
 | **Reason** | One responsive product keeps one security model |
 
@@ -450,7 +450,7 @@ The nine sections match the brief's structure and stay. What changes:
 - **Workspaces have no module bar.** Home, My work, Approvals, People, Org map, Employee 360, Workforce pulse, Services and Admin show their own workspace header instead.
 - **Module pages keep a quieter space bar.** Everyday modules come first; configuration modules sit behind "Setup".
 - **The rail footer becomes a compact "Ask PeopleOS" entry**, not a permanent card.
-- **Phone bottom bar:** Today, Work, People, Actions (the "New" sheet), Inbox (notifications). Profile moves to the top-bar avatar.
+- **Phone bottom bar:** Home (today), Work, Actions (the authorised quick actions, in the centre), People and Services. Notifications stay on the top-bar bell and your profile on the top-bar avatar. *(Revised during UX.15.5 from "Today, Work, People, Actions, Inbox": the bell already covers notifications, Services is a frequent employee task, and the labels match the existing mobile-layout test.)*
 - **Personal pages stay under the avatar** ("You"), as in UX.14.
 
 ## 8. Screen audit matrix
@@ -476,7 +476,7 @@ Priority: P0 = signature experience that fails the traditional-HRMS test; P1 = i
 | Preferences | Density, lens, theme | Fine | — | Token alignment only | P2 | Planned (UX.15.4) |
 | Command center | Grouped results, row actions | Lacks an "intelligence" group and verbs like "Start transfer" | — | Add intelligence and change verbs (authorised only) | P1 | Planned (UX.15.5) |
 | Module list, form and detail pages (~150) | Restyled Filament | Recognisably Filament | CRUD tables | Token alignment, quieter space bar, saved views where needed; full re-architecture deferred | P1 | Planned (UX.15.4, UX.15.14) |
-| Mobile (all) | Bottom bar, stacked pages | Decoration first; wrong active state | Shrunk desktop | Phone-first order, new bottom bar | P1 | Planned (UX.15.16) |
+| Mobile (all) | Bottom bar, stacked pages | Decoration first; wrong active state | Shrunk desktop | Phone-first order; bottom bar Home / Work / Actions / People / Services | P1 | Planned (UX.15.16) |
 | Dark mode | Violet-tinted set | Purple everywhere | — | Graphite neutrals, indigo by meaning | P1 | Planned (UX.15.17) |
 | Error pages | Designed 403/404/419/429/500/503 | Fine | — | Token alignment | P2 | Planned (UX.15.4) |
 
