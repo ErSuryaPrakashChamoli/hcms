@@ -13,6 +13,7 @@ use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Services\Exits;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Leave\Services\Leaves;
 use App\Domain\Lifecycle\Services\LifecycleEngine;
@@ -21,6 +22,7 @@ use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
+use App\Domain\Organisation\Models\Team;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
@@ -57,13 +59,16 @@ class UxShowcaseSeeder extends Seeder
         $locations = Location::query()->pluck('id', 'code');
         $dept = fn (string $code) => Department::query()->where('code', $code)->first();
         $designation = fn (string $name, string $code, string $level) => Designation::query()->firstOrCreate(['code' => $code], ['name' => $name, 'level_id' => Level::query()->where('code', $level)->value('id')]);
-        $hire = function (string $first, string $last, string $joined, Designation $d, ?Department $department, ?Employee $manager, string $loc = 'DEL') use ($tech, $locations): Employee {
+        // UX.15 closure: a position's company is its department's company (Consulting belongs to Demo Services);
+        // engineering teams place people in their line (Platform under Amit, Mobile under Ravi).
+        $hire = function (string $first, string $last, string $joined, Designation $d, ?Department $department, ?Employee $manager, string $loc = 'DEL', ?string $team = null) use ($tech, $locations): Employee {
             $email = strtolower($first.'.'.$last).'@demo.local';
 
             return Employee::query()->where('work_email', $email)->first() ?? app(HireEmployeeAction::class)->handle(
                 ['first_name' => $first, 'last_name' => $last, 'personal_email' => strtolower("{$first}.{$last}@example.test")],
                 ['joining_date' => $joined, 'work_email' => $email],
-                ['company_id' => $tech->id, 'location_id' => $locations[$loc] ?? null, 'department_id' => $department?->id, 'designation_id' => $d->id, 'level_id' => $d->level_id],
+                ['company_id' => $department?->company_id ?? $tech->id, 'location_id' => $locations[$loc] ?? null, 'department_id' => $department?->id, 'designation_id' => $d->id, 'level_id' => $d->level_id,
+                    'team_id' => $team ? Team::query()->where('code', $team)->value('id') : null],
                 $manager?->id,
                 'UX showcase seed',
             );
@@ -96,12 +101,12 @@ class UxShowcaseSeeder extends Seeder
         foreach ([['Ishaan', 'Gupta', '2024-02-05'], ['Zoya', 'Khan', '2025-01-20'], ['Dev', 'Malhotra', '2025-09-08']] as [$f, $l, $j]) {
             $hire($f, $l, $j, $designer, $dept('DSN'), $sara, 'BLR');
         }
-        $ravi = $hire('Ravi', 'Kumar', '2023-11-06', $em, $dept('ENG'), $anita);
+        $ravi = $hire('Ravi', 'Kumar', '2023-11-06', $em, $dept('ENG'), $anita, 'DEL', 'MOB');
         foreach ([['Fatima', 'Sheikh', '2024-04-15'], ['Karan', 'Mehta', '2025-03-03'], ['Ananya', 'Das', '2025-08-25'], ['Tenzin', 'Norbu', '2024-12-02']] as [$f, $l, $j]) {
-            $hire($f, $l, $j, $se, $dept('ENG'), $ravi);
+            $hire($f, $l, $j, $se, $dept('ENG'), $ravi, 'DEL', 'MOB');
         }
         foreach ([['Rohan', 'Pillai', '2025-06-16'], ['Leela', 'Chandran', '2025-09-15']] as [$f, $l, $j]) {
-            $hire($f, $l, $j, $se, $dept('ENG'), $amit);
+            $hire($f, $l, $j, $se, $dept('ENG'), $amit, 'DEL', 'PLAT');
         }
         foreach ([['Omar', 'Farooq', '2023-05-22'], ['Nisha', 'Reddy', '2024-10-07']] as [$f, $l, $j]) {
             $hire($f, $l, $j, $consultant, $dept('CONS'), $meera, 'BLR');
@@ -109,12 +114,21 @@ class UxShowcaseSeeder extends Seeder
 
         // One sign-in per lens (fictional people; password "password" on a disposable database only).
         $this->account($priya, 'employee');
-        $this->account($amit, 'manager', 'employee');
-        $this->account($neha, 'hr-manager', 'employee');
+        $amitUser = $this->account($amit, 'manager', 'employee');
+        $nehaUser = $this->account($neha, 'hr-manager', 'employee');
         $this->account($kavya, 'tenant-hr-admin', 'employee');
-        $this->account($arjun, 'payroll-admin', 'employee');
+        $arjunUser = $this->account($arjun, 'payroll-admin', 'employee');
         $this->account($meera, 'executive', 'employee');
         $this->account($rahul, 'employee');
+
+        // UX.15 closure P1-05: realistic organisation scope, through the access-scope service (audited rows, no demo
+        // bypass, no rule change). The engineering manager reaches the Platform team and their reporting line; the
+        // HR business partner and the payroll lead reach Demo Technologies. The HR admin and the executive stay
+        // tenant-wide by the documented rule (no scope rows); employees are self-service by permission.
+        $scopes = app(AccessScopes::class);
+        $scopes->assign($amitUser, ['team' => [(int) Team::query()->where('code', 'PLAT')->value('id')]], 'UX showcase: engineering manager for the Platform team');
+        $scopes->assign($nehaUser, ['company' => [(int) $tech->id]], 'UX showcase: HR business partner for Demo Technologies');
+        $scopes->assign($arjunUser, ['company' => [(int) $tech->id]], 'UX showcase: payroll lead for Demo Technologies');
 
         $this->openRequests($priya, $rahul, $amit);
         $this->syntheticActivity($amit, $sara, $ravi);

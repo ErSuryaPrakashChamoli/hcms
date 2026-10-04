@@ -51,6 +51,7 @@ use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\OrganisationNode;
+use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Services\OrganisationTree;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Services\PayrollRuns;
@@ -481,20 +482,22 @@ class DatabaseSeeder extends Seeder
         $se = $designation('Software Engineer', 'SE', 'L2');
         $fa = $designation('Finance Analyst', 'FA', 'L2');
 
-        $hire = function (string $first, string $last, string $email, string $joined, Designation $designation, ?Department $department, ?Employee $manager) use ($tech, $delhi): Employee {
+        // UX.15 closure: a position's company is its department's company; teams place people in their line.
+        $hire = function (string $first, string $last, string $email, string $joined, Designation $designation, ?Department $department, ?Employee $manager, ?string $team = null) use ($tech, $delhi): Employee {
             return Employee::query()->where('work_email', $email)->first() ?? app(HireEmployeeAction::class)->handle(
                 ['first_name' => $first, 'last_name' => $last, 'personal_email' => strtolower("{$first}.{$last}@example.test")],
                 ['joining_date' => $joined, 'work_email' => $email],
-                ['company_id' => $tech->id, 'location_id' => $delhi?->id, 'department_id' => $department?->id, 'designation_id' => $designation->id, 'level_id' => $designation->level_id],
+                ['company_id' => $department?->company_id ?? $tech->id, 'location_id' => $delhi?->id, 'department_id' => $department?->id, 'designation_id' => $designation->id, 'level_id' => $designation->level_id,
+                    'team_id' => $team ? Team::query()->where('code', $team)->value('id') : null],
                 $manager?->id,
                 'Development seed',
             );
         };
 
         $anita = $hire('Anita', 'Rao', 'anita.rao@demo.local', '2022-01-10', $cto, $eng, null);
-        $amit = $hire('Amit', 'Verma', 'amit.verma@demo.local', '2023-04-03', $em, $eng, $anita);
-        $hire('Rahul', 'Sharma', 'rahul.sharma@demo.local', '2025-05-28', $se, $eng, $amit);
-        $hire('Priya', 'Nair', 'priya.nair@demo.local', '2024-08-19', $se, $eng, $amit);
+        $amit = $hire('Amit', 'Verma', 'amit.verma@demo.local', '2023-04-03', $em, $eng, $anita, 'PLAT');
+        $hire('Rahul', 'Sharma', 'rahul.sharma@demo.local', '2025-05-28', $se, $eng, $amit, 'PLAT');
+        $hire('Priya', 'Nair', 'priya.nair@demo.local', '2024-08-19', $se, $eng, $amit, 'PLAT');
         $hire('Vikram', 'Singh', 'vikram.singh@demo.local', '2024-11-04', $fa, $fin, $anita);
     }
 

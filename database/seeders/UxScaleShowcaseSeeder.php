@@ -3,15 +3,12 @@
 namespace Database\Seeders;
 
 use App\Domain\Employment\Models\Employee;
-use App\Domain\Identity\Models\User;
-use App\Domain\Identity\Models\UserAccessScope;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
-use App\Domain\Organisation\Models\Team;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
@@ -154,13 +151,7 @@ class UxScaleShowcaseSeeder extends Seeder
         $levelOf = array_flip($this->levels);
         $this->designations = Designation::query()->get(['id', 'code', 'level_id'])
             ->mapWithKeys(fn (Designation $d) => [$d->code => ['id' => (int) $d->id, 'level' => (int) ($levelOf[$d->level_id] ?? 2)]])->all();
-        // A realistically configured manager: scoped to a team of their own, so (ADR-0004) they reach their
-        // reporting line and nobody else. The demo personas otherwise have no scope rows, which by the
-        // documented rule means tenant-wide.
-        $squad = Team::query()->firstOrCreate(['code' => 'UXS-CORE'], ['company_id' => $this->companyId, 'name' => 'Core Platform squad', 'status' => 'active', 'description' => self::TAG]);
-        if ($manager = User::query()->where('email', 'amit.verma@demo.local')->first()) {
-            UserAccessScope::query()->firstOrCreate(['user_id' => $manager->id, 'dimension' => 'team', 'scope_id' => $squad->id]);
-        }
+        // The demo manager's realistic scope (team Platform) is set by UxShowcaseSeeder through AccessScopes.
         $this->leaveTypes = LeaveType::query()->whereIn('code', ['EL', 'CL', 'SL'])->orderBy('id')->pluck('id')->map(fn ($id) => (int) $id)->all();
     }
 
