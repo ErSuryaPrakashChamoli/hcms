@@ -14,9 +14,10 @@
             <a href="{{ $item['url'] }}" wire:navigate class="pos-bottom-item" data-bar="{{ $item['key'] }}" @if ($item['active']) aria-current="page" @endif>
                 <span class="relative">
                     <x-filament::icon :icon="$item['icon']" class="size-6" />
-                    @if ($item['badge'] > 0)<span class="pos-bottom-badge pos-num">{{ min($item['badge'], 99) }}<span class="sr-only"> waiting</span></span>@endif
+                    @if ($item['badge'] > 0)<span class="pos-bottom-badge pos-num" aria-hidden="true">{{ min($item['badge'], 99) }}</span>@endif
                 </span>
-                <span>{{ $item['label'] }}</span>
+                {{-- Announced as "Work, 6 waiting": the name first, then the count --}}
+                <span>{{ $item['label'] }}@if ($item['badge'] > 0)<span class="sr-only">, {{ $item['badge'] }} waiting</span>@endif</span>
             </a>
         @endif
     @endforeach

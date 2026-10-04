@@ -2,7 +2,7 @@
 @if (($h['operations'] ?? null) !== null)
     <x-pos.section title="People operations" :count="count($h['operations']) ?: null">
         <div class="pos-panel">
-            <div class="pos-panel-pad pos-figures pos-figures-scroll">
+            <div class="pos-panel-pad pos-figures pos-figures-compact">
                 @foreach (['attention', 'joining', 'on_leave', 'approvals', 'requests'] as $k)
                     @if ($f = $kpi($k))<x-pos.figure :value="$f['value']" :label="$f['label']" :href="$f['url'] ?? null" />@endif
                 @endforeach

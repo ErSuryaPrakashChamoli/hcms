@@ -37,7 +37,7 @@
                 <li class="pos-list-row pos-notif {{ $n['read'] ? 'is-read' : '' }}" tabindex="-1" wire:key="n-{{ $n['id'] }}">
                     <x-pos.tile-icon :tone="$n['tone']" :icon="$n['icon']" size="sm" />
                     <div class="min-w-0 flex-1">
-                        <p class="pos-body {{ $n['read'] ? '' : 'font-semibold' }}">@if (! $n['read'])<span class="pos-unread-dot" aria-label="Unread"></span>@endif{{ $n['title'] }}</p>
+                        <p class="pos-body {{ $n['read'] ? '' : 'font-semibold' }}">@if (! $n['read'])<span class="pos-unread-dot" aria-hidden="true"></span><span class="sr-only">Unread: </span>@endif{{ $n['title'] }}</p>
                         @if ($n['body'])<p class="pos-body-sm line-clamp-2">{{ $n['body'] }}</p>@endif
                         <p class="pos-caption mt-0.5">{{ $n['group_label'] }} · <time datetime="{{ $n['at']?->toIso8601String() }}">{{ $n['at']?->diffForHumans() }}</time>@if ($n['snoozed_until']) · snoozed until {{ \Illuminate\Support\Carbon::parse($n['snoozed_until'])->format('D H:i') }}@endif</p>
                     </div>

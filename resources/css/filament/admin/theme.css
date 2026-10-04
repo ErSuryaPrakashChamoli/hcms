@@ -1390,7 +1390,8 @@ html {
     .pos-legend-inline i { width: 9px; height: 9px; border-radius: var(--pos-radius-sm); }
 
     /* Notification center */
-    .pos-notif.is-read { opacity: 0.78; }
+    /* UX.17: a read notification is quieter through its weight and icon only; fading the whole row failed text contrast */
+    .pos-notif.is-read > :first-child { opacity: 0.6; }
     .pos-unread-dot { display: inline-block; width: 8px; height: 8px; margin-inline-end: 8px; border-radius: var(--pos-radius-pill); background: var(--pos-primary); vertical-align: 2px; }
 
     /* Stepper (guided flows) */
@@ -1980,10 +1981,9 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-phone-more:hover { background: var(--pos-state-hover); }
     /* While a list is capped, its "N more in …" link waits until the rest is shown (the section header links there) */
     .pos-phone-cap:not([data-all='true']) .pos-stream-more { display: none; }
-    /* Figures on one scrolling line; rows with two actions put them under the text */
-    .pos-figures-scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: var(--pos-space-6); }
-    .pos-figures-scroll::-webkit-scrollbar { display: none; }
-    .pos-figures-scroll > * { flex: none; }
+    /* Figures as a compact three-column grid (no scroll region); rows with two actions put them under the text */
+    .pos-figures-compact { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pos-space-3) var(--pos-space-4); }
+    .pos-figures-compact .pos-figure-value { font-size: var(--pos-fs-section); }
     .pos-row-actions-below { grid-template-columns: auto minmax(0, 1fr); }
     .pos-row-actions-below > .pos-stream-end { grid-column: 2; justify-self: start; }
 }
@@ -2016,6 +2016,12 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-table-cards td:nth-child(2) { flex: 1 1 100%; font-size: var(--pos-fs-meta); }
     .pos-table-cards td.pos-card-meta { flex: none; font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
     .pos-table-cards td.pos-card-meta + td.pos-card-meta::before { content: '·'; margin-inline-end: var(--pos-space-2); }
+}
+
+/* The icon-only search button on phones keeps its name for assistive technology (UX.15 hid the label entirely) */
+@media (max-width: 767px) {
+    .pos-command-trigger { position: relative; }
+    .pos-command-trigger .pos-command-trigger-label { display: block; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 
 /* Command center on phones: a full-screen sheet sized to the visible viewport (the on-screen keyboard never covers

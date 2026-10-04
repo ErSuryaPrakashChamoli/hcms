@@ -45,7 +45,8 @@
                     </div>
                     @php($today = collect(['attendance', 'leave', 'service'])->filter(fn ($k) => $facts($k) !== null))
                     @if ($today->isNotEmpty())
-                        <div class="pos-figures">
+                        {{-- UX.17: a compact grid of figures on phones, so the viewer panel comes sooner --}}
+                        <div class="pos-figures pos-figures-compact">
                             @foreach ($today as $k)
                                 @foreach (array_slice($facts($k), 0, 2, true) as $label => $value)
                                     <x-pos.figure :value="$value ?? '—'" :label="$label" />
