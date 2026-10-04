@@ -291,9 +291,9 @@
                     @if ($h['platform'] ?? null)
                         <x-pos.section title="Platform" :link="$h['platform']['links']['readiness'] ?? null" link-label="Readiness">
                             <div class="pos-panel pos-panel-pad pos-figures">
-                                <x-pos.figure :value="$h['platform']['pending_config']" label="Changes awaiting approval" :href="$h['platform']['links']['config'] ?? null" />
-                                <x-pos.figure :value="$h['platform']['dead_letters']" label="Integration dead letters" :href="$h['platform']['links']['integrations'] ?? null" />
-                                <x-pos.figure :value="$h['platform']['failed_jobs']" label="Failed jobs" />
+                                @if ($h['platform']['pending_config'] !== null)<x-pos.figure :value="$h['platform']['pending_config']" label="Changes awaiting approval" :href="$h['platform']['links']['config'] ?? null" />@endif
+                                @if ($h['platform']['dead_letters'] !== null)<x-pos.figure :value="$h['platform']['dead_letters']" label="Integration dead letters" :href="$h['platform']['links']['integrations'] ?? null" />@endif
+                                @if ($h['platform']['failed_jobs'] !== null)<x-pos.figure :value="$h['platform']['failed_jobs']" label="Failed jobs" />@endif
                             </div>
                         </x-pos.section>
                     @endif

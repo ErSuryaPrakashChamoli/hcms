@@ -382,15 +382,22 @@ final class HomeComposer
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Each figure only for a viewer who may open the screen it summarises (as in the Admin Centre). Failed jobs live
+     * in a platform-wide table that spans tenants, so only platform administrators see that count.
+     *
+     * @return array<string, mixed>
+     */
     private function platform(User $user): array
     {
         $url = fn (callable $u) => rescue($u, null, false);
+        $may = fn (callable $check) => (bool) rescue($check, false, false);
 
         return [
-            'pending_config' => ConfigurationChange::query()->where('status', ChangeStatus::PendingApproval)->count(),
-            'dead_letters' => InboundEvent::query()->where('status', 'dead_letter')->count() + WebhookDelivery::query()->where('status', 'dead_letter')->count(),
-            'failed_jobs' => Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->count() : 0,
+            'pending_config' => $may(fn () => ConfigurationChangeResource::canAccess()) ? ConfigurationChange::query()->where('status', ChangeStatus::PendingApproval)->count() : null,
+            'dead_letters' => $may(fn () => InboundEventResource::canAccess())
+                ? InboundEvent::query()->where('status', 'dead_letter')->count() + WebhookDelivery::query()->where('status', 'dead_letter')->count() : null,
+            'failed_jobs' => $may(fn () => PlatformReadinessPage::canAccess()) && Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->count() : null,
             'links' => array_filter([
                 'readiness' => PlatformReadinessPage::canAccess() ? $url(fn () => PlatformReadinessPage::getUrl()) : null,
                 'config' => $url(fn () => ConfigurationChangeResource::canAccess() ? ConfigurationChangeResource::getUrl('index') : null),
