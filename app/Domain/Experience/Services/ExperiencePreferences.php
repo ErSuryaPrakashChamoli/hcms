@@ -64,7 +64,7 @@ final class ExperiencePreferences
                 'lens' => is_string($value) && in_array($value, RoleLens::ALL, true) ? $value : null,
                 'pinned_people', 'favourite_reports' => array_values(array_slice(array_unique(array_map('intval', (array) $value)), 0, self::MAX_PINNED)),
                 'home_hidden' => array_values(array_unique(array_filter((array) $value, 'is_string'))),
-                'snoozed' => collect((array) $value)->filter(fn ($until) => is_string($until) && strtotime($until) > time())->all(),
+                'snoozed' => collect((array) $value)->filter(fn ($until) => is_string($until) && strtotime($until) > now()->getTimestamp())->all(),
                 'welcomed_at', 'home_seen_at', 'home_prev_seen_at' => is_string($value) && strtotime($value) !== false ? $value : null,
                 default => $value,
             };

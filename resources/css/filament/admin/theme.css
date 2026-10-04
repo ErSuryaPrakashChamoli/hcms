@@ -1500,6 +1500,8 @@ html {
     .pos-welcome-note > .min-w-0 { flex: 1 1 280px; }
     @media (max-width: 767px) { .pos-welcome-note > .pos-ai-orb { display: none; } }
     .pos-lens { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); }
+    .pos-next-up { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-4) var(--pos-space-6); box-shadow: var(--pos-shadow-1), inset 3px 0 0 var(--pos-warning); }
+    .pos-next-up[data-tone='danger'] { box-shadow: var(--pos-shadow-1), inset 3px 0 0 var(--pos-danger); }
     .pos-event-head { display: flex; align-items: center; gap: var(--pos-space-3); }
     .pos-stream-more { display: flex; justify-content: center; padding: var(--pos-space-2); box-shadow: inset 0 1px 0 var(--pos-border); }
 

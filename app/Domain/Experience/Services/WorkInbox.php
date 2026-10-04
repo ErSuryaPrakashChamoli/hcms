@@ -50,7 +50,7 @@ final class WorkInbox
             $out[$group === 'urgent' ? 'needs_attention' : $group]->push($this->row(
                 key: $item->id, kind: 'approval', domain: $item->typeLabel, title: $item->title, detail: trim(($item->subject ? $item->subject.' · ' : '').($item->riskReason ?? $item->impact ?? '')),
                 due: $item->dueAt ?? $item->effectiveOn, url: $item->url, severity: $group === 'urgent' ? 'danger' : 'warning', approvalId: $item->id,
-            ));
+            ) + ['subject' => $item->subject, 'subject_id' => $item->subjectEmployeeId, 'reason' => $item->riskReason ?? $item->impact]);
         }
 
         $employee = $this->lenses->employee($user);
