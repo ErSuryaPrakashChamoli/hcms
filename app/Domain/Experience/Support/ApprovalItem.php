@@ -3,12 +3,15 @@
 namespace App\Domain\Experience\Support;
 
 use Carbon\CarbonInterface;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * UX: one decision waiting in the Approval Center: what, who, why, impact, effective date, risk and
  * requester, plus the decisions the viewer may take. `record` is the domain model the decision goes
  * to; the item never carries a decision of its own.
+ *
+ * @property-read list<array{label: string, before: ?string, after: string}> $changes
  */
 final class ApprovalItem
 {
@@ -17,6 +20,7 @@ final class ApprovalItem
      * @param  array<string, string>  $decisionLabels
      * @param  list<array{label: string, before: ?string, after: string}>  $changes  Before → After rows
      * @param  list<string>  $facts
+     * @param  (Closure(): list<array{label: string, before: ?string, after: string}>)|null  $changesUsing  Before → After worked out on first read
      */
     public function __construct(
         public readonly string $id,
@@ -36,12 +40,42 @@ final class ApprovalItem
         public readonly array $decisions,
         public readonly ?string $url,
         public readonly Model $record,
-        public readonly array $changes = [],
+        private readonly array $changes = [],
         public readonly array $facts = [],
         public readonly array $decisionLabels = [],
         public readonly ?string $status = null,
         public readonly ?CarbonInterface $decidedAt = null,
+        private readonly ?Closure $changesUsing = null,
     ) {}
+
+    /** @var list<array{label: string, before: ?string, after: string}>|null */
+    private ?array $resolvedChanges = null;
+
+    /** `$item->changes` stays the public read; leave balances behind it are looked up on first read (UX.15.20). */
+    public function __get(string $name): mixed
+    {
+        if ($name === 'changes') {
+            return $this->changes();
+        }
+        trigger_error('Undefined property: '.self::class.'::$'.$name, E_USER_WARNING);
+
+        return null;
+    }
+
+    public function __isset(string $name): bool
+    {
+        return $name === 'changes';
+    }
+
+    /** @return list<array{label: string, before: ?string, after: string}> */
+    public function changes(): array
+    {
+        if ($this->changes !== [] || $this->changesUsing === null) {
+            return $this->changes;
+        }
+
+        return $this->resolvedChanges ??= ($this->changesUsing)();
+    }
 
     /**
      * urgent | today | upcoming (completed items are grouped by the caller).

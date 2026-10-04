@@ -3,6 +3,7 @@
     /** @var \App\Domain\Experience\Support\ApprovalItem $item */
     $group = $item->group();
     $requester = $item->requestedBy;
+    $changes = $compact ? [] : $item->changes();
 @endphp
 {{--
     PeopleApproval: one decision with its context. Person, request, reason, impact, effective date and the
@@ -20,7 +21,7 @@
         @elseif ($group === 'urgent')
             <x-pos.status tone="warning" label="Urgent" />
         @endif
-        @if ($item->effectiveOn && ($compact || $item->changes === []))
+        @if ($item->effectiveOn && ($compact || $changes === []))
             <span class="pos-change-when ms-auto"><x-filament::icon icon="heroicon-m-calendar" class="size-3.5" />Effective {{ $item->effectiveOn->format('D, j M') }}</span>
         @elseif ($item->dueAt)
             <span class="pos-meta ms-auto">Due {{ $item->dueAt->diffForHumans() }}</span>
@@ -53,7 +54,7 @@
                 @endforeach
             </ul>
         @endif
-        <x-pos.change :changes="$item->changes" :effective="$item->effectiveOn" class="mt-4" />
+        <x-pos.change :changes="$changes" :effective="$item->effectiveOn" class="mt-4" />
     @endif
 
     <footer class="mt-5">

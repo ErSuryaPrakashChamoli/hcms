@@ -82,13 +82,16 @@ final class HomeComposer
         $approvals = app(ApprovalCenter::class);
         $decisionCount = $safe(fn () => $approvals->count($user), 0);
         $decisions = $decisionCount > 0 ? $safe(fn () => $approvals->pending($user)->take(4)->values(), collect()) : collect();
+        // UX.15.20: more are waiting than the queue lists (a source reached its scan limit): shown as "200+".
+        $decisionMore = $decisionCount > 0 && $safe(fn () => $approvals->capped($user), false);
         $changes = $primary !== RoleLens::SYSTEM_ADMIN && ! in_array('feed', $hidden, true)
             ? $safe(fn () => app(ChangeFeed::class)->since($user, app(ExperiencePreferences::class)->markHomeVisit($user)), null) : null;
 
         return [
-            'brief' => $this->brief($work, $decisionCount, $changes),
+            'brief' => $this->brief($work, $decisionCount, $changes, $decisionMore),
             'decisions' => $decisions,
             'decision_count' => $decisionCount,
+            'decision_more' => $decisionMore,
             'changes' => $changes,
             'circle' => $employee !== null && $primary === RoleLens::EMPLOYEE ? $safe(fn () => $this->circle($user, $employee), []) : [],
             'lens' => $primary,
@@ -122,13 +125,13 @@ final class HomeComposer
      * things due today and changes since the last visit. Each part is [number, text] so the number can be
      * emphasised; an empty list means nothing needs the person.
      *
-     * @return list<array{0: int, 1: string}>
+     * @return list<array{0: int|string, 1: string}>
      */
-    private function brief(array $work, int $decisions, ?array $changes): array
+    private function brief(array $work, int $decisions, ?array $changes, bool $more = false): array
     {
         $parts = [];
         if ($decisions > 0) {
-            $parts[] = [$decisions, $decisions === 1 ? 'decision is waiting for you' : 'decisions are waiting for you'];
+            $parts[] = [$more ? $decisions.'+' : $decisions, $decisions === 1 && ! $more ? 'decision is waiting for you' : 'decisions are waiting for you'];
         }
         $attention = $work['needs_attention']->where('kind', '!=', 'approval')->count();
         if ($attention > 0) {

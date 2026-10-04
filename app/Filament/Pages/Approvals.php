@@ -41,6 +41,11 @@ class Approvals extends Page
     /** @var list<string> ids decided in this session, for the success state */
     public array $decided = [];
 
+    /** UX.15.20: the queue renders in pages (a manager can have hundreds of decisions); counts stay whole. */
+    public const PAGE = 25;
+
+    public int $shown = self::PAGE;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -61,6 +66,8 @@ class Approvals extends Page
         return match (true) {
             $count === 0 => 'No decisions need you',
             $count === 1 => '1 decision needs you',
+            // A source reached its scan limit: say so rather than under-count.
+            app(ApprovalCenter::class)->capped(auth()->user()) => $count.'+ decisions need you',
             default => $count.' decisions need you',
         };
     }
@@ -77,7 +84,9 @@ class Approvals extends Page
             $g['upcoming']->count() > 0 ? $g['upcoming']->count().' later' : null,
         ]);
 
-        return ucfirst(implode(' · ', $parts)).'. Most urgent first; the context comes with each decision.';
+        $more = app(ApprovalCenter::class)->capped(auth()->user()) ? ' More are waiting than are listed: the earliest come first, and each decision brings the next ones in.' : '';
+
+        return ucfirst(implode(' · ', $parts)).'. Most urgent first; the context comes with each decision.'.$more;
     }
 
     /** UX.15: PeopleOS Intelligence for the queue (contextual, sourced, gated by the AI policy). */
@@ -101,6 +110,11 @@ class Approvals extends Page
         $g = $this->groups;
 
         return $g['urgent']->count() + $g['today']->count() + $g['upcoming']->count();
+    }
+
+    public function showMore(): void
+    {
+        $this->shown += self::PAGE;
     }
 
     public function decide(string $id, string $decision, ?string $note = null): void

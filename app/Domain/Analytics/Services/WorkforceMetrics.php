@@ -150,9 +150,20 @@ final class WorkforceMetrics
 
     public function avgTenure(): ?float
     {
-        $months = Employee::query()->employed()->whereNotNull('joining_date')->get(['joining_date'])->map(fn ($e) => $e->joining_date->diffInMonths(now()));
+        // Raw dates (the query's scopes still apply) and Carbon's month difference once per distinct joining date:
+        // bounded by the days in the company's history, not by headcount. Hydrating a model and diffing per
+        // employee took seconds at 10,000 people.
+        $days = Employee::query()->employed()->whereNotNull('joining_date')->toBase()->pluck('joining_date')->countBy(fn ($d) => substr((string) $d, 0, 10));
+        if ($days->isEmpty()) {
+            return null;
+        }
+        $now = now();
+        $months = 0.0;
+        foreach ($days as $day => $people) {
+            $months += Carbon::parse($day)->diffInMonths($now) * $people;
+        }
 
-        return $months->isEmpty() ? null : round($months->avg(), 1);
+        return round($months / $days->sum(), 1);
     }
 
     public function womenShare(): ?float

@@ -1069,7 +1069,8 @@ html {
         .pos-command-trigger { width: 40px; padding: 0; justify-content: center; margin-inline-start: 8px; }
         .pos-command-trigger-label, .pos-command-trigger .pos-kbd { display: none; }
         .pos-quick-launch-label { display: none; }
-        .pos-quick-launch { width: 34px; padding: 0; }
+        .pos-quick-launch { width: 34px; padding: 0; justify-content: center; }
+        .pos-quick-launch svg { flex-shrink: 0; }
     }
 
     /* Rail footer: a compact "Ask PeopleOS" entry (the assistant explains; it never decides) */
@@ -1206,6 +1207,9 @@ html {
     .pos-segmented > button[aria-pressed='true'] { background: var(--pos-surface); color: var(--pos-text); box-shadow: var(--pos-shadow-1); }
     .pos-people-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); }
     .pos-person-card { display: flex; flex-direction: column; align-items: center; width: 100%; text-align: center; padding-block: 22px 18px; }
+    /* UX.15.19: long names and department names stay inside the card (a centred column otherwise lets them overflow) */
+    .pos-person-card > * { max-width: 100%; min-width: 0; }
+    .pos-person-card-name { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
     @media (max-width: 640px) {
         .pos-people-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .pos-person-card { padding: 16px 10px; }
@@ -1751,6 +1755,8 @@ html {
 /* UX.15 touch: comfortable targets on coarse pointers (phones, tablets) without changing desktop density */
 @media (pointer: coarse) {
     .pos-btn-sm { height: 40px; padding-inline: var(--pos-space-4); }
+    /* UX.15.21: the icon-only quick launch on phones keeps no padding (the rule above squeezed its + to 2px) */
+    @media (max-width: 767px) { .pos-btn-sm.pos-quick-launch { width: 40px; padding-inline: 0; } }
     .pos-chip, .pos-lens-chip { min-height: 40px; }
     .pos-sectnav a, .pos-sectnav button { padding-block: var(--pos-space-4); }
     .pos-stream-row { min-height: 52px; }

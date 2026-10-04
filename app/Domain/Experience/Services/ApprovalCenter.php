@@ -6,6 +6,7 @@ use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Services\CompensationAccess;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\ReportingRelationship;
 use App\Domain\Experience\Support\ApprovalItem;
 use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Models\LeaveRequest;
@@ -44,24 +45,49 @@ final class ApprovalCenter
     /** @var array<int, int> */
     private array $teamAway = [];
 
+    /** @var array<string, bool> memo key => a source returned SCAN rows, so more may be waiting than are listed */
+    private array $capped = [];
+
+    private string $scanning = '';
+
     public function __construct(private readonly TenantContext $tenants) {}
 
     /** @return Collection<int, ApprovalItem> pending decisions, most urgent first */
     public function pending(User $user): Collection
     {
+        return $this->gather($user, null);
+    }
+
+    /**
+     * UX.15.20: the pending decisions about one person (the person workspace), without building the whole
+     * queue. Same sources, same policies, each source constrained to that employee.
+     *
+     * @return Collection<int, ApprovalItem>
+     */
+    public function pendingAbout(User $user, int $employeeId): Collection
+    {
+        $key = $this->tenants->id().':'.$user->id;
+
+        return isset($this->memo[$key]) ? $this->memo[$key]->where('subjectEmployeeId', $employeeId)->values() : $this->gather($user, $employeeId);
+    }
+
+    /** @return Collection<int, ApprovalItem> */
+    private function gather(User $user, ?int $about): Collection
+    {
         if (! $this->tenants->has()) {
             return collect();
         }
-        $key = $this->tenants->id().':'.$user->id;
+        $key = $this->tenants->id().':'.$user->id.($about === null ? '' : ':about:'.$about);
         if (isset($this->memo[$key])) {
             return $this->memo[$key];
         }
+        $this->scanning = $key;
         $items = collect([
-            fn () => $this->workflowTasks($user),
-            fn () => $this->leaveRequests($user),
-            fn () => $this->regularisations($user),
-            fn () => $this->compensationChanges($user),
-            fn () => $this->letters($user),
+            fn () => $this->workflowTasks($user, $about),
+            fn () => $this->leaveRequests($user, $about),
+            fn () => $this->regularisations($user, $about),
+            fn () => $this->compensationChanges($user, $about),
+            fn () => $this->letters($user, $about),
         ])->flatMap(function (callable $source) {
             try {
                 return $source();
@@ -84,10 +110,21 @@ final class ApprovalCenter
         return ['urgent' => $pending->get('urgent', collect()), 'today' => $pending->get('today', collect()), 'upcoming' => $pending->get('upcoming', collect()), 'completed' => $this->completed($user)];
     }
 
+    /**
+     * UX.15.20: whether a source reached its scan limit, so the queue lists the first SCAN of that kind (oldest
+     * effective dates first) and more may be waiting. Screens then say "200+" instead of under-counting.
+     */
+    public function capped(User $user): bool
+    {
+        $this->pending($user);
+
+        return $this->capped[$this->tenants->id().':'.$user->id] ?? false;
+    }
+
     /** A pending item by id, re-resolved and re-authorised (never trusted from the browser). */
     public function find(User $user, string $id): ?ApprovalItem
     {
-        unset($this->memo[$this->tenants->id().':'.$user->id]);
+        $this->forgetMemo($user);
 
         return $this->pending($user)->first(fn (ApprovalItem $i) => $i->id === $id);
     }
@@ -104,8 +141,16 @@ final class ApprovalCenter
 
     public function forget(User $user): void
     {
-        unset($this->memo[$this->tenants->id().':'.$user->id]);
+        $this->forgetMemo($user);
         Cache::forget($this->countKey($user));
+    }
+
+    private function forgetMemo(User $user): void
+    {
+        $prefix = $this->tenants->id().':'.$user->id;
+        $mine = fn (string $key) => $key === $prefix || str_starts_with($key, $prefix.':about:');
+        $this->memo = array_filter($this->memo, fn (string $key) => ! $mine($key), ARRAY_FILTER_USE_KEY);
+        $this->capped = array_filter($this->capped, fn (string $key) => ! $mine($key), ARRAY_FILTER_USE_KEY);
     }
 
     /** Decisions the viewer took in the last two weeks (their own trail, newest first). */
@@ -127,9 +172,9 @@ final class ApprovalCenter
     }
 
     /** @return list<ApprovalItem> */
-    private function workflowTasks(User $user): array
+    private function workflowTasks(User $user, ?int $about = null): array
     {
-        $tasks = WorkflowTask::query()->with(['instance.workflow'])->where('status', TaskStatus::Pending)->actionableBy($user)->orderBy('due_at')->limit(self::SCAN)->get();
+        $tasks = WorkflowTask::query()->with(['instance.workflow'])->where('status', TaskStatus::Pending)->actionableBy($user)->orderBy('due_at')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows));
         $items = [];
         foreach ($tasks as $task) {
             if (! $user->can('act', $task)) {
@@ -138,6 +183,9 @@ final class ApprovalCenter
             $instance = $task->instance;
             $subject = $this->subjectOf($instance);
             $employee = $subject instanceof Employee ? $subject : ($subject !== null && isset($subject->employee_id) ? Employee::query()->with('person')->find($subject->employee_id) : null);
+            if ($about !== null && (int) $employee?->id !== $about) {
+                continue;
+            }
             $isApproval = $task->type === 'approval';
             $items[] = new ApprovalItem(
                 id: 'workflow_task:'.$task->id,
@@ -157,7 +205,7 @@ final class ApprovalCenter
                 decisions: $isApproval ? ['approve', 'reject'] : ['complete'],
                 url: $instance ? $this->safeUrl(fn () => WorkflowInstanceResource::getUrl('view', ['record' => $instance])) : null,
                 record: $task,
-                changes: $subject instanceof LeaveRequest ? $this->leaveChanges($subject) : [],
+                changesUsing: $subject instanceof LeaveRequest ? fn () => $this->leaveChanges($subject) : null,
             );
         }
 
@@ -165,21 +213,21 @@ final class ApprovalCenter
     }
 
     /** @return list<ApprovalItem> */
-    private function leaveRequests(User $user): array
+    private function leaveRequests(User $user, ?int $about = null): array
     {
         if (! $user->hasPermission('leave.approve')) {
             return [];
         }
         // employee.currentManager is read by teamAway(); eager-loaded so strict mode (no lazy loading) never drops the source.
-        $requests = LeaveRequest::query()->with(['employee.person', 'employee.currentManager', 'leaveType', 'requester'])->whereIn('status', ['pending', 'cancel_requested'])->orderBy('from_date')->limit(self::SCAN)->get();
+        $requests = LeaveRequest::query()->with(['employee.person', 'employee.currentManager', 'leaveType', 'requester'])->whereIn('status', ['pending', 'cancel_requested'])
+            ->when($about !== null, fn ($q) => $q->where('employee_id', $about))->orderBy('from_date')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows));
         // A request with a running workflow is decided through its workflow task (listed above).
         $inWorkflow = WorkflowInstance::query()->where('subject_type', (new LeaveRequest)->getMorphClass())->whereIn('subject_id', $requests->pluck('id'))
             ->whereIn('status', [InstanceStatus::Running, InstanceStatus::Waiting])->pluck('subject_id')->all();
+        $requests = $requests->reject(fn (LeaveRequest $r) => in_array($r->id, $inWorkflow, false))->filter(fn (LeaveRequest $r) => $user->can('approve', $r));
+        $this->preloadTeamAway($requests);
         $items = [];
         foreach ($requests as $request) {
-            if (in_array($request->id, $inWorkflow, false) || ! $user->can('approve', $request)) {
-                continue;
-            }
             $cancellation = $request->status === 'cancel_requested';
             [$risk, $riskReason] = $this->leaveRisk($request);
             $items[] = new ApprovalItem(
@@ -200,7 +248,7 @@ final class ApprovalCenter
                 decisions: ['approve', 'reject'],
                 url: $this->safeUrl(fn () => LeaveRequestResource::getUrl('index')),
                 record: $request,
-                changes: $cancellation ? [] : $this->leaveChanges($request),
+                changesUsing: $cancellation ? null : fn () => $this->leaveChanges($request),
                 facts: array_values(array_filter([$this->range($request->from_date, $request->to_date), $request->contact_details ? 'Reachable: '.$request->contact_details : null])),
                 decisionLabels: $cancellation ? ['approve' => 'Approve cancellation', 'reject' => 'Keep leave'] : [],
             );
@@ -210,13 +258,13 @@ final class ApprovalCenter
     }
 
     /** @return list<ApprovalItem> */
-    private function regularisations(User $user): array
+    private function regularisations(User $user, ?int $about = null): array
     {
         if (! $user->hasPermission('attendance.approve') && ! $user->hasPermission('attendance.manage')) {
             return [];
         }
         $items = [];
-        foreach (AttendanceRegularisation::query()->with(['employee.person', 'requester'])->where('status', 'pending')->orderBy('date')->limit(self::SCAN)->get() as $r) {
+        foreach (AttendanceRegularisation::query()->with(['employee.person', 'requester'])->where('status', 'pending')->when($about !== null, fn ($q) => $q->where('employee_id', $about))->orderBy('date')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows)) as $r) {
             if (! $user->can('approve', $r)) {
                 continue;
             }
@@ -250,7 +298,7 @@ final class ApprovalCenter
     }
 
     /** @return list<ApprovalItem> */
-    private function compensationChanges(User $user): array
+    private function compensationChanges(User $user, ?int $about = null): array
     {
         $reviewer = $user->hasPermission('compensation.review');
         $approver = $user->hasPermission('compensation.approve');
@@ -259,7 +307,7 @@ final class ApprovalCenter
         }
         $access = app(CompensationAccess::class);
         $items = [];
-        foreach (CompensationChange::query()->with(['employee.person'])->whereIn('status', CompensationChange::PENDING)->orderBy('effective_from')->limit(self::SCAN)->get() as $change) {
+        foreach (CompensationChange::query()->with(['employee.person'])->whereIn('status', CompensationChange::PENDING)->when($about !== null, fn ($q) => $q->where('employee_id', $about))->orderBy('effective_from')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows)) as $change) {
             if ((int) $change->proposed_by === (int) $user->id) {
                 continue;
             }
@@ -307,13 +355,13 @@ final class ApprovalCenter
     }
 
     /** @return list<ApprovalItem> */
-    private function letters(User $user): array
+    private function letters(User $user, ?int $about = null): array
     {
         if (! $user->hasPermission('letter.issue')) {
             return [];
         }
         $items = [];
-        foreach (Letter::query()->with(['employee.person', 'requester'])->where('status', 'pending_approval')->latest('id')->limit(self::SCAN)->get() as $letter) {
+        foreach (Letter::query()->with(['employee.person', 'requester'])->where('status', 'pending_approval')->when($about !== null, fn ($q) => $q->where('employee_id', $about))->latest('id')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows)) as $letter) {
             if ($letter->requested_by !== null && (int) $letter->requested_by === (int) $user->id) {
                 continue;
             }
@@ -339,6 +387,13 @@ final class ApprovalCenter
         }
 
         return $items;
+    }
+
+    private function noteScan(Collection $rows): void
+    {
+        if ($rows->count() >= self::SCAN) {
+            $this->capped[$this->scanning] = true;
+        }
     }
 
     private function subjectOf(?WorkflowInstance $instance): mixed
@@ -387,6 +442,44 @@ final class ApprovalCenter
         }
 
         return ['normal', null];
+    }
+
+    /**
+     * UX.15.20: every request's team overlap in two queries instead of two per request. The rule is
+     * teamAway()'s: people with a current reporting relationship to the requester's line manager, as the
+     * viewer may see them (the Employee and LeaveRequest access scopes apply), with approved leave
+     * overlapping the request.
+     *
+     * @param  Collection<int, LeaveRequest>  $requests
+     */
+    private function preloadTeamAway(Collection $requests): void
+    {
+        $requests = $requests->filter(fn (LeaveRequest $r) => ! isset($this->teamAway[$r->id]) && $r->employee?->currentManager?->manager_id !== null && $r->from_date !== null && $r->to_date !== null);
+        if ($requests->isEmpty()) {
+            return;
+        }
+        $managers = $requests->map(fn (LeaveRequest $r) => (int) $r->employee->currentManager->manager_id)->unique()->values()->all();
+        $teams = [];
+        foreach (array_chunk($managers, 500) as $chunk) {
+            ReportingRelationship::query()->whereIn('manager_id', $chunk)->currentlyEffective()->whereIn('employee_id', Employee::query()->select('employees.id'))
+                ->get(['employee_id', 'manager_id'])->each(function (ReportingRelationship $r) use (&$teams) {
+                    $teams[(int) $r->manager_id][(int) $r->employee_id] = true;
+                });
+        }
+        $members = array_keys(array_replace(...array_values($teams ?: [[]])));
+        $from = $requests->min(fn (LeaveRequest $r) => $r->from_date->toDateString());
+        $to = $requests->max(fn (LeaveRequest $r) => $r->to_date->toDateString());
+        $away = collect();
+        foreach (array_chunk($members, 1000) as $chunk) {
+            $away = $away->concat(LeaveRequest::query()->whereIn('employee_id', $chunk)->where('status', 'approved')->whereDate('from_date', '<=', $to)->whereDate('to_date', '>=', $from)
+                ->get(['employee_id', 'from_date', 'to_date'])->map(fn (LeaveRequest $l) => [(int) $l->employee_id, $l->from_date->toDateString(), $l->to_date->toDateString()]));
+        }
+        foreach ($requests as $request) {
+            $team = $teams[(int) $request->employee->currentManager->manager_id] ?? [];
+            unset($team[(int) $request->employee_id]);
+            [$start, $end] = [$request->from_date->toDateString(), $request->to_date->toDateString()];
+            $this->teamAway[$request->id] = $away->filter(fn (array $l) => isset($team[$l[0]]) && $l[1] <= $end && $l[2] >= $start)->pluck(0)->unique()->count();
+        }
     }
 
     private function teamAway(LeaveRequest $request): int

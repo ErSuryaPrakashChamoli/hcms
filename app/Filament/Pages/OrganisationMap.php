@@ -92,14 +92,18 @@ class OrganisationMap extends Page
         $visible = $this->visibleIds();
         $managers = ReportingRelationship::query()->whereIn('employee_id', $visible)->where('is_primary', true)->currentlyEffective()
             ->pluck('manager_id', 'employee_id')->map(fn ($m) => (int) $m)->all();
+        $seen = array_flip($visible);
         $out = [];
         foreach ($visible as $id) {
             $m = $managers[$id] ?? null;
-            $out[$id] = $m !== null && in_array($m, $visible, true) ? $m : null;
+            $out[$id] = $m !== null && isset($seen[$m]) ? $m : null;
         }
 
         return $out;
     }
+
+    /** @var array<int, list<int>>|null manager id => direct report ids, built once per request (UX.15.20: was a scan of every line per node) */
+    private ?array $children = null;
 
     /**
      * Relationships beyond the primary line, between people the viewer may see: for each person, who they are
@@ -135,7 +139,16 @@ class OrganisationMap extends Page
     /** @return list<int> */
     public function childrenOf(int $id): array
     {
-        return array_keys(array_filter($this->lines, fn ($m) => $m === $id));
+        if ($this->children === null) {
+            $this->children = [];
+            foreach ($this->lines as $employee => $manager) {
+                if ($manager !== null) {
+                    $this->children[$manager][] = $employee;
+                }
+            }
+        }
+
+        return $this->children[$id] ?? [];
     }
 
     /** @return array<int, Employee> */
@@ -231,7 +244,8 @@ class OrganisationMap extends Page
     private function visibleIds(): array
     {
         return app(PeopleVisibility::class)->query(auth()->user())
-            ->whereNotIn('lifecycle_state', [LifecycleState::Exited->value, LifecycleState::Alumni->value, LifecycleState::PreEmployee->value])
+            // Current reporting lines: people not yet joined (their line starts on the joining date) are not on the map yet.
+            ->whereNotIn('lifecycle_state', [LifecycleState::Exited->value, LifecycleState::Alumni->value, LifecycleState::PreEmployee->value, LifecycleState::Preboarding->value])
             ->pluck('employees.id')->map(fn ($id) => (int) $id)->all();
     }
 }

@@ -2,6 +2,10 @@
     @php
         $groups = $this->groups;
         $pending = collect(['urgent', 'today', 'upcoming'])->flatMap(fn ($k) => $groups[$k])->values();
+        // Rendered in pages, most urgent first: the queue rows and their decision cards for the first $shown.
+        $visible = $pending->take($this->shown);
+        $onPage = $visible->pluck('id')->flip();
+        $remaining = $pending->count() - $visible->count();
         $labels = ['urgent' => ['Urgent', 'Overdue, starting within a day, or flagged'], 'today' => ['This week', 'Due soon or waiting two days'], 'upcoming' => ['Later', 'Later this month and beyond']];
         $posAi = app(\App\Domain\Ai\Services\AiGateway::class)->assistantsFor(auth()->user());
     @endphp
@@ -37,7 +41,7 @@
                                     <span class="pos-sec-sub">{{ $hint }}</span>
                                 </header>
                                 <div class="pos-panel pos-stream" role="list">
-                                    @foreach ($groups[$key] as $item)
+                                    @foreach ($groups[$key]->filter(fn ($i) => $onPage->has($i->id)) as $item)
                                         <button type="button" role="listitem" class="pos-stream-row pos-queue-row pos-approval" data-approval-id="{{ $item->id }}" wire:key="q-{{ md5($item->id) }}" wire:transition
                                             data-tone="{{ $key === 'urgent' ? 'danger' : ($key === 'today' ? 'warning' : 'info') }}"
                                             :aria-current="(selected === @js($item->id)).toString()" x-on:click="select(@js($item->id))" x-on:focus="select(@js($item->id), true)">
@@ -53,11 +57,16 @@
                             </section>
                         @endif
                     @endforeach
+                    @if ($remaining > 0)
+                        <button type="button" class="pos-btn pos-btn-secondary w-full" wire:click="showMore" wire:loading.attr="disabled" wire:target="showMore">
+                            Show {{ min($remaining, \App\Filament\Pages\Approvals::PAGE) }} more <span class="pos-meta">· {{ $remaining }} not shown yet</span>
+                        </button>
+                    @endif
                 </div>
 
                 {{-- The decision, with its context --}}
                 <div class="pos-decision-pane" aria-live="polite">
-                    @foreach ($pending as $item)
+                    @foreach ($visible as $item)
                         <div x-show="selected === @js($item->id)" @if (! $loop->first) x-cloak @endif wire:key="d-{{ md5($item->id) }}"
                             x-transition:enter="pos-swap-in" x-transition:leave="hidden">
                             <x-pos.approval-card :item="$item" class="pos-approval-detail" />

@@ -96,7 +96,7 @@ final class WorkforcePulse
         if (! $viewer->hasPermission('employee.view')) {
             // Aggregates only: counts by department (never designation, which could single someone out), small groups suppressed.
             $min = (int) config('peopleos.workforce.analytics_min_group', 5);
-            $rows = $items->groupBy(fn ($i) => $i['dept'] ?: 'No department')->map(fn (Collection $g, string $dept) => [
+            $rows = $items->groupBy(fn ($i) => $i['dept'] ?: 'No department')->sortByDesc(fn (Collection $g) => $g->count())->map(fn (Collection $g, string $dept) => [
                 'person_id' => null, 'label' => $dept, 'detail' => $g->count() < $min ? 'fewer than '.$min : $g->count().' people', 'date' => null,
             ])->values()->all();
 

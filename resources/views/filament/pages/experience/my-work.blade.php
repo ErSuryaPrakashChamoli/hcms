@@ -58,7 +58,7 @@
                     <x-pos.section :title="$title" :count="$w[$key]->count()" :sub="$sub"
                         :link="$key === 'decisions' && \App\Filament\Pages\Approvals::canAccess() ? \App\Filament\Pages\Approvals::getUrl() : null" link-label="Approval Center">
                         <ul class="pos-panel pos-stream" aria-label="{{ $title }}">
-                            @foreach ($w[$key] as $row)
+                            @foreach (in_array($key, $this->expanded, true) ? $w[$key] : $w[$key]->take(\App\Filament\Pages\MyWork::PAGE) as $row)
                                 <li class="pos-stream-row pos-work-row" data-tone="{{ $key === 'completed' ? 'success' : ($row['severity'] === 'danger' ? 'danger' : ($row['severity'] === 'warning' ? 'warning' : ($key === 'waiting' ? 'info' : 'neutral'))) }}"
                                     tabindex="-1" wire:key="work-{{ md5($row['key']) }}" wire:transition @if ($row['approval_id']) data-approval-id="{{ $row['approval_id'] }}" @endif>
                                     <span class="pos-stream-mark" aria-hidden="true"></span>
@@ -82,6 +82,9 @@
                                 </li>
                             @endforeach
                         </ul>
+                        @if (! in_array($key, $this->expanded, true) && $w[$key]->count() > \App\Filament\Pages\MyWork::PAGE)
+                            <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm mt-2" wire:click="showAll(@js($key))">Show all {{ $w[$key]->count() }}</button>
+                        @endif
                     </x-pos.section>
                 @endforeach
                 @if ($filter !== 'all' && ($w[$filter] ?? collect())->isEmpty())

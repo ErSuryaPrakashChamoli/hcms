@@ -89,7 +89,9 @@ class People extends Page
         }
         $f = $this->filters;
 
-        return number_format($this->total).' '.($this->total === 1 ? 'person' : 'people').' you can see across '.count($f['departments']).' departments and '.count($f['locations']).' locations. Hover a name to peek; select it for more.';
+        $n = fn (int $count, string $one, string $many) => $count.' '.($count === 1 ? $one : $many);
+
+        return number_format($this->total).' '.($this->total === 1 ? 'person' : 'people').' you can see across '.$n(count($f['departments']), 'department', 'departments').' and '.$n(count($f['locations']), 'location', 'locations').'. Hover a name to peek; select it for more.';
     }
 
     public function updated(string $property): void

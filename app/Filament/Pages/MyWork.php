@@ -68,6 +68,19 @@ class MyWork extends Page
         $this->tab = array_key_exists($tab, self::TABS) ? $tab : null;
     }
 
+    /** UX.15.20: each stream shows its first rows; the rest on request (counts stay whole). */
+    public const PAGE = 15;
+
+    /** @var list<string> */
+    public array $expanded = [];
+
+    public function showAll(string $key): void
+    {
+        if (in_array($key, ['decisions', 'tasks', 'followups', 'waiting', 'upcoming', 'completed'], true) && ! in_array($key, $this->expanded, true)) {
+            $this->expanded[] = $key;
+        }
+    }
+
     /** UX.15 filters over one focus workspace (legacy ?tab= keys still deep-link). */
     public const FILTERS = ['all' => 'Everything', 'decisions' => 'Decisions', 'tasks' => 'Tasks', 'followups' => 'Follow-ups', 'waiting' => 'Waiting on others', 'completed' => 'Done'];
 

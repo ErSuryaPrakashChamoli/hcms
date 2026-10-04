@@ -94,7 +94,8 @@ class WorkforceCommandCentre extends Page
     /** Needs attention: aggregate risks, each with the reason it matters. @return list<array{title: string, why: string, value: string, severity: string, url: ?string}> */
     public function getRisks(): array
     {
-        $m = $this->metrics;
+        // UX.15.20: from the pulse's metrics (same viewer, same permissions), not a second full metric set.
+        $m = $this->pulse['metrics'];
         $risks = [];
         $value = fn (string $k) => ($m[$k]['restricted'] ?? false) ? null : $m[$k]['value'] ?? null;
         if (($a = $value('attrition_rate')) !== null && $a >= 15) {
@@ -106,7 +107,7 @@ class WorkforceCommandCentre extends Page
         if (($l = $value('learning_completion')) !== null && $l < 80) {
             $risks[] = ['title' => 'Mandatory learning behind', 'why' => 'Fewer than 80% of mandatory enrolments are complete.', 'value' => round($l).'%', 'severity' => $l < 50 ? 'danger' : 'warning', 'url' => null];
         }
-        $noExperts = collect($this->getCriticalSkills())->where('experts', 0)->count();
+        $noExperts = collect($this->pulse['critical_skills'])->where('experts', 0)->count();
         if ($noExperts > 0) {
             $risks[] = ['title' => 'Skills without an expert', 'why' => 'No advanced or expert holder: a succession and delivery risk.', 'value' => (string) $noExperts, 'severity' => 'warning', 'url' => null];
         }

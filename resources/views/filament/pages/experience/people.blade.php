@@ -111,9 +111,11 @@
                                     <li wire:key="pg-{{ $e->id }}">
                                         <button type="button" class="pos-card pos-card-interactive pos-person-card" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'person', id: {{ $e->id }} })" aria-label="Preview {{ $e->display_name }}">
                                             <x-pos.avatar :name="$e->display_name" size="lg" />
-                                            <span class="pos-body font-medium mt-3 block truncate">{{ $e->display_name }}</span>
-                                            <span class="pos-caption pos-secondary block truncate">{{ $p?->designation?->name ?? $e->employee_code }}</span>
+                                            {{-- UX.15.19: long names get two lines (full name on hover); the code tells same-named people apart --}}
+                                            <span class="pos-body font-medium mt-3 pos-person-card-name" title="{{ $e->display_name }}">{{ $e->display_name }}</span>
+                                            <span class="pos-caption pos-secondary block truncate">{{ $p?->designation?->name ?? '—' }}</span>
                                             <span class="pos-caption pos-muted block truncate">{{ collect([$p?->department?->name, $p?->location?->name])->filter()->implode(' · ') }}</span>
+                                            <span class="pos-caption pos-muted pos-num block truncate">{{ $e->employee_code }}</span>
                                             @if (in_array($e->lifecycle_state?->value, ['probation', 'notice_period', 'on_leave', 'preboarding', 'pre_employee', 'onboarding'], true))
                                                 <x-pos.status class="mt-2" :tone="$e->lifecycle_state->value === 'notice_period' ? 'warning' : 'info'" :label="$e->lifecycle_state->getLabel()" />
                                             @endif

@@ -51,7 +51,7 @@ final class ContextualIntelligence
                 'action' => ! $own && $viewer->can('transition', $employee) ? ['label' => 'Review confirmation', 'url' => $profile.'?action=lifecycle'] : null];
         }
 
-        $decisions = $own ? collect() : $this->safe(fn () => $this->approvals->pending($viewer)->where('subjectEmployeeId', $employee->id)->values(), collect());
+        $decisions = $own ? collect() : $this->safe(fn () => $this->approvals->pendingAbout($viewer, (int) $employee->id), collect());
         if ($decisions->isNotEmpty()) {
             $d = $decisions->first();
             $items[] = ['text' => $decisions->count() === 1 ? $first.'’s '.mb_strtolower($d->title).' waits for your decision.' : $decisions->count().' requests from '.$first.' wait for your decision.',
@@ -89,7 +89,7 @@ final class ContextualIntelligence
         $decisions = $home['decisions'] ?? collect();
         if (($home['decision_count'] ?? 0) > 0) {
             $oldest = collect($decisions)->filter(fn ($d) => $d->requestedAt !== null)->sortBy(fn ($d) => $d->requestedAt->timestamp)->first();
-            $items[] = ['text' => $home['decision_count'].' '.($home['decision_count'] === 1 ? 'decision waits' : 'decisions wait').' for you'.($oldest ? '; the oldest has waited '.$oldest->requestedAt->diffForHumans(null, true).'.' : '.'),
+            $items[] = ['text' => $home['decision_count'].(($home['decision_more'] ?? false) ? '+' : '').' '.($home['decision_count'] === 1 ? 'decision waits' : 'decisions wait').' for you'.($oldest ? '; the oldest has waited '.$oldest->requestedAt->diffForHumans(null, true).'.' : '.'),
                 'source' => 'Approval Center', 'tone' => 'warning', 'action' => Approvals::canAccess() ? ['label' => 'Review', 'url' => Approvals::getUrl()] : null];
         }
         if (($tp = $home['pulse_team'] ?? null) && ($tp['away'] ?? 0) > 0) {

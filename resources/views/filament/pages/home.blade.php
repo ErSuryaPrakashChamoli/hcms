@@ -45,7 +45,7 @@
                 </div>
                 <div class="pos-ws-actions">
                     @if ($h['decision_count'] > 0 && \App\Filament\Pages\Approvals::canAccess())
-                        <a href="{{ \App\Filament\Pages\Approvals::getUrl() }}" wire:navigate class="pos-btn pos-btn-primary">Review {{ $h['decision_count'] }} {{ $h['decision_count'] === 1 ? 'decision' : 'decisions' }}</a>
+                        <a href="{{ \App\Filament\Pages\Approvals::getUrl() }}" wire:navigate class="pos-btn pos-btn-primary">Review {{ $h['decision_count'] }}{{ ($h['decision_more'] ?? false) ? '+' : '' }} {{ $h['decision_count'] === 1 ? 'decision' : 'decisions' }}</a>
                     @elseif ($this->requestLeaveAction->isVisible() && $h['lens'] === 'employee')
                         <button type="button" wire:click="mountAction('requestLeave')" class="pos-btn pos-btn-primary" data-pos-action="request_leave_header">Request leave</button>
                     @endif
@@ -83,7 +83,7 @@
                 <div class="pos-ws-main">
                     {{-- Decisions waiting for you --}}
                     @if ($h['decision_count'] > 0 || in_array($h['lens'], ['manager', 'hr', 'hr_admin'], true))
-                        <x-pos.section title="Decisions waiting for you" :count="$h['decision_count'] ?: null" :link="\App\Filament\Pages\Approvals::canAccess() ? \App\Filament\Pages\Approvals::getUrl() : null" link-label="Approval Center">
+                        <x-pos.section title="Decisions waiting for you" :count="$h['decision_count'] ? $h['decision_count'].(($h['decision_more'] ?? false) ? '+' : '') : null" :link="\App\Filament\Pages\Approvals::canAccess() ? \App\Filament\Pages\Approvals::getUrl() : null" link-label="Approval Center">
                             @if ($h['decisions']->isEmpty())
                                 <x-pos.state variant="caught-up" size="inline" title="No decisions are waiting for you." why="Leave, attendance corrections, pay changes, letters and workflow steps that need you will appear here first." />
                             @else
@@ -107,7 +107,7 @@
                                         </div>
                                     @endforeach
                                     @if ($h['decision_count'] > $h['decisions']->count())
-                                        <div class="pos-stream-more"><a href="{{ \App\Filament\Pages\Approvals::getUrl() }}" wire:navigate class="pos-link">{{ $h['decision_count'] - $h['decisions']->count() }} more in the Approval Center</a></div>
+                                        <div class="pos-stream-more"><a href="{{ \App\Filament\Pages\Approvals::getUrl() }}" wire:navigate class="pos-link">{{ $h['decision_count'] - $h['decisions']->count() }}{{ ($h['decision_more'] ?? false) ? '+' : '' }} more in the Approval Center</a></div>
                                     @endif
                                 </div>
                             @endif
