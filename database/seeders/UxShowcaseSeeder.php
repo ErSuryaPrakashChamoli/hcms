@@ -57,6 +57,8 @@ class UxShowcaseSeeder extends Seeder
         $this->call(DatabaseSeeder::class);
         $tenant = $tenants->bypass(fn () => Tenant::query()->where('slug', 'demo')->firstOrFail());
         $tenants->runAs($tenant, fn () => $this->populate());
+        // UX.17: realistic in-app notifications for the personas, through the real delivery path.
+        $this->call(UxShowcaseNotificationsSeeder::class);
     }
 
     private function populate(): void
