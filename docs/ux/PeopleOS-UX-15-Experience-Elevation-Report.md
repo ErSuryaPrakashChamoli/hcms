@@ -2,7 +2,9 @@
 
 **Date:** 4 October 2026 · **Branch:** `feature/oct_1_phase_1` · **Scope:** UX.15.1 – UX.15.23, as set out in the UX.15 master prompt.
 
-**Recommendation: NOT COMPLETE.** The signature experience is built and has been validated:
+> **Closure update (4 October 2026).** The UX.15 closure addressed the five P1 items in [§14](#14-remaining-issues); see [UX-15-Closure-Report.md](UX-15-Closure-Report.md). **Closure verdict: UX.15 — COMPLETE.** Four P1 items are resolved; Safari is closed as an external environment constraint, with the WebKit engine validated and Apple Safari not tested. The text below is the original UX.15 report, with §14–§17 annotated for the closure.
+
+**Recommendation at the end of UX.15 (before the closure): NOT COMPLETE.** The signature experience is built and has been validated:
 
 - Home, My work, the Approval Center, the person workspace, People, the Organisation map, Workforce pulse, contextual intelligence, Services and the Admin Centre;
 - at 10,000+ employees, in two browser engines and on four device classes;
@@ -580,18 +582,18 @@ The last column is why the recommendation is NOT COMPLETE.
 
 **P0:** none known.
 
-**P1:**
-1. **Module list, form and detail pages (about 150)** have tokens and quieter chrome only. They fail the Phase 39 traditional-HRMS test as polished Filament. People reach them from Records, Setup and the area menus.
-2. **Approval authorisation cost at scale.** Each pending item costs about 2 policy queries, kept so every item is re-authorised by its domain policy. A manager with 200+ pending items waits about 1.7–2.0 s on this machine. A real fix needs a batch authorisation API in the Leave and Identity domains (security code; not attempted).
-3. **Safari / WebKit not validated.** System packages are missing. Edge is not installed (its Chromium engine was validated).
-4. **The person workspace is panel-heavy** (20 boxed elements), and its records tabs are Filament tables.
-5. **Demo personas have no organisation scope rows**, so they are tenant-wide by the documented rule. Tenants must scope managers. A governance warning such as "managers without scope" in the Admin Centre would help.
+**P1** (closure status in brackets; details in the closure report §3):
+1. *(Resolved at closure: every module page on the PeopleOS experience layer.)* **Module list, form and detail pages (about 150)** have tokens and quieter chrome only. They fail the Phase 39 traditional-HRMS test as polished Filament. People reach them from Records, Setup and the area menus.
+2. *(Resolved at closure: 1.80 s → 0.80 s at 10,785 employees, with authorisation equivalence proven.)* **Approval authorisation cost at scale.** Each pending item costs about 2 policy queries, kept so every item is re-authorised by its domain policy. A manager with 200+ pending items waits about 1.7–2.0 s on this machine. A real fix needs a batch authorisation API in the Leave and Identity domains (security code; not attempted).
+3. *(Closed at closure as an external constraint: the WebKit engine was validated; Apple Safari remains untested.)* **Safari / WebKit not validated.** System packages are missing. Edge is not installed (its Chromium engine was validated).
+4. *(Resolved at closure: 18 → 3 panels, 4.1 → 1.1 screens on desktop.)* **The person workspace is panel-heavy** (20 boxed elements), and its records tabs are Filament tables.
+5. *(Resolved at closure: the manager is scoped to team Platform, and the HR business partner and payroll lead to Demo Technologies.)* **Demo personas have no organisation scope rows**, so they are tenant-wide by the documented rule. Tenants must scope managers. A governance warning such as "managers without scope" in the Admin Centre would help.
 
 **P2:**
 - A constant per-request cost: about 36 viewer-employee lookups from shell `canAccess()` checks across modules, and about 80 settings and feature-flag cache reads. These are queries with the database cache store and cheap with Redis.
 - ChangeFeed relationship checks, bounded at 120 entries (HR Home at 1,000 employees: about 100 queries).
 - People filter option queries take about 100 ms each at 10k.
-- The person chip, peek and drawer are not yet used on older analytics pages and Filament tables (Phase 30 consistency outside the workspaces).
+- The person chip, peek and drawer are not yet used on older analytics pages and Filament tables (Phase 30 consistency outside the workspaces). *(Closure: person chips with peek in every module table; older analytics pages keep their own layouts.)*
 - "Show more" on Approvals rebuilds the queue (about one page load).
 - No org map minimap or virtualisation for very large canvases.
 - My work rows repeat domain words.
@@ -617,19 +619,26 @@ The last column is why the recommendation is NOT COMPLETE.
 
 Scored after the validation round. "Signature" means the workspaces listed in §5.1; "Overall" includes the module pages people can still reach. For traditional-HRMS similarity, lower is better.
 
-| Measure | Signature workspaces | Overall | Remaining weakness it points to |
-|---|---|---|---|
-| Traditional HRMS similarity | 3 / 10 | 5 / 10 | Module pages and records tabs |
-| PeopleOS differentiation | 8 / 10 | 7 / 10 | Same |
-| Premium quality | 8 / 10 | 7 / 10 | Dense phone rows; panel-heavy 360 |
-| Usability | 8.5 / 10 | 8 / 10 | Approval latency at extreme scale |
-| Consistency | 8 / 10 | 6.5 / 10 | Person chip and peek absent outside the workspaces |
+| Measure | Signature workspaces | Overall | Remaining weakness it points to | After the closure (signature / overall) |
+|---|---|---|---|---|
+| Traditional HRMS similarity | 3 / 10 | 5 / 10 | Module pages and records tabs | 3 / **4** |
+| PeopleOS differentiation | 8 / 10 | 7 / 10 | Same | 8 / **7.5** |
+| Premium quality | 8 / 10 | 7 / 10 | Dense phone rows; panel-heavy 360 | 8.5 / **7.5** |
+| Usability | 8.5 / 10 | 8 / 10 | Approval latency at extreme scale | 9 / **8.5** |
+| Consistency | 8 / 10 | 6.5 / 10 | Person chip and peek absent outside the workspaces | 8.5 / **7.5** |
+
+The closure column, with a module-page column and the reasons, is in the closure report §18.
 
 ---
 
 ## 16. Final recommendation
 
-**NOT COMPLETE.**
+**After the closure: UX.15 — COMPLETE** (closure report §20). The three blockers listed below were addressed:
+1. every module page now composes the PeopleOS experience layer, and the 360's records tabs sit in its Records view;
+2. the WebKit engine was validated, and Safari is documented as an external environment constraint (Apple Safari not tested);
+3. the §14 P1 items are resolved.
+
+**Recommendation at the end of UX.15: NOT COMPLETE.**
 
 What is complete and validated:
 - the research, audit and governed design system;
@@ -667,3 +676,4 @@ UX.16 has not been started.
 | Pint | Passed (`vendor/bin/pint --test`) |
 | Static checks | `php -l` clean on every changed PHP file; `php artisan view:cache` compiles every Blade template; `npm run build` succeeds |
 | Accessibility | axe WCAG 2.0/2.1/2.2 AA: 52 checks, 0 violations |
+| **After the closure** (`00c025a`) | **1,046 tests · 986 passed · 60 skipped (MySQL-only) · 0 failed** · 13,075 assertions; MySQL suites 60/60; axe 78 checks, 0 violations; browser matrix 297/297 after recheck; WebKit journeys 21/21 (closure report §11–§15) |
