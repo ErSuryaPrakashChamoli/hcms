@@ -2,11 +2,14 @@
 
 namespace App\Domain\Experience\Services;
 
+use App\Domain\Bgv\Models\BgvCase;
+use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Models\ReportingRelationship;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Models\UserAccessScope;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Learning\Models\LearningEnrolment;
 use App\Domain\Leave\Models\LeaveRequest;
@@ -14,6 +17,15 @@ use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Models\EmployeeTimelineEntry;
 use App\Domain\Lifecycle\Support\TimelineCategories;
 use App\Domain\Onboarding\Models\OnboardingTask;
+use App\Domain\ServiceDesk\Models\Ticket;
+use App\Domain\ServiceDesk\Services\CaseAccess;
+use App\Filament\Pages\Approvals;
+use App\Filament\Pages\ChangeIntelligencePage;
+use App\Filament\Pages\MyCareer;
+use App\Filament\Pages\MyHr;
+use App\Filament\Pages\MyTeam;
+use App\Filament\Resources\Users\UserResource;
+use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonInterface;
 use Throwable;
 
@@ -51,7 +63,75 @@ final class PersonWorkspace
             'changes' => $this->safe(fn () => $this->changes($viewer, $employee), []),
             'journey' => $this->safe(fn () => app(JourneyMap::class)->for($viewer, $employee), ['current' => 'active', 'stages' => []]),
             'sections' => $sections,
+            'viewer' => $this->safe(fn () => $this->viewer($viewer, $employee, $own, $state), null),
         ];
+    }
+
+    /**
+     * UX.16: what this viewer is here for, as one panel in the Now view. One workspace, composed by relationship and
+     * role: your own record, a person who reports to you, HR's operational view, or an administrator's identity and
+     * access view. Every fact needs its own permission (or relationship) and the identity facts need user access;
+     * the account must belong to the current tenant. Anyone else gets no panel.
+     *
+     * @return array{as: string, title: string, line: string, facts: list<array{label: string, value: string}>, links: list<array{label: string, url: string}>}|null
+     */
+    private function viewer(User $viewer, Employee $e, bool $own, ?LifecycleState $state): ?array
+    {
+        $first = $e->person?->preferred_name ?: ($e->person?->first_name ?? $e->display_name);
+        $url = fn (callable $u) => rescue($u, null, false);
+        $links = fn (array $pairs) => array_values(array_filter(array_map(fn ($p) => $p[1] ? ['label' => $p[0], 'url' => $p[1]] : null, $pairs)));
+        if ($own) {
+            return ['as' => 'self', 'title' => 'Your record', 'line' => 'This is you. Your requests, documents and pay are in My HR; your goals and growth in My career.', 'facts' => [],
+                'links' => $links([['My HR', $url(fn () => MyHr::canAccess() ? MyHr::getUrl() : null)], ['My career', $url(fn () => MyCareer::canAccess() ? MyCareer::getUrl() : null)]])];
+        }
+
+        $lenses = app(RoleLens::class);
+        $me = $lenses->employee($viewer);
+        $line = $me ? ReportingRelationship::query()->where('manager_id', $me->id)->where('employee_id', $e->id)->currentlyEffective()->first() : null;
+        if ($line !== null) {
+            $pending = app(ApprovalCenter::class)->pendingAbout($viewer, (int) $e->id)->count();
+            $facts = [['label' => 'Relationship', 'value' => (string) config("peopleos.people.reporting_types.{$line->type}", ucfirst((string) $line->type))]];
+            $facts[] = ['label' => 'Decisions waiting', 'value' => (string) $pending];
+            if ($state === LifecycleState::Probation && $e->probation_end_date) {
+                $facts[] = ['label' => 'Probation ends', 'value' => $e->probation_end_date->format('j M Y').($e->probation_end_date->isPast() ? ' (passed)' : '')];
+            }
+
+            return ['as' => 'manager', 'title' => 'Your team', 'line' => $first.' reports to you. Decisions, probation, goals and reviews for '.$first.' come to you.', 'facts' => $facts,
+                'links' => $links([['Approval Center', $pending > 0 ? $url(fn () => Approvals::canAccess() ? Approvals::getUrl() : null) : null], ['My team', $url(fn () => MyTeam::canAccess() ? MyTeam::getUrl() : null)]])];
+        }
+
+        $experience = RoleLens::experienceOf($lenses->primary($viewer, app(ExperiencePreferences::class)->for($viewer)['lens'] ?? null));
+        if ($experience === 'admin' && UserResource::canAccess() && $e->user_id) {
+            $account = User::query()->with('roles')->where('tenant_id', app(TenantContext::class)->id())->find($e->user_id);
+            $facts = $account === null ? [['label' => 'Sign-in account', 'value' => 'None']] : [
+                ['label' => 'Sign-in account', 'value' => ucfirst($account->status instanceof \BackedEnum ? (string) $account->status->value : (string) $account->status)],
+                ['label' => 'Roles', 'value' => $account->roles->pluck('name')->implode(', ') ?: 'None'],
+                ['label' => 'Last sign-in', 'value' => $account->last_login_at?->diffForHumans() ?? 'Never'],
+                ['label' => 'Authenticator app', 'value' => filled($account->app_authentication_secret) ? 'Set up' : 'Not set up'],
+                ['label' => 'Organisation scope', 'value' => ($n = UserAccessScope::query()->where('user_id', $account->id)->count()) > 0 ? $n.' '.($n === 1 ? 'rule' : 'rules') : 'None (their roles apply tenant-wide)'],
+            ];
+
+            return ['as' => 'admin', 'title' => 'Identity and access', 'line' => 'How '.$first.' signs in and what they can reach. Changes to access are audited.', 'facts' => $facts,
+                'links' => $links([['Users', $url(fn () => UserResource::getUrl('index'))], ['All changes', $url(fn () => ChangeIntelligencePage::canAccess() ? ChangeIntelligencePage::getUrl(['employee' => $e->getKey()]) : null)]])];
+        }
+
+        if (in_array($experience, ['hr', 'payroll', 'admin'], true) && $viewer->hasPermission('employee.update')) {
+            $facts = [['label' => 'Lifecycle', 'value' => $state?->getLabel() ?? 'Unknown']];
+            if ($viewer->hasPermission('document.verify')) {
+                $facts[] = ['label' => 'Documents to verify', 'value' => (string) EmployeeDocument::query()->where('employee_id', $e->id)->where('status', 'pending')->count()];
+            }
+            if ($viewer->hasPermission('servicedesk.agent') || $viewer->hasPermission('servicedesk.view')) {
+                $facts[] = ['label' => 'Open HR requests', 'value' => (string) app(CaseAccess::class)->visible(Ticket::query(), $viewer)->where('tickets.employee_id', $e->id)->whereIn('tickets.status', Ticket::OPEN)->count()];
+            }
+            if ($viewer->hasPermission('bgv.view') && ($bgv = BgvCase::query()->where('employee_id', $e->id)->latest('id')->first())) {
+                $facts[] = ['label' => 'Background check', 'value' => ucfirst(str_replace('_', ' ', (string) $bgv->status))];
+            }
+
+            return ['as' => 'hr', 'title' => 'People operations', 'line' => 'You look after '.$first.' as HR. Lifecycle, documents, requests and compliance are in the Records view.', 'facts' => $facts,
+                'links' => $links([['Records', '#records']])];
+        }
+
+        return null;
     }
 
     /** One person, one lifetime record: a rehire continues the same record. */

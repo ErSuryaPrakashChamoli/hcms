@@ -87,6 +87,28 @@
             </div>
             <aside class="pos-ws-side" aria-label="People snapshot">
                 <x-pos.intelligence :intel="method_exists($getLivewire(), 'intelligence') ? $getLivewire()->intelligence : null" />
+                {{-- UX.16: what this viewer is here for (self, manager, HR or administrator), from PersonWorkspace::viewer --}}
+                @if ($v = ($w['viewer'] ?? null))
+                    <x-pos.section :title="$v['title']">
+                        <div class="pos-panel pos-panel-pad grid gap-3 pos-360-viewer" data-viewer="{{ $v['as'] }}">
+                            <p class="pos-body pos-secondary">{{ $v['line'] }}</p>
+                            @if ($v['facts'] !== [])
+                                <dl class="pos-facts">
+                                    @foreach ($v['facts'] as $fact)
+                                        <div><dt>{{ $fact['label'] }}</dt><dd>{{ $fact['value'] }}</dd></div>
+                                    @endforeach
+                                </dl>
+                            @endif
+                            @if ($v['links'] !== [])
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($v['links'] as $link)
+                                        <a href="{{ $link['url'] }}" @if (! str_starts_with($link['url'], '#')) wire:navigate @endif class="pos-btn pos-btn-secondary pos-btn-sm">{{ $link['label'] }}</a>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    </x-pos.section>
+                @endif
                 <x-pos.section title="People snapshot">
                     <x-slot:actions><a href="#work" class="pos-link">Work and relationships <span aria-hidden="true">→</span></a></x-slot:actions>
                     <dl class="pos-panel pos-panel-pad pos-facts">
