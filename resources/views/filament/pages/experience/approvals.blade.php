@@ -38,7 +38,7 @@
                                 </header>
                                 <div class="pos-panel pos-stream" role="list">
                                     @foreach ($groups[$key] as $item)
-                                        <button type="button" role="listitem" class="pos-stream-row pos-queue-row pos-approval" data-approval-id="{{ $item->id }}" wire:key="q-{{ md5($item->id) }}"
+                                        <button type="button" role="listitem" class="pos-stream-row pos-queue-row pos-approval" data-approval-id="{{ $item->id }}" wire:key="q-{{ md5($item->id) }}" wire:transition
                                             data-tone="{{ $key === 'urgent' ? 'danger' : ($key === 'today' ? 'warning' : 'info') }}"
                                             :aria-current="(selected === @js($item->id)).toString()" x-on:click="select(@js($item->id))" x-on:focus="select(@js($item->id), true)">
                                             <span class="pos-stream-mark" aria-hidden="true"></span>
@@ -58,7 +58,8 @@
                 {{-- The decision, with its context --}}
                 <div class="pos-decision-pane" aria-live="polite">
                     @foreach ($pending as $item)
-                        <div x-show="selected === @js($item->id)" @if (! $loop->first) x-cloak @endif wire:key="d-{{ md5($item->id) }}">
+                        <div x-show="selected === @js($item->id)" @if (! $loop->first) x-cloak @endif wire:key="d-{{ md5($item->id) }}"
+                            x-transition:enter="pos-swap-in" x-transition:leave="hidden">
                             <x-pos.approval-card :item="$item" class="pos-approval-detail" />
                         </div>
                     @endforeach

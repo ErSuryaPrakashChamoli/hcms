@@ -75,7 +75,7 @@ class AdminPanelProvider extends PanelProvider
                 // normal information; indigo is kept for identity, selection and primary action.
                 'gray' => [
                     50 => 'oklch(0.975 0.003 255)', 100 => 'oklch(0.956 0.004 255)', 200 => 'oklch(0.918 0.006 255)',
-                    300 => 'oklch(0.865 0.008 255)', 400 => 'oklch(0.712 0.013 255)', 500 => 'oklch(0.552 0.017 255)',
+                    300 => 'oklch(0.865 0.008 255)', 400 => 'oklch(0.712 0.013 255)', 500 => 'oklch(0.520 0.017 255)',
                     600 => 'oklch(0.462 0.018 255)', 700 => 'oklch(0.378 0.017 255)', 800 => 'oklch(0.268 0.012 255)',
                     900 => 'oklch(0.205 0.009 255)', 950 => 'oklch(0.150 0.007 255)',
                 ],

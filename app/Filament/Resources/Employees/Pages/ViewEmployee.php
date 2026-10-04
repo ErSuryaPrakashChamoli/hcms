@@ -166,7 +166,7 @@ class ViewEmployee extends ViewRecord
                     $this->changeContext(),
                     Grid::make(3)->schema([
                         Select::make('change_type')->options(config('peopleos.people.position_change_types'))->required(),
-                        DatePicker::make('effective_from')->label('Effective from')->native(false)->required()->live(),
+                        DatePicker::make('effective_from')->label('Effective from')->required()->live(),
                     ]),
                 ]),
                 Step::make('Change')->description('Only what is different')->schema([
@@ -230,7 +230,7 @@ class ViewEmployee extends ViewRecord
                 ]),
                 Step::make('Change')->description('Who, and from when')->schema([
                     Select::make('manager_id')->label('Manager')->options(fn (Employee $record) => CreateEmployee::managerOptions($record->id))->searchable()->required()->live(),
-                    DatePicker::make('effective_from')->label('Effective from')->native(false)->required()->live(),
+                    DatePicker::make('effective_from')->label('Effective from')->required()->live(),
                 ]),
                 Step::make('Review')->description('Before → After, then confirm')->schema([
                     BeforeAfterPreview::manager(),

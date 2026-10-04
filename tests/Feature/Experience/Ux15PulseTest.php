@@ -54,6 +54,11 @@ it('drills down to names only for viewers who may see people', function () {
     $names = app(WorkforcePulse::class)->drill($this->execWithPeople, 'promotions');
     expect($names['aggregated'])->toBeFalse()->and(collect($names['rows'])->pluck('label')->all())->toBe(['Olga Pulse']);
 
+    // Aggregates group by department only: never by designation, which could single someone out.
+    $promotions = app(WorkforcePulse::class)->drill($this->exec, 'promotions');
+    expect(collect($promotions['rows'])->pluck('label')->all())->toBe(['Engineering'])
+        ->and(collect($promotions['rows'])->pluck('label')->implode(' '))->not->toContain('Senior Engineer');
+
     $counts = app(WorkforcePulse::class)->drill($this->exec, 'joiners');
     expect($counts['aggregated'])->toBeTrue()
         ->and($counts['rows'][0])->toMatchArray(['person_id' => null, 'label' => 'Engineering', 'detail' => 'fewer than 5']);

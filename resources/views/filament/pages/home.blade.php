@@ -90,7 +90,7 @@
                                 <div class="pos-panel pos-stream">
                                     @foreach ($h['decisions'] as $item)
                                         @php($group = $item->group())
-                                        <div class="pos-stream-row" data-tone="{{ $group === 'urgent' ? 'danger' : ($group === 'today' ? 'warning' : 'info') }}" wire:key="dec-{{ md5($item->id) }}">
+                                        <div class="pos-stream-row" data-tone="{{ $group === 'urgent' ? 'danger' : ($group === 'today' ? 'warning' : 'info') }}" wire:key="dec-{{ md5($item->id) }}" wire:transition>
                                             <span class="pos-stream-mark" aria-hidden="true"></span>
                                             <div class="pos-stream-body">
                                                 <p class="pos-stream-title">{{ $item->title }}</p>

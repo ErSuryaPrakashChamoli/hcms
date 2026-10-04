@@ -8,7 +8,7 @@
     <div {{ $attributes->class(['pos-journey']) }} x-data="{ open: @js($currentKey) }" id="journey">
         <div class="pos-journey-track" role="tablist" aria-label="Journey stages">
             @foreach ($stages as $stage)
-                <div class="pos-journey-stage" role="presentation" data-state="{{ $stage['state'] }}">
+                <div class="pos-journey-stage" role="presentation" data-state="{{ $stage['state'] }}" style="--i: {{ $loop->index }}">
                     <button type="button" role="tab" class="pos-journey-btn" :aria-selected="(open === @js($stage['key'])).toString()" aria-controls="journey-{{ $stage['key'] }}"
                         x-on:click="open = @js($stage['key'])">
                         <span class="pos-journey-dot" aria-hidden="true">

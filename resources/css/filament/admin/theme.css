@@ -837,6 +837,7 @@ html {
 
     .pos-command-item[aria-selected='true'] { background: var(--pos-primary-soft); }
     .pos-command-item[aria-selected='true'] .pos-command-hint { opacity: 1; }
+    .pos-command-item[aria-selected='true'] .pos-command-verb, .pos-command-item[aria-selected='true'] .pos-command-sub { color: var(--pos-text-secondary); }
     .pos-command-hint { opacity: 0; transition: opacity var(--pos-dur-1) var(--pos-ease); }
 
     /* Timelines and journeys */
@@ -1099,11 +1100,12 @@ html {
     .pos-spacebar-more-wrap { position: relative; flex: none; margin-inline-start: auto; }
     .pos-spacebar-more { display: inline-flex; align-items: center; gap: var(--pos-space-1); height: 32px; padding: 0 var(--pos-space-3); border-radius: var(--pos-radius-md); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-text-secondary); white-space: nowrap; }
     .pos-spacebar-more:hover, .pos-spacebar-more[aria-expanded='true'] { background: var(--pos-state-hover); color: var(--pos-text); }
-    .pos-spacebar-menu { position: absolute; z-index: var(--pos-z-peek); top: calc(100% + 8px); inset-inline-end: 0; width: min(560px, calc(100vw - 32px)); max-height: min(70vh, 560px); overflow-y: auto; padding: var(--pos-space-3); border-radius: var(--pos-radius-lg); background: var(--pos-surface-elevated); box-shadow: var(--pos-shadow-3); }
+    /* "All in {area}": an in-flow disclosure below the bar (it pushes content down; nothing is covered) */
+    .pos-spacebar-menu { margin-bottom: var(--pos-space-3); padding: var(--pos-space-4); border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-1); }
     .pos-spacebar-find { max-width: none; margin-bottom: var(--pos-space-3); }
     .pos-spacebar-groups { display: grid; gap: var(--pos-space-4) var(--pos-space-6); grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
     .pos-spacebar-mgroup ul { display: grid; gap: 2px; margin-top: var(--pos-space-1); }
-    @media (max-width: 767px) { .pos-spacebar-title { display: none; } .pos-spacebar-more-wrap { position: static; } .pos-spacebar-menu { inset-inline: var(--pos-space-4); width: auto; } .pos-spacebar { position: relative; } }
+    @media (max-width: 767px) { .pos-spacebar-title { display: none; } }
 
     /* Generic building blocks */
     .pos-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -1673,6 +1675,22 @@ html {
     to { transform: translateX(0); opacity: 1; }
 }
 
+/* UX.15 motion: progression grows from where it started; a swapped decision rises into place. */
+@keyframes pos-grow-x {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+@keyframes pos-ring-once {
+    0% { box-shadow: inset 0 0 0 2px var(--pos-primary), 0 0 0 0 color-mix(in srgb, var(--pos-primary) 35%, transparent); }
+    100% { box-shadow: inset 0 0 0 2px var(--pos-primary), 0 0 0 10px transparent; }
+}
+
+@keyframes pos-swap-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes pos-peek-in {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
@@ -1708,6 +1726,14 @@ html {
     .pos-drawer-out { animation-name: pos-sheet-in; }
 }
 .pos-peek-in { animation: pos-peek-in var(--pos-dur-1) var(--pos-ease) both; }
+.pos-swap-in { animation: pos-swap-in var(--pos-dur-2) var(--pos-ease) backwards; }
+/* Journey progression: completed connectors grow in order, then the current stage rings once. */
+.pos-journey-stage[data-state='done']::before,
+.pos-journey-stage[data-state='current']::before { transform-origin: left center; animation: pos-grow-x var(--pos-dur-4) var(--pos-ease-emphasised) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+.pos-journey-stage[data-state='current'] .pos-journey-dot { animation: pos-ring-once 900ms var(--pos-ease) calc(var(--i, 0) * 70ms + 300ms) 1 backwards; }
+@media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+}
 .pos-check path { stroke-dasharray: 24; animation: pos-check-draw var(--pos-dur-4) var(--pos-ease) both; }
 
 /* Page transitions in SPA mode */
@@ -1720,6 +1746,26 @@ html {
         transition-duration: 1ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* UX.15 touch: comfortable targets on coarse pointers (phones, tablets) without changing desktop density */
+@media (pointer: coarse) {
+    .pos-btn-sm { height: 40px; padding-inline: var(--pos-space-4); }
+    .pos-chip, .pos-lens-chip { min-height: 40px; }
+    .pos-sectnav a, .pos-sectnav button { padding-block: var(--pos-space-4); }
+    .pos-stream-row { min-height: 52px; }
+    .pos-person { min-height: 36px; }
+    .pos-link { padding-block: var(--pos-space-2); }
+}
+
+@media (max-width: 767px) {
+    /* Workspace headers stack: title and brief first, then full-width actions */
+    .pos-ws-actions { width: 100%; }
+    .pos-ws-actions > .pos-btn { flex: 1 1 auto; }
+    .pos-360-header { gap: var(--pos-space-4); }
+    .pos-360-actions { width: 100%; flex-wrap: wrap; gap: var(--pos-space-2); }
+    .pos-ws-title-display { font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); }
+    .pos-next-up .pos-ws-actions > * { flex: 1 1 auto; }
 }
 
 /* Mobile: leave room for the bottom navigation */

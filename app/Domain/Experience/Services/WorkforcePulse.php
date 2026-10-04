@@ -76,16 +76,16 @@ final class WorkforcePulse
         $month = [now()->startOfMonth(), now()->endOfDay()];
         [$title, $why, $items] = match ($key) {
             'moves' => ['Internal moves this month', 'Transfers, reassignments and demotions effective this month.', $this->positions(self::MOVES, $month)->with(['employee.person', 'department', 'designation'])->get()
-                ->map(fn (EmployeePosition $p) => ['employee' => $p->employee, 'detail' => collect([$p->designation?->name, $p->department?->name])->filter()->implode(' · ') ?: ucfirst((string) $p->change_type), 'date' => $p->effective_from])],
+                ->map(fn (EmployeePosition $p) => ['employee' => $p->employee, 'detail' => collect([$p->designation?->name, $p->department?->name])->filter()->implode(' · ') ?: ucfirst((string) $p->change_type), 'dept' => $p->department?->name, 'date' => $p->effective_from])],
             'promotions' => ['Promotions this month', 'Promotions effective this month.', $this->positions(['promotion'], $month)->with(['employee.person', 'department', 'designation'])->get()
-                ->map(fn (EmployeePosition $p) => ['employee' => $p->employee, 'detail' => collect([$p->designation?->name, $p->department?->name])->filter()->implode(' · '), 'date' => $p->effective_from])],
+                ->map(fn (EmployeePosition $p) => ['employee' => $p->employee, 'detail' => collect([$p->designation?->name, $p->department?->name])->filter()->implode(' · '), 'dept' => $p->department?->name, 'date' => $p->effective_from])],
             'joiners' => ['Joined this month', 'People whose joining date is this month.', $this->joiners($month)->with(['person', 'currentPosition.department'])->get()
-                ->map(fn (Employee $e) => ['employee' => $e, 'detail' => $e->currentPosition?->department?->name, 'date' => $e->joining_date])],
+                ->map(fn (Employee $e) => ['employee' => $e, 'detail' => $e->currentPosition?->department?->name, 'dept' => $e->currentPosition?->department?->name, 'date' => $e->joining_date])],
             'exits' => ['Left this month', 'Exits completed with a last working day this month.', $this->exits($month)->with(['employee.person', 'employee.currentPosition.department'])->get()
-                ->map(fn (ExitCase $x) => ['employee' => $x->employee, 'detail' => $x->employee?->currentPosition?->department?->name, 'date' => $x->last_working_day])],
+                ->map(fn (ExitCase $x) => ['employee' => $x->employee, 'detail' => $x->employee?->currentPosition?->department?->name, 'dept' => $x->employee?->currentPosition?->department?->name, 'date' => $x->last_working_day])],
             'on_leave' => ['On leave today', 'Approved leave covering today.', LeaveRequest::query()->with(['employee.person', 'employee.currentPosition.department', 'leaveType'])->where('status', 'approved')
                 ->whereDate('from_date', '<=', now())->whereDate('to_date', '>=', now())->get()
-                ->map(fn (LeaveRequest $r) => ['employee' => $r->employee, 'detail' => $r->employee?->currentPosition?->department?->name, 'date' => $r->to_date])],
+                ->map(fn (LeaveRequest $r) => ['employee' => $r->employee, 'detail' => $r->employee?->currentPosition?->department?->name, 'dept' => $r->employee?->currentPosition?->department?->name, 'date' => $r->to_date])],
             default => [null, null, null],
         };
         if ($title === null) {
@@ -94,9 +94,9 @@ final class WorkforcePulse
         $items = $items->filter(fn ($i) => $i['employee'] !== null)->values();
 
         if (! $viewer->hasPermission('employee.view')) {
-            // Aggregates only: counts by department, small groups suppressed.
+            // Aggregates only: counts by department (never designation, which could single someone out), small groups suppressed.
             $min = (int) config('peopleos.workforce.analytics_min_group', 5);
-            $rows = $items->groupBy(fn ($i) => $i['detail'] ?: 'No department')->map(fn (Collection $g, string $dept) => [
+            $rows = $items->groupBy(fn ($i) => $i['dept'] ?: 'No department')->map(fn (Collection $g, string $dept) => [
                 'person_id' => null, 'label' => $dept, 'detail' => $g->count() < $min ? 'fewer than '.$min : $g->count().' people', 'date' => null,
             ])->values()->all();
 
