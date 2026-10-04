@@ -19,12 +19,14 @@
         @endif
         <div class="pos-figures">
             @foreach (['headcount', 'joiners', 'exits', 'attrition', 'on_leave'] as $k)
-                @if ($f = $kpi($k))<x-pos.figure :value="$f['value']" :label="$f['label']" :href="$f['url'] ?? null" />@endif
+                {{-- UX.17: on phones joiners and exits are already in the movement above, so the strip keeps headcount, attrition and leave --}}
+                @if ($f = $kpi($k))<x-pos.figure :value="$f['value']" :label="$f['label']" :href="$f['url'] ?? null" @class(['pos-wide-only' => in_array($k, ['joiners', 'exits'], true)]) />@endif
             @endforeach
         </div>
         @php($series = array_values($w['size']['series']['series'] ?? [])[0] ?? [])
         @if (count($series) > 1)
-            <x-pos.sparkline zero :values="$series" :labels="$w['size']['series']['labels'] ?? []" label="Headcount, last twelve months" />
+            {{-- UX.17: no tiny trend chart on phones; the trend lives on Workforce pulse --}}
+            <div class="pos-wide-only"><x-pos.sparkline zero :values="$series" :labels="$w['size']['series']['labels'] ?? []" label="Headcount, last twelve months" /></div>
         @endif
         @if (($w['decisions'] ?? []) !== [])
             <div class="pos-stream pos-stream-divided">

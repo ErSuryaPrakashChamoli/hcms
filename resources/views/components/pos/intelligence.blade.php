@@ -10,6 +10,8 @@
             <h2 id="intel-{{ md5($intel['context']) }}" class="pos-intel-title">PeopleOS Intelligence</h2>
             <span class="pos-intel-tag">Generated</span>
         </div>
+        {{-- UX.17: phones show the first insight; the others are one tap away, in place --}}
+        <x-pos.phone-cap :total="count($intel['items'])" :cap="1" :noun="count($intel['items']) - 1 === 1 ? 'insight' : 'insights'">
         <ul class="pos-intel-list">
             @foreach ($intel['items'] as $item)
                 <li class="pos-intel-item" data-tone="{{ $item['tone'] ?? 'info' }}">
@@ -25,6 +27,7 @@
                 </li>
             @endforeach
         </ul>
+        </x-pos.phone-cap>
         <p class="pos-intel-foot">Computed by PeopleOS from records you can see. It suggests; you decide. No employment, pay or compensation decision is made here.</p>
     </section>
 @endif

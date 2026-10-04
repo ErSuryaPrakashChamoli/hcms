@@ -1,9 +1,10 @@
 {{-- Need attention: ranked, each with its reason and one verb --}}
 @if ($attention->isNotEmpty())
     <x-pos.section title="Need attention" :count="$attention->count()" :link="\App\Filament\Pages\MyWork::getUrl()" link-label="My work">
+        <x-pos.phone-cap :total="$attention->count()">
         <div class="pos-panel pos-stream">
             @foreach ($attention as $n)
-                <div class="pos-stream-row" data-tone="{{ $n['severity'] }}" wire:key="next-{{ md5($n['key']) }}" wire:transition>
+                <div class="pos-stream-row pos-row-actions-below" data-tone="{{ $n['severity'] }}" wire:key="next-{{ md5($n['key']) }}" wire:transition>
                     <span class="pos-stream-mark" aria-hidden="true"></span>
                     <div class="pos-stream-body">
                         <p class="pos-stream-title">{{ $n['title'] }}</p>
@@ -17,5 +18,6 @@
                 </div>
             @endforeach
         </div>
+        </x-pos.phone-cap>
     </x-pos.section>
 @endif

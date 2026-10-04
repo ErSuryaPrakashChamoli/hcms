@@ -1,6 +1,7 @@
 {{-- UX.16: your own requests and where each one stands (leave, attendance corrections, HR requests, letters). --}}
 @if (($h['requests'] ?? []) !== [])
     <x-pos.section title="My requests" :count="count($h['requests'])" :link="\App\Filament\Pages\MyWork::getUrl(['tab' => 'waiting'])" link-label="All requests">
+        <x-pos.phone-cap :total="count($h['requests'])">
         <div class="pos-panel pos-stream">
             @foreach ($h['requests'] as $r)
                 <div class="pos-stream-row" data-tone="info" wire:key="req-{{ md5($r['key']) }}">
@@ -15,5 +16,6 @@
                 </div>
             @endforeach
         </div>
+        </x-pos.phone-cap>
     </x-pos.section>
 @endif

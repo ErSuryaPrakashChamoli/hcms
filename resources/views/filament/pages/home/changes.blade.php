@@ -6,6 +6,7 @@
         @if ($c['count'] === 0)
             <x-pos.state variant="caught-up" size="inline" :title="$c['since'] ? 'Nothing changed since your last visit.' : 'Nothing changed in the last seven days.'" why="Joiners, moves, reporting changes, exits and announcements you can see appear here." />
         @else
+            <x-pos.phone-cap :total="$c['items']->count()">
             <div class="pos-panel pos-stream">
                 @foreach ($c['items'] as $item)
                     <button type="button" class="pos-stream-row" data-tone="{{ $item['tone'] === 'primary' ? 'info' : $item['tone'] }}" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'change', id: @js($item['id']) })">
@@ -21,6 +22,7 @@
                     <div class="pos-stream-more"><a href="{{ \App\Filament\Pages\ChangeIntelligencePage::getUrl() }}" wire:navigate class="pos-link">All {{ $c['count'] }} changes</a></div>
                 @endif
             </div>
+            </x-pos.phone-cap>
         @endif
     </x-pos.section>
 @endif

@@ -4,6 +4,7 @@
         @if ($h['decisions']->isEmpty())
             <x-pos.state variant="caught-up" size="inline" title="No decisions are waiting for you." why="Leave, attendance corrections, pay changes, letters and workflow steps that need you will appear here first." />
         @else
+            <x-pos.phone-cap :total="$h['decisions']->count()">
             <div class="pos-panel pos-stream">
                 @foreach ($h['decisions'] as $item)
                     @php($group = $item->group())
@@ -27,6 +28,7 @@
                     <div class="pos-stream-more"><a href="{{ \App\Filament\Pages\Approvals::getUrl() }}" wire:navigate class="pos-link">{{ $h['decision_count'] - $h['decisions']->count() }}{{ ($h['decision_more'] ?? false) ? '+' : '' }} more in the Approval Center</a></div>
                 @endif
             </div>
+            </x-pos.phone-cap>
         @endif
     </x-pos.section>
 @endif

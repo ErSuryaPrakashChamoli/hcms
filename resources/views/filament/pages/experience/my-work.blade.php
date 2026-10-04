@@ -32,7 +32,8 @@
     @endphp
 
     <div class="pos-ws" x-data="posListNav('.pos-work-row')" x-on:keydown.window="handle($event)">
-        <nav class="pos-lens" aria-label="Show">
+        {{-- UX.17: one scrolling row of filters on phones (they wrapped to three rows); the chosen one scrolls into sight --}}
+        <nav class="pos-lens pos-lens-scroll" aria-label="Show" x-data x-init="$el.querySelector('[aria-pressed=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })">
             @foreach (\App\Filament\Pages\MyWork::FILTERS as $key => $label)
                 <button type="button" class="pos-chip" aria-pressed="{{ $filter === $key ? 'true' : 'false' }}" wire:click="setFilter('{{ $key }}')">
                     {{ $label }}@if (($counts[$key] ?? 0) > 0)<span class="pos-count">{{ $counts[$key] }}</span>@endif

@@ -51,7 +51,8 @@
                     @elseif ($this->requestLeaveAction->isVisible() && $h['lens'] === 'employee')
                         <button type="button" wire:click="mountAction('requestLeave')" class="pos-btn pos-btn-primary" data-pos-action="request_leave_header">Request leave</button>
                     @endif
-                    <button type="button" class="pos-btn pos-btn-secondary" x-data x-on:click="$dispatch('pos-command-open', { mode: 'actions' })">
+                    {{-- UX.17: phones and tablets start something from the bar's Actions button, so this one shows with the rail only --}}
+                    <button type="button" class="pos-btn pos-btn-secondary pos-with-rail" x-data x-on:click="$dispatch('pos-command-open', { mode: 'actions' })">
                         <x-filament::icon icon="heroicon-m-plus" class="size-4" /> Start something
                     </button>
                 </div>
@@ -59,7 +60,8 @@
 
             {{-- UX.16: one chip per experience the person holds (HR admin and system admin are one Administration view) --}}
             @if (count($h['experiences']) > 1)
-                <div class="pos-lens -mt-4" role="tablist" aria-label="View Home as">
+                {{-- UX.17: one scrolling row on phones (it wrapped to three rows for administrators); the chosen view scrolls into sight --}}
+                <div class="pos-lens pos-lens-scroll -mt-4" role="tablist" aria-label="View Home as" x-data x-init="$el.querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })">
                     <span class="pos-meta">View as</span>
                     @foreach ($h['experiences'] as $experience => $lens)
                         <button type="button" role="tab" class="pos-lens-chip" aria-selected="{{ $h['experience'] === $experience ? 'true' : 'false' }}" wire:click="switchLens('{{ $lens }}')">{{ $experienceLabels[$experience] ?? $experience }}</button>
@@ -74,10 +76,12 @@
                     {{-- flex basis from .pos-welcome-note (wraps the buttons below the text on phones) --}}
                     <div class="min-w-0">
                         <h2 id="pos-welcome-title" class="pos-stream-title font-semibold">Welcome to PeopleOS. Your work comes to you here.</h2>
-                        <p class="pos-stream-meta">What matters is ranked here with the reason for each item. Press <span class="pos-kbd">Ctrl K</span> to find anyone or start anything, and <span class="pos-kbd">?</span> for every shortcut. Hover a name to peek; click it for more.</p>
+                        {{-- UX.17: the instructions match the device: keyboard and hover on desktop, tap on touch screens --}}
+                        <p class="pos-stream-meta pos-for-fine">What matters is ranked here with the reason for each item. Press <span class="pos-kbd">Ctrl K</span> to find anyone or start anything, and <span class="pos-kbd">?</span> for every shortcut. Hover a name to peek; click it for more.</p>
+                        <p class="pos-stream-meta pos-for-touch">What matters is ranked here, each with its reason. Search finds anyone; the + button starts anything. Tap a name for more.</p>
                     </div>
                     <div class="flex gap-2">
-                        <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" x-data x-on:click="$dispatch('pos-shortcuts')">Shortcuts</button>
+                        <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm pos-for-fine" x-data x-on:click="$dispatch('pos-shortcuts')">Shortcuts</button>
                         <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm" wire:click="dismissWelcome" x-on:click="shown = false">Got it</button>
                     </div>
                 </section>

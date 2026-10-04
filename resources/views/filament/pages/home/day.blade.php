@@ -2,6 +2,7 @@
 @php($dayRows = $h['day'] === null ? null : collect($h['day'])->reject(fn ($d) => $attention->pluck('title')->contains($d['title']))->values()->all())
 @if ($dayRows !== null)
     <x-pos.section title="Your day" :link="\App\Filament\Pages\MyWork::getUrl(['tab' => 'today'])" link-label="View all">
+        <x-pos.phone-cap :total="count($dayRows) + (($h['me'] ?? null) ? 1 : 0)">
         <div class="pos-panel pos-panel-pad">
             <div class="pos-tl">
                 @if ($h['me'] ?? null)
@@ -57,5 +58,6 @@
                 @endforelse
             </div>
         </div>
+        </x-pos.phone-cap>
     </x-pos.section>
 @endif
