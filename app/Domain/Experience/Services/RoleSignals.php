@@ -213,9 +213,11 @@ final class RoleSignals
                 'HR requests past their SLA', 'Employees are waiting longer than promised.', 'danger', $this->url(fn () => TicketResource::getUrl('index')));
         }
         if ($user->hasPermission('document.verify')) {
-            $pending = $this->safe(fn () => EmployeeDocument::query()->whereHas('employee')->where('status', 'pending')->orderBy('created_at')->get(['id', 'employee_id']), collect());
-            $first = $pending->first() ? $this->safe(fn () => Employee::query()->find($pending->first()->employee_id)) : null;
-            $add('documents_to_verify', $pending->count(), 'Documents awaiting verification', 'Uploaded documents stay unverified until someone in HR checks them.', 'warning',
+            $pending = fn () => EmployeeDocument::query()->whereHas('employee')->where('status', 'pending');
+            $count = $this->safe(fn () => $pending()->count(), 0);
+            $firstId = $count > 0 ? $this->safe(fn () => $pending()->orderBy('created_at')->value('employee_id')) : null;
+            $first = $firstId ? $this->safe(fn () => Employee::query()->find($firstId)) : null;
+            $add('documents_to_verify', $count, 'Documents awaiting verification', 'Uploaded documents stay unverified until someone in HR checks them.', 'warning',
                 $first && $user->can('view', $first) ? $this->url(fn () => EmployeeResource::getUrl('view', ['record' => $first]).'#records') : null);
         }
         if ($user->hasPermission('exit.view')) {
@@ -271,7 +273,7 @@ final class RoleSignals
         if (! $user->hasPermission('analytics.executive')) {
             return null;
         }
-        $pulse = $this->safe(fn () => app(WorkforcePulse::class)->for($user));
+        $pulse = $this->safe(fn () => app(WorkforcePulse::class)->movement($user));
         if ($pulse === null) {
             return null;
         }

@@ -67,6 +67,39 @@ final class WorkforcePulse
     }
 
     /**
+     * UX.16: only the story (headline, movement this month against last, headcount and a six-month series) for Home
+     * and My Work. The same queries and headline as for(), without the full metric set, the twelve-month series or
+     * critical skills, which only the Workforce pulse page shows.
+     *
+     * @return array{headline: string, movement: array<string, mixed>, size: array<string, mixed>}
+     */
+    public function movement(User $viewer): array
+    {
+        $now = now();
+        $thisMonth = [$now->copy()->startOfMonth(), $now->copy()->endOfDay()];
+        $lastMonth = [$now->copy()->subMonthNoOverflow()->startOfMonth(), $now->copy()->subMonthNoOverflow()->endOfMonth()];
+        $headcount = $this->metrics->headcount();
+        $headcountLast = $this->metrics->headcount($lastMonth[1]);
+        $count = fn (array $p) => [
+            'moves' => $this->positions(self::MOVES, $p)->count(),
+            'promotions' => $this->positions(['promotion'], $p)->count(),
+            'joiners' => $this->joiners($p)->count(),
+            'exits' => $this->exits($p)->count(),
+        ];
+        $mNow = $count($thisMonth);
+        $mLast = $count($lastMonth);
+        $rate = fn (array $m, int $hc) => $hc > 0 ? round(array_sum($m) / $hc * 100, 1) : null;
+        $rateNow = $rate($mNow, $headcount);
+        $rateLast = $rate($mLast, $headcountLast);
+
+        return [
+            'headline' => $this->headline($mNow, $rateNow, $rateLast),
+            'movement' => ['now' => $mNow, 'last' => $mLast, 'rate' => $rateNow, 'rate_last' => $rateLast, 'critical' => $this->safe(fn () => $this->criticalAffected($viewer), null)],
+            'size' => ['headcount' => $headcount, 'last' => $headcountLast, 'series' => $this->safe(fn () => $this->metrics->series('headcount', 6), ['labels' => [], 'series' => []])],
+        ];
+    }
+
+    /**
      * The people (or, without people access, the departments) behind one figure.
      *
      * @return array{title: string, why: string, rows: list<array{person_id: ?int, label: string, detail: ?string, date: ?CarbonInterface}>, aggregated: bool}|null
