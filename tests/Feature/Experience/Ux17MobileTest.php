@@ -239,12 +239,16 @@ it('keeps notification deep links behind each record\'s policy (field and record
 });
 
 it('keeps governance and reminder links on the phone Home openable by the person who sees them', function () {
+    $checked = 0;
     foreach ([$this->employee, $this->manager, $this->admin] as $user) {
         $html = $this->actingAs($user)->get(Home::getUrl())->assertOk()->getContent();
         preg_match_all('/<a href="(http[^"]+)" wire:navigate class="pos-btn[^"]*(?:pos-signal-link|pos-btn-secondary pos-btn-sm)"/', $html, $m);
         foreach (array_unique($m[1]) as $url) {
             $status = $this->actingAs($user)->get($url)->getStatusCode();
             expect($status)->toBeLessThan(400, "{$url} returned {$status}");
+            $checked++;
         }
     }
+    // The administrator's governance rows and the employee's reminders give real links to check.
+    expect($checked)->toBeGreaterThan(0);
 });
