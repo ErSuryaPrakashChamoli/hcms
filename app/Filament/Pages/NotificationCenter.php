@@ -8,6 +8,7 @@ use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Experience\Services\ExperiencePreferences;
+use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Experience\Support\NotificationCategories;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Letters\Models\Letter;
@@ -76,7 +77,20 @@ class NotificationCenter extends Page
     {
         $n = auth()->user()->unreadNotifications()->count();
 
-        return $n === 0 ? 'You are all caught up.' : $n.' unread. Open one to go straight to its context.';
+        if ($n === 0) {
+            return 'You are all caught up.';
+        }
+        $first = NotificationCategories::GROUPS[NotificationCategories::ROLE_ORDER[$this->experience()][0]][0] ?? null;
+
+        return $n.' unread'.($first ? ', '.mb_strtolower($first).' first for your role' : '').'. Open one to go straight to its context.';
+    }
+
+    /** UX.16: the experience that orders unread notifications (same lens as Home, including "Home opens as"). */
+    public function experience(): string
+    {
+        $user = auth()->user();
+
+        return RoleLens::experienceOf(app(RoleLens::class)->primary($user, app(ExperiencePreferences::class)->for($user)['lens'] ?? null));
     }
 
     /** @return Collection<int, array<string, mixed>> */
@@ -117,10 +131,18 @@ class NotificationCenter extends Page
     /** @return Collection<int, array<string, mixed>> */
     public function visible(): Collection
     {
+        $experience = $this->experience();
+
         return $this->items
             ->filter(fn ($i) => $this->snoozedOnly ? $i['snoozed_until'] !== null : $i['snoozed_until'] === null)
             ->when($this->group !== 'all', fn ($c) => $c->where('group', $this->group))
             ->when($this->unread, fn ($c) => $c->where('read', false))
+            // UX.16: unread first, in the order that matters for the person's role, newest first within; then read, newest first.
+            ->sortBy([
+                fn ($a, $b) => (int) $a['read'] <=> (int) $b['read'],
+                fn ($a, $b) => $a['read'] ? 0 : NotificationCategories::weight($experience, $a['group']) <=> NotificationCategories::weight($experience, $b['group']),
+                fn ($a, $b) => $b['at'] <=> $a['at'],
+            ])
             ->take($this->limit)->values();
     }
 
