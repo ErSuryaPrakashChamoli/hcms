@@ -42,7 +42,7 @@ Companion documents:
 
 ## 3. Final commit
 
-The commit that adds this report ("docs: complete UX16 role refinement report"); code complete at `f560029`. 15 commits in UX.16.
+The last report correction ("docs: align the UX16 handoff figures with the measurements"); code complete at `f560029`, report and evidence in `029392e`. 16 commits in UX.16.
 
 | Commit | Change |
 |---|---|
@@ -60,7 +60,8 @@ The commit that adds this report ("docs: complete UX16 role refinement report");
 | `62a7b31` | test: add role experience and role journey coverage (UX.16.22, 16.32) |
 | `65f854d` | perf: keep role signals cheap at enterprise volume (UX.16.27) |
 | `f560029` | perf: trim the HR and executive leads in My Work (UX.16.27) |
-| (this report) | docs: complete UX16 role refinement report |
+| `029392e` | docs: complete UX16 role refinement report (UX.16.33-16.36) |
+| (this correction) | docs: align the UX16 handoff figures with the measurements |
 
 ## 4. Role experience matrix
 
@@ -480,9 +481,9 @@ Out of 10, before → after, judged from the captures, the zero-training runs an
 - the role palette on touch.
 
 **UX.18 (performance, accessibility, visual regression):**
-- HR Home at 10k: about 500 queries and 1.7 s, pre-existing (operations counts and decision sources);
+- HR Home at 10k: about 500 queries and 1.6 s, pre-existing (operations counts and decision sources);
 - the People directory for scoped HR and payroll: about 1.1 s of database time at 10k, pre-existing (filter options);
-- HR My Work +0.1 s for the operations lead;
+- My Work for managers, executives and administrators is about 0.1 s slower for the role leads (HR +0.04 s, within noise);
 - the intermittent Firefox `[object Object]` from Filament's aborted notification lazy load;
 - the full axe audit beyond the targeted UX.16 set;
 - visual regression automation for the 145 role screenshots;
