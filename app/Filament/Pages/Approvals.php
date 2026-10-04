@@ -52,11 +52,31 @@ class Approvals extends Page
             || $user->hasPermission('attendance.approve') || $user->hasPermission('compensation.approve') || $user->hasPermission('compensation.review') || $user->hasPermission('letter.issue');
     }
 
-    public function getSubheading(): ?string
+    /** UX.15: the workspace says what needs the person, not what the page is. */
+    public function getHeading(): string
     {
         $count = $this->pendingCount;
 
-        return $count === 0 ? 'Nothing is waiting for your decision.' : $count.' '.($count === 1 ? 'decision is' : 'decisions are').' waiting for you. Context comes with each one.';
+        return match (true) {
+            $count === 0 => 'No decisions need you',
+            $count === 1 => '1 decision needs you',
+            default => $count.' decisions need you',
+        };
+    }
+
+    public function getSubheading(): ?string
+    {
+        $g = $this->groups;
+        if ($this->pendingCount === 0) {
+            return 'You’re all caught up. Nothing is waiting for your decision.';
+        }
+        $parts = array_filter([
+            $g['urgent']->count() > 0 ? $g['urgent']->count().' urgent' : null,
+            $g['today']->count() > 0 ? $g['today']->count().' this week' : null,
+            $g['upcoming']->count() > 0 ? $g['upcoming']->count().' later' : null,
+        ]);
+
+        return ucfirst(implode(' · ', $parts)).'. Most urgent first; the context comes with each decision.';
     }
 
     #[Computed]

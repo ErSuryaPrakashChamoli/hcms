@@ -2,7 +2,13 @@
 @php
     /** @var \App\Domain\Experience\Support\ApprovalItem $item */
     $group = $item->group();
+    $requester = $item->requestedBy;
 @endphp
+{{--
+    PeopleApproval: one decision with its context. Person, request, reason, impact, effective date and the
+    Before → After are beside the decision; deciding confirms in place with a note (a reason is required to
+    reject or send back). Decisions go through ApprovalDecisions to the owning domain service.
+--}}
 <article {{ $attributes->class(['pos-approval', 'pos-card']) }} data-approval-id="{{ $item->id }}" data-group="{{ $group }}" tabindex="-1"
     x-data="{ mode: null, note: '' }"
     x-on:pos-approval-shortcut.window="if ($event.detail.id === @js($item->id)) { mode = $event.detail.decision; $nextTick(() => $refs.note?.focus()) }"
@@ -14,27 +20,21 @@
         @elseif ($group === 'urgent')
             <x-pos.status tone="warning" label="Urgent" />
         @endif
-        @if ($item->effectiveOn)
-            <span class="pos-caption pos-muted ms-auto">Effective {{ $item->effectiveOn->format('D, d M') }}</span>
+        @if ($item->effectiveOn && ($compact || $item->changes === []))
+            <span class="pos-change-when ms-auto"><x-filament::icon icon="heroicon-m-calendar" class="size-3.5" />Effective {{ $item->effectiveOn->format('D, j M') }}</span>
         @elseif ($item->dueAt)
-            <span class="pos-caption pos-muted ms-auto">Due {{ $item->dueAt->diffForHumans() }}</span>
+            <span class="pos-meta ms-auto">Due {{ $item->dueAt->diffForHumans() }}</span>
         @endif
     </header>
 
-    <h3 id="pos-appr-{{ md5($item->id) }}" class="pos-h3 mt-2">{{ $item->title }}</h3>
+    <h3 id="pos-appr-{{ md5($item->id) }}" class="{{ $compact ? 'pos-h3' : 'pos-section-title' }} mt-3">{{ $item->title }}</h3>
 
     <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
         @if ($item->subject)
-            @if ($item->subjectEmployeeId)
-                <button type="button" class="pos-person-inline" x-on:click="$dispatch('pos-drawer-open', { type: 'person', id: {{ $item->subjectEmployeeId }} })">
-                    <x-pos.avatar :name="$item->subject" size="xs" /><span>{{ $item->subject }}</span>
-                </button>
-            @else
-                <span class="pos-body-sm">{{ $item->subject }}</span>
-            @endif
+            <x-pos.person :id="$item->subjectEmployeeId" :name="$item->subject" size="sm" />
         @endif
-        @if ($item->requestedBy || $item->requestedAt)
-            <span class="pos-caption pos-muted">Requested{{ $item->requestedBy ? ' by '.$item->requestedBy : '' }}{{ $item->requestedAt ? ' · '.$item->requestedAt->diffForHumans() : '' }}</span>
+        @if ($requester || $item->requestedAt)
+            <span class="pos-meta">Requested{{ $requester ? ' by '.$requester : '' }}{{ $item->requestedAt ? ' · '.$item->requestedAt->diffForHumans() : '' }}</span>
         @endif
     </div>
 
@@ -43,16 +43,20 @@
     @endif
 
     @if (! $compact)
-        @if ($item->impact)
-            <p class="pos-body-sm mt-3 flex items-start gap-2"><x-filament::icon icon="heroicon-m-light-bulb" class="mt-0.5 size-4 shrink-0 text-pos-primary" /><span>{{ $item->impact }}</span></p>
+        @if ($item->impact || $item->facts !== [])
+            <ul class="pos-decision-context mt-4" aria-label="Context">
+                @if ($item->impact)
+                    <li><x-filament::icon icon="heroicon-m-light-bulb" class="size-4" /><span>{{ $item->impact }}</span></li>
+                @endif
+                @foreach ($item->facts as $fact)
+                    <li><x-filament::icon icon="heroicon-m-information-circle" class="size-4" /><span>{{ $fact }}</span></li>
+                @endforeach
+            </ul>
         @endif
-        @foreach ($item->facts as $fact)
-            <p class="pos-caption pos-muted mt-1">{{ $fact }}</p>
-        @endforeach
-        <x-pos.before-after :changes="$item->changes" class="mt-3" />
+        <x-pos.change :changes="$item->changes" :effective="$item->effectiveOn" class="mt-4" />
     @endif
 
-    <footer class="mt-4">
+    <footer class="mt-5">
         <div class="flex flex-wrap items-center gap-2" x-show="mode === null">
             @foreach (['approve' => 'pos-btn-success', 'complete' => 'pos-btn-success', 'reject' => 'pos-btn-secondary', 'request_change' => 'pos-btn-ghost'] as $decision => $style)
                 @if ($item->can($decision))
@@ -60,9 +64,12 @@
                 @endif
             @endforeach
             @if ($item->url)
-                <a href="{{ $item->url }}" wire:navigate class="pos-link ms-auto">Open record</a>
+                <a href="{{ $item->url }}" wire:navigate class="pos-link ms-auto">View details</a>
             @endif
         </div>
+        @if (! $compact && ! $item->can('request_change') && ($item->can('approve') || $item->can('reject')))
+            <p class="pos-meta mt-3" x-show="mode === null">Need more information? This kind of request can’t be sent back in PeopleOS. Reject with a reason the requester will see, or ask {{ $requester ?? 'them' }} directly first.</p>
+        @endif
         <form class="pos-decide" x-show="mode !== null" x-cloak x-on:submit.prevent="$wire.decide(@js($item->id), mode, note)" x-on:keydown.escape.stop="mode = null">
             <label class="pos-label" :for="'note-{{ md5($item->id) }}'">
                 <span x-text="mode === 'approve' || mode === 'complete' ? 'Note (optional)' : 'Reason (required, the requester sees it)'"></span>
