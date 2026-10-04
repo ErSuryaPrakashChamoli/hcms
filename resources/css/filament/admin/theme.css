@@ -1987,3 +1987,12 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-row-actions-below { grid-template-columns: auto minmax(0, 1fr); }
     .pos-row-actions-below > .pos-stream-end { grid-column: 2; justify-self: start; }
 }
+
+/* Employee 360 Now: on desktop the aside (viewer panel first) spans both rows beside Now and Recently; on narrower
+   screens the same order reads Now → viewer panel → intelligence → snapshot → Recently */
+@media (min-width: 1280px) {
+    .pos-360-now { grid-template-rows: auto 1fr; }
+    .pos-360-now > .pos-ws-main { grid-column: 1; }
+    .pos-360-now > .pos-ws-main:last-child { grid-row: 2; }
+    .pos-360-now > .pos-ws-side { grid-column: 2; grid-row: 1 / span 2; }
+}

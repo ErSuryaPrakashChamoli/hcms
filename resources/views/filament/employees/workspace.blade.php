@@ -24,7 +24,12 @@
     @php($line = collect($rel['up'])->firstWhere('type', 'line'))
     <section id="now" class="pos-360-sec" aria-labelledby="now-title" x-data x-show="$store.pos360 ? $store.pos360.view === 'now' : true">
         <h2 id="now-title" class="sr-only">Now</h2>
-        <div class="pos-ws-cols">
+        {{--
+            UX.17: one order for every size. On phones and tablets: Now, then what this viewer is here for (the UX.16
+            panel, which used to sit two screens down), intelligence and the snapshot, then Recently. On desktop the
+            aside spans both rows beside Now and Recently, as before.
+        --}}
+        <div class="pos-ws-cols pos-360-now">
             <div class="pos-ws-main">
                 {{-- Now and next: where this person is today and what happens next, in one place --}}
                 <div class="pos-panel pos-panel-pad grid gap-4">
@@ -66,27 +71,8 @@
                         @endif
                     </div>
                 </div>
-
-                {{-- The latest changes; the full story is one step away in Journey --}}
-                <x-pos.section title="Recently" :count="count($w['changes'] ?? []) ?: null">
-                    <x-slot:actions><a href="#journey" class="pos-link">Full journey <span aria-hidden="true">→</span></a></x-slot:actions>
-                    @if (($w['changes'] ?? []) === [])
-                        <x-pos.state variant="empty" size="inline" title="No recent changes you can see." />
-                    @else
-                        <div class="pos-panel pos-stream">
-                            @foreach (array_slice($w['changes'], 0, 3) as $c)
-                                <div class="pos-stream-row" data-tone="{{ $toneOf[$c['category']] ?? 'info' }}">
-                                    <span class="pos-stream-mark" aria-hidden="true"></span>
-                                    <div class="pos-stream-body"><p class="pos-stream-title">{{ $c['title'] }}</p><p class="pos-stream-meta">{{ $c['label'] }} · {{ $c['date']?->format('j M Y') }}</p></div>
-                                    <span></span>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </x-pos.section>
             </div>
             <aside class="pos-ws-side" aria-label="People snapshot">
-                <x-pos.intelligence :intel="method_exists($getLivewire(), 'intelligence') ? $getLivewire()->intelligence : null" />
                 {{-- UX.16: what this viewer is here for (self, manager, HR or administrator), from PersonWorkspace::viewer --}}
                 @if ($v = ($w['viewer'] ?? null))
                     <x-pos.section :title="$v['title']">
@@ -109,6 +95,7 @@
                         </div>
                     </x-pos.section>
                 @endif
+                <x-pos.intelligence :intel="method_exists($getLivewire(), 'intelligence') ? $getLivewire()->intelligence : null" />
                 <x-pos.section title="People snapshot">
                     <x-slot:actions><a href="#work" class="pos-link">Work and relationships <span aria-hidden="true">→</span></a></x-slot:actions>
                     <dl class="pos-panel pos-panel-pad pos-facts">
@@ -122,6 +109,25 @@
                     </dl>
                 </x-pos.section>
             </aside>
+            <div class="pos-ws-main">
+                {{-- The latest changes; the full story is one step away in Journey --}}
+                <x-pos.section title="Recently" :count="count($w['changes'] ?? []) ?: null">
+                    <x-slot:actions><a href="#journey" class="pos-link">Full journey <span aria-hidden="true">→</span></a></x-slot:actions>
+                    @if (($w['changes'] ?? []) === [])
+                        <x-pos.state variant="empty" size="inline" title="No recent changes you can see." />
+                    @else
+                        <div class="pos-panel pos-stream">
+                            @foreach (array_slice($w['changes'], 0, 3) as $c)
+                                <div class="pos-stream-row" data-tone="{{ $toneOf[$c['category']] ?? 'info' }}">
+                                    <span class="pos-stream-mark" aria-hidden="true"></span>
+                                    <div class="pos-stream-body"><p class="pos-stream-title">{{ $c['title'] }}</p><p class="pos-stream-meta">{{ $c['label'] }} · {{ $c['date']?->format('j M Y') }}</p></div>
+                                    <span></span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </x-pos.section>
+            </div>
         </div>
     </section>
 
