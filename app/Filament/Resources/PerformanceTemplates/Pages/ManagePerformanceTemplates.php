@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\PerformanceTemplates\Pages;
 
 use App\Filament\Resources\PerformanceTemplates\PerformanceTemplateResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManagePerformanceTemplates extends ManageRecords
+class ManagePerformanceTemplates extends PeopleManageRecords
 {
     protected static string $resource = PerformanceTemplateResource::class;
 

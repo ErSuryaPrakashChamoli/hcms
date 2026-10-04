@@ -5,12 +5,12 @@ namespace App\Filament\Resources\Articles\Pages;
 use App\Domain\Knowledge\Models\ArticleRead;
 use App\Domain\Knowledge\Services\KnowledgeBase;
 use App\Filament\Resources\Articles\ArticleResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use App\Filament\Support\ServiceDeskActions;
 use Filament\Actions\Action;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 
-class ViewArticle extends ViewRecord
+class ViewArticle extends PeopleViewRecord
 {
     protected static string $resource = ArticleResource::class;
 

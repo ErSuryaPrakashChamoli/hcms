@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\SsoConnections\Pages;
 
 use App\Filament\Resources\SsoConnections\SsoConnectionResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateSsoConnection extends CreateRecord
+class CreateSsoConnection extends PeopleCreateRecord
 {
     protected static string $resource = SsoConnectionResource::class;
 

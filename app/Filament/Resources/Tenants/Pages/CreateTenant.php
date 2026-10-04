@@ -5,10 +5,10 @@ namespace App\Filament\Resources\Tenants\Pages;
 use App\Domain\Platform\Actions\ProvisionTenantAction;
 use App\Filament\Resources\Tenants\TenantResource;
 use App\Filament\Support\AuditReasonField;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class CreateTenant extends CreateRecord
+class CreateTenant extends PeopleCreateRecord
 {
     protected static string $resource = TenantResource::class;
 

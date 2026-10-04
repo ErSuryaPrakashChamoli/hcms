@@ -4,10 +4,10 @@ namespace App\Filament\Resources\Locations\Pages;
 
 use App\Filament\Resources\Locations\LocationResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditLocation extends EditRecord
+class EditLocation extends PeopleEditRecord
 {
     use GovernedEdit;
 

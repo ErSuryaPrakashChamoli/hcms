@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\RoleRequirements\Pages;
 
 use App\Filament\Resources\RoleRequirements\RoleRequirementResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageRoleRequirements extends ManageRecords
+class ManageRoleRequirements extends PeopleManageRecords
 {
     protected static string $resource = RoleRequirementResource::class;
 

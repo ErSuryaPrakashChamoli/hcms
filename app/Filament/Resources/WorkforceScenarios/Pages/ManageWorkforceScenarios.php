@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\WorkforceScenarios\Pages;
 
 use App\Filament\Resources\WorkforceScenarios\WorkforceScenarioResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageWorkforceScenarios extends ManageRecords
+class ManageWorkforceScenarios extends PeopleManageRecords
 {
     protected static string $resource = WorkforceScenarioResource::class;
 

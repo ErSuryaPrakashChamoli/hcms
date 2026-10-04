@@ -5,9 +5,9 @@ namespace App\Filament\Resources\Payslips\Pages;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Filament\Resources\Payslips\PayslipResource;
-use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Support\Pages\PeopleViewRecord;
 
-class ViewPayslip extends ViewRecord
+class ViewPayslip extends PeopleViewRecord
 {
     protected static string $resource = PayslipResource::class;
 

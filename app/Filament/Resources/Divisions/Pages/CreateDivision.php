@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Divisions\Pages;
 
 use App\Filament\Resources\Divisions\DivisionResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateDivision extends CreateRecord
+class CreateDivision extends PeopleCreateRecord
 {
     protected static string $resource = DivisionResource::class;
 }

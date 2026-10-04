@@ -4,10 +4,10 @@ namespace App\Filament\Resources\Shifts\Pages;
 
 use App\Filament\Resources\Shifts\ShiftResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditShift extends EditRecord
+class EditShift extends PeopleEditRecord
 {
     use GovernedEdit;
 

@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\NotificationDeliveries\Pages;
 
 use App\Filament\Resources\NotificationDeliveries\NotificationDeliveryResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListNotificationDeliveries extends ListRecords
+class ListNotificationDeliveries extends PeopleListRecords
 {
     protected static string $resource = NotificationDeliveryResource::class;
 }

@@ -21,8 +21,17 @@ use App\Domain\Learning\Models\LearningInstructor;
 use App\Domain\Leave\Services\AttendanceLeaveDayResolver;
 use App\Domain\People\Models\Person;
 use App\Domain\Platform\Models\Tenant;
+use App\Filament\Support\Pages\PeopleCreateRecord;
+use App\Filament\Support\Pages\PeopleEditRecord;
+use App\Filament\Support\Pages\PeopleListRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use App\Support\Tenancy\BelongsToTenant;
 use App\Support\Tenancy\Jobs\TenantAwareJob;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
@@ -311,4 +320,25 @@ it('makes payroll consume attendance and leave outputs, never their internals, a
         // No statutory rate literals in the engine: they live in versioned compliance rules.
         expect((bool) preg_match('/\\b0\\.(12|0075|0325|0833)\\b|\\b(15000|21000)\\b/', $source))->toBeFalse("{$file} must not embed statutory rates");
     }
+});
+
+/*
+ | UX.15 closure: every resource page is composed from the PeopleOS experience layer (context, lens, review,
+ | record context), never a bare Filament page.
+ */
+it('builds every resource page on a PeopleOS base page', function () {
+    $bases = [
+        PeopleListRecords::class, PeopleManageRecords::class,
+        PeopleCreateRecord::class, PeopleEditRecord::class,
+        PeopleViewRecord::class,
+    ];
+    $offenders = collect(glob(app_path('Filament/Resources/*/Pages/*.php')))
+        ->map(fn (string $path) => 'App\\'.str_replace('/', '\\', Str::of($path)->after(app_path().'/')->before('.php')->toString()))
+        ->filter(fn (string $class) => class_exists($class) && ! (new ReflectionClass($class))->isAbstract())
+        ->filter(fn (string $class) => is_subclass_of($class, ListRecords::class) || is_subclass_of($class, CreateRecord::class)
+            || is_subclass_of($class, EditRecord::class) || is_subclass_of($class, ViewRecord::class))
+        ->reject(fn (string $class) => collect($bases)->contains(fn (string $base) => is_subclass_of($class, $base)))
+        ->values()->all();
+
+    expect($offenders)->toBe([]);
 });

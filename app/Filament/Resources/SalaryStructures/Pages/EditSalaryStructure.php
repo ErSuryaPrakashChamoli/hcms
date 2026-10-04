@@ -4,9 +4,9 @@ namespace App\Filament\Resources\SalaryStructures\Pages;
 
 use App\Filament\Resources\SalaryStructures\SalaryStructureResource;
 use App\Filament\Support\GovernedEdit;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Support\Pages\PeopleEditRecord;
 
-class EditSalaryStructure extends EditRecord
+class EditSalaryStructure extends PeopleEditRecord
 {
     use GovernedEdit;
 

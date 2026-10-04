@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\WorkSchedules\Pages;
 
 use App\Filament\Resources\WorkSchedules\WorkScheduleResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListWorkSchedules extends ListRecords
+class ListWorkSchedules extends PeopleListRecords
 {
     protected static string $resource = WorkScheduleResource::class;
 

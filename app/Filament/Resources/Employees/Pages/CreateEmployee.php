@@ -23,11 +23,11 @@ use App\Domain\People\Services\PersonMatcher;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Resources\Pages\CreateRecord\Concerns\HasWizard;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Get;
@@ -36,7 +36,7 @@ use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 
 /** Hire wizard: Person → Employment → Position → Manager. Lands in HireEmployeeAction. */
-class CreateEmployee extends CreateRecord
+class CreateEmployee extends PeopleCreateRecord
 {
     use HasWizard;
 

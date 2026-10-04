@@ -5,9 +5,9 @@ namespace App\Filament\Resources\Grievances\Pages;
 use App\Domain\Grievance\Services\Grievances;
 use App\Filament\Resources\Grievances\GrievanceResource;
 use App\Filament\Support\GrievanceActions;
-use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Support\Pages\PeopleViewRecord;
 
-class ViewGrievance extends ViewRecord
+class ViewGrievance extends PeopleViewRecord
 {
     protected static string $resource = GrievanceResource::class;
 

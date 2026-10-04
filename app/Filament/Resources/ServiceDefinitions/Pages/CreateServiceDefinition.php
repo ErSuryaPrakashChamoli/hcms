@@ -4,13 +4,13 @@ namespace App\Filament\Resources\ServiceDefinitions\Pages;
 
 use App\Domain\ServiceDesk\Services\ServiceCatalogue;
 use App\Filament\Resources\ServiceDefinitions\ServiceDefinitionResource;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\ServiceDeskActions;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
-class CreateServiceDefinition extends CreateRecord
+class CreateServiceDefinition extends PeopleCreateRecord
 {
     protected static string $resource = ServiceDefinitionResource::class;
 

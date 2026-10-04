@@ -30,6 +30,7 @@ use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\BeforeAfterPreview;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use App\Filament\Support\ProfileChangeActions;
 use App\Filament\Support\SavesCustomFields;
 use App\Filament\Support\ServiceDeskActions;
@@ -44,7 +45,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Components\Wizard\Step;
@@ -60,7 +60,7 @@ use Livewire\Attributes\Computed;
  * Snapshot / Journey / 360 overview sections present existing data; header actions are the existing
  * life-event entry points, grouped as Message · Request · Action · More.
  */
-class ViewEmployee extends ViewRecord
+class ViewEmployee extends PeopleViewRecord
 {
     use SavesCustomFields;
 

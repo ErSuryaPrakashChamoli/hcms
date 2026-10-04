@@ -3,12 +3,12 @@
 namespace App\Filament\Resources\EngagementCampaigns\Pages;
 
 use App\Filament\Resources\EngagementCampaigns\EngagementCampaignResource;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\ServiceDeskActions;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 
-class EditEngagementCampaign extends EditRecord
+class EditEngagementCampaign extends PeopleEditRecord
 {
     protected static string $resource = EngagementCampaignResource::class;
 

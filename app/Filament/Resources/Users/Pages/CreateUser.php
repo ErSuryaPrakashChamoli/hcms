@@ -4,10 +4,10 @@ namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\Concerns\SavesAccessScope;
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Support\Tenancy\TenantContext;
-use Filament\Resources\Pages\CreateRecord;
 
-class CreateUser extends CreateRecord
+class CreateUser extends PeopleCreateRecord
 {
     use SavesAccessScope;
 

@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Teams\Pages;
 
 use App\Filament\Resources\Teams\TeamResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListTeams extends ListRecords
+class ListTeams extends PeopleListRecords
 {
     protected static string $resource = TeamResource::class;
 

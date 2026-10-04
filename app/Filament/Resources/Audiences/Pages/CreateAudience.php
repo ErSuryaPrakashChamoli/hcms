@@ -5,13 +5,13 @@ namespace App\Filament\Resources\Audiences\Pages;
 use App\Domain\Engagement\Services\Audiences;
 use App\Filament\Resources\Audiences\AudienceResource;
 use App\Filament\Support\AudienceCriteriaSchema;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\ServiceDeskActions;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
-class CreateAudience extends CreateRecord
+class CreateAudience extends PeopleCreateRecord
 {
     protected static string $resource = AudienceResource::class;
 

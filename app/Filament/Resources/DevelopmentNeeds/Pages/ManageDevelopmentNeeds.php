@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\DevelopmentNeeds\Pages;
 
 use App\Filament\Resources\DevelopmentNeeds\DevelopmentNeedResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageDevelopmentNeeds extends ManageRecords
+class ManageDevelopmentNeeds extends PeopleManageRecords
 {
     protected static string $resource = DevelopmentNeedResource::class;
 

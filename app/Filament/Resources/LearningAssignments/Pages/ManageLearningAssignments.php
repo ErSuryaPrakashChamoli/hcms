@@ -4,10 +4,10 @@ namespace App\Filament\Resources\LearningAssignments\Pages;
 
 use App\Domain\Learning\Services\Learning;
 use App\Filament\Resources\LearningAssignments\LearningAssignmentResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageLearningAssignments extends ManageRecords
+class ManageLearningAssignments extends PeopleManageRecords
 {
     protected static string $resource = LearningAssignmentResource::class;
 

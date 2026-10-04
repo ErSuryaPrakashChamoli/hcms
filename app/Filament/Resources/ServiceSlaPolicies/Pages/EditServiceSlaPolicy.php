@@ -3,13 +3,13 @@
 namespace App\Filament\Resources\ServiceSlaPolicies\Pages;
 
 use App\Filament\Resources\ServiceSlaPolicies\ServiceSlaPolicyResource;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\ServiceDeskActions;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
-class EditServiceSlaPolicy extends EditRecord
+class EditServiceSlaPolicy extends PeopleEditRecord
 {
     protected static string $resource = ServiceSlaPolicyResource::class;
 

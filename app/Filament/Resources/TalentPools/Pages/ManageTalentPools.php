@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\TalentPools\Pages;
 
 use App\Filament\Resources\TalentPools\TalentPoolResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageTalentPools extends ManageRecords
+class ManageTalentPools extends PeopleManageRecords
 {
     protected static string $resource = TalentPoolResource::class;
 

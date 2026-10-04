@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\InboundEvents\Pages;
 
 use App\Filament\Resources\InboundEvents\InboundEventResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListInboundEvents extends ListRecords
+class ListInboundEvents extends PeopleListRecords
 {
     protected static string $resource = InboundEventResource::class;
 }

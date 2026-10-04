@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Audiences\Pages;
 
 use App\Filament\Resources\Audiences\AudienceResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListAudiences extends ListRecords
+class ListAudiences extends PeopleListRecords
 {
     protected static string $resource = AudienceResource::class;
 

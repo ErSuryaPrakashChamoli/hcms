@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\OneOnOnes\Pages;
 
 use App\Filament\Resources\OneOnOnes\OneOnOneResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageOneOnOnes extends ManageRecords
+class ManageOneOnOnes extends PeopleManageRecords
 {
     protected static string $resource = OneOnOneResource::class;
 

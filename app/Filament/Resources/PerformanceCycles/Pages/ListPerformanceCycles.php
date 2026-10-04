@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\PerformanceCycles\Pages;
 
 use App\Filament\Resources\PerformanceCycles\PerformanceCycleResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListPerformanceCycles extends ListRecords
+class ListPerformanceCycles extends PeopleListRecords
 {
     protected static string $resource = PerformanceCycleResource::class;
 

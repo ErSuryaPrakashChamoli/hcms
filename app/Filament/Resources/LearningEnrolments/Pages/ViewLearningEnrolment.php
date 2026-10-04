@@ -6,9 +6,9 @@ use App\Domain\Learning\Policies\EnrolmentPolicy;
 use App\Domain\Learning\Services\Learning;
 use App\Filament\Resources\LearningEnrolments\LearningEnrolmentResource;
 use App\Filament\Support\LearningActions;
-use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Support\Pages\PeopleViewRecord;
 
-class ViewLearningEnrolment extends ViewRecord
+class ViewLearningEnrolment extends PeopleViewRecord
 {
     protected static string $resource = LearningEnrolmentResource::class;
 

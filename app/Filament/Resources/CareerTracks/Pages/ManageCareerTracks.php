@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\CareerTracks\Pages;
 
 use App\Filament\Resources\CareerTracks\CareerTrackResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageCareerTracks extends ManageRecords
+class ManageCareerTracks extends PeopleManageRecords
 {
     protected static string $resource = CareerTrackResource::class;
 

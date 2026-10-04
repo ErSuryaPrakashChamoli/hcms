@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\ComplianceRules\Pages;
 
 use App\Filament\Resources\ComplianceRules\ComplianceRuleResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListComplianceRules extends ListRecords
+class ListComplianceRules extends PeopleListRecords
 {
     protected static string $resource = ComplianceRuleResource::class;
 }

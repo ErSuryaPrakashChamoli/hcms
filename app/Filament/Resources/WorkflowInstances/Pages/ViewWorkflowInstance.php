@@ -6,13 +6,13 @@ use App\Domain\Workflow\Exceptions\WorkflowException;
 use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Domain\Workflow\Services\WorkflowEngine;
 use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 
-class ViewWorkflowInstance extends ViewRecord
+class ViewWorkflowInstance extends PeopleViewRecord
 {
     protected static string $resource = WorkflowInstanceResource::class;
 

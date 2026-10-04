@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Roles\Pages;
 
 use App\Filament\Resources\Roles\RoleResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateRole extends CreateRecord
+class CreateRole extends PeopleCreateRecord
 {
     protected static string $resource = RoleResource::class;
 }

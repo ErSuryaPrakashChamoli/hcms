@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\PerformanceCheckIns\Pages;
 
 use App\Filament\Resources\PerformanceCheckIns\PerformanceCheckInResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManagePerformanceCheckIns extends ManageRecords
+class ManagePerformanceCheckIns extends PeopleManageRecords
 {
     protected static string $resource = PerformanceCheckInResource::class;
 

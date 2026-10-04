@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\OnboardingTemplates\Pages;
 
 use App\Filament\Resources\OnboardingTemplates\OnboardingTemplateResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateOnboardingTemplate extends CreateRecord
+class CreateOnboardingTemplate extends PeopleCreateRecord
 {
     protected static string $resource = OnboardingTemplateResource::class;
 

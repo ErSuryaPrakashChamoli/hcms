@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\CriticalPositions\Pages;
 
 use App\Filament\Resources\CriticalPositions\CriticalPositionResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageCriticalPositions extends ManageRecords
+class ManageCriticalPositions extends PeopleManageRecords
 {
     protected static string $resource = CriticalPositionResource::class;
 

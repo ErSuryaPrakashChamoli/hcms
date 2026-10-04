@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Designations\Pages;
 
 use App\Filament\Resources\Designations\DesignationResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListDesignations extends ListRecords
+class ListDesignations extends PeopleListRecords
 {
     protected static string $resource = DesignationResource::class;
 

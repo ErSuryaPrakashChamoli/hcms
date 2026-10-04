@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\TicketCategories\Pages;
 
 use App\Filament\Resources\TicketCategories\TicketCategoryResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageTicketCategories extends ManageRecords
+class ManageTicketCategories extends PeopleManageRecords
 {
     protected static string $resource = TicketCategoryResource::class;
 

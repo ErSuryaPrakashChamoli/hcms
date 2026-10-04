@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\SkillScales\Pages;
 
 use App\Filament\Resources\SkillScales\SkillScaleResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageSkillScales extends ManageRecords
+class ManageSkillScales extends PeopleManageRecords
 {
     protected static string $resource = SkillScaleResource::class;
 

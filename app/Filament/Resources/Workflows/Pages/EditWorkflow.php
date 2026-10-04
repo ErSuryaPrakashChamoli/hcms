@@ -12,14 +12,14 @@ use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
 use App\Filament\Resources\Workflows\WorkflowResource;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
 
-class EditWorkflow extends EditRecord
+class EditWorkflow extends PeopleEditRecord
 {
     use GovernedEdit;
 

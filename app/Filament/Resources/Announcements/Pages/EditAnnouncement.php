@@ -5,14 +5,14 @@ namespace App\Filament\Resources\Announcements\Pages;
 use App\Domain\Communication\Services\Communications;
 use App\Filament\Resources\Announcements\AnnouncementResource;
 use App\Filament\Support\AudienceCriteriaSchema;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\ServiceDeskActions;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
-class EditAnnouncement extends EditRecord
+class EditAnnouncement extends PeopleEditRecord
 {
     protected static string $resource = AnnouncementResource::class;
 

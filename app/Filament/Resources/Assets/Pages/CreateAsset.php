@@ -4,11 +4,11 @@ namespace App\Filament\Resources\Assets\Pages;
 
 use App\Domain\Assets\Services\Assets;
 use App\Filament\Resources\Assets\AssetResource;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\SavesCustomFields;
-use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class CreateAsset extends CreateRecord
+class CreateAsset extends PeopleCreateRecord
 {
     use SavesCustomFields;
 

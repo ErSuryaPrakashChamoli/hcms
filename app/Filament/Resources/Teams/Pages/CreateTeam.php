@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Teams\Pages;
 
 use App\Filament\Resources\Teams\TeamResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateTeam extends CreateRecord
+class CreateTeam extends PeopleCreateRecord
 {
     protected static string $resource = TeamResource::class;
 }

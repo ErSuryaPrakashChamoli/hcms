@@ -6,15 +6,15 @@ use App\Domain\Workforce\Models\Position;
 use App\Domain\Workforce\Models\PositionChangeRequest;
 use App\Domain\Workforce\Services\Positions;
 use App\Filament\Resources\Positions\PositionResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use App\Filament\Support\WorkforceActions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Textarea;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 
 /** Phase 10: one position — lifecycle moves, effective-dated changes and draft edits through the Positions service. */
-class ViewPosition extends ViewRecord
+class ViewPosition extends PeopleViewRecord
 {
     protected static string $resource = PositionResource::class;
 

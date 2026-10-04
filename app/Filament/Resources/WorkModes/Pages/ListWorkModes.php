@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\WorkModes\Pages;
 
 use App\Filament\Resources\WorkModes\WorkModeResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListWorkModes extends ListRecords
+class ListWorkModes extends PeopleListRecords
 {
     protected static string $resource = WorkModeResource::class;
 

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ParallelRuns\Pages;
 use App\Domain\Compliance\Services\ParallelPayroll;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Filament\Resources\ParallelRuns\ParallelRunResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\StatutoryReturnActions;
 use App\Support\Storage\StagedUpload;
 use Filament\Actions\Action;
@@ -12,9 +13,8 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Pages\ListRecords;
 
-class ListParallelRuns extends ListRecords
+class ListParallelRuns extends PeopleListRecords
 {
     protected static string $resource = ParallelRunResource::class;
 

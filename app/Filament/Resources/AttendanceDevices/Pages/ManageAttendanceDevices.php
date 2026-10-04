@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\AttendanceDevices\Pages;
 
 use App\Filament\Resources\AttendanceDevices\AttendanceDeviceResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageAttendanceDevices extends ManageRecords
+class ManageAttendanceDevices extends PeopleManageRecords
 {
     protected static string $resource = AttendanceDeviceResource::class;
 

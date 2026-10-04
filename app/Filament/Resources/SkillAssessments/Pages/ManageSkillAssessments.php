@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\SkillAssessments\Pages;
 
 use App\Filament\Resources\SkillAssessments\SkillAssessmentResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageSkillAssessments extends ManageRecords
+class ManageSkillAssessments extends PeopleManageRecords
 {
     protected static string $resource = SkillAssessmentResource::class;
 

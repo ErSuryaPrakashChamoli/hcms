@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\EmployeeFeedback\Pages;
 
 use App\Filament\Resources\EmployeeFeedback\EmployeeFeedbackResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListEmployeeFeedback extends ListRecords
+class ListEmployeeFeedback extends PeopleListRecords
 {
     protected static string $resource = EmployeeFeedbackResource::class;
 }

@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\LearningProviders\Pages;
 
 use App\Filament\Resources\LearningProviders\LearningProviderResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageLearningProviders extends ManageRecords
+class ManageLearningProviders extends PeopleManageRecords
 {
     protected static string $resource = LearningProviderResource::class;
 

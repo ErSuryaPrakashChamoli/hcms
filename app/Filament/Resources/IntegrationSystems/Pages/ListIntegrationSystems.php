@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\IntegrationSystems\Pages;
 
 use App\Filament\Resources\IntegrationSystems\IntegrationSystemResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListIntegrationSystems extends ListRecords
+class ListIntegrationSystems extends PeopleListRecords
 {
     protected static string $resource = IntegrationSystemResource::class;
 

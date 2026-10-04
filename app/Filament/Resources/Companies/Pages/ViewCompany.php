@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Companies\Pages;
 
 use App\Filament\Resources\Companies\CompanyResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use Filament\Actions\EditAction;
-use Filament\Resources\Pages\ViewRecord;
 
-class ViewCompany extends ViewRecord
+class ViewCompany extends PeopleViewRecord
 {
     protected static string $resource = CompanyResource::class;
 

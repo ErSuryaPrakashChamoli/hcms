@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\LetterTemplates\Pages;
 
 use App\Filament\Resources\LetterTemplates\LetterTemplateResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageLetterTemplates extends ManageRecords
+class ManageLetterTemplates extends PeopleManageRecords
 {
     protected static string $resource = LetterTemplateResource::class;
 

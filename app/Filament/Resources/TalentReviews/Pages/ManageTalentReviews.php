@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\TalentReviews\Pages;
 
 use App\Filament\Resources\TalentReviews\TalentReviewResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageTalentReviews extends ManageRecords
+class ManageTalentReviews extends PeopleManageRecords
 {
     protected static string $resource = TalentReviewResource::class;
 

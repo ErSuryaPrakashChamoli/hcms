@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Successors\Pages;
 
 use App\Filament\Resources\Successors\SuccessorResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageSuccessors extends ManageRecords
+class ManageSuccessors extends PeopleManageRecords
 {
     protected static string $resource = SuccessorResource::class;
 }

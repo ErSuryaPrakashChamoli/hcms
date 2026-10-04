@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\WorkforcePlans\Pages;
 
 use App\Filament\Resources\WorkforcePlans\WorkforcePlanResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageWorkforcePlans extends ManageRecords
+class ManageWorkforcePlans extends PeopleManageRecords
 {
     protected static string $resource = WorkforcePlanResource::class;
 

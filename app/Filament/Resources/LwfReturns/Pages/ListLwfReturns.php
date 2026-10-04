@@ -5,9 +5,9 @@ namespace App\Filament\Resources\LwfReturns\Pages;
 use App\Domain\Compliance\Services\Returns\LwfReturns;
 use App\Filament\Resources\LwfReturns\LwfReturnResource;
 use App\Filament\Support\GenerateMonthlyReturnAction;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListLwfReturns extends ListRecords
+class ListLwfReturns extends PeopleListRecords
 {
     protected static string $resource = LwfReturnResource::class;
 

@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\LeaveTypes\Pages;
 
 use App\Filament\Resources\LeaveTypes\LeaveTypeResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageLeaveTypes extends ManageRecords
+class ManageLeaveTypes extends PeopleManageRecords
 {
     protected static string $resource = LeaveTypeResource::class;
 

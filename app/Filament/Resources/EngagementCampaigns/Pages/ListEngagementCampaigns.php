@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\EngagementCampaigns\Pages;
 
 use App\Filament\Resources\EngagementCampaigns\EngagementCampaignResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListEngagementCampaigns extends ListRecords
+class ListEngagementCampaigns extends PeopleListRecords
 {
     protected static string $resource = EngagementCampaignResource::class;
 

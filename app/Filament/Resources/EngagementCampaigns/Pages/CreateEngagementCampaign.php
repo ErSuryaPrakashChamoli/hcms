@@ -4,14 +4,14 @@ namespace App\Filament\Resources\EngagementCampaigns\Pages;
 
 use App\Domain\Engagement\Services\Campaigns;
 use App\Filament\Resources\EngagementCampaigns\EngagementCampaignResource;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\ServiceDeskActions;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use RuntimeException;
 
-class CreateEngagementCampaign extends CreateRecord
+class CreateEngagementCampaign extends PeopleCreateRecord
 {
     protected static string $resource = EngagementCampaignResource::class;
 

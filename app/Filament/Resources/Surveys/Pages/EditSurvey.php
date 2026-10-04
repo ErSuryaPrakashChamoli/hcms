@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Surveys\Pages;
 
 use App\Filament\Resources\Surveys\SurveyResource;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class EditSurvey extends EditRecord
+class EditSurvey extends PeopleEditRecord
 {
     protected static string $resource = SurveyResource::class;
 

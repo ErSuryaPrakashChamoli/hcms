@@ -4,10 +4,10 @@ namespace App\Filament\Resources\SalaryStructures\Pages;
 
 use App\Domain\Compensation\Services\CompensationStructures;
 use App\Filament\Resources\SalaryStructures\SalaryStructureResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class CreateSalaryStructure extends CreateRecord
+class CreateSalaryStructure extends PeopleCreateRecord
 {
     protected static string $resource = SalaryStructureResource::class;
 

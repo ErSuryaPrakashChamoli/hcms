@@ -5,14 +5,14 @@ namespace App\Filament\Resources\Positions\Pages;
 use App\Domain\Workforce\Models\Position;
 use App\Domain\Workforce\Services\Positions;
 use App\Filament\Resources\Positions\PositionResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\WorkforceActions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
 
-class ListPositions extends ListRecords
+class ListPositions extends PeopleListRecords
 {
     protected static string $resource = PositionResource::class;
 

@@ -7,13 +7,13 @@ use App\Domain\Configuration\Exceptions\ConfigurationException;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Services\ConfigurationChanges;
 use App\Filament\Resources\ConfigurationChanges\ConfigurationChangeResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 
-class ViewConfigurationChange extends ViewRecord
+class ViewConfigurationChange extends PeopleViewRecord
 {
     protected static string $resource = ConfigurationChangeResource::class;
 

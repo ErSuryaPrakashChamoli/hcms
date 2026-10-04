@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\AuditEvents\Pages;
 
 use App\Filament\Resources\AuditEvents\AuditEventResource;
-use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Support\Pages\PeopleViewRecord;
 
-class ViewAuditEvent extends ViewRecord
+class ViewAuditEvent extends PeopleViewRecord
 {
     protected static string $resource = AuditEventResource::class;
 }

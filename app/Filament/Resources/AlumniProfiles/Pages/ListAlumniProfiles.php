@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\AlumniProfiles\Pages;
 
 use App\Filament\Resources\AlumniProfiles\AlumniProfileResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListAlumniProfiles extends ListRecords
+class ListAlumniProfiles extends PeopleListRecords
 {
     protected static string $resource = AlumniProfileResource::class;
 }

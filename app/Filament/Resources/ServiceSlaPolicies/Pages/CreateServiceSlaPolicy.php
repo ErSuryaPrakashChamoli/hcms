@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\ServiceSlaPolicies\Pages;
 
 use App\Filament\Resources\ServiceSlaPolicies\ServiceSlaPolicyResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateServiceSlaPolicy extends CreateRecord
+class CreateServiceSlaPolicy extends PeopleCreateRecord
 {
     protected static string $resource = ServiceSlaPolicyResource::class;
 }

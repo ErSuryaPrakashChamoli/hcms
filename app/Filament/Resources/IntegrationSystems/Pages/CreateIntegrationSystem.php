@@ -4,14 +4,14 @@ namespace App\Filament\Resources\IntegrationSystems\Pages;
 
 use App\Domain\Integration\Services\IntegrationSystems;
 use App\Filament\Resources\IntegrationSystems\IntegrationSystemResource;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\ServiceDeskActions;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
-class CreateIntegrationSystem extends CreateRecord
+class CreateIntegrationSystem extends PeopleCreateRecord
 {
     protected static string $resource = IntegrationSystemResource::class;
 

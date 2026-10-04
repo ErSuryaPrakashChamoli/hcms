@@ -5,12 +5,12 @@ namespace App\Filament\Resources\LeaveBalances\Pages;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Leave\Services\LeaveAccrual;
 use App\Filament\Resources\LeaveBalances\LeaveBalanceResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
 
-class ListLeaveBalances extends ListRecords
+class ListLeaveBalances extends PeopleListRecords
 {
     protected static string $resource = LeaveBalanceResource::class;
 

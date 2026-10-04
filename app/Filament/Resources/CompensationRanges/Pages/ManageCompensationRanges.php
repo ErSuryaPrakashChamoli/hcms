@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\CompensationRanges\Pages;
 
 use App\Filament\Resources\CompensationRanges\CompensationRangeResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageCompensationRanges extends ManageRecords
+class ManageCompensationRanges extends PeopleManageRecords
 {
     protected static string $resource = CompensationRangeResource::class;
 

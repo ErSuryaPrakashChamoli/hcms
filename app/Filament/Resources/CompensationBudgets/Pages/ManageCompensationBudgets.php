@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\CompensationBudgets\Pages;
 
 use App\Filament\Resources\CompensationBudgets\CompensationBudgetResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageCompensationBudgets extends ManageRecords
+class ManageCompensationBudgets extends PeopleManageRecords
 {
     protected static string $resource = CompensationBudgetResource::class;
 

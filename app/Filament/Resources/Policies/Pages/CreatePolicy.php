@@ -4,9 +4,9 @@ namespace App\Filament\Resources\Policies\Pages;
 
 use App\Domain\Configuration\Services\Policies;
 use App\Filament\Resources\Policies\PolicyResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreatePolicy extends CreateRecord
+class CreatePolicy extends PeopleCreateRecord
 {
     protected static string $resource = PolicyResource::class;
 

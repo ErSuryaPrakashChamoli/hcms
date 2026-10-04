@@ -4,13 +4,13 @@ namespace App\Filament\Resources\Surveys\Pages;
 
 use App\Domain\Engagement\Services\Surveys;
 use App\Filament\Resources\Surveys\SurveyResource;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\ServiceDeskActions;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
-class CreateSurvey extends CreateRecord
+class CreateSurvey extends PeopleCreateRecord
 {
     protected static string $resource = SurveyResource::class;
 

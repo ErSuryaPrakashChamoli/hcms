@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\CustomFields\Pages;
 
 use App\Filament\Resources\CustomFields\CustomFieldResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateCustomField extends CreateRecord
+class CreateCustomField extends PeopleCreateRecord
 {
     protected static string $resource = CustomFieldResource::class;
 }

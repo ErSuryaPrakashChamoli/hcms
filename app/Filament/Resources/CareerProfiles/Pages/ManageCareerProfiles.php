@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\CareerProfiles\Pages;
 
 use App\Filament\Resources\CareerProfiles\CareerProfileResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageCareerProfiles extends ManageRecords
+class ManageCareerProfiles extends PeopleManageRecords
 {
     protected static string $resource = CareerProfileResource::class;
 }
