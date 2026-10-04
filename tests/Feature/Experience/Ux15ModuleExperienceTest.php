@@ -12,6 +12,7 @@ use App\Filament\Resources\Departments\Pages\CreateDepartment;
 use App\Filament\Resources\Departments\Pages\EditDepartment;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\LeaveRequests\Pages\ListLeaveRequests;
+use App\Filament\Support\Forms\PeopleDatePicker;
 use App\Filament\Support\PeopleOsText;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
@@ -121,4 +122,27 @@ it('words empty and filtered lists honestly', function () {
         ->and($page->getTable()->getEmptyStateDescription())->toBe('Leave requests you can see will appear here.')
         ->and($page->moduleContext()['sentence'])->toBe('Nothing here yet that you can see.')
         ->and($page->getTable()->getPaginationPageOptions())->toBe([10, 25, 50, 100]);
+});
+
+it('renders date pickers without an interactive control nested in another, keeping their guards', function () {
+    $this->actingAs(tenantUser($this->tenant, ['*']));
+    $department = Department::query()->create(['company_id' => Company::query()->first()?->id ?? Company::factory()->create()->id, 'name' => 'Engineering', 'code' => 'ENG', 'status' => 'active', 'effective_from' => '2024-04-01']);
+
+    // The department form uses Filament's JavaScript picker: the labelled input is the only focus stop.
+    $html = $this->get(DepartmentResource::getUrl('edit', ['record' => $department]))->assertOk()->getContent();
+    expect(substr_count($html, 'fi-fo-date-time-picker-trigger'))->toBe(2)
+        ->and($html)->toMatch('/<div\s+x-ref="button"/')
+        ->and($html)->not->toMatch('/<button\s+x-ref="button"/')
+        ->and($html)->toContain('class="fi-fo-date-time-picker-display-text-input"');
+
+    // A read-only or disabled picker still ignores pointer and keyboard input; anything unrecognised is left alone.
+    $readOnly = "<button\n x-ref=\"button\"\n x-on:click=\"togglePanelVisibility()\"\n x-on:keydown.delete.prevent.stop=\"if (! \$el.disabled) clearState()\"\n aria-label=\"Pick\"\n type=\"button\"\n tabindex=\"-1\"\n  disabled  class=\"fi-fo-date-time-picker-trigger\">\n<input readonly id=\"d\" /></button><div x-ref=\"panel\"><button type=\"button\">Next</button></div>";
+    $repaired = PeopleDatePicker::repairTrigger($readOnly);
+    expect($repaired)->toStartWith('<div')
+        ->toContain("x-on:click=\"if (! \$el.hasAttribute('data-disabled')) togglePanelVisibility()\"")
+        ->toContain("if (! \$el.hasAttribute('data-disabled')) clearState()")
+        ->toContain(' data-disabled ')->toContain('<input readonly id="d" /></div>')
+        ->toContain('<button type="button">Next</button>')
+        ->not->toContain('tabindex="-1"')->not->toContain('aria-label="Pick"')
+        ->and(PeopleDatePicker::repairTrigger('<button type="button">Other</button>'))->toBe('<button type="button">Other</button>');
 });

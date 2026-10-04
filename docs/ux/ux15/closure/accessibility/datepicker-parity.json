@@ -1,0 +1,14 @@
+{
+  "purpose": "The accessible date-picker trigger (div instead of Filament's nested <button tabindex=-1>) behaves exactly like Filament's original markup",
+  "page": "/admin/departments/create (HR admin), Filament JavaScript picker",
+  "repaired": [
+    {"engine":"webkit","tag":"DIV","focused":true,"enterOpens":true,"value":"Oct 5, 2026","closedAfterPick":false,"clickOpens":true,"escapeCloses":true},
+    {"engine":"chromium","tag":"DIV","focused":true,"enterOpens":true,"value":"Oct 5, 2026","closedAfterPick":false,"clickOpens":true,"escapeCloses":true}
+  ],
+  "original_filament_markup": [
+    {"engine":"webkit","tag":"BUTTON","focused":true,"enterOpens":true,"value":"Oct 5, 2026","closedAfterPick":false,"clickOpens":true,"escapeCloses":true},
+    {"engine":"chromium","tag":"BUTTON","focused":true,"enterOpens":true,"value":"Oct 5, 2026","closedAfterPick":false,"clickOpens":true,"escapeCloses":true}
+  ],
+  "three_engine_pointer_and_review": "chromium, firefox, webkit: pointer opens, day 15 picked, label targets the input, the form review lists Effective from (datepicker-check.mjs)",
+  "note": "WebKit = Playwright WebKit (WPE MiniBrowser), not Apple Safari"
+}

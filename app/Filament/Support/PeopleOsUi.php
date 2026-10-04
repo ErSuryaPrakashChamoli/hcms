@@ -3,9 +3,15 @@
 namespace App\Filament\Support;
 
 use App\Domain\Employment\Models\Employee;
+use App\Filament\Support\Forms\PeopleDatePicker;
+use App\Filament\Support\Forms\PeopleDateTimePicker;
+use App\Filament\Support\Forms\PeopleTimePicker;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\TimePicker;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
@@ -50,5 +56,11 @@ final class PeopleOsUi
         EditAction::configureUsing(fn (EditAction $action) => $action->slideOver()
             ->modalContentFooter(fn () => view('filament.shell.form-review', ['mode' => 'edit', 'createLabel' => 'Create'])));
         ViewAction::configureUsing(fn (ViewAction $action) => $action->slideOver());
+
+        // Date and time pickers keep Filament's behaviour with an accessible trigger (Filament builds fields
+        // through the container, so the subclasses apply everywhere without touching a form).
+        app()->bind(DatePicker::class, PeopleDatePicker::class);
+        app()->bind(DateTimePicker::class, PeopleDateTimePicker::class);
+        app()->bind(TimePicker::class, PeopleTimePicker::class);
     }
 }

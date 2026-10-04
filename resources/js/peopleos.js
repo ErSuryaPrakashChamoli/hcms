@@ -363,3 +363,22 @@ document.addEventListener('alpine:init', registerAll);
         if (url) { e.preventDefault(); go(url); }
     });
 })();
+
+/* Livewire's navigation progress bar (NProgress) ships role="bar", which is not an ARIA role: expose it as a named
+   progress bar. Navigation swaps <body>, so the body observer is re-attached whenever that happens. */
+(() => {
+    const fix = (root) => {
+        root.querySelectorAll('#nprogress [role="bar"]').forEach((el) => { el.setAttribute('role', 'progressbar'); el.setAttribute('aria-label', 'Loading page'); });
+        root.querySelectorAll('#nprogress [role="spinner"]').forEach((el) => el.removeAttribute('role'));
+    };
+    let bodyObserver = null;
+    const watchBody = () => {
+        bodyObserver?.disconnect();
+        if (!document.body) return;
+        bodyObserver = new MutationObserver((records) => records.forEach((r) => r.addedNodes.forEach((n) => { if (n.id === 'nprogress') fix(n); })));
+        bodyObserver.observe(document.body, { childList: true });
+        fix(document.body);
+    };
+    new MutationObserver(watchBody).observe(document.documentElement, { childList: true });
+    if (document.body) watchBody(); else document.addEventListener('DOMContentLoaded', watchBody);
+})();

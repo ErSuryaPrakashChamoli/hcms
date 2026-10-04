@@ -1813,14 +1813,10 @@ html {
 .fi-ta-header-toolbar > div:last-child { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: flex-start; gap: var(--pos-space-2); }
 .fi-ta-search-field { order: -1; flex: 1 1 280px; max-width: 520px; margin-inline-end: auto; }
 
-/* Rows: people as chips; contextual actions stay quiet until the row is in focus (always visible on touch) */
+/* Rows: people as chips. Row actions keep full colour: dimming them failed contrast (closure accessibility audit) */
 .pos-person-inline { display: inline-flex; align-items: center; gap: var(--pos-space-2); max-width: 100%; }
 .pos-person-inline-name { font-weight: var(--pos-fw-semibold); overflow-wrap: anywhere; }
 .pos-person-inline:hover .pos-person-inline-name { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--pos-primary) 45%, transparent); }
-@media (hover: hover) and (pointer: fine) {
-    .fi-ta-row .fi-ta-actions { opacity: 0.62; transition: opacity var(--pos-dur-1) var(--pos-ease); }
-    .fi-ta-row:hover .fi-ta-actions, .fi-ta-row:focus-within .fi-ta-actions { opacity: 1; }
-}
 .fi-ta-empty-state-heading { font-size: var(--pos-fs-section) !important; }
 
 /* Records open beside the list: Filament slide-overs become PeopleOS drawers */
@@ -1849,6 +1845,18 @@ html {
     .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-actions) { flex: 1 1 100%; }
     .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-record-checkbox) { flex: 0 0 auto; }
 }
+
+/* Accessibility (UX.15 closure audit): the Filament chrome now inside the PeopleOS layer meets WCAG AA.
+   Empty-value placeholders use the muted text token (Filament's grey 400/500 reached 2.5:1 and 3.2:1). */
+.fi-ta-cell .fi-ta-placeholder, .fi-in-entry .fi-in-placeholder { color: var(--pos-text-muted); }
+/* A 24px target for the clear-selection control; the glyph stays 16px */
+.fi-select-input .fi-select-input-value-remove-btn { width: 24px; height: 24px; -webkit-mask-size: 16px 16px; mask-size: 16px 16px; }
+/* Dark filled success/warning/danger buttons carry white text, so they sit one shade deeper (600 gave 3.5–4.3:1) */
+.dark .fi-btn:not(.fi-outlined).fi-color:is(.fi-color-success, .fi-color-warning, .fi-color-danger).dark\:fi-bg-color-600 { --dark-bg: var(--color-700); }
+.dark .fi-btn:not(.fi-outlined).fi-color:is(.fi-color-success, .fi-color-warning, .fi-color-danger).dark\:hover\:fi-bg-color-700 { --dark-hover-bg: var(--color-800); }
+/* Earlier custom pages use light-only grey utilities; in dark they take the PeopleOS text tokens (an explicit dark: wins) */
+.dark :is(.text-gray-400, .text-gray-500):not([class*='dark:text-']) { color: var(--pos-text-muted); }
+.dark .text-gray-600:not([class*='dark:text-']) { color: var(--pos-text-secondary); }
 
 /* Employee 360 (UX.15 closure P1-04): one coherent person workspace. Now holds the core; the deep record sections and the
    record tabs (rendered by Filament after the workspace) belong to the Records view. Without the view attribute (no
