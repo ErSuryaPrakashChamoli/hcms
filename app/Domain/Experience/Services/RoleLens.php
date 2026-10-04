@@ -32,8 +32,23 @@ final class RoleLens
     public const LABELS = [self::EMPLOYEE => 'Employee', self::MANAGER => 'Manager', self::HR => 'HR', self::HR_ADMIN => 'HR Admin', self::PAYROLL => 'Payroll',
         self::EXECUTIVE => 'Executive', self::SYSTEM_ADMIN => 'Admin'];
 
-    /** Home order when a person has several lenses (most operational first). */
-    private const PRIORITY = [self::EXECUTIVE, self::HR_ADMIN, self::HR, self::PAYROLL, self::MANAGER, self::EMPLOYEE, self::SYSTEM_ADMIN];
+    /**
+     * UX.16: the experiences people see. HR admin and system admin are one Administration experience; payroll is
+     * the payroll side of HR operations. A lens still decides nothing about access.
+     */
+    public const EXPERIENCE = [self::EMPLOYEE => 'employee', self::MANAGER => 'manager', self::HR => 'hr', self::PAYROLL => 'payroll',
+        self::EXECUTIVE => 'executive', self::HR_ADMIN => 'admin', self::SYSTEM_ADMIN => 'admin'];
+
+    /** One label set for the experiences, used by Home ("View as") and Preferences ("Home opens as"). */
+    public const EXPERIENCE_LABELS = ['employee' => 'For you', 'manager' => 'Your team', 'hr' => 'People operations', 'payroll' => 'Payroll',
+        'executive' => 'Company', 'admin' => 'Administration'];
+
+    /**
+     * UX.16: Home opens on the most specific responsibility a person holds: administration, then HR operations,
+     * payroll, executive, manager and employee. (Before UX.16 executive came first, so tenant HR admins, whose role
+     * includes analytics, opened in the executive view.) A stored "Home opens as" choice always wins.
+     */
+    private const PRIORITY = [self::HR_ADMIN, self::SYSTEM_ADMIN, self::HR, self::PAYROLL, self::EXECUTIVE, self::MANAGER, self::EMPLOYEE];
 
     /** @var array<int, array{lenses: list<string>, employee: ?Employee}> */
     private array $cache = [];
@@ -67,6 +82,27 @@ final class RoleLens
     public function has(User $user, string $lens): bool
     {
         return in_array($lens, $this->lenses($user), true);
+    }
+
+    public static function experienceOf(string $lens): string
+    {
+        return self::EXPERIENCE[$lens] ?? 'employee';
+    }
+
+    /**
+     * The experiences a person can switch between, each with the lens that opens it (HR admin before system admin
+     * for Administration), in the order of their lenses. Duplicates collapse: HR admin + system admin is one entry.
+     *
+     * @return array<string, string> experience => lens
+     */
+    public function experiences(User $user): array
+    {
+        $out = [];
+        foreach ($this->lenses($user) as $lens) {
+            $out[self::experienceOf($lens)] ??= $lens;
+        }
+
+        return $out;
     }
 
     /** @return array{lenses: list<string>, employee: ?Employee} */

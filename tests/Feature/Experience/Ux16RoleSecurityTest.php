@@ -13,13 +13,15 @@ it('keeps platform-wide figures off a tenant administrator\'s Home and gates eac
     $tenant = provisionTenant();
     DB::table('failed_jobs')->insert(['uuid' => (string) Str::uuid(), 'connection' => 'database', 'queue' => 'default', 'payload' => '{}', 'exception' => 'Synthetic', 'failed_at' => now()]);
 
-    // Administers users only: the administration view, but no configuration or integration screens.
+    // Administers users only: the administration view, but no configuration, integration or platform screens.
     $usersOnly = tenantUser($tenant, ['user.view', 'user.assign_roles']);
-    $this->actingAs($usersOnly)->get(Home::getUrl())->assertOk()
-        ->assertDontSee('Failed jobs')->assertDontSee('Changes awaiting approval')->assertDontSee('Integration dead letters');
+    $this->actingAs($usersOnly)->get(Home::getUrl())->assertOk()->assertSee('Governance')
+        ->assertDontSee('Failed jobs')->assertDontSee('background jobs failed')
+        ->assertDontSee('Configuration changes this week')->assertDontSee('configuration changes await approval')
+        ->assertDontSee('Integration dead letters')->assertDontSee('integration messages failed');
 
     // May open configuration changes: that figure appears; the platform-wide one still does not.
     $configurator = tenantUser($tenant, ['user.view', 'user.assign_roles', 'configuration.view']);
     $this->actingAs($configurator)->get(Home::getUrl())->assertOk()
-        ->assertSee('Changes awaiting approval')->assertDontSee('Failed jobs');
+        ->assertSee('Configuration changes this week')->assertDontSee('Failed jobs')->assertDontSee('background jobs failed');
 });

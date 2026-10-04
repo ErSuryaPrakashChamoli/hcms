@@ -113,12 +113,14 @@ class Home extends Dashboard
     public function briefHtml(): string
     {
         $parts = array_map(fn (array $p) => '<b class="pos-num">'.e((string) $p[0]).'</b> '.e($p[1]), $this->home['brief'] ?? []);
+        // UX.16: executives start from the workforce headline (real movement this month against last).
+        $lead = $this->home['brief_text'] ?? null;
         if ($parts === []) {
-            return e('You’re all caught up. Nothing needs you right now.');
+            return $lead !== null ? e($lead) : e('You’re all caught up. Nothing needs you right now.');
         }
         $text = count($parts) > 1 ? implode(', ', array_slice($parts, 0, -1)).' and '.end($parts) : $parts[0];
 
-        return e('Here’s what matters today:').' '.$text.'.';
+        return $lead !== null ? e($lead).' '.e('Also,').' '.$text.'.' : e('Here’s what matters today:').' '.$text.'.';
     }
 
     /** Switch the home lens (persisted; only lenses the person actually has). */

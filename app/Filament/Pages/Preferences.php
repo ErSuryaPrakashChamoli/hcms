@@ -50,10 +50,12 @@ class Preferences extends Page
         return app(ExperiencePreferences::class)->for(auth()->user());
     }
 
+    /** UX.16: the experiences this person holds (lens that opens each => label), with the same labels as Home. */
     #[Computed]
     public function lenses(): array
     {
-        return array_intersect_key(RoleLens::LABELS, array_flip(app(RoleLens::class)->lenses(auth()->user())));
+        return collect(app(RoleLens::class)->experiences(auth()->user()))
+            ->mapWithKeys(fn (string $lens, string $experience) => [$lens => RoleLens::EXPERIENCE_LABELS[$experience] ?? $experience])->all();
     }
 
     #[Computed]
@@ -72,6 +74,9 @@ class Preferences extends Page
 
     public function setLens(?string $lens): void
     {
+        if ($lens && ! app(RoleLens::class)->has(auth()->user(), $lens)) {
+            return;
+        }
         $this->save(['lens' => $lens ?: null], 'Home lens updated');
     }
 

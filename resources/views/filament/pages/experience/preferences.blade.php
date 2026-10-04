@@ -17,7 +17,7 @@
                 <div class="pos-chips mt-3" role="group" aria-label="Default lens">
                     <button type="button" class="pos-chip" wire:click="setLens(null)" aria-pressed="{{ $p['lens'] === null ? 'true' : 'false' }}">Automatic</button>
                     @foreach ($this->lenses as $key => $label)
-                        <button type="button" class="pos-chip" wire:click="setLens('{{ $key }}')" aria-pressed="{{ $p['lens'] === $key ? 'true' : 'false' }}">{{ $label }}</button>
+                        <button type="button" class="pos-chip" wire:click="setLens('{{ $key }}')" aria-pressed="{{ $p['lens'] !== null && \App\Domain\Experience\Services\RoleLens::experienceOf($p['lens']) === \App\Domain\Experience\Services\RoleLens::experienceOf($key) ? 'true' : 'false' }}">{{ $label }}</button>
                     @endforeach
                 </div>
             </section>

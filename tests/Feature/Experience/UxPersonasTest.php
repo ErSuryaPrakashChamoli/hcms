@@ -16,6 +16,7 @@ use App\Filament\Pages\People;
 use App\Filament\Pages\WorkforceCommandCentre;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Support\Tenancy\TenantContext;
+use Livewire\Livewire;
 
 /*
 | Experience Transformation §55: every persona, with the real system roles, against representative
@@ -88,7 +89,8 @@ it('gives each persona the Home that fits their role', function () {
         'hr_admin' => ['People operations'],
         'executive' => ['People today', 'Workforce pulse'],
         'payroll' => ['No payroll run yet'],
-        'admin' => ['People today'],
+        // UX.16 (G1): a tenant super-admin's Home opens on administration, no longer on the executive figures.
+        'admin' => ['Governance', 'Open Admin Centre'],
     ];
     foreach ($sees as $persona => $texts) {
         $response = $this->actingAs($this->personas[$persona])->get(Home::getUrl())->assertOk();
@@ -97,4 +99,8 @@ it('gives each persona the Home that fits their role', function () {
         }
     }
     $this->actingAs($this->personas['employee'])->get(Home::getUrl())->assertDontSee('People operations')->assertDontSee('Workforce pulse');
+
+    // The executive view the super-admin used to land on is still one switch away, with the same figures.
+    $this->actingAs($this->personas['admin']);
+    Livewire::test(Home::class)->call('switchLens', 'executive')->assertSee('People today')->assertSee('Workforce pulse');
 });
