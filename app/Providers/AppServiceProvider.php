@@ -188,6 +188,7 @@ use App\Domain\Identity\Policies\TenantPolicy;
 use App\Domain\Identity\Policies\TenantSettingPolicy;
 use App\Domain\Identity\Policies\UserPolicy;
 use App\Domain\Identity\Services\AccessScopes;
+use App\Domain\Identity\Services\AuthorizationContext;
 use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Integration\Models\ApiKey;
 use App\Domain\Integration\Models\ExternalReference;
@@ -438,6 +439,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CompensationOutput::class, CompensationLedger::class);
         $this->app->bind(PayrollClosureReader::class, PayrollClosure::class);
         $this->app->singleton(AccessScopes::class);
+        // UX.15 closure: bounded authorisation passes are per request (and per job), never shared.
+        $this->app->scoped(AuthorizationContext::class);
         // Production readiness closure: debug mode can never be on in production, whatever APP_DEBUG says
         // (the validator still reports the setting so it gets fixed).
         if ($this->app->environment('production') && config('app.debug')) {

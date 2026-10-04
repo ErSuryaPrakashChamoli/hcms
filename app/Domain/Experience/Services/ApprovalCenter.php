@@ -9,6 +9,8 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\ReportingRelationship;
 use App\Domain\Experience\Support\ApprovalItem;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\AccessScopes;
+use App\Domain\Identity\Services\AuthorizationContext;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Services\LeaveBalances;
 use App\Domain\Leave\Services\LeaveYear;
@@ -82,7 +84,9 @@ final class ApprovalCenter
             return $this->memo[$key];
         }
         $this->scanning = $key;
-        $items = collect([
+        // UX.15 closure P1-02: one authorisation pass for the whole queue. Every item is still decided by its own
+        // policy; inside the pass, scope reachability and "own record" are looked up once instead of per item.
+        $items = app(AuthorizationContext::class)->run(fn () => collect([
             fn () => $this->workflowTasks($user, $about),
             fn () => $this->leaveRequests($user, $about),
             fn () => $this->regularisations($user, $about),
@@ -96,7 +100,7 @@ final class ApprovalCenter
 
                 return [];
             }
-        });
+        }));
         $order = ['urgent' => 0, 'today' => 1, 'upcoming' => 2];
 
         return $this->memo[$key] = $items->sortBy(fn (ApprovalItem $i) => [$order[$i->group()], $i->dueAt?->timestamp ?? $i->effectiveOn?->timestamp ?? PHP_INT_MAX])->values();
@@ -224,7 +228,9 @@ final class ApprovalCenter
         // A request with a running workflow is decided through its workflow task (listed above).
         $inWorkflow = WorkflowInstance::query()->where('subject_type', (new LeaveRequest)->getMorphClass())->whereIn('subject_id', $requests->pluck('id'))
             ->whereIn('status', [InstanceStatus::Running, InstanceStatus::Waiting])->pluck('subject_id')->all();
-        $requests = $requests->reject(fn (LeaveRequest $r) => in_array($r->id, $inWorkflow, false))->filter(fn (LeaveRequest $r) => $user->can('approve', $r));
+        $requests = $requests->reject(fn (LeaveRequest $r) => in_array($r->id, $inWorkflow, false));
+        app(AccessScopes::class)->primeEmployeeIds($user, $requests->pluck('employee_id'));
+        $requests = $requests->filter(fn (LeaveRequest $r) => $user->can('approve', $r));
         $this->preloadTeamAway($requests);
         $items = [];
         foreach ($requests as $request) {
@@ -264,7 +270,9 @@ final class ApprovalCenter
             return [];
         }
         $items = [];
-        foreach (AttendanceRegularisation::query()->with(['employee.person', 'requester'])->where('status', 'pending')->when($about !== null, fn ($q) => $q->where('employee_id', $about))->orderBy('date')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows)) as $r) {
+        $regularisations = AttendanceRegularisation::query()->with(['employee.person', 'requester'])->where('status', 'pending')->when($about !== null, fn ($q) => $q->where('employee_id', $about))->orderBy('date')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows));
+        app(AccessScopes::class)->primeEmployeeIds($user, $regularisations->pluck('employee_id'));
+        foreach ($regularisations as $r) {
             if (! $user->can('approve', $r)) {
                 continue;
             }

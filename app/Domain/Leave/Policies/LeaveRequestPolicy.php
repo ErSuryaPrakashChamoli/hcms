@@ -2,9 +2,9 @@
 
 namespace App\Domain\Leave\Policies;
 
-use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\AccessScopes;
+use App\Domain\Identity\Services\OwnRecords;
 use Illuminate\Database\Eloquent\Model;
 
 /** Leave requests, balances, encashments: own vs team vs everyone. */
@@ -53,6 +53,7 @@ class LeaveRequestPolicy
 
     private function isOwn(User $user, Model $model): bool
     {
-        return Employee::query()->where('user_id', $user->id)->where('id', $model->employee_id)->exists();
+        // Same query as before; inside an authorisation pass the viewer's own ids are read once (OwnRecords).
+        return app(OwnRecords::class)->isOwn($user, $model->employee_id);
     }
 }
