@@ -3,6 +3,11 @@
 namespace Database\Seeders;
 
 use App\Domain\Attendance\Services\Regularisations;
+use App\Domain\Configuration\Models\ConfigurationChange;
+use App\Domain\Configuration\Services\ConfigurationChanges;
+use App\Domain\Documents\Models\DocumentType;
+use App\Domain\Documents\Models\EmployeeDocument;
+use App\Domain\Documents\Services\Documents;
 use App\Domain\Employment\Actions\ChangeManagerAction;
 use App\Domain\Employment\Actions\HireEmployeeAction;
 use App\Domain\Employment\Actions\PromoteEmployeeAction;
@@ -26,6 +31,7 @@ use App\Domain\Organisation\Models\Team;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use RuntimeException;
 use Throwable;
@@ -132,6 +138,51 @@ class UxShowcaseSeeder extends Seeder
 
         $this->openRequests($priya, $rahul, $amit);
         $this->syntheticActivity($amit, $sara, $ravi);
+        $this->roleSignals($priya, $kavya);
+    }
+
+    /**
+     * UX.16: realistic, clearly synthetic data for the role signals, through the domain services: an employee's
+     * probation review and an expiring document, a team member's probation, a document awaiting HR verification and
+     * a configuration change for the administrator. Idempotent; every reason says "UX showcase seed (synthetic)".
+     */
+    private function roleSignals(Employee $priya, Employee $kavya): void
+    {
+        $reason = 'UX showcase seed (synthetic)';
+        $pdf = fn (string $name) => UploadedFile::fake()->createWithContent($name, "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
+        foreach ([[$priya, 12], [Employee::query()->where('work_email', 'rohan.pillai@demo.local')->first(), 20]] as [$who, $days]) {
+            try {
+                if ($who && ($who->probation_end_date === null || ! $who->probation_end_date->between(now(), now()->addDays(30)))) {
+                    $who->withAuditReason($reason.': probation review scheduled')->update(['probation_end_date' => now()->addDays($days)->toDateString()]);
+                }
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+        try {
+            $passport = DocumentType::query()->where('code', 'PASSPORT')->first();
+            if ($passport && ! EmployeeDocument::query()->where('employee_id', $priya->id)->where('document_type_id', $passport->id)->exists()) {
+                app(Documents::class)->store($priya, $pdf('passport.pdf'), $passport, 'Passport', now()->addDays(18)->toDateString(), now()->subYears(9)->toDateString(), $reason);
+            }
+            $address = DocumentType::query()->where('code', 'ADDRESS_PROOF')->first();
+            $leela = Employee::query()->where('work_email', 'leela.chandran@demo.local')->first();
+            if ($address && $leela && ! EmployeeDocument::query()->where('employee_id', $leela->id)->where('document_type_id', $address->id)->exists()) {
+                app(Documents::class)->store($leela, $pdf('address-proof.pdf'), $address, 'Address proof', null, now()->subMonths(2)->toDateString(), $reason);
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
+        try {
+            $type = LeaveType::query()->where('code', 'EL')->first();
+            if ($type && $kavya->user && ! ConfigurationChange::query()->where('subject_type', $type->getMorphClass())->where('subject_id', $type->id)->where('reason', 'like', $reason.'%')->exists()) {
+                auth()->setUser($kavya->user);
+                app(ConfigurationChanges::class)->propose($type, ['description' => 'Earned leave accrues monthly; up to 15 days carry forward.'], $reason.': clarify carry-forward', now()->addDays(7)->toDateString());
+            }
+        } catch (Throwable $e) {
+            report($e);
+        } finally {
+            auth()->forgetUser();
+        }
     }
 
     /**
