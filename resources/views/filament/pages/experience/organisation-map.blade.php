@@ -19,6 +19,9 @@
                     </ul>
                 @endif
             </div>
+            <button type="button" class="pos-chip" aria-pressed="{{ $relationsOn ? 'true' : 'false' }}" wire:click="$toggle('relationsOn')" title="Dotted-line, functional, matrix and support relationships">
+                <span class="pos-org-legend-dash" aria-hidden="true"></span> Other relationships
+            </button>
             <div class="ms-auto flex items-center gap-1">
                 <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" wire:click="expandAll">Expand all</button>
                 <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" wire:click="collapseAll">Collapse</button>
@@ -38,6 +41,14 @@
                         <p class="pos-body font-medium">{{ $d['name'] }}</p>
                         <p class="pos-metric pos-num mt-1">{{ $d['headcount'] }} <span class="pos-caption pos-muted">{{ \Illuminate\Support\Str::plural('person', $d['headcount']) }}</span></p>
                         <div class="pos-meter mt-2" aria-hidden="true"><span style="width: {{ round($d['headcount'] / $max * 100) }}%"></span></div>
+                        @if ($d['people'] !== [])
+                            <div class="mt-3" x-data="{ peek: false }">
+                                <button type="button" class="pos-link pos-caption" x-on:click="peek = ! peek" :aria-expanded="peek.toString()">Peek at the team</button>
+                                <ul class="pos-people-strip mt-2" x-show="peek" x-cloak x-collapse>
+                                    @foreach ($d['people'] as $member)<li><x-pos.person :id="$member['id']" :name="$member['name']" /></li>@endforeach
+                                </ul>
+                            </div>
+                        @endif
                         <div class="mt-3 flex items-center justify-between gap-2">
                             @if ($d['open'] !== null)
                                 <x-pos.status :tone="$d['open'] > 0 ? 'warning' : 'neutral'" :label="$d['open'].' open '.\Illuminate\Support\Str::plural('position', $d['open'])" />
@@ -57,6 +68,10 @@
         @if ($roots === [])
             <x-pos.empty class="mt-6" icon="heroicon-o-rectangle-group" title="No reporting lines to show" why="People you can see have no current reporting relationships yet." />
         @else
+            <div x-data="{ related: [] }" class="contents">
+            @if ($relationsOn && $this->relations !== [])
+                <p class="pos-meta mt-3 flex flex-wrap items-center gap-2"><span class="pos-org-legend-solid" aria-hidden="true"></span> Line manager <span class="pos-org-legend-dash" aria-hidden="true"></span> Dotted line, functional, matrix and support relationships. Hover or focus a person to highlight who they work with.</p>
+            @endif
             <div class="pos-org-canvas mt-4" x-data="posPanZoom()" x-init="$nextTick(() => { $el.scrollLeft = Math.max(0, ($el.scrollWidth - $el.clientWidth) / 2) })" tabindex="0" role="application" aria-label="Organisation map. Use arrow keys to pan, plus and minus to zoom, zero to reset."
                 x-on:mousedown="start($event)" x-on:mousemove.window="drag($event)" x-on:mouseup.window="end()"
                 x-on:touchstart.passive="start($event)" x-on:touchmove.passive="drag($event)" x-on:touchend="end()" x-on:wheel="wheel($event)" x-on:keydown="key($event)"
@@ -79,6 +94,7 @@
                         <p class="pos-caption pos-muted mt-4">{{ count($roots) - 40 }} more people without a visible manager. Use “Find and focus” to open them.</p>
                     @endif
                 </div>
+            </div>
             </div>
         @endif
     @endif

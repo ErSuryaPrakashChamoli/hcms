@@ -2,11 +2,13 @@
     $node = $nodes[$id] ?? null;
     $kids = $this->childrenOf($id);
     $isOpen = in_array($id, $this->expanded, true);
+    $rels = $this->relations[$id] ?? [];
 @endphp
 @if ($node)
     <li class="pos-org-branch" role="treeitem" aria-expanded="{{ count($kids) ? ($isOpen ? 'true' : 'false') : 'undefined' }}" aria-level="{{ $level }}" wire:key="org-{{ $id }}">
-        <div class="pos-org-node {{ $this->focus === $id ? 'is-focus' : '' }}" data-org-id="{{ $id }}">
-            <button type="button" class="pos-org-card" x-data x-on:click="$dispatch('pos-drawer-open', { type: 'person', id: {{ $id }} })">
+        <div class="pos-org-node {{ $this->focus === $id ? 'is-focus' : '' }}" data-org-id="{{ $id }}" :class="related.includes({{ $id }}) && 'is-related'"
+            x-on:mouseenter="related = @js(collect($rels)->pluck('id')->all())" x-on:mouseleave="related = []" x-on:focusin="related = @js(collect($rels)->pluck('id')->all())" x-on:focusout="related = []">
+            <button type="button" class="pos-org-card" data-person="{{ $id }}" x-on:click="$dispatch('pos-peek-hide'); $dispatch('pos-drawer-open', { type: 'person', id: {{ $id }} })">
                 <x-pos.avatar :name="$node->display_name" size="sm" />
                 <span class="min-w-0 text-start">
                     <span class="pos-body-sm font-medium block truncate">{{ $node->display_name }}</span>
@@ -19,6 +21,16 @@
                     <span class="pos-num">{{ count($kids) }}</span>
                     <x-filament::icon :icon="$isOpen ? 'heroicon-m-chevron-up' : 'heroicon-m-chevron-down'" class="size-3.5" />
                 </button>
+            @endif
+            @if ($rels !== [])
+                <ul class="pos-org-rels" aria-label="Other relationships of {{ $node->display_name }}">
+                    @foreach (collect($rels)->take(3) as $r)
+                        <li class="pos-org-rel" title="{{ $r['kind'] }} {{ $r['direction'] === 'to' ? '→' : '←' }} {{ $r['name'] }}">
+                            <span class="pos-org-rel-kind">{{ $r['kind'] }}</span> {{ $r['direction'] === 'to' ? '→' : '←' }} {{ \Illuminate\Support\Str::before($r['name'], ' ') }}
+                        </li>
+                    @endforeach
+                    @if (count($rels) > 3)<li class="pos-org-rel">+{{ count($rels) - 3 }}</li>@endif
+                </ul>
             @endif
         </div>
         @if ($isOpen && count($kids))

@@ -56,6 +56,13 @@ class OrganisationMap extends Page
 
     public string $find = '';
 
+    /** UX.15: show relationships beyond the line (dotted, functional, matrix, support). */
+    #[Url(as: 'relations')]
+    public bool $relationsOn = true;
+
+    /** Relationship type → how the map names and groups it. */
+    public const RELATION_KINDS = ['dotted' => 'Dotted line', 'functional' => 'Functional', 'project' => 'Matrix', 'secondary' => 'Matrix', 'hrbp' => 'HR partner', 'mentor' => 'Mentor', 'buddy' => 'Buddy'];
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -89,6 +96,31 @@ class OrganisationMap extends Page
         foreach ($visible as $id) {
             $m = $managers[$id] ?? null;
             $out[$id] = $m !== null && in_array($m, $visible, true) ? $m : null;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Relationships beyond the primary line, between people the viewer may see: for each person, who they are
+     * related to and how. Effective today; read from reporting_relationships (the one source of truth).
+     *
+     * @return array<int, list<array{id: int, name: string, kind: string, direction: string}>>
+     */
+    #[Computed]
+    public function relations(): array
+    {
+        if (! $this->relationsOn) {
+            return [];
+        }
+        $visible = array_keys($this->lines);
+        $rows = ReportingRelationship::query()->with(['employee.person', 'manager.person'])->where('is_primary', false)->whereIn('type', array_keys(self::RELATION_KINDS))
+            ->whereIn('employee_id', $visible)->whereIn('manager_id', $visible)->currentlyEffective()->limit(500)->get();
+        $out = [];
+        foreach ($rows as $r) {
+            $kind = self::RELATION_KINDS[$r->type];
+            $out[$r->employee_id][] = ['id' => (int) $r->manager_id, 'name' => (string) $r->manager?->display_name, 'kind' => $kind, 'direction' => 'to'];
+            $out[$r->manager_id][] = ['id' => (int) $r->employee_id, 'name' => (string) $r->employee?->display_name, 'kind' => $kind, 'direction' => 'from'];
         }
 
         return $out;
@@ -185,8 +217,13 @@ class OrganisationMap extends Page
             : null;
         $ids = array_unique([...array_keys($counts), ...array_keys($vacancies ?? [])]);
 
+        // Team peek: a few people per department, from the people the viewer may already see.
+        $peek = EmployeePosition::query()->with('employee.person')->whereIn('employee_id', $visible)->effectiveOn()->whereIn('department_id', $ids)->limit(400)->get()
+            ->groupBy('department_id')->map(fn ($rows) => $rows->take(6)->map(fn ($p) => ['id' => (int) $p->employee_id, 'name' => (string) $p->employee?->display_name])->values()->all());
+
         return Department::query()->whereKey($ids)->orderBy('name')->get()->map(fn (Department $d) => [
             'id' => $d->id, 'name' => $d->name, 'headcount' => (int) ($counts[$d->id] ?? 0), 'open' => $vacancies === null ? null : (int) ($vacancies[$d->id] ?? 0),
+            'people' => $peek[$d->id] ?? [],
         ])->sortByDesc('headcount')->values()->all();
     }
 
