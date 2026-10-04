@@ -46,6 +46,8 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\View as SchemaView;
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
@@ -154,25 +156,34 @@ class ViewEmployee extends ViewRecord
             ->label('Transfer / promote')
             ->icon(Heroicon::OutlinedArrowTrendingUp)
             ->authorize(fn () => auth()->user()->can('assignPosition', $this->getRecord()))
-            ->modalHeading('Assign new position')
-            ->modalDescription('Only fill what changes; everything else carries forward. The current position closes the day before.')
+            ->modalHeading('Transfer or promote')
+            ->modalDescription('A guided change: what is true today, what changes, then the Before → After on its effective date. Audited.')
+            ->modalSubmitActionLabel('Confirm change')
             ->fillForm(fn (Employee $record) => ['effective_from' => now()->toDateString(), 'change_type' => 'transfer'])
-            ->schema([
-                Grid::make(3)->schema([
-                    Select::make('change_type')->options(config('peopleos.people.position_change_types'))->required(),
-                    DatePicker::make('effective_from')->native(false)->required()->live(),
+            // UX.15: context → change → review → confirm (same fields, validation and AssignPositionAction).
+            ->steps([
+                Step::make('Context')->description('Today, and the kind of change')->schema([
+                    $this->changeContext(),
+                    Grid::make(3)->schema([
+                        Select::make('change_type')->options(config('peopleos.people.position_change_types'))->required(),
+                        DatePicker::make('effective_from')->label('Effective from')->native(false)->required()->live(),
+                    ]),
                 ]),
-                Grid::make(3)->schema(array_map(fn ($field) => $field->live(), CreateEmployee::positionFields())),
-                // Phase 10: occupy a position (seat) — validated for status and capacity — or vacate it.
-                Grid::make(3)->schema([
-                    Select::make('position_id')->label('Position (seat)')->searchable()
-                        ->options(fn () => Position::query()->where('status', 'open')->orderBy('code')->limit(500)->get(['id', 'code', 'title'])->mapWithKeys(fn ($p) => [$p->id => "{$p->code} · {$p->title}"])->all())
-                        ->visible(fn () => auth()->user()->can('workforce.view') || auth()->user()->can('workforce.manage')),
-                    TextInput::make('fte')->label('FTE')->numeric()->minValue(0.01)->maxValue(1.5)->step(0.05),
-                    Toggle::make('vacate_position')->label('Vacate current position')->live(),
+                Step::make('Change')->description('Only what is different')->schema([
+                    Grid::make(3)->schema(array_map(fn ($field) => $field->live(), CreateEmployee::positionFields())),
+                    // Phase 10: occupy a position (seat) — validated for status and capacity — or vacate it.
+                    Grid::make(3)->schema([
+                        Select::make('position_id')->label('Position (seat)')->searchable()
+                            ->options(fn () => Position::query()->where('status', 'open')->orderBy('code')->limit(500)->get(['id', 'code', 'title'])->mapWithKeys(fn ($p) => [$p->id => "{$p->code} · {$p->title}"])->all())
+                            ->visible(fn () => auth()->user()->can('workforce.view') || auth()->user()->can('workforce.manage')),
+                        TextInput::make('fte')->label('FTE')->numeric()->minValue(0.01)->maxValue(1.5)->step(0.05),
+                        Toggle::make('vacate_position')->label('Vacate current position')->live(),
+                    ]),
                 ]),
-                BeforeAfterPreview::position(),
-                AuditReasonField::make()->required(),
+                Step::make('Review')->description('Before → After, then confirm')->schema([
+                    BeforeAfterPreview::position(),
+                    AuditReasonField::make()->required(),
+                ]),
             ])
             ->action(function (Employee $record, array $data) {
                 $reason = AuditReasonField::extract($data);
@@ -186,19 +197,45 @@ class ViewEmployee extends ViewRecord
             });
     }
 
+    /** UX.15: step 1 of a guided change — what is recorded today, read-only. */
+    private function changeContext(bool $reporting = false): SchemaView
+    {
+        return SchemaView::make('filament.forms.change-context')->columnSpanFull()
+            ->viewData(function (?Employee $record) use ($reporting) {
+                $record?->loadMissing(['currentPosition.designation', 'currentPosition.department', 'currentPosition.location', 'currentPosition.grade', 'currentManager.manager.person']);
+                $p = $record?->currentPosition;
+                $facts = $reporting
+                    ? ['Reports to' => $record?->currentManager?->manager?->person?->display_name ?? 'No line manager', 'Designation' => $p?->designation?->name, 'Department' => $p?->department?->name]
+                    : ['Designation' => $p?->designation?->name, 'Department' => $p?->department?->name, 'Location' => $p?->location?->name, 'Grade' => $p?->grade?->name, 'In role since' => $p?->effective_from?->format('j M Y')];
+
+                return ['record' => $record, 'facts' => $facts, 'hint' => $reporting ? 'Choose the relationship that changes: line, functional, dotted line, project, mentor, buddy or HR partner.' : null];
+            });
+    }
+
     private function changeManagerAction(): Action
     {
         return Action::make('changeManager')
             ->label('Change manager')
             ->icon(Heroicon::OutlinedUserCircle)
             ->authorize(fn () => auth()->user()->can('assignPosition', $this->getRecord()))
+            ->modalHeading('Change manager')
+            ->modalDescription('A guided change: today’s reporting lines, the new one, then the Before → After on its effective date. Audited.')
+            ->modalSubmitActionLabel('Confirm reporting change')
             ->fillForm(fn () => ['effective_from' => now()->toDateString(), 'type' => 'line'])
-            ->schema([
-                Select::make('type')->options(config('peopleos.people.reporting_types'))->required(),
-                Select::make('manager_id')->label('Manager')->options(fn (Employee $record) => CreateEmployee::managerOptions($record->id))->searchable()->required()->live(),
-                DatePicker::make('effective_from')->native(false)->required()->live(),
-                BeforeAfterPreview::manager(),
-                AuditReasonField::make(),
+            // UX.15: context → change → review → confirm (same fields, validation and ChangeManagerAction).
+            ->steps([
+                Step::make('Context')->description('Today, and which relationship')->schema([
+                    $this->changeContext(true),
+                    Select::make('type')->label('Relationship')->options(config('peopleos.people.reporting_types'))->required(),
+                ]),
+                Step::make('Change')->description('Who, and from when')->schema([
+                    Select::make('manager_id')->label('Manager')->options(fn (Employee $record) => CreateEmployee::managerOptions($record->id))->searchable()->required()->live(),
+                    DatePicker::make('effective_from')->label('Effective from')->native(false)->required()->live(),
+                ]),
+                Step::make('Review')->description('Before → After, then confirm')->schema([
+                    BeforeAfterPreview::manager(),
+                    AuditReasonField::make(),
+                ]),
             ])
             ->action(function (Employee $record, array $data) {
                 $reason = AuditReasonField::extract($data);

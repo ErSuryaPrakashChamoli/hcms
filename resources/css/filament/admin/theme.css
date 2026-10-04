@@ -1688,9 +1688,14 @@ html {
     100% { box-shadow: 0 0 0 10px transparent; }
 }
 
-.pos-enter { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) both; }
-.pos-enter-2 { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) 60ms both; }
-.pos-enter-3 { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) 120ms both; }
+/*
+ * Enter animations use fill-mode "backwards": the start state applies before the animation and nothing is left
+ * behind afterwards. A retained transform would make the element the containing block for position: fixed
+ * descendants (Filament modals inside a page would then be positioned against the page, not the viewport).
+ */
+.pos-enter { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) backwards; }
+.pos-enter-2 { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) 60ms backwards; }
+.pos-enter-3 { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) 120ms backwards; }
 .pos-command-enter { animation: pos-scale-in var(--pos-dur-2) var(--pos-ease) both; }
 .pos-drawer-enter { animation: pos-drawer-in var(--pos-dur-3) var(--pos-ease) both; }
 .pos-success-pulse { animation: pos-pulse-once 700ms var(--pos-ease) 1; }
@@ -1706,7 +1711,7 @@ html {
 .pos-check path { stroke-dasharray: 24; animation: pos-check-draw var(--pos-dur-4) var(--pos-ease) both; }
 
 /* Page transitions in SPA mode */
-.fi-page { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) both; }
+.fi-page { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) backwards; }
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
