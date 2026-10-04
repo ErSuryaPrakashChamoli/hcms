@@ -11,6 +11,7 @@ use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Integration\Models\InboundEvent;
 use App\Filament\Resources\ConfigurationChanges\ConfigurationChangeResource;
 use App\Filament\Resources\InboundEvents\InboundEventResource;
+use App\Filament\Resources\TenantSettings\TenantSettingResource;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -104,6 +105,9 @@ class AdminCentre extends Page
         return $parts === [] ? 'Find a setting in plain words, or choose an area below. Nothing needs your attention right now.' : ucfirst(implode(' · ', $parts)).'.';
     }
 
+    /** Words too general to pick out a setting on their own ("probation period" is about probation). */
+    private const GENERIC_WORDS = ['period', 'setting', 'settings', 'policy', 'days', 'time', 'change', 'rule', 'rules'];
+
     /**
      * Best matches for the search box: the configuration map (§103) and module names, limited to what the
      * viewer can open (the module catalogue already applies each destination's canAccess()).
@@ -122,7 +126,23 @@ class AdminCentre extends Page
         $root = rtrim((string) parse_url(Filament::getPanel('admin')->getUrl(), PHP_URL_PATH), '/');
         $paths = $all->map(fn (array $m) => rtrim((string) parse_url($m['url'], PHP_URL_PATH), '/'))->filter(fn ($p) => $p !== '' && $p !== $root)->unique()->all();
         $out = [];
-        foreach (app(ConfigurationSearch::class)->search($term, 8) as $r) {
+        // UX.15.23: individual settings by name, first (the finder's own example "probation period" has to land on the
+        // setting). Names and keys only, never values; only for those who may open the settings screen.
+        $settings = rescue(fn () => TenantSettingResource::canAccess() ? TenantSettingResource::getUrl('index') : null, null, false);
+        $words = array_diff(array_filter(preg_split('/[^a-z0-9]+/', mb_strtolower($term)), fn ($w) => mb_strlen($w) >= 4), self::GENERIC_WORDS);
+        if ($settings !== null && $words !== []) {
+            foreach (array_keys(config('peopleos.settings', [])) as $key) {
+                $plain = str_replace(['.', '_'], ' ', $key);
+                if (collect($words)->contains(fn (string $w) => str_contains($plain, $w))) {
+                    $out[$settings.'?search='.urlencode($key)] = ['label' => ucfirst(implode(' · ', array_map(fn ($s) => str_replace('_', ' ', $s), explode('.', $key)))),
+                        'url' => $settings.'?search='.urlencode($key), 'hint' => 'Setting · '.$key];
+                }
+            }
+        }
+        $found = app(ConfigurationSearch::class)->search($term, 8);
+        // A four-letter prefix alone (score 1: "peri" inside "experience") only counts when nothing matches better.
+        $best = max(array_column($found, 'score') ?: [0]);
+        foreach (array_filter($found, fn (array $r) => $r['score'] > 1 || $best <= 1) as $r) {
             $path = rtrim((string) parse_url($r['url'], PHP_URL_PATH), '/');
             $allowed = $path !== '' && collect($paths)->contains(fn ($p) => $path === $p || str_starts_with($path, $p.'/'));
             if ($allowed) {

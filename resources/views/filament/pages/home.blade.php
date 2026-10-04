@@ -68,7 +68,8 @@
             @if ($this->showWelcome())
                 <section class="pos-panel pos-panel-pad pos-welcome-note" aria-labelledby="pos-welcome-title" x-data="{ shown: true }" x-show="shown">
                     <span class="pos-ai-orb" aria-hidden="true"></span>
-                    <div class="min-w-0 flex-1">
+                    {{-- flex basis from .pos-welcome-note (wraps the buttons below the text on phones) --}}
+                    <div class="min-w-0">
                         <h2 id="pos-welcome-title" class="pos-stream-title font-semibold">Welcome to PeopleOS. Your work comes to you here.</h2>
                         <p class="pos-stream-meta">What matters is ranked here with the reason for each item. Press <span class="pos-kbd">Ctrl K</span> to find anyone or start anything, and <span class="pos-kbd">?</span> for every shortcut. Hover a name to peek; click it for more.</p>
                     </div>
@@ -262,7 +263,7 @@
                                     @endforeach
                                 </div>
                                 @if (count($h['pulse']['trend']) > 1)
-                                    <x-pos.sparkline :values="$h['pulse']['trend']" :labels="$h['pulse']['labels']" label="Headcount, last six months" />
+                                    <x-pos.sparkline zero :values="$h['pulse']['trend']" :labels="$h['pulse']['labels']" label="Headcount, last six months" />
                                 @endif
                             </div>
                         </x-pos.section>

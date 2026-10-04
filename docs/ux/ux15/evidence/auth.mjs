@@ -2,7 +2,9 @@
 import { existsSync } from 'node:fs';
 const DIR = new URL('./auth/', import.meta.url).pathname;
 export async function personaContext(browser, base, email, opts = {}) {
-  const file = `${DIR}${email}.json`;
+  // One session file per server (cookies are not port-specific, so two servers must not share a file).
+  const port = new URL(base).port;
+  const file = port && port !== '8090' ? `${DIR}${port}-${email}.json` : `${DIR}${email}.json`;
   if (existsSync(file)) {
     const ctx = await browser.newContext({ ...opts, storageState: file });
     const p = await ctx.newPage();

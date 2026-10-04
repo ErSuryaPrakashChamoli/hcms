@@ -50,7 +50,7 @@
                             @if (isset($m['attrition_rate']))<x-pos.figure :value="$fmt($m['attrition_rate'])" label="Attrition, 12 months" />@endif
                         </div>
                         @if (count($headcountSeries) > 1)
-                            <x-pos.sparkline :values="$headcountSeries" :labels="$pulse['size']['series']['labels']" label="Headcount, last 12 months" />
+                            <x-pos.sparkline zero :values="$headcountSeries" :labels="$pulse['size']['series']['labels']" label="Headcount, last 12 months" />
                         @endif
                     </div>
                 </x-pos.section>

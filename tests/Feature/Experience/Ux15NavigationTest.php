@@ -117,3 +117,17 @@ it('puts Actions in the phone bar and keeps your profile in the top bar', functi
 
     expect($nav)->toContain('>Actions</span>')->toContain("pos-command-open', { mode: 'actions' }")->not->toContain('>Profile</span>');
 });
+
+it('lands the finder’s own example on the setting itself, by name and key only, for those who may open settings', function () {
+    // UX.15.23 zero-training: "probation period" used to answer "Settings" and "Letter templates" (a prefix inside "experience").
+    $this->actingAs($this->admin);
+    actAsTenant($this->tenant);
+    $matches = collect(Livewire::test(AdminCentre::class)->set('find', 'probation period')->instance()->matches);
+
+    expect($matches->first())->toMatchArray(['label' => 'Employee · probation · default months', 'hint' => 'Setting · employee.probation.default_months'])
+        ->and($matches->first()['url'])->toContain('search=employee.probation.default_months')
+        ->and($matches->pluck('label')->implode(' '))->not->toContain('Letter templates');
+
+    $this->actingAs(tenantUser($this->tenant, ['user.view']));
+    expect(collect(Livewire::test(AdminCentre::class)->set('find', 'probation period')->instance()->matches)->pluck('hint')->implode(' '))->not->toContain('employee.probation');
+});

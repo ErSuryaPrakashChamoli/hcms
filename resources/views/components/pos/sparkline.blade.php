@@ -1,8 +1,9 @@
-@props(['values' => [], 'labels' => [], 'label' => 'Trend', 'height' => 56])
+@props(['values' => [], 'labels' => [], 'label' => 'Trend', 'height' => 56, 'zero' => false])
 @php
     $vals = array_values(array_map('floatval', $values));
     $n = count($vals);
-    $min = $n ? min($vals) : 0; $max = $n ? max($vals) : 0;
+    // zero: the axis starts at 0 (counts such as headcount), so one person leaving never draws as a cliff.
+    $min = $n ? ($zero ? min(0, min($vals)) : min($vals)) : 0; $max = $n ? max($vals) : 0;
     $range = ($max - $min) ?: 1;
     $w = 300; $hgt = (int) $height;
     $pts = [];
