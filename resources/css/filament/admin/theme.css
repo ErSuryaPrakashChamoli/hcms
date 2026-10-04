@@ -346,6 +346,11 @@ html {
     top: 12px;
 }
 
+/* Filament 5.8 adds its own skip link right after ours; one is enough for keyboard users */
+.fi-skip-link {
+    display: none;
+}
+
 .pos-num {
     font-variant-numeric: tabular-nums;
 }
