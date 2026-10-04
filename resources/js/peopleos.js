@@ -321,8 +321,30 @@ components.posFormReview = (mode = 'edit') => ({
     submit() { this.form?.requestSubmit(); },
 });
 
+/*
+ * Employee 360 views (UX.15 closure P1-04): Now is the default; Journey, Work, Growth, Rewards, Documents and
+ * Records are one step away. The URL hash names the view, so #journey and #records links keep working; the
+ * html[data-pos360-view] attribute lets the deep record sections (rendered by Filament) follow the same view.
+ */
+const pos360 = {
+    views: ['now', 'journey', 'work', 'growth', 'rewards', 'documents', 'records'],
+    view: 'now',
+    set(view, scroll = false) {
+        this.view = this.views.includes(view) ? view : 'now';
+        document.documentElement.dataset.pos360View = this.view;
+        if (scroll) {
+            const nav = document.querySelector('.pos-360-nav');
+            if (nav && nav.getBoundingClientRect().top < 0) nav.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        }
+    },
+    fromHash(scroll = false) { this.set(location.hash.replace('#', ''), scroll); },
+};
+
 Object.assign(window, components);
-const registerAll = () => Object.entries(components).forEach(([name, factory]) => window.Alpine?.data(name, factory));
+const registerAll = () => {
+    Object.entries(components).forEach(([name, factory]) => window.Alpine?.data(name, factory));
+    if (window.Alpine && !window.Alpine.store('pos360')) window.Alpine.store('pos360', pos360);
+};
 if (window.Alpine) registerAll();
 document.addEventListener('alpine:init', registerAll);
 

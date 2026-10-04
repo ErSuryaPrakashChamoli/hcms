@@ -43,10 +43,9 @@
         @endif
     </div>
 </header>
-<nav class="pos-sectnav pos-360-nav" aria-label="{{ $employee->person?->display_name }}" x-data="{ active: 'now' }"
-    x-init="const obs = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) active = e.target.id }), { rootMargin: '-20% 0px -70% 0px' });
-            $nextTick(() => document.querySelectorAll('.pos-360-sec[id]').forEach((el) => obs.observe(el)))">
+<nav class="pos-sectnav pos-360-nav" aria-label="{{ $employee->person?->display_name }}" x-data
+    x-init="$store.pos360?.fromHash(false)" x-on:hashchange.window="$store.pos360?.fromHash(true)">
     @foreach ($sectionsNav as $id => $label)
-        <a href="#{{ $id }}" :aria-current="(active === '{{ $id }}').toString()" x-on:click="active = '{{ $id }}'">{{ $label }}</a>
+        <a href="#{{ $id }}" :aria-current="(($store.pos360?.view ?? 'now') === '{{ $id }}').toString()">{{ $label }}</a>
     @endforeach
 </nav>

@@ -1849,3 +1849,12 @@ html {
     .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-actions) { flex: 1 1 100%; }
     .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-record-checkbox) { flex: 0 0 auto; }
 }
+
+/* Employee 360 (UX.15 closure P1-04): one coherent person workspace. Now holds the core; the deep record sections and the
+   record tabs (rendered by Filament after the workspace) belong to the Records view. Without the view attribute (no
+   script) everything stays visible. */
+html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.fi-resource-view-record-page .pos-360-deep,
+html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.fi-resource-view-record-page .fi-page-content > .fi-sc > .fi-grid-col:nth-child(n+2) { display: none; }
+.pos-360-next { display: grid; gap: var(--pos-space-2); padding-top: var(--pos-space-4); border-top: 1px solid var(--pos-border); }
+.pos-360-next .pos-label { display: flex; align-items: center; gap: var(--pos-space-2); }
+.pos-360-sec { scroll-margin-top: var(--pos-space-16); }

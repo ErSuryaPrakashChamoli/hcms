@@ -23,8 +23,10 @@ class EmployeeInfolist
                 ViewEntry::make('workspace')->hiddenLabel()->columnSpanFull()->view('filament.employees.workspace')
                     ->state(fn (Employee $record, $livewire) => method_exists($livewire, 'workspace') ? $livewire->workspace : app(PersonWorkspace::class)->for(auth()->user(), $record)),
                 // Every recorded field, one click away (same entries and visibility as before).
+                // UX.15 closure: deep detail lives in the Records view (pos-360-deep is shown only there).
                 Section::make('All details')
                     ->description('Every field on this person’s record.')
+                    ->extraAttributes(['class' => 'pos-360-deep'])
                     ->columnSpanFull()
                     ->collapsible()
                     ->collapsed()
@@ -48,9 +50,10 @@ class EmployeeInfolist
                         TextEntry::make('probation_end_date')->date()->placeholder('—'),
                         TextEntry::make('confirmation_date')->date()->placeholder('Not confirmed'),
                     ]),
-                CustomFieldsSchema::infolistSection(Employee::class),
+                CustomFieldsSchema::infolistSection(Employee::class)->extraAttributes(['class' => 'pos-360-deep']),
                 Section::make('Applicable policies')
                     ->description('Resolved today from the tenant\'s assignment rules.')
+                    ->extraAttributes(['class' => 'pos-360-deep'])
                     ->columns(3)
                     ->collapsed()
                     ->schema(fn () => collect(config('peopleos.policies.types'))
