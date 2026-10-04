@@ -2,6 +2,7 @@
 
 namespace App\Filament\Support\Pages;
 
+use App\Filament\Support\Pages\Concerns\ArrangesRecordActions;
 use App\Filament\Support\Pages\Concerns\PresentsRecordContext;
 use Filament\Resources\Pages\EditRecord;
 
@@ -11,6 +12,7 @@ use Filament\Resources\Pages\EditRecord;
  */
 abstract class PeopleEditRecord extends EditRecord
 {
+    use ArrangesRecordActions;
     use PresentsRecordContext;
 
     protected function recordPageNote(): string

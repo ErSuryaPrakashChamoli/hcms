@@ -1823,6 +1823,15 @@ html {
 .pos-person-inline-name { font-weight: var(--pos-fw-semibold); overflow-wrap: anywhere; }
 .pos-person-inline:hover .pos-person-inline-name { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--pos-primary) 45%, transparent); }
 .fi-ta-empty-state-heading { font-size: var(--pos-fs-section) !important; }
+/* Wide tables scroll sideways; the row actions stay pinned to the right edge so they never scroll out of reach */
+@media (min-width: 641px) {
+    .fi-ta-content-ctn .fi-ta-row > td:last-child:has(> .fi-ta-actions),
+    .fi-ta-content-ctn .fi-ta-table thead th.fi-ta-actions-header-cell:last-child { position: sticky; inset-inline-end: 0; z-index: 1; box-shadow: -12px 0 12px -12px rgb(15 17 22 / 0.16); }
+    .fi-ta-content-ctn .fi-ta-row > td:last-child:has(> .fi-ta-actions) { background-color: var(--pos-surface); }
+    .fi-ta-content-ctn .fi-ta-table thead th.fi-ta-actions-header-cell:last-child { background: var(--pos-surface-muted); }
+    .fi-ta-content-ctn .fi-ta-row:is(:hover, .fi-selected, .fi-striped) > td:last-child:has(> .fi-ta-actions) { background-image: linear-gradient(var(--pos-state-hover), var(--pos-state-hover)); }
+}
+
 
 /* Records open beside the list: Filament slide-overs become PeopleOS drawers */
 .fi-modal-slide-over .fi-modal-window { border-radius: 0 !important; box-shadow: var(--pos-shadow-3) !important; border-inline-start: 1px solid var(--pos-border); background: var(--pos-surface-elevated) !important; }
@@ -1850,6 +1859,19 @@ html {
     .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-actions) { flex: 1 1 100%; }
     .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-record-checkbox) { flex: 0 0 auto; }
 }
+
+/* Record pages read like the workspaces. Tabs (record sections, relation tabs, list tabs) use the section-nav
+   underline of the Employee 360 instead of a floating pill bar; section headings use the panel label. */
+.fi-tabs:not(.fi-vertical) { margin-inline: 0 !important; justify-content: flex-start; column-gap: var(--pos-space-1); border-radius: 0 !important; background: transparent !important; box-shadow: inset 0 -1px 0 var(--pos-border) !important; --tw-ring-color: transparent !important; padding: 0 !important; scrollbar-width: none; }
+.fi-tabs.fi-contained:not(.fi-vertical) { border-bottom: 0 !important; padding-inline: var(--pos-space-4) !important; }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item { position: relative; border-radius: 0 !important; background: transparent !important; padding: var(--pos-space-3) !important; }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item .fi-tabs-item-label { color: var(--pos-text-secondary); font-weight: var(--pos-fw-medium); }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item:hover .fi-tabs-item-label { color: var(--pos-text); }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item.fi-active .fi-tabs-item-label { color: var(--pos-text); font-weight: var(--pos-fw-semibold); }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item.fi-active::after { content: ''; position: absolute; inset-inline: var(--pos-space-3); bottom: 0; height: 2px; border-radius: var(--pos-radius-pill); background: var(--pos-primary); }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item:focus-visible { outline: 2px solid var(--pos-focus, var(--pos-primary)); outline-offset: -2px; }
+.fi-section .fi-section-header-heading { font-size: var(--pos-fs-caption) !important; line-height: var(--pos-lh-caption) !important; letter-spacing: var(--pos-tracking-label); text-transform: uppercase; font-weight: var(--pos-fw-semibold) !important; color: var(--pos-text-muted) !important; }
+.fi-section .fi-section-header-description { color: var(--pos-text-secondary); }
 
 /* Accessibility (UX.15 closure audit): the Filament chrome now inside the PeopleOS layer meets WCAG AA.
    Empty-value placeholders use the muted text token (Filament's grey 400/500 reached 2.5:1 and 3.2:1). */

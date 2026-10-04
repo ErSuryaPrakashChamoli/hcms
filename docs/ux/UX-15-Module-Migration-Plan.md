@@ -165,6 +165,19 @@ A regression test asserts that the context never counts more than the table can 
 
 ---
 
+## 8. As built (added at closure)
+
+The plan above was written before implementation. Validation added these pieces to the layer, all of them central:
+
+| Addition | Why | Where |
+|---|---|---|
+| Record pages lead with up to three decisive actions; later and destructive actions move into "More" | The ticket detail showed 8 coloured buttons; the workspaces use Message · Request · Action · More | `ArrangesRecordActions` on `PeopleViewRecord` and `PeopleEditRecord`. Presentation only: actions are cached and mounted by name before it runs |
+| Tabs use the 360 section-nav underline; section headings use the panel label | Record pages still read as Filament cards with a floating pill bar | Theme part D |
+| Row actions pinned to the right edge of wide tables | Person chips pushed leave requests and leave types past 1440 px; wide tables (employees, courses) already hid their actions | Theme part D (desktop only; phones use stacked rows) |
+| Accessible date-picker trigger | Filament nests the labelled input inside a `<button>` (axe nested-interactive) | `app/Filament/Support/Forms`, bound in the container by `PeopleOsUi` |
+| WCAG AA for Filament chrome inside the layer | Closure axe audit: placeholders, dark filled buttons, select clear target, Livewire progress-bar role | Theme part D, `peopleos.js` |
+| The "quiet" row-action opacity was removed | It dropped link labels below 4.5:1 | Theme part D |
+
 ## Appendix — page inventory
 
 Family letters as in §2. Page types: list, create, edit, view; "(modal create/edit)" marks `ManageRecords`. RM = relation managers. Sensitivity is High for sensitive families, Medium where employee-linked. Criticality is High for request, approval, detail and sensitive families. Mobile importance is High for self-service and manager-daily screens.

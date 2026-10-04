@@ -14,6 +14,7 @@ use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\LeaveRequests\Pages\ListLeaveRequests;
 use App\Filament\Support\Forms\PeopleDatePicker;
 use App\Filament\Support\PeopleOsText;
+use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 
@@ -145,4 +146,19 @@ it('renders date pickers without an interactive control nested in another, keepi
         ->toContain('<button type="button">Next</button>')
         ->not->toContain('tabindex="-1"')->not->toContain('aria-label="Pick"')
         ->and(PeopleDatePicker::repairTrigger('<button type="button">Other</button>'))->toBe('<button type="button">Other</button>');
+});
+
+it('leads record pages with decisive actions and keeps destructive ones behind More, still mountable by name', function () {
+    $this->actingAs(tenantUser($this->tenant, ['*']));
+    $department = Department::query()->create(['company_id' => Company::query()->first()?->id ?? Company::factory()->create()->id, 'name' => 'Engineering', 'code' => 'ENG', 'status' => 'active', 'effective_from' => '2024-04-01']);
+
+    $page = Livewire::test(EditDepartment::class, ['record' => $department->id]);
+    $header = $page->instance()->getCachedHeaderActions();
+    expect($header)->toHaveCount(1)
+        ->and($header[0])->toBeInstanceOf(ActionGroup::class)
+        ->and($header[0]->getLabel())->toBe('More')
+        ->and(array_keys($header[0]->getFlatActions()))->toBe(['delete']);
+    // Presentation only: the action keeps its own rules and still mounts from the menu.
+    $page->assertActionVisible('delete')->mountAction('delete')->assertActionMounted('delete');
+    $this->get(DepartmentResource::getUrl('edit', ['record' => $department]))->assertOk()->assertSee('More')->assertSee('Delete');
 });

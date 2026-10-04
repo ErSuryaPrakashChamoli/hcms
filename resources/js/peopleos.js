@@ -310,9 +310,11 @@ components.posFormReview = (mode = 'edit') => ({
         if (!this.baseline) return;
         const now = this.read();
         const items = [];
+        // Create: everything filled in (defaults included) is reviewed, but only once the person has started.
+        const started = [...now].some(([key, f]) => f.value !== (this.baseline.get(key)?.value ?? ''));
         now.forEach((f, key) => {
             const before = this.baseline.get(key)?.value ?? '';
-            if (this.mode === 'create' ? f.value !== '' : f.value !== before) {
+            if (this.mode === 'create' ? started && f.value !== '' : f.value !== before) {
                 items.push({ label: f.label, before: f.secret ? (before ? '••••' : '') : before, after: f.secret ? '••••' : f.value });
             }
         });
