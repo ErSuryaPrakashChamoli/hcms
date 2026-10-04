@@ -1911,3 +1911,23 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 .pos-workforce-headline { font-family: var(--font-display); font-size: var(--pos-fs-title); line-height: 1.3; color: var(--pos-text); max-width: 62ch; text-wrap: balance; }
 .pos-movement { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); column-gap: var(--pos-space-6); }
 .pos-stream-row-compact { padding-block: var(--pos-space-2); }
+
+/* ------------------------------------------------------------------ F. UX.17: mobile and responsive
+   One PeopleOS, laid out for the way each role works on a phone. The breakpoints are the existing ones: 640 (cards),
+   768 (phone), 1024 (the rail replaces the bar), 1280 (two columns). Nothing here changes what anyone may open. */
+
+/* The bar steps aside while an overlay owns the screen (a modal form, the menu, the palette, a sheet, the assistant):
+   it covered modal footers and the menu. Overlays lock page scroll on <html> (Alpine x-trap.noscroll). */
+@media (max-width: 1023px) {
+    html.pos-command-open .pos-bottom-nav,
+    html[style*='overflow: hidden'] .pos-bottom-nav,
+    body:has(.fi-sidebar.fi-sidebar-open) .pos-bottom-nav { display: none; }
+    /* One way to start something where the bar shows: its Actions button. The top bar's New and Home's
+       "Start something" belong to the rail layout. */
+    .pos-quick-launch, .pos-with-rail { display: none; }
+    .pos-bottom-item > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+/* Tablets: a centred bar rather than five 150 px cells */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .pos-bottom-nav { margin-inline: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 560px; padding-bottom: 6px; border: 1px solid var(--pos-border); border-radius: var(--pos-radius-xl); box-shadow: var(--pos-shadow-2); }
+}

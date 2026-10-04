@@ -131,6 +131,8 @@ class Home extends Dashboard
         }
         app(ExperiencePreferences::class)->update(auth()->user(), ['lens' => $lens]);
         unset($this->home);
+        // UX.17: the phone bar follows the new view at once.
+        $this->dispatch('pos-experience-changed');
     }
 
     /** First-login welcome (§47): shown once, until the person dismisses it. */

@@ -78,6 +78,8 @@ class Preferences extends Page
             return;
         }
         $this->save(['lens' => $lens ?: null], 'Home lens updated');
+        // UX.17: the phone bar follows the new view at once.
+        $this->dispatch('pos-experience-changed');
     }
 
     public function restoreCards(): void
