@@ -31,8 +31,9 @@
         </div>
     </div>
     @php($summarise = isset(app(\App\Domain\Ai\Services\AiGateway::class)->assistantsFor(auth()->user())['hr']))
-    @php($visible = collect($actions)->filter(fn ($a) => $a->isVisible())->isNotEmpty())
-    {{-- UX.19: no empty row when the viewer has no action here (the person viewing their own record) --}}
+    {{-- UX.19: no empty row when the viewer has no action here, which happens for the person viewing their own record
+         (anyone else has Message at least). Only then are the actions checked here, instead of again when rendered. --}}
+    @php($visible = (int) $employee->user_id !== (int) auth()->id() || collect($actions)->filter(fn ($a) => $a->isVisible())->isNotEmpty())
     @if ($summarise || $visible)
     <div class="pos-360-actions">
         @if ($summarise)
