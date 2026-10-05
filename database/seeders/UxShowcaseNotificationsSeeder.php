@@ -108,11 +108,18 @@ class UxShowcaseNotificationsSeeder extends Seeder
         }
     }
 
+    private int $sent = 0;
+
     private function send(User $user, string $subject, string $body, string $event, Model $source, bool $read = false): void
     {
-        app(Notifier::class)->send([$user], ['in_app'], $subject, $body, $event, $source);
-        if ($read) {
-            $user->notifications()->latest()->first()?->markAsRead();
+        $delivery = app(Notifier::class)->send([$user], ['in_app'], $subject, $body, $event, $source)->first();
+        // UX.18: each notification gets its own moment, six minutes apart in the order sent, so the list reads the same on
+        // every run (with a frozen clock they would all share one second). Found by its delivery, never by "latest".
+        $notification = $delivery ? $user->notifications()->where('data->viewData->peopleos->delivery_id', $delivery->id)->first() : null;
+        if ($notification === null) {
+            return;
         }
+        $at = now()->subMinutes(90 - 6 * $this->sent++);
+        $notification->forceFill(['created_at' => $at, 'updated_at' => $at, 'read_at' => $read ? $at : null])->save();
     }
 }

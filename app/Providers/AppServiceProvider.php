@@ -394,6 +394,7 @@ use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Log\Context\Repository as ContextRepository;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -460,9 +461,24 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(TenantContext::class);
     }
 
+    /**
+     * UX.18 visual regression: runs against a disposable *_visual_showcase database with a frozen clock, so dates,
+     * greetings and relative times are stable. Inert unless all three hold: the variable is set, the app is not in
+     * production, and the database is a *_visual_showcase one.
+     */
+    private function freezeVisualClock(): void
+    {
+        $frozen = config('peopleos.visual.frozen_now');
+        $database = (string) config('database.connections.'.config('database.default').'.database');
+        if ($frozen && ! $this->app->isProduction() && str_ends_with($database, '_visual_showcase')) {
+            Carbon::setTestNow(Carbon::parse($frozen));
+        }
+    }
+
     public function boot(): void
     {
         Model::shouldBeStrict(! $this->app->isProduction());
+        $this->freezeVisualClock();
 
         $this->registerPolicies();
         $this->registerGateShortcuts();

@@ -1894,4 +1894,10 @@ return [
         'sensitive_attributes' => ['password', 'account_number', 'pan', 'aadhaar_reference', 'uan', 'pf_number', 'esic_number', 'salary'],
         'mask' => '••••',
     ],
+
+    // UX.18 visual regression: a frozen clock for the disposable *_visual_showcase database only (never in production),
+    // so dates, greetings and "x minutes ago" are identical on every run. See tests/visual/README.md.
+    'visual' => [
+        'frozen_now' => env('PEOPLEOS_VISUAL_FROZEN_NOW'),
+    ],
 ];
