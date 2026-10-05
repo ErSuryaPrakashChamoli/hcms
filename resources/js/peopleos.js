@@ -21,8 +21,15 @@ const quiet = (call) => (call && typeof call.catch === 'function' ? call.catch((
  * and the navigation (WCAG 2.4.3). Only rows that actually overflow (phones) are scrolled.
  */
 window.posRevealChip = (row, chip) => {
-    if (!row || !chip || row.scrollWidth <= row.clientWidth) return;
-    row.scrollLeft += chip.getBoundingClientRect().left - row.getBoundingClientRect().left - 16;
+    if (!row || !chip) return;
+    const reveal = () => {
+        if (row.scrollWidth <= row.clientWidth) return;
+        row.scrollLeft += chip.getBoundingClientRect().left - row.getBoundingClientRect().left - 16;
+    };
+    reveal();
+    // The row may only overflow once web fonts have loaded (seen in the WebKit engine): reveal again then.
+    requestAnimationFrame(reveal);
+    document.fonts?.ready.then(reveal);
 };
 
 const go = (url) => {
