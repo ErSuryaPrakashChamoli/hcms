@@ -402,3 +402,85 @@ document.addEventListener('alpine:init', registerAll);
     new MutationObserver(watchBody).observe(document.documentElement, { childList: true });
     if (document.body) watchBody(); else document.addEventListener('DOMContentLoaded', watchBody);
 })();
+
+/*
+ * UX.18: Back closes the topmost overlay before it leaves the page (Android Back, the browser's Back button, a mouse's
+ * back button). Each open overlay (a Filament modal, the phone menu, the command center, a drawer or sheet, the
+ * assistant) adds one same-URL history entry; Back pops it and closes that overlay, and only then navigates. Closing an
+ * overlay any other way (Esc, Cancel, a click outside, finishing an action) takes its entry back out. A link followed
+ * from inside an overlay first removes the overlay entries, then navigates, so history never keeps stale steps.
+ * Overlays are followed from the DOM (their open classes), so components only need a close event. This listener runs
+ * in the capture phase and handles its own entries, so Livewire's navigation never sees them.
+ */
+const overlayBack = {
+    stack: [],
+    swallow: 0,
+    resume: null,
+    rerouting: false,
+    watched: [
+        // [id, is it open?, how to close it]
+        ['command', () => document.documentElement.classList.contains('pos-command-open'), () => window.dispatchEvent(new CustomEvent('pos-command-close'))],
+        ['drawer', () => document.documentElement.classList.contains('pos-drawer-is-open'), () => window.dispatchEvent(new CustomEvent('pos-drawer-close'))],
+        ['assistant', () => document.documentElement.classList.contains('pos-ai-open'), () => window.dispatchEvent(new CustomEvent('pos-ai-close'))],
+        ['menu', () => window.matchMedia('(max-width: 1023px)').matches && !!document.querySelector('.fi-sidebar.fi-sidebar-open'), () => window.Alpine?.store('sidebar')?.close()],
+    ],
+    init() {
+        window.addEventListener('popstate', (e) => this.onPop(e), { capture: true });
+        document.addEventListener('alpine:navigate', (e) => this.onNavigate(e));
+        document.addEventListener('alpine:navigated', () => { if (!this.resume) this.stack = []; });
+        new MutationObserver((records) => this.onMutations(records)).observe(document.documentElement, { attributes: true, attributeFilter: ['class'], subtree: true });
+    },
+    onMutations(records) {
+        let shell = false;
+        for (const r of records) {
+            const el = r.target;
+            if (el === document.documentElement || el.classList?.contains('fi-sidebar')) shell = true;
+            if (el.classList?.contains('fi-modal') && el.id) {
+                this.sync(`modal:${el.id}`, el.classList.contains('fi-modal-open'), () => window.dispatchEvent(new CustomEvent('close-modal', { detail: { id: el.id } })));
+            }
+        }
+        if (shell) this.watched.forEach(([id, isOpen, close]) => this.sync(id, isOpen(), close));
+    },
+    sync(id, open, close) {
+        const i = this.stack.findIndex((e) => e.id === id);
+        if (open && i === -1) {
+            this.stack.push({ id, close });
+            history.pushState({ ...(history.state ?? {}), posOverlay: this.stack.length }, '', location.href);
+        } else if (!open && i !== -1) {
+            // Closed in the page: take its entry back out (the resulting popstate is ours).
+            this.stack.splice(i, 1);
+            if (history.state?.posOverlay) { this.swallow++; history.back(); }
+        }
+    },
+    onPop(e) {
+        if (this.swallow > 0) {
+            this.swallow--;
+            e.stopImmediatePropagation();
+            if (this.swallow === 0 && this.resume) {
+                const url = this.resume;
+                this.resume = null;
+                this.rerouting = true;
+                try { go(url); } finally { this.rerouting = false; }
+            }
+            return;
+        }
+        if (this.stack.length > 0) {
+            e.stopImmediatePropagation();
+            this.stack.pop().close();
+            return;
+        }
+        // A leftover overlay step (after a reload, or going Forward): nothing is open, so stay put.
+        if (e.state?.posOverlay) e.stopImmediatePropagation();
+    },
+    onNavigate(e) {
+        if (this.rerouting || e.detail?.history || this.stack.length === 0) return;
+        e.preventDefault();
+        this.resume = String(e.detail?.url ?? location.href);
+        const steps = this.stack.length;
+        this.stack = [];
+        this.swallow = 1;
+        history.go(-steps);
+    },
+};
+overlayBack.init();
+window.PeopleOS = Object.assign(window.PeopleOS || {}, { overlayBack });

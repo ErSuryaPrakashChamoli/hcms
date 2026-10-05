@@ -1,7 +1,9 @@
 @php
     $available = $this->assistants;
 @endphp
-<div @if (! $embedded) x-data="{ open: false, lastFocus: null }" x-on:pos-ai-open.window="lastFocus = document.activeElement; open = true; $nextTick(() => $refs.ask?.focus())" @endif>
+{{-- UX.18: the open panel marks <html> so the Back button can close it (pos-ai-close, overlayBack in peopleos.js) --}}
+<div @if (! $embedded) x-data="{ open: false, lastFocus: null }" x-on:pos-ai-open.window="lastFocus = document.activeElement; open = true; $nextTick(() => $refs.ask?.focus())"
+    x-on:pos-ai-close.window="if (open) { open = false; $nextTick(() => lastFocus?.focus?.()) }" x-effect="document.documentElement.classList.toggle('pos-ai-open', open)" @endif>
     @if (! $embedded)
         <div x-show="open" x-cloak class="pos-overlay" x-on:click="open = false; $nextTick(() => lastFocus?.focus?.())" aria-hidden="true"></div>
     @endif

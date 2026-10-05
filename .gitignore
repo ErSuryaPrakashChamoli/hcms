@@ -30,3 +30,4 @@ Homestead.yaml
 Thumbs.db
 /tests/visual/.auth
 /tests/visual/results
+/tests/browser/results

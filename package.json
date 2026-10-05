@@ -6,7 +6,8 @@
         "build": "vite build",
         "dev": "vite",
         "visual:test": "tests/visual/prepare.sh && playwright test -c tests/visual",
-        "visual:update": "tests/visual/prepare.sh && playwright test -c tests/visual --update-snapshots"
+        "visual:update": "tests/visual/prepare.sh && playwright test -c tests/visual --update-snapshots",
+        "browser:test": "tests/visual/prepare.sh && playwright test -c tests/browser"
     },
     "devDependencies": {
         "@playwright/test": "1.62.1",
