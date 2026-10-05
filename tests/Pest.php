@@ -15,6 +15,7 @@ use App\Domain\Lifecycle\Services\LifecycleEngine;
 use App\Domain\Platform\Actions\ProvisionTenantAction;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use Faker\Provider\Base;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -24,7 +25,21 @@ pest()->extend(TestCase::class)
     ->in('Feature');
 
 // Phase 8: MySQL concurrency tests manage their own disposable database (no RefreshDatabase).
-pest()->extend(TestCase::class)->in('MySql');
+// UX.18: that database keeps its users for the whole run (it is migrated once; the tests fork, so they cannot use a
+// transaction), while Faker's unique() starts over with each test's fresh application, so two tests could draw the same
+// safeEmail() and collide on users_email_unique. Factory e-mails here come from a per-process sequence instead: never
+// repeated within a run, and the database is migrated fresh at the start of every run.
+pest()->extend(TestCase::class)
+    ->beforeEach(fn () => fake()->addProvider(new class(fake()) extends Base
+    {
+        private static int $sequence = 0;
+
+        public function safeEmail(): string
+        {
+            return 'concurrency-'.getmypid().'-'.(++self::$sequence).'@example.test';
+        }
+    }))
+    ->in('MySql');
 
 /*
 |--------------------------------------------------------------------------
