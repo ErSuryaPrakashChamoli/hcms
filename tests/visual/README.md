@@ -22,7 +22,7 @@ A difference should mean the product changed. Four things keep the rendering ide
 ## Run
 
 ```bash
-# once: an empty database named hcm_ux_visual_showcase, and the browsers (npx playwright install chromium firefox webkit)
+# once: the browsers (npx playwright install chromium firefox webkit); prepare.sh creates the database if it is missing
 tests/visual/serve.sh &              # port 8092 (VISUAL_PORT); keep it running
 npm run visual:test                  # rebuild the data, then compare every screen with its baseline
 # WEBKIT_EXE=<launcher> is needed where Playwright's WebKit cannot find its system libraries

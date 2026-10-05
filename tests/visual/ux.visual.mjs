@@ -60,6 +60,9 @@ export const SHOTS = [
     ['employee-page-not-found', 'employee', '/admin/does-not-exist', [P, D], L, 'status:404'],
 ];
 
+/** Landscape tablet (1024 × 768, where the rail takes over from the phone bar): a focused set, light only. */
+const LANDSCAPE_SHOTS = new Set(['manager-home', 'hr-home', 'executive-home', 'admin-home', 'hr-360', 'hr-people-list', 'manager-approvals']);
+
 /** Cross-engine smoke (Firefox desktop, WebKit-engine phone): a small set, its own baselines. */
 const ENGINE_SHOTS = new Set(['manager-home', 'hr-people-list', 'admin-home', 'employee-palette-leave']);
 
@@ -112,8 +115,8 @@ for (const persona of Object.keys(PERSONAS)) {
         for (const [id, who, path, viewports, themes, action] of SHOTS.filter((s) => s[1] === persona)) {
             for (const theme of themes) {
                 test(`${id} · ${theme}`, async ({ page }, info) => {
-                    const { vp, engine } = info.project.metadata;
-                    test.skip(!viewports.includes(vp), `${id} is not captured at ${vp}`);
+                    const { vp, engine, landscape } = info.project.metadata;
+                    test.skip(landscape ? !LANDSCAPE_SHOTS.has(id) || theme !== 'light' : !viewports.includes(vp), `${id} is not captured at ${vp}`);
                     test.skip(!!engine && (!ENGINE_SHOTS.has(id) || theme !== 'light'), 'outside the cross-engine smoke set');
                     await page.addInitScript((t) => { try { localStorage.setItem('theme', t); } catch {} }, theme);
                     await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });

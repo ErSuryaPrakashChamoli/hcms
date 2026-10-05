@@ -3,7 +3,7 @@
 // 24 px (WCAG 2.5.8, with the spacing exception approximated) split into PeopleOS-owned (pos-*) and standard Filament
 // (fi-*) controls. Open states are part of the page list (palette, sheets, modals, menus, drawers, assistant).
 //   BASE=<url> [VPS=phone,tablet,desktop] [THEMES=light,dark] node a11y-audit.mjs <out.json>
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { personaContext } from './auth.mjs';
@@ -66,8 +66,12 @@ const structure = () => {
 const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null; // re-check a subset by path fragment
 const vps = (process.env.VPS ?? 'phone,tablet,desktop').split(',');
 const themes = (process.env.THEMES ?? 'light,dark').split(',');
-const b = await chromium.launch();
-const out = { tool: `axe-core ${axeVersion}`, browser: `Chromium ${b.version()}`, base: BASE, rows: [] };
+// ENGINE=firefox|webkit runs the same audit in another engine (WEBKIT_EXE for the WebKit launcher; Firefox has no touch emulation).
+const ENGINE = process.env.ENGINE ?? 'chromium';
+const engine = { chromium, firefox, webkit }[ENGINE];
+const b = await engine.launch(ENGINE === 'webkit' && process.env.WEBKIT_EXE ? { executablePath: process.env.WEBKIT_EXE } : {});
+if (ENGINE === 'firefox') { for (const v of Object.values(VP)) { delete v.hasTouch; delete v.isMobile; } }
+const out = { tool: `axe-core ${axeVersion}`, browser: `${ENGINE} ${b.version()}`, base: BASE, rows: [] };
 for (const vp of vps) {
     for (const theme of themes) {
         const ctxs = {};

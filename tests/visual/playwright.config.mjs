@@ -32,6 +32,8 @@ export default defineConfig({
         { name: 'chromium-phone', metadata: { vp: 'phone' }, use: { browserName: 'chromium', viewport: { width: 390, height: 844 }, ...touch } },
         { name: 'chromium-tablet', metadata: { vp: 'tablet' }, use: { browserName: 'chromium', viewport: { width: 768, height: 1024 }, ...touch } },
         { name: 'chromium-desktop', metadata: { vp: 'desktop' }, use: { browserName: 'chromium', viewport: { width: 1440, height: 900 } } },
+        // Landscape tablet at the rail breakpoint (the rail replaces the phone bar at 1024 px): a focused set.
+        { name: 'chromium-tablet-landscape', metadata: { vp: 'tabletL', landscape: true }, use: { browserName: 'chromium', viewport: { width: 1024, height: 768 }, ...touch } },
         // Cross-engine smoke: a few screens in Firefox and the WebKit engine (Playwright WPE MiniBrowser, not Apple Safari).
         { name: 'firefox-desktop', metadata: { vp: 'desktop', engine: 'firefox' }, use: { browserName: 'firefox', viewport: { width: 1440, height: 900 } } },
         { name: 'webkit-phone', metadata: { vp: 'phone', engine: 'webkit' }, use: { browserName: 'webkit', viewport: { width: 390, height: 844 }, ...touch, launchOptions: process.env.WEBKIT_EXE ? { executablePath: process.env.WEBKIT_EXE } : {} } },
