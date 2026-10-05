@@ -3,6 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Services\CurrentEmployee;
 use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\LearningEnrolment;
 use App\Domain\Learning\Models\LearningPath;
@@ -32,7 +33,7 @@ final class LearningActions
 {
     public static function me(): ?Employee
     {
-        return Employee::query()->where('user_id', auth()->id())->first();
+        return app(CurrentEmployee::class)->of(auth()->user());
     }
 
     /** Employees the current user may assign learning to: everyone with learning.manage, else the employees they manage. */

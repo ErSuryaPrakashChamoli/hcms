@@ -189,6 +189,7 @@ use App\Domain\Identity\Policies\TenantSettingPolicy;
 use App\Domain\Identity\Policies\UserPolicy;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Identity\Services\AuthorizationContext;
+use App\Domain\Identity\Services\CurrentEmployee;
 use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Integration\Models\ApiKey;
 use App\Domain\Integration\Models\ExternalReference;
@@ -326,6 +327,7 @@ use App\Domain\Performance\Services\PerformanceOutcomes;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
+use App\Domain\Platform\Services\FeatureFlags;
 use App\Domain\ServiceDesk\Listeners\ServiceDeskDomainListener;
 use App\Domain\ServiceDesk\Listeners\ServiceDeskWorkflowBridge;
 use App\Domain\ServiceDesk\Models\ServiceDefinition;
@@ -412,6 +414,9 @@ class AppServiceProvider extends ServiceProvider
         ModuleCatalogue::class, RoleLens::class,
         ExperiencePreferences::class, ExperienceNavigation::class,
         PeopleVisibility::class, ApprovalCenter::class,
+        // UX.18: per-request answers that pages and the navigation used to re-query (the signed-in person's own
+        // employee record; the tenant's feature flags, which hit the cache store on every check).
+        CurrentEmployee::class, FeatureFlags::class,
     ];
 
     public function register(): void
@@ -479,6 +484,8 @@ class AppServiceProvider extends ServiceProvider
     {
         Model::shouldBeStrict(! $this->app->isProduction());
         $this->freezeVisualClock();
+        // UX.18: a saved employee record (a user linked or unlinked) clears the per-request "who am I" answer.
+        Employee::saved(fn () => $this->app->make(CurrentEmployee::class)->forget());
 
         $this->registerPolicies();
         $this->registerGateShortcuts();

@@ -1,4 +1,5 @@
-<div x-data="posCommand('all')" x-on:pos-command-open.window="open($event.detail)" x-on:keydown.window="globalKey($event)" class="pos-command-root">
+{{-- UX.18: pos-command-close comes from the Back button (overlayBack in peopleos.js) --}}
+<div x-data="posCommand('all')" x-on:pos-command-open.window="open($event.detail)" x-on:pos-command-close.window="isOpen && close()" x-on:keydown.window="globalKey($event)" class="pos-command-root">
     <div x-show="isOpen" x-cloak class="pos-overlay" x-on:click="close()" x-transition.opacity.duration.150ms aria-hidden="true"></div>
 
     {{-- UX.17: on phones a full-screen sheet sized to the visible viewport (the keyboard never covers results), with Cancel --}}
@@ -13,7 +14,7 @@
                 x-on:keydown.arrow-down.prevent="move(1)" x-on:keydown.arrow-up.prevent="move(-1)"
                 x-on:keydown.arrow-right="actionMove($event, 1)" x-on:keydown.arrow-left="actionMove($event, -1)"
                 x-on:keydown.enter.prevent="choose(null, $event.metaKey || $event.ctrlKey)" x-on:keydown.tab="cycleMode($event)" />
-            <span wire:loading.delay.short wire:target="query" class="pos-spinner" aria-hidden="true"></span>
+            <span wire:loading.delay.short wire:target="query, opened" class="pos-spinner" aria-hidden="true"></span>
             <button type="button" class="pos-command-cancel" x-on:click="close()">Cancel</button>
         </div>
         @if ($this->pickLabel())
@@ -30,7 +31,8 @@
         </div>
 
         <div id="pos-command-list" role="listbox" aria-label="Results" class="pos-command-list" x-ref="list">
-            @php($groups = $this->groups)
+            {{-- UX.18: nothing is searched until the center is opened (or a query is typed) --}}
+            @php($groups = $active || trim($query) !== '' ? $this->groups : [])
             @forelse ($groups as $group)
                 <div role="group" aria-labelledby="cmd-g-{{ $group['key'] }}" class="pos-command-section">
                     <p id="cmd-g-{{ $group['key'] }}" class="pos-command-group">{{ $group['label'] }}</p>
@@ -62,7 +64,9 @@
                 </div>
             @empty
                 <div class="pos-command-empty" role="status">
-                    @if (trim($query) === '')
+                    @if (trim($query) === '' && ! $active)
+                        <p class="pos-body-sm pos-muted" wire:loading.remove wire:target="opened">Loading suggestions…</p>
+                    @elseif (trim($query) === '')
                         <p class="pos-body-sm pos-muted">Start typing to search.</p>
                     @else
                         <p class="pos-body font-medium">No results for “{{ $query }}”</p>

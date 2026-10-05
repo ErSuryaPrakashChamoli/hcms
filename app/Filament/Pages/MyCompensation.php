@@ -7,6 +7,7 @@ use App\Domain\Compensation\Services\CompensationAccess;
 use App\Domain\Compensation\Support\CompensationSnapshot;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
+use App\Domain\Identity\Services\CurrentEmployee;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -46,7 +47,7 @@ class MyCompensation extends Page
 
     public static function employee(): ?Employee
     {
-        return auth()->check() ? Employee::query()->where('user_id', auth()->id())->first() : null;
+        return auth()->check() ? app(CurrentEmployee::class)->of(auth()->user()) : null;
     }
 
     /** @return Collection<int, CompensationSnapshot> newest first */

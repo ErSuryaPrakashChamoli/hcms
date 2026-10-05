@@ -16,6 +16,7 @@ use App\Domain\Engagement\Services\Feedback;
 use App\Domain\Engagement\Services\SurveyResponses;
 use App\Domain\Experience\Services\ExperienceTasks;
 use App\Domain\Experience\Services\NeedsAttention;
+use App\Domain\Identity\Services\CurrentEmployee;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Services\KnowledgeBase;
 use App\Domain\Letters\Models\Letter;
@@ -89,7 +90,7 @@ class MyHr extends Page
 
     public static function me(): ?Employee
     {
-        return auth()->check() ? Employee::query()->where('user_id', auth()->id())->first() : null;
+        return auth()->check() ? app(CurrentEmployee::class)->of(auth()->user()) : null;
     }
 
     public function setTab(string $tab): void

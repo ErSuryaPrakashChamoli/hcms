@@ -63,6 +63,12 @@ final class AccessScope implements Scope
         $scopes->constrainByEmployee($builder, $user);
     }
 
+    /** Whether scoping is suspended right now (inside withoutScoping()). Read-only; used to key request memos. */
+    public static function suspended(): bool
+    {
+        return self::$disabled;
+    }
+
     /** Run a callback with access scoping suspended (used to build the scope's own sub-selects). */
     public static function withoutScoping(Closure $callback): mixed
     {

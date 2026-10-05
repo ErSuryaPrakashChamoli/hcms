@@ -53,6 +53,12 @@ final class WorkforceMetrics
     /** @return array{key: string, label: string, value: float|int|null, format: string, hint: ?string, restricted?: bool} */
     public function metric(string $key, ?User $viewer = null): array
     {
+        return $this->within(fn () => $this->computeMetric($key, $viewer));
+    }
+
+    /** @return array{key: string, label: string, value: mixed, format: string, hint: ?string} */
+    private function computeMetric(string $key, ?User $viewer): array
+    {
         $label = config("peopleos.analytics.metrics.{$key}", $key);
         $viewer ??= auth()->user();
         if (! $this->allowed($key, $viewer)) {
@@ -87,30 +93,112 @@ final class WorkforceMetrics
     /** @return array<string, array{key: string, label: string, value: mixed, format: string, hint: ?string}> */
     public function all(array $keys, ?User $viewer = null): array
     {
-        $out = [];
-        foreach ($keys as $key) {
-            $out[$key] = $this->metric($key, $viewer);
-        }
+        return $this->within(function () use ($keys, $viewer) {
+            $out = [];
+            foreach ($keys as $key) {
+                $out[$key] = $this->metric($key, $viewer);
+            }
 
-        return $out;
+            return $out;
+        });
+    }
+
+    /**
+     * @var array<string, int>|null UX.18: headcounts per day, kept only for the length of one aggregate operation (a set
+     *                              of metrics, a series, the attrition rate); calls made one after another always count afresh.
+     */
+    private ?array $headcounts = null;
+
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $operation
+     * @return T
+     */
+    private function within(callable $operation): mixed
+    {
+        $outermost = $this->headcounts === null;
+        if ($outermost) {
+            $this->headcounts = [];
+        }
+        try {
+            return $operation();
+        } finally {
+            if ($outermost) {
+                $this->headcounts = null;
+            }
+        }
     }
 
     public function headcount(CarbonInterface|string|null $on = null): int
     {
         $day = Carbon::parse($on ?? now())->toDateString();
-
-        return Employee::query()
+        if ($this->headcounts !== null && isset($this->headcounts[$day])) {
+            return $this->headcounts[$day];
+        }
+        $count = Employee::query()
             ->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])
             ->where(fn ($q) => $q->whereNull('joining_date')->orWhereDate('joining_date', '<=', $day))
             ->where(fn ($q) => $q->whereNull('exit_date')->orWhereDate('exit_date', '>=', $day)->orWhere(fn ($s) => $s->whereDate('exit_date', '<', $day)->whereNotIn('lifecycle_state', ['exited', 'alumni'])))
             ->count();
+        if ($this->headcounts !== null) {
+            $this->headcounts[$day] = $count;
+        }
+
+        return $count;
+    }
+
+    /**
+     * UX.18: the headcount on several days in one aggregate query (one conditional sum per day, the same predicates
+     * and scopes as headcount()); a twelve-month trend was twelve full counts.
+     *
+     * @param  list<string>  $days  Y-m-d
+     * @return array<string, int>
+     */
+    public function headcounts(array $days): array
+    {
+        return $this->within(fn () => $this->countHeadcounts($days));
+    }
+
+    /**
+     * @param  list<string>  $days
+     * @return array<string, int>
+     */
+    private function countHeadcounts(array $days): array
+    {
+        $missing = array_values(array_unique(array_diff($days, array_keys($this->headcounts ?? []))));
+        if ($missing !== []) {
+            $columns = [];
+            $bindings = [];
+            foreach ($missing as $i => $day) {
+                $columns[] = "SUM(CASE WHEN (joining_date IS NULL OR DATE(joining_date) <= ?) AND (exit_date IS NULL OR DATE(exit_date) >= ? OR (DATE(exit_date) < ? AND lifecycle_state NOT IN ('exited', 'alumni'))) THEN 1 ELSE 0 END) AS h{$i}";
+                array_push($bindings, $day, $day, $day);
+            }
+            $row = (array) Employee::query()->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])
+                ->selectRaw(implode(', ', $columns), $bindings)->toBase()->first();
+            foreach ($missing as $i => $day) {
+                $this->headcounts[$day] = (int) ($row["h{$i}"] ?? 0);
+            }
+        }
+
+        return array_intersect_key($this->headcounts, array_flip($days));
     }
 
     /** @return array{labels: array<int, string>, series: array<string, array<int, float>>} */
     public function series(string $key, int $months = 12): array
     {
+        return $this->within(fn () => $this->computeSeries($key, $months));
+    }
+
+    /** @return array{labels: array<int, string>, series: array<string, array<int, float>>} */
+    private function computeSeries(string $key, int $months): array
+    {
         $labels = [];
         $values = [];
+        if ($key === 'headcount') {
+            // UX.18: every month end in one query.
+            $this->countHeadcounts(array_map(fn (int $i) => now()->subMonthsNoOverflow($i)->startOfMonth()->endOfMonth()->toDateString(), range($months - 1, 0)));
+        }
         for ($i = $months - 1; $i >= 0; $i--) {
             $month = now()->subMonthsNoOverflow($i)->startOfMonth();
             $labels[] = $month->format('M y');
@@ -129,7 +217,13 @@ final class WorkforceMetrics
 
     public function attritionRate(): ?float
     {
+        return $this->within(fn () => $this->computeAttritionRate());
+    }
+
+    private function computeAttritionRate(): ?float
+    {
         $exits = ExitCase::query()->where('status', 'completed')->whereDate('last_working_day', '>=', now()->subMonths(12))->count();
+        $this->countHeadcounts([now()->subMonths(12)->toDateString(), now()->toDateString()]);
         $avg = ($this->headcount(now()->subMonths(12)) + $this->headcount()) / 2;
 
         return $avg > 0 ? round($exits / $avg * 100, 1) : null;

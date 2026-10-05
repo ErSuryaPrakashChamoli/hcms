@@ -5,6 +5,8 @@ namespace App\Domain\Experience\Services;
 use App\Domain\Communication\Services\Communications;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\AccessScopes;
+use App\Domain\Identity\Services\AuthorizationContext;
 use App\Domain\Lifecycle\Models\EmployeeTimelineEntry;
 use App\Domain\Lifecycle\Support\TimelineCategories;
 use App\Domain\Performance\Services\PerformanceRelationships;
@@ -113,8 +115,25 @@ final class ChangeFeed
 
         $hiddenFor = [];
         $profiles = [];
+        $entries = $query->get();
 
-        return $query->get()->filter(function (EmployeeTimelineEntry $entry) use ($user, &$hiddenFor) {
+        // UX.18: one authorisation pass over the people listed. Each person's visibility and the viewer's management
+        // relationship are decided by the same checks as before, from facts loaded once for this pass (it made three
+        // queries per person: 469 queries for HR Home at 10,000 employees).
+        return app(AuthorizationContext::class)->run(function () use ($entries, $user, &$hiddenFor, &$profiles) {
+            app(AccessScopes::class)->primeEmployeeIds($user, $entries->pluck('employee_id'));
+
+            return $this->present($entries, $user, $hiddenFor, $profiles);
+        });
+    }
+
+    /**
+     * @param  Collection<int, EmployeeTimelineEntry>  $entries
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function present(Collection $entries, User $user, array &$hiddenFor, array &$profiles): Collection
+    {
+        return $entries->filter(function (EmployeeTimelineEntry $entry) use ($user, &$hiddenFor) {
             $employee = $entry->employee;
             if ($employee === null) {
                 return false;

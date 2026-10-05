@@ -4,6 +4,7 @@ namespace App\Domain\Experience\Services;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -29,8 +30,14 @@ final class PeopleVisibility
             // The AccessScope global scope follows the authenticated user; constrain explicitly for $user too,
             // so the answer is right whoever is signed in (fail-closed for organisation-scoped viewers).
             $scopes = app(AccessScopes::class);
+            if (! $scopes->isScoped($user)) {
+                return Employee::query();
+            }
+            // UX.18: when $user is the signed-in person the global scope would add this very constraint a second time
+            // (one set query, applied twice, doubled the directory's database time). Apply it once, explicitly.
+            $query = auth()->id() === $user->getKey() ? Employee::query()->withoutGlobalScope(AccessScope::class) : Employee::query();
 
-            return $scopes->isScoped($user) ? $scopes->constrainEmployees(Employee::query(), $user) : Employee::query();
+            return $scopes->constrainEmployees($query, $user);
         }
 
         return Employee::query()->whereKey($this->circle($user));

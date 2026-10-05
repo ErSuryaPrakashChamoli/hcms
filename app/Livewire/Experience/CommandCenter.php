@@ -20,6 +20,9 @@ class CommandCenter extends Component
 
     public string $mode = 'all';
 
+    /** UX.18: suggestions are built once the center has been opened, not on every page load (it starts closed). */
+    public bool $active = false;
+
     /** UX.15: a change waiting for its person ("Start a transfer" → choose whom). Re-checked on every use. */
     public ?string $pick = null;
 
@@ -37,6 +40,7 @@ class CommandCenter extends Component
 
     public function opened(string $mode = 'all'): void
     {
+        $this->active = true;
         $this->pick = null;
         $this->setMode($mode);
         app(UxMetrics::class)->record('command.open');

@@ -6,6 +6,7 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\CurrentEmployee;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\ServiceDesk\Models\ServiceDefinition;
 use App\Domain\ServiceDesk\Models\Ticket;
@@ -41,7 +42,7 @@ final class ServiceDeskActions
 {
     public static function me(): ?Employee
     {
-        return Employee::query()->where('user_id', auth()->id())->first();
+        return app(CurrentEmployee::class)->of(auth()->user());
     }
 
     /** Works the HR queue (servicedesk.agent) or reads it (servicedesk.view). */

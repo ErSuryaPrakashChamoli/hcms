@@ -235,14 +235,18 @@ class People extends Page
     public function filters(): array
     {
         $visible = app(PeopleVisibility::class)->query(auth()->user())->select('employees.id');
-        $positions = fn (string $column) => EmployeePosition::query()->whereIn('employee_id', $visible)->effectiveOn()->whereNotNull($column)->distinct()->pluck($column);
+        // UX.18: departments and locations from one pass over the visible people's current positions (it was two).
+        $pairs = EmployeePosition::query()->whereIn('employee_id', $visible)->effectiveOn()
+            ->where(fn (Builder $q) => $q->whereNotNull('department_id')->orWhereNotNull('location_id'))
+            ->distinct()->get(['department_id', 'location_id']);
 
         return [
-            'departments' => Department::query()->whereKey($positions('department_id'))->orderBy('name')->pluck('name', 'id')->all(),
-            'locations' => Location::query()->whereKey($positions('location_id'))->orderBy('name')->pluck('name', 'id')->all(),
+            'departments' => Department::query()->whereKey($pairs->pluck('department_id')->filter()->unique()->values())->orderBy('name')->pluck('name', 'id')->all(),
+            'locations' => Location::query()->whereKey($pairs->pluck('location_id')->filter()->unique()->values())->orderBy('name')->pluck('name', 'id')->all(),
             'statuses' => collect(LifecycleState::cases())->reject(fn ($s) => $s === LifecycleState::Alumni)->mapWithKeys(fn ($s) => [$s->value => $s->getLabel()])->all(),
             'manager' => $this->manager ? app(PeopleVisibility::class)->query(auth()->user())->with('person')->find($this->manager)?->display_name : null,
-            'show' => app(PeopleVisibility::class)->query(auth()->user())->count() > 8,
+            // More than eight people to filter: read nine ids at most instead of counting everyone (UX.18).
+            'show' => app(PeopleVisibility::class)->query(auth()->user())->limit(9)->pluck('employees.id')->count() > 8,
         ];
     }
 
