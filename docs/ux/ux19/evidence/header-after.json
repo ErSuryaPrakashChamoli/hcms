@@ -1,0 +1,357 @@
+{
+  "base": "http://127.0.0.1:8093",
+  "label": "after",
+  "rows": [
+    {
+      "viewer": "manager",
+      "size": "phone",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 252
+      },
+      "actions": {
+        "top": 312,
+        "height": 36
+      },
+      "nav": {
+        "top": 396,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 1016,
+        "height": 225
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 844,
+      "bar": 78,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.33,
+      "viewer_panel_in_first_screen": false
+    },
+    {
+      "viewer": "manager",
+      "size": "tablet",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 226
+      },
+      "actions": {
+        "top": 286,
+        "height": 36
+      },
+      "nav": {
+        "top": 370,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 916,
+        "height": 210
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 1024,
+      "bar": 79,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.24,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "manager",
+      "size": "desktop",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 132
+      },
+      "actions": {
+        "top": 108,
+        "height": 36
+      },
+      "nav": {
+        "top": 276,
+        "height": 45
+      },
+      "viewer_panel": {
+        "top": 381,
+        "height": 225
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 900,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.15,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "hr",
+      "size": "phone",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 300
+      },
+      "actions": {
+        "top": 312,
+        "height": 84
+      },
+      "nav": {
+        "top": 444,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 999,
+        "height": 243
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 844,
+      "bar": 78,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.39,
+      "viewer_panel_in_first_screen": false
+    },
+    {
+      "viewer": "hr",
+      "size": "tablet",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 230
+      },
+      "actions": {
+        "top": 286,
+        "height": 40
+      },
+      "nav": {
+        "top": 374,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 863,
+        "height": 229
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 1024,
+      "bar": 79,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.24,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "hr",
+      "size": "desktop",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 184
+      },
+      "actions": {
+        "top": 244,
+        "height": 36
+      },
+      "nav": {
+        "top": 328,
+        "height": 45
+      },
+      "viewer_panel": {
+        "top": 433,
+        "height": 243
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 900,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.2,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "admin",
+      "size": "phone",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 300
+      },
+      "actions": {
+        "top": 312,
+        "height": 84
+      },
+      "nav": {
+        "top": 444,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 1064,
+        "height": 309
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 844,
+      "bar": 78,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.39,
+      "viewer_panel_in_first_screen": false
+    },
+    {
+      "viewer": "admin",
+      "size": "tablet",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 230
+      },
+      "actions": {
+        "top": 286,
+        "height": 40
+      },
+      "nav": {
+        "top": 374,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 920,
+        "height": 274
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 1024,
+      "bar": 79,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.24,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "admin",
+      "size": "desktop",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 184
+      },
+      "actions": {
+        "top": 244,
+        "height": 36
+      },
+      "nav": {
+        "top": 328,
+        "height": 45
+      },
+      "viewer_panel": {
+        "top": 433,
+        "height": 309
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 900,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.2,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "employee (own)",
+      "size": "phone",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 200
+      },
+      "actions": null,
+      "nav": {
+        "top": 344,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 938,
+        "height": 129
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 844,
+      "bar": 78,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.26,
+      "viewer_panel_in_first_screen": false
+    },
+    {
+      "viewer": "employee (own)",
+      "size": "tablet",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 174
+      },
+      "actions": null,
+      "nav": {
+        "top": 318,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 864,
+        "height": 114
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 1024,
+      "bar": 79,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.18,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "employee (own)",
+      "size": "desktop",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 132
+      },
+      "actions": null,
+      "nav": {
+        "top": 276,
+        "height": 45
+      },
+      "viewer_panel": {
+        "top": 381,
+        "height": 129
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 900,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.15,
+      "viewer_panel_in_first_screen": true
+    }
+  ]
+}
