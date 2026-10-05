@@ -11,7 +11,11 @@ const isOpen = {
     assistant: (page) => page.evaluate(() => document.documentElement.classList.contains('pos-ai-open')),
     menu: (page) => page.evaluate(() => !!document.querySelector('.fi-sidebar.fi-sidebar-open')),
 };
-const openPalette = async (page) => { await page.locator('.pos-command-trigger').first().click(); await expect.poll(() => isOpen.command(page)).toBe(true); };
+const openPalette = async (page) => {
+    await page.locator('.pos-command-trigger').first().click();
+    await expect.poll(() => isOpen.command(page)).toBe(true);
+    await expect(page.locator('.pos-command-input')).toBeFocused();
+};
 // Arrive on My work from Home through the app (SPA navigation), so Back has somewhere to go.
 const navigate = async (page, url) => {
     // The WebKit engine can reach network idle before Livewire has started: wait for it, as a person would wait for the page.

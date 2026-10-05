@@ -66,7 +66,10 @@ class AdminPanelProvider extends PanelProvider
             ->font('Instrument Sans')
             ->serifFont('Instrument Serif')
             ->monoFont('JetBrains Mono')
-            ->databaseNotifications()
+            // UX.18: loaded with the page, not lazily. The lazy request was in flight on every page load, and leaving the
+            // page cut it short, which Firefox and WebKit reported as an uncaught "[object Object]" (Livewire rejects
+            // an aborted call with a plain object). Measured cost: firefox-repro.mjs and perf-measure.php.
+            ->databaseNotifications(isLazy: false)
             ->colors([
                 // Hand-tuned so Filament's 600 (buttons, active states) is exactly the PeopleOS iris #574bc4 and 700
                 // its hover #463ba6; generated palettes are too saturated for an elegant interface.

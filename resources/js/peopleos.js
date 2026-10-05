@@ -8,6 +8,13 @@ const isTyping = (e) => {
     return t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 };
 
+/*
+ * UX.18: a Livewire call cut short by leaving the page rejects with a plain object ({ status: null, ... }); Firefox and
+ * WebKit report an uncaught "[object Object]" when nobody catches it. Leaving mid-call is not an error, so the
+ * interaction layer's own calls catch it (Livewire still runs its failure hooks).
+ */
+const quiet = (call) => (call && typeof call.catch === 'function' ? call.catch(() => {}) : call);
+
 const go = (url) => {
     if (!url) return;
     if (window.Livewire?.navigate) window.Livewire.navigate(url);
@@ -48,7 +55,7 @@ components.posCommand = (initialMode = 'all') => ({
             this.isOpen = true;
             const mode = detail?.mode ?? 'all';
             if (mode !== this.mode) { this.mode = mode; }
-            this.$wire.opened(mode).then(() => { if (detail?.pick) this.$wire.pick(detail.pick); });
+            quiet(this.$wire.opened(mode).then(() => { if (detail?.pick) return quiet(this.$wire.pick(detail.pick)); }));
             this.$nextTick(() => { this.$refs.input?.focus(); this.$refs.input?.select(); this.ensureActive(); });
             this.trackViewport(true);
         },
@@ -100,7 +107,7 @@ components.posCommand = (initialMode = 'all') => ({
             const modes = ['all', 'actions', 'people'];
             const next = modes[(modes.indexOf(this.mode) + (e.shiftKey ? 2 : 1)) % 3];
             this.mode = next;
-            this.$wire.setMode(next);
+            quiet(this.$wire.setMode(next));
         },
         choose(el, preview = false) {
             el = el ?? document.getElementById(this.activeId);
@@ -113,10 +120,10 @@ components.posCommand = (initialMode = 'all') => ({
             const url = el.dataset.url;
             if (url && url.startsWith('#pick:')) {
                 // A change that needs a person first: stay open and ask whom (the server re-checks access).
-                this.$wire.pick(url.slice(6)).then(() => this.$nextTick(() => { this.$refs.input?.focus(); this.ensureActive(); }));
+                quiet(this.$wire.pick(url.slice(6)).then(() => this.$nextTick(() => { this.$refs.input?.focus(); this.ensureActive(); })));
                 return;
             }
-            this.$wire.remember(el.dataset.id);
+            quiet(this.$wire.remember(el.dataset.id));
             if ((preview || !url) && drawer) {
                 this.close();
                 window.dispatchEvent(new CustomEvent('pos-drawer-open', { detail: drawer }));
@@ -126,7 +133,7 @@ components.posCommand = (initialMode = 'all') => ({
         },
         runActionData(action, id = null) {
             const el = document.getElementById(this.activeId);
-            this.$wire.remember(id ?? el?.dataset.id ?? '');
+            quiet(this.$wire.remember(id ?? el?.dataset.id ?? ''));
             this.close();
             if (action.drawer) window.dispatchEvent(new CustomEvent('pos-drawer-open', { detail: action.drawer }));
             else go(action.url);
@@ -137,6 +144,9 @@ components.posCommand = (initialMode = 'all') => ({
                 this.isOpen ? this.close() : this.open({ mode: 'all' });
                 return;
             }
+            // UX.18: Escape closes the open center wherever focus is (it only listened inside the dialog; a press that
+            // landed before focus moved in was lost).
+            if (this.isOpen && e.key === 'Escape') { e.preventDefault(); this.close(); return; }
             if (this.isOpen || isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return;
             if (e.key === '/') { e.preventDefault(); this.open({ mode: 'all' }); }
             if (e.key === 'n' && !document.querySelector('.fi-modal-open')) { e.preventDefault(); this.open({ mode: 'actions' }); }
@@ -174,7 +184,7 @@ components.posDrawer = () => ({
         open: false,
         lastFocus: null,
         show() { this.lastFocus = document.activeElement; this.open = true; },
-        hide() { this.open = false; this.$wire.close(); this.$nextTick(() => this.lastFocus?.focus?.()); },
+        hide() { this.open = false; quiet(this.$wire.close()); this.$nextTick(() => this.lastFocus?.focus?.()); },
     });
 
 /*
@@ -217,7 +227,7 @@ components.posPeek = (wire) => ({
             this.loading = this.data === null;
             this.open = true;
             if (this.data === null) {
-                wire.peek(id).then((d) => { this.cache[id] = d; if (this.trigger === t) { this.data = d; this.loading = false; } })
+                quiet(wire.peek(id).then((d) => { this.cache[id] = d; if (this.trigger === t) { this.data = d; this.loading = false; } }))
                     .catch(() => { if (this.trigger === t) { this.loading = false; } });
             }
         },
