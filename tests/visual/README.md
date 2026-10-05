@@ -12,7 +12,7 @@ A difference should mean the product changed. Four things keep the rendering ide
   - the database name ends in `_visual_showcase`.
 
   Every run must start from fresh data, because a run itself writes state: audit events for sign-ins, the Home visit, recent items. `npm run visual:test` always rebuilds first.
-- **Frozen server.** `serve.sh` serves that database with the same frozen clock and the array cache. The array cache matters because a frozen clock would otherwise never let the login limiter's window pass.
+- **Frozen server.** `serve.sh` serves that database with the same frozen clock and the array cache. The array cache matters because a frozen clock would otherwise never let the login limiter's window pass. Sessions are browser-session cookies with a very long lifetime: a cookie's expiry is stamped from the frozen clock but judged by the browser's real time, so a normal lifetime would make it expire before it is ever used.
 - **Fixed order.** One worker, fixed order: some screens record state, so order is part of the data.
 - **Stable rendering:**
   - reduced motion, animations disabled, caret hidden, spinners hidden (`stabilise.css`);
