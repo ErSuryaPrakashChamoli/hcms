@@ -42,6 +42,9 @@ class MyCompensation extends Page
 
     public function mount(): void
     {
+        // UX.19: refuse before recording a sensitive view (Filament's own access hook runs after mount(), and someone
+        // without an employee record got a 500 instead of a 403).
+        abort_unless(static::canAccess(), 403);
         app(SensitiveAccessAuditor::class)->recordView(self::employee(), 'compensation', 'self-service');
     }
 

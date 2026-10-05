@@ -14,6 +14,7 @@ use App\Domain\Ai\Providers\AiProvider;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Experience\Services\ScreenAccess;
 use App\Domain\Identity\Models\User;
 use App\Domain\Platform\Services\FeatureFlags;
 use Illuminate\Support\Facades\Cache;
@@ -123,7 +124,7 @@ final class AiGateway
             'question' => $this->policy->forLog($question),
             'answer' => $this->policy->forLog($text),
             'sources' => $answer->sources,
-            'actions' => $this->proposals($answer->actions),
+            'actions' => $this->proposals($answer->actions, $user),
             'intent' => $answer->intent,
             'provider' => $provider,
             'model' => $model,
@@ -220,21 +221,25 @@ final class AiGateway
      * an external URL, never an executable operation). The user reviews and confirms there, and the
      * existing domain action runs with its own authorization, workflow and audit.
      *
+     * UX.19: for the person asking, only screens they may open are proposed (ScreenAccess: the screen's own check).
+     * A suggestion they would be refused at is a dead end, not a next step.
+     *
      * @param  array<int, array{label?: string, url?: string}>  $actions
      * @return list<array{label: string, url: string, kind: string, requires_confirmation: bool}>
      */
-    public function proposals(array $actions): array
+    public function proposals(array $actions, ?User $user = null): array
     {
         $hosts = array_filter([parse_url((string) config('app.url'), PHP_URL_HOST), app()->runningInConsole() ? null : request()->getHost()]);
 
-        return collect($actions)->filter(function ($a) use ($hosts) {
+        return collect($actions)->filter(function ($a) use ($hosts, $user) {
             $url = (string) ($a['url'] ?? '');
             if (($a['label'] ?? '') === '' || $url === '' || preg_match('/^\s*(javascript|data|vbscript):/i', $url)) {
                 return false;
             }
             $parts = parse_url($url);
+            $local = $parts !== false && (! isset($parts['host']) ? str_starts_with($url, '/') && ! str_starts_with($url, '//') : in_array($parts['host'], $hosts, true));
 
-            return $parts !== false && (! isset($parts['host']) ? str_starts_with($url, '/') && ! str_starts_with($url, '//') : in_array($parts['host'], $hosts, true));
+            return $local && ($user === null || app(ScreenAccess::class)->allowsFor($user, $url));
         })->map(fn ($a) => ['label' => (string) $a['label'], 'url' => (string) $a['url'], 'kind' => 'open_screen', 'requires_confirmation' => true])->values()->all();
     }
 }

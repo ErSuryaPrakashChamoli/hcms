@@ -11,7 +11,8 @@
         if (preg_match('/^[-•*]\s+(.*)$/u', $t, $m)) { $facts[] = $m[1]; } else { $answer[] = $t; }
     }
     $sources = collect($interaction->sources ?? [])->filter(fn ($s) => filled($s['label'] ?? null))->values();
-    $actions = collect($interaction->actions ?? [])->filter(fn ($a) => filled($a['url'] ?? null))->values();
+    // UX.19: only screens the person may still open (checked again when shown).
+    $actions = collect($interaction->openActions());
 @endphp
 <article {{ $attributes->class(['pos-ai-response']) }} aria-label="Answer">
     <p class="pos-ai-q">{{ $interaction->question }}</p>

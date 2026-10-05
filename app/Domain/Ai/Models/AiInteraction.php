@@ -2,6 +2,7 @@
 
 namespace App\Domain\Ai\Models;
 
+use App\Domain\Experience\Services\ScreenAccess;
 use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,5 +27,16 @@ class AiInteraction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * UX.19: the suggested actions the signed-in person may still open. Stored suggestions are checked again when shown,
+     * because access can change after an answer was given (the screen itself still decides when opened).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function openActions(): array
+    {
+        return array_values(array_filter($this->actions ?? [], fn ($a) => filled($a['url'] ?? null) && app(ScreenAccess::class)->allows((string) $a['url'])));
     }
 }

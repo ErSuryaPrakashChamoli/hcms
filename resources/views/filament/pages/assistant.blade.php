@@ -21,10 +21,11 @@
                         <div class="text-xs text-gray-500 mt-2">Sources: {{ collect($turn->sources)->map(fn ($s) => $s['label'] . (isset($s['detail']) ? ' (' . $s['detail'] . ')' : ''))->implode(' · ') }}</div>
                     @endif
                     <div class="flex flex-wrap items-center gap-2 mt-2">
-                        @if (! empty($turn->actions))
+                        @php($open = $turn->openActions())
+                        @if ($open !== [])
                             <span class="text-xs text-gray-500">Suggested next steps (open, review and confirm there — the assistant changes nothing):</span>
                         @endif
-                        @foreach ($turn->actions ?? [] as $action)
+                        @foreach ($open as $action)
                             <x-filament::link :href="$action['url']" size="sm">{{ $action['label'] }} →</x-filament::link>
                         @endforeach
                         <span class="flex-1"></span>

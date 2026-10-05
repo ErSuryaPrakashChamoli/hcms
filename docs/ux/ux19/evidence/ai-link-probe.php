@@ -1,13 +1,16 @@
 <?php
 
-// UX.19 AI link probe: every assistant a showcase persona may use, asked its own example questions (and the Home
-// opening question of each experience), deterministic answers only. Each suggested action that survives the gateway's
-// proposal filter is then opened as that persona (in-process GET through the full kernel). A suggested link that the
-// person cannot open (403/404) is a dead end. Fictional showcase data only; nothing is sent to a language model.
+// UX.19 AI and reminder link probe: every assistant a showcase persona may use, asked its own example questions (and
+// the Home opening question of each experience), deterministic answers only; plus every Needs Attention reminder the
+// persona has (their own and, for managers, their team's). Each suggested action that survives the gateway's proposal
+// filter, and each reminder link, is then opened as that persona (in-process GET through the full kernel). A link that
+// the person cannot open (403/404) is a dead end. Fictional showcase data only; nothing is sent to a language model.
 //
 //   DB_DATABASE=<*_showcase database> php ai-link-probe.php <out.json>
 use App\Domain\Ai\Services\AiGateway;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Experience\Services\NeedsAttention;
+use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Identity\Models\User;
 use App\Livewire\Experience\AiAssistant;
 use App\Support\Tenancy\TenantContext;
@@ -37,6 +40,16 @@ foreach ($people as $user) {
         $gateway = $app->make(AiGateway::class);
         $assistant = (new ReflectionMethod($gateway, 'assistant'));
         $employee = Employee::query()->where('user_id', $user->id)->first();
+        if ($employee !== null) {
+            $attention = $app->make(NeedsAttention::class);
+            $reminders = $attention->forEmployee($employee, $user);
+            if ($app->make(RoleLens::class)->has($user, RoleLens::MANAGER)) {
+                $reminders = $reminders->merge($attention->forManager($employee, $user));
+            }
+            foreach ($reminders as $r) {
+                $answers[] = ['user' => $user->email, 'assistant' => 'reminder', 'question' => $r['key'].': '.$r['title'], 'links' => array_values(array_filter([$r['url'] ?? null]))];
+            }
+        }
         foreach (array_keys($gateway->assistantsFor($user)) as $key) {
             $questions = array_values(array_unique(array_merge($gateway->examples($key), isset($extra[$key]) ? [$extra[$key]] : [])));
             foreach ($questions as $q) {
@@ -48,7 +61,7 @@ foreach ($people as $user) {
                     continue;
                 }
                 $answers[] = ['user' => $user->email, 'assistant' => $key, 'question' => $q, 'intent' => $answer->intent,
-                    'links' => array_column($gateway->proposals($answer->actions), 'url')];
+                    'links' => array_column($gateway->proposals($answer->actions, $user), 'url')];
             }
         }
     });
