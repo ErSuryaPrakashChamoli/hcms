@@ -1,0 +1,729 @@
+{
+    "persona": "amit.verma",
+    "path": "\/admin\/my-work",
+    "status": 200,
+    "wall_ms": 804,
+    "queries": 190,
+    "db_ms": 247,
+    "by_caller": [
+        {
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:227",
+            "queries": 6,
+            "ms": 26.8,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:227",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:91",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:97",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:95"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Support\/ServiceDeskActions.php:44",
+            "queries": 12,
+            "ms": 16.5,
+            "chain": [
+                "app\/Filament\/Support\/ServiceDeskActions.php:44",
+                "app\/Filament\/Pages\/MyTeam.php:42",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:138",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:385"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Support\/LearningActions.php:35",
+            "queries": 11,
+            "ms": 12.9,
+            "chain": [
+                "app\/Filament\/Support\/LearningActions.php:35",
+                "app\/Filament\/Support\/TalentActions.php:16",
+                "app\/Filament\/Pages\/MyCareer.php:57",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Performance\/Services\/PerformanceRelationships.php:32",
+            "queries": 6,
+            "ms": 12.6,
+            "chain": [
+                "app\/Domain\/Performance\/Services\/PerformanceRelationships.php:32",
+                "app\/Domain\/ServiceDesk\/Services\/CaseAccess.php:283",
+                "app\/Domain\/ServiceDesk\/Services\/CaseAccess.php:62",
+                "app\/Domain\/ServiceDesk\/Services\/ServiceDeskTaskSource.php:24"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:74",
+            "queries": 2,
+            "ms": 12.3,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:74",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70"
+            ]
+        },
+        {
+            "caller": "app\/Http\/Middleware\/AssignRequestId.php:30",
+            "queries": 3,
+            "ms": 11,
+            "chain": [
+                "app\/Http\/Middleware\/AssignRequestId.php:30"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Pages\/MyHr.php:92",
+            "queries": 8,
+            "ms": 10,
+            "chain": [
+                "app\/Filament\/Pages\/MyHr.php:92",
+                "app\/Filament\/Pages\/MyHr.php:87",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:45",
+                "app\/Http\/Middleware\/SetAuditSource.php:16"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Pages\/MyTeam.php:44",
+            "queries": 7,
+            "ms": 10,
+            "chain": [
+                "app\/Filament\/Pages\/MyTeam.php:44",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:138",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:385",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:138"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Platform\/Services\/FeatureFlags.php:41",
+            "queries": 24,
+            "ms": 8.5,
+            "chain": [
+                "app\/Domain\/Platform\/Services\/FeatureFlags.php:41",
+                "app\/Domain\/Platform\/Services\/FeatureFlags.php:20",
+                "app\/Domain\/Ai\/Services\/AiGateway.php:54",
+                "app\/Filament\/Pages\/AssistantPage.php:41"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Ai\/Services\/AiGateway.php:200",
+            "queries": 4,
+            "ms": 5.9,
+            "chain": [
+                "app\/Domain\/Ai\/Services\/AiGateway.php:200",
+                "app\/Domain\/Ai\/Services\/AiGateway.php:55",
+                "app\/Filament\/Pages\/AssistantPage.php:41",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Pages\/MyCompensation.php:49",
+            "queries": 4,
+            "ms": 5.7,
+            "chain": [
+                "app\/Filament\/Pages\/MyCompensation.php:49",
+                "app\/Filament\/Pages\/MyCompensation.php:37",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:61"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Ai\/Services\/AiGateway.php:198",
+            "queries": 4,
+            "ms": 5.6,
+            "chain": [
+                "app\/Domain\/Ai\/Services\/AiGateway.php:198",
+                "app\/Domain\/Ai\/Services\/AiGateway.php:55",
+                "app\/Filament\/Pages\/AssistantPage.php:41",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:473",
+            "queries": 1,
+            "ms": 5.4,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:473",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:234",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:91",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:97"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:66",
+            "queries": 2,
+            "ms": 5.2,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:66",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:483",
+            "queries": 1,
+            "ms": 4.4,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:483",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:234",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:91",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:97"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Identity\/Services\/AccessScopes.php:227",
+            "queries": 2,
+            "ms": 3.9,
+            "chain": [
+                "app\/Domain\/Identity\/Services\/AccessScopes.php:227",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:232",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:91",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:97"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:75",
+            "queries": 2,
+            "ms": 3.8,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:75",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:81",
+            "queries": 2,
+            "ms": 3.7,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:81",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/RoleSignals.php:158",
+            "queries": 1,
+            "ms": 3.6,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:158",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:391",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:157",
+                "app\/Filament\/Pages\/MyWork.php:145"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Performance\/Services\/PerformanceRelationships.php:43",
+            "queries": 3,
+            "ms": 3.6,
+            "chain": [
+                "app\/Domain\/Performance\/Services\/PerformanceRelationships.php:43",
+                "app\/Domain\/ServiceDesk\/Services\/CaseAccess.php:283",
+                "app\/Domain\/ServiceDesk\/Services\/CaseAccess.php:62",
+                "app\/Domain\/ServiceDesk\/Services\/ServiceDeskTaskSource.php:24"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Identity\/Services\/AccessScopes.php:208",
+            "queries": 3,
+            "ms": 3.5,
+            "chain": [
+                "app\/Domain\/Identity\/Services\/AccessScopes.php:208",
+                "app\/Domain\/Identity\/Services\/AccessScopes.php:168",
+                "app\/Domain\/Identity\/Policies\/PermissionPolicy.php:61",
+                "app\/Domain\/Identity\/Policies\/PermissionPolicy.php:25"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:273",
+            "queries": 4,
+            "ms": 3.4,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:273",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:92",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:97",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:95"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Letters\/Policies\/LetterPolicy.php:15",
+            "queries": 2,
+            "ms": 3.1,
+            "chain": [
+                "app\/Domain\/Letters\/Policies\/LetterPolicy.php:15",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:75",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:61",
+                "app\/Domain\/Experience\/Services\/ExperienceNavigation.php:233"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:143",
+            "queries": 8,
+            "ms": 3,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:143",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:141",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:391",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:141"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:76",
+            "queries": 2,
+            "ms": 2.8,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:76",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/RoleSignals.php:136",
+            "queries": 1,
+            "ms": 2.8,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:136",
+                "app\/Filament\/Pages\/MyWork.php:145",
+                "app\/Filament\/Pages\/MyWork.php:141",
+                "app\/Filament\/Pages\/MyWork.php:145"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:78",
+            "queries": 2,
+            "ms": 2.5,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:78",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:79",
+            "queries": 2,
+            "ms": 2.5,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:79",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/RoleSignals.php:150",
+            "queries": 1,
+            "ms": 2.4,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:150",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:391",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:147",
+                "app\/Filament\/Pages\/MyWork.php:145"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/RoleSignals.php:174",
+            "queries": 1,
+            "ms": 2.4,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:174",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:391",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:173",
+                "app\/Filament\/Pages\/MyWork.php:145"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:53",
+            "queries": 2,
+            "ms": 2.2,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:53",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:68",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:68"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Platform\/Services\/SettingsRepository.php:37",
+            "queries": 6,
+            "ms": 2.2,
+            "chain": [
+                "app\/Domain\/Platform\/Services\/SettingsRepository.php:37",
+                "app\/Domain\/Platform\/Services\/SettingsRepository.php:23",
+                "app\/Domain\/Enterprise\/Services\/SecurityPolicy.php:15",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:27"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:80",
+            "queries": 2,
+            "ms": 2.1,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:80",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:70"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Workforce\/Services\/WorkforceAccess.php:55",
+            "queries": 1,
+            "ms": 2,
+            "chain": [
+                "app\/Domain\/Workforce\/Services\/WorkforceAccess.php:55",
+                "app\/Filament\/Pages\/TeamWorkforce.php:38",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:61"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/WorkInbox.php:114",
+            "queries": 1,
+            "ms": 1.9,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:114",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:80",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:80"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/ServiceDesk\/Services\/ServiceDeskTaskSource.php:24",
+            "queries": 1,
+            "ms": 1.9,
+            "chain": [
+                "app\/Domain\/ServiceDesk\/Services\/ServiceDeskTaskSource.php:24",
+                "app\/Domain\/Experience\/Services\/ExperienceTasks.php:27",
+                "app\/Domain\/Experience\/Services\/ExperienceTasks.php:25",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:57"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/RoleLens.php:114",
+            "queries": 2,
+            "ms": 1.7,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/RoleLens.php:114",
+                "app\/Domain\/Experience\/Services\/RoleLens.php:64",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:56",
+                "app\/Filament\/Pages\/MyWork.php:51"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Communication\/Services\/Communications.php:328",
+            "queries": 2,
+            "ms": 1.6,
+            "chain": [
+                "app\/Domain\/Communication\/Services\/Communications.php:328",
+                "app\/Domain\/Communication\/Services\/Communications.php:372",
+                "app\/Domain\/Communication\/Services\/CommunicationTaskSource.php:24",
+                "app\/Domain\/Experience\/Services\/ExperienceTasks.php:27"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:45",
+            "queries": 1,
+            "ms": 1.5,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:45",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:68",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:140",
+                "app\/Domain\/Experience\/Services\/WorkInbox.php:68"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Identity\/Models\/User.php:156",
+            "queries": 2,
+            "ms": 1.2,
+            "chain": [
+                "app\/Domain\/Identity\/Models\/User.php:156",
+                "app\/Domain\/Identity\/Models\/User.php:148",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:222",
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:91"
+            ]
+        }
+    ],
+    "duplicates": [
+        {
+            "count": 44,
+            "ms": 56.6,
+            "sql": "select * from `employees` where `user_id` = ? and `employees`.`tenant_id` = ? and `employees`.`id` in (select `employees`.`id` from `employees` where (`employees`.`user_id` = ? or `employees`.`id` in (select `employee_id",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/RoleLens.php:114",
+                "app\/Domain\/Performance\/Services\/PerformanceRelationships.php:43",
+                "app\/Filament\/Support\/ServiceDeskActions.php:44",
+                "app\/Filament\/Pages\/MyHr.php:92",
+                "app\/Domain\/Ai\/Services\/AiGateway.php:198",
+                "app\/Domain\/Performance\/Policies\/EmployeeOwnedPolicy.php:44",
+                "app\/Filament\/Support\/LearningActions.php:35",
+                "app\/Filament\/Pages\/MyCompensation.php:49"
+            ]
+        },
+        {
+            "count": 12,
+            "ms": 16.9,
+            "sql": "select exists(select * from `reporting_relationships` where `reporting_relationships`.`manager_id` = ? and `reporting_relationships`.`manager_id` is not null and (`reporting_relationships`.`effective_from` is null or `re",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/RoleLens.php:118",
+                "app\/Filament\/Pages\/MyTeam.php:44",
+                "app\/Domain\/Ai\/Services\/AiGateway.php:200"
+            ]
+        },
+        {
+            "count": 6,
+            "ms": 12.6,
+            "sql": "select `employee_id` from `reporting_relationships` where `manager_id` = ? and `type` in (?, ?, ?, ?, ?) and (`reporting_relationships`.`effective_from` is null or `reporting_relationships`.`effective_from` <= ?) and (`r",
+            "callers": [
+                "app\/Domain\/Performance\/Services\/PerformanceRelationships.php:32"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 12.3,
+            "sql": "select count(*) as `aggregate` from `leave_requests` where `employee_id` in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:74"
+            ]
+        },
+        {
+            "count": 24,
+            "ms": 8.5,
+            "sql": "select * from `cache` where `key` in (?)",
+            "callers": [
+                "app\/Domain\/Platform\/Services\/FeatureFlags.php:41"
+            ]
+        },
+        {
+            "count": 3,
+            "ms": 8,
+            "sql": "select `employee_id` from `reporting_relationships` where `reporting_relationships`.`manager_id` = ? and `reporting_relationships`.`manager_id` is not null and (`reporting_relationships`.`effective_from` is null or `repo",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:66",
+                "app\/Domain\/Experience\/Services\/RoleSignals.php:136"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 3.8,
+            "sql": "select count(*) as `aggregate` from `attendance_regularisations` where `employee_id` in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:75"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 3.7,
+            "sql": "select count(*) as `aggregate` from `learning_enrolments` where `employee_id` in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:81"
+            ]
+        },
+        {
+            "count": 3,
+            "ms": 3.5,
+            "sql": "select exists(select `employees`.`id` from `employees` where (`employees`.`user_id` = ? or `employees`.`id` in (select `employee_id` from `employee_positions` where (`employee_positions`.`effective_from` is null or `empl",
+            "callers": [
+                "app\/Domain\/Identity\/Services\/AccessScopes.php:208"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 3.1,
+            "sql": "select exists(select * from `employees` where `user_id` = ? and `employees`.`tenant_id` = ? and `employees`.`id` in (select `employees`.`id` from `employees` where (`employees`.`user_id` = ? or `employees`.`id` in (selec",
+            "callers": [
+                "app\/Domain\/Letters\/Policies\/LetterPolicy.php:15"
+            ]
+        },
+        {
+            "count": 8,
+            "ms": 3,
+            "sql": "select * from `cache` where `key` in (?)",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:143"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 2.8,
+            "sql": "select count(*) as `aggregate` from `appraisal_reviews` where `reviewer_id` = ? and `type` = ? and `status` = ? and exists (select * from `appraisals` where `appraisal_reviews`.`appraisal_id` = `appraisals`.`id` and exis",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:76"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 2.5,
+            "sql": "select count(*) as `aggregate` from `tickets` where `assignee_id` = ? and `status` in (?, ?, ?, ?, ?, ?, ?) and `tickets`.`tenant_id` = ? and (`tickets`.`employee_id` is null or `tickets`.`employee_id` in (select `employ",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:78"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 2.5,
+            "sql": "select count(*) as `aggregate` from `grievances` where `assignee_id` = ? and `status` in (?, ?, ?, ?) and `grievances`.`tenant_id` = ? and (`grievances`.`employee_id` is null or `grievances`.`employee_id` in (select `emp",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:79"
+            ]
+        },
+        {
+            "count": 6,
+            "ms": 2.2,
+            "sql": "select * from `cache` where `key` in (?)",
+            "callers": [
+                "app\/Domain\/Platform\/Services\/SettingsRepository.php:37"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 2.1,
+            "sql": "select count(*) as `aggregate` from `one_on_ones` where `manager_id` = ? and `status` = ? and `scheduled_at` < ? and `one_on_ones`.`tenant_id` = ? and (`one_on_ones`.`employee_id` is null or `one_on_ones`.`employee_id` i",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:80"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 1.6,
+            "sql": "select * from `announcements` where `status` = ? and (`publish_at` is null or `publish_at` <= ?) and (`expires_at` is null or `expires_at` > ?) and (`recipients_count` is null or exists (select * from `communication_reci",
+            "callers": [
+                "app\/Domain\/Communication\/Services\/Communications.php:328"
+            ]
+        },
+        {
+            "count": 3,
+            "ms": 1.4,
+            "sql": "select count(*) as `aggregate` from `workflow_tasks` where `assignee_id` = ? and `status` = ? and `workflow_tasks`.`tenant_id` = ?",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:51",
+                "app\/Domain\/Experience\/Services\/NeedsAttention.php:77"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 1.1,
+            "sql": "select * from `articles` where `published_version` is not null and `status` != ? and `requires_acknowledgement` = ? and `articles`.`tenant_id` = ?",
+            "callers": [
+                "app\/Domain\/Knowledge\/Services\/KnowledgeBase.php:205"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 1.1,
+            "sql": "select `roles`.`id` from `roles` inner join `role_user` on `roles`.`id` = `role_user`.`role_id` where `role_user`.`user_id` = ? and `roles`.`tenant_id` = ?",
+            "callers": [
+                "app\/Domain\/Workflow\/Models\/WorkflowTask.php:57"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 1,
+            "sql": "select `id` from `employees` where `user_id` = ? and `employees`.`tenant_id` = ? limit 1",
+            "callers": [
+                "app\/Domain\/ServiceDesk\/Services\/CaseAccess.php:269"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 1,
+            "sql": "select `article_id`, `version` from `article_reads` where `employee_id` = ? and `acknowledged_at` is not null and `article_id` in (?, ?) and `article_reads`.`tenant_id` = ?",
+            "callers": [
+                "app\/Domain\/Knowledge\/Services\/KnowledgeBase.php:210"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 1,
+            "sql": "select exists(select * from `announcement_reads` where `announcement_id` = ? and `employee_id` = ? and `acknowledged_at` is not null and `announcement_reads`.`tenant_id` = ?) as `exists`",
+            "callers": [
+                "app\/Domain\/Communication\/Services\/Communications.php:373"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 0.8,
+            "sql": "select * from `sessions` where `id` = ? limit 1",
+            "callers": [
+                "app\/Http\/Middleware\/AssignRequestId.php:30"
+            ]
+        }
+    ],
+    "slowest": [
+        {
+            "ms": 10.2,
+            "caller": "app\/Http\/Middleware\/AssignRequestId.php:30",
+            "sql": "insert into `sessions` (`payload`, `last_activity`, `user_id`, `ip_address`, `user_agent`, `id`) values (?, ?, ?, ?, ?, ?)"
+        },
+        {
+            "ms": 9.2,
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:227",
+            "sql": "select `reporting_relationships`.* from `reporting_relationships` inner join (select max(`reporting_relationships`.`id`) as `id_aggregate`, min(`reporting_relationships`.`effective_from`) as `effective_from_aggregate`, `reporting_relationships`.`employee_id` from `reporting_relationships` inner join"
+        },
+        {
+            "ms": 8.9,
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:227",
+            "sql": "select * from `leave_requests` where `status` in (?, ?) and `leave_requests`.`tenant_id` = ? and (`leave_requests`.`employee_id` is null or `leave_requests`.`employee_id` in (select `employees`.`id` from `employees` where (`employees`.`user_id` = ? or `employees`.`id` in (select `employee_id` from `"
+        },
+        {
+            "ms": 7.4,
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:74",
+            "sql": "select count(*) as `aggregate` from `leave_requests` where `employee_id` in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?"
+        },
+        {
+            "ms": 5.4,
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:473",
+            "sql": "select `employee_id`, `manager_id` from `reporting_relationships` where `manager_id` in (?) and (`reporting_relationships`.`effective_from` is null or `reporting_relationships`.`effective_from` <= ?) and (`reporting_relationships`.`effective_to` is null or `reporting_relationships`.`effective_to` >="
+        },
+        {
+            "ms": 5.1,
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:227",
+            "sql": "select * from `employees` where `employees`.`id` in (3, 4, 19, 20, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009, 10010, 10011, 10012, 10013, 10014, 10015, 10016, 10017, 10018, 10019, 10020, 10021, 10022, 10023, 10024, 10025, 10026, 10027, 10028, 10029, 10030, 10031, 10032, 10033, 10"
+        },
+        {
+            "ms": 5,
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:74",
+            "sql": "select count(*) as `aggregate` from `leave_requests` where `employee_id` in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?"
+        },
+        {
+            "ms": 4.4,
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:483",
+            "sql": "select `employee_id`, `from_date`, `to_date` from `leave_requests` where `employee_id` in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
+        },
+        {
+            "ms": 3.6,
+            "caller": "app\/Domain\/Experience\/Services\/RoleSignals.php:158",
+            "sql": "select `id`, `probation_end_date` from `employees` where `employees`.`id` in (3, 4, 19, 20, 16, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009, 10010, 10011, 10012, 10013, 10014, 10015, 10016, 10017, 10018, 10019, 10020, 10021, 10022, 10023, 10024, 10025, 10026, 10027, 10028, 10029, 1"
+        },
+        {
+            "ms": 3.3,
+            "caller": "app\/Domain\/Experience\/Services\/NeedsAttention.php:66",
+            "sql": "select `employee_id` from `reporting_relationships` where `reporting_relationships`.`manager_id` = ? and `reporting_relationships`.`manager_id` is not null and (`reporting_relationships`.`effective_from` is null or `reporting_relationships`.`effective_from` <= ?) and (`reporting_relationships`.`effe"
+        },
+        {
+            "ms": 2.8,
+            "caller": "app\/Domain\/Experience\/Services\/RoleSignals.php:136",
+            "sql": "select `employee_id` from `reporting_relationships` where `reporting_relationships`.`manager_id` = ? and `reporting_relationships`.`manager_id` is not null and (`reporting_relationships`.`effective_from` is null or `reporting_relationships`.`effective_from` <= ?) and (`reporting_relationships`.`effe"
+        },
+        {
+            "ms": 2.5,
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:227",
+            "sql": "select * from `people` where `people`.`id` in (3, 4, 19, 20, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009, 10010, 10011, 10012, 10013, 10014, 10015, 10016, 10017, 10018, 10019, 10020, 10021, 10022, 10023, 10024, 10025, 10026, 10027, 10028, 10029, 10030, 10031, 10032, 10033, 10034, 1"
+        },
+        {
+            "ms": 2.5,
+            "caller": "app\/Domain\/Identity\/Services\/AccessScopes.php:227",
+            "sql": "select `employees`.`id` from `employees` where (`employees`.`user_id` = ? or `employees`.`id` in (select `employee_id` from `employee_positions` where (`employee_positions`.`effective_from` is null or `employee_positions`.`effective_from` <= ?) and (`employee_positions`.`effective_to` is null or `em"
+        },
+        {
+            "ms": 2.4,
+            "caller": "app\/Domain\/Performance\/Services\/PerformanceRelationships.php:32",
+            "sql": "select `employee_id` from `reporting_relationships` where `manager_id` = ? and `type` in (?, ?, ?, ?, ?) and (`reporting_relationships`.`effective_from` is null or `reporting_relationships`.`effective_from` <= ?) and (`reporting_relationships`.`effective_to` is null or `reporting_relationships`.`eff"
+        },
+        {
+            "ms": 2.4,
+            "caller": "app\/Domain\/Experience\/Services\/RoleSignals.php:150",
+            "sql": "select count(distinct `employee_id`) as `aggregate` from `attendance_records` where `employee_id` in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+        }
+    ]
+}
