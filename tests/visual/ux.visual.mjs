@@ -54,6 +54,10 @@ export const SHOTS = [
     // Payroll
     ['payroll-home', 'payroll', '/admin', [P, D], L],
     ['payroll-people', 'payroll', '/admin/people', [P], L],
+    // States: empty, loading (the request held while the skeleton shows), error
+    ['executive-approvals-empty', 'executive', '/admin/approvals', [P, D], LD],
+    ['hr-person-sheet-loading', 'hr', '/admin/people?view=grid', [P], L, 'loading-sheet'],
+    ['employee-page-not-found', 'employee', '/admin/does-not-exist', [P, D], L, 'status:404'],
 ];
 
 /** Cross-engine smoke (Firefox desktop, WebKit-engine phone): a small set, its own baselines. */
@@ -90,6 +94,11 @@ async function act(page, action) {
     } else if (action === 'menu') {
         await page.locator('.fi-topbar-open-sidebar-btn').first().click();
         await page.locator('.fi-sidebar.fi-sidebar-open').waitFor();
+    } else if (action === 'loading-sheet') {
+        // Hold the sheet's request so its loading skeleton is what is captured (released when the page closes).
+        await page.route('**/livewire*/update', () => new Promise(() => {}));
+        await page.evaluate(() => window.dispatchEvent(new CustomEvent('pos-drawer-open', { detail: { type: 'person', id: 3 } })));
+        await page.locator('.pos-drawer[data-open="true"] .pos-skeleton, .pos-drawer[data-open="true"] [aria-busy="true"]').first().waitFor({ state: 'visible' });
     } else if (action === 'drill') {
         await page.locator('.pos-figure').first().click();
         await page.locator('.pos-drawer[data-open="true"]').first().waitFor({ state: 'visible' });
@@ -109,8 +118,10 @@ for (const persona of Object.keys(PERSONAS)) {
                     await page.addInitScript((t) => { try { localStorage.setItem('theme', t); } catch {} }, theme);
                     await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
                     const response = await page.goto(path, { waitUntil: 'networkidle' });
-                    // A baseline is only ever the page itself: never an error, a refusal or a sign-in screen.
-                    expect(response?.status(), `${path} answered ${response?.status()}`).toBe(200);
+                    // A baseline is only ever the page it claims to be: the page itself (200), or the error page a shot
+                    // is about (status:NNN); never an unexpected refusal or a sign-in screen.
+                    const expected = action?.startsWith('status:') ? Number(action.slice(7)) : 200;
+                    expect(response?.status(), `${path} answered ${response?.status()}`).toBe(expected);
                     await expect(page).not.toHaveURL(/\/login/);
                     await page.evaluate(() => document.fonts.ready);
                     await act(page, action);

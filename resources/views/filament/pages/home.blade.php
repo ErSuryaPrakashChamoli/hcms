@@ -61,7 +61,7 @@
             {{-- UX.16: one chip per experience the person holds (HR admin and system admin are one Administration view) --}}
             @if (count($h['experiences']) > 1)
                 {{-- UX.17: one scrolling row on phones (it wrapped to three rows for administrators); the chosen view scrolls into sight --}}
-                <div class="pos-lens pos-lens-scroll -mt-4" role="tablist" aria-label="View Home as" x-data x-init="$el.querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })">
+                <div class="pos-lens pos-lens-scroll -mt-4" role="tablist" aria-label="View Home as" x-data x-init="posRevealChip($el, $el.querySelector('[aria-selected=true]'))">
                     <span class="pos-meta">View as</span>
                     @foreach ($h['experiences'] as $experience => $lens)
                         <button type="button" role="tab" class="pos-lens-chip" aria-selected="{{ $h['experience'] === $experience ? 'true' : 'false' }}" wire:click="switchLens('{{ $lens }}')">{{ $experienceLabels[$experience] ?? $experience }}</button>

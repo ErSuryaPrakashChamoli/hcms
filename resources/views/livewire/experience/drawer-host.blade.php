@@ -4,7 +4,8 @@
     x-effect="document.documentElement.classList.toggle('pos-drawer-is-open', open)">
     <div x-show="open" x-cloak class="pos-overlay" x-on:click="open = false; $wire.close(); $nextTick(() => lastFocus?.focus?.())" x-transition.opacity.duration.200ms aria-hidden="true"></div>
 
-    <aside x-show="open" x-cloak x-trap.noscroll.inert="open" role="dialog" aria-modal="true" aria-labelledby="pos-drawer-title"
+    {{-- UX.18: a div, not an aside (ARIA does not allow role=dialog on aside) --}}
+    <div x-show="open" x-cloak x-trap.noscroll.inert="open" role="dialog" aria-modal="true" aria-labelledby="pos-drawer-title"
         class="pos-drawer" :data-open="open.toString()" data-depth="{{ count($stack) }}"
         x-on:keydown.escape.prevent.stop="open = false; $wire.close(); $nextTick(() => lastFocus?.focus?.())"
         x-transition:enter="pos-drawer-in" x-transition:leave="pos-drawer-out">
@@ -27,10 +28,12 @@
         </header>
 
         <div class="pos-drawer-body">
-            <div wire:loading.delay.short wire:target="show, back" class="w-full">
+            {{-- UX.18: a sheet opened by an event loads through __dispatch (not show), so the skeleton waited for a call
+                 that never came and the body stayed blank while loading; it now shows for both --}}
+            <div wire:loading.delay.short wire:target="show, back, __dispatch" class="w-full">
                 @include('livewire.experience.skeleton', ['rows' => 3, 'title' => 'details'])
             </div>
-            <div wire:loading.remove wire:target="show, back">
+            <div wire:loading.remove wire:target="show, back, __dispatch">
                 @if ($type === 'person' || $type === 'person-action')
                     @php($p = $this->person)
                     @if ($p === null)
@@ -164,5 +167,5 @@
                 @endif
             </div>
         </div>
-    </aside>
+    </div>
 </div>

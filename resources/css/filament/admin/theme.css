@@ -2055,3 +2055,34 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .fi-ta-actions .fi-link, .fi-ta-actions .fi-icon-btn { min-height: 32px; min-width: 32px; }
     .fi-ta-filter-indicators .fi-badge-delete-btn, .fi-badge .fi-badge-delete-btn { min-width: 24px; min-height: 24px; }
 }
+
+/* ------------------------------------------------------------------ G. UX.18: accessibility hardening (full audit)
+   Fixes from the UX.18 audit (docs/ux/UX-18-Accessibility-Audit.md); each names the WCAG criterion it meets. */
+
+/* 1.4.3 Contrast: earlier custom pages colour small text with Filament's 600 status shades (warning-600 is 4.2:1 on
+   white and 4.3:1 on the dark surface). They take the PeopleOS status tokens, designed for text in both themes; an
+   explicit dark: utility still wins. */
+.text-warning-600:not([class*='dark:text-']) { color: var(--pos-warning); }
+.text-danger-600:not([class*='dark:text-']) { color: var(--pos-danger); }
+.text-success-600:not([class*='dark:text-']) { color: var(--pos-success); }
+
+/* 2.1.1 Keyboard: on tablets the wizard's step header scrolled sideways with nothing focusable inside, so keyboard
+   users could not scroll it. Between 768 and 1279 px the steps wrap into two columns instead of scrolling. */
+@media (min-width: 768px) and (max-width: 1279px) {
+    .fi-sc-wizard .fi-sc-wizard-header { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-x: visible; }
+    .fi-sc-wizard .fi-sc-wizard-header-step-text { width: auto; max-width: none; }
+    .fi-sc-wizard .fi-sc-wizard-header-step-separator { display: none; }
+}
+
+/* 4.1.2 Name, role, value (best practice): the approval queue is a real list. Each decision button sits in a list
+   item, so the rows keep their look: no bullets, and the divider moves to the item. */
+.pos-queue-list { margin: 0; padding: 0; list-style: none; }
+.pos-queue-item { display: block; }
+.pos-queue-item + .pos-queue-item > .pos-stream-row { box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-queue-item > .pos-stream-row { width: 100%; }
+
+/* 2.5.8 Target size (minimum): on desktop too, adjacent row actions in module tables (View, Edit) and the action
+   link under an intelligence statement are at least 24 px tall (they were 20 px). Coarse pointers keep their larger
+   UX.17 sizes. */
+.fi-ta-actions .fi-link { min-height: 24px; }
+.pos-intel-item > .pos-link { display: inline-flex; align-items: center; min-height: 24px; }

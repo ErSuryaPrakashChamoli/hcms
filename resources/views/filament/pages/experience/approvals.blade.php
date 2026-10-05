@@ -40,9 +40,11 @@
                                     <h2 id="pos-q-{{ $key }}" class="pos-sec-title">{{ $label }}<span class="pos-sec-count">{{ $groups[$key]->count() }}</span></h2>
                                     <span class="pos-sec-sub">{{ $hint }}</span>
                                 </header>
-                                <div class="pos-panel pos-stream" role="list">
+                                {{-- UX.18: a real list; each decision button sits in its own list item (role=listitem is not allowed on a button) --}}
+                                <ul class="pos-panel pos-stream pos-queue-list" role="list">
                                     @foreach ($groups[$key]->filter(fn ($i) => $onPage->has($i->id)) as $item)
-                                        <button type="button" role="listitem" class="pos-stream-row pos-queue-row pos-approval" data-approval-id="{{ $item->id }}" wire:key="q-{{ md5($item->id) }}" wire:transition
+                                        <li class="pos-queue-item" wire:key="q-{{ md5($item->id) }}" wire:transition>
+                                        <button type="button" class="pos-stream-row pos-queue-row pos-approval" data-approval-id="{{ $item->id }}"
                                             data-tone="{{ $key === 'urgent' ? 'danger' : ($key === 'today' ? 'warning' : 'info') }}"
                                             :aria-current="(selected === @js($item->id)).toString()" x-on:click="select(@js($item->id))" x-on:focus="select(@js($item->id), true)">
                                             <span class="pos-stream-mark" aria-hidden="true"></span>
@@ -52,8 +54,9 @@
                                             </span>
                                             <span data-open class="pos-muted" aria-hidden="true">→</span>
                                         </button>
+                                        </li>
                                     @endforeach
-                                </div>
+                                </ul>
                             </section>
                         @endif
                     @endforeach

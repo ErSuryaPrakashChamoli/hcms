@@ -15,6 +15,16 @@ const isTyping = (e) => {
  */
 const quiet = (call) => (call && typeof call.catch === 'function' ? call.catch(() => {}) : call);
 
+/*
+ * UX.18: bring the chosen chip of a scrolling chip row into sight by scrolling the row itself. scrollIntoView() moved
+ * Chromium's sequential-focus starting point to the chip, so the first Tab on Home skipped the skip link, the header
+ * and the navigation (WCAG 2.4.3). Only rows that actually overflow (phones) are scrolled.
+ */
+window.posRevealChip = (row, chip) => {
+    if (!row || !chip || row.scrollWidth <= row.clientWidth) return;
+    row.scrollLeft += chip.getBoundingClientRect().left - row.getBoundingClientRect().left - 16;
+};
+
 const go = (url) => {
     if (!url) return;
     if (window.Livewire?.navigate) window.Livewire.navigate(url);

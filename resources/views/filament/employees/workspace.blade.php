@@ -133,7 +133,9 @@
     </section>
 
     {{-- JOURNEY: one person, one continuous journey --}}
-    <section id="journey" class="pos-360-sec" aria-labelledby="journey-title" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === 'journey' : true">
+    {{-- UX.18: no accessible name on the view wrapper (so it is not a landmark); the region inside (x-pos.section) carries
+         the name, so landmarks stay unique --}}
+    <section id="journey" class="pos-360-sec" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === 'journey' : true">
         <x-pos.section title="Journey" id="journey-title" sub="Where this person is in their working life. Select a stage to see what happened in it.">
             <div class="pos-panel pos-panel-pad">
                 <x-pos.journey :journey="$w['journey'] ?? []" />
@@ -203,7 +205,7 @@
     {{-- GROWTH · REWARDS · DOCUMENTS: one permission-aware summary per domain (the 360 overview) --}}
     @foreach (['growth' => ['Growth', 'Performance, goals, learning, skills, career and talent.'], 'rewards' => ['Rewards', 'Pay and compensation. Amounts stay in their audited records.'], 'documents' => ['Documents', 'Documents, letters, communications and transitions.']] as $id => [$title, $sub])
         @php($items = collect($groups[$id])->filter(fn ($k) => $sections->has($k))->map(fn ($k) => $sections[$k]))
-        <section id="{{ $id }}" class="pos-360-sec" aria-labelledby="{{ $id }}-title" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === @js($id) : true">
+        <section id="{{ $id }}" class="pos-360-sec" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === @js($id) : true">
             <x-pos.section :title="$title" :id="$id.'-title'" :sub="$sub">
                 <p class="pos-ws-eyebrow -mt-1">360 overview</p>
                 @if ($items->isEmpty())
@@ -227,7 +229,7 @@
     @endforeach
 
     {{-- RECORDS: the system-of-record detail, by area, below --}}
-    <section id="records" class="pos-360-sec" aria-labelledby="records-title" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === 'records' : true">
+    <section id="records" class="pos-360-sec" x-data x-cloak x-show="$store.pos360 ? $store.pos360.view === 'records' : true">
         <x-pos.section title="Records" id="records-title" sub="Every detail as recorded, by area: all details, additional information, applicable policies and the governed records below. Changes go through the same governed actions and are audited." />
     </section>
 </div>
