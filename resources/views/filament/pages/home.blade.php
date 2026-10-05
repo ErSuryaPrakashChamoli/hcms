@@ -60,11 +60,13 @@
 
             {{-- UX.16: one chip per experience the person holds (HR admin and system admin are one Administration view) --}}
             @if (count($h['experiences']) > 1)
-                {{-- UX.17: one scrolling row on phones (it wrapped to three rows for administrators); the chosen view scrolls into sight --}}
-                <div class="pos-lens pos-lens-scroll -mt-4" role="tablist" aria-label="View Home as" x-data x-init="posRevealChip($el, $el.querySelector('[aria-selected=true]'))">
-                    <span class="pos-meta">View as</span>
+                {{-- UX.17: one scrolling row on phones (it wrapped to three rows for administrators); the chosen view scrolls into sight.
+                     UX.19: a group of toggle buttons, like the chips on My Work and module pages. A chip switches the whole Home
+                     and remembers the choice ("Home opens as"); there is no tab panel, so it is not announced as tabs. --}}
+                <div class="pos-lens pos-lens-scroll -mt-4" role="group" aria-label="View Home as" x-data x-init="posRevealChip($el, $el.querySelector('[aria-pressed=true]'))">
+                    <span class="pos-meta" aria-hidden="true">View as</span>
                     @foreach ($h['experiences'] as $experience => $lens)
-                        <button type="button" role="tab" class="pos-lens-chip" aria-selected="{{ $h['experience'] === $experience ? 'true' : 'false' }}" wire:click="switchLens('{{ $lens }}')">{{ $experienceLabels[$experience] ?? $experience }}</button>
+                        <button type="button" class="pos-lens-chip" aria-pressed="{{ $h['experience'] === $experience ? 'true' : 'false' }}" wire:click="switchLens('{{ $lens }}')">{{ $experienceLabels[$experience] ?? $experience }}</button>
                     @endforeach
                 </div>
             @endif

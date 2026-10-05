@@ -115,7 +115,8 @@ final class HomeComposer
             'focus' => $this->focus($work),
             'next' => $this->nextActions($work, $prefs['snoozed'] ?? []),
             'personal' => $employee !== null ? $safe(fn () => $signals->personal($user), []) : [],
-            'team_signals' => $experience === 'manager' ? $safe(fn () => $signals->team($user), []) : [],
+            // UX.19 (M11): Home leads with the decisions already, so Your team carries team exceptions only (as My Work).
+            'team_signals' => $experience === 'manager' ? array_values(array_filter($safe(fn () => $signals->team($user), []), fn ($s) => $s['key'] !== 'decisions')) : [],
             'requests' => $employee !== null && in_array($experience, ['employee', 'manager'], true) ? $work['waiting']->take(5)->values()->all() : [],
             'kpis' => $experience === 'admin' ? [] : $safe(fn () => $blocks->kpis($user, $primary, $employee, $work, $balances), []),
             'actions' => $this->featuredActions($user, $primary, $employee !== null),

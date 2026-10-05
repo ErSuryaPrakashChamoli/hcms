@@ -24,14 +24,18 @@
                     <span class="pos-meta">Joined {{ $life['joined']->format('M Y') }}@if ($life['tenure']) · {{ $life['tenure'] }}@endif @if ($life['employments'] > 1) · {{ $life['employments'] }} periods of employment @endif</span>
                 @endif
                 @if ($manager)
-                    <span class="pos-meta">Reports to</span>
-                    <x-pos.person :id="$manager->id" :name="$manager->person?->display_name" />
+                    {{-- UX.19: the label stays with the person when the line wraps --}}
+                    <span class="pos-360-reports"><span class="pos-meta">Reports to</span> <x-pos.person :id="$manager->id" :name="$manager->person?->display_name" /></span>
                 @endif
             </div>
         </div>
     </div>
+    @php($summarise = isset(app(\App\Domain\Ai\Services\AiGateway::class)->assistantsFor(auth()->user())['hr']))
+    @php($visible = collect($actions)->filter(fn ($a) => $a->isVisible())->isNotEmpty())
+    {{-- UX.19: no empty row when the viewer has no action here (the person viewing their own record) --}}
+    @if ($summarise || $visible)
     <div class="pos-360-actions">
-        @if (isset(app(\App\Domain\Ai\Services\AiGateway::class)->assistantsFor(auth()->user())['hr']))
+        @if ($summarise)
             {{-- Contextual AI: a summary from the Employee 360, which applies every domain's own rule. --}}
             <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm me-1" x-data
                 x-on:click="$dispatch('pos-ai-open', { assistant: 'hr', prompt: @js('Summarise '.$employee->employee_code), context: [@js('Summarise '.$employee->employee_code), 'What changed this week?'] })">
@@ -42,6 +46,7 @@
             <x-filament::actions :actions="$actions" />
         @endif
     </div>
+    @endif
 </header>
 <nav class="pos-sectnav pos-360-nav" aria-label="{{ $employee->person?->display_name }}" x-data
     x-init="$store.pos360?.fromHash(false)" x-on:hashchange.window="$store.pos360?.fromHash(true)">

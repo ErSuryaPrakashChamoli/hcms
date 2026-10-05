@@ -26,7 +26,8 @@ for (const persona of ['admin', 'manager']) {
             // for the chip to settle in sight, as a person would see it.
             await expect.poll(() => page.evaluate(() => {
                 const row = document.querySelector('.pos-lens-scroll');
-                const chip = row?.querySelector('[aria-selected=true]');
+                // UX.19: the chips are toggle buttons (aria-pressed); they were tabs (aria-selected) before.
+                const chip = row?.querySelector('[aria-pressed=true]');
                 if (!row || !chip) return null;
                 const a = row.getBoundingClientRect(), c = chip.getBoundingClientRect();
                 return c.left >= a.left - 1 && c.right <= a.right + 1;

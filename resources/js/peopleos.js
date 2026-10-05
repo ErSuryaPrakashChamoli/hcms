@@ -395,6 +395,22 @@ const registerAll = () => {
 if (window.Alpine) registerAll();
 document.addEventListener('alpine:init', registerAll);
 
+/* UX.19: a tablist moves between its tabs with the arrow keys, Home and End, as its role announces (WAI-ARIA tabs,
+   manual activation: Enter or Space still selects, and every tab stays a Tab stop). My HR's sections, the assistant
+   picker, journey stages and the palette's scope chips. */
+document.addEventListener('keydown', (e) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) || e.metaKey || e.ctrlKey || e.altKey) return;
+    const tab = e.target instanceof Element ? e.target.closest('[role=tab]') : null;
+    const list = tab?.closest('[role=tablist]');
+    if (!list) return;
+    const tabs = [...list.querySelectorAll('[role=tab]')].filter((t) => !t.disabled && t.getClientRects().length > 0);
+    const i = tabs.indexOf(tab);
+    if (i < 0) return;
+    const next = e.key === 'Home' ? tabs[0] : e.key === 'End' ? tabs[tabs.length - 1] : tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+    e.preventDefault();
+    next.focus();
+});
+
 /* Global shortcuts that are not the command center: G then H/W/P/O/A. */
 (() => {
     let g = false;
