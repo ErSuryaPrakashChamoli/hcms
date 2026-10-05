@@ -481,6 +481,8 @@ return [
         ],
         'employee' => [
             'employee.view' => 'View employees and Employee 360 (non-sensitive tabs)',
+            // UX.19 (G12): the subject's own record only, read-only; every section keeps its own permission.
+            'employee.self' => 'Open your own Employee 360 (your record only, read-only; sensitive data keeps its own permission)',
             'employee.create' => 'Hire / create employees',
             'employee.update' => 'Update employee and personal data',
             'employee.delete' => 'Delete employee records',
@@ -545,7 +547,7 @@ return [
         'employee' => [
             'name' => 'Employee',
             'description' => 'Standard employee access.',
-            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'document.own', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'exit.resign', 'ai.use'],
+            'permissions' => ['employee.self', 'task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'document.own', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'exit.resign', 'ai.use'],
         ],
         'executive' => [
             'name' => 'Executive',

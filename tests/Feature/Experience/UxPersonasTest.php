@@ -62,8 +62,10 @@ beforeEach(function () {
 it('answers every representative screen exactly as each persona\'s permissions say', function () {
     $staff360 = EmployeeResource::getUrl('view', ['record' => $this->staffEmployee]);
     // persona => [Home, My work, Approvals, People, Employee 360, Workforce Command Centre, Admin Centre, Notifications]
+    // UX.19 (G12): the staff 360 is the employee persona's own record, which employee.self now opens (read-only); it was
+    // 403 before G12 was decided. Another employee's 360 stays refused (checked below).
     $expected = [
-        'employee' => [200, 200, 200, 200, 403, 403, 403, 200],
+        'employee' => [200, 200, 200, 200, 200, 403, 403, 200],
         'manager' => [200, 200, 200, 200, 200, 403, 403, 200],
         'hr' => [200, 200, 200, 200, 200, 403, 200, 200],
         'hr_admin' => [200, 200, 200, 200, 200, 200, 200, 200],
@@ -79,6 +81,7 @@ it('answers every representative screen exactly as each persona\'s permissions s
             expect($status)->toBe($codes[$i], "{$persona} → {$url}");
         }
     }
+    $this->actingAs($this->personas['employee'])->get(EmployeeResource::getUrl('view', ['record' => $this->managerEmployee]))->assertForbidden();
 });
 
 it('gives each persona the Home that fits their role', function () {

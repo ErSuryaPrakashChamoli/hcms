@@ -66,6 +66,30 @@ class ViewEmployee extends PeopleViewRecord
 
     protected static string $resource = EmployeeResource::class;
 
+    /**
+     * UX.19 (G12): this is the one Employees page a holder of employee.self may open without the register's list access
+     * (employee.view); the record check (EmployeePolicy::view, their own record only) decides, on mount and on every
+     * update. The register, create, edit and navigation keep the resource-level check.
+     */
+    public static function needsResourceAccess(): bool
+    {
+        return ! (auth()->user()?->hasPermission('employee.self') ?? false);
+    }
+
+    public function mountCanAuthorizeResourceAccess(): void
+    {
+        if (static::needsResourceAccess()) {
+            static::authorizeResourceAccess();
+        }
+    }
+
+    public function hydrateCanAuthorizeResourceAccess(): void
+    {
+        if (static::needsResourceAccess()) {
+            static::authorizeResourceAccess();
+        }
+    }
+
     public function getTitle(): string
     {
         return $this->getRecord()->person->display_name.' · '.$this->getRecord()->employee_code;
@@ -101,7 +125,7 @@ class ViewEmployee extends PeopleViewRecord
     {
         return [
             Action::make('message')->label('Message')->icon(Heroicon::OutlinedEnvelope)->color('gray')
-                ->visible(fn () => filled($this->getRecord()->work_email))
+                ->visible(fn () => filled($this->getRecord()->work_email) && (int) $this->getRecord()->user_id !== (int) auth()->id())
                 ->url(fn () => 'mailto:'.$this->getRecord()->work_email),
             ActionGroup::make([
                 $this->raiseRequestAction(),

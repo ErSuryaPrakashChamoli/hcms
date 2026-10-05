@@ -228,9 +228,12 @@ it('keeps tenant, organisation and relationship scope on every mobile surface', 
 it('keeps notification deep links behind each record\'s policy (field and record gates unchanged)', function () {
     $center = new NotificationCenter;
 
-    // An employee without employee.view gets no link to their own 360 (G12 unchanged); HR in scope does.
+    // UX.19 decided G12: an employee without employee.view now opens their own 360 through employee.self (own record
+    // only, read-only), so the deep link to their own record resolves; a colleague's record still gives no link.
+    // (Before UX.19 this asserted null for the own record, the then-unchanged G12.)
     $this->actingAs($this->employee);
-    expect($center->linkFor($this->report->getMorphClass(), $this->report->id))->toBeNull();
+    expect($center->linkFor($this->report->getMorphClass(), $this->report->id))->toContain('/employees/'.$this->report->id)
+        ->and($center->linkFor($this->managerEmployee->getMorphClass(), $this->managerEmployee->id))->toBeNull();
 
     app(AccessScopes::class)->assign($this->hr, ['company' => [(int) $this->company->id]], 'UX.17 test: one company');
     $this->actingAs($this->hr);

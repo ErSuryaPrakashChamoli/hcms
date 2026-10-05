@@ -24,6 +24,7 @@ use App\Domain\ServiceDesk\Models\ServiceDefinitionVersion;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Services\CaseAccess;
 use App\Domain\ServiceDesk\Services\ServiceCatalogue;
+use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Support\EngagementActions;
 use App\Filament\Support\ServiceDeskActions;
 use BackedEnum;
@@ -307,6 +308,14 @@ class MyHr extends Page
 
     protected function getHeaderActions(): array
     {
-        return [ServiceDeskActions::askHr(), $this->giveFeedbackAction()];
+        return [ServiceDeskActions::askHr(), $this->giveFeedbackAction(), $this->yourRecordAction()];
+    }
+
+    /** UX.19 (G12): the employee's own Employee 360, read-only, when their role allows it (employee.self). */
+    public function yourRecordAction(): Action
+    {
+        return Action::make('yourRecord')->label('Your record')->icon(Heroicon::OutlinedIdentification)->color('gray')
+            ->visible(fn () => ($me = self::me()) !== null && auth()->user()->can('view', $me))
+            ->url(fn () => EmployeeResource::getUrl('view', ['record' => self::me()]));
     }
 }
