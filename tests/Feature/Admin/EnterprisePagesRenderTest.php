@@ -39,7 +39,11 @@ it('renders the enterprise pages and saves the security policy', function () {
     expect((int) app(SettingsRepository::class)->get('security.session_idle_minutes'))->toBe(45)->and((bool) app(SettingsRepository::class)->get('security.mfa_required'))->toBeTrue();
     actAsTenant(null);
 
+    // SaaS.2: the policy just saved applies at once: an employee without an authenticator is sent to set one up.
     $this->actingAs($this->employee->user);
+    $this->get(SecurityPolicyPage::getUrl())->assertRedirect(route('filament.admin.auth.multi-factor-authentication.set-up-required'));
+    // With an authenticator proved, the pages are still refused.
+    proveMfa($this->employee->user);
     $this->get(SsoConnectionResource::getUrl('index'))->assertForbidden();
     $this->get(SecurityPolicyPage::getUrl())->assertForbidden();
 });

@@ -1,13 +1,19 @@
 <?php
 
 use App\Domain\Audit\Models\AuditEvent;
+use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Notifications\InvitationLink;
 use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Platform\Actions\ProvisionTenantAction;
 use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Services\PlatformTenantAccess;
+use App\Filament\Resources\Tenants\Pages\CreateTenant;
 use App\Filament\Resources\Tenants\Pages\EditTenant;
 use App\Filament\Resources\Tenants\TenantResource;
+use App\Support\Tenancy\TenantContext;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
 /*
@@ -74,4 +80,24 @@ it('keeps tenant users out of tenant records, by URL and by policy', function ()
 
     $this->get(TenantResource::getUrl('edit', ['record' => $tenant]))->assertForbidden();
     expect($admin->can('update', $tenant))->toBeFalse()->and($admin->can('tenant.update'))->toBeFalse();
+});
+
+it('creates a tenant from the platform form with its metadata, and invites the first administrator', function () {
+    Notification::fake();
+    $this->actingAs(platformAdmin());
+
+    Livewire::test(CreateTenant::class)
+        ->assertFormFieldDoesNotExist('admin_password')
+        ->fillForm(['name' => 'Soylent', 'slug' => 'soylent', 'tier' => 'dedicated', 'region' => 'in', 'trial_ends_at' => '2026-12-31 12:00:00',
+            'country_code' => 'IN', 'timezone' => 'Asia/Kolkata', 'locale' => 'en', 'currency' => 'INR',
+            'admin_name' => 'Sol Owner', 'admin_email' => 'owner@soylent.test', 'audit_reason' => 'New customer'])
+        ->call('create')->assertHasNoFormErrors();
+
+    $tenant = Tenant::query()->where('slug', 'soylent')->sole();
+    $owner = User::query()->where('email', 'owner@soylent.test')->sole();
+    expect($tenant->tier)->toBe('dedicated')->and($tenant->region)->toBe('in')->and($tenant->trial_ends_at->toDateTimeString())->toBe('2026-12-31 12:00:00')
+        ->and($owner->status)->toBe(UserStatus::Invited)
+        ->and($owner->tenant_id)->toBe($tenant->id)
+        ->and(app(TenantContext::class)->runAs($tenant, fn () => $owner->roleSlugs()))->toBe(['tenant-super-admin']);
+    Notification::assertSentTo($owner, InvitationLink::class);
 });

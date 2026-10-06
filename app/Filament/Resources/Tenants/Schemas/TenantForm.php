@@ -53,13 +53,12 @@ class TenantForm
                         TextInput::make('currency')->required()->default('INR')->length(3),
                     ]),
                 Section::make('First administrator')
-                    ->description('Provisioned as Tenant Super Admin together with the system roles, default features and settings.')
-                    ->columns(3)
+                    ->description('Provisioned as Tenant Super Admin together with the system roles, default features and settings. They receive an invitation e-mail and choose their own password.')
+                    ->columns(2)
                     ->visibleOn('create')
                     ->schema([
                         TextInput::make('admin_name')->label('Name')->required()->dehydrated(false),
                         TextInput::make('admin_email')->label('Email')->email()->required()->dehydrated(false)->unique('users', 'email'),
-                        TextInput::make('admin_password')->label('Password')->password()->revealable()->minLength(12)->required()->dehydrated(false),
                     ]),
                 AuditReasonField::make(),
             ]);

@@ -18,10 +18,10 @@ class CreateTenant extends PeopleCreateRecord
 
         return app(ProvisionTenantAction::class)->handle(
             tenantData: $data,
+            // SaaS.2: no password from the operator; the first administrator is invited.
             adminData: [
                 'name' => $this->data['admin_name'],
                 'email' => $this->data['admin_email'],
-                'password' => $this->data['admin_password'],
             ],
             reason: $reason,
         );

@@ -2,10 +2,15 @@
 
 namespace App\Providers\Filament;
 
-use App\Domain\Enterprise\Services\SecurityPolicy;
 use App\Domain\Experience\Services\ExperienceNavigation;
 use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Platform\Services\PlatformTenantAccess;
+use App\Filament\Auth\AcceptInvitation;
+use App\Filament\Auth\ConfirmMultiFactorAuthentication;
+use App\Filament\Auth\EditProfile;
+use App\Filament\Auth\Login;
+use App\Filament\Auth\RequestPasswordReset;
+use App\Filament\Auth\ResetPassword;
 use App\Filament\Pages\Home;
 use App\Filament\Pages\MyCareer;
 use App\Filament\Pages\MyCompensation;
@@ -20,6 +25,7 @@ use App\Filament\Support\PeopleOsText;
 use App\Filament\Support\PeopleOsUi;
 use App\Filament\Widgets\PeopleControlCentre;
 use App\Filament\Widgets\TenantOverview;
+use App\Http\Middleware\EnforceAccountSecurity;
 use App\Http\Middleware\EnforceSecurityPolicy;
 use App\Http\Middleware\EnsureSessionIsValid;
 use App\Http\Middleware\ResolveTenant;
@@ -27,6 +33,7 @@ use App\Http\Middleware\SetAuditSource;
 use App\Support\Tenancy\TenantContext;
 use Filament\Actions\Action;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
+use Filament\Auth\MultiFactor\Pages\SetUpRequiredMultiFactorAuthentication;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -44,6 +51,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Livewire\Livewire;
 
@@ -60,7 +68,19 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            // SaaS.2: identity lifecycle. Password sign-in with the MFA challenge; silent, non-enumerating password
+            // reset; e-mail verification pages (required per request by EnforceAccountSecurity); the person's own
+            // account security page; invitation acceptance (guest); MFA set-up and challenge (signed in).
+            ->login(Login::class)
+            ->passwordReset(RequestPasswordReset::class, ResetPassword::class)
+            ->emailVerification(isRequired: false)
+            ->profile(EditProfile::class, isSimple: false)
+            ->routes(fn () => Route::get('invitation/{token}', AcceptInvitation::class)->middleware('throttle:30,1')->name('auth.invitation.accept'))
+            ->authenticatedRoutes(fn () => Route::prefix('multi-factor-authentication')->name('auth.multi-factor-authentication.')->group(function (): void {
+                Route::get('set-up', SetUpRequiredMultiFactorAuthentication::class)->name('set-up-required');
+                Route::get('verify', ConfirmMultiFactorAuthentication::class)->name('challenge');
+            }))
+            ->livewireComponents([SetUpRequiredMultiFactorAuthentication::class, ConfirmMultiFactorAuthentication::class, AcceptInvitation::class])
             ->brandName('PeopleOS')
             ->brandLogo(fn () => view('filament.shell.brand'))
             ->brandLogoHeight('1.75rem')
@@ -205,7 +225,11 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
                 ResolveTenant::class,
                 EnforceSecurityPolicy::class,
+                EnforceAccountSecurity::class,
             ], isPersistent: true)
-            ->multiFactorAuthentication([AppAuthentication::make()->recoverable()], isRequired: fn () => app(TenantContext::class)->has() && app(SecurityPolicy::class)->mfaRequired());
+            // SaaS.2: "required" is decided per request (tenant policy, or the platform policy for operators) by
+            // EnforceAccountSecurity. Filament's own flag is evaluated once when routes are registered, with no
+            // tenant bound, which is why the tenant setting never took effect.
+            ->multiFactorAuthentication([AppAuthentication::make()->recoverable()]);
     }
 }

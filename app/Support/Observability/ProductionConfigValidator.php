@@ -194,6 +194,8 @@ final class ProductionConfigValidator
         $token = (string) config('peopleos.health.token');
         $this->require(strlen($token) >= 24, 'PEOPLEOS_HEALTH_TOKEN', 'missing', 'A long random monitoring token is required for readiness details.');
         $this->require((int) config('peopleos.health.heartbeat_max_age', 180) > 60, 'PEOPLEOS_HEARTBEAT_MAX_AGE', 'invalid', 'The heartbeat age limit must exceed the one-minute schedule.');
+        // SaaS.2: platform operators can reach every tenant, so production never runs without operator MFA.
+        $this->require((bool) config('peopleos.security.platform_mfa_required', true), 'PEOPLEOS_PLATFORM_MFA_REQUIRED', 'insecure', 'Platform operators must use multi-factor authentication in production.');
         if (config('peopleos.ai.provider', 'none') === 'anthropic') {
             $this->require(filled(config('peopleos.ai.anthropic.key')), 'ANTHROPIC_API_KEY', 'missing', 'The configured AI provider needs its key.');
         }

@@ -43,6 +43,7 @@ function productionLikeConfig(): void
         'filesystems.default' => 's3', 'peopleos.storage.shared_required' => true,
         'peopleos.http.trusted_proxies' => '10.0.0.0/8', 'peopleos.health.token' => str_repeat('h', 40),
         'logging.default' => 'stack', 'logging.channels.stack.channels' => ['daily'], 'logging.channels.daily.level' => 'info',
+        'peopleos.security.platform_mfa_required' => true,
     ]);
 }
 
@@ -72,6 +73,9 @@ it('passes a complete production configuration, and flags each break in it', fun
     expect($errors())->toContain(extension_loaded('redis') ? 'REDIS_PASSWORD' : 'REDIS_CLIENT');
     config(['cache.default' => 'database', 'app.debug' => true, 'logging.channels.daily.tap' => []]);
     expect($errors())->toContain('APP_DEBUG', 'LOG_CHANNEL');
+    // SaaS.2: operators reach every tenant, so production never runs without operator MFA.
+    config(['app.debug' => false, 'peopleos.security.platform_mfa_required' => false]);
+    expect($errors())->toContain('PEOPLEOS_PLATFORM_MFA_REQUIRED');
     app()->detectEnvironment(fn () => 'testing');
 });
 

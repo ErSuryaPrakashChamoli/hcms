@@ -9,6 +9,7 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\MultiFactor;
 use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Services\LifecycleEngine;
@@ -86,6 +87,18 @@ function tenantUser(Tenant $tenant, array $permissions = [], array $attributes =
 function platformAdmin(): User
 {
     return User::factory()->platformAdmin()->create();
+}
+
+/**
+ * SaaS.2: give the user an authenticator and mark this test session as having proved it (what the login
+ * challenge does), for tests that switch a tenant's MFA policy on and then make requests.
+ */
+function proveMfa(User $user): void
+{
+    if (! $user->hasMfaEnabled()) {
+        $user->forceFill(['app_authentication_secret' => 'JBSWY3DPEHPK3PXP'])->save();
+    }
+    session()->put(MultiFactor::SESSION_KEY, $user->getKey());
 }
 
 /**

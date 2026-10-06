@@ -97,6 +97,9 @@ it('enforces the tenant security policy', function () {
     actAsTenant(null);
     $this->actingAs($employee->user);
     $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])->get('/admin')->assertForbidden();
+    // SaaS.2: MFA is required above, and now enforced: from an allowed network the employee is sent to set up an authenticator first.
+    $this->withServerVariables(['REMOTE_ADDR' => '10.1.1.1'])->get('/admin/my-day')->assertRedirect(route('filament.admin.auth.multi-factor-authentication.set-up-required'));
+    proveMfa($employee->user);
     $this->withServerVariables(['REMOTE_ADDR' => '10.1.1.1'])->get('/admin/my-day')->assertOk();
     $this->actingAs(platformAdmin());
     $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])->get('/admin')->assertOk();

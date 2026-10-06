@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Department;
@@ -30,16 +31,16 @@ class UserForm
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
-                        TextInput::make('password')
-                            ->password()
-                            ->revealable()
-                            ->minLength(12)
-                            ->required(fn (string $operation) => $operation === 'create')
-                            ->dehydrated(fn ($state) => filled($state))
-                            ->helperText('Leave blank to keep the current password.'),
+                        // SaaS.2: administrators never choose or see a password. A new user is invited by e-mail and
+                        // chooses their own; a forgotten password is reset by its owner (or a reset link is sent).
                         Select::make('status')
-                            ->options(UserStatus::class)
-                            ->default(UserStatus::Active)
+                            ->options(fn (?User $record) => $record?->status === UserStatus::Invited
+                                ? [UserStatus::Invited->value => UserStatus::Invited->getLabel()]
+                                : [UserStatus::Active->value => UserStatus::Active->getLabel(), UserStatus::Suspended->value => UserStatus::Suspended->getLabel()])
+                            ->visibleOn('edit')
+                            ->disabled(fn (?User $record) => $record?->status === UserStatus::Invited)
+                            ->dehydrated(fn (?User $record) => $record?->status !== UserStatus::Invited)
+                            ->helperText(fn (?User $record) => $record?->status === UserStatus::Invited ? 'Activated when the person accepts their invitation.' : null)
                             ->required(),
                         TextInput::make('timezone')->placeholder('Asia/Kolkata')->maxLength(64),
                     ]),

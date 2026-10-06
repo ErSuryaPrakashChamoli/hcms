@@ -12,6 +12,7 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\PermissionRegistry;
+use App\Domain\Identity\Services\UserInvitations;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Letters\Services\LetterDefaults;
 use App\Domain\Organisation\Models\EmployeeCategory;
@@ -44,13 +45,16 @@ final class ProvisionTenantAction
 
     /**
      * @param  array{name: string, slug?: string, status?: TenantStatus|string, country_code?: string, timezone?: string, locale?: string, currency?: string, tier?: string, region?: string|null, trial_ends_at?: \DateTimeInterface|string|null}  $tenantData
-     * @param  array{name: string, email: string, password: string}|null  $adminData
+     * @param  array{name: string, email: string, password?: string}|null  $adminData  SaaS.2: without a password (the
+     *                                                                                 operator's form) the first administrator is invited by e-mail and chooses
+     *                                                                                 their own; a password is accepted only from the seeder and tests
      */
     public function handle(array $tenantData, ?array $adminData = null, ?string $reason = null): Tenant
     {
         $metadata = $this->metadata($tenantData);
+        $invitee = null;
 
-        return DB::transaction(function () use ($tenantData, $adminData, $reason, $metadata) {
+        $tenant = DB::transaction(function () use ($tenantData, $adminData, $reason, $metadata, &$invitee) {
             $tenant = $this->tenants->bypass(fn () => Tenant::create([
                 'name' => $tenantData['name'],
                 'slug' => $tenantData['slug'] ?? Str::slug($tenantData['name']),
@@ -61,20 +65,26 @@ final class ProvisionTenantAction
                 'currency' => $tenantData['currency'] ?? 'INR',
             ] + $metadata));
 
-            return $this->tenants->runAs($tenant, function () use ($tenant, $adminData, $reason) {
+            return $this->tenants->runAs($tenant, function () use ($tenant, $adminData, $reason, &$invitee) {
                 $roles = $this->seedSystemRoles();
                 $this->seedFeatures();
                 $this->seedSettings();
                 $this->seedOrganisationDefaults();
 
                 if ($adminData !== null) {
+                    $chosen = filled($adminData['password'] ?? null);
                     $admin = User::create([
                         'tenant_id' => $tenant->id,
                         'name' => $adminData['name'],
                         'email' => $adminData['email'],
-                        'password' => $adminData['password'],
-                        'status' => UserStatus::Active,
+                        'password' => $chosen ? $adminData['password'] : Str::random(64),
+                        'status' => $chosen ? UserStatus::Active : UserStatus::Invited,
                     ]);
+                    if ($chosen) {
+                        $admin->forceFill(['email_verified_at' => now()])->save();
+                    } else {
+                        $invitee = $admin;
+                    }
 
                     $admin->roles()->attach($roles['tenant-super-admin']);
                 }
@@ -90,6 +100,12 @@ final class ProvisionTenantAction
                 return $tenant;
             });
         });
+
+        if ($invitee !== null) {
+            app(UserInvitations::class)->issue($invitee, auth()->user(), 'First administrator of a new tenant');
+        }
+
+        return $tenant;
     }
 
     /**

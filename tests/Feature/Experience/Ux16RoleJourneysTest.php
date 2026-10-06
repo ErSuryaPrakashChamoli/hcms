@@ -108,6 +108,9 @@ it('administrator: Home → governance item → the control → change → audit
     expect(app(SecurityPolicy::class)->mfaRequired())->toBeTrue()
         ->and(AuditEvent::query()->where('module', 'settings')->orWhere('reason', 'Security policy update')->exists())->toBeTrue()
         ->and(collect(app(RoleSignals::class)->governance($admin)['attention'])->pluck('key')->all())->not->toContain('mfa_not_required');
+    // SaaS.2: the requirement applies at once, to the administrator too: set up an authenticator first.
+    $this->get(Home::getUrl())->assertRedirect(route('filament.admin.auth.multi-factor-authentication.set-up-required'));
+    proveMfa($admin);
     // The boundary: governance is not a back door into employee records.
     $this->get(EmployeeResource::getUrl('view', ['record' => $this->employee]))->assertForbidden();
 });
