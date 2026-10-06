@@ -136,11 +136,39 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 31. **Queue and scheduler.** A tenant-aware job without a tenant fails; suspended tenants' jobs and
     scheduled runs are skipped (retention excepted). Per-tenant failures are isolated.
 
+## SaaS.2 additions (foundation hardening)
+
+32. **Account security is enforced per request.** `EnforceAccountSecurity` (persistent panel middleware, and on
+    every protected download) requires a session to have proved its authenticator (`MultiFactor::isVerified`),
+    sends users who must use MFA and have none to set-up, and sends unverified local addresses to verification.
+    MFA "required" is never a Filament route-time flag. Every login (password, remember-me, SSO) starts unproven
+    (`SecureNewSession` on the `Login` event).
+33. **A dead session is signed out, not refused.** `EnsureSessionIsValid` runs before authentication (middleware
+    priority) and signs out an inactive user, a tenant user of an inaccessible tenant, or a session whose session
+    epochs (`SessionSecurity`) changed. Suspension, MFA reset, password reset and "sign out everywhere" raise
+    epochs and clear remember-me tokens; no session rows are deleted.
+34. **Protected web routes run the full stack.** Any route serving tenant data outside the panel uses
+    `web, auth, auth.session, EnsureSessionIsValid, ResolveTenant, EnforceSecurityPolicy, EnforceAccountSecurity`
+    (see `routes/web.php`), never `auth` alone.
+35. **Operators reach a tenant only through a grant.** `ResolveTenant` binds a platform operator to a tenant only
+    through a valid, unexpired `PlatformTenantAccess` grant (reason, optional reference, time box), audited on the
+    platform chain and the tenant's chain; everything recorded during it carries `platform_access_id`. No tenant
+    identity is ever created for an operator. Platform `tenant.*` keys are never effective for tenant users.
+36. **Identity links are one-time and reveal nothing.** Invitations store only a SHA-256 of their token and work
+    once for one invited user of an accessible tenant; password resets are silent, token-checked before any
+    policy message, locked against double use, and never queued. Administrators never choose or see passwords.
+37. **Status changes go through their service.** Tenant suspension and reactivation use `TenantSuspensions`
+    (conditional update, never a lock on the tenants row); the tenant edit form cannot change the status. A
+    `Tenant`'s own changes are audited in its own chain (`auditTenantId()`); `AuditRecorder` writes to the
+    platform chain only when asked (`platform: true`).
+38. **Outbound workflow webhooks are signed** with the PeopleOS scheme (`X-PeopleOS-Timestamp`,
+    `X-PeopleOS-Signature`, a delivery id stable across retries); configured headers cannot override them.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
 |---|---|---|
-| `TenantContext::bypass()` | 9 | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only) |
+| `TenantContext::bypass()` | 10 (SaaS.2: +1) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in) |
 | `withoutGlobalScope(AccessScope::class)` (345 call sites in 110 files) and `AccessScope::withoutScoping()` (32) | Mechanically each removes only the **organisation** scope; the fail-closed tenant scope stays. Reviewed by category (not line by line): domain services checking a target by id after an explicit `AccessScopes::allows` check, background sweeps, aggregate analytics with small-group suppression, and identity checks (Phase 14: tenant-wide on purpose) |
 | `withoutGlobalScopes()` (all) | 1 | `NumberSequences::highest`. Phase 14 narrowed it to the access scope with an explicit `tenant_id` filter |
 | `DB::table()` | 13 | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only) |
