@@ -28,8 +28,15 @@ use App\Domain\Entitlements\Support\EntitlementState;
  *      replaced it. Missing configuration is never read as DENY.
  * Then:
  *   - a feature is available only if its module is (an unknown module makes the feature unknown);
+ *   - SaaS.5: a limit inside a commercial module (AI requests, API requests) is not included while its module is
+ *     not entitled: DENY with MODULE_NOT_ENTITLED, whatever the limit's own value (an unknown module leaves the
+ *     limit's own answer);
  *   - a limit compares the resolved value (null = unlimited) with the usage the caller measured: within or at
  *     the limit is ALLOW, above it DENY, no usage measured UNKNOWN.
+ *
+ * So the limit states never collapse: unlimited (ALLOW, UNLIMITED), not included (DENY, MODULE_NOT_ENTITLED), no
+ * agreed limit or no commercial answer (UNKNOWN, with its reason), usage unmeasured (UNKNOWN, USAGE_UNAVAILABLE),
+ * within (ALLOW, WITHIN_LIMIT) and exceeded (DENY, LIMIT_EXCEEDED).
  */
 final class EntitlementEvaluator
 {
@@ -90,6 +97,15 @@ final class EntitlementEvaluator
     private function limit(EntitlementState $state, Capability $capability, string $day, ?int $usage): Decision
     {
         $tenant = $state->tenantId;
+
+        // SaaS.5: a limit never outlives its module (the limit's dimension is not included in what the tenant has).
+        if ($capability->followsModule()) {
+            $module = $this->toggle($state, $capability->module(), $day);
+            if ($module->outcome === DecisionOutcome::Deny) {
+                return new Decision($capability, DecisionOutcome::Deny, DecisionReason::ModuleNotEntitled, $module->source, $tenant, $day, $module->entitlementId, $module->overrideId,
+                    usage: $usage, assignmentId: $module->assignmentId, planVersionId: $module->planVersionId);
+            }
+        }
         $row = $state->isConfiguredOn($day) ? $state->entitlementOn($capability, $day) : null;
         [$entitlementId, $overrideId, $assignmentId, $versionId] = [null, null, null, null];
 

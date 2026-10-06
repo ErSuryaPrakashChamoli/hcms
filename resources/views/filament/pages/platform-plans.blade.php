@@ -64,21 +64,29 @@
             </div>
         </x-filament::section>
 
-        <x-filament::section heading="Capabilities by version" description="The capability catalogue is code-owned; a plan only says what it includes. Protected capabilities can be included or left out, never switched off. A capability not in the plan would be NOT_IN_PLAN for a tenant on it.">
+        <x-filament::section heading="Capabilities by version" description="The capability catalogue is code-owned; a plan only says what it includes. Protected capabilities can be included or left out, never switched off. For a tenant on the plan: a module or feature not in the plan is NOT_IN_PLAN; a limit not set has no agreed limit (UNKNOWN); a limit inside a module the plan does not include is not included (MODULE_NOT_ENTITLED). No price is part of a plan.">
+            @if ($problems = $this->draftProblems($current))
+                <div role="alert" class="mb-3 rounded-lg border border-warning-300 bg-warning-50 p-3 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-200">
+                    <p class="font-medium">The draft is not yet a consistent package; publishing will be refused until:</p>
+                    <ul class="list-disc ps-5">
+                        @foreach ($problems as $problem)<li>{{ $problem }}</li>@endforeach
+                    </ul>
+                </div>
+            @endif
             <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Capabilities by version">
             <table class="w-full text-sm">
-                <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1">Capability</th><th scope="col">Type</th><th scope="col">Class</th>
-                    @foreach ($versions as $v)<th scope="col">v{{ $v->version }} <span class="font-normal">({{ $v->state()->value }})</span></th>@endforeach
+                <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1 pe-4">Capability</th><th scope="col" class="pe-4">Type</th><th scope="col" class="pe-4">Class</th>
+                    @foreach ($versions as $v)<th scope="col" class="pe-4">v{{ $v->version }} <span class="font-normal">({{ $v->state()->value }})</span></th>@endforeach
                 </tr></thead>
                 <tbody>
                     @foreach ($this->matrix($current) as $row)
                         <tr class="border-t border-gray-100 dark:border-gray-800">
-                            <td class="py-1"><code>{{ $row['capability']->value }}</code> <span class="text-gray-500">{{ $row['capability']->label() }}</span></td>
-                            <td>{{ $row['capability']->type()->value }}</td>
-                            <td>{{ str_replace('_', ' ', $row['capability']->enforcement()->value) }}</td>
+                            <td class="py-1 pe-4"><code>{{ $row['capability']->value }}</code> <span class="text-gray-500">{{ $row['capability']->label() }}</span></td>
+                            <td class="pe-4">{{ $row['capability']->type()->value }}@if ($row['capability']->type()->value === 'limit')<br><span class="text-gray-500 dark:text-gray-400">{{ $row['capability']->unit() }} · {{ $row['capability']->measured() ? 'measured' : 'not measured yet' }}</span>@endif</td>
+                            <td class="pe-4">{{ str_replace('_', ' ', $row['capability']->enforcement()->value) }}</td>
                             @foreach ($versions as $v)
                                 @php($cell = $row['values'][$v->id])
-                                <td class="{{ $cell === 'not in plan' ? 'text-gray-500 dark:text-gray-400 italic' : '' }}">{{ $cell }}</td>
+                                <td class="pe-4 {{ str_starts_with($cell, 'not ') ? 'text-gray-500 dark:text-gray-400 italic' : '' }}">{{ $cell }}</td>
                             @endforeach
                         </tr>
                     @endforeach

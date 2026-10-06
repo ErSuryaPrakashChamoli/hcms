@@ -10,6 +10,7 @@ use App\Domain\Entitlements\Models\Plan;
 use App\Domain\Entitlements\Models\TenantPlanAssignment;
 use App\Domain\Entitlements\Support\Decision;
 use App\Domain\Entitlements\Support\EntitlementState;
+use App\Domain\Entitlements\Support\PlanValues;
 use App\Domain\Platform\Models\Tenant;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -37,7 +38,7 @@ final class EntitlementDiagnostics
 
     /**
      * @return array{decision: Decision, configured_from: ?string, version: int, configuration: ?array, override: ?array, module: ?Decision,
-     *     assignment: ?array, plan: ?array, plan_entitlement: ?array}
+     *     assignment: ?array, plan: ?array, plan_entitlement: ?array, plan_value: ?string}
      */
     public function explain(Tenant $tenant, Capability $capability, ?string $day = null, ?EntitlementState $state = null): array
     {
@@ -56,6 +57,9 @@ final class EntitlementDiagnostics
             'assignment' => $assignment,
             'plan' => $plan === null ? null : array_diff_key($plan, ['entitlements' => true]),
             'plan_entitlement' => $assignment ? $state->planEntitlement((int) $assignment['plan_version_id'], $capability) : null,
+            // SaaS.5: what the plan in force says, in the engine's vocabulary (included / not in plan / N unit /
+            // unlimited / not set / not included).
+            'plan_value' => $plan === null ? null : PlanValues::label($capability, array_map(fn (array $row) => $row['value_bool'] ?? $row['value_int'], $plan['entitlements'])),
         ];
     }
 

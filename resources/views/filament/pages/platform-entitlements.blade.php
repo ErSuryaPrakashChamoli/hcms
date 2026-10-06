@@ -40,8 +40,8 @@
                             <td><x-filament::badge size="sm" :color="match ($d->outcome->value) { 'ALLOW' => 'success', 'DENY' => 'danger', 'UNKNOWN' => 'warning', default => 'gray' }">{{ $d->outcome->value }}</x-filament::badge></td>
                             <td>{{ $d->reason->value }}</td>
                             <td>{{ $d->source->value }}{{ $d->overrideId ? ' #'.$d->overrideId : ($d->entitlementId ? ' #'.$d->entitlementId : ($d->source->value === 'plan' && $row['plan'] ? ' '.$row['plan']['code'].' v'.$row['plan']['version'] : '')) }}</td>
-                            <td>{{ $row['assignment'] && $d->capability->commercial() ? ($row['plan_entitlement'] === null ? 'not in plan' : ($d->capability->type()->value === 'limit' ? ($row['plan_entitlement']['value_int'] ?? 'unlimited') : ($row['plan_entitlement']['value_bool'] ? 'included' : 'excluded'))) : '' }}</td>
-                            <td>{{ $d->capability->type()->value === 'limit' ? ($d->limit ?? ($d->reason->value === 'UNLIMITED' ? 'unlimited' : '—')) : '' }}</td>
+                            <td>{{ $row['plan_value'] ?? '' }}</td>
+                            <td>{{ $d->capability->type()->value === 'limit' ? ($d->limit !== null ? \App\Domain\Entitlements\Support\PlanValues::amount($d->capability, $d->limit) : ($d->reason->value === 'UNLIMITED' ? 'unlimited' : '—')).($d->capability->measured() ? '' : ' · not measured yet') : '' }}</td>
                         </tr>
                     @endforeach
                 </tbody>

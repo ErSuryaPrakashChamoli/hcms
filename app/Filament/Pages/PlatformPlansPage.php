@@ -11,6 +11,7 @@ use App\Domain\Entitlements\Models\PlanEntitlement;
 use App\Domain\Entitlements\Models\PlanVersion;
 use App\Domain\Entitlements\Services\EntitlementDiagnostics;
 use App\Domain\Entitlements\Services\PlanCatalog;
+use App\Domain\Entitlements\Support\PlanValues;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -97,12 +98,26 @@ class PlatformPlansPage extends Page
      */
     public function matrix(Plan $plan): array
     {
-        $versions = $plan->versions->sortByDesc('version');
+        $versions = $plan->versions->sortByDesc('version')->mapWithKeys(fn (PlanVersion $v) => [$v->id => self::versionContent($v)]);
 
         return collect(Capability::commercialCases())->map(fn (Capability $c) => [
             'capability' => $c,
-            'values' => $versions->mapWithKeys(fn (PlanVersion $v) => [$v->id => self::cell($c, $v->entitlements->first(fn (PlanEntitlement $e) => $e->capability === $c))])->all(),
+            'values' => $versions->map(fn (array $content) => PlanValues::label($c, $content))->all(),
         ])->all();
+    }
+
+    /** @return list<string> SaaS.5: why the plan's draft could not be published as it stands (an inconsistent package) */
+    public function draftProblems(Plan $plan): array
+    {
+        $draft = $plan->versions->firstWhere('status', VersionStatus::Draft);
+
+        return $draft ? PlanCatalog::problems(self::versionContent($draft)) : [];
+    }
+
+    /** @return array<string, bool|int|null> a version's content: capability key => value */
+    private static function versionContent(PlanVersion $version): array
+    {
+        return $version->entitlements->mapWithKeys(fn (PlanEntitlement $e) => [$e->capability->value => $e->value()])->all();
     }
 
     public function history(Plan $plan): Collection
@@ -152,16 +167,6 @@ class PlatformPlansPage extends Page
         ];
     }
 
-    /** The value shown for a capability in a version. */
-    public static function cell(Capability $capability, ?PlanEntitlement $row): string
-    {
-        return match (true) {
-            $row === null => 'not in plan',
-            $capability->type() === CapabilityType::Limit => $row->value_int === null ? 'unlimited' : number_format($row->value_int),
-            default => $row->value_bool ? 'included' : 'excluded',
-        };
-    }
-
     /** Form field names cannot contain dots (Filament nests them). */
     private static function field(Capability $capability): string
     {
@@ -180,8 +185,12 @@ class PlatformPlansPage extends Page
                 $protected = $capability->enforcement() === EnforcementClass::Protected;
                 $label = "{$capability->value} · {$capability->label()}".($protected ? ' (protected)' : '');
                 if ($capability->type() === CapabilityType::Limit) {
-                    $components[] = Select::make($name)->label($label)->options(['absent' => 'Not in plan', 'unlimited' => 'Unlimited', 'limited' => 'Limited to…'])->default('absent')->selectablePlaceholder(false)->live();
-                    $components[] = TextInput::make("{$name}_value")->label("{$capability->value}: {$capability->unit()}")->integer()->minValue($protected ? 1 : 0)
+                    $hint = ($capability->measured() ? 'Usage is measured.' : 'Usage is not measured yet (a finite value answers UNKNOWN).')
+                        .($capability->followsModule() ? " Not included unless the {$capability->module()->value} module is included." : '');
+                    $components[] = Select::make($name)->label($label)->options(['absent' => 'Not set (no agreed limit)', 'unlimited' => 'Unlimited', 'limited' => 'Limited to…'])
+                        ->default('absent')->selectablePlaceholder(false)->live()->helperText($hint);
+                    $components[] = TextInput::make("{$name}_value")->label("{$capability->value}: {$capability->unit()}")->integer()->minValue($capability->minimumLimit())
+                        ->helperText($capability->unit() === 'bytes' ? '1 GiB = 1,073,741,824 bytes' : null)
                         ->required(fn (Get $get) => $get($name) === 'limited')->visible(fn (Get $get) => $get($name) === 'limited');
                 } else {
                     $options = ['absent' => 'Not in plan', 'included' => 'Included'] + ($protected ? [] : ['excluded' => 'Excluded']);

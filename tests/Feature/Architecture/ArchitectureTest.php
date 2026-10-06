@@ -13,6 +13,7 @@ use App\Domain\Compliance\Models\ComplianceRuleVerification;
 use App\Domain\Compliance\Models\ProfessionalTaxRuleVersion;
 use App\Domain\Compliance\Models\StatutoryExportLayout;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
 use App\Domain\Entitlements\Models\Plan;
 use App\Domain\Entitlements\Models\PlanEntitlement;
 use App\Domain\Entitlements\Models\PlanVersion;
@@ -36,6 +37,7 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /*
@@ -218,6 +220,62 @@ it('keeps commercial plans out of HCM code and writes them only through the two 
     // Writes: PlanCatalog (the catalogue) and EntitlementConfiguration (assignments) only.
     $writers = ['app/Domain/Entitlements/Services/PlanCatalog.php', 'app/Domain/Entitlements/Services/EntitlementConfiguration.php'];
     expect(array_values(array_diff(appFilesMatching('/\b(Plan|PlanVersion|PlanEntitlement|TenantPlanAssignment)::(query\(\)->)?(create|insert|upsert|update|delete|forceCreate)|new (PlanEntitlement|TenantPlanAssignment)\(/'), $writers)))->toBe([]);
+});
+
+it('keeps commercial entitlement out of authorisation: HCM only observes, nothing that authorises reads it (SaaS.5)', function () {
+    // The only files outside the entitlement domain that may use it: the shadow call sites, the API middleware, the
+    // platform pages and commands, the container bindings and the retention purge.
+    $observers = [
+        'app/Domain/Ai/Services/AiGateway.php', 'app/Domain/Analytics/Services/ReportRunner.php', 'app/Domain/Analytics/Services/ReportSchedules.php',
+        'app/Domain/Attendance/Services/AttendanceProcessor.php', 'app/Domain/Attendance/Services/PunchIngestion.php', 'app/Domain/Enterprise/Services/Webhooks.php',
+        'app/Domain/Learning/Services/Learning.php', 'app/Domain/Leave/Services/Leaves.php', 'app/Domain/Lifecycle/Services/LifecycleEngine.php',
+        'app/Domain/Payroll/Services/PayrollRuns.php', 'app/Domain/Performance/Services/Appraisals.php', 'app/Domain/Performance/Services/Goals.php',
+        'app/Http/Middleware/AuthenticateApiKey.php',
+    ];
+    $platform = ['app/Console/Commands/EntitlementShadowReport.php', 'app/Console/Commands/ExplainEntitlements.php', 'app/Filament/Pages/PlatformEntitlementsPage.php',
+        'app/Filament/Pages/PlatformPlansPage.php', 'app/Providers/AppServiceProvider.php', 'app/Domain/Enterprise/Services/Retention.php'];
+    $users = array_values(array_filter(appFilesMatching('/App.Domain.Entitlements/'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Entitlements/')));
+    sort($users);
+    $allowed = array_merge($observers, $platform);
+    sort($allowed);
+    expect($users)->toBe($allowed);
+
+    // Nothing that authorises (identity, roles, permissions, scopes, policies, tenancy) references it.
+    expect(array_values(array_filter($users, fn (string $f) => preg_match('#^app/(Domain/Identity/|Domain/[^/]+/Policies/|Support/Tenancy/|Policies/)#', $f) === 1)))->toBe([]);
+
+    // Each shadow call site observes and ignores the result: a bare statement, never a value used to decide anything.
+    foreach ($observers as $file) {
+        $source = file_get_contents(base_path($file));
+        preg_match_all('/^.*->observe(Limit)?\(.*$/m', $source, $calls);
+        expect($calls[0])->not->toBeEmpty("{$file} should observe");
+        foreach ($calls[0] as $line) {
+            expect(preg_match('/^\s*(app\(Entitlements::class\)|\$entitlements)->observe(Limit)?\(/', $line))->toBe(1, "{$file}: {$line}");
+        }
+        expect(preg_match('/(app\(Entitlements::class\)|\$entitlements)->(evaluate|evaluateFor)\(|->(wouldDeny|enforced)\(|DecisionOutcome|Entitlements.Support.Decision|=\s*(app\(Entitlements::class\)|\$entitlements)->observe/', $source))->toBe(0, "{$file} reads an entitlement decision");
+    }
+});
+
+it('keeps prices out of plans and out of entitlement logic (SaaS.5)', function () {
+    // The plan catalogue carries no money: a price will be its own versioned definition (ADR-0037).
+    foreach (['plans', 'plan_versions', 'plan_entitlements', 'tenant_plan_assignments'] as $table) {
+        $money = array_values(array_filter(Schema::getColumnListing($table),
+            fn (string $c) => preg_match('/price|amount|currency|_minor|billing|discount|tax|fee/i', $c) === 1));
+        expect($money)->toBe([], "{$table} carries money");
+    }
+    // No entitlement code (comments aside) touches pricing, billing, payments, invoices or subscriptions.
+    foreach (glob(app_path('Domain/Entitlements/*/*.php')) as $file) {
+        $code = collect(token_get_all(file_get_contents($file)))->reject(fn ($t) => is_array($t) && in_array($t[0], [T_COMMENT, T_DOC_COMMENT], true))
+            ->map(fn ($t) => is_array($t) ? $t[1] : $t)->implode('');
+        // ("currency" is an HCM core permission prefix, so only the schema check above bans it.)
+        expect(preg_match('/price|pricing|billing|invoice|payment|subscription/i', $code))->toBe(0, basename($file).' touches pricing or billing');
+    }
+});
+
+it('measures exactly the limits that are observed, and no other (SaaS.5)', function () {
+    preg_match_all('/observeLimit\(Capability::(\w+)/', implode("\n", array_map(fn (string $f) => file_get_contents(base_path($f)), appFilesMatching('/observeLimit\(Capability::/'))), $m);
+    $observed = collect($m[1])->unique()->sort()->values()->all();
+    $measured = collect(Capability::cases())->filter->measured()->map->name->sort()->values()->all();
+    expect($observed)->toBe($measured)->and($measured)->toBe(['ActiveEmployeesMax']);
 });
 
 it('never builds direct storage urls, reads env() outside config, or leaves debug output in application code', function () {

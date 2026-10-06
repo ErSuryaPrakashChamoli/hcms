@@ -182,3 +182,70 @@ it('8. reads during an assignment see the old plan or the new one, never a mix, 
     actAsTenant($this->tenant);
     expect(app(Entitlements::class)->evaluate(Capability::Payroll)->planVersionId)->toBe($this->growth->id);
 });
+
+it('9. serialises two operators setting the same limit on one draft at once: one row, both edits audited in order', function () {
+    $catalog = app(PlanCatalog::class);
+    $draft = $catalog->draft($this->growth->plan, 'Limit edits', $this->operator);
+    $results = race([
+        planCatalogCall($this, fn (PlanCatalog $c, $op) => $c->set(PlanVersion::query()->findOrFail($draft->id), Capability::ActiveEmployeesMax, 100, 'Operator one: 100', $op)),
+        planCatalogCall($this, fn (PlanCatalog $c, $op) => $c->set(PlanVersion::query()->findOrFail($draft->id), Capability::ActiveEmployeesMax, 250, 'Operator two: 250', $op)),
+    ], slow: ['eloquent.creating: '.PlanEntitlement::class, 'eloquent.updating: '.PlanEntitlement::class]);
+
+    expect($results)->toBe(['ok', 'ok']);
+    $rows = PlanEntitlement::query()->where('plan_version_id', $draft->id)->where('capability', 'active_employees.max')->get();
+    $edits = AuditEvent::query()->withoutTenancy()->with('fieldChanges')->where('action', 'PLAN_VERSION_EDITED')->where('metadata->plan_version_id', $draft->id)->orderBy('id')->get()
+        ->map(fn ($e) => $e->fieldChanges->firstWhere('field', 'active_employees.max'))->map(fn ($c) => [$c->before, $c->after])->all();
+    expect($rows)->toHaveCount(1)
+        ->and([100, 250])->toContain($rows->first()->value_int)
+        ->and($edits)->toHaveCount(2)
+        ->and($edits[1][0])->toBe($edits[0][1])                       // the second edit saw the first one's result
+        ->and($edits[1][1])->toBe((string) $rows->first()->value_int); // and the last edit is what is stored
+});
+
+it('10. reads during a publication keep answering from the pinned version, never the new one, never a mix', function () {
+    $catalog = app(PlanCatalog::class);
+    app(EntitlementConfiguration::class)->assignPlan($this->tenant, $this->starter, $this->today, null, 'Starter v1 today', $this->operator);
+    $next = $catalog->draft($this->starter->plan, 'Starter v2', $this->operator);
+    $catalog->set($next, Capability::ActiveEmployeesMax, 100, 'One hundred', $this->operator);
+    $tomorrow = now()->addDay()->toDateString();
+
+    // Starter v1 has no employee limit; v2 (published during the reads) has 100. A pinned tenant never sees 100.
+    $reader = function () {
+        foreach (range(1, 40) as $i) {
+            app()->forgetInstance(EntitlementStateStore::class);
+            actAsTenant(Tenant::query()->findOrFail($this->tenant->id));
+            $d = app(Entitlements::class)->evaluate(Capability::ActiveEmployeesMax, now()->addDays(5)->toDateString(), 75);
+            if ($d->planVersionId !== $this->starter->id || $d->reason->value !== 'LIMIT_NOT_CONFIGURED' || $d->limit !== null) {
+                throw new RuntimeException('Moved by a publication: '.json_encode($d->toArray()));
+            }
+            usleep(20_000);
+        }
+    };
+    $results = race([
+        planCatalogCall($this, fn (PlanCatalog $c, $op) => $c->publish(PlanVersion::query()->findOrFail($next->id), $tomorrow, 'Starter v2 on sale', $op)),
+        $reader, $reader,
+    ], slow: ['eloquent.updating: '.PlanVersion::class]);
+
+    expect($results)->toBe(['ok', 'ok', 'ok'])
+        ->and($next->fresh()->status)->toBe(VersionStatus::Published)
+        ->and(TenantPlanAssignment::query()->sole()->plan_version_id)->toBe($this->starter->id);
+});
+
+it('11. an assignment during a publication pins the version on sale today, whichever commits first', function () {
+    $catalog = app(PlanCatalog::class);
+    $next = $catalog->draft($this->growth->plan, 'Growth v2', $this->operator);
+    $catalog->set($next, Capability::ActiveEmployeesMax, 100, 'One hundred', $this->operator);
+    $tomorrow = now()->addDay()->toDateString();
+
+    $results = race([
+        planAssignmentCall($this, $this->growth, reason: 'Assign while v2 is being published'),
+        planCatalogCall($this, fn (PlanCatalog $c, $op) => $c->publish(PlanVersion::query()->findOrFail($next->id), $tomorrow, 'Growth v2 from tomorrow', $op)),
+    ], slow: ['eloquent.creating: '.TenantPlanAssignment::class, 'eloquent.updating: '.PlanVersion::class]);
+
+    expect($results)->toBe(['ok', 'ok'])
+        ->and(TenantPlanAssignment::query()->sole()->plan_version_id)->toBe($this->growth->id)
+        ->and($this->growth->fresh()->effective_to->toDateString())->toBe($this->today);
+    app()->forgetInstance(EntitlementStateStore::class);
+    actAsTenant($this->tenant);
+    expect(app(Entitlements::class)->evaluate(Capability::Payroll, now()->addDays(3)->toDateString())->planVersionId)->toBe($this->growth->id);
+});

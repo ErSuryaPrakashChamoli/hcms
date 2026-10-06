@@ -31,6 +31,8 @@ use RuntimeException;
  * - Retiring stops new assignments of a version; tenants on it keep it.
  * - A plan never switches a protected capability off (payroll, onboarding, exit; a zero employee limit). It may
  *   leave one out ("not in the plan"), which shadow mode reports as NOT_IN_PLAN, never as switched off.
+ * - SaaS.5: a published version is a consistent package: an included feature brings its module, and a limit inside
+ *   a commercial module (AI requests, API requests) brings that module (problems()). No price is part of a plan.
  * - Serialised per plan on the plans row (FOR UPDATE); repeating a change changes nothing and is not audited.
  */
 final class PlanCatalog
@@ -150,6 +152,9 @@ final class PlanCatalog
                 throw new RuntimeException('A plan version must include or limit at least one capability before it is published.');
             }
             $rows->each(fn (PlanEntitlement $r) => $this->value($r->capability, $r->value())); // the rules again, at the point of no return
+            if (($problems = self::problems($rows->mapWithKeys(fn (PlanEntitlement $r) => [$r->capability->value => $r->value()])->all())) !== []) {
+                throw new RuntimeException('Not a consistent package: '.implode('; ', $problems).'.');
+            }
 
             $superseded = [];
             foreach ($versions->where('status', VersionStatus::Published) as $previous) {
@@ -238,6 +243,34 @@ final class PlanCatalog
         });
     }
 
+    /**
+     * SaaS.5: what makes a version's content an inconsistent package, from the catalogue's own structure (not a
+     * business rule): an included feature without its module is never available, and a limit inside a commercial
+     * module without that module is never applicable. Publication refuses both; a draft may pass through them.
+     *
+     * @param  array<string, bool|int|null>  $values  capability key => value
+     * @return list<string>
+     */
+    public static function problems(array $values): array
+    {
+        $problems = [];
+        foreach ($values as $key => $value) {
+            $capability = Capability::tryFrom((string) $key);
+            if ($capability === null || ! $capability->module()->commercial() || $capability->module() === $capability) {
+                continue;
+            }
+            $moduleIncluded = ($values[$capability->module()->value] ?? null) === true;
+            if ($capability->type() === CapabilityType::Feature && $value === true && ! $moduleIncluded) {
+                $problems[] = "{$capability->value} is included but its module {$capability->module()->value} is not";
+            }
+            if ($capability->followsModule() && ! $moduleIncluded) {
+                $problems[] = "{$capability->value} is set but its module {$capability->module()->value} is not included";
+            }
+        }
+
+        return $problems;
+    }
+
     /** @return array<string, bool|int|null> the draft's current content, as define() takes it */
     public function values(PlanVersion $version): array
     {
@@ -256,12 +289,11 @@ final class PlanCatalog
         if (! $capability->commercial()) {
             throw new RuntimeException("{$capability->value} is not a commercial capability: no plan can include or exclude it.");
         }
-        $protected = $capability->enforcement() === EnforcementClass::Protected;
         if ($capability->type() === CapabilityType::Limit) {
             if (is_bool($value) || (is_int($value) && $value < 0)) {
                 throw new RuntimeException("{$capability->value} takes a whole number of {$capability->unit()} (or unlimited).");
             }
-            if ($protected && $value === 0) {
+            if (is_int($value) && $value < $capability->minimumLimit()) {
                 throw new RuntimeException("{$capability->value} is protected: a plan may limit it or leave it out, never set it to zero.");
             }
 
@@ -270,7 +302,7 @@ final class PlanCatalog
         if (! is_bool($value)) {
             throw new RuntimeException("{$capability->value} is included or not.");
         }
-        if ($protected && $value === false) {
+        if ($capability->enforcement() === EnforcementClass::Protected && $value === false) {
             throw new RuntimeException("{$capability->value} is protected: a plan may include it or leave it out, never switch it off.");
         }
 

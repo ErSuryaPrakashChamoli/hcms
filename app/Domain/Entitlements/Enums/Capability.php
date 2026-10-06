@@ -132,6 +132,37 @@ enum Capability: string
     }
 
     /**
+     * SaaS.5: whether PeopleOS measures this limit's usage today. Only the active-employee count is measured
+     * (BillableUnits, observed when someone becomes employed). Every other limit is a contract until metering exists
+     * (SaaS.1 WS4): a finite value for it answers USAGE_UNAVAILABLE. A test keeps this equal to the observeLimit()
+     * call sites.
+     */
+    public function measured(): bool
+    {
+        return $this === self::ActiveEmployeesMax;
+    }
+
+    /** SaaS.5: the smallest value a plan may give this limit (a protected limit is never 0 in a plan); null for non-limits. */
+    public function minimumLimit(): ?int
+    {
+        if ($this->type() !== CapabilityType::Limit) {
+            return null;
+        }
+
+        return $this->enforcement() === EnforcementClass::Protected ? 1 : 0;
+    }
+
+    /**
+     * SaaS.5: whether this limit can be "not included": only a limit inside a commercial module (AI requests in `ai`,
+     * API requests in `integrations`). Such a limit never outlives its module, as a feature never does. A limit of the
+     * HCM core (employees, users, legal entities, locations, storage) is always applicable.
+     */
+    public function followsModule(): bool
+    {
+        return $this->type() === CapabilityType::Limit && $this->module()->commercial();
+    }
+
+    /**
      * Permission-key prefixes (the part before the first dot) this module would narrow if it were ever
      * enforced. Every prefix in the permission catalogue belongs to exactly one module (tested).
      *

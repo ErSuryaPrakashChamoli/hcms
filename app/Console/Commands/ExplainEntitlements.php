@@ -3,15 +3,16 @@
 namespace App\Console\Commands;
 
 use App\Domain\Entitlements\Enums\Capability;
-use App\Domain\Entitlements\Enums\CapabilityType;
 use App\Domain\Entitlements\Services\EntitlementDiagnostics;
 use App\Domain\Entitlements\Services\EntitlementStateStore;
+use App\Domain\Entitlements\Support\PlanValues;
 use App\Domain\Platform\Models\Tenant;
 use Illuminate\Console\Command;
 
 /**
  * SaaS.3: why a tenant gets each entitlement decision on a business date (platform diagnostics, read-only).
  * SaaS.4: with the plan in force (tenant → plan → version → capability) and each capability's value in that plan.
+ * SaaS.5: in the engine's vocabulary (PlanValues), limits in their unit.
  */
 class ExplainEntitlements extends Command
 {
@@ -41,7 +42,7 @@ class ExplainEntitlements extends Command
             $d = $e['decision'];
             $rows[] = [$capability->value, $capability->type()->value, $d->outcome->value, $d->reason->value, $d->source->value,
                 $e['override'] ? '#'.$e['override']['id'] : '', $e['configuration'] ? '#'.$e['configuration']['id'] : '',
-                $e['assignment'] ? $this->planValue($capability, $e['plan_entitlement']) : '', $d->limit ?? ''];
+                $e['plan_value'] ?? '', $d->limit === null ? '' : PlanValues::amount($capability, $d->limit)];
         }
         $first = $diagnostics->explain($tenant, Capability::Core, $this->option('at'), $state);
         $plan = $first['plan'] ? "plan {$first['plan']['code']} v{$first['plan']['version']} (assignment #{$first['assignment']['id']} from {$first['assignment']['from']}".($first['assignment']['to'] ? " to {$first['assignment']['to']}" : '').')' : 'no plan in force';
@@ -49,18 +50,5 @@ class ExplainEntitlements extends Command
         $this->table(['Capability', 'Type', 'Decision', 'Reason', 'Source', 'Override', 'Configuration', 'Plan', 'Limit'], $rows);
 
         return self::SUCCESS;
-    }
-
-    /** @param  array<string, mixed>|null  $row */
-    private function planValue(Capability $capability, ?array $row): string
-    {
-        if (! $capability->commercial()) {
-            return '';
-        }
-        if ($row === null) {
-            return 'not in plan';
-        }
-
-        return $capability->type() === CapabilityType::Limit ? (string) ($row['value_int'] ?? 'unlimited') : ($row['value_bool'] ? 'included' : 'excluded');
     }
 }

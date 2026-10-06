@@ -56,13 +56,13 @@ it('answers from the assigned plan: included, not in the plan, explicitly exclud
         ->and([onPlan(Capability::LocationsMax)->outcome, onPlan(Capability::LocationsMax)->reason, onPlan(Capability::LocationsMax)->source])->toBe([O::Unknown, R::LimitNotConfigured, S::Plan])
         ->and(onPlan(Capability::Core)->outcome)->toBe(O::NotApplicable);
 
-    // A feature still needs its module, whichever plan says so.
-    $featureOnly = publishedPlan($this->operator, 'feature-only', ['leave' => true, 'ai.external_model' => true], '2027-01-04');
-    $this->config->assignPlan($this->tenant, $featureOnly, '2027-01-05', null, 'Feature without its module', $this->operator);
-    expect([onPlan(Capability::AiExternalModel, '2027-01-05')->outcome, onPlan(Capability::AiExternalModel, '2027-01-05')->reason, onPlan(Capability::AiExternalModel, '2027-01-05')->source])
-        ->toBe([O::Deny, R::ModuleNotEntitled, S::Plan]);
-    $this->config->assignPlan($this->tenant, $this->growth, '2027-01-06', null, 'Upgrade to Growth', $this->operator);
-    expect(onPlan(Capability::AiExternalModel, '2027-01-06')->outcome)->toBe(O::Allow);
+    // A feature still needs its module, whichever layer switches the module off. (SaaS.5: a plan can no longer be
+    // published with a feature but without its module, so here an override holds the module off.)
+    $this->config->assignPlan($this->tenant, $this->growth, '2027-01-05', null, 'Upgrade to Growth', $this->operator);
+    expect(onPlan(Capability::AiExternalModel, '2027-01-05')->outcome)->toBe(O::Allow);
+    $this->config->grantOverride($this->tenant, Capability::Ai, false, '2027-01-06', null, 'AI on hold for the tenant', $this->operator);
+    expect([onPlan(Capability::AiExternalModel, '2027-01-06')->outcome, onPlan(Capability::AiExternalModel, '2027-01-06')->reason, onPlan(Capability::AiExternalModel, '2027-01-06')->source])
+        ->toBe([O::Deny, R::ModuleNotEntitled, S::Override]);
 });
 
 it('keeps the tenant\'s own terms and overrides above the plan, and the configured default below it', function () {
