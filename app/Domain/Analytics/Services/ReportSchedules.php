@@ -4,6 +4,8 @@ namespace App\Domain\Analytics\Services;
 
 use App\Domain\Analytics\Models\ReportRun;
 use App\Domain\Analytics\Models\ReportSchedule;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Notifications\Services\Notifier;
 
@@ -23,6 +25,7 @@ final class ReportSchedules
             if ($claimed !== 1) {
                 return;
             }
+            app(Entitlements::class)->observe(Capability::AnalyticsScheduledReports, 'analytics.report.scheduled'); // SaaS.3: shadow only
             $run = $this->runAsOwner($schedule);
 
             $users = User::forCurrentTenant()->whereIn('id', $schedule->recipient_user_ids ?? [])->get()->filter(fn (User $u) => $u->isActive());

@@ -4,6 +4,8 @@ namespace App\Domain\Analytics\Services;
 
 use App\Domain\Analytics\Datasets\Dataset;
 use App\Domain\Analytics\Models\Report;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Payroll\Services\FormulaEngine;
 use Illuminate\Support\Carbon;
@@ -27,6 +29,8 @@ final class ReportRunner
     /** @param  array<string, mixed>  $definition */
     public function execute(string $datasetKey, array $definition, ?User $user = null, ?int $limit = null): ReportResult
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Analytics, 'analytics.report.run');
         $dataset = $this->datasets->get($datasetKey);
         if ($user && ! $dataset->allowedFor($user)) {
             throw new RuntimeException('You cannot report on the '.$dataset->label().' dataset.');

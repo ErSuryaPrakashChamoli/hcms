@@ -8,6 +8,8 @@ use App\Domain\Attendance\Jobs\ProcessAttendanceDay;
 use App\Domain\Attendance\Models\AttendanceDevice;
 use App\Domain\Attendance\Models\AttendancePunch;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -35,6 +37,8 @@ final class PunchIngestion
      */
     public function record(?Employee $employee, Carbon|string $punchedAt, string $direction = 'auto', string $source = 'manual', ?AttendanceDevice $device = null, ?string $externalId = null, array $meta = [], ?string $note = null): ?AttendancePunch
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Attendance, 'attendance.punch.record');
         $sourceTimezone = $meta['source_timezone'] ?? null;
         $at = $punchedAt instanceof Carbon ? $punchedAt->copy() : Carbon::parse($punchedAt, $sourceTimezone ?: config('app.timezone'));
         $at = $at->setTimezone(config('app.timezone'));

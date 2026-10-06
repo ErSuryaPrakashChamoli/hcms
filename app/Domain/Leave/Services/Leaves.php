@@ -8,6 +8,8 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Events\LeaveEvent;
 use App\Domain\Leave\Models\LeaveRequest;
@@ -33,6 +35,8 @@ final class Leaves
 
     public function request(Employee $employee, LeaveType $type, Carbon|string $from, Carbon|string $to, string $reason, string $fromSession = 'full', string $toSession = 'full', ?EmployeeDocument $document = null, ?User $requester = null, ?string $idempotencyKey = null, ?string $contact = null): LeaveRequest
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Leave, 'leave.request');
         $from = Carbon::parse($from)->startOfDay();
         $to = Carbon::parse($to)->startOfDay();
 

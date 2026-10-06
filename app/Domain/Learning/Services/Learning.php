@@ -8,6 +8,8 @@ use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Learning\Events\LearningEvent;
@@ -55,6 +57,8 @@ final class Learning
 
     public function enrol(Employee $employee, Course $course, ?CarbonInterface $dueOn = null, ?LearningAssignment $assignment = null, ?LearningPath $path = null, ?User $actor = null, bool $mandatory = false, string $status = 'enrolled', ?string $reason = null): LearningEnrolment
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Learning, 'learning.enrol');
         if (! $course->isPublished()) {
             throw new RuntimeException("Course {$course->code} is not published.");
         }

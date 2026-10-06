@@ -6,6 +6,8 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Enterprise\Models\WebhookDelivery;
 use App\Domain\Enterprise\Models\WebhookEndpoint;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Integration\Support\PayloadGuard;
 use App\Domain\Integration\Support\Signature;
@@ -54,6 +56,9 @@ final class Webhooks
             }
             WebhookDelivery::create(['webhook_endpoint_id' => $endpoint->id, 'event' => $event, 'event_id' => $eventId, 'correlation_id' => mb_substr($correlation, 0, 64), 'payload' => $body, 'status' => 'pending', 'next_attempt_at' => now()]);
             $queued++;
+        }
+        if ($queued > 0) {
+            app(Entitlements::class)->observe(Capability::IntegrationsWebhooks, 'webhooks.publish'); // SaaS.3: shadow only
         }
 
         return $queued;

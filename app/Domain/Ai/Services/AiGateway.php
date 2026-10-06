@@ -14,6 +14,8 @@ use App\Domain\Ai\Providers\AiProvider;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Experience\Services\ScreenAccess;
 use App\Domain\Identity\Models\User;
 use App\Domain\Platform\Services\FeatureFlags;
@@ -70,6 +72,8 @@ final class AiGateway
 
     public function ask(User $user, string $assistant, string $question): AiInteraction
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Ai, 'ai.ask');
         $definition = config("peopleos.ai.assistants.{$assistant}") ?? throw new RuntimeException('Unknown assistant.');
         if (! $this->features->enabled($definition['feature'])) {
             throw new RuntimeException($definition['label'].' is switched off for this tenant.');
@@ -101,6 +105,7 @@ final class AiGateway
         $boundary = ['policy' => $tenantPolicy, 'sent' => false, 'removed' => 0, 'redacted' => 0];
 
         if ($this->features->enabled('ai.llm') && $tenantPolicy !== 'none' && $answer->facts !== [] && $this->provider->name() !== 'none') {
+            app(Entitlements::class)->observe(Capability::AiExternalModel, 'ai.external_model.request'); // SaaS.3: shadow only
             $facts = $this->policy->prepare($answer->facts, $tenantPolicy);
             $q = $this->policy->redactText($question, $tenantPolicy);
             $draft = $this->policy->redactText($answer->answer, $tenantPolicy);

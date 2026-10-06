@@ -8,6 +8,8 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Lifecycle\Enums\LifecycleState;
@@ -38,6 +40,8 @@ final class PayrollRuns
 
     public function open(Company $company, int $year, int $month, ?User $actor = null): PayrollRun
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Payroll, 'payroll.run.open');
         $period = PayrollPeriod::for($company, $year, $month);
 
         if ($period->status === 'closed') {
@@ -84,6 +88,8 @@ final class PayrollRuns
 
     public function calculate(PayrollRun $run, ?User $actor = null): PayrollRun
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Payroll, 'payroll.run.calculate');
         $run->loadMissing('period');
 
         return DB::transaction(function () use ($run, $actor) {
@@ -206,6 +212,8 @@ final class PayrollRuns
     /** Locks attendance for the period, closes the period and generates payslips. */
     public function finalize(PayrollRun $run, ?User $actor = null): PayrollRun
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Payroll, 'payroll.run.finalize');
         if ($run->status !== 'approved') {
             throw new RuntimeException('Only an approved run can be finalized.');
         }
