@@ -164,11 +164,22 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 38. **Outbound workflow webhooks are signed** with the PeopleOS scheme (`X-PeopleOS-Timestamp`,
     `X-PeopleOS-Signature`, a delivery id stable across retries); configured headers cannot override them.
 
+## SaaS.3 additions (entitlements, shadow mode)
+
+39. **Entitlements never replace authorisation.** A commercial entitlement answers "does this tenant have the
+    capability?"; permissions, scopes, field security and policies alone decide what a user may do. No permission,
+    policy, gate, scope or navigation item reads an entitlement.
+40. **Shadow mode never blocks.** HCM code calls `Entitlements::observe()` and ignores the result; it never throws, and
+    `Decision::enforced()` is always false. Commercial evaluation fails open (UNKNOWN, logged); security never does.
+41. **Only platform operators change entitlements**, through `EntitlementConfiguration`, with a reason, audited on the
+    tenant chain and the platform chain; history is never rewritten (changes start today or later). Missing
+    configuration is UNKNOWN, never DENY.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
 |---|---|---|
-| `TenantContext::bypass()` | 10 (SaaS.2: +1) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in) |
+| `TenantContext::bypass()` / `withoutTenancy()` | 11 (SaaS.2: +1, SaaS.3: +1) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
 | `withoutGlobalScope(AccessScope::class)` (345 call sites in 110 files) and `AccessScope::withoutScoping()` (32) | Mechanically each removes only the **organisation** scope; the fail-closed tenant scope stays. Reviewed by category (not line by line): domain services checking a target by id after an explicit `AccessScopes::allows` check, background sweeps, aggregate analytics with small-group suppression, and identity checks (Phase 14: tenant-wide on purpose) |
 | `withoutGlobalScopes()` (all) | 1 | `NumberSequences::highest`. Phase 14 narrowed it to the access scope with an explicit `tenant_id` filter |
 | `DB::table()` | 13 | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only) |
