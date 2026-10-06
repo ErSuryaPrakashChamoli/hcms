@@ -154,6 +154,9 @@ it('audits every domain model except the documented append-only or derived table
         // business records; UX metrics are anonymous per-tenant daily counters, and automatic auditing
         // would stamp the user on them and undo the anonymity.
         'Experience\Models\ExperiencePreference', 'Experience\Models\UxMetric',
+        // SaaS.2: invitations are audited explicitly (issued, accepted, revoked) by UserInvitations; automatic
+        // auditing would copy the token hash into the trail.
+        'Identity\Models\UserInvitation',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -171,6 +174,8 @@ it('bypasses tenant scoping only in the documented platform services', function 
         'app/Domain/Audit/Services/AuditRecorder.php',
         'app/Domain/Identity/Services/AccessScopes.php',
         'app/Domain/Integration/Services/ApiKeys.php',
+        // SaaS.2: an invitation token is looked up before the invitee is signed in or any tenant is bound.
+        'app/Domain/Identity/Services/UserInvitations.php',
         'app/Domain/Platform/Actions/ProvisionTenantAction.php',
         'app/Http/Controllers/Sso/SsoController.php',
         'app/Support/Tenancy/Jobs/BindTenantContext.php',

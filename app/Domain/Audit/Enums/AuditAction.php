@@ -195,6 +195,16 @@ enum AuditAction: string
     case ExternalReferenceRetired = 'EXTERNAL_REFERENCE_RETIRED';
     case WebhookDeadLettered = 'WEBHOOK_DEAD_LETTERED';
     case WebhookReplayed = 'WEBHOOK_REPLAYED';
+    // SaaS.2: identity lifecycle and platform operator governance. No event ever carries a token, code or secret.
+    case InvitationIssued = 'INVITATION_ISSUED';
+    case InvitationAccepted = 'INVITATION_ACCEPTED';
+    case InvitationRevoked = 'INVITATION_REVOKED';
+    case PasswordResetRequested = 'PASSWORD_RESET_REQUESTED';
+    case EmailVerified = 'EMAIL_VERIFIED';
+    case SessionsRevoked = 'SESSIONS_REVOKED';
+    case PlatformAccessStarted = 'PLATFORM_ACCESS_STARTED';
+    case PlatformAccessEnded = 'PLATFORM_ACCESS_ENDED';
+    case SigningSecretRotated = 'SIGNING_SECRET_ROTATED';
 
     public function label(): string
     {

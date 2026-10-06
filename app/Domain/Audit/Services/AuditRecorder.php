@@ -34,6 +34,8 @@ final class AuditRecorder
      * @param  bool  $anonymous  Phase 13: record the event without anything that identifies who caused it
      *                           (no actor, IP, user agent or request id) — used for anonymous survey
      *                           responses and anonymous feedback, whose content must never be linkable to a person
+     * @param  bool  $platform  SaaS.2: write to the platform chain (no tenant) whatever tenant is bound; used for
+     *                          Markedge's own record of what platform operators did
      */
     public function record(
         AuditAction $action,
@@ -49,9 +51,19 @@ final class AuditRecorder
         ?User $actor = null,
         ?string $operationId = null,
         bool $anonymous = false,
+        bool $platform = false,
     ): AuditEvent {
-        $tenantId ??= ($entity?->getAttributes()['tenant_id'] ?? null) ?? $this->tenants->id();
+        // SaaS.2: an entity without a tenant_id column can name its own chain (a Tenant is audited in its own
+        // chain), so a platform operator who has entered tenant A never writes tenant B's changes into A's chain.
+        $tenantId = $platform ? null : ($tenantId
+            ?? ($entity?->getAttributes()['tenant_id'] ?? null)
+            ?? ($entity !== null && method_exists($entity, 'auditTenantId') ? $entity->auditTenantId() : null)
+            ?? $this->tenants->id());
         $actor = $anonymous ? null : ($actor ?? $this->resolveActor());
+        // SaaS.2: everything a platform operator does inside a tenant carries the id of that controlled access.
+        if (! $anonymous && ($accessId = Context::get('platform.access_id')) !== null && ! array_key_exists('platform_access_id', $metadata)) {
+            $metadata['platform_access_id'] = $accessId;
+        }
 
         $normalisedChanges = array_values(array_map(fn (array $change) => [
             'field' => $change['field'],

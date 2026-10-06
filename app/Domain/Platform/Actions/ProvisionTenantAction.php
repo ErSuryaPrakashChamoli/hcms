@@ -26,8 +26,10 @@ use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
 use App\Domain\ServiceDesk\Services\ServiceDeskDefaults;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 /**
  * Creates a tenant with its system roles, default features, default settings and first admin.
@@ -41,12 +43,14 @@ final class ProvisionTenantAction
     ) {}
 
     /**
-     * @param  array{name: string, slug?: string, status?: TenantStatus|string, country_code?: string, timezone?: string, locale?: string, currency?: string}  $tenantData
+     * @param  array{name: string, slug?: string, status?: TenantStatus|string, country_code?: string, timezone?: string, locale?: string, currency?: string, tier?: string, region?: string|null, trial_ends_at?: \DateTimeInterface|string|null}  $tenantData
      * @param  array{name: string, email: string, password: string}|null  $adminData
      */
     public function handle(array $tenantData, ?array $adminData = null, ?string $reason = null): Tenant
     {
-        return DB::transaction(function () use ($tenantData, $adminData, $reason) {
+        $metadata = $this->metadata($tenantData);
+
+        return DB::transaction(function () use ($tenantData, $adminData, $reason, $metadata) {
             $tenant = $this->tenants->bypass(fn () => Tenant::create([
                 'name' => $tenantData['name'],
                 'slug' => $tenantData['slug'] ?? Str::slug($tenantData['name']),
@@ -55,7 +59,7 @@ final class ProvisionTenantAction
                 'timezone' => $tenantData['timezone'] ?? 'Asia/Kolkata',
                 'locale' => $tenantData['locale'] ?? 'en',
                 'currency' => $tenantData['currency'] ?? 'INR',
-            ]));
+            ] + $metadata));
 
             return $this->tenants->runAs($tenant, function () use ($tenant, $adminData, $reason) {
                 $roles = $this->seedSystemRoles();
@@ -80,12 +84,33 @@ final class ProvisionTenantAction
                     module: 'platform',
                     entity: $tenant,
                     reason: $reason,
-                    metadata: ['admin_email' => $adminData['email'] ?? null],
+                    metadata: ['admin_email' => $adminData['email'] ?? null, 'tier' => $tenant->tier, 'region' => $tenant->region, 'trial_ends_at' => $tenant->trial_ends_at?->toIso8601String()],
                 );
 
                 return $tenant;
             });
         });
+    }
+
+    /**
+     * SaaS.2: the tier, data region and trial end entered at creation are kept (they were silently dropped).
+     * They are tenant metadata only; nothing enforces them yet. Unknown values are refused, not stored.
+     *
+     * @return array{tier: string, region: ?string, trial_ends_at: ?Carbon}
+     */
+    private function metadata(array $tenantData): array
+    {
+        $tier = (string) ($tenantData['tier'] ?? 'shared');
+        if (! array_key_exists($tier, config('peopleos.enterprise.tiers', []))) {
+            throw new InvalidArgumentException("Unknown tenant tier [{$tier}].");
+        }
+        $region = filled($tenantData['region'] ?? null) ? (string) $tenantData['region'] : null;
+        if ($region !== null && ! array_key_exists($region, config('peopleos.enterprise.regions', []))) {
+            throw new InvalidArgumentException("Unknown data region [{$region}].");
+        }
+        $trialEnds = filled($tenantData['trial_ends_at'] ?? null) ? Carbon::parse($tenantData['trial_ends_at']) : null;
+
+        return ['tier' => $tier, 'region' => $region, 'trial_ends_at' => $trialEnds];
     }
 
     /** @return array<string, Role> */

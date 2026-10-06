@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Domain\Enterprise\Services\SecurityPolicy;
 use App\Domain\Experience\Services\ExperienceNavigation;
 use App\Domain\Experience\Services\RoleLens;
+use App\Domain\Platform\Services\PlatformTenantAccess;
 use App\Filament\Pages\Home;
 use App\Filament\Pages\MyCareer;
 use App\Filament\Pages\MyCompensation;
@@ -20,6 +21,7 @@ use App\Filament\Support\PeopleOsUi;
 use App\Filament\Widgets\PeopleControlCentre;
 use App\Filament\Widgets\TenantOverview;
 use App\Http\Middleware\EnforceSecurityPolicy;
+use App\Http\Middleware\EnsureSessionIsValid;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\SetAuditSource;
 use App\Support\Tenancy\TenantContext;
@@ -178,7 +180,7 @@ class AdminPanelProvider extends PanelProvider
                 Action::make('exit-tenant')
                     ->label('Exit tenant')
                     ->icon('heroicon-o-arrow-left-start-on-rectangle')
-                    ->visible(fn () => auth()->user()?->isPlatformAdmin() && session()->has(ResolveTenant::SESSION_KEY))
+                    ->visible(fn () => auth()->user()?->isPlatformAdmin() && session()->has(PlatformTenantAccess::SESSION_KEY))
                     ->url(fn () => route('admin.exit-tenant'))
                     ->postToUrl(),
             ])
@@ -196,7 +198,10 @@ class AdminPanelProvider extends PanelProvider
             ])
             // Phase 14: persistent, so /livewire/update requests also bind the tenant and enforce the
             // tenant security policy (IP allow-list, idle timeout), not only full page loads.
+            // SaaS.2: EnsureSessionIsValid runs first, so a session of a suspended tenant, an inactive account or an
+            // ended epoch is signed out (not merely refused with a 403 that reactivation would undo).
             ->authMiddleware([
+                EnsureSessionIsValid::class,
                 Authenticate::class,
                 ResolveTenant::class,
                 EnforceSecurityPolicy::class,

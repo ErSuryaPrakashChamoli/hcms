@@ -13,6 +13,8 @@ class EditTenant extends PeopleEditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
+        // SaaS.2: the status never changes here, whatever the request carries (see TenantSuspensions).
+        unset($data['status']);
         $record->withAuditReason(AuditReasonField::extract($data))->update($data);
 
         return $record;

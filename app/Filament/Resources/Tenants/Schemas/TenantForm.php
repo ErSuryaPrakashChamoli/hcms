@@ -32,11 +32,17 @@ class TenantForm
                             ->alphaDash()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
+                        // SaaS.2: chosen at creation only. Afterwards the status changes through Suspend / Reactivate,
+                        // which require a reason, end sessions and are audited.
                         Select::make('status')
                             ->options(TenantStatus::class)
                             ->default(TenantStatus::Active)
-                            ->required(),
-                        DateTimePicker::make('trial_ends_at')->native(false),
+                            ->required()
+                            ->disabledOn('edit')
+                            ->dehydrated(fn (string $operation) => $operation === 'create')
+                            ->helperText(fn (string $operation) => $operation === 'edit' ? 'Use Suspend or Reactivate on the tenants list.' : null),
+                        // Tenant metadata only: nothing enforces trials, tiers or regions yet (commercial work is deferred).
+                        DateTimePicker::make('trial_ends_at')->label('Trial ends (metadata)')->native(false),
                     ]),
                 Section::make('Locale defaults')
                     ->columns(4)

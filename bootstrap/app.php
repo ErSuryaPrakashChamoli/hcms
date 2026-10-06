@@ -5,9 +5,11 @@ use App\Http\Middleware\ApiResponseContract;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnforceIdempotency;
+use App\Http\Middleware\EnsureSessionIsValid;
 use App\Http\Middleware\ResolveTenant;
 use App\Support\Tenancy\Exceptions\MissingTenantException;
 use App\Support\Tenancy\Exceptions\TenantMismatchException;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -37,6 +39,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Bind the tenant before implicit route-model binding so scoped lookups never run unbound.
         $middleware->prependToPriorityList(SubstituteBindings::class, ResolveTenant::class);
         $middleware->prependToPriorityList(SubstituteBindings::class, AuthenticateApiKey::class);
+        // SaaS.2: a dead session (suspended tenant, inactive account, ended epoch) is signed out before
+        // authentication can merely refuse it.
+        $middleware->prependToPriorityList(AuthenticatesRequests::class, EnsureSessionIsValid::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

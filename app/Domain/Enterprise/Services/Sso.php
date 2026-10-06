@@ -55,7 +55,9 @@ final class Sso
             throw new RuntimeException('The identity provider did not return an email and subject.');
         }
 
-        return ['sub' => $sub, 'email' => $email, 'name' => (string) ($info->json('name') ?? Str::before($email, '@'))];
+        $verified = $info->json('email_verified');
+
+        return ['sub' => $sub, 'email' => $email, 'name' => (string) ($info->json('name') ?? Str::before($email, '@')), 'email_verified' => is_bool($verified) ? $verified : ($verified === null ? null : filter_var($verified, FILTER_VALIDATE_BOOLEAN))];
     }
 
     /** Production readiness closure: the IdP endpoints are tenant-configured, so they pass the SSRF guard (after DNS, pinned, no redirects). */
@@ -75,7 +77,15 @@ final class Sso
             throw new RuntimeException('This email domain is not allowed to sign in with '.$connection->name.'.');
         }
 
-        return $this->tenants->runAs($connection->tenant, function () use ($connection, $identity) {
+        // SaaS.2: an address the identity provider itself marks unverified never links to, or creates, an account
+        // (account takeover through a provider that lets users choose their e-mail). Providers that do not send
+        // the claim at all are unchanged; full SSO hardening (ID token, nonce, PKCE, enforcement) is deferred (W3).
+        $verified = $identity['email_verified'] ?? null;
+        if ($verified === false) {
+            throw new RuntimeException('Your identity provider has not verified this e-mail address.');
+        }
+
+        return $this->tenants->runAs($connection->tenant, function () use ($connection, $identity, $verified) {
             $user = User::query()->where('tenant_id', $connection->tenant_id)->where(fn ($q) => $q->where(fn ($s) => $s->where('sso_connection_id', $connection->id)->where('sso_subject', $identity['sub']))->orWhere('email', $identity['email']))->first();
 
             if ($user === null) {
@@ -83,6 +93,9 @@ final class Sso
                     throw new RuntimeException('No account exists for '.$identity['email'].' and automatic provisioning is off.');
                 }
                 $user = User::create(['tenant_id' => $connection->tenant_id, 'name' => $identity['name'], 'email' => $identity['email'], 'password' => Str::random(40), 'status' => UserStatus::Active]);
+                if ($verified === true) {
+                    $user->forceFill(['email_verified_at' => now()])->save();
+                }
                 if ($connection->default_role_id) {
                     $user->roles()->attach($connection->default_role_id);
                 }
@@ -93,7 +106,8 @@ final class Sso
                 throw new RuntimeException('This account is not active.');
             }
 
-            $user->forceFill(['sso_connection_id' => $connection->id, 'sso_subject' => $identity['sub']])->save();
+            $user->forceFill(['sso_connection_id' => $connection->id, 'sso_subject' => $identity['sub']]
+                + ($verified === true && $user->email_verified_at === null && $user->email === $identity['email'] ? ['email_verified_at' => now()] : []))->save();
             $connection->update(['last_login_at' => now()]);
             $this->audit->record(AuditAction::Login, 'enterprise', $user, [], null, tenantId: $connection->tenant_id, actor: $user, metadata: ['sso' => $connection->slug]);
 
