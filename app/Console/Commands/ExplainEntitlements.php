@@ -3,18 +3,23 @@
 namespace App\Console\Commands;
 
 use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Enums\CapabilityType;
 use App\Domain\Entitlements\Services\EntitlementDiagnostics;
+use App\Domain\Entitlements\Services\EntitlementStateStore;
 use App\Domain\Platform\Models\Tenant;
 use Illuminate\Console\Command;
 
-/** SaaS.3: why a tenant gets each entitlement decision on a business date (platform diagnostics, read-only). */
+/**
+ * SaaS.3: why a tenant gets each entitlement decision on a business date (platform diagnostics, read-only).
+ * SaaS.4: with the plan in force (tenant → plan → version → capability) and each capability's value in that plan.
+ */
 class ExplainEntitlements extends Command
 {
     protected $signature = 'peopleos:entitlements:explain {tenant : Tenant id or slug} {capability? : One capability key (all when omitted)} {--at= : Business date YYYY-MM-DD (default today, UTC)}';
 
     protected $description = 'Explain a tenant\'s commercial entitlement decisions (shadow mode; changes nothing)';
 
-    public function handle(EntitlementDiagnostics $diagnostics): int
+    public function handle(EntitlementDiagnostics $diagnostics, EntitlementStateStore $store): int
     {
         $tenant = Tenant::query()->where('slug', $this->argument('tenant'))->orWhere('id', $this->argument('tenant'))->first();
         if ($tenant === null) {
@@ -29,17 +34,33 @@ class ExplainEntitlements extends Command
             return self::FAILURE;
         }
 
+        $state = $store->load($tenant->id);
         $rows = [];
         foreach ($capabilities as $capability) {
-            $e = $diagnostics->explain($tenant, $capability, $this->option('at'));
+            $e = $diagnostics->explain($tenant, $capability, $this->option('at'), $state);
             $d = $e['decision'];
             $rows[] = [$capability->value, $capability->type()->value, $d->outcome->value, $d->reason->value, $d->source->value,
-                $e['override'] ? '#'.$e['override']['id'] : '', $e['configuration'] ? '#'.$e['configuration']['id'] : '', $d->limit ?? ''];
+                $e['override'] ? '#'.$e['override']['id'] : '', $e['configuration'] ? '#'.$e['configuration']['id'] : '',
+                $e['assignment'] ? $this->planValue($capability, $e['plan_entitlement']) : '', $d->limit ?? ''];
         }
-        $first = $diagnostics->explain($tenant, Capability::Core, $this->option('at'));
-        $this->info("{$tenant->slug}: ".($first['configured_from'] ? "configured from {$first['configured_from']}" : 'unconfigured')." · version {$first['version']} · on ".($this->option('at') ?? now()->toDateString()).' · mode shadow (not enforced)');
-        $this->table(['Capability', 'Type', 'Decision', 'Reason', 'Source', 'Override', 'Configuration', 'Limit'], $rows);
+        $first = $diagnostics->explain($tenant, Capability::Core, $this->option('at'), $state);
+        $plan = $first['plan'] ? "plan {$first['plan']['code']} v{$first['plan']['version']} (assignment #{$first['assignment']['id']} from {$first['assignment']['from']}".($first['assignment']['to'] ? " to {$first['assignment']['to']}" : '').')' : 'no plan in force';
+        $this->info("{$tenant->slug}: ".($first['configured_from'] ? "configured from {$first['configured_from']}" : 'unconfigured')." · {$plan} · version {$first['version']} · on ".($this->option('at') ?? now()->toDateString()).' · mode shadow (not enforced)');
+        $this->table(['Capability', 'Type', 'Decision', 'Reason', 'Source', 'Override', 'Configuration', 'Plan', 'Limit'], $rows);
 
         return self::SUCCESS;
+    }
+
+    /** @param  array<string, mixed>|null  $row */
+    private function planValue(Capability $capability, ?array $row): string
+    {
+        if (! $capability->commercial()) {
+            return '';
+        }
+        if ($row === null) {
+            return 'not in plan';
+        }
+
+        return $capability->type() === CapabilityType::Limit ? (string) ($row['value_int'] ?? 'unlimited') : ($row['value_bool'] ? 'included' : 'excluded');
     }
 }

@@ -2,10 +2,13 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Configuration\Enums\VersionStatus;
 use App\Domain\Entitlements\Enums\Capability;
 use App\Domain\Entitlements\Enums\CapabilityType;
 use App\Domain\Entitlements\Models\EntitlementOverride;
+use App\Domain\Entitlements\Models\PlanVersion;
 use App\Domain\Entitlements\Models\TenantEntitlement;
+use App\Domain\Entitlements\Models\TenantPlanAssignment;
 use App\Domain\Entitlements\Services\EntitlementConfiguration;
 use App\Domain\Entitlements\Services\EntitlementDiagnostics;
 use App\Domain\Platform\Models\Tenant;
@@ -31,6 +34,8 @@ use UnitEnum;
  * a chosen business date with the layers behind each one, its configuration and override history, and the shadow
  * observations ("what would have been denied"). Every change goes through EntitlementConfiguration (operator-only,
  * reasoned, audited). Nothing here is shown to tenant users, and no HCM navigation depends on it (shadow mode).
+ * SaaS.4: the tenant's plan (assign a published version, end an assignment), its assignment history and the
+ * platform-chain audit of its commercial configuration. Plans themselves are managed on Platform › Plans.
  */
 class PlatformEntitlementsPage extends Page
 {
@@ -83,18 +88,32 @@ class PlatformEntitlementsPage extends Page
         return $tenant ? app(EntitlementDiagnostics::class)->catalog($tenant, $this->day) : collect();
     }
 
-    /** @return array{configuration: Collection, overrides: Collection} */
+    /** @return array{configuration: Collection, overrides: Collection, assignments: Collection} */
     public function history(): array
     {
         $tenant = $this->selectedTenant();
         if ($tenant === null) {
-            return ['configuration' => collect(), 'overrides' => collect()];
+            return ['configuration' => collect(), 'overrides' => collect(), 'assignments' => collect()];
         }
 
         return app(TenantContext::class)->runAs($tenant, fn () => [
             'configuration' => TenantEntitlement::query()->orderByDesc('id')->limit(200)->get(),
             'overrides' => EntitlementOverride::query()->orderByDesc('id')->limit(200)->get(),
+            'assignments' => TenantPlanAssignment::query()->with('planVersion.plan')->orderByDesc('id')->limit(200)->get(),
         ]);
+    }
+
+    /** SaaS.4: Markedge's platform-chain audit of this tenant's commercial configuration. */
+    public function auditTrail(): Collection
+    {
+        return $this->tenant ? app(EntitlementDiagnostics::class)->auditTrail(tenantId: $this->tenant) : collect();
+    }
+
+    /** @return array<int, string> published versions, labelled with their sale window */
+    private function assignableVersions(): array
+    {
+        return PlanVersion::query()->with('plan')->where('status', VersionStatus::Published)->orderBy('plan_id')->orderByDesc('version')->get()
+            ->mapWithKeys(fn (PlanVersion $v) => [$v->id => "{$v->label()} · {$v->plan->name} · on sale {$v->effective_from->toDateString()} to ".($v->effective_to?->toDateString() ?? 'open')])->all();
     }
 
     public function shadow(): Collection
@@ -136,6 +155,19 @@ class PlatformEntitlementsPage extends Page
                     ->mapWithKeys(fn (TenantEntitlement $r) => [$r->id => "#{$r->id} {$r->capability->value} from {$r->effective_from->toDateString()}"])->all()),
                     DatePicker::make('last_day')->native(false)->required()->default(now()->subDay()->toDateString()), $reason()])
                 ->action(fn (array $data) => $this->attempt(fn () => app(EntitlementConfiguration::class)->end($this->row(TenantEntitlement::class, (int) $data['row']), $this->date($data['last_day']), $data['reason'], auth()->user()), 'Entitlement ended')),
+            Action::make('assignPlan')->label('Assign plan')->icon(Heroicon::OutlinedRectangleStack)->visible($tenantChosen)
+                ->modalDescription('The tenant is on this published plan version from the date. Capabilities set for the tenant itself and overrides still win. Shadow mode: nothing is blocked.')
+                ->schema([Select::make('version')->label('Plan version')->required()->options(fn () => $this->assignableVersions()),
+                    DatePicker::make('from')->native(false)->required()->default(now()->toDateString()), DatePicker::make('to')->native(false)->label('Last day (optional)'),
+                    TextInput::make('reference')->label('Contract or deal reference')->maxLength(100), $reason()])
+                ->action(fn (array $data) => $this->attempt(fn () => app(EntitlementConfiguration::class)->assignPlan($this->selectedTenant(), PlanVersion::query()->findOrFail((int) $data['version']),
+                    $this->date($data['from']), $this->date($data['to'] ?? null), $data['reason'], auth()->user(), $data['reference'] ?? null), 'Plan assigned')),
+            Action::make('endPlanAssignment')->label('End plan')->icon(Heroicon::OutlinedStop)->color('gray')->visible($tenantChosen)
+                ->schema([Select::make('assignment')->label('Plan assignment')->required()->options(fn () => $this->history()['assignments']->where('status', TenantPlanAssignment::ACTIVE)
+                    ->mapWithKeys(fn (TenantPlanAssignment $a) => [$a->id => "#{$a->id} {$a->planVersion->label()} from {$a->effective_from->toDateString()}".($a->effective_to ? " to {$a->effective_to->toDateString()}" : '')])->all()),
+                    DatePicker::make('last_day')->native(false)->required()->default(now()->subDay()->toDateString()), $reason()])
+                ->action(fn (array $data) => $this->attempt(fn () => app(EntitlementConfiguration::class)->endPlanAssignment($this->row(TenantPlanAssignment::class, (int) $data['assignment']),
+                    $this->date($data['last_day']), $data['reason'], auth()->user()), 'Plan assignment ended')),
             Action::make('revokeOverride')->label('Revoke override')->icon(Heroicon::OutlinedXMark)->color('danger')->visible($tenantChosen)
                 ->schema([Select::make('override')->required()->options(fn () => $this->history()['overrides']->where('status', 'active')
                     ->mapWithKeys(fn (EntitlementOverride $o) => [$o->id => "#{$o->id} {$o->capability->value} from {$o->effective_from->toDateString()}"])->all()), $reason()])
@@ -159,8 +191,8 @@ class PlatformEntitlementsPage extends Page
         return blank($value) ? null : substr((string) $value, 0, 10);
     }
 
-    /** @param  class-string<TenantEntitlement|EntitlementOverride>  $model */
-    private function row(string $model, int $id): TenantEntitlement|EntitlementOverride
+    /** @param  class-string<TenantEntitlement|EntitlementOverride|TenantPlanAssignment>  $model */
+    private function row(string $model, int $id): TenantEntitlement|EntitlementOverride|TenantPlanAssignment
     {
         return app(TenantContext::class)->runAs($this->selectedTenant(), fn () => $model::query()->findOrFail($id));
     }

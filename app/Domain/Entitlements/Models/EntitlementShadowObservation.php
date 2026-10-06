@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  * ShadowRecorder off the request path, purged by retention.
  */
 #[Fillable(['tenant_id', 'observed_on', 'capability', 'outcome', 'reason', 'surface', 'occurrences', 'first_seen_at', 'last_seen_at',
-    'last_source', 'last_entitlement_id', 'last_override_id'])]
+    'last_source', 'last_entitlement_id', 'last_override_id', 'last_assignment_id'])]
 class EntitlementShadowObservation extends Model
 {
     use BelongsToTenant;

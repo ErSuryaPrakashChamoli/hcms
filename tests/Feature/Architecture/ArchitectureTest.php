@@ -13,6 +13,9 @@ use App\Domain\Compliance\Models\ComplianceRuleVerification;
 use App\Domain\Compliance\Models\ProfessionalTaxRuleVersion;
 use App\Domain\Compliance\Models\StatutoryExportLayout;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Models\Plan;
+use App\Domain\Entitlements\Models\PlanEntitlement;
+use App\Domain\Entitlements\Models\PlanVersion;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\User;
@@ -76,6 +79,8 @@ it('scopes every domain model to a tenant except the documented platform-level m
         ComplianceRuleParameter::class,
         ComplianceRuleNotice::class,
         StatutoryExportLayout::class, // Phase 6.2: platform export layouts
+        // SaaS.4: Markedge's commercial plan catalogue (no tenant). A tenant's plan assignment is tenant-scoped.
+        Plan::class, PlanVersion::class, PlanEntitlement::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -162,6 +167,10 @@ it('audits every domain model except the documented append-only or derived table
         // field diff on one chain). Shadow observations are aggregated observability, not business records.
         'Entitlements\Models\TenantEntitlementProfile', 'Entitlements\Models\TenantEntitlement',
         'Entitlements\Models\EntitlementOverride', 'Entitlements\Models\EntitlementShadowObservation',
+        // SaaS.4: the plan catalogue is audited explicitly by PlanCatalog on the platform chain, and plan assignments by
+        // EntitlementConfiguration on both chains, with the reason, the before and after values and the effective date.
+        'Entitlements\Models\Plan', 'Entitlements\Models\PlanVersion', 'Entitlements\Models\PlanEntitlement',
+        'Entitlements\Models\TenantPlanAssignment',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -193,6 +202,22 @@ it('bypasses tenant scoping only in the documented platform services', function 
     ];
 
     expect(array_values(array_diff(appFilesMatching('/->bypass\(|withoutTenancy\(/'), $allowed)))->toBe([]);
+});
+
+it('keeps commercial plans out of HCM code and writes them only through the two commercial services (SaaS.4)', function () {
+    // HCM depends on the Entitlements contract only (ADR-0018): no module, policy or job reads a plan or an assignment.
+    $readers = [
+        'app/Domain/Entitlements/Models/Plan.php', 'app/Domain/Entitlements/Models/PlanVersion.php', 'app/Domain/Entitlements/Models/PlanEntitlement.php',
+        'app/Domain/Entitlements/Models/TenantPlanAssignment.php',
+        'app/Domain/Entitlements/Services/PlanCatalog.php', 'app/Domain/Entitlements/Services/EntitlementConfiguration.php',
+        'app/Domain/Entitlements/Services/EntitlementStateStore.php', 'app/Domain/Entitlements/Services/EntitlementDiagnostics.php',
+        'app/Filament/Pages/PlatformPlansPage.php', 'app/Filament/Pages/PlatformEntitlementsPage.php',
+    ];
+    expect(array_values(array_diff(appFilesMatching('/Entitlements.Models.(Plan|PlanVersion|PlanEntitlement|TenantPlanAssignment)\b/'), $readers)))->toBe([]);
+
+    // Writes: PlanCatalog (the catalogue) and EntitlementConfiguration (assignments) only.
+    $writers = ['app/Domain/Entitlements/Services/PlanCatalog.php', 'app/Domain/Entitlements/Services/EntitlementConfiguration.php'];
+    expect(array_values(array_diff(appFilesMatching('/\b(Plan|PlanVersion|PlanEntitlement|TenantPlanAssignment)::(query\(\)->)?(create|insert|upsert|update|delete|forceCreate)|new (PlanEntitlement|TenantPlanAssignment)\(/'), $writers)))->toBe([]);
 });
 
 it('never builds direct storage urls, reads env() outside config, or leaves debug output in application code', function () {

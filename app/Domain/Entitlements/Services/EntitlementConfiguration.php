@@ -4,11 +4,14 @@ namespace App\Domain\Entitlements\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Enums\VersionStatus;
 use App\Domain\Entitlements\Enums\Capability;
 use App\Domain\Entitlements\Enums\CapabilityType;
 use App\Domain\Entitlements\Models\EntitlementOverride;
+use App\Domain\Entitlements\Models\PlanVersion;
 use App\Domain\Entitlements\Models\TenantEntitlement;
 use App\Domain\Entitlements\Models\TenantEntitlementProfile;
+use App\Domain\Entitlements\Models\TenantPlanAssignment;
 use App\Domain\Identity\Models\User;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
@@ -32,6 +35,9 @@ use RuntimeException;
  * - Serialised per tenant on the tenant's profile row (FOR UPDATE), never on the tenants row; a duplicate request
  *   finds its own result and changes nothing (idempotent).
  * - Audited on the tenant's chain and on the platform chain; the cached state is forgotten after commit.
+ * - SaaS.4: a tenant's plan is assigned here too, by the same rules: a published version that is on sale on the
+ *   first day, today or later, one assignment at a time (painted like the configuration rows), history kept,
+ *   reasoned, audited with the previous and the new plan. Assigning a plan never configures anything else.
  */
 final class EntitlementConfiguration
 {
@@ -78,7 +84,7 @@ final class EntitlementConfiguration
 
             $new = new TenantEntitlement(['capability' => $capability, 'value_bool' => $valueBool, 'value_int' => $valueInt, 'effective_from' => $from,
                 'effective_to' => $to, 'status' => TenantEntitlement::ACTIVE, 'reason' => $reason, 'reference' => $reference, 'created_by' => $actor->id]);
-            $replaced = $this->paint($rows, $from, $to, $new, $actor, $reason);
+            $replaced = $this->paint($rows, $from, $to, $actor, $reason);
             $new->save();
             TenantEntitlement::query()->whereKey($replaced['cancelled'])->update(['superseded_by' => $new->id]);
             $this->bump($profile, $actor);
@@ -164,14 +170,103 @@ final class EntitlementConfiguration
     }
 
     /**
-     * Makes room for [$from, $to] in the active configuration rows: a row that started earlier ends the day before
-     * $from; a row starting inside the range (which has not started yet, since $from is today or later) is
-     * cancelled; a row continuing past $to resumes the day after $to as a new row with its own value.
+     * SaaS.4: the tenant is on the published plan version $version from $from (today or later, inside the version's
+     * sale window) until $to (inclusive; null = open-ended). An assignment in force on $from ends the day before;
+     * one starting inside the range is cancelled; one continuing past $to resumes the day after. A draft or a
+     * retired version is refused. Capabilities the tenant has configured itself, and overrides, still win.
+     */
+    public function assignPlan(Tenant $tenant, PlanVersion $version, string $from, ?string $to, string $reason, User $actor, ?string $reference = null): TenantPlanAssignment
+    {
+        $this->guard($actor, $reason);
+        [$from, $to] = [$this->startDay($from), $this->endDay($to, $from)];
+
+        return $this->locked($tenant, function (TenantEntitlementProfile $profile) use ($tenant, $version, $from, $to, $reason, $actor, $reference) {
+            // Re-read under a shared lock: a version retired concurrently is either seen as retired or waits for us.
+            $version = PlanVersion::query()->with('plan')->whereKey($version->id)->sharedLock()->firstOrFail();
+            $rows = TenantPlanAssignment::query()->where('status', TenantPlanAssignment::ACTIVE)->lockForUpdate()->get();
+            $same = $rows->first(fn (TenantPlanAssignment $r) => $r->plan_version_id === $version->id && $r->effective_from->toDateString() === $from && $r->effective_to?->toDateString() === $to);
+            if ($same !== null) {
+                return $same;
+            }
+            $this->assertAssignable($version, $from);
+
+            $previous = $rows->first(fn (TenantPlanAssignment $r) => $this->overlaps($r->effective_from->toDateString(), $r->effective_to?->toDateString(), $from, $from));
+            $new = new TenantPlanAssignment(['plan_version_id' => $version->id, 'effective_from' => $from, 'effective_to' => $to,
+                'status' => TenantPlanAssignment::ACTIVE, 'reason' => $reason, 'reference' => $reference, 'created_by' => $actor->id]);
+            $replaced = $this->paint($rows, $from, $to, $actor, $reason);
+            $new->save();
+            TenantPlanAssignment::query()->whereKey($replaced['cancelled'])->update(['superseded_by' => $new->id]);
+            $profile->forceFill(['has_plan_assignments' => true]);
+            $this->bump($profile, $actor);
+            $previousLabel = $previous ? $this->assignmentLabel($previous) : 'none';
+            $this->recordAudit(AuditAction::PlanAssigned, $tenant, $new, $reason, $actor, ['plan' => $version->plan->code, 'plan_version' => $version->version,
+                'plan_version_id' => $version->id, 'effective_from' => $from, 'effective_to' => $to, 'previous_assignment_id' => $previous?->id,
+                'reference' => $reference, 'version' => $profile->version] + $replaced,
+                changes: [['field' => 'plan', 'before' => $previousLabel, 'after' => $version->label()]], effectiveDate: $from);
+
+            return $new;
+        });
+    }
+
+    /** SaaS.4: the assignment's last day becomes $lastDay (yesterday at the earliest); one not yet started is cancelled. */
+    public function endPlanAssignment(TenantPlanAssignment $assignment, string $lastDay, string $reason, User $actor): TenantPlanAssignment
+    {
+        $this->guard($actor, $reason);
+        $lastDay = $this->endDay($lastDay, null);
+        if ($lastDay < $this->yesterday()) {
+            throw new RuntimeException('A plan assignment can end yesterday at the earliest: past days keep their answer.');
+        }
+        $tenant = Tenant::query()->findOrFail($assignment->tenant_id);
+
+        return $this->locked($tenant, function (TenantEntitlementProfile $profile) use ($tenant, $assignment, $lastDay, $reason, $actor) {
+            $assignment = TenantPlanAssignment::query()->with('planVersion.plan')->whereKey($assignment->id)->lockForUpdate()->firstOrFail();
+            $previous = $assignment->effective_to?->toDateString();
+            if ($assignment->status !== TenantPlanAssignment::ACTIVE || ($previous !== null && $previous <= $lastDay)) {
+                return $assignment;
+            }
+            $this->close($assignment, $lastDay, $actor, $reason);
+            $this->bump($profile, $actor);
+            $after = $assignment->status === TenantPlanAssignment::ACTIVE ? $lastDay : 'cancelled';
+            $this->recordAudit(AuditAction::PlanAssignmentEnded, $tenant, $assignment, $reason, $actor, ['plan' => $assignment->planVersion->plan->code,
+                'plan_version' => $assignment->planVersion->version, 'plan_version_id' => $assignment->plan_version_id, 'effective_to' => $assignment->status === TenantPlanAssignment::ACTIVE ? $lastDay : null,
+                'previous_effective_to' => $previous, 'status' => $assignment->status, 'version' => $profile->version],
+                changes: [['field' => 'effective_to', 'before' => $previous ?? 'open', 'after' => $after]], effectiveDate: $lastDay);
+
+            return $assignment;
+        });
+    }
+
+    private function assertAssignable(PlanVersion $version, string $from): void
+    {
+        if ($version->status === VersionStatus::Draft) {
+            throw new RuntimeException("{$version->label()} is a draft: publish it before assigning it to a tenant.");
+        }
+        if ($version->status === VersionStatus::Retired) {
+            throw new RuntimeException("{$version->label()} is retired: it can no longer be assigned.");
+        }
+        if (! $version->onSaleOn($from)) {
+            $window = $version->effective_from->toDateString().' to '.($version->effective_to?->toDateString() ?? 'open');
+            throw new RuntimeException("{$version->label()} can be assigned from {$window}; the assignment must start inside that window.");
+        }
+    }
+
+    private function assignmentLabel(TenantPlanAssignment $assignment): string
+    {
+        $assignment->loadMissing('planVersion.plan');
+
+        return $assignment->planVersion->label();
+    }
+
+    /**
+     * Makes room for [$from, $to] in the active rows (configuration rows of one capability, or plan assignments): a
+     * row that started earlier ends the day before $from; a row starting inside the range (which has not started
+     * yet, since $from is today or later) is cancelled; a row continuing past $to resumes the day after $to as a
+     * new row with its own value (or plan version).
      *
-     * @param  Collection<int, TenantEntitlement>  $rows
+     * @param  Collection<int, TenantEntitlement|TenantPlanAssignment>  $rows
      * @return array{ended: list<int>, cancelled: list<int>, continued: list<int>}
      */
-    private function paint($rows, string $from, ?string $to, TenantEntitlement $new, User $actor, string $reason): array
+    private function paint($rows, string $from, ?string $to, User $actor, string $reason): array
     {
         $changes = ['ended' => [], 'cancelled' => [], 'continued' => []];
         foreach ($rows as $row) {
@@ -186,7 +281,7 @@ final class EntitlementConfiguration
                 $continuations[] = $continuation;
             }
             $this->close($row, $this->dayBefore($from), $actor, $reason);
-            $changes[$row->status === TenantEntitlement::CANCELLED ? 'cancelled' : 'ended'][] = $row->id;
+            $changes[$row->status === $row::CANCELLED ? 'cancelled' : 'ended'][] = $row->id;
         }
         foreach ($continuations ?? [] as $continuation) {
             $continuation->save();
@@ -197,7 +292,7 @@ final class EntitlementConfiguration
     }
 
     /** Ends a row on $lastDay, or cancels it when that is before its start (it never took effect). */
-    private function close(TenantEntitlement|EntitlementOverride $row, string $lastDay, User $actor, string $reason): void
+    private function close(TenantEntitlement|EntitlementOverride|TenantPlanAssignment $row, string $lastDay, User $actor, string $reason): void
     {
         $neverStarted = $lastDay < $row->effective_from->toDateString();
         $row->forceFill($neverStarted
@@ -230,12 +325,16 @@ final class EntitlementConfiguration
         $profile->forceFill(['version' => $profile->version + 1, 'updated_by' => $actor->id])->save();
     }
 
-    /** @param  array<string, mixed>  $metadata */
-    private function recordAudit(AuditAction $action, Tenant $tenant, Model $entity, string $reason, User $actor, array $metadata): void
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @param  list<array{field: string, before: mixed, after: mixed}>  $changes
+     */
+    private function recordAudit(AuditAction $action, Tenant $tenant, Model $entity, string $reason, User $actor, array $metadata, array $changes = [], ?string $effectiveDate = null): void
     {
         $metadata += ['subject_tenant_id' => $tenant->id, 'subject_tenant' => $tenant->slug];
-        $this->audit->record($action, 'entitlements', $entity, [], $reason, tenantId: $tenant->id, actor: $actor, metadata: $metadata);
-        $this->audit->record($action, 'entitlements', null, [], $reason, entityLabel: "Tenant {$tenant->name}", actor: $actor, metadata: $metadata + ['entity_id' => $entity->getKey()], platform: true);
+        $this->audit->record($action, 'entitlements', $entity, $changes, $reason, effectiveDate: $effectiveDate, tenantId: $tenant->id, actor: $actor, metadata: $metadata);
+        $this->audit->record($action, 'entitlements', null, $changes, $reason, effectiveDate: $effectiveDate, entityLabel: "Tenant {$tenant->name}", actor: $actor,
+            metadata: $metadata + ['entity_id' => $entity->getKey(), 'entity_type' => class_basename($entity)], platform: true);
     }
 
     private function guard(User $actor, string $reason): void

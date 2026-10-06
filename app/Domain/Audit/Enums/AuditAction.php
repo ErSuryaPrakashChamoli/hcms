@@ -211,6 +211,15 @@ enum AuditAction: string
     case EntitlementEnded = 'ENTITLEMENT_ENDED';
     case EntitlementOverrideGranted = 'ENTITLEMENT_OVERRIDE_GRANTED';
     case EntitlementOverrideRevoked = 'ENTITLEMENT_OVERRIDE_REVOKED';
+    // SaaS.4: the commercial plan catalogue (platform chain) and tenant plan assignments (tenant and platform chains).
+    case PlanCreated = 'PLAN_CREATED';
+    case PlanUpdated = 'PLAN_UPDATED';
+    case PlanVersionDrafted = 'PLAN_VERSION_DRAFTED';
+    case PlanVersionEdited = 'PLAN_VERSION_EDITED';
+    case PlanVersionPublished = 'PLAN_VERSION_PUBLISHED';
+    case PlanVersionRetired = 'PLAN_VERSION_RETIRED';
+    case PlanAssigned = 'PLAN_ASSIGNED';
+    case PlanAssignmentEnded = 'PLAN_ASSIGNMENT_ENDED';
 
     public function label(): string
     {

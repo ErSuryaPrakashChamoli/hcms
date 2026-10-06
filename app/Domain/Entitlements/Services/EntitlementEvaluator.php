@@ -17,11 +17,15 @@ use App\Domain\Entitlements\Support\EntitlementState;
  * Precedence (first match wins):
  *   1. Catalogue: a non-commercial capability (the HCM core, security) is NOT_APPLICABLE.
  *   2. Override: an active platform override covering the date decides the value.
- *   3. Configuration: from the tenant's configured-from date, the tenant_entitlements row covering the date
- *      decides; a configured tenant without a row for the capability is NOT entitled (DENY), or, for a limit,
- *      has no agreed limit (UNKNOWN).
- *   4. Otherwise UNKNOWN: the tenant has no commercial configuration yet (or the date is before it). Missing
- *      configuration is never read as DENY.
+ *   3. Configuration: from the tenant's configured-from date, the tenant's own tenant_entitlements row covering
+ *      the date decides (tenant-specific terms are more specific than any plan).
+ *   4. Plan (SaaS.4): the plan assignment covering the date points at a published, immutable plan version; that
+ *      version's row decides. A capability the plan does not mention is NOT_IN_PLAN (DENY; "not sold", as opposed
+ *      to NOT_ENTITLED, an explicit "not available"), or, for a limit, has no agreed limit (UNKNOWN).
+ *   5. Configured, no row: a configured tenant without a row or plan for the capability is NOT entitled (DENY),
+ *      or, for a limit, has no agreed limit (UNKNOWN).
+ *   6. Otherwise UNKNOWN: no commercial configuration yet (or the date is before it), or a plan ended and nothing
+ *      replaced it. Missing configuration is never read as DENY.
  * Then:
  *   - a feature is available only if its module is (an unknown module makes the feature unknown);
  *   - a limit compares the resolved value (null = unlimited) with the usage the caller measured: within or at
@@ -43,25 +47,37 @@ final class EntitlementEvaluator
     private function toggle(EntitlementState $state, Capability $capability, string $day): Decision
     {
         $tenant = $state->tenantId;
+        $row = $state->isConfiguredOn($day) ? $state->entitlementOn($capability, $day) : null;
 
         if ($override = $state->overrideOn($capability, $day)) {
             $decision = (bool) $override['value_bool']
                 ? new Decision($capability, DecisionOutcome::Allow, DecisionReason::OverrideGranted, DecisionSource::Override, $tenant, $day, overrideId: $override['id'])
                 : new Decision($capability, DecisionOutcome::Deny, DecisionReason::OverrideDenied, DecisionSource::Override, $tenant, $day, overrideId: $override['id']);
-        } elseif ($state->isConfiguredOn($day)) {
-            $row = $state->entitlementOn($capability, $day);
-            $decision = $row !== null && (bool) $row['value_bool']
+        } elseif ($row !== null) {
+            $decision = (bool) $row['value_bool']
                 ? new Decision($capability, DecisionOutcome::Allow, DecisionReason::Entitled, DecisionSource::Configuration, $tenant, $day, entitlementId: $row['id'])
-                : new Decision($capability, DecisionOutcome::Deny, DecisionReason::NotEntitled, DecisionSource::Configuration, $tenant, $day, entitlementId: $row['id'] ?? null);
+                : new Decision($capability, DecisionOutcome::Deny, DecisionReason::NotEntitled, DecisionSource::Configuration, $tenant, $day, entitlementId: $row['id']);
+        } elseif ($assignment = $state->assignmentOn($day)) {
+            $versionId = (int) $assignment['plan_version_id'];
+            $planned = $state->planEntitlement($versionId, $capability);
+            [$outcome, $reason] = match (true) {
+                $planned === null => [DecisionOutcome::Deny, DecisionReason::NotInPlan],
+                (bool) $planned['value_bool'] => [DecisionOutcome::Allow, DecisionReason::Entitled],
+                default => [DecisionOutcome::Deny, DecisionReason::NotEntitled],
+            };
+            $decision = new Decision($capability, $outcome, $reason, DecisionSource::Plan, $tenant, $day, assignmentId: $assignment['id'], planVersionId: $versionId);
+        } elseif ($state->isConfiguredOn($day)) {
+            $decision = new Decision($capability, DecisionOutcome::Deny, DecisionReason::NotEntitled, DecisionSource::Configuration, $tenant, $day);
         } else {
-            return Decision::unknown($capability, $this->unconfiguredReason($state), $tenant, $day);
+            return Decision::unknown($capability, $this->unconfiguredReason($state, $day), $tenant, $day);
         }
 
         // A feature never outlives its module (override the module too, if that is intended).
         if ($capability->type() === CapabilityType::Feature && $decision->allowed() && $capability->module()->commercial()) {
             $module = $this->toggle($state, $capability->module(), $day);
             if ($module->outcome === DecisionOutcome::Deny) {
-                return new Decision($capability, DecisionOutcome::Deny, DecisionReason::ModuleNotEntitled, $module->source, $tenant, $day, $module->entitlementId, $module->overrideId);
+                return new Decision($capability, DecisionOutcome::Deny, DecisionReason::ModuleNotEntitled, $module->source, $tenant, $day, $module->entitlementId, $module->overrideId,
+                    assignmentId: $module->assignmentId, planVersionId: $module->planVersionId);
             }
             if ($module->outcome === DecisionOutcome::Unknown) {
                 return Decision::unknown($capability, DecisionReason::ModuleUnknown, $tenant, $day);
@@ -74,17 +90,25 @@ final class EntitlementEvaluator
     private function limit(EntitlementState $state, Capability $capability, string $day, ?int $usage): Decision
     {
         $tenant = $state->tenantId;
+        $row = $state->isConfiguredOn($day) ? $state->entitlementOn($capability, $day) : null;
+        [$entitlementId, $overrideId, $assignmentId, $versionId] = [null, null, null, null];
 
         if ($override = $state->overrideOn($capability, $day)) {
-            [$value, $source, $entitlementId, $overrideId] = [$override['value_int'], DecisionSource::Override, null, $override['id']];
-        } elseif ($state->isConfiguredOn($day)) {
-            $row = $state->entitlementOn($capability, $day);
-            if ($row === null) {
-                return new Decision($capability, DecisionOutcome::Unknown, DecisionReason::LimitNotConfigured, DecisionSource::Configuration, $tenant, $day, usage: $usage);
+            [$value, $source, $overrideId] = [$override['value_int'], DecisionSource::Override, $override['id']];
+        } elseif ($row !== null) {
+            [$value, $source, $entitlementId] = [$row['value_int'], DecisionSource::Configuration, $row['id']];
+        } elseif ($assignment = $state->assignmentOn($day)) {
+            [$assignmentId, $versionId, $source] = [$assignment['id'], (int) $assignment['plan_version_id'], DecisionSource::Plan];
+            $planned = $state->planEntitlement($versionId, $capability);
+            if ($planned === null) {
+                return new Decision($capability, DecisionOutcome::Unknown, DecisionReason::LimitNotConfigured, $source, $tenant, $day, usage: $usage,
+                    assignmentId: $assignmentId, planVersionId: $versionId);
             }
-            [$value, $source, $entitlementId, $overrideId] = [$row['value_int'], DecisionSource::Configuration, $row['id'], null];
+            $value = $planned['value_int'];
+        } elseif ($state->isConfiguredOn($day)) {
+            return new Decision($capability, DecisionOutcome::Unknown, DecisionReason::LimitNotConfigured, DecisionSource::Configuration, $tenant, $day, usage: $usage);
         } else {
-            return Decision::unknown($capability, $this->unconfiguredReason($state), $tenant, $day);
+            return Decision::unknown($capability, $this->unconfiguredReason($state, $day), $tenant, $day);
         }
 
         $limit = $value === null ? null : (int) $value;
@@ -95,11 +119,17 @@ final class EntitlementEvaluator
             default => [DecisionOutcome::Deny, DecisionReason::LimitExceeded],
         };
 
-        return new Decision($capability, $outcome, $reason, $source, $tenant, $day, $entitlementId, $overrideId, $limit, $usage);
+        return new Decision($capability, $outcome, $reason, $source, $tenant, $day, $entitlementId, $overrideId, $limit, $usage,
+            assignmentId: $assignmentId, planVersionId: $versionId);
     }
 
-    private function unconfiguredReason(EntitlementState $state): DecisionReason
+    /** Why there is no commercial answer on the day: a plan ended (a gap), nothing has started yet, or nothing ever. */
+    private function unconfiguredReason(EntitlementState $state, string $day): DecisionReason
     {
-        return $state->configuredFrom === null ? DecisionReason::TenantUnconfigured : DecisionReason::BeforeConfiguration;
+        return match (true) {
+            $state->hadPlanBy($day) => DecisionReason::NoPlanInForce,
+            $state->configuredFrom !== null || $state->assignments !== [] => DecisionReason::BeforeConfiguration,
+            default => DecisionReason::TenantUnconfigured,
+        };
     }
 }

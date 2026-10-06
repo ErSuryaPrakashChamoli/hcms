@@ -15,9 +15,13 @@ enum DecisionReason: string
     case OverrideDenied = 'OVERRIDE_DENIED';
     case ModuleNotEntitled = 'MODULE_NOT_ENTITLED';
     case LimitExceeded = 'LIMIT_EXCEEDED';
+    // SaaS.4: the tenant's plan does not include it ("not sold"), as opposed to NOT_ENTITLED, an explicit "not available".
+    case NotInPlan = 'NOT_IN_PLAN';
     // UNKNOWN
     case TenantUnconfigured = 'TENANT_UNCONFIGURED';
     case BeforeConfiguration = 'BEFORE_CONFIGURATION';
+    // SaaS.4: the tenant had a plan, none covers this date, and it has no configuration of its own on it.
+    case NoPlanInForce = 'NO_PLAN_IN_FORCE';
     case ModuleUnknown = 'MODULE_UNKNOWN';
     case LimitNotConfigured = 'LIMIT_NOT_CONFIGURED';
     case UsageUnavailable = 'USAGE_UNAVAILABLE';

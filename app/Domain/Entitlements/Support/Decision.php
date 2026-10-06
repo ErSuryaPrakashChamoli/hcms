@@ -11,6 +11,8 @@ use App\Domain\Entitlements\Enums\DecisionSource;
  * SaaS.3: one entitlement answer: what, for which tenant, on which business date, why, and from which layer.
  * It never carries employee data, salaries, tokens or secrets. In SaaS.3 every decision is a shadow decision:
  * enforced() is always false and no caller may use a decision to refuse an action.
+ * SaaS.4: a decision taken from (or through) the tenant's plan also names the plan assignment and the pinned plan
+ * version, so "why?" leads to tenant → plan → version → capability.
  */
 final class Decision
 {
@@ -28,6 +30,8 @@ final class Decision
         public readonly ?int $limit = null,
         public readonly ?int $usage = null,
         public readonly ?string $surface = null,
+        public readonly ?int $assignmentId = null,
+        public readonly ?int $planVersionId = null,
     ) {}
 
     public static function unknown(Capability $capability, DecisionReason $reason, ?int $tenantId, string $effectiveOn, ?string $surface = null): self
@@ -38,7 +42,7 @@ final class Decision
     public function withSurface(string $surface): self
     {
         return new self($this->capability, $this->outcome, $this->reason, $this->source, $this->tenantId, $this->effectiveOn,
-            $this->entitlementId, $this->overrideId, $this->limit, $this->usage, $surface);
+            $this->entitlementId, $this->overrideId, $this->limit, $this->usage, $surface, $this->assignmentId, $this->planVersionId);
     }
 
     /** SaaS.3: shadow mode. Nothing is ever enforced; this is the single place that says so. */
@@ -77,6 +81,8 @@ final class Decision
             'effective_on' => $this->effectiveOn,
             'entitlement_id' => $this->entitlementId,
             'override_id' => $this->overrideId,
+            'plan_assignment_id' => $this->assignmentId,
+            'plan_version_id' => $this->planVersionId,
             'limit' => $this->limit,
             'usage' => $this->usage,
             'surface' => $this->surface,
