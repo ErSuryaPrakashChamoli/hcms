@@ -619,6 +619,28 @@ return [
         'slow_query_ms' => (int) env('PEOPLEOS_SLOW_QUERY_MS', 1000),
     ],
 
+    /*
+    | SaaS.2 foundation hardening. Technical defaults for identity and platform-operator governance; the
+    | per-tenant rules (security.mfa_required, password length, idle timeout) stay in tenant settings.
+    */
+    'security' => [
+        // Platform operators can reach every tenant, so they must use an authenticator. Production refuses to
+        // run with this off (ProductionConfigValidator); a developer may turn it off locally.
+        'platform_mfa_required' => (bool) env('PEOPLEOS_PLATFORM_MFA_REQUIRED', true),
+    ],
+    'identity' => [
+        // How long an invitation link stays valid.
+        'invitation_hours' => max(1, (int) env('PEOPLEOS_INVITATION_HOURS', 72)),
+    ],
+    'platform' => [
+        // How long one controlled operator access to a tenant lasts before it ends on its own.
+        'tenant_access_minutes' => max(5, (int) env('PEOPLEOS_PLATFORM_TENANT_ACCESS_MINUTES', 60)),
+    ],
+    'seed' => [
+        // The password DatabaseSeeder gives every demo account; when unset, one is generated per run.
+        'password' => env('PEOPLEOS_SEED_PASSWORD'),
+    ],
+
     'settings' => [
         'branding.display_name' => null,
         'branding.primary_colour' => '#f59e0b',

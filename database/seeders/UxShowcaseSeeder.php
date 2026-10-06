@@ -99,7 +99,7 @@ class UxShowcaseSeeder extends Seeder
 
         $meera = $hire('Meera', 'Iyer', '2021-06-14', $ceo, null, null);
         if ($anita->currentManager === null) {
-            $admin = User::query()->where('email', 'admin@fynnedge.com')->firstOrFail();
+            $admin = User::query()->where('email', 'admin@demo.local')->firstOrFail();
             app(ChangeManagerAction::class)->change($anita, $meera, $admin, 'line', now()->subYear()->toDateString(), 'UX showcase seed');
         }
         $kavya = $hire('Kavya', 'Menon', '2022-03-01', $hrhead, null, $meera, 'BLR');
@@ -285,8 +285,10 @@ class UxShowcaseSeeder extends Seeder
     {
         $employee->loadMissing('person');
         $user = $employee->user_id ? User::query()->find($employee->user_id) : null;
+        // SaaS.2: a fixed, test-only fixture password. The visual and browser suites sign the personas in with
+        // it (SHOWCASE_PASSWORD), and this seeder refuses any database not named *_showcase (see run()).
         $user ??= User::query()->firstOrCreate(['email' => $employee->work_email], [
-            'tenant_id' => app(TenantContext::class)->id(), 'name' => $employee->person->display_name, 'password' => 'password', 'status' => 'active',
+            'tenant_id' => app(TenantContext::class)->id(), 'name' => $employee->person->display_name, 'password' => 'password', 'status' => 'active', 'email_verified_at' => now(),
         ]);
         $user->roles()->syncWithoutDetaching(Role::query()->whereIn('slug', $roles)->pluck('id'));
         if ($employee->user_id === null) {

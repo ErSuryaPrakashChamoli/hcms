@@ -74,26 +74,41 @@ use App\Support\Tenancy\TenantContext;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
+    private string $password = '';
+
+    /**
+     * SaaS.2: development and demo data only. It refuses to run in production, and it contains no
+     * password: every seeded account uses PEOPLEOS_SEED_PASSWORD, or a random password generated for this
+     * run and printed once to the console.
+     */
     public function run(PermissionRegistry $permissions, ProvisionTenantAction $provisioner, TenantContext $tenants): void
     {
+        if (app()->environment('production')) {
+            throw new RuntimeException('DatabaseSeeder creates demo accounts and refuses to run in production.');
+        }
+        $this->password = $this->seedPassword();
+
         $permissions->sync();
 
         User::query()->firstOrCreate(
             ['email' => 'platform@markedge.local'],
             [
                 'name' => 'Markedge Platform Admin',
-                'password' => 'password',
+                'password' => $this->password,
                 'is_platform_admin' => true,
+                'email_verified_at' => now(),
             ],
         );
 
         $tenant = $tenants->bypass(fn () => Tenant::query()->where('slug', 'demo')->first())
             ?? $provisioner->handle(
                 ['name' => 'Demo Group', 'slug' => 'demo'],
-                ['name' => 'Demo Admin', 'email' => 'admin@fynnedge.com', 'password' => 'Fynnone@2029'],
+                ['name' => 'Demo Admin', 'email' => 'admin@demo.local', 'password' => $this->password],
                 reason: 'Development seed',
             );
 
@@ -166,7 +181,7 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        $admin = User::query()->where('email', 'admin@fynnedge.com')->first();
+        $admin = User::query()->where('email', 'admin@demo.local')->first();
         $vikram = Employee::query()->with('person')->where('work_email', 'vikram.singh@demo.local')->first();
         if (! $vikram || ! $vikram->lifecycle_state->isEmployed()) {
             return;
@@ -198,7 +213,7 @@ class DatabaseSeeder extends Seeder
     private function seedExperience(): void
     {
         app(ServiceDeskDefaults::class)->seed();
-        $admin = User::query()->where('email', 'admin@fynnedge.com')->first();
+        $admin = User::query()->where('email', 'admin@demo.local')->first();
 
         if (Article::query()->doesntExist()) {
             $kb = app(KnowledgeBase::class);
@@ -339,7 +354,7 @@ class DatabaseSeeder extends Seeder
         $structure = SalaryStructure::query()->where('code', 'STANDARD')->first();
         $actors = [];
         foreach (['proposer' => 'tenant-hr-admin', 'reviewer' => 'hr-manager', 'approver' => 'tenant-hr-admin', 'executor' => 'payroll-admin'] as $duty => $role) {
-            $actors[$duty] = User::query()->firstOrCreate(['email' => "compensation.{$duty}@demo.local"], ['tenant_id' => app(TenantContext::class)->id(), 'name' => 'Compensation '.ucfirst($duty).' (demo)', 'password' => 'password', 'status' => 'active']);
+            $actors[$duty] = User::query()->firstOrCreate(['email' => "compensation.{$duty}@demo.local"], ['tenant_id' => app(TenantContext::class)->id(), 'name' => 'Compensation '.ucfirst($duty).' (demo)', 'password' => $this->password, 'status' => 'active', 'email_verified_at' => now()]);
             $actors[$duty]->roles()->syncWithoutDetaching(Role::query()->where('slug', $role)->pluck('id'));
         }
         $changes = app(CompensationChanges::class);
@@ -501,10 +516,23 @@ class DatabaseSeeder extends Seeder
         $hire('Vikram', 'Singh', 'vikram.singh@demo.local', '2024-11-04', $fa, $fin, $anita);
     }
 
+    /** The password every seeded account gets this run (never a literal in the repository). */
+    private function seedPassword(): string
+    {
+        $configured = (string) config('peopleos.seed.password', '');
+        if ($configured !== '') {
+            return $configured;
+        }
+        $generated = Str::password(20);
+        $this->command?->warn("Seeded accounts use this generated password (shown once; set PEOPLEOS_SEED_PASSWORD to choose one): {$generated}");
+
+        return $generated;
+    }
+
     /** A demo user holding one system role (separation-of-duties steps need a second person). */
     private function demoActor(string $email, string $name, string $role): User
     {
-        $user = User::query()->firstOrCreate(['email' => $email], ['tenant_id' => app(TenantContext::class)->id(), 'name' => $name, 'password' => 'password', 'status' => 'active']);
+        $user = User::query()->firstOrCreate(['email' => $email], ['tenant_id' => app(TenantContext::class)->id(), 'name' => $name, 'password' => $this->password, 'status' => 'active', 'email_verified_at' => now()]);
         $user->roles()->syncWithoutDetaching(Role::query()->where('slug', $role)->pluck('id'));
 
         return $user;
