@@ -1041,6 +1041,17 @@ return [
         'default_checks' => ['identity', 'address', 'education', 'employment'],
     ],
     'api' => [
+        /*
+        | SaaS.2: requests per minute for one API key (the limiter buckets by the key's public prefix, or by
+        | IP when no key is presented). 120 is the value that always applied while this key was undefined;
+        | it is a technical default, not a commercial quota (per-plan API quotas are future entitlement work).
+        */
+        'rate_limit_per_minute' => max(1, (int) env('PEOPLEOS_API_RATE_LIMIT_PER_MINUTE', 120)),
+        /*
+        | SaaS.2: how long an Idempotency-Key is remembered. A retry inside the window replays the stored
+        | response; after it, the key may be used again, and retention:purge deletes the expired rows.
+        */
+        'idempotency_ttl_hours' => max(1, (int) env('PEOPLEOS_API_IDEMPOTENCY_TTL_HOURS', 24)),
         'scopes' => [
             'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches (devices or any source) and raise regularisations',
             'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records, exceptions, regularisations, shifts and schedules', 'leave.read' => 'Read leave types, balances, transactions, requests and the leave calendar', 'leave.write' => 'Submit and cancel leave requests on behalf of employees', 'payroll.read' => 'Read payroll runs and payslips (sensitive)', 'compliance.read' => 'Read establishments, statutory registrations (masked), rule versions, statutory returns, entries (masked) and reconciliations',

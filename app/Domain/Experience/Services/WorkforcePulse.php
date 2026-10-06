@@ -161,7 +161,7 @@ final class WorkforcePulse
     /** Active critical positions with an incumbent exit already initiated, or with no incumbent at all. */
     private function criticalAffected(User $viewer): ?int
     {
-        if (! $viewer->hasPermission('succession.view') && ! $viewer->hasPermission('succession.read') && ! $viewer->hasPermission('succession.manage')) {
+        if (! $viewer->hasPermission('succession.view') && ! $viewer->hasPermission('succession.manage')) {
             return null;
         }
         $service = app(CriticalPositions::class);

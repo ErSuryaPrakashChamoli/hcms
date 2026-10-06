@@ -536,10 +536,10 @@ class AppServiceProvider extends ServiceProvider
                 default => 'token:'.hash('sha256', $presented),
             };
 
-            return Limit::perMinute((int) config('peopleos.api.rate_limit_per_minute', 120))->by($bucket);
+            return Limit::perMinute((int) config('peopleos.api.rate_limit_per_minute'))->by($bucket);
         });
-        // AI questions: per user, so one person cannot exhaust a provider budget (Phase 14).
-        RateLimiter::for('ai', fn () => Limit::perMinute((int) config('peopleos.ai.rate_limit_per_minute', 20))->by('ai:'.(auth()->id() ?? 'guest')));
+        // SaaS.2: AI questions are limited per user inside AiGateway (peopleos.ai.rate_limit_per_minute); the
+        // named `ai` limiter registered here was never attached to a route and has been removed.
     }
 
     private function registerPolicies(): void

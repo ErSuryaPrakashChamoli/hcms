@@ -5,6 +5,7 @@ namespace App\Domain\Enterprise\Services;
 use App\Domain\Ai\Models\AiInteraction;
 use App\Domain\Analytics\Models\ReportRun;
 use App\Domain\Enterprise\Models\WebhookDelivery;
+use App\Domain\Integration\Models\ApiIdempotencyKey;
 use App\Domain\Integration\Services\InboundEvents;
 use App\Domain\Notifications\Models\NotificationDelivery;
 use App\Domain\Platform\Services\SettingsRepository;
@@ -37,7 +38,21 @@ final class Retention
         $out['webhook_deliveries'] = WebhookDelivery::query()->whereIn('status', ['delivered', 'failed', 'dead_letter'])->where('created_at', '<', now()->subDays(90))->delete();
         // Phase 14: inbound event payload bodies are purged after the retention window; the event rows (metadata) stay.
         $out['inbound_payloads'] = app(InboundEvents::class)->purgePayloads();
+        // SaaS.2: remembered API writes past their Idempotency-Key window (the key is reusable by then).
+        $out['api_idempotency_keys'] = $this->purgeExpiredIdempotencyKeys();
 
         return $out;
+    }
+
+    /** Deletes expired idempotency rows in bounded batches, so one run never holds a long delete. */
+    private function purgeExpiredIdempotencyKeys(int $batch = 1000): int
+    {
+        $deleted = 0;
+        do {
+            $ids = ApiIdempotencyKey::query()->where('expires_at', '<=', now())->orderBy('id')->limit($batch)->pluck('id');
+            $deleted += $ids->isEmpty() ? 0 : ApiIdempotencyKey::query()->whereKey($ids)->delete();
+        } while ($ids->count() === $batch);
+
+        return $deleted;
     }
 }

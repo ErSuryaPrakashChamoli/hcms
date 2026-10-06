@@ -10,6 +10,7 @@ use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Payroll\Models\PayrollEntry;
@@ -57,19 +58,18 @@ final class PayrollRuns
     /** Employees whose current position sits in the run's company and who were employed at any point in the period. */
     public function population(PayrollRun $run): Collection
     {
-        $period = $run->period;
-
-        return Employee::query()
-            ->with(['person', 'statutoryDetail', 'bankAccounts'])
-            ->whereHas('positions', fn ($q) => $q->where('company_id', $run->company_id)->effectiveOn($period->end_date))
-            ->where(fn ($q) => $q->whereNull('joining_date')->orWhere('joining_date', '<=', $period->end_date->toDateString().' 23:59:59'))
-            ->where(fn ($q) => $q->whereNull('exit_date')->orWhere('exit_date', '>=', $period->start_date->toDateString()))
-            ->whereNotIn('lifecycle_state', ['pre_employee', 'alumni', 'offer_accepted', 'candidate'])
-            ->orderBy('employee_code')
-            ->get();
+        return $this->populationQuery($run)->orderBy('employee_code')->get();
     }
 
-    /** Same population, streamed in chunks for large runs (Phase 4 §55). */
+    /**
+     * Same population, streamed in chunks for large runs (Phase 4 §55).
+     *
+     * SaaS.2: eligibility is a positive list of lifecycle states (LifecycleState::isPayrollEligible), so an
+     * employee who has not joined yet (pre-employee, preboarding, onboarding) is never in a run, and a state
+     * added later is excluded until it is classified. The earlier exclusion list let preboarding employees
+     * through (RMS pre-employees have no joining date, which also passed the date filter) and named two
+     * states that do not exist.
+     */
     public function populationQuery(PayrollRun $run)
     {
         $period = $run->period;
@@ -79,7 +79,7 @@ final class PayrollRuns
             ->whereHas('positions', fn ($q) => $q->where('company_id', $run->company_id)->effectiveOn($period->end_date))
             ->where(fn ($q) => $q->whereNull('joining_date')->orWhere('joining_date', '<=', $period->end_date->toDateString().' 23:59:59'))
             ->where(fn ($q) => $q->whereNull('exit_date')->orWhere('exit_date', '>=', $period->start_date->toDateString()))
-            ->whereNotIn('lifecycle_state', ['pre_employee', 'alumni', 'offer_accepted', 'candidate']);
+            ->whereIn('lifecycle_state', LifecycleState::payrollEligibleValues());
     }
 
     public function calculate(PayrollRun $run, ?User $actor = null): PayrollRun

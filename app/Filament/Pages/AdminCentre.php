@@ -62,7 +62,7 @@ class AdminCentre extends Page
         if ($lenses->has($user, RoleLens::SYSTEM_ADMIN) || $lenses->has($user, RoleLens::HR_ADMIN)) {
             return true;
         }
-        foreach (['user.view', 'role.view', 'settings.view', 'configuration.view', 'integration.view', 'customfield.view', 'feature.view'] as $permission) {
+        foreach (['user.view', 'role.view', 'settings.view', 'configuration.view', 'integration.view', 'custom_field.view', 'features.view'] as $permission) {
             if ($user->hasPermission($permission)) {
                 return true;
             }
