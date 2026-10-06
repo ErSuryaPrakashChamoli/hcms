@@ -199,11 +199,24 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 48. **No price in a plan, no price in an entitlement decision.** The plan tables carry no money columns, and no
     entitlement code touches pricing or billing (architecture test).
 
+## SaaS.6 additions (commercial subscriptions and trials)
+
+49. **Only platform operators change a subscription**, through `CommercialSubscriptions`, with a reason, audited on the
+    tenant chain and the platform chain with the state and plan version before and after and the effective date.
+    Periods are append-only (model guards): never edited, never deleted, voided only if they never took effect.
+50. **One writer and one source of truth for the plan in force.** A subscription-managed tenant refuses manual plan
+    assignment; the subscription's projection always equals its entitled periods (asserted after every MySQL race).
+51. **A lapse is never a denial.** An expired or cancelled subscription means no plan in force (UNKNOWN). The commercial
+    status never changes an entitlement outcome. Nothing that authorises references the subscription context, and the
+    entitlement engine never depends on it (architecture tests).
+52. **Commercial and technical lifecycles stay apart.** No SaaS.6 code changes `tenants.status`; the settlement covers
+    suspended tenants without touching them.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
 |---|---|---|
-| `TenantContext::bypass()` / `withoutTenancy()` | 11 files (SaaS.2: +1, SaaS.3: +1; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
+| `TenantContext::bypass()` / `withoutTenancy()` | 12 files (SaaS.2: +1, SaaS.3: +1; SaaS.6: +1, `SubscriptionDirectory`: the operators' cross-tenant overview of names and commercial states, and the platform audit chain; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
 | `withoutGlobalScope(AccessScope::class)` (345 call sites in 110 files) and `AccessScope::withoutScoping()` (32) | Mechanically each removes only the **organisation** scope; the fail-closed tenant scope stays. Reviewed by category (not line by line): domain services checking a target by id after an explicit `AccessScopes::allows` check, background sweeps, aggregate analytics with small-group suppression, and identity checks (Phase 14: tenant-wide on purpose) |
 | `withoutGlobalScopes()` (all) | 1 | `NumberSequences::highest`. Phase 14 narrowed it to the access scope with an explicit `tenant_id` filter |
 | `DB::table()` | 13 | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only) |
