@@ -187,6 +187,18 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 45. **No plan switches a protected capability off**, and the core and security controls cannot appear in a plan.
     Tenants without a plan stay UNKNOWN: no default plan is ever assigned silently.
 
+## SaaS.5 additions (packaging, limits, pricing boundary)
+
+46. **Commercial entitlement never enters authorisation, now enforced by a test.** Only an exact list of files outside
+    the entitlement domain may use it: the 13 shadow call sites, the platform pages and commands, the container
+    bindings and the retention purge. Identity, roles, permissions, scopes, policies and tenancy never do. Every call
+    site observes and ignores the result (invariant 39 made mechanical).
+47. **A limit's states never collapse.** Unlimited, not included (its module is not entitled), not set (no agreed
+    limit), no commercial answer, unmeasured, within and exceeded each have their own outcome and reason. Missing
+    configuration is still never DENY.
+48. **No price in a plan, no price in an entitlement decision.** The plan tables carry no money columns, and no
+    entitlement code touches pricing or billing (architecture test).
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |

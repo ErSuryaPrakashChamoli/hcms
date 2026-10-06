@@ -44,7 +44,7 @@
 |---|---|
 | Keys | `id`; UNIQUE `(plan_version_id, capability)` |
 | Columns | `capability` (a key of the `Capability` enum), `value_bool` (modules and features), `value_int` (limits; NULL = unlimited) |
-| Meaning | `true`: included. `false`: explicitly excluded (never for a protected capability). A limit value N: limited to N (never 0 for the protected limit). NULL: unlimited. **No row: not in the plan** |
+| Meaning | `true`: included. `false`: explicitly excluded (never for a protected capability). A limit value N: limited to N (never 0 for the protected limit). NULL: unlimited. **No row: not in the plan** for a module or feature; **not set** (no agreed limit) for a limit. SaaS.5: a limit of a commercial module is **not included** while that module is not, and publication refuses inconsistent packages (ADR-0035, ADR-0036) |
 | Immutable | While its version is not a draft (model guard on save and delete) |
 
 The catalogue (identity, type, module, enforcement class, permission and API-scope ownership) stays in the code-owned `Capability` enum; a plan row only stores the plan's value.

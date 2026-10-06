@@ -55,3 +55,15 @@ Test gotchas:
 - Lazy loading is disabled outside production. A service that receives a `PlanVersion` loaded in a collection must load its plan by id, not through `$version->plan`.
 - SQLite stores `date` casts as `Y-m-d H:i:s`. Filter dates with `whereDate()` or `DATE(...)`, never by string equality.
 - Browser checks: Filament shows the operator's MFA challenge inline on the login page (an `autocomplete="one-time-code"` field), not at a separate URL. Filament inputs carry native `required` / `min` attributes, so the browser refuses before the server answers; test both layers.
+
+## SaaS.5 additions (packaging, limits, pricing boundary)
+
+| Topic | Where |
+|---|---|
+| Limit metadata | `Capability::measured()`, `minimumLimit()`, `followsModule()` (plus the existing `unit()`, `module()`). There is no second catalogue |
+| Limit states | `EntitlementEvaluator::limit()`: a limit of a commercial module is `DENY` / `MODULE_NOT_ENTITLED` while the module is denied. Then as before: unlimited, not set, unmeasured, within, exceeded |
+| Labels | `Support\PlanValues`: one vocabulary (included, excluded, not in plan, N with its unit, unlimited, not set, not included). It is used by Platform › Plans, the Entitlements page and `peopleos:entitlements:explain` |
+| Package consistency | `PlanCatalog::problems()`; `publish()` refuses a feature without its module, or a module limit without its module |
+| Price boundary | No price in plans or entitlement code (architecture test). A price will be its own versioned definition (ADR-0037); none exists yet |
+| Authorisation boundary | Architecture test: an exact allow-list of files that may use the entitlement domain, with call sites that only observe |
+

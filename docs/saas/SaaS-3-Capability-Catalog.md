@@ -74,6 +74,13 @@ Security is never an upsell.
 
 A limit evaluated without a measured usage answers `UNKNOWN` (`USAGE_UNAVAILABLE`) and carries the limit value, so the contract is usable before metering exists.
 
+**SaaS.5 (limit model, ADR-0035).**
+- Each limit's unit, module, measurement and minimum are methods of the same enum: `unit()`, `module()`, `measured()`, `minimumLimit()`, `followsModule()`.
+- `api_requests_monthly.max` (module `integrations`) and `ai_requests_monthly.max` (module `ai`) never outlive their module. While the module is not entitled, they are **not included** (`DENY` / `MODULE_NOT_ENTITLED`).
+- The other six limits belong to the core and are always applicable.
+- A limit a plan leaves out is **not set**: no agreed limit, `UNKNOWN` / `LIMIT_NOT_CONFIGURED`.
+- Full table: [SaaS-5 report §5](SaaS-5-Commercial-Packaging-Report.md#5-limit-model).
+
 ## Instrumented surfaces (summary)
 
 | Surface | Capability | Code |
