@@ -18,7 +18,6 @@ use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -38,6 +37,9 @@ use RuntimeException;
  * - SaaS.4: a tenant's plan is assigned here too, by the same rules: a published version that is on sale on the
  *   first day, today or later, one assignment at a time (painted like the configuration rows), history kept,
  *   reasoned, audited with the previous and the new plan. Assigning a plan never configures anything else.
+ * - SaaS.6: once a tenant has a subscription, its assignments are the subscription's projection
+ *   (projectSubscription(), called by the subscription service under the same lock) and manual assignment is
+ *   refused, so there is one writer and one source of truth for the plan in force.
  */
 final class EntitlementConfiguration
 {
@@ -181,6 +183,7 @@ final class EntitlementConfiguration
         [$from, $to] = [$this->startDay($from), $this->endDay($to, $from)];
 
         return $this->locked($tenant, function (TenantEntitlementProfile $profile) use ($tenant, $version, $from, $to, $reason, $actor, $reference) {
+            $this->assertManual($tenant, $profile);
             // Re-read under a shared lock: a version retired concurrently is either seen as retired or waits for us.
             $version = PlanVersion::query()->with('plan')->whereKey($version->id)->sharedLock()->firstOrFail();
             $rows = TenantPlanAssignment::query()->where('status', TenantPlanAssignment::ACTIVE)->lockForUpdate()->get();
@@ -219,6 +222,7 @@ final class EntitlementConfiguration
         $tenant = Tenant::query()->findOrFail($assignment->tenant_id);
 
         return $this->locked($tenant, function (TenantEntitlementProfile $profile) use ($tenant, $assignment, $lastDay, $reason, $actor) {
+            $this->assertManual($tenant, $profile);
             $assignment = TenantPlanAssignment::query()->with('planVersion.plan')->whereKey($assignment->id)->lockForUpdate()->firstOrFail();
             $previous = $assignment->effective_to?->toDateString();
             if ($assignment->status !== TenantPlanAssignment::ACTIVE || ($previous !== null && $previous <= $lastDay)) {
@@ -234,6 +238,55 @@ final class EntitlementConfiguration
 
             return $assignment;
         });
+    }
+
+    /**
+     * SaaS.6: the subscription service's projection of a subscription timeline onto plan assignments, from $from
+     * onwards. Must run inside TenantCommercialLock::run() for the tenant (the caller passes the locked profile).
+     * Assignments in force on or after $from are ended the day before (or voided if they have not started) and
+     * the $segments (one per entitled period: trial, active, grace) are written, marked with the subscription and
+     * the commercial status. The same projection twice changes nothing. Operator checks, reasons and audit belong
+     * to the caller, which records them on both chains.
+     *
+     * @param  list<array{plan_version_id: int, from: string, to: ?string, status: string}>  $segments  sorted, non-overlapping, all on or after $from
+     * @return array{ended: list<int>, cancelled: list<int>, created: list<int>}
+     */
+    public function projectSubscription(Tenant $tenant, TenantEntitlementProfile $profile, int $subscriptionId, string $from, array $segments, ?User $actor, string $reason): array
+    {
+        $changes = ['ended' => [], 'cancelled' => [], 'created' => []];
+        $rows = TenantPlanAssignment::query()->where('status', TenantPlanAssignment::ACTIVE)->orderBy('effective_from')->lockForUpdate()->get()
+            ->filter(fn (TenantPlanAssignment $r) => $this->overlaps($r->effective_from->toDateString(), $r->effective_to?->toDateString(), $from, null))->values();
+        $existing = $rows->map(fn (TenantPlanAssignment $r) => [(int) $r->plan_version_id, max($r->effective_from->toDateString(), $from), $r->effective_to?->toDateString(), $r->commercial_status, $r->subscription_id])->all();
+        $desired = array_map(fn (array $s) => [(int) $s['plan_version_id'], $s['from'], $s['to'], $s['status'], $subscriptionId], $segments);
+
+        if ($existing !== $desired) {
+            foreach ($rows as $row) {
+                $this->close($row, $this->dayBefore($from), $actor, $reason);
+                $changes[$row->status === TenantPlanAssignment::CANCELLED ? 'cancelled' : 'ended'][] = $row->id;
+            }
+            foreach ($segments as $segment) {
+                $changes['created'][] = TenantPlanAssignment::query()->create(['plan_version_id' => $segment['plan_version_id'], 'subscription_id' => $subscriptionId,
+                    'commercial_status' => $segment['status'], 'effective_from' => $segment['from'], 'effective_to' => $segment['to'],
+                    'status' => TenantPlanAssignment::ACTIVE, 'reason' => $reason, 'created_by' => $actor?->id])->id;
+            }
+            if ($changes['cancelled'] !== [] && $changes['created'] !== []) {
+                TenantPlanAssignment::query()->whereKey($changes['cancelled'])->update(['superseded_by' => $changes['created'][0]]);
+            }
+        }
+        if (! $profile->subscription_managed || ! $profile->has_plan_assignments || $existing !== $desired) {
+            $profile->forceFill(['has_plan_assignments' => true, 'subscription_managed' => true]);
+            $this->bump($profile, $actor);
+        }
+
+        return $changes;
+    }
+
+    /** SaaS.6: a subscription-managed tenant's plan is written only by its subscription: no second writer. */
+    private function assertManual(Tenant $tenant, TenantEntitlementProfile $profile): void
+    {
+        if ($profile->subscription_managed) {
+            throw new RuntimeException("{$tenant->name}'s plan is managed by its subscription: change the subscription on Platform › Subscriptions instead.");
+        }
     }
 
     private function assertAssignable(PlanVersion $version, string $from): void
@@ -292,37 +345,23 @@ final class EntitlementConfiguration
     }
 
     /** Ends a row on $lastDay, or cancels it when that is before its start (it never took effect). */
-    private function close(TenantEntitlement|EntitlementOverride|TenantPlanAssignment $row, string $lastDay, User $actor, string $reason): void
+    private function close(TenantEntitlement|EntitlementOverride|TenantPlanAssignment $row, string $lastDay, ?User $actor, string $reason): void
     {
         $neverStarted = $lastDay < $row->effective_from->toDateString();
         $row->forceFill($neverStarted
-            ? ['status' => $row::CANCELLED, 'closed_by' => $actor->id, 'closed_at' => now(), 'close_reason' => $reason]
-            : ['effective_to' => $lastDay, 'closed_by' => $actor->id, 'closed_at' => now(), 'close_reason' => $reason])->save();
+            ? ['status' => $row::CANCELLED, 'closed_by' => $actor?->id, 'closed_at' => now(), 'close_reason' => $reason]
+            : ['effective_to' => $lastDay, 'closed_by' => $actor?->id, 'closed_at' => now(), 'close_reason' => $reason])->save();
     }
 
-    /**
-     * Runs $work with the tenant bound and its profile row locked (created first, outside the transaction, so two
-     * first-time writers never deadlock on the insert). The cached state is forgotten after commit.
-     */
+    /** Runs $work under the tenant's commercial lock (TenantCommercialLock: profile row FOR UPDATE, cache forgotten after commit). */
     private function locked(Tenant $tenant, \Closure $work): mixed
     {
-        return $this->tenants->runAs($tenant, function () use ($tenant, $work) {
-            TenantEntitlementProfile::query()->insertOrIgnore(['tenant_id' => $tenant->id, 'state' => TenantEntitlementProfile::UNCONFIGURED, 'version' => 0,
-                'created_at' => now(), 'updated_at' => now()]);
-
-            return DB::transaction(function () use ($tenant, $work) {
-                $profile = TenantEntitlementProfile::query()->lockForUpdate()->firstOrFail();
-                $result = $work($profile);
-                DB::afterCommit(fn () => app(EntitlementStateStore::class)->forget($tenant->id));
-
-                return $result;
-            });
-        });
+        return app(TenantCommercialLock::class)->run($tenant, $work);
     }
 
-    private function bump(TenantEntitlementProfile $profile, User $actor): void
+    private function bump(TenantEntitlementProfile $profile, ?User $actor): void
     {
-        $profile->forceFill(['version' => $profile->version + 1, 'updated_by' => $actor->id])->save();
+        $profile->forceFill(['version' => $profile->version + 1, 'updated_by' => $actor?->id ?? $profile->updated_by])->save();
     }
 
     /**

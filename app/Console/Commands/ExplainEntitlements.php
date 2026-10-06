@@ -45,7 +45,8 @@ class ExplainEntitlements extends Command
                 $e['plan_value'] ?? '', $d->limit === null ? '' : PlanValues::amount($capability, $d->limit)];
         }
         $first = $diagnostics->explain($tenant, Capability::Core, $this->option('at'), $state);
-        $plan = $first['plan'] ? "plan {$first['plan']['code']} v{$first['plan']['version']} (assignment #{$first['assignment']['id']} from {$first['assignment']['from']}".($first['assignment']['to'] ? " to {$first['assignment']['to']}" : '').')' : 'no plan in force';
+        $plan = $first['plan'] ? "plan {$first['plan']['code']} v{$first['plan']['version']} (assignment #{$first['assignment']['id']} from {$first['assignment']['from']}".($first['assignment']['to'] ? " to {$first['assignment']['to']}" : '')
+            .(($first['assignment']['subscription_id'] ?? null) ? " · {$first['assignment']['commercial_status']} · subscription #{$first['assignment']['subscription_id']}" : '').')' : 'no plan in force';
         $this->info("{$tenant->slug}: ".($first['configured_from'] ? "configured from {$first['configured_from']}" : 'unconfigured')." · {$plan} · version {$first['version']} · on ".($this->option('at') ?? now()->toDateString()).' · mode shadow (not enforced)');
         $this->table(['Capability', 'Type', 'Decision', 'Reason', 'Source', 'Override', 'Configuration', 'Plan', 'Limit'], $rows);
 

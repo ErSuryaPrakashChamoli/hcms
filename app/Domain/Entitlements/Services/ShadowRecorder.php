@@ -103,10 +103,11 @@ final class ShadowRecorder
                 'outcome' => $decision->outcome->value, 'reason' => $decision->reason->value, 'surface' => $decision->surface,
                 'occurrences' => $count, 'first_seen_at' => $now, 'last_seen_at' => $now, 'last_source' => $decision->source->value,
                 'last_entitlement_id' => $decision->entitlementId, 'last_override_id' => $decision->overrideId, 'last_assignment_id' => $decision->assignmentId,
+                'last_commercial_status' => $decision->commercialStatus,
             ]],
             ['tenant_id', 'observed_on', 'capability', 'outcome', 'reason', 'surface'],
             ['occurrences' => DB::raw('occurrences + '.$count), 'last_seen_at' => $now, 'last_source' => $decision->source->value,
-                'last_entitlement_id' => $decision->entitlementId, 'last_override_id' => $decision->overrideId, 'last_assignment_id' => $decision->assignmentId],
+                'last_entitlement_id' => $decision->entitlementId, 'last_override_id' => $decision->overrideId, 'last_assignment_id' => $decision->assignmentId, 'last_commercial_status' => $decision->commercialStatus],
         );
     }
 }

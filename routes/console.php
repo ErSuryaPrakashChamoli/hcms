@@ -35,4 +35,6 @@ Schedule::command('peopleos:reports:run-due')->hourly()->withoutOverlapping()->o
 Schedule::command('peopleos:integrations:process')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:webhooks:deliver')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:retention:purge')->dailyAt('03:30')->withoutOverlapping()->onOneServer();
+// SaaS.6: commercial expiries the dates already decided (idempotent; effective the day after each end, however late).
+Schedule::command('peopleos:subscriptions:settle')->dailyAt('00:15')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:warehouse:export')->dailyAt('05:00')->withoutOverlapping()->onOneServer();

@@ -220,6 +220,18 @@ enum AuditAction: string
     case PlanVersionRetired = 'PLAN_VERSION_RETIRED';
     case PlanAssigned = 'PLAN_ASSIGNED';
     case PlanAssignmentEnded = 'PLAN_ASSIGNMENT_ENDED';
+    // SaaS.6: the commercial subscription lifecycle (tenant and platform chains; module "subscriptions").
+    case TrialStarted = 'TRIAL_STARTED';
+    case TrialExtended = 'TRIAL_EXTENDED';
+    case TrialConverted = 'TRIAL_CONVERTED';
+    case SubscriptionActivated = 'SUBSCRIPTION_ACTIVATED';
+    case SubscriptionRenewed = 'SUBSCRIPTION_RENEWED';
+    case GraceEntered = 'GRACE_ENTERED';
+    case GraceExtended = 'GRACE_EXTENDED';
+    case SubscriptionReactivated = 'SUBSCRIPTION_REACTIVATED';
+    case SubscriptionExpired = 'SUBSCRIPTION_EXPIRED';
+    case SubscriptionCancelled = 'SUBSCRIPTION_CANCELLED';
+    case SubscriptionPlanChanged = 'SUBSCRIPTION_PLAN_CHANGED';
 
     public function label(): string
     {

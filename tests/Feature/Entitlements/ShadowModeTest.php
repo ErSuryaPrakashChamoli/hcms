@@ -141,7 +141,7 @@ it('aggregates observations: one row per day, capability, decision, reason and s
 
     // Nothing about an employee or a value is stored: only the decision's keys.
     expect(array_keys($calculate()->first()->getAttributes()))->toBe(['id', 'tenant_id', 'observed_on', 'capability', 'outcome', 'reason', 'surface', 'occurrences',
-        'first_seen_at', 'last_seen_at', 'last_source', 'last_entitlement_id', 'last_override_id', 'last_assignment_id']); // SaaS.4: the plan assignment behind the decision
+        'first_seen_at', 'last_seen_at', 'last_source', 'last_entitlement_id', 'last_override_id', 'last_assignment_id', 'last_commercial_status']); // SaaS.4: the plan assignment; SaaS.6: its commercial state
 });
 
 it('observes the API and the module behind each scope, without changing the response', function () {

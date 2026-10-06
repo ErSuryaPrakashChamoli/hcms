@@ -32,6 +32,7 @@ final class Decision
         public readonly ?string $surface = null,
         public readonly ?int $assignmentId = null,
         public readonly ?int $planVersionId = null,
+        public readonly ?string $commercialStatus = null,
     ) {}
 
     public static function unknown(Capability $capability, DecisionReason $reason, ?int $tenantId, string $effectiveOn, ?string $surface = null): self
@@ -42,7 +43,14 @@ final class Decision
     public function withSurface(string $surface): self
     {
         return new self($this->capability, $this->outcome, $this->reason, $this->source, $this->tenantId, $this->effectiveOn,
-            $this->entitlementId, $this->overrideId, $this->limit, $this->usage, $surface, $this->assignmentId, $this->planVersionId);
+            $this->entitlementId, $this->overrideId, $this->limit, $this->usage, $surface, $this->assignmentId, $this->planVersionId, $this->commercialStatus);
+    }
+
+    /** SaaS.6: the commercial state (trial, active, grace) of the plan assignment in force: context, never a reason to refuse. */
+    public function withCommercialStatus(?string $status): self
+    {
+        return new self($this->capability, $this->outcome, $this->reason, $this->source, $this->tenantId, $this->effectiveOn,
+            $this->entitlementId, $this->overrideId, $this->limit, $this->usage, $this->surface, $this->assignmentId, $this->planVersionId, $status);
     }
 
     /** SaaS.3: shadow mode. Nothing is ever enforced; this is the single place that says so. */
@@ -83,6 +91,7 @@ final class Decision
             'override_id' => $this->overrideId,
             'plan_assignment_id' => $this->assignmentId,
             'plan_version_id' => $this->planVersionId,
+            'commercial_status' => $this->commercialStatus,
             'limit' => $this->limit,
             'usage' => $this->usage,
             'surface' => $this->surface,

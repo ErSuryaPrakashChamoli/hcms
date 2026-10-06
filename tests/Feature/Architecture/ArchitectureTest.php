@@ -173,6 +173,9 @@ it('audits every domain model except the documented append-only or derived table
         // EntitlementConfiguration on both chains, with the reason, the before and after values and the effective date.
         'Entitlements\Models\Plan', 'Entitlements\Models\PlanVersion', 'Entitlements\Models\PlanEntitlement',
         'Entitlements\Models\TenantPlanAssignment',
+        // SaaS.6: subscriptions and their periods are audited explicitly by CommercialSubscriptions on the tenant and platform
+        // chains, with the state and plan version before and after, the effective date and the trigger.
+        'Subscriptions\Models\TenantSubscription', 'Subscriptions\Models\SubscriptionPeriod',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -194,6 +197,9 @@ it('bypasses tenant scoping only in the documented platform services', function 
         'app/Domain/Identity/Services/UserInvitations.php',
         // SaaS.3: the platform operators' cross-tenant shadow summary (aggregated counts and keys only).
         'app/Domain/Entitlements/Services/EntitlementDiagnostics.php',
+        // SaaS.6: the operators' cross-tenant subscription overview (tenant names and commercial states only) and the
+        // platform-chain subscription audit trail.
+        'app/Domain/Subscriptions/Services/SubscriptionDirectory.php',
         'app/Domain/Platform/Actions/ProvisionTenantAction.php',
         'app/Http/Controllers/Sso/SsoController.php',
         'app/Support/Tenancy/Jobs/BindTenantContext.php',
@@ -214,6 +220,9 @@ it('keeps commercial plans out of HCM code and writes them only through the two 
         'app/Domain/Entitlements/Services/PlanCatalog.php', 'app/Domain/Entitlements/Services/EntitlementConfiguration.php',
         'app/Domain/Entitlements/Services/EntitlementStateStore.php', 'app/Domain/Entitlements/Services/EntitlementDiagnostics.php',
         'app/Filament/Pages/PlatformPlansPage.php', 'app/Filament/Pages/PlatformEntitlementsPage.php',
+        // SaaS.6: subscriptions pin plan versions and show the assignments they project (they write through EntitlementConfiguration).
+        'app/Domain/Subscriptions/Models/SubscriptionPeriod.php', 'app/Domain/Subscriptions/Services/CommercialSubscriptions.php',
+        'app/Domain/Subscriptions/Services/SubscriptionDirectory.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php',
     ];
     expect(array_values(array_diff(appFilesMatching('/Entitlements.Models.(Plan|PlanVersion|PlanEntitlement|TenantPlanAssignment)\b/'), $readers)))->toBe([]);
 
@@ -233,7 +242,10 @@ it('keeps commercial entitlement out of authorisation: HCM only observes, nothin
         'app/Http/Middleware/AuthenticateApiKey.php',
     ];
     $platform = ['app/Console/Commands/EntitlementShadowReport.php', 'app/Console/Commands/ExplainEntitlements.php', 'app/Filament/Pages/PlatformEntitlementsPage.php',
-        'app/Filament/Pages/PlatformPlansPage.php', 'app/Providers/AppServiceProvider.php', 'app/Domain/Enterprise/Services/Retention.php'];
+        'app/Filament/Pages/PlatformPlansPage.php', 'app/Providers/AppServiceProvider.php', 'app/Domain/Enterprise/Services/Retention.php',
+        // SaaS.6: the commercial subscription lifecycle (platform operations) writes plans in force through the entitlement API.
+        'app/Domain/Subscriptions/Models/SubscriptionPeriod.php', 'app/Domain/Subscriptions/Services/CommercialSubscriptions.php',
+        'app/Domain/Subscriptions/Services/SubscriptionDirectory.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php'];
     $users = array_values(array_filter(appFilesMatching('/App.Domain.Entitlements/'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Entitlements/')));
     sort($users);
     $allowed = array_merge($observers, $platform);
@@ -262,13 +274,27 @@ it('keeps prices out of plans and out of entitlement logic (SaaS.5)', function (
             fn (string $c) => preg_match('/price|amount|currency|_minor|billing|discount|tax|fee/i', $c) === 1));
         expect($money)->toBe([], "{$table} carries money");
     }
-    // No entitlement code (comments aside) touches pricing, billing, payments, invoices or subscriptions.
-    foreach (glob(app_path('Domain/Entitlements/*/*.php')) as $file) {
+    // No entitlement or subscription code (comments aside) touches pricing, billing, payments or invoices (SaaS.6:
+    // subscriptions are commercial lifecycle, not money, so the word itself is no longer banned; the engine's independence
+    // from them is the next test).
+    foreach (array_merge(glob(app_path('Domain/Entitlements/*/*.php')), glob(app_path('Domain/Subscriptions/*/*.php'))) as $file) {
         $code = collect(token_get_all(file_get_contents($file)))->reject(fn ($t) => is_array($t) && in_array($t[0], [T_COMMENT, T_DOC_COMMENT], true))
             ->map(fn ($t) => is_array($t) ? $t[1] : $t)->implode('');
         // ("currency" is an HCM core permission prefix, so only the schema check above bans it.)
-        expect(preg_match('/price|pricing|billing|invoice|payment|subscription/i', $code))->toBe(0, basename($file).' touches pricing or billing');
+        expect(preg_match('/price|pricing|billing|invoice|payment/i', $code))->toBe(0, basename($file).' touches pricing or billing');
     }
+});
+
+it('keeps the entitlement engine independent of subscriptions: subscriptions feed it, never the reverse (SaaS.6)', function () {
+    $engine = glob(app_path('Domain/Entitlements/*/*.php'));
+    expect(array_values(array_filter($engine, fn (string $f) => preg_match('/App.Domain.Subscriptions/', file_get_contents($f)) === 1)))->toBe([])
+        // Nothing that authorises references the subscription domain either.
+        ->and(array_values(array_filter(appFilesMatching('/App.Domain.Subscriptions/'), fn (string $f) => preg_match('#^app/(Domain/Identity/|Domain/[^/]+/Policies/|Support/Tenancy/|Policies/)#', $f) === 1)))->toBe([])
+        // Only the subscription domain, its page and its command use it.
+        ->and(array_values(array_filter(appFilesMatching('/App.Domain.Subscriptions/'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Subscriptions/'))))
+        ->toBe(['app/Console/Commands/SettleSubscriptions.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php'])
+        // One writer: only the guarded subscription service projects a subscription onto plan assignments.
+        ->and(appFilesMatching('/->projectSubscription\(/'))->toBe(['app/Domain/Subscriptions/Services/CommercialSubscriptions.php']);
 });
 
 it('measures exactly the limits that are observed, and no other (SaaS.5)', function () {

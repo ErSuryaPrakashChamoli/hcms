@@ -25,7 +25,7 @@
         <x-filament::section heading="Decisions for {{ $tenant->name }} on {{ $this->day }}">
             <p class="text-sm mb-2">Commercial configuration:
                 <strong>{{ $first['configured_from'] ? 'configured from '.$first['configured_from'] : 'unconfigured (commercial capabilities are UNKNOWN)' }}</strong>
-                · plan: <strong>{{ $first['plan'] ? $first['plan']['code'].' v'.$first['plan']['version'].' ('.$first['plan']['name'].'), assignment #'.$first['assignment']['id'].' from '.$first['assignment']['from'].($first['assignment']['to'] ? ' to '.$first['assignment']['to'] : '') : 'none in force' }}</strong>
+                · plan: <strong>{{ $first['plan'] ? $first['plan']['code'].' v'.$first['plan']['version'].' ('.$first['plan']['name'].'), assignment #'.$first['assignment']['id'].' from '.$first['assignment']['from'].($first['assignment']['to'] ? ' to '.$first['assignment']['to'] : '').(($first['assignment']['subscription_id'] ?? null) ? ' · '.$first['assignment']['commercial_status'].' · subscription #'.$first['assignment']['subscription_id'] : '') : 'none in force' }}</strong>
                 · version {{ $first['version'] }}</p>
             <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Decisions">
             <table class="w-full text-sm">

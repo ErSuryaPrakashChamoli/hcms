@@ -41,7 +41,7 @@ delivery marked `sent` is really in the bell. Email and the other external chann
 Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterates tenants goes through
 `App\Support\Tenancy\TenantRunner`:
 
-- **Suspended tenants are skipped.** Retention purge is the only exception: purging is an obligation.
+- **Suspended tenants are skipped.** There are two exceptions. Retention purge runs because purging is an obligation. Subscription settlement (SaaS.6) runs because commercial dates do not stop for a technical suspension, and it never changes the tenant's status.
 - **One tenant's failure is isolated.** It is reported and logged with the tenant id and exception class, the
   next tenant still runs, and the command exits non-zero.
 - **Every run gets a correlation id** (`request_id` in Context), carried by its logs, audit rows and notifications.
@@ -50,6 +50,7 @@ Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterat
 |---|---|---|---|
 | `peopleos:scheduler:heartbeat` | every minute | overwrite | Heartbeat read by `/health/ready` and `peopleos:readiness` |
 | `peopleos:configuration:publish-due` | daily 00:05 | per change status | Publish approved configuration changes whose date arrived |
+| `peopleos:subscriptions:settle` | daily 00:15 | tail comparison under the tenant's commercial lock (a second run writes nothing) | **SaaS.6.** Record the expiry of subscriptions whose explicit trial, term or grace end has passed with no successor, effective the day after the end however late it runs (runs for suspended tenants too) |
 | `peopleos:compensation:effect` | daily 00:20 | per change lock | Make scheduled compensation changes / structure versions effective |
 | `peopleos:leave:accrue` | daily 01:00 | ledger keys | Post leave accruals; close leave years |
 | `peopleos:attendance:process` | daily 02:00 | recompute (deterministic) | Compute attendance records |

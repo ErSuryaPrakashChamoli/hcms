@@ -43,12 +43,16 @@ final class EntitlementEvaluator
     public function decide(EntitlementState $state, Capability $capability, string $day, ?int $usage = null): Decision
     {
         if (! $capability->commercial()) {
-            return new Decision($capability, DecisionOutcome::NotApplicable, DecisionReason::NotCommercial, DecisionSource::Catalog, $state->tenantId, $day);
+            $decision = new Decision($capability, DecisionOutcome::NotApplicable, DecisionReason::NotCommercial, DecisionSource::Catalog, $state->tenantId, $day);
+        } else {
+            $decision = $capability->type() === CapabilityType::Limit
+                ? $this->limit($state, $capability, $day, $usage)
+                : $this->toggle($state, $capability, $day);
         }
 
-        return $capability->type() === CapabilityType::Limit
-            ? $this->limit($state, $capability, $day, $usage)
-            : $this->toggle($state, $capability, $day);
+        // SaaS.6: the commercial state of the plan assignment in force (trial, active, grace) travels with the decision as
+        // context; it never changes the outcome. Without an assignment (no plan, or a lapsed subscription) it is null.
+        return $decision->withCommercialStatus($state->assignmentOn($day)['commercial_status'] ?? null);
     }
 
     private function toggle(EntitlementState $state, Capability $capability, string $day): Decision

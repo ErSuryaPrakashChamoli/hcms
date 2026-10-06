@@ -13,8 +13,10 @@ use RuntimeException;
  * The version and the start date never change; a later assignment ends this one (effective_to) or, if it has not
  * started, cancels it. Part of the tenant's entitlement configuration (BelongsToTenant, ADR-0027). Written only
  * through EntitlementConfiguration and audited explicitly on the tenant chain and the platform chain.
+ * SaaS.6: a row a subscription projected carries subscription_id and the commercial status it represents
+ * (trial, active, grace).
  */
-#[Fillable(['tenant_id', 'plan_version_id', 'effective_from', 'effective_to', 'status', 'reason', 'reference',
+#[Fillable(['tenant_id', 'plan_version_id', 'subscription_id', 'commercial_status', 'effective_from', 'effective_to', 'status', 'reason', 'reference',
     'created_by', 'closed_by', 'closed_at', 'close_reason', 'superseded_by'])]
 class TenantPlanAssignment extends Model
 {
@@ -27,7 +29,7 @@ class TenantPlanAssignment extends Model
     protected static function booted(): void
     {
         static::updating(function (self $assignment): void {
-            if ($assignment->isDirty(['tenant_id', 'plan_version_id', 'effective_from'])) {
+            if ($assignment->isDirty(['tenant_id', 'plan_version_id', 'effective_from', 'subscription_id', 'commercial_status'])) {
                 throw new RuntimeException('A plan assignment keeps its plan version and start date: assign again instead.');
             }
         });
@@ -47,6 +49,7 @@ class TenantPlanAssignment extends Model
     /** @return array<string, mixed> the state's row shape */
     public function toStateRow(): array
     {
-        return ['id' => $this->id, 'plan_version_id' => $this->plan_version_id, 'from' => $this->effective_from->toDateString(), 'to' => $this->effective_to?->toDateString()];
+        return ['id' => $this->id, 'plan_version_id' => $this->plan_version_id, 'from' => $this->effective_from->toDateString(), 'to' => $this->effective_to?->toDateString(),
+            'subscription_id' => $this->subscription_id, 'commercial_status' => $this->commercial_status];
     }
 }
