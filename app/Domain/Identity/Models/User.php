@@ -198,6 +198,9 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     /** @return Collection<int, string> */
     public function permissionKeys(?int $companyId = null): Collection
     {
+        // SaaS.2: platform keys (tenant.view/create/update/suspend) are never effective for a tenant user, even when a
+        // role holds them (the Tenant Super Admin template is `*`); platform power comes only from being an operator.
+        // Dropped once here, not on every check.
         $this->permissionKeyCache ??= $this->roles()
             ->with('permissions:id,key')
             ->get()
@@ -205,14 +208,11 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
                 'key' => $p->key,
                 'company_id' => $role->pivot->company_id,
             ]))
+            ->reject(fn (array $grant) => str_starts_with($grant['key'], 'tenant.'))
             ->values();
 
         return $this->permissionKeyCache
             ->filter(fn (array $grant) => $grant['company_id'] === null || $companyId === null || (int) $grant['company_id'] === $companyId)
-            // SaaS.2: platform keys (tenant.view/create/update/suspend) are never effective for a tenant user, even
-            // when a role holds them (the Tenant Super Admin template is `*`). Platform power comes only from being
-            // a platform operator.
-            ->reject(fn (array $grant) => str_starts_with($grant['key'], 'tenant.'))
             ->pluck('key')
             ->unique()
             ->values();

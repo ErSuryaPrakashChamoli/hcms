@@ -330,6 +330,7 @@ use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
 use App\Domain\Platform\Services\FeatureFlags;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Domain\ServiceDesk\Listeners\ServiceDeskDomainListener;
 use App\Domain\ServiceDesk\Listeners\ServiceDeskWorkflowBridge;
 use App\Domain\ServiceDesk\Models\ServiceDefinition;
@@ -400,6 +401,7 @@ use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Log\Context\Repository as ContextRepository;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
@@ -434,7 +436,11 @@ class AppServiceProvider extends ServiceProvider
             foreach (self::EXPERIENCE_SCOPED as $service) {
                 $this->app->forgetInstance($service);
             }
+            SettingsRepository::flushMemo();
         });
+        // SaaS.2: the tenant-settings memo never carries one job's (or one application instance's) answers into the next.
+        SettingsRepository::flushMemo();
+        $this->app['events']->listen(JobProcessing::class, fn () => SettingsRepository::flushMemo());
 
         // Phase 12 hook, bound in Phase 13 to the engagement domain's own survey tasks.
         $this->app->bind(SurveyTaskProvider::class, SurveyTasks::class);
