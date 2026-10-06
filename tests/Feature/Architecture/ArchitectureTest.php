@@ -157,6 +157,11 @@ it('audits every domain model except the documented append-only or derived table
         // SaaS.2: invitations are audited explicitly (issued, accepted, revoked) by UserInvitations; automatic
         // auditing would copy the token hash into the trail.
         'Identity\Models\UserInvitation',
+        // SaaS.3: entitlement configuration is audited explicitly by EntitlementConfiguration, on the tenant's chain
+        // and the platform chain, with the reason, version and replaced rows (automatic auditing would record a bare
+        // field diff on one chain). Shadow observations are aggregated observability, not business records.
+        'Entitlements\Models\TenantEntitlementProfile', 'Entitlements\Models\TenantEntitlement',
+        'Entitlements\Models\EntitlementOverride', 'Entitlements\Models\EntitlementShadowObservation',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -176,6 +181,8 @@ it('bypasses tenant scoping only in the documented platform services', function 
         'app/Domain/Integration/Services/ApiKeys.php',
         // SaaS.2: an invitation token is looked up before the invitee is signed in or any tenant is bound.
         'app/Domain/Identity/Services/UserInvitations.php',
+        // SaaS.3: the platform operators' cross-tenant shadow summary (aggregated counts and keys only).
+        'app/Domain/Entitlements/Services/EntitlementDiagnostics.php',
         'app/Domain/Platform/Actions/ProvisionTenantAction.php',
         'app/Http/Controllers/Sso/SsoController.php',
         'app/Support/Tenancy/Jobs/BindTenantContext.php',

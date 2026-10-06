@@ -162,6 +162,8 @@ use App\Domain\Enterprise\Models\WebhookDelivery;
 use App\Domain\Enterprise\Models\WebhookEndpoint;
 use App\Domain\Enterprise\Policies\EnterprisePolicy;
 use App\Domain\Enterprise\Services\WebhookEventBridge;
+use App\Domain\Entitlements\Services\EntitlementStateStore;
+use App\Domain\Entitlements\Services\ShadowRecorder;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\ExitClearance;
 use App\Domain\Exit\Models\ExitInterview;
@@ -423,6 +425,8 @@ class AppServiceProvider extends ServiceProvider
         // UX.18: per-request answers that pages and the navigation used to re-query (the signed-in person's own
         // employee record; the tenant's feature flags, which hit the cache store on every check).
         CurrentEmployee::class, FeatureFlags::class,
+        // SaaS.3: one tenant entitlement state per request (memo keyed by tenant), never carried into the next.
+        EntitlementStateStore::class,
     ];
 
     public function register(): void
@@ -474,6 +478,8 @@ class AppServiceProvider extends ServiceProvider
             default => new NullProvider,
         });
         $this->app->scoped(TenantContext::class);
+        // SaaS.3: the shadow observation buffer of this request / job (flushed after the response by `defer`).
+        $this->app->scoped(ShadowRecorder::class);
     }
 
     /**

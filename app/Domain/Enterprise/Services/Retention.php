@@ -5,6 +5,7 @@ namespace App\Domain\Enterprise\Services;
 use App\Domain\Ai\Models\AiInteraction;
 use App\Domain\Analytics\Models\ReportRun;
 use App\Domain\Enterprise\Models\WebhookDelivery;
+use App\Domain\Entitlements\Models\EntitlementShadowObservation;
 use App\Domain\Integration\Models\ApiIdempotencyKey;
 use App\Domain\Integration\Services\InboundEvents;
 use App\Domain\Notifications\Models\NotificationDelivery;
@@ -40,6 +41,9 @@ final class Retention
         $out['inbound_payloads'] = app(InboundEvents::class)->purgePayloads();
         // SaaS.2: remembered API writes past their Idempotency-Key window (the key is reusable by then).
         $out['api_idempotency_keys'] = $this->purgeExpiredIdempotencyKeys();
+        // SaaS.3: aggregated entitlement shadow observations (observability, not audit or commercial state).
+        $out['entitlement_shadow_observations'] = EntitlementShadowObservation::query()
+            ->where('observed_on', '<', now()->subDays((int) config('peopleos.entitlements.shadow.retention_days', 90))->toDateString())->delete();
 
         return $out;
     }

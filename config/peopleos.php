@@ -640,6 +640,21 @@ return [
         // The password DatabaseSeeder gives every demo account; when unset, one is generated per run.
         'password' => env('PEOPLEOS_SEED_PASSWORD'),
     ],
+    /*
+    | SaaS.3 commercial entitlements. SHADOW ONLY: decisions are evaluated and observed, never enforced (there is no
+    | enforcing mode). `off` stops observation without touching anything else. The catalogue is the Capability enum.
+    */
+    'entitlements' => [
+        'mode' => env('PEOPLEOS_ENTITLEMENTS_MODE', 'shadow'),
+        // How long a tenant's resolved entitlement state stays in the cache (it is also forgotten on every change).
+        'cache_seconds' => max(1, (int) env('PEOPLEOS_ENTITLEMENTS_CACHE_SECONDS', 600)),
+        'shadow' => [
+            // At most one database write per distinct observation per window, across all processes.
+            'window_seconds' => max(1, (int) env('PEOPLEOS_ENTITLEMENTS_SHADOW_WINDOW_SECONDS', 600)),
+            // Aggregated observations are purged by retention:purge after this many days.
+            'retention_days' => max(1, (int) env('PEOPLEOS_ENTITLEMENTS_SHADOW_RETENTION_DAYS', 90)),
+        ],
+    ],
 
     'settings' => [
         'branding.display_name' => null,

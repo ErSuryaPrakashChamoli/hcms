@@ -205,6 +205,12 @@ enum AuditAction: string
     case PlatformAccessStarted = 'PLATFORM_ACCESS_STARTED';
     case PlatformAccessEnded = 'PLATFORM_ACCESS_ENDED';
     case SigningSecretRotated = 'SIGNING_SECRET_ROTATED';
+    // SaaS.3: commercial entitlement configuration (never individual entitlement checks, which are observability).
+    case EntitlementConfigured = 'ENTITLEMENT_CONFIGURED';
+    case EntitlementSet = 'ENTITLEMENT_SET';
+    case EntitlementEnded = 'ENTITLEMENT_ENDED';
+    case EntitlementOverrideGranted = 'ENTITLEMENT_OVERRIDE_GRANTED';
+    case EntitlementOverrideRevoked = 'ENTITLEMENT_OVERRIDE_REVOKED';
 
     public function label(): string
     {
