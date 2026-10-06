@@ -175,11 +175,23 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
     tenant chain and the platform chain; history is never rewritten (changes start today or later). Missing
     configuration is UNKNOWN, never DENY.
 
+## SaaS.4 additions (commercial plans, shadow mode)
+
+42. **Plans never reach authorisation or HCM code.** Only the entitlement services and the two platform pages
+    reference plan or assignment models (architecture test). A plan neither grants nor removes a permission.
+43. **Only platform operators change plans and assignments**, through `PlanCatalog` and `EntitlementConfiguration`,
+    with a reason, audited on the platform chain (and on the tenant's chain for assignments). Tenant administrators,
+    whatever their roles, are refused in the services and cannot open the pages.
+44. **A published plan version never changes**, and neither does what it says about any capability. A tenant
+    assigned to a version keeps it when the catalogue evolves. Assignments start today or later; history is kept.
+45. **No plan switches a protected capability off**, and the core and security controls cannot appear in a plan.
+    Tenants without a plan stay UNKNOWN: no default plan is ever assigned silently.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
 |---|---|---|
-| `TenantContext::bypass()` / `withoutTenancy()` | 11 (SaaS.2: +1, SaaS.3: +1) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
+| `TenantContext::bypass()` / `withoutTenancy()` | 11 files (SaaS.2: +1, SaaS.3: +1; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
 | `withoutGlobalScope(AccessScope::class)` (345 call sites in 110 files) and `AccessScope::withoutScoping()` (32) | Mechanically each removes only the **organisation** scope; the fail-closed tenant scope stays. Reviewed by category (not line by line): domain services checking a target by id after an explicit `AccessScopes::allows` check, background sweeps, aggregate analytics with small-group suppression, and identity checks (Phase 14: tenant-wide on purpose) |
 | `withoutGlobalScopes()` (all) | 1 | `NumberSequences::highest`. Phase 14 narrowed it to the access scope with an explicit `tenant_id` filter |
 | `DB::table()` | 13 | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only) |

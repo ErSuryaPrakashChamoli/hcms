@@ -93,6 +93,8 @@ Every decision also carries:
 
 **Reserved for later.** Plan entitlements compiled from subscriptions will fill the configuration layer (step 3, source `plan`), with overrides still above them. No row in SaaS.3 comes from a plan.
 
+**SaaS.4 update.** The plan layer now exists, between the tenant's own configuration rows and the configured default (source `plan`). Its new reasons are `NOT_IN_PLAN` and `NO_PLAN_IN_FORCE`. See [SaaS-4 Plan Model](SaaS-4-Plan-Model.md). Subscriptions are still to come; today an operator assigns the plan.
+
 **Tie-break** if corrupt data ever produced two rows for one day: the latest `effective_from` wins, then the highest id. The configuration service and the generated-column unique index make this unreachable through the application.
 
 ## 5. Effective dating

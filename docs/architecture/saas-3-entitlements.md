@@ -2,6 +2,8 @@
 
 Full report: `docs/saas/SaaS-3-Entitlement-Architecture-and-Shadow-Mode-Report.md`. Catalogue: `docs/saas/SaaS-3-Capability-Catalog.md`. Model: `docs/saas/SaaS-3-Entitlement-Model.md`.
 
+**SaaS.4** added commercial plans as a layer of this engine: tenant configuration → **plan** → configured default. See `saas-4-plans.md`.
+
 ## Observing a capability from HCM code
 
 ```php
