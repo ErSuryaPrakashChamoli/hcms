@@ -127,3 +127,30 @@ What happens to the earlier proposals:
 | 0046 | Issue fixes an invoice; issued invoices never change | Accepted | One transaction under the invoice and series locks fixes the customer and supplier versions, the tax, the gap-free number from an explicit, non-overlapping platform series, the totals and the snapshots. Afterwards only "paid" may be recorded. Corrections are future credit or debit notes (B-12). No page drafts an invoice by hand: drafts come from the billing calculation (blocked on B-1 to B-3) | `InvoiceTest`, MySQL races 1–2, mutations F04, F05, F06, F13, F15 |
 | 0047 | Payments are confirmed only by a verified provider, a server-side fetch or an operator-recorded transfer | Accepted | A `PaymentProvider` contract keeps provider fields in adapters. Two providers exist: operator-recorded bank transfers, and a non-production sandbox. Webhooks enter a platform event store: verified raw body, unique `(provider, event_id)`, payload encrypted with its hash, timestamp tolerance. The tenant is resolved only from the verified provider reference, then a tenant-aware job reconciles under the invoice and payment locks. States only move forward. Exact amount and currency settle the invoice; anything else is an exception (no partial payment, overpayment or automatic refund). Billing currency = payment currency (no FX) | `PaymentTest`, MySQL races 3–4, mutations F07–F12, F24 |
 | 0048 | Billing never authorises | Accepted | Prices, invoices, payments and their failures never feed entitlements, authorisation, subscriptions or HCM. Nothing is restricted for an unpaid, overdue or failed payment (commercial enforcement is out of scope). The one queued job that runs for suspended tenants (`RunsForSuspendedTenants`) is payment reconciliation: the money already moved, and it touches only commercial records | `PaymentTest`, `PricingTest`, architecture tests |
+
+## SaaS.7 commercial decisions
+
+These are business decisions, not architecture decisions. The business owner took them on 7 October 2026 in the SaaS.7 decision-resolution exercise. Analysis, options and approval log: `docs/saas/SaaS-7-Commercial-Decisions.md`. They fix what the SaaS.7 completion pass builds; nothing was activated or coded when they were taken.
+
+| # | Decision | Status |
+|---|---|---|
+| B-1 | Per active employee per month (PEPM), optional minimum quantity per plan and market | Approved |
+| B-2 | Billable quantity = monthly peak employed count (lifecycle `isEmployed()`), frozen with evidence on the invoice line | Approved |
+| B-3 | Monthly in arrears, annual in advance (committed quantity + monthly true-up); calendar months; day-based proration for partial first and last periods only | Approved |
+| B-4 | Launch markets India, US, UK, EU, UAE; prices per market | Markets approved; amounts pending (owner) |
+| B-5 | Prices tax-exclusive; B2B only at launch | Approved |
+| B-6 | Trial only; no free plan | Approved |
+| B-7 | The Indian Markedge Technologies entity sells in every market (exports abroad) | Intent approved; legal details pending (legal) |
+| B-8 | India GST specifics, incl. export of services and the INR reporting value | Pending tax adviser |
+| B-9 | Five jurisdictions activated; customer-side treatments per adviser; Canada, Australia, Singapore not supported | Pending tax advisers |
+| B-10 | Bank transfer now; Razorpay next (India and international) after onboarding; no merchant of record | Approved |
+| B-11 | Net 15; TDS-aware settlement; no other partial payments | Approved |
+| B-12 | Credit notes (full, partial) and refunds against them; debit notes deferred | Approved |
+| B-13 | Maker-checker for price publication, credit notes, refunds, cancellations and write-offs; no thresholds; tax-rule verification unchanged | Approved |
+| B-14 | Invoices and payments in the market currency; Razorpay settles INR; Markedge bears FX | Approved |
+| B-15 | Grandfather to renewal; 30 days' notice for increases; operator re-pin | Approved |
+| B-16 | Financial-record retention | Pending legal |
+
+Architecture consequences, to be decided as ADRs in the completion pass (not accepted yet):
+- **FX reporting snapshot.** I-9/ADR-0042 change from "no FX" to "no FX in amount calculation; an INR reporting snapshot (rate, source, date) on foreign-currency invoices".
+- **Destination regimes.** Only if a tax adviser requires Markedge to register abroad: tax-regime selection by supplier registrations and place of supply, not by the supplier's country alone.
