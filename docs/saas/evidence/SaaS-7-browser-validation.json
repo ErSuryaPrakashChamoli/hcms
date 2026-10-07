@@ -1,0 +1,120 @@
+{
+ "phase": "SaaS.7",
+ "date": "2026-10-07",
+ "target": "disposable hcm_saas7_ui_showcase (UxShowcaseSeeder + fictional markets, prices, supplier entities, a fictional verified India rule at test rates, billing profiles, invoices and payments), served on 127.0.0.1:8094 with the array cache, dropped afterwards; final assets",
+ "browser": "Chromium (Playwright), 1440x900 light and dark, 390x844",
+ "operations_through_the_ui": [
+  "draft invoice issued (next gap-free number)",
+  "short bank transfer recorded (reconciliation exception)",
+  "reconciliation exception resolved with a note"
+ ],
+ "saas7_checks": [
+  {
+   "name": "operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "Billing catalogue opens",
+   "ok": true
+  },
+  {
+   "name": "markets and per-market prices in their own currency",
+   "ok": true
+  },
+  {
+   "name": "price is stated to never reach entitlements or authorisation",
+   "ok": true
+  },
+  {
+   "name": "Tax & invoicing opens",
+   "ok": true
+  },
+  {
+   "name": "India is configured, not claimed as legally supported",
+   "ok": true
+  },
+  {
+   "name": "other jurisdictions are architecture-ready, not supported",
+   "ok": true
+  },
+  {
+   "name": "no jurisdiction is shown as supported",
+   "ok": true
+  },
+  {
+   "name": "the verified rule shows its review reference",
+   "ok": true
+  },
+  {
+   "name": "Billing accounts opens",
+   "ok": true
+  },
+  {
+   "name": "overview shows each tenant's market and billing jurisdiction",
+   "ok": true
+  },
+  {
+   "name": "tenant billing profile, B2B/B2C and terms are shown",
+   "ok": true
+  },
+  {
+   "name": "Invoices opens",
+   "ok": true
+  },
+  {
+   "name": "an issued invoice shows GST rows, place of supply and INR formatting",
+   "ok": true
+  },
+  {
+   "name": "a ready draft says it can be issued, and offers only issue or discard",
+   "ok": true
+  },
+  {
+   "name": "the invoice is issued through the UI with the next gap-free number",
+   "ok": true
+  },
+  {
+   "name": "a USD draft for an unsupported jurisdiction is refused, never taxed by default",
+   "ok": true
+  },
+  {
+   "name": "Payments opens",
+   "ok": true
+  },
+  {
+   "name": "short transfers are exceptions, never settlements",
+   "ok": true
+  },
+  {
+   "name": "provider events show status and outcome only",
+   "ok": true
+  },
+  {
+   "name": "an exception is resolved through the UI with a note",
+   "ok": true
+  },
+  {
+   "name": "phone: no page-level horizontal scroll (invoice, tax setup)",
+   "ok": true
+  },
+  {
+   "name": "tenant administrator: every billing page refused (403), no billing menu",
+   "ok": true
+  }
+ ],
+ "saas7_axe_wcag2a_2aa_21a_21aa": {
+  "billing catalogue": [],
+  "tax setup": [],
+  "tax setup (dark)": [],
+  "billing account": [],
+  "invoices": [],
+  "invoice detail": [],
+  "issue modal": [],
+  "transfer modal": [],
+  "payments": [],
+  "payment detail": [],
+  "phone invoice": []
+ },
+ "console_errors": [],
+ "note": "Rates, SAC, GSTINs, entities and prices are fictional test values, not decisions."
+}
