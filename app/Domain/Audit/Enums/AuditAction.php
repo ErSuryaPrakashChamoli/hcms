@@ -248,7 +248,6 @@ enum AuditAction: string
     case TaxRuleRetired = 'TAX_RULE_RETIRED';
     case BillingProfileRecorded = 'BILLING_PROFILE_RECORDED';
     case BillingTermsSet = 'BILLING_TERMS_SET';
-    case BillingTermsEnded = 'BILLING_TERMS_ENDED';
     case InvoiceDrafted = 'INVOICE_DRAFTED';
     case InvoiceIssued = 'INVOICE_ISSUED';
     case InvoiceDiscarded = 'INVOICE_DISCARDED';
