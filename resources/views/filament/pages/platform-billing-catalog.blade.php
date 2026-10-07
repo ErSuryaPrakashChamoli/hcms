@@ -1,6 +1,6 @@
 <x-filament-panels::page>
     <x-filament::section>
-        <p class="text-sm text-gray-600 dark:text-gray-300 max-w-4xl">Prices are per market, in the market's currency, and versioned on their own: changing one market's price never touches another's, and a new version never re-prices a subscriber (billing terms pin a version). No market, price or amount is created by PeopleOS: they are commercial decisions. Price is never read by entitlements or authorisation.</p>
+        <p class="text-sm text-gray-600 dark:text-gray-300 max-w-4xl">Prices are per market, in the market's currency, and versioned on their own: changing one market's price never touches another's (no price is ever derived from another market's by an exchange rate), and a new version never re-prices a subscriber (billing terms pin a version; an increase needs 30 days' notice). A per-employee amount is per employee per month. Publishing needs a second operator's approval. No market, price or amount is created by PeopleOS: they are commercial decisions. Price is never read by entitlements or authorisation.</p>
     </x-filament::section>
 
     <x-filament::section heading="Markets" description="One currency each; the selling Markedge entity; how amounts are displayed.">
@@ -28,12 +28,12 @@
                     <tr class="border-t border-gray-100 dark:border-gray-800 align-top">
                         <td class="py-1 pe-4"><code>{{ $price->planVersion->label() }}</code></td>
                         <td class="pe-4">{{ $price->market->code }}</td>
-                        <td class="pe-4">{{ $price->basis->label() }} {{ $price->interval->label() }}</td>
+                        <td class="pe-4">{{ $price->basis->label() }}, {{ $price->interval->label() }}</td>
                         <td class="pe-4 font-medium">{{ $current ? $this->money($current, $price->market) : 'not on sale' }}</td>
                         <td>
                             <ul class="space-y-0.5">
                                 @foreach ($price->versions as $version)
-                                    <li>v{{ $version->version }} · <x-filament::badge size="sm" :color="$version->status->getColor()">{{ $version->status->value }}</x-filament::badge> {{ $this->money($version, $price->market) }}{{ $version->effective_from ? ' from '.$version->effective_from->toDateString() : '' }}</li>
+                                    <li>v{{ $version->version }} · <x-filament::badge size="sm" :color="$version->status->getColor()">{{ $version->status->value }}</x-filament::badge> {{ $this->money($version, $price->market) }}{{ $version->minimum_quantity > 0 ? ' · minimum '.$version->minimum_quantity : '' }}{{ $version->effective_from ? ' from '.$version->effective_from->toDateString() : '' }}</li>
                                 @endforeach
                             </ul>
                         </td>

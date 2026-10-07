@@ -64,7 +64,7 @@ it('issues an India GST invoice: gap-free number, tax per line, totals and snaps
 
 it('keeps an issued invoice exactly as issued after the customer, registration, supplier, rule and price change', function () {
     billingProfile($this->tenant, $this->setup['market'], $this->operator);
-    $issued = $this->invoices->issue(draftInvoice($this->tenant, $this->setup['market'], $this->operator), null, 'April invoice', $this->operator);
+    $issued = $this->invoices->issue(draftInvoice($this->tenant, $this->setup['market'], $this->operator), '2027-05-31', 'April invoice', $this->operator);
     $before = [$issued->fresh()->toArray(), inTenant($this->tenant, fn () => InvoiceTaxLine::query()->where('invoice_id', $issued->id)->get()->toArray()),
         app(InvoicePresentation::class)->document($issued->fresh())];
     expect($before[1])->not->toBeEmpty()->and($before[2]['lines'])->toHaveCount(1)->and($before[2]['tax_summary'])->toHaveCount(1)->and($before[2]['regime_rows'])->not->toBeEmpty();
@@ -156,6 +156,7 @@ it('keeps each invoice in its currency, with generic tax lines for VAT and sales
     $de = provisionTenant('German Customer');
     billingProfile($de, $eur, $operator, ['country' => 'DE', 'subdivision' => null, 'tax_id_type' => 'EU_VAT_ID', 'tax_id_value' => 'DE000000000']);
     $us = provisionTenant('Texas Customer');
+    config(['peopleos.billing.b2b_only' => false]);   // B2C stays representable (B-5 launches B2B only)
     billingProfile($us, $usd, $operator, ['customer_type' => 'consumer', 'country' => 'US', 'subdivision' => 'US-TX', 'tax_registration' => 'not_applicable', 'tax_id_type' => null, 'tax_id_value' => null]);
 
     $gbInvoice = $this->invoices->issue(draftInvoice($uk, $gbp, $operator, ['1250.00']), null, 'UK invoice', $operator);

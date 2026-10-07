@@ -10,6 +10,8 @@ use App\Domain\Payments\Exceptions\WebhookRejectedException;
 use App\Domain\Payments\Support\PaymentStart;
 use App\Domain\Payments\Support\ProviderCheckout;
 use App\Domain\Payments\Support\ProviderPaymentUpdate;
+use App\Domain\Payments\Support\ProviderRefund;
+use App\Domain\Payments\Support\RefundStart;
 use App\Domain\Payments\Support\VerifiedProviderEvent;
 use App\Support\Money\Currency;
 use App\Support\Money\Money;
@@ -124,6 +126,31 @@ final class SandboxProvider implements PaymentProvider
         return new ProviderPaymentUpdate($data['reference'], $status, $amount, PaymentMethod::tryFrom((string) ($data['method'] ?? '')) ?? PaymentMethod::Other,
             isset($data['failure_code']) ? mb_substr((string) $data['failure_code'], 0, 32) : null,
             isset($data['failure_message']) ? mb_substr((string) $data['failure_message'], 0, 300) : null);
+    }
+
+    public function supportsRefunds(): bool
+    {
+        return true;
+    }
+
+    /** Deterministic: the same refund reference always gives the same sandbox refund (no second refund on a retry). */
+    public function refund(RefundStart $refund): ProviderRefund
+    {
+        $state = Cache::get(self::stateKey($refund->paymentReference));
+        if ($state === null || $state['status'] !== PaymentStatus::Succeeded->value) {
+            throw new PaymentProviderException('The sandbox refunds succeeded payments only.');
+        }
+        $reference = 'rfnd_sbx_'.substr(hash('sha256', $refund->refundReference), 0, 20);
+        Cache::add('billing.sandbox.refund.'.$reference, ['status' => 'succeeded'], now()->addDays(30));
+
+        return new ProviderRefund($reference, (string) Cache::get('billing.sandbox.refund.'.$reference)['status']);
+    }
+
+    public function fetchRefund(string $paymentReference, ?string $transactionReference, string $providerRefundReference): ?ProviderRefund
+    {
+        $state = Cache::get('billing.sandbox.refund.'.$providerRefundReference);
+
+        return $state === null ? null : new ProviderRefund($providerRefundReference, $state['status']);
     }
 
     /** Test and local validation helper: the provider-side outcome of a sandbox payment. */

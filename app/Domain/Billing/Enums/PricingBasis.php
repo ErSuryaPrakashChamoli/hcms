@@ -3,8 +3,9 @@
 namespace App\Domain\Billing\Enums;
 
 /**
- * SaaS.7: what a price's unit amount is multiplied by. Both are representable; which plans use which is decision
- * B-1, and per-employee billing also needs the billable quantity definition (B-2). Neither is applied by SaaS.7.
+ * SaaS.7: what a price's unit amount is multiplied by. B-1 (approved): per employee per month (PEPM), on the billable
+ * quantity of B-2 (the monthly peak employed count), with an optional minimum quantity; the unit amount is per month
+ * whatever the billing interval. Flat stays representable for a later decision; the billing run does not bill it.
  */
 enum PricingBasis: string
 {
@@ -15,7 +16,7 @@ enum PricingBasis: string
     {
         return match ($this) {
             self::Flat => 'flat',
-            self::PerActiveEmployee => 'per active employee',
+            self::PerActiveEmployee => 'per employee per month',
         };
     }
 }

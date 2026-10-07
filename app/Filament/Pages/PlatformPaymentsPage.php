@@ -10,6 +10,7 @@ use App\Domain\Payments\Services\Payments;
 use App\Domain\Platform\Models\Tenant;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -22,8 +23,9 @@ use UnitEnum;
 /**
  * SaaS.7: payments for platform operators: every payment (headers only), reconciliation exceptions to resolve, and
  * the verified provider events received (status and outcome only; payloads are never shown). An operator can ask
- * the provider, server-side, what happened to a payment, or resolve an exception with a note; neither settles an
- * invoice by itself: only an exact, verified amount does.
+ * the provider, server-side, what happened to a payment, or request an exception's resolution (accept or write
+ * off), which another operator approves (B-13). Only an exact, verified amount, or that approval, settles an invoice.
+ * The settlement snapshot (what reached Markedge, usually INR; B-14) is shown beside the payment, for reporting.
  */
 class PlatformPaymentsPage extends Page
 {
@@ -101,11 +103,15 @@ class PlatformPaymentsPage extends Page
                 ->modalDescription('Asks the provider, server-side, for the payment\'s state and applies it like any verified notification.')
                 ->schema([Textarea::make('reason')->label('Reason')->required()->minLength(5)->maxLength(500)])
                 ->action(fn (array $data) => $this->attempt(fn () => app(Payments::class)->refresh($this->selected(), $data['reason'], auth()->user()), 'Checked with provider')),
-            Action::make('resolveException')->label('Resolve exception')->icon(Heroicon::OutlinedCheckCircle)->color('warning')
+            Action::make('requestResolution')->label('Request resolution')->icon(Heroicon::OutlinedCheckCircle)->color('warning')
                 ->visible(fn () => $this->selected()?->reconciliation_status === ReconciliationStatus::Exception)
-                ->modalDescription('Records how the exception was handled outside PeopleOS (e.g. refunded by bank). The invoice is not changed; there are no credit notes or refunds yet.')
-                ->schema([Textarea::make('note')->label('How it was handled')->required()->minLength(5)->maxLength(500)])
-                ->action(fn (array $data) => $this->attempt(fn () => app(Payments::class)->resolveException($this->selected(), $data['note'], auth()->user()), 'Exception resolved')),
+                ->modalDescription('Maker-checker: another operator approves it on the Approvals page. Accept settles the unpaid invoice with this payment (the difference is written off); write off closes the exception without applying the payment.')
+                ->schema([
+                    Select::make('outcome')->label('Resolution')->required()->options([Payments::ACCEPT => 'Accept the payment as settling the invoice', Payments::WRITE_OFF => 'Write the exception off']),
+                    Textarea::make('reason')->label('Reason')->required()->minLength(5)->maxLength(500),
+                ])
+                ->action(fn (array $data) => $this->attempt(fn () => app(Payments::class)->requestExceptionResolution($this->selected(), $data['outcome'], $data['reason'], auth()->user()),
+                    'Resolution requested: another operator approves it')),
         ];
     }
 

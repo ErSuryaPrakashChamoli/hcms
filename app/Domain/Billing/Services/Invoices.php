@@ -3,11 +3,15 @@
 namespace App\Domain\Billing\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Billing\Enums\ApprovalAction;
 use App\Domain\Billing\Enums\InvoiceStatus;
 use App\Domain\Billing\Models\BillingMarket;
+use App\Domain\Billing\Models\CreditNote;
+use App\Domain\Billing\Models\FinancialApproval;
 use App\Domain\Billing\Models\Invoice;
 use App\Domain\Billing\Models\InvoiceLine;
 use App\Domain\Billing\Models\InvoiceTaxLine;
+use App\Domain\Billing\Models\InvoiceTdsClaim;
 use App\Domain\Billing\Models\PlanPriceVersion;
 use App\Domain\Billing\Models\SupplierProfile;
 use App\Domain\Billing\Models\TenantBillingProfile;
@@ -25,6 +29,7 @@ use App\Domain\Tax\Support\TaxQuote;
 use App\Support\Commercial\OperatorChange;
 use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
+use Brick\Math\RoundingMode;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,22 +37,47 @@ use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * SaaS.7: invoices of a tenant. A draft holds priced lines in its market's currency (the billing calculation will
- * hand them over once decisions B-1 to B-3 exist; no page drafts invoices by hand). Issue fixes everything in one
- * transaction under the invoice and number-series locks: the customer and supplier profiles in force, the tax from
- * the jurisdiction-neutral engine (refused when it cannot be determined safely), the gap-free number, the totals
- * and the snapshots. An issued invoice never changes again except to record that it was paid.
+ * SaaS.7: invoices of a tenant. A draft holds priced lines in its market's currency (the billing run drafts them
+ * from calculated billing periods; no page drafts invoices by hand). Issue fixes everything in one transaction under
+ * the invoice and number-series locks: the customer and supplier profiles in force, the tax from the
+ * jurisdiction-neutral engine (refused when it cannot be determined safely), the gap-free number, the totals, the
+ * due date (net 15 by default, B-11) and the snapshots. An issued invoice never changes again except to record its
+ * settlement: paid, partially paid while a TDS certificate is pending, credited or written off. The amount due is
+ * the total less issued credit notes and declared customer TDS.
  */
 final class Invoices
 {
     public function __construct(private readonly BillingAudit $audit, private readonly BillingProfiles $profiles, private readonly SupplierProfiles $suppliers,
-        private readonly InvoiceSeries $series, private readonly TaxEngine $tax, private readonly TenantContext $tenants) {}
+        private readonly InvoiceSeries $series, private readonly TaxEngine $tax, private readonly TenantContext $tenants,
+        private readonly FinancialApprovals $approvals) {}
 
     /** @param  list<InvoiceLineInput>  $lines */
     public function draft(Tenant $tenant, BillingMarket $market, array $lines, string $reason, User $actor, ?TenantSubscription $subscription = null,
         ?string $periodStart = null, ?string $periodEnd = null, ?string $idempotencyKey = null): Invoice
     {
         OperatorChange::assert($actor, $reason, 'invoices');
+
+        return $this->create($tenant, $market, $lines, $reason, $actor, $subscription, $periodStart, $periodEnd, $idempotencyKey);
+    }
+
+    /**
+     * The billing run's draft of one calculated period (system actor). Runs inside the run's transaction, so the
+     * period and its draft are created together or not at all.
+     */
+    public function draftForPeriod(Tenant $tenant, BillingMarket $market, InvoiceLineInput $line, TenantSubscription $subscription, string $periodStart,
+        string $periodEnd, string $idempotencyKey, string $reason): Invoice
+    {
+        if (DB::transactionLevel() === 0 || $line->billingPeriodId === null) {
+            throw new RuntimeException('A period invoice is drafted only by the billing run, inside its transaction.');
+        }
+
+        return $this->create($tenant, $market, [$line], $reason, null, $subscription, $periodStart, $periodEnd, $idempotencyKey);
+    }
+
+    /** @param  list<InvoiceLineInput>  $lines */
+    private function create(Tenant $tenant, BillingMarket $market, array $lines, string $reason, ?User $actor, ?TenantSubscription $subscription,
+        ?string $periodStart, ?string $periodEnd, ?string $idempotencyKey): Invoice
+    {
         if ($lines === [] || count($lines) > 200) {
             throw new RuntimeException('An invoice has 1 to 200 lines.');
         }
@@ -76,13 +106,14 @@ final class Invoices
                     $invoice = Invoice::query()->create(['status' => InvoiceStatus::Draft, 'market_id' => $market->id, 'supplier_entity' => $market->supplier_entity,
                         'currency' => $market->currency, 'subscription_id' => $subscription?->id, 'period_start' => $periodStart, 'period_end' => $periodEnd,
                         'subtotal_minor' => $subtotal->minor, 'tax_minor' => 0, 'total_minor' => $subtotal->minor, 'idempotency_key' => $key, 'reason' => $reason,
-                        'created_by' => $actor->id]);
+                        'created_by' => $actor?->id]);
                     foreach ($rows as $row) {
                         InvoiceLine::query()->create($row + ['invoice_id' => $invoice->id]);
                     }
                     $this->audit->both(AuditAction::InvoiceDrafted, 'billing', $tenant, $invoice, "invoice {$invoice->label()}",
                         [['field' => 'status', 'before' => 'none', 'after' => 'draft'], ['field' => 'subtotal', 'before' => null, 'after' => "{$subtotal->currency->value} {$subtotal->toDecimal()}"]],
-                        $reason, $actor, ['invoice_reference' => $invoice->reference, 'market' => $market->code, 'lines' => count($rows), 'idempotency_key' => $key]);
+                        $reason, $actor, ['invoice_reference' => $invoice->reference, 'market' => $market->code, 'lines' => count($rows), 'idempotency_key' => $key]
+                            + ($actor === null ? ['trigger' => 'billing_run'] : []));
 
                     return $invoice;
                 });
@@ -100,14 +131,15 @@ final class Invoices
 
         return $this->tenants->runAs($tenant, fn () => DB::transaction(function () use ($tenant, $invoice, $dueDate, $reason, $actor) {
             $locked = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
-            if (in_array($locked->status, [InvoiceStatus::Issued, InvoiceStatus::Paid], true)) {
+            if ($locked->status->isIssuedDocument()) {
                 return $locked; // issuing twice changes nothing
             }
             if ($locked->status === InvoiceStatus::Discarded) {
                 throw new RuntimeException('A discarded draft cannot be issued.');
             }
             $today = now()->toDateString();
-            $due = $dueDate === null || trim($dueDate) === '' ? null : $this->day($dueDate);
+            // B-11: net 15 (configurable) from the issue date unless the operator gives another date.
+            $due = $dueDate === null || trim($dueDate) === '' ? now()->addDays(max(0, (int) config('peopleos.billing.payment_terms_days', 15)))->toDateString() : $this->day($dueDate);
             if ($due !== null && $due < $today) {
                 throw new RuntimeException('The due date is on or after the issue date.');
             }
@@ -152,7 +184,7 @@ final class Invoices
                 return $locked;
             }
             if ($locked->status !== InvoiceStatus::Draft) {
-                throw new RuntimeException("An {$locked->status->value} invoice cannot be discarded: only a credit note could correct it (not available).");
+                throw new RuntimeException("An {$locked->status->value} invoice cannot be discarded: correct it with a credit note.");
             }
             $locked->forceFill(['status' => InvoiceStatus::Discarded, 'discarded_by' => $actor->id, 'discarded_at' => now(), 'discard_reason' => $reason])->save();
             $this->audit->both(AuditAction::InvoiceDiscarded, 'billing', $tenant, $locked, "invoice {$locked->label()}",
@@ -178,24 +210,91 @@ final class Invoices
         } catch (RuntimeException $e) {
             return ['ready' => false, 'problems' => [$e->getMessage()], 'quote' => null];
         }
-        $series = \App\Domain\Billing\Models\InvoiceNumberSeries::query()->where(['supplier_entity' => $invoice->supplier_entity, 'status' => 'open'])
+        $series = \App\Domain\Billing\Models\InvoiceNumberSeries::query()->where(['supplier_entity' => $invoice->supplier_entity, 'document_type' => 'invoice', 'status' => 'open'])
             ->whereDate('starts_on', '<=', now()->toDateString())->whereDate('ends_on', '>=', now()->toDateString())->exists();
 
         return ['ready' => $series, 'problems' => $series ? [] : ["No open invoice number series of {$invoice->supplier_entity} covers today."], 'quote' => $quote];
     }
 
-    /** Records that a locked, issued invoice is paid by $paymentId. Called by payment reconciliation inside its transaction. */
-    public function markPaid(Invoice $locked, int $paymentId, ?User $actor, string $trigger, string $reason, ?string $correlation): Invoice
+    /**
+     * What is still to be paid on an issued invoice: the total less its issued credit notes and the customer TDS
+     * declared on it (B-11, B-12). Read inside the invoice's tenant.
+     */
+    public function amountDue(Invoice $invoice): Money
     {
-        if (DB::transactionLevel() === 0 || $locked->status !== InvoiceStatus::Issued) {
-            throw new RuntimeException('Only an issued invoice, locked in the reconciling transaction, can be marked paid.');
+        $tenant = Tenant::query()->findOrFail($invoice->tenant_id);
+
+        // Locking reads: under MySQL's repeatable read, a plain read after waiting for the invoice lock could miss a credit
+        // note or TDS committed meanwhile.
+        return $this->tenants->runAs($tenant, function () use ($invoice) {
+            $credited = (int) CreditNote::query()->where('invoice_id', $invoice->id)->sharedLock()->sum('total_minor');
+            $tds = (int) InvoiceTdsClaim::query()->where('invoice_id', $invoice->id)->sharedLock()->sum('amount_minor');
+
+            return $invoice->total()->minus(Money::ofMinor($credited, $invoice->currency))->minus(Money::ofMinor($tds, $invoice->currency));
+        });
+    }
+
+    /**
+     * Records that a locked, open invoice is settled by $paymentId: paid, or partially paid while the declared TDS
+     * awaits its certificate. Called by payment reconciliation and TDS certification inside their transaction.
+     */
+    public function markPaid(Invoice $locked, ?int $paymentId, ?User $actor, string $trigger, string $reason, ?string $correlation, bool $tdsPending = false): Invoice
+    {
+        if (DB::transactionLevel() === 0 || ! $locked->status->isOpen()) {
+            throw new RuntimeException('Only an open invoice, locked in the reconciling transaction, can be marked paid.');
         }
-        $locked->forceFill(['status' => InvoiceStatus::Paid, 'paid_at' => now(), 'paid_by_payment_id' => $paymentId])->save();
-        $this->audit->both(AuditAction::InvoicePaid, 'billing', Tenant::query()->findOrFail($locked->tenant_id), $locked, "invoice {$locked->number}",
-            [['field' => 'status', 'before' => 'issued', 'after' => 'paid']], $reason, $actor,
-            ['invoice_reference' => $locked->reference, 'payment_id' => $paymentId, 'trigger' => $trigger, 'correlation_id' => $correlation]);
+        $before = $locked->status->value;
+        $after = $tdsPending ? InvoiceStatus::PartiallyPaid : InvoiceStatus::Paid;
+        if ($before === $after->value) {
+            return $locked;
+        }
+        $locked->forceFill(['status' => $after] + ($tdsPending ? [] : ['paid_at' => now()]) + ($paymentId !== null && $locked->paid_by_payment_id === null ? ['paid_by_payment_id' => $paymentId] : []))->save();
+        $this->audit->both($tdsPending ? AuditAction::InvoicePartiallyPaid : AuditAction::InvoicePaid, 'billing', Tenant::query()->findOrFail($locked->tenant_id), $locked,
+            "invoice {$locked->number}", [['field' => 'status', 'before' => $before, 'after' => $after->value]], $reason, $actor,
+            ['invoice_reference' => $locked->reference, 'payment_id' => $paymentId ?? $locked->paid_by_payment_id, 'trigger' => $trigger, 'correlation_id' => $correlation]);
 
         return $locked;
+    }
+
+    /** Asks for an unpaid invoice to be written off (B-13: executed only when another operator approves it). */
+    public function requestWriteOff(Invoice $invoice, string $reason, User $maker): FinancialApproval
+    {
+        OperatorChange::assert($maker, $reason, 'invoices');
+        $tenant = Tenant::query()->findOrFail($invoice->tenant_id);
+        $invoice = $this->tenants->runAs($tenant, fn () => Invoice::query()->findOrFail($invoice->id));
+        if (! $invoice->status->isOpen()) {
+            throw new RuntimeException("Only an unpaid issued invoice can be written off; {$invoice->label()} is {$invoice->status->value}.");
+        }
+        $due = $this->amountDue($invoice);
+
+        return $this->approvals->request(ApprovalAction::InvoiceWriteOff, $invoice, $tenant, ['invoice_reference' => $invoice->reference, 'invoice_number' => $invoice->number,
+            'tenant' => $tenant->name, 'amount_due' => "{$due->currency->value} {$due->toDecimal()}"],
+            ['status' => $invoice->status->value, 'amount_due' => "{$due->currency->value} {$due->toDecimal()}"], ['status' => 'written_off', 'amount_due' => "{$due->currency->value} 0"],
+            "write_off:{$invoice->reference}", $reason, $maker);
+    }
+
+    /** Executes an approved write-off (called by the approval desk, inside its transaction). */
+    public function executeWriteOff(FinancialApproval $approval): Invoice
+    {
+        $approval = $this->approvals->claim($approval, ApprovalAction::InvoiceWriteOff);
+        $tenant = Tenant::query()->findOrFail($approval->subject_tenant_id);
+
+        return $this->tenants->runAs($tenant, function () use ($tenant, $approval) {
+            $locked = Invoice::query()->lockForUpdate()->findOrFail($approval->subject_id);
+            if (! $locked->status->isOpen()) {
+                throw new RuntimeException("Invoice {$locked->label()} is {$locked->status->value} now: it can no longer be written off.");
+            }
+            $before = $locked->status->value;
+            $locked->forceFill(['status' => InvoiceStatus::WrittenOff, 'closed_at' => now(), 'closure_approval_id' => $approval->id])->save();
+            $checker = User::query()->findOrFail($approval->checker_id);
+            $this->audit->both(AuditAction::InvoiceWrittenOff, 'billing', $tenant, $locked, "invoice {$locked->number}",
+                [['field' => 'status', 'before' => $before, 'after' => 'written_off']], (string) $approval->checker_reason, $checker,
+                ['invoice_reference' => $locked->reference, 'approval' => $approval->reference, 'maker_id' => $approval->maker_id, 'checker_id' => $approval->checker_id,
+                    'correlation_id' => $approval->correlation_key]);
+            $this->approvals->executed($approval, "Invoice {$locked->number} written off");
+
+            return $locked;
+        });
     }
 
     /** @return array{0: TenantBillingProfile, 1: SupplierProfile, 2: TaxQuote} */
@@ -245,15 +344,28 @@ final class Invoices
             }
         }
         [$start, $end] = $this->period($line->periodStart, $line->periodEnd);
+        if (($line->daysBilled === null) !== ($line->daysInPeriod === null)) {
+            throw new RuntimeException("Line {$number} gives the days billed and the days in the period together.");
+        }
         try {
-            $amount = $line->unitAmount->times($line->quantity);
+            $amount = self::lineAmount($line->unitAmount, $line->quantity, $line->daysBilled, $line->daysInPeriod);
         } catch (InvalidArgumentException $e) {
             throw new RuntimeException($e->getMessage());
         }
 
         return ['line_no' => $number, 'description' => $description, 'tax_category' => $line->taxCategory, 'quantity' => $line->quantity,
             'unit_amount_minor' => $line->unitAmount->minor, 'amount_minor' => $amount->minor, 'currency' => $market->currency,
-            'plan_price_version_id' => $line->planPriceVersionId, 'plan_version_id' => $line->planVersionId, 'period_start' => $start, 'period_end' => $end];
+            'plan_price_version_id' => $line->planPriceVersionId, 'plan_version_id' => $line->planVersionId, 'period_start' => $start, 'period_end' => $end,
+            'billing_period_id' => $line->billingPeriodId, 'days_billed' => $line->daysBilled, 'days_in_period' => $line->daysInPeriod,
+            'quantity_evidence' => $line->quantityEvidence];
+    }
+
+    /** B-3: quantity × unit, and for a partial month × days billed ÷ days in the month, rounded once half up to the minor unit. */
+    public static function lineAmount(Money $unit, int $quantity, ?int $daysBilled = null, ?int $daysInPeriod = null): Money
+    {
+        $full = $unit->times($quantity);
+
+        return $daysBilled === null || $daysInPeriod === null ? $full : $full->prorated($daysBilled, $daysInPeriod, RoundingMode::HalfUp);
     }
 
     /** @return array{0: ?string, 1: ?string} */

@@ -26,6 +26,10 @@ beforeEach(function () {
 it('records B2B and B2C explicitly, with registration rules that match the customer type', function () {
     $b2b = billingProfile($this->tenant, $this->market, $this->operator);
     expect([$b2b->customer_type, $b2b->tax_registration, $b2b->tax_id_status, $b2b->tax_id_value])->toBe([CustomerType::Business, TaxRegistration::Registered, 'format_valid', fictionalGstin('29', '2')]);
+    // B-5 (approved): business customers only at launch. B2C stays representable behind the launch rule.
+    expect(fn () => billingProfile($this->tenant, $this->market, $this->operator, ['customer_type' => 'consumer', 'tax_registration' => 'not_applicable', 'tax_id_type' => null, 'tax_id_value' => null]))
+        ->toThrow(RuntimeException::class, 'businesses only');
+    config(['peopleos.billing.b2b_only' => false]);
     $b2c = billingProfile($this->tenant, $this->market, $this->operator, ['customer_type' => 'consumer', 'tax_registration' => 'not_applicable', 'tax_id_type' => null, 'tax_id_value' => null]);
     expect([$b2c->customer_type, $b2c->tax_registration, $b2c->tax_id_value, $b2c->version])->toBe([CustomerType::Consumer, TaxRegistration::NotApplicable, null, 2]);
 

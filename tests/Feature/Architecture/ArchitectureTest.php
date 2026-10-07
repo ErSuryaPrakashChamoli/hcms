@@ -89,6 +89,9 @@ it('scopes every domain model to a tenant except the documented platform-level m
         \App\Domain\Billing\Models\BillingMarket::class, \App\Domain\Billing\Models\PlanPrice::class, \App\Domain\Billing\Models\PlanPriceVersion::class,
         \App\Domain\Billing\Models\SupplierProfile::class, \App\Domain\Billing\Models\InvoiceNumberSeries::class, \App\Domain\Tax\Models\TaxRule::class,
         \App\Domain\Payments\Models\PaymentProviderEvent::class,
+        // SaaS.7 completion: maker-checker requests are Markedge's operators' records (price publication has no tenant);
+        // subject_tenant_id names the tenant concerned, if any. Credit notes, refunds, periods, notices and TDS are tenant-scoped.
+        \App\Domain\Billing\Models\FinancialApproval::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -187,6 +190,11 @@ it('audits every domain model except the documented append-only or derived table
         'Billing\Models\BillingMarket', 'Billing\Models\PlanPrice', 'Billing\Models\PlanPriceVersion', 'Billing\Models\SupplierProfile',
         'Billing\Models\InvoiceNumberSeries', 'Billing\Models\TenantBillingProfile', 'Billing\Models\SubscriptionBillingTerm', 'Billing\Models\Invoice',
         'Billing\Models\InvoiceLine', 'Billing\Models\InvoiceTaxLine', 'Tax\Models\TaxRule', 'Payments\Models\Payment', 'Payments\Models\PaymentProviderEvent',
+        // SaaS.7 completion: billing periods, price notices, approvals, credit notes, TDS claims and refunds are audited
+        // explicitly by their services (BillingAudit, both chains for tenant records) with maker, checker, reasons, before,
+        // after and the correlation key; the rows themselves are immutable or move forward only.
+        'Billing\Models\BillingPeriod', 'Billing\Models\PriceChangeNotice', 'Billing\Models\FinancialApproval', 'Billing\Models\CreditNote',
+        'Billing\Models\InvoiceTdsClaim', 'Payments\Models\Refund',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -313,7 +321,8 @@ it('keeps the entitlement engine independent of subscriptions: subscriptions fee
         ->and(array_values(array_filter(appFilesMatching('/App.Domain.Subscriptions/'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Subscriptions/'))))
         ->toBe(['app/Console/Commands/SettleSubscriptions.php',
             // SaaS.7: billing reads the subscription timeline (terms pin a price to the plan version in force) and never writes it.
-            'app/Domain/Billing/Models/SubscriptionBillingTerm.php', 'app/Domain/Billing/Services/BillingTerms.php', 'app/Domain/Billing/Services/Invoices.php',
+            'app/Domain/Billing/Models/SubscriptionBillingTerm.php', 'app/Domain/Billing/Services/BillingPeriods.php', 'app/Domain/Billing/Services/BillingTerms.php',
+            'app/Domain/Billing/Services/Invoices.php', 'app/Domain/Billing/Services/PriceNotices.php',
             'app/Filament/Pages/PlatformBillingAccountsPage.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php'])
         // One writer: only the guarded subscription service projects a subscription onto plan assignments.
         ->and(appFilesMatching('/->projectSubscription\(/'))->toBe(['app/Domain/Subscriptions/Services/CommercialSubscriptions.php']);
@@ -322,7 +331,8 @@ it('keeps the entitlement engine independent of subscriptions: subscriptions fee
 it('keeps billing, tax and payments out of authorisation, entitlements, HCM, payroll and the subscription lifecycle (SaaS.7)', function () {
     $users = array_values(array_filter(appFilesMatching('/App.Domain.(Billing|Tax|Payments)./'),
         fn (string $f) => preg_match('#^app/Domain/(Billing|Tax|Payments)/#', $f) !== 1));
-    expect($users)->toBe(['app/Console/Commands/ProcessBillingProviderEvents.php', 'app/Filament/Pages/PlatformBillingAccountsPage.php',
+    expect($users)->toBe(['app/Console/Commands/ProcessBillingProviderEvents.php', 'app/Console/Commands/RunBilling.php',
+        'app/Filament/Pages/PlatformApprovalsPage.php', 'app/Filament/Pages/PlatformBillingAccountsPage.php',
         'app/Filament/Pages/PlatformBillingCatalogPage.php', 'app/Filament/Pages/PlatformInvoicesPage.php', 'app/Filament/Pages/PlatformPaymentsPage.php',
         'app/Filament/Pages/PlatformTaxSetupPage.php', 'app/Http/Controllers/Billing/ProviderWebhookController.php']);
     // The dependency runs Payments → Billing → Tax: tax is pure, billing never reaches into payments.
@@ -345,7 +355,9 @@ it('computes money without floats or FX, and keeps provider code inside its adap
     expect($money->filter(fn (string $f) => preg_match('/\(float\)|floatval\(|\bround\(|number_format\(|\bfloat \$/', $code($f)) === 1)->values()->all())
         ->toBe(['app/Support/Money/MoneyFormatter.php'])                                    // display only, bounded to exact magnitudes
         ->and($money->filter(fn (string $f) => preg_match('/CurrencyRates|exchange_rates|ExchangeRate/', $code($f)) === 1)->values()->all())->toBe([])
-        ->and(appFilesMatching('/Providers.(SandboxProvider|ManualBankTransferProvider)\\b/'))->toBe(['app/Domain/Payments/Services/ProviderRegistry.php'])
+        ->and(appFilesMatching('/Providers.(SandboxProvider|ManualBankTransferProvider|RazorpayProvider)\\b/'))->toBe(['app/Domain/Payments/Services/ProviderRegistry.php'])
+        // Only the Razorpay adapter talks HTTP to a provider (SaaS.7 completion: test mode only).
+        ->and($money->filter(fn (string $f) => preg_match('/Facades.Http\\b|Http::/', $code($f)) === 1)->values()->all())->toBe(['app/Domain/Payments/Providers/RazorpayProvider.php'])
         // Only payment reconciliation runs while a tenant is suspended (it records money that already moved).
         ->and(appFilesMatching('/implements[^{]*RunsForSuspendedTenants/'))->toBe(['app/Domain/Payments/Jobs/ApplyProviderEvent.php']);
 });

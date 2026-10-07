@@ -48,17 +48,6 @@ function sandboxEvent(string $id, string $type, string $reference, int $amountMi
     return json_encode(['id' => $id, 'type' => $type, 'data' => ['reference' => $reference, 'amount_minor' => $amountMinor, 'currency' => $currency, 'method' => 'card']]);
 }
 
-function postWebhook($test, string $body, ?array $headers = null, string $provider = 'sandbox')
-{
-    $headers ??= SandboxProvider::signedHeaders($body);
-    $server = ['CONTENT_TYPE' => 'application/json'];
-    foreach ($headers as $name => $value) {
-        $server['HTTP_'.strtoupper(str_replace('-', '_', $name))] = $value;
-    }
-
-    return $test->call('POST', "/webhooks/billing/{$provider}", [], [], [], $server, $body);
-}
-
 function paymentsOf($tenant): \Illuminate\Support\Collection
 {
     return app(TenantContext::class)->runAs($tenant, fn () => Payment::query()->orderBy('id')->get());
@@ -80,9 +69,12 @@ it('settles an invoice from a recorded bank transfer of the exact amount, and fl
     expect([$short->reconciliation_code, $short->amount_minor, $usd->reconciliation_code, $usd->currency->value, $second->fresh()->status])
         ->toBe(['amount_mismatch', 100000, 'currency_mismatch', 'USD', InvoiceStatus::Issued]);
 
-    $resolved = $this->payments->resolveException($short, 'Refunded by bank transfer outside PeopleOS', $this->operator);
-    expect([$resolved->reconciliation_status, $second->fresh()->status])->toBe([ReconciliationStatus::Resolved, InvoiceStatus::Issued])
-        ->and(fn () => $this->payments->resolveException($paid, 'Nothing to resolve', $this->operator))->toThrow(RuntimeException::class, 'Only a reconciliation exception')
+    // B-13: an exception is written off (or accepted) only with a second operator's approval.
+    $request = $this->payments->requestExceptionResolution($short, 'write_off', 'Refunded by bank transfer outside PeopleOS', $this->operator);
+    expect($short->fresh()->reconciliation_status)->toBe(ReconciliationStatus::Exception);
+    approveAs($request);
+    expect([$short->fresh()->reconciliation_status, $second->fresh()->status])->toBe([ReconciliationStatus::Resolved, InvoiceStatus::Issued])
+        ->and(fn () => $this->payments->requestExceptionResolution($paid, 'write_off', 'Nothing to resolve', $this->operator))->toThrow(RuntimeException::class, 'Only a reconciliation exception')
         ->and(fn () => $this->payments->recordBankTransfer($this->invoice, '1', 'INR', 'UTR-0005', '2027-04-02', 'Future date', $this->operator))->toThrow(RuntimeException::class, 'today or earlier');
 });
 

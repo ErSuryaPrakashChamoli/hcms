@@ -15,9 +15,10 @@ use RuntimeException;
 /**
  * SaaS.7: the price version a subscription is billed at from a date (effective-dated, painted like plan
  * assignments). It answers "what price applied to this subscription on that day?". Only its end may move earlier
- * (or a future row be cancelled); the pinned price, market, currency and start never change.
+ * (or a future row be cancelled); the pinned price, market, currency, committed quantity (annual terms) and start
+ * never change.
  */
-#[Fillable(['subscription_id', 'plan_price_version_id', 'plan_price_id', 'plan_version_id', 'market_id', 'currency', 'interval', 'basis',
+#[Fillable(['subscription_id', 'plan_price_version_id', 'plan_price_id', 'plan_version_id', 'market_id', 'currency', 'interval', 'basis', 'committed_quantity', 'price_notice_id',
     'effective_from', 'effective_to', 'status', 'reason', 'reference', 'created_by', 'closed_by', 'closed_at', 'close_reason', 'superseded_by'])]
 class SubscriptionBillingTerm extends Model
 {
@@ -45,7 +46,7 @@ class SubscriptionBillingTerm extends Model
 
     protected function casts(): array
     {
-        return ['currency' => Currency::class, 'interval' => BillingInterval::class, 'basis' => PricingBasis::class, 'effective_from' => 'date',
+        return ['currency' => Currency::class, 'interval' => BillingInterval::class, 'basis' => PricingBasis::class, 'committed_quantity' => 'integer', 'effective_from' => 'date',
             'effective_to' => 'date', 'closed_at' => 'datetime'];
     }
 

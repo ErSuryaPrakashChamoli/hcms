@@ -66,13 +66,18 @@ it('refuses every non-operator in every billing, tax and payment service', funct
             fn () => app(Invoices::class)->issue($this->bInvoice, null, 'Not allowed', $user),
             fn () => app(Invoices::class)->discard($this->bInvoice, 'Not allowed', $user),
             fn () => app(Payments::class)->recordBankTransfer($this->bInvoice, '1', 'INR', 'UTR-X-1', '2027-04-01', 'Not allowed', $user),
-            fn () => app(Payments::class)->resolveException($this->bPayment, 'Not allowed', $user),
+            fn () => app(Payments::class)->requestExceptionResolution($this->bPayment, 'write_off', 'Not allowed', $user),
+            fn () => app(BillingCatalog::class)->requestPublication($price->versions()->firstOrNew(), '2027-04-01', 'Not allowed', $user),
+            fn () => app(\App\Domain\Billing\Services\CreditNotes::class)->request($this->bInvoice, null, 'Not allowed', $user),
+            fn () => app(Invoices::class)->requestWriteOff($this->bInvoice, 'Not allowed', $user),
+            fn () => app(\App\Domain\Payments\Services\TdsSettlement::class)->declare($this->bInvoice, '1', null, 'Not allowed', $user),
+            fn () => app(\App\Domain\Billing\Services\BillingTerms::class)->set(new \App\Domain\Subscriptions\Models\TenantSubscription, new \App\Domain\Billing\Models\PlanPriceVersion, '2027-04-01', 'Not allowed', $user),
             fn () => app(Payments::class)->initiate($this->bInvoice, 'manual', 'Not allowed', $user),
         ] as $attempt) {
             expect($attempt)->toThrow(RuntimeException::class, 'Only platform operators');
         }
     }
-    expect(fn () => app(Payments::class)->resolveException($this->bPayment, 'no', $this->operator))->toThrow(RuntimeException::class, 'reason');
+    expect(fn () => app(Payments::class)->requestExceptionResolution($this->bPayment, 'write_off', 'no', $this->operator))->toThrow(RuntimeException::class, 'reason');
 });
 
 it('keeps each tenant\'s financial records to itself and shows nothing without a tenant', function () {

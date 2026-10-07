@@ -260,6 +260,25 @@ enum AuditAction: string
     case PaymentCancelled = 'PAYMENT_CANCELLED';
     case PaymentReconciliationException = 'PAYMENT_RECONCILIATION_EXCEPTION';
     case PaymentExceptionResolved = 'PAYMENT_EXCEPTION_RESOLVED';
+    // SaaS.7 completion: billing periods, notices, maker-checker, credit notes, refunds, TDS, write-offs, settlement.
+    case BillingPeriodCalculated = 'BILLING_PERIOD_CALCULATED';
+    case BillingPeriodRedrafted = 'BILLING_PERIOD_REDRAFTED';
+    case PriceNoticeRecorded = 'PRICE_NOTICE_RECORDED';
+    case PriceNoticeApplied = 'PRICE_NOTICE_APPLIED';
+    case ApprovalRequested = 'FINANCIAL_APPROVAL_REQUESTED';
+    case ApprovalApproved = 'FINANCIAL_APPROVAL_APPROVED';
+    case ApprovalRejected = 'FINANCIAL_APPROVAL_REJECTED';
+    case ApprovalWithdrawn = 'FINANCIAL_APPROVAL_WITHDRAWN';
+    case CreditNoteIssued = 'CREDIT_NOTE_ISSUED';
+    case InvoiceCredited = 'INVOICE_CREDITED';
+    case InvoiceWrittenOff = 'INVOICE_WRITTEN_OFF';
+    case InvoicePartiallyPaid = 'INVOICE_PARTIALLY_PAID';
+    case TdsClaimRecorded = 'TDS_CLAIM_RECORDED';
+    case TdsClaimCertified = 'TDS_CLAIM_CERTIFIED';
+    case RefundStarted = 'REFUND_STARTED';
+    case RefundSucceeded = 'REFUND_SUCCEEDED';
+    case RefundFailed = 'REFUND_FAILED';
+    case PaymentSettlementRecorded = 'PAYMENT_SETTLEMENT_RECORDED';
 
     public function label(): string
     {

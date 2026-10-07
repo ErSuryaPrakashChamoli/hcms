@@ -38,4 +38,6 @@ Schedule::command('peopleos:retention:purge')->dailyAt('03:30')->withoutOverlapp
 // SaaS.6: commercial expiries the dates already decided (idempotent; effective the day after each end, however late).
 Schedule::command('peopleos:subscriptions:settle')->dailyAt('00:15')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:billing:provider-events')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+// SaaS.7 completion: billing periods and draft invoices (after the subscription settlement); off unless enabled (no price exists until B-4).
+Schedule::command('peopleos:billing:run')->dailyAt('00:45')->withoutOverlapping()->onOneServer()->when(fn () => (bool) config('peopleos.billing.run_enabled'));
 Schedule::command('peopleos:warehouse:export')->dailyAt('05:00')->withoutOverlapping()->onOneServer();

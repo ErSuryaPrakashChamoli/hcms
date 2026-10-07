@@ -13,9 +13,11 @@ use RuntimeException;
 /**
  * SaaS.7: one version of a price's amount (draft → published → retired). A published version never changes: its
  * amount, currency and start are history that billing terms and invoices refer to. A later version supersedes it
- * for new terms from its own start; nothing re-prices an existing subscriber.
+ * for new terms from its own start; nothing re-prices an existing subscriber. The unit amount of a per-employee price
+ * is per employee per month whatever the interval (B-1); the interval says how it is billed (B-3). The optional
+ * minimum quantity is the floor of billable employees (0 = none).
  */
-#[Fillable(['plan_price_id', 'version', 'status', 'currency', 'unit_amount_minor', 'effective_from', 'reason', 'created_by', 'published_by',
+#[Fillable(['plan_price_id', 'version', 'status', 'currency', 'unit_amount_minor', 'minimum_quantity', 'effective_from', 'reason', 'created_by', 'published_by',
     'published_at', 'retired_by', 'retired_at'])]
 class PlanPriceVersion extends Model
 {
@@ -43,7 +45,7 @@ class PlanPriceVersion extends Model
 
     protected function casts(): array
     {
-        return ['status' => VersionStatus::class, 'currency' => Currency::class, 'unit_amount_minor' => 'integer', 'version' => 'integer',
+        return ['status' => VersionStatus::class, 'currency' => Currency::class, 'unit_amount_minor' => 'integer', 'minimum_quantity' => 'integer', 'version' => 'integer',
             'effective_from' => 'date', 'published_at' => 'datetime', 'retired_at' => 'datetime'];
     }
 

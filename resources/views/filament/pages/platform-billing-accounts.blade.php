@@ -44,10 +44,55 @@
                         <tr class="border-t border-gray-100 dark:border-gray-800 align-top">
                             <td class="py-1 pe-4">#{{ $row['subscription']->id }}</td>
                             <td class="pe-4">@if ($row['applies']){{ $this->format($row['applies']['unit_amount'], $row['applies']['term']->market->locale) }} {{ $row['applies']['term']->basis->label() }} {{ $row['applies']['term']->interval->label() }}@if (! $row['applies']['consistent']) <x-filament::badge size="sm" color="warning">plan changed: re-pin needed</x-filament::badge>@endif @else <span class="text-gray-500 dark:text-gray-400">no terms</span>@endif</td>
-                            <td>@foreach ($row['terms'] as $term)<div class="{{ $term->status === 'cancelled' ? 'line-through text-gray-500 dark:text-gray-400' : '' }}">{{ $term->effective_from->toDateString() }} to {{ $term->effective_to?->toDateString() ?? 'open' }} · {{ $term->currency->value }} {{ $term->priceVersion->amount()->toDecimal() }} (price v{{ $term->priceVersion->version }}) · {{ $term->reason }}</div>@endforeach</td>
+                            <td>@foreach ($row['terms'] as $term)<div class="{{ $term->status === 'cancelled' ? 'line-through text-gray-500 dark:text-gray-400' : '' }}">{{ $term->effective_from->toDateString() }} to {{ $term->effective_to?->toDateString() ?? 'open' }} · {{ $term->currency->value }} {{ $term->priceVersion->amount()->toDecimal() }} (price v{{ $term->priceVersion->version }}{{ $term->priceVersion->minimum_quantity > 0 ? ', minimum '.$term->priceVersion->minimum_quantity : '' }}) · {{ $term->interval->label() }}{{ $term->committed_quantity !== null ? ' · '.$term->committed_quantity.' committed' : '' }} · {{ $term->reason }}</div>@endforeach</td>
                         </tr>
                     @empty
                         <tr><td colspan="3" class="py-2 text-gray-500 dark:text-gray-400">No subscription.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+            </div>
+        </x-filament::section>
+
+        <x-filament::section heading="Billing periods" description="Calculated by the billing run: monthly in arrears on the month's peak employed count, annual terms in advance on the commitment, and monthly true-up above it. The quantity and its evidence are frozen when calculated.">
+            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Billing periods">
+            <table class="w-full text-sm">
+                <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th scope="col" class="py-1 pe-4">Period</th><th scope="col" class="pe-4">Kind</th><th scope="col" class="pe-4">Days billed</th><th scope="col" class="pe-4">Quantity</th><th scope="col" class="pe-4">Amount</th><th scope="col" class="pe-4">Status</th><th scope="col">Evidence</th></tr></thead>
+                <tbody>
+                    @forelse ($this->periods() as $period)
+                        <tr class="border-t border-gray-100 dark:border-gray-800 align-top">
+                            <td class="py-1 pe-4">{{ $period->period_start->toDateString() }} to {{ $period->period_end->toDateString() }}</td>
+                            <td class="pe-4">{{ $period->kind->label() }}</td>
+                            <td class="pe-4">{{ $period->days_billed }} / {{ $period->days_in_period }}</td>
+                            <td class="pe-4">{{ $period->billed_quantity }}@if ($period->measured_peak !== null) <span class="text-gray-500 dark:text-gray-400">(peak {{ $period->measured_peak }})</span>@endif</td>
+                            <td class="pe-4">{{ $period->currency->value }} {{ $period->amount()->toDecimal() }}</td>
+                            <td class="pe-4"><x-filament::badge size="sm" :color="$period->status === 'drafted' ? 'success' : ($period->status === 'exception' ? 'danger' : 'gray')">{{ str_replace('_', ' ', $period->status) }}</x-filament::badge>
+                                @if ($period->invoice) <a class="text-primary-600 underline dark:text-primary-400" href="{{ \App\Filament\Pages\PlatformInvoicesPage::getUrl(['invoice' => $period->invoice->reference]) }}">{{ $period->invoice->label() }}</a> ({{ $period->invoice->status->value }})@endif
+                                @if ($period->exception)<div class="text-danger-700 dark:text-danger-400">{{ $period->exception }}</div>@endif</td>
+                            <td class="text-xs">{{ $period->evidence['calculation'] ?? '' }}@if (isset($period->evidence['peak_day']))<br>Peak day {{ $period->evidence['peak_day'] }} · {{ count($period->evidence['employee_ids'] ?? []) }} employees · SHA-256 {{ substr($period->evidence['employee_ids_sha256'] ?? '', 0, 12) }}…@endif</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="py-2 text-gray-500 dark:text-gray-400">No billing period calculated.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+            </div>
+        </x-filament::section>
+
+        <x-filament::section heading="Price notices" description="Written notices of price increases (at least 30 days ahead). Pending notices are the re-pin worklist: set the new terms from the date shown.">
+            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Price notices">
+            <table class="w-full text-sm">
+                <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th scope="col" class="py-1 pe-4">Subscription</th><th scope="col" class="pe-4">Sent</th><th scope="col" class="pe-4">New price from</th><th scope="col" class="pe-4">Change</th><th scope="col">Status</th></tr></thead>
+                <tbody>
+                    @forelse ($this->notices() as $notice)
+                        <tr class="border-t border-gray-100 dark:border-gray-800">
+                            <td class="py-1 pe-4">#{{ $notice->subscription_id }}</td><td class="pe-4">{{ $notice->notice_date->toDateString() }}{{ $notice->reference ? ' · '.$notice->reference : '' }}</td>
+                            <td class="pe-4">{{ $notice->effective_from->toDateString() }}</td>
+                            <td class="pe-4">{{ $notice->fromVersion->currency->value }} {{ $notice->fromVersion->amount()->toDecimal() }} → {{ $notice->toVersion->amount()->toDecimal() }}</td>
+                            <td><x-filament::badge size="sm" :color="$notice->status === 'applied' ? 'success' : ($notice->effective_from->toDateString() <= $this->today() ? 'danger' : 'warning')">{{ $notice->status === 'pending' && $notice->effective_from->toDateString() <= $this->today() ? 're-pin due' : $notice->status }}</x-filament::badge></td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="5" class="py-2 text-gray-500 dark:text-gray-400">No price notice.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -62,7 +107,7 @@
                     <tbody>
                         @forelse ($this->invoices() as $invoice)
                             <tr class="border-t border-gray-100 dark:border-gray-800"><td class="py-1 pe-4"><a class="text-primary-600 underline dark:text-primary-400" href="{{ \App\Filament\Pages\PlatformInvoicesPage::getUrl(['invoice' => $invoice->reference]) }}">{{ $invoice->label() }}</a></td>
-                                <td class="pe-4"><x-filament::badge size="sm" :color="$invoice->status->color()">{{ $invoice->status->value }}</x-filament::badge></td><td>{{ $invoice->currency->value }} {{ $invoice->total()->toDecimal() }}</td></tr>
+                                <td class="pe-4"><x-filament::badge size="sm" :color="$invoice->status->color()">{{ $invoice->status->label() }}</x-filament::badge></td><td>{{ $invoice->currency->value }} {{ $invoice->total()->toDecimal() }}</td></tr>
                         @empty
                             <tr><td colspan="3" class="py-2 text-gray-500 dark:text-gray-400">No invoice.</td></tr>
                         @endforelse

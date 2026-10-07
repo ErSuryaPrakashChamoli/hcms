@@ -9,6 +9,8 @@ use App\Domain\Payments\Exceptions\WebhookRejectedException;
 use App\Domain\Payments\Support\PaymentStart;
 use App\Domain\Payments\Support\ProviderCheckout;
 use App\Domain\Payments\Support\ProviderPaymentUpdate;
+use App\Domain\Payments\Support\ProviderRefund;
+use App\Domain\Payments\Support\RefundStart;
 use App\Domain\Payments\Support\VerifiedProviderEvent;
 use App\Support\Money\Currency;
 
@@ -64,6 +66,21 @@ final class ManualBankTransferProvider implements PaymentProvider
     }
 
     public function interpret(VerifiedProviderEvent $event): ?ProviderPaymentUpdate
+    {
+        return null;
+    }
+
+    public function supportsRefunds(): bool
+    {
+        return false;
+    }
+
+    public function refund(RefundStart $refund): ProviderRefund
+    {
+        throw new PaymentProviderException('A bank transfer is refunded by a transfer made outside PeopleOS: record it when it is sent.');
+    }
+
+    public function fetchRefund(string $paymentReference, ?string $transactionReference, string $providerRefundReference): ?ProviderRefund
     {
         return null;
     }

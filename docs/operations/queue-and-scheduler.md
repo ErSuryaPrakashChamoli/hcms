@@ -74,6 +74,7 @@ Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterat
 | `peopleos:integrations:process` | every minute | leased claim | Apply due inbound integration events, retries, expired leases |
 | `peopleos:webhooks:deliver` | every minute | leased claim | Outbound webhook deliveries, retries, dead letters |
 | `peopleos:billing:provider-events` | every 5 min | **leased claim per provider event; the reconciler ignores outcomes already recorded (SaaS.7)** | Retry payment-provider events that arrived before their payment was known, failed, or were left by a crashed worker. Platform-level: it iterates events, not tenants; each event is applied in a tenant-aware job bound to the tenant resolved from the verified provider reference |
+| `peopleos:billing:run` | daily 00:45, **only when `PEOPLEOS_BILLING_RUN_ENABLED=true`** (off by default: no price exists until B-4) | **unique billing period per subscription, kind and start; the period and its draft invoice are created in one transaction (SaaS.7 completion)**; `TenantRunner` (suspended tenants included) | Calculate the billing periods that are due (monthly in arrears on the monthly peak, annual in advance on the commitment, monthly true-up) and draft their invoices. Drafts only: issue stays an operator step gated by a verified tax rule. Manual run: `php artisan peopleos:billing:run --tenant=<slug> --as-of=YYYY-MM-DD` |
 
 ## Configuration
 

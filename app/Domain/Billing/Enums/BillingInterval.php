@@ -2,7 +2,10 @@
 
 namespace App\Domain\Billing\Enums;
 
-/** SaaS.7: intervals a price can be expressed in. Representable, not offered: which ones are sold is decision B-3. */
+/**
+ * SaaS.7: how a price is billed (B-3, approved): monthly in arrears on the month's peak, or annually in advance on a
+ * committed quantity with monthly true-up in arrears. Both anchor on calendar months.
+ */
 enum BillingInterval: string
 {
     case Month = 'month';
@@ -11,8 +14,8 @@ enum BillingInterval: string
     public function label(): string
     {
         return match ($this) {
-            self::Month => 'per month',
-            self::Year => 'per year',
+            self::Month => 'billed monthly in arrears',
+            self::Year => 'billed annually in advance',
         };
     }
 }

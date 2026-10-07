@@ -76,6 +76,21 @@ final readonly class Money implements JsonSerializable
         return new self(self::fit(BigInteger::of($this->minor)->multipliedBy($quantity)), $this->currency);
     }
 
+    /** $part / $whole of the amount (e.g. 17 of 30 days), computed exactly and rounded once to the minor unit with $mode. */
+    public function prorated(int $part, int $whole, RoundingMode $mode): self
+    {
+        if ($whole < 1 || $part < 0 || $part > $whole) {
+            throw new InvalidArgumentException("{$part}/{$whole} is not a proration fraction.");
+        }
+        if ($part === $whole) {
+            return $this;
+        }
+        // Brick divides exactly and applies $mode to the exact quotient: one rounding, no intermediate precision loss.
+        $rounded = BigDecimal::of($this->minor)->multipliedBy($part)->dividedBy($whole, 0, $mode);
+
+        return new self(self::fit($rounded->toBigInteger()), $this->currency);
+    }
+
     /** $rate per cent ("18", "8.875"), computed exactly and rounded once to the minor unit with $mode. */
     public function percentage(string $rate, RoundingMode $mode): self
     {

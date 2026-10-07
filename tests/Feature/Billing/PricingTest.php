@@ -33,7 +33,7 @@ function publishPrice($catalog, $planVersion, $market, string $amount, string $f
     $price = \App\Domain\Billing\Models\PlanPrice::query()->where(['plan_version_id' => $planVersion->id, 'market_id' => $market->id, 'interval' => $interval])->first()
         ?? $catalog->createPrice($planVersion, $market, $interval, $basis, 'Fictional price', $operator);
 
-    return $catalog->publishPriceVersion($catalog->draftPriceVersion($price, $amount, 'Fictional amount', $operator), $from, 'Fictional publication', $operator);
+    return publishVersion($catalog->draftPriceVersion($price, $amount, 'Fictional amount', $operator), $from, $operator);
 }
 
 it('prices each market in its own currency and precision, independently versioned', function () {
@@ -64,11 +64,11 @@ it('publishes only today or later, after the previous version, for a published p
     $price = $this->catalog->createPrice($this->growth, $this->in, 'year', 'flat', 'Annual flat price', $this->operator);
     $draft = $this->catalog->draftPriceVersion($price, '20000', 'Draft', $this->operator);
     expect(fn () => $this->catalog->draftPriceVersion($price, '1', 'Second draft', $this->operator))->toThrow(RuntimeException::class, 'already has a draft')
-        ->and(fn () => $this->catalog->publishPriceVersion($draft, '2027-03-31', 'Back-dated', $this->operator))->toThrow(RuntimeException::class, 'today or later')
+        ->and(fn () => $this->catalog->requestPublication($draft, '2027-03-31', 'Back-dated', $this->operator))->toThrow(RuntimeException::class, 'today or later')
         ->and(fn () => $this->catalog->draftPriceVersion($price, '-1', 'Negative', $this->operator))->toThrow(RuntimeException::class);
-    $this->catalog->publishPriceVersion($draft, '2027-06-01', 'June start', $this->operator);
+    publishVersion($draft, '2027-06-01', $this->operator, $this->verifier);
     $next = $this->catalog->draftPriceVersion($price, '21000', 'Next version', $this->operator);
-    expect(fn () => $this->catalog->publishPriceVersion($next, '2027-06-01', 'Same day', $this->operator))->toThrow(RuntimeException::class, 'after the previous')
+    expect(fn () => $this->catalog->requestPublication($next, '2027-06-01', 'Same day', $this->operator))->toThrow(RuntimeException::class, 'after the previous')
         ->and(fn () => $this->catalog->createPrice($this->growth, $this->in, 'year', 'flat', 'Duplicate', $this->operator))->toThrow(RuntimeException::class, 'already has')
         ->and(fn () => $this->catalog->createPrice($this->growth, $this->in, 'week', 'flat', 'Bad interval', $this->operator))->toThrow(RuntimeException::class)
         ->and(fn () => $this->catalog->createMarket('IN-TEST', 'Again', 'INR', ['IN'], 'X1', 'en_IN', 'Duplicate code', $this->operator))->toThrow(RuntimeException::class)
@@ -93,7 +93,10 @@ it('pins a price version to a subscription and answers what applied on a day; la
     $may = publishPrice($this->catalog, $this->growth, $this->in, '249.00', '2027-05-01', $this->operator);
     $applies = fn (string $day) => (($a = $terms->applicableOn($sub, $day)) === null ? null : [$a['unit_amount']->toDecimal(), $a['unit_amount']->currency->value, $a['consistent']]);
     expect($applies('2027-03-31'))->toBeNull()->and($applies('2027-04-01'))->toBe(['199.00', 'INR', true])->and($applies('2027-06-01'))->toBe(['199.00', 'INR', true])
-        ->and(fn () => $terms->set($sub, $april, '2027-05-01', 'Old price after the new one starts', $this->operator))->toThrow(RuntimeException::class, 'not the version of this price on sale');
+        ->and(fn () => $terms->set($sub, $april, '2027-05-01', 'Old price after the new one starts', $this->operator))->toThrow(RuntimeException::class, 'not the version of this price on sale')
+        // B-15: an increase for an existing subscriber needs a written notice at least 30 days ahead.
+        ->and(fn () => $terms->set($sub, $may, '2027-07-01', 'Increase without notice', $this->operator))->toThrow(RuntimeException::class, 'record a written notice');
+    app(\App\Domain\Billing\Services\PriceNotices::class)->record($sub, $may, '2027-04-15', '2027-07-01', 'Price increase letter sent', $this->operator, 'LETTER-1');
     $terms->set($sub, $may, '2027-07-01', 'Renewal at the May price', $this->operator);
     expect($applies('2027-06-30'))->toBe(['199.00', 'INR', true])->and($applies('2027-07-01'))->toBe(['249.00', 'INR', true]);
 

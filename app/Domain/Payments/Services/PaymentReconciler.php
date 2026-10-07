@@ -5,6 +5,7 @@ namespace App\Domain\Payments\Services;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Billing\Enums\InvoiceStatus;
 use App\Domain\Billing\Models\Invoice;
+use App\Domain\Billing\Models\InvoiceTdsClaim;
 use App\Domain\Billing\Services\BillingAudit;
 use App\Domain\Billing\Services\Invoices;
 use App\Domain\Identity\Models\User;
@@ -14,15 +15,20 @@ use App\Domain\Payments\Models\Payment;
 use App\Domain\Payments\Support\ProviderPaymentUpdate;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Facades\DB;
 
 /**
  * SaaS.7: applies a payment outcome (verified provider event, server-side fetch, or operator-recorded transfer) to
  * a payment and its invoice, in one transaction under the invoice and payment locks (always in that order).
  * States only move forward; the same outcome twice is a no-op; an outcome arriving after a final one is ignored.
- * A success settles the invoice only when the amount and currency match the payment exactly and the invoice is
- * issued and unpaid; otherwise the payment is a reconciliation exception for an operator (no partial payment, no
- * overpayment, no automatic refund). Nothing here touches subscriptions, entitlements or authorisation.
+ * A success settles the invoice only when the amount and currency match the payment exactly and equal the amount
+ * due (the total less credit notes and declared customer TDS, B-11) on an open invoice; it is then paid, or
+ * partially paid while that TDS awaits its certificate. Anything else is a reconciliation exception for an operator
+ * (a short payment is never assumed to be TDS; no other partial payment, no overpayment, no automatic refund). The
+ * provider's settlement (usually INR, B-14) is recorded once beside the payment and never changes its amount or the
+ * invoice's. Nothing here touches subscriptions, entitlements or authorisation.
  */
 final class PaymentReconciler
 {
@@ -64,14 +70,21 @@ final class PaymentReconciler
 
             $code = $this->mismatch($locked, $invoice, $update);
             $locked->forceFill(['status' => PaymentStatus::Succeeded, 'completed_at' => now(), 'method' => $update->method ?? $locked->method,
-                'settlement_amount_minor' => $update->settlement?->minor, 'settlement_currency' => $update->settlement?->currency,
-                'reconciliation_status' => $code === null ? ReconciliationStatus::Matched : ReconciliationStatus::Exception, 'reconciliation_code' => $code])->save();
+                'reconciliation_status' => $code === null ? ReconciliationStatus::Matched : ReconciliationStatus::Exception, 'reconciliation_code' => $code]
+                + ($locked->provider_transaction_reference === null && $update->transactionReference !== null ? ['provider_transaction_reference' => $update->transactionReference] : [])
+                + $this->settlement($locked, $update))->save();
             $received = $update->amount === null ? 'unknown amount' : "{$update->amount->currency->value} {$update->amount->toDecimal()}";
             $this->audit->both(AuditAction::PaymentSucceeded, 'payments', $tenant, $locked, "payment {$locked->reference}",
                 [['field' => 'status', 'before' => $before, 'after' => 'succeeded'], ['field' => 'received', 'before' => null, 'after' => $received]],
                 $trigger === 'operator' ? 'Bank transfer recorded by an operator' : "Confirmed by {$trigger}", $actor, $meta);
+            if ($locked->settlement_recorded_at !== null && $update->settlement !== null) {
+                $this->audit->both(AuditAction::PaymentSettlementRecorded, 'payments', $tenant, $locked, "payment {$locked->reference}",
+                    [['field' => 'settlement', 'before' => null, 'after' => "{$update->settlement->currency->value} {$update->settlement->toDecimal()}"]],
+                    "Settlement reported by {$locked->settlement_fx_source}", $actor, $meta + ['implied_rate' => $locked->settlement_fx_rate]);
+            }
             if ($code === null) {
-                $this->invoices->markPaid($invoice, $locked->id, $actor, $trigger, "Paid by payment {$locked->reference}", $correlation);
+                $tdsPending = InvoiceTdsClaim::query()->where(['invoice_id' => $invoice->id, 'status' => InvoiceTdsClaim::PENDING])->sharedLock()->exists();
+                $this->invoices->markPaid($invoice, $locked->id, $actor, $trigger, "Paid by payment {$locked->reference}", $correlation, $tdsPending);
 
                 return 'applied';
             }
@@ -89,10 +102,54 @@ final class PaymentReconciler
         return match (true) {
             $update->amount === null => 'amount_missing',
             $update->amount->currency !== $payment->currency || $payment->currency !== $invoice->currency => 'currency_mismatch',
-            $update->amount->minor !== $payment->amount_minor || $payment->amount_minor !== $invoice->total_minor => 'amount_mismatch',
-            $invoice->status === InvoiceStatus::Paid => 'invoice_already_paid',
+            $invoice->status === InvoiceStatus::Paid || $invoice->status === InvoiceStatus::PartiallyPaid => 'invoice_already_paid',
+            $update->amount->minor !== $payment->amount_minor || ($invoice->status === InvoiceStatus::Issued && $payment->amount_minor !== $this->invoices->amountDue($invoice)->minor) => 'amount_mismatch',
             $invoice->status !== InvoiceStatus::Issued => 'invoice_not_payable',
             default => null,
         };
+    }
+
+    /**
+     * B-14: what the provider or bank credited Markedge, recorded once, with the rate it implies (settlement ÷ amount,
+     * for reporting only: nothing is ever converted with it).
+     *
+     * @return array<string, mixed>
+     */
+    private function settlement(Payment $payment, ProviderPaymentUpdate $update): array
+    {
+        if ($update->settlement === null || $payment->settlement_recorded_at !== null || $update->amount === null || $update->amount->isZero()) {
+            return [];
+        }
+        $rate = BigDecimal::ofUnscaledValue($update->settlement->minor, $update->settlement->currency->minorUnits())
+            ->dividedBy(BigDecimal::ofUnscaledValue($update->amount->minor, $update->amount->currency->minorUnits()), 10, RoundingMode::HalfUp);
+
+        return ['settlement_amount_minor' => $update->settlement->minor, 'settlement_currency' => $update->settlement->currency->value,
+            'settlement_fx_rate' => (string) $rate, 'settlement_fx_source' => mb_substr($update->settlementSource ?? 'provider', 0, 64), 'settlement_recorded_at' => now()];
+    }
+
+    /**
+     * Settles an open invoice with a payment held as an amount_mismatch exception once a declared TDS makes it exact
+     * (B-11). Runs inside the caller's transaction with the invoice locked.
+     */
+    public function rematch(Invoice $locked, ?User $actor, string $reason): ?Payment
+    {
+        if (DB::transactionLevel() === 0 || $locked->status !== InvoiceStatus::Issued) {
+            return null;
+        }
+        $due = $this->invoices->amountDue($locked);
+        $payment = Payment::query()->where(['invoice_id' => $locked->id, 'status' => PaymentStatus::Succeeded, 'reconciliation_status' => ReconciliationStatus::Exception,
+            'reconciliation_code' => 'amount_mismatch', 'currency' => $locked->currency->value, 'amount_minor' => $due->minor])->orderBy('id')->lockForUpdate()->first();
+        if ($payment === null) {
+            return null;
+        }
+        $tenant = Tenant::query()->findOrFail($locked->tenant_id);
+        $payment->forceFill(['reconciliation_status' => ReconciliationStatus::Matched, 'reconciliation_note' => mb_substr($reason, 0, 500)])->save();
+        $this->audit->both(AuditAction::PaymentExceptionResolved, 'payments', $tenant, $payment, "payment {$payment->reference}",
+            [['field' => 'reconciliation', 'before' => 'exception: amount_mismatch', 'after' => 'matched (with declared TDS)']], $reason, $actor,
+            ['payment_reference' => $payment->reference, 'invoice_reference' => $locked->reference, 'amount_due' => "{$due->currency->value} {$due->toDecimal()}"]);
+        $tdsPending = InvoiceTdsClaim::query()->where(['invoice_id' => $locked->id, 'status' => InvoiceTdsClaim::PENDING])->sharedLock()->exists();
+        $this->invoices->markPaid($locked, $payment->id, $actor, 'tds_declared', "Paid by payment {$payment->reference} with declared TDS", null, $tdsPending);
+
+        return $payment;
     }
 }

@@ -128,19 +128,23 @@ class PlatformBillingCatalogPage extends Page
             Action::make('draftPriceVersion')->label('Draft amount')->icon(Heroicon::OutlinedDocumentPlus)->visible(fn () => $this->prices()->isNotEmpty())
                 ->schema([
                     Select::make('price')->label('Price')->required()->options(fn () => $this->prices()->mapWithKeys(fn ($p) => [$p->id => app(BillingCatalog::class)->priceLabel($p)])->all()),
-                    TextInput::make('amount')->label('Unit amount in the market currency (major units)')->required()->placeholder('1499.00')->helperText('Exact to the currency\'s decimals (JPY none, BHD three).'),
+                    TextInput::make('amount')->label('Unit amount in the market currency (major units)')->required()->placeholder('1499.00')
+                        ->helperText('Per employee per month for a per-employee price, whatever the interval. Exact to the currency\'s decimals (JPY none, BHD three). Never converted from another market.'),
+                    TextInput::make('minimum')->label('Minimum quantity (employees, optional)')->numeric()->minValue(0)->default(0),
                     $reason(),
                 ])
-                ->action(fn (array $data) => $this->attempt(fn () => $service()->draftPriceVersion(PlanPrice::query()->findOrFail((int) $data['price']), (string) $data['amount'], $data['reason'], auth()->user()), 'Amount drafted')),
-            Action::make('publishPriceVersion')->label('Publish amount')->icon(Heroicon::OutlinedRocketLaunch)->color('success')
+                ->action(fn (array $data) => $this->attempt(fn () => $service()->draftPriceVersion(PlanPrice::query()->findOrFail((int) $data['price']), (string) $data['amount'], $data['reason'],
+                    auth()->user(), (int) ($data['minimum'] ?? 0)), 'Amount drafted')),
+            Action::make('requestPublication')->label('Request publication')->icon(Heroicon::OutlinedRocketLaunch)->color('success')
                 ->visible(fn () => PlanPriceVersion::query()->where('status', VersionStatus::Draft)->exists())
-                ->modalDescription('Published from the chosen date (today or later) and never changed. Existing billing terms keep the version they pinned.')
+                ->modalDescription('Maker-checker: another operator approves the publication on the Approvals page. Once published from the date (today or later) it never changes, and existing billing terms keep the version they pinned.')
                 ->schema([
                     Select::make('version')->label('Draft')->required()->options(fn () => $this->versionsWhere(VersionStatus::Draft)),
                     DatePicker::make('from')->label('On sale from')->native(false)->required()->default(now()->toDateString()),
                     $reason(),
                 ])
-                ->action(fn (array $data) => $this->attempt(fn () => $service()->publishPriceVersion(PlanPriceVersion::query()->findOrFail((int) $data['version']), substr((string) $data['from'], 0, 10), $data['reason'], auth()->user()), 'Amount published')),
+                ->action(fn (array $data) => $this->attempt(fn () => $service()->requestPublication(PlanPriceVersion::query()->findOrFail((int) $data['version']), substr((string) $data['from'], 0, 10),
+                    $data['reason'], auth()->user()), 'Publication requested: another operator approves it')),
             Action::make('retirePriceVersion')->label('Retire amount')->icon(Heroicon::OutlinedArchiveBox)->color('gray')
                 ->visible(fn () => PlanPriceVersion::query()->whereIn('status', [VersionStatus::Draft, VersionStatus::Published])->exists())
                 ->modalDescription('A published version stops being on sale (terms already pinned to it keep it); a draft is abandoned.')
@@ -153,7 +157,8 @@ class PlatformBillingCatalogPage extends Page
     private function versionsWhere(VersionStatus $status): array
     {
         return PlanPriceVersion::query()->with('price.planVersion.plan', 'price.market')->where('status', $status)->get()
-            ->mapWithKeys(fn (PlanPriceVersion $v) => [$v->id => app(BillingCatalog::class)->priceLabel($v->price)." · v{$v->version} · {$v->currency->value} {$v->amount()->toDecimal()} ({$status->value})"])->all();
+            ->mapWithKeys(fn (PlanPriceVersion $v) => [$v->id => app(BillingCatalog::class)->priceLabel($v->price)." · v{$v->version} · {$v->currency->value} {$v->amount()->toDecimal()}"
+                .($v->minimum_quantity > 0 ? " · minimum {$v->minimum_quantity}" : '')." ({$status->value})"])->all();
     }
 
     /** @return list<string> */

@@ -8,6 +8,8 @@ use App\Domain\Payments\Exceptions\WebhookRejectedException;
 use App\Domain\Payments\Support\PaymentStart;
 use App\Domain\Payments\Support\ProviderCheckout;
 use App\Domain\Payments\Support\ProviderPaymentUpdate;
+use App\Domain\Payments\Support\ProviderRefund;
+use App\Domain\Payments\Support\RefundStart;
 use App\Domain\Payments\Support\VerifiedProviderEvent;
 use App\Support\Money\Currency;
 
@@ -15,7 +17,8 @@ use App\Support\Money\Currency;
  * SaaS.7: the payment provider boundary. Invoices, subscriptions, tax, tenant lifecycle and entitlements never
  * know a provider; a provider adapter never touches them. Provider SDKs, field names and event names live only in
  * the adapter. Confirmation comes only from verifyWebhook()/interpret() on a signed event or from fetch() on the
- * server, never from a browser redirect.
+ * server, never from a browser redirect. Refunds (B-12) are made only against an approved credit note; a provider
+ * that cannot refund leaves it to an operator-recorded bank transfer.
  */
 interface PaymentProvider
 {
@@ -44,4 +47,13 @@ interface PaymentProvider
 
     /** Null when the event is not about a payment PeopleOS handles (it is then ignored). */
     public function interpret(VerifiedProviderEvent $event): ?ProviderPaymentUpdate;
+
+    /** Whether refunds are made through the provider (otherwise an operator records the bank transfer). */
+    public function supportsRefunds(): bool;
+
+    /** Idempotent on $refund->refundReference. @throws PaymentProviderException */
+    public function refund(RefundStart $refund): ProviderRefund;
+
+    /** The provider's current view of a refund, fetched server-side; null when it does not know it. */
+    public function fetchRefund(string $paymentReference, ?string $transactionReference, string $providerRefundReference): ?ProviderRefund;
 }

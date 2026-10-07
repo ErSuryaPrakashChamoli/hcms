@@ -1,6 +1,8 @@
 <?php
 
 use App\Domain\Billing\Models\BillingMarket;
+use App\Domain\Billing\Models\FinancialApproval;
+use App\Domain\Billing\Models\PlanPriceVersion;
 use App\Domain\Billing\Models\Invoice;
 use App\Domain\Billing\Models\InvoiceNumberSeries;
 use App\Domain\Billing\Models\SupplierProfile;
@@ -12,6 +14,7 @@ use App\Domain\Billing\Services\InvoiceSeries;
 use App\Domain\Billing\Services\SupplierProfiles;
 use App\Domain\Billing\Support\InvoiceLineInput;
 use App\Domain\Identity\Models\User;
+use App\Domain\Payments\Services\ApprovalDesk;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Tax\Enums\TaxRegime;
 use App\Domain\Tax\Jurisdictions\India\GstinValidator;
@@ -90,6 +93,20 @@ function draftInvoice(Tenant $tenant, BillingMarket $market, User $operator, arr
     return app(Invoices::class)->draft($tenant, $market, $lines, 'Fictional draft for tests', $operator, idempotencyKey: $key);
 }
 
+/** B-13: approves (and so carries out) a maker-checker request as a second operator. */
+function approveAs(FinancialApproval $approval, ?User $checker = null, string $reason = 'Checked and approved'): FinancialApproval
+{
+    return app(ApprovalDesk::class)->approve($approval, $reason, $checker ?? platformAdmin());
+}
+
+/** Publishes a draft price version through maker-checker: $maker requests, a second operator approves. */
+function publishVersion(PlanPriceVersion $version, string $from, User $maker, ?User $checker = null): PlanPriceVersion
+{
+    approveAs(app(BillingCatalog::class)->requestPublication($version, $from, 'Fictional publication', $maker), $checker);
+
+    return $version->fresh();
+}
+
 /** The whole India setup: supplier, market, series, verified rule. @return array{market: BillingMarket, supplier: SupplierProfile, rule: TaxRule, operator: User, verifier: User} */
 function indiaBilling(): array
 {
@@ -100,4 +117,145 @@ function indiaBilling(): array
     $rule = verifiedIndiaRule($operator, $verifier);
 
     return compact('market', 'supplier', 'rule', 'operator', 'verifier');
+}
+
+/*
+ | SaaS.7 completion helpers: employees with an effective-dated lifecycle history (recorded through the engine,
+ | possibly back-dated), and the billing run's periods.
+ */
+
+/** A pre-employee who joins (joined → probation) on $joined, when given. */
+function staff(Tenant $tenant, ?string $joined): \App\Domain\Employment\Models\Employee
+{
+    return app(\App\Support\Tenancy\TenantContext::class)->runAs($tenant, function () use ($joined) {
+        $employee = \App\Domain\Lifecycle\Services\LifecycleEngine::unguarded(fn () => \App\Domain\Employment\Models\Employee::factory()
+            ->create(['lifecycle_state' => \App\Domain\Lifecycle\Enums\LifecycleState::PreEmployee, 'joining_date' => null]));
+        if ($joined !== null) {
+            $engine = app(\App\Domain\Lifecycle\Services\LifecycleEngine::class);
+            $engine->transition($employee, \App\Domain\Lifecycle\Enums\LifecycleState::Joined, $joined, 'Joined');
+            $engine->transition($employee, \App\Domain\Lifecycle\Enums\LifecycleState::Probation, $joined, 'Probation');
+        }
+
+        return $employee->fresh();
+    });
+}
+
+function staffMove(Tenant $tenant, \App\Domain\Employment\Models\Employee $employee, \App\Domain\Lifecycle\Enums\LifecycleState $to, string $on): \App\Domain\Employment\Models\Employee
+{
+    return app(\App\Support\Tenancy\TenantContext::class)->runAs($tenant,
+        fn () => app(\App\Domain\Lifecycle\Services\LifecycleEngine::class)->transition($employee->fresh(), $to, $on, 'Lifecycle change')->fresh());
+}
+
+/** Notice → exited (last day $lastDay) → alumni. */
+function staffExit(Tenant $tenant, \App\Domain\Employment\Models\Employee $employee, string $lastDay): \App\Domain\Employment\Models\Employee
+{
+    staffMove($tenant, $employee, \App\Domain\Lifecycle\Enums\LifecycleState::NoticePeriod, $lastDay);
+    staffMove($tenant, $employee, \App\Domain\Lifecycle\Enums\LifecycleState::Exited, $lastDay);
+
+    return staffMove($tenant, $employee, \App\Domain\Lifecycle\Enums\LifecycleState::Alumni, $lastDay);
+}
+
+/** @return \Illuminate\Support\Collection<int, \App\Domain\Billing\Models\BillingPeriod> keyed "kind start" */
+function billingPeriodsOf(Tenant $tenant): \Illuminate\Support\Collection
+{
+    return app(\App\Support\Tenancy\TenantContext::class)->runAs($tenant, fn () => \App\Domain\Billing\Models\BillingPeriod::query()->with('invoice')->orderBy('period_start')->orderBy('kind')->get()
+        ->keyBy(fn ($p) => "{$p->kind->value} {$p->period_start->toDateString()}"));
+}
+
+/** A per-employee price of $planVersion in $market, its first version published (maker-checker) from $from. */
+function pepmPrice(\App\Domain\Entitlements\Models\PlanVersion $planVersion, BillingMarket $market, string $interval, string $amount, string $from, User $maker, User $checker, int $minimum = 0): PlanPriceVersion
+{
+    $catalog = app(BillingCatalog::class);
+    $price = \App\Domain\Billing\Models\PlanPrice::query()->where(['plan_version_id' => $planVersion->id, 'market_id' => $market->id, 'interval' => $interval])->first()
+        ?? $catalog->createPrice($planVersion, $market, $interval, 'per_active_employee', 'Fictional PEPM price', $maker);
+
+    return publishVersion($catalog->draftPriceVersion($price, $amount, 'Fictional amount', $maker, $minimum), $from, $maker, $checker);
+}
+
+/** Razorpay in TEST MODE with fictional keys (never a real key; no request leaves the test: see fakeRazorpay()). */
+function razorpayTestMode(array $overrides = []): void
+{
+    config(['peopleos.billing.razorpay' => array_merge(config('peopleos.billing.razorpay'), ['enabled' => true, 'key_id' => 'rzp_test_FICTIONAL0001',
+        'key_secret' => 'fictional-key-secret', 'webhook_secret' => 'fictional-razorpay-webhook-secret'], $overrides)]);
+}
+
+/**
+ * A fake Razorpay API: orders (create, list by receipt, an order's payments) and refunds, kept in memory.
+ *
+ * @return ArrayObject<string, mixed> the fake's state: orders, payments (by order id), refunds, requests
+ */
+function fakeRazorpay(): ArrayObject
+{
+    $state = new ArrayObject(['orders' => [], 'payments' => [], 'refunds' => [], 'requests' => []]);
+    \Illuminate\Support\Facades\Http::fake(function (\Illuminate\Http\Client\Request $request) use ($state) {
+        $path = parse_url($request->url(), PHP_URL_PATH);
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+        $state['requests'] = [...$state['requests'], [$request->method(), $path, $request->hasHeader('Authorization') ? 'auth' : 'none']];
+        if ($request->method() === 'GET' && $path === '/v1/orders') {
+            $items = array_values(array_filter($state['orders'], fn ($o) => ! isset($query['receipt']) || $o['receipt'] === $query['receipt']));
+
+            return \Illuminate\Support\Facades\Http::response(['entity' => 'collection', 'count' => count($items), 'items' => $items]);
+        }
+        if ($request->method() === 'POST' && $path === '/v1/orders') {
+            $order = ['id' => 'order_FAKE'.str_pad((string) (count($state['orders']) + 1), 6, '0', STR_PAD_LEFT), 'entity' => 'order', 'amount' => $request['amount'],
+                'currency' => $request['currency'], 'receipt' => $request['receipt'], 'status' => 'created', 'notes' => $request['notes']];
+            $state['orders'] = [...$state['orders'], $order];
+
+            return \Illuminate\Support\Facades\Http::response($order);
+        }
+        if ($request->method() === 'GET' && preg_match('#^/v1/orders/([^/]+)/payments$#', $path, $m)) {
+            $items = $state['payments'][$m[1]] ?? [];
+
+            return \Illuminate\Support\Facades\Http::response(['entity' => 'collection', 'count' => count($items), 'items' => $items]);
+        }
+        if ($request->method() === 'GET' && preg_match('#^/v1/payments/([^/]+)/refunds$#', $path, $m)) {
+            $items = array_values(array_filter($state['refunds'], fn ($r) => $r['payment_id'] === $m[1]));
+
+            return \Illuminate\Support\Facades\Http::response(['entity' => 'collection', 'count' => count($items), 'items' => $items]);
+        }
+        if ($request->method() === 'GET' && preg_match('#^/v1/payments/([^/]+)/refunds/([^/]+)$#', $path, $m)) {
+            $refund = collect($state['refunds'])->firstWhere('id', $m[2]);
+
+            return $refund === null ? \Illuminate\Support\Facades\Http::response(['error' => ['description' => 'not found']], 404) : \Illuminate\Support\Facades\Http::response($refund);
+        }
+        if ($request->method() === 'POST' && preg_match('#^/v1/payments/([^/]+)/refund$#', $path, $m)) {
+            $refund = ['id' => 'rfnd_FAKE'.(count($state['refunds']) + 1), 'entity' => 'refund', 'amount' => $request['amount'], 'payment_id' => $m[1],
+                'receipt' => $request['receipt'], 'notes' => $request['notes'], 'status' => 'processed'];
+            $state['refunds'] = [...$state['refunds'], $refund];
+
+            return \Illuminate\Support\Facades\Http::response($refund);
+        }
+
+        return \Illuminate\Support\Facades\Http::response(['error' => ['description' => 'unexpected request']], 400);
+    });
+
+    return $state;
+}
+
+/** A Razorpay payment entity captured on an order (fictional ids). @return array<string, mixed> */
+function razorpayPayment(string $orderId, int $amount, string $currency, ?int $baseAmount = null, string $id = 'pay_FAKE000001', string $status = 'captured'): array
+{
+    return array_filter(['id' => $id, 'entity' => 'payment', 'amount' => $amount, 'currency' => $currency, 'status' => $status, 'order_id' => $orderId, 'method' => 'card',
+        'international' => $currency !== 'INR', 'base_amount' => $baseAmount, 'base_currency' => $baseAmount === null ? null : 'INR'], fn ($v) => $v !== null);
+}
+
+/** A signed Razorpay webhook body and headers. @return array{0: string, 1: array<string, string>} */
+function razorpayWebhook(string $eventId, string $event, array $payment, ?string $secret = null): array
+{
+    $body = json_encode(['entity' => 'event', 'account_id' => 'acc_FAKE', 'event' => $event, 'contains' => ['payment'], 'payload' => ['payment' => ['entity' => $payment]],
+        'created_at' => now()->getTimestamp()]);
+
+    return [$body, ['X-Razorpay-Signature' => hash_hmac('sha256', $body, $secret ?? (string) config('peopleos.billing.razorpay.webhook_secret')), 'X-Razorpay-Event-Id' => $eventId]];
+}
+
+/** Posts a raw provider webhook (signed sandbox headers unless given). */
+function postWebhook($test, string $body, ?array $headers = null, string $provider = 'sandbox')
+{
+    $headers ??= \App\Domain\Payments\Providers\SandboxProvider::signedHeaders($body);
+    $server = ['CONTENT_TYPE' => 'application/json'];
+    foreach ($headers as $name => $value) {
+        $server['HTTP_'.strtoupper(str_replace('-', '_', $name))] = $value;
+    }
+
+    return $test->call('POST', "/webhooks/billing/{$provider}", [], [], [], $server, $body);
 }

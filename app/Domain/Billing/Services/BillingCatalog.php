@@ -3,9 +3,11 @@
 namespace App\Domain\Billing\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Billing\Enums\ApprovalAction;
 use App\Domain\Billing\Enums\BillingInterval;
 use App\Domain\Billing\Enums\PricingBasis;
 use App\Domain\Billing\Models\BillingMarket;
+use App\Domain\Billing\Models\FinancialApproval;
 use App\Domain\Billing\Models\PlanPrice;
 use App\Domain\Billing\Models\PlanPriceVersion;
 use App\Domain\Configuration\Enums\VersionStatus;
@@ -24,13 +26,17 @@ use RuntimeException;
 /**
  * SaaS.7: markets and prices (platform catalogue). A price belongs to one published plan version, one market and
  * one interval; its amounts are versions (draft → published → retired), each published from a date (today or
- * later, after the previous one) and never changed. Markets and prices are independent: changing one market's
- * price never touches another's, and a new price version never re-prices an existing subscriber (billing terms
- * pin a version). No market or price is created by SaaS.7; the values are business decisions (B-1, B-4).
+ * later, after the previous one) and never changed. Markets and prices are independent: each market has its own
+ * prices in its own currency, set by the business, never derived from another market's price by an exchange rate.
+ * A new price version never re-prices an existing subscriber (billing terms pin a version; B-15).
+ *
+ * SaaS.7 completion: a per-employee unit amount is per employee per month (B-1) with an optional minimum quantity;
+ * publication is maker-checker (B-13): requestPublication() by one operator, executed only when another approves.
+ * No market or price is created by SaaS.7; the amounts are a business decision (B-4, pending).
  */
 final class BillingCatalog
 {
-    public function __construct(private readonly BillingAudit $audit) {}
+    public function __construct(private readonly BillingAudit $audit, private readonly FinancialApprovals $approvals) {}
 
     /** @param  list<string>  $countries */
     public function createMarket(string $code, string $name, string $currency, array $countries, string $supplierEntity, string $locale, string $reason, User $actor): BillingMarket
@@ -82,70 +88,102 @@ final class BillingCatalog
             throw new RuntimeException("{$planVersion->label()} is {$planVersion->status->value}: only a published plan version can be priced.");
         }
         if (PlanPrice::query()->where(['plan_version_id' => $planVersion->id, 'market_id' => $market->id, 'interval' => $interval])->exists()) {
-            throw new RuntimeException("{$planVersion->label()} already has a {$interval->label()} price in {$market->code}: draft a new version of it.");
+            throw new RuntimeException("{$planVersion->label()} already has a {$interval->value} price in {$market->code}: draft a new version of it.");
         }
         $price = PlanPrice::query()->create(['plan_version_id' => $planVersion->id, 'market_id' => $market->id, 'interval' => $interval, 'basis' => $basis,
             'reason' => $reason, 'created_by' => $actor->id]);
         $this->audit->platform(AuditAction::PriceCreated, 'billing', $price, $this->priceLabel($price),
-            [['field' => 'price', 'before' => 'none', 'after' => "{$basis->label()} {$interval->label()}"]], $reason, $actor,
+            [['field' => 'price', 'before' => 'none', 'after' => "{$basis->label()}, {$interval->label()}"]], $reason, $actor,
             ['plan_price_id' => $price->id, 'plan_version_id' => $planVersion->id, 'market_id' => $market->id, 'interval' => $interval->value, 'basis' => $basis->value]);
 
         return $price;
     }
 
-    /** $amount in the market currency's major unit ("1499.00", "1250" JPY); exact to its minor units. */
-    public function draftPriceVersion(PlanPrice $price, string $amount, string $reason, User $actor): PlanPriceVersion
+    /**
+     * $amount in the market currency's major unit ("1499.00", "1250" JPY); exact to its minor units. For a
+     * per-employee price it is per employee per month; $minimumQuantity is the optional floor of billable employees.
+     */
+    public function draftPriceVersion(PlanPrice $price, string $amount, string $reason, User $actor, int $minimumQuantity = 0): PlanPriceVersion
     {
         OperatorChange::assert($actor, $reason, 'prices');
+        if ($minimumQuantity < 0 || $minimumQuantity > 1000000) {
+            throw new RuntimeException('The minimum quantity is 0 (none) to 1,000,000 employees.');
+        }
+        if ($minimumQuantity > 0 && $price->basis !== PricingBasis::PerActiveEmployee) {
+            throw new RuntimeException('A minimum quantity applies only to a per-employee price.');
+        }
 
-        return DB::transaction(function () use ($price, $amount, $reason, $actor) {
+        return DB::transaction(function () use ($price, $amount, $reason, $actor, $minimumQuantity) {
             $price = PlanPrice::query()->with('market')->lockForUpdate()->findOrFail($price->id);
             if (PlanPriceVersion::query()->where(['plan_price_id' => $price->id, 'status' => VersionStatus::Draft])->exists()) {
                 throw new RuntimeException('This price already has a draft version: publish or retire it first.');
             }
             $money = $this->amount($amount, $price->market->currency);
             $version = PlanPriceVersion::query()->create(['plan_price_id' => $price->id, 'version' => (int) PlanPriceVersion::query()->where('plan_price_id', $price->id)->max('version') + 1,
-                'status' => VersionStatus::Draft, 'currency' => $money->currency, 'unit_amount_minor' => $money->minor, 'reason' => $reason, 'created_by' => $actor->id]);
+                'status' => VersionStatus::Draft, 'currency' => $money->currency, 'unit_amount_minor' => $money->minor, 'minimum_quantity' => $minimumQuantity,
+                'reason' => $reason, 'created_by' => $actor->id]);
             $this->audit->platform(AuditAction::PriceVersionDrafted, 'billing', $version, "{$this->priceLabel($price)} v{$version->version}",
-                [['field' => 'unit_amount', 'before' => 'none', 'after' => "{$money->currency->value} {$money->toDecimal()}"]], $reason, $actor,
-                ['plan_price_id' => $price->id, 'unit_amount_minor' => $money->minor, 'currency' => $money->currency->value]);
+                [['field' => 'unit_amount', 'before' => 'none', 'after' => "{$money->currency->value} {$money->toDecimal()}"],
+                    ['field' => 'minimum_quantity', 'before' => null, 'after' => $minimumQuantity]], $reason, $actor,
+                ['plan_price_id' => $price->id, 'unit_amount_minor' => $money->minor, 'currency' => $money->currency->value, 'minimum_quantity' => $minimumQuantity]);
 
             return $version;
         });
     }
 
-    public function publishPriceVersion(PlanPriceVersion $version, string $effectiveFrom, string $reason, User $actor): PlanPriceVersion
+    /** Asks for a draft to go on sale from $effectiveFrom (B-13: published only when another operator approves). */
+    public function requestPublication(PlanPriceVersion $version, string $effectiveFrom, string $reason, User $maker): FinancialApproval
     {
-        OperatorChange::assert($actor, $reason, 'prices');
+        OperatorChange::assert($maker, $reason, 'prices');
         $from = $this->day($effectiveFrom);
+        $version = PlanPriceVersion::query()->findOrFail($version->id);
+        $price = PlanPrice::query()->with('planVersion.plan', 'market')->findOrFail($version->plan_price_id);
+        $this->assertPublishable($price, $version, $from);
+        $amount = "{$version->currency->value} {$version->amount()->toDecimal()}";
+
+        return $this->approvals->request(ApprovalAction::PricePublication, $version, null,
+            ['plan_price_version_id' => $version->id, 'price' => $this->priceLabel($price), 'version' => $version->version, 'unit_amount' => $amount,
+                'minimum_quantity' => $version->minimum_quantity, 'effective_from' => $from],
+            ['status' => 'draft', 'on_sale' => ($current = $this->versionOnSale($price, $from)) === null ? 'none' : "v{$current->version} {$current->currency->value} {$current->amount()->toDecimal()}"],
+            ['status' => 'published', 'on_sale' => "v{$version->version} {$amount} from {$from}"],
+            "{$version->id}:{$from}", $reason, $maker);
+    }
+
+    /** Executes an approved publication (called by the approval desk, inside its transaction). */
+    public function executePublication(FinancialApproval $approval): PlanPriceVersion
+    {
+        $approval = $this->approvals->claim($approval, ApprovalAction::PricePublication);
+        $from = (string) $approval->payload['effective_from'];
+        $checker = User::query()->findOrFail($approval->checker_id);
+        $price = PlanPrice::query()->with('planVersion.plan', 'market')->lockForUpdate()->findOrFail(PlanPriceVersion::query()->findOrFail($approval->subject_id)->plan_price_id);
+        $locked = PlanPriceVersion::query()->lockForUpdate()->findOrFail($approval->subject_id);
+        $this->assertPublishable($price, $locked, $from);
+        $locked->forceFill(['status' => VersionStatus::Published, 'effective_from' => $from, 'published_by' => $checker->id, 'published_at' => now()])->save();
+        $this->audit->platform(AuditAction::PriceVersionPublished, 'billing', $locked, "{$this->priceLabel($price)} v{$locked->version}",
+            [['field' => 'status', 'before' => 'draft', 'after' => 'published'], ['field' => 'unit_amount', 'before' => null, 'after' => "{$locked->currency->value} {$locked->amount()->toDecimal()}"]],
+            (string) $approval->checker_reason, $checker, ['plan_price_id' => $price->id, 'plan_price_version_id' => $locked->id, 'unit_amount_minor' => $locked->unit_amount_minor,
+                'currency' => $locked->currency->value, 'minimum_quantity' => $locked->minimum_quantity, 'approval' => $approval->reference, 'maker_id' => $approval->maker_id,
+                'checker_id' => $approval->checker_id, 'correlation_id' => $approval->correlation_key], $from);
+        $this->approvals->executed($approval, "{$this->priceLabel($price)} v{$locked->version} on sale from {$from}");
+
+        return $locked;
+    }
+
+    private function assertPublishable(PlanPrice $price, PlanPriceVersion $version, string $from): void
+    {
         if ($from < now()->toDateString()) {
             throw new RuntimeException('A price takes effect today or later: past invoices keep the price they were issued with.');
         }
-
-        return DB::transaction(function () use ($version, $from, $reason, $actor) {
-            $price = PlanPrice::query()->with('planVersion.plan')->lockForUpdate()->findOrFail($version->plan_price_id);
-            $locked = PlanPriceVersion::query()->lockForUpdate()->findOrFail($version->id);
-            if ($locked->status === VersionStatus::Published && $locked->effective_from?->toDateString() === $from) {
-                return $locked;
-            }
-            if ($locked->status !== VersionStatus::Draft) {
-                throw new RuntimeException("Version {$locked->version} is {$locked->status->value}: only a draft can be published.");
-            }
-            if ($price->planVersion->status !== VersionStatus::Published) {
-                throw new RuntimeException("{$price->planVersion->label()} is no longer published: it cannot get a new price.");
-            }
-            $latest = PlanPriceVersion::query()->where('plan_price_id', $price->id)->where('status', '<>', VersionStatus::Draft->value)->whereNotNull('effective_from')->max('effective_from');
-            if ($latest !== null && $from <= substr((string) $latest, 0, 10)) {
-                throw new RuntimeException('A new price version starts after the previous one ('.substr((string) $latest, 0, 10).').');
-            }
-            $locked->forceFill(['status' => VersionStatus::Published, 'effective_from' => $from, 'published_by' => $actor->id, 'published_at' => now()])->save();
-            $this->audit->platform(AuditAction::PriceVersionPublished, 'billing', $locked, "{$this->priceLabel($price)} v{$locked->version}",
-                [['field' => 'status', 'before' => 'draft', 'after' => 'published'], ['field' => 'unit_amount', 'before' => null, 'after' => "{$locked->currency->value} {$locked->amount()->toDecimal()}"]],
-                $reason, $actor, ['plan_price_id' => $price->id, 'plan_price_version_id' => $locked->id, 'unit_amount_minor' => $locked->unit_amount_minor,
-                    'currency' => $locked->currency->value], $from);
-
-            return $locked;
-        });
+        if ($version->status !== VersionStatus::Draft) {
+            throw new RuntimeException("Version {$version->version} is {$version->status->value}: only a draft can be published.");
+        }
+        if ($price->planVersion->status !== VersionStatus::Published) {
+            throw new RuntimeException("{$price->planVersion->label()} is no longer published: it cannot get a new price.");
+        }
+        $latest = PlanPriceVersion::query()->where('plan_price_id', $price->id)->where('status', '<>', VersionStatus::Draft->value)->whereNotNull('effective_from')->max('effective_from');
+        if ($latest !== null && $from <= substr((string) $latest, 0, 10)) {
+            throw new RuntimeException('A new price version starts after the previous one ('.substr((string) $latest, 0, 10).').');
+        }
     }
 
     /** A published version stops being on sale (terms already pinned to it keep it); a draft is abandoned. */
@@ -194,7 +232,7 @@ final class BillingCatalog
     {
         $price->loadMissing('planVersion.plan', 'market');
 
-        return "{$price->planVersion->label()} · {$price->market->code} · {$price->basis->label()} {$price->interval->label()}";
+        return "{$price->planVersion->label()} · {$price->market->code} · {$price->basis->label()} · {$price->interval->label()}";
     }
 
     private function currency(string $code): Currency

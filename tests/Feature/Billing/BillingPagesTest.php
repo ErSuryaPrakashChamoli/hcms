@@ -11,6 +11,9 @@ use App\Domain\Payments\Models\Payment;
 use App\Domain\Subscriptions\Services\CommercialSubscriptions;
 use App\Domain\Tax\Enums\TaxRuleStatus;
 use App\Domain\Tax\Models\TaxRule;
+use App\Domain\Billing\Enums\ApprovalStatus;
+use App\Domain\Billing\Models\FinancialApproval;
+use App\Filament\Pages\PlatformApprovalsPage;
 use App\Filament\Pages\PlatformBillingAccountsPage;
 use App\Filament\Pages\PlatformBillingCatalogPage;
 use App\Filament\Pages\PlatformInvoicesPage;
@@ -37,7 +40,8 @@ beforeEach(function () {
 });
 
 it('refuses every billing page to every tenant user', function () {
-    $pages = [PlatformBillingCatalogPage::class, PlatformTaxSetupPage::class, PlatformBillingAccountsPage::class, PlatformInvoicesPage::class, PlatformPaymentsPage::class];
+    $pages = [PlatformBillingCatalogPage::class, PlatformTaxSetupPage::class, PlatformBillingAccountsPage::class, PlatformInvoicesPage::class, PlatformPaymentsPage::class,
+        PlatformApprovalsPage::class];
     foreach ([tenantUser($this->tenant, ['*']), tenantUser($this->tenant, ['leave.apply'])] as $user) {
         $this->actingAs($user);
         foreach ($pages as $page) {
@@ -79,12 +83,22 @@ it('runs the whole setup and billing flow from the pages, each step reasoned and
         ->assertHasActionErrors(['reason']);
     $market = BillingMarket::query()->sole();
     Livewire::test(PlatformBillingCatalogPage::class)
-        ->callAction('createPrice', data: ['plan_version' => $this->growth->id, 'market' => $market->id, 'interval' => 'month', 'basis' => 'flat', 'reason' => 'Fictional price'])->assertHasNoActionErrors();
+        ->callAction('createPrice', data: ['plan_version' => $this->growth->id, 'market' => $market->id, 'interval' => 'month', 'basis' => 'per_active_employee', 'reason' => 'Fictional price'])->assertHasNoActionErrors();
     Livewire::test(PlatformBillingCatalogPage::class)
-        ->callAction('draftPriceVersion', data: ['price' => PlanPrice::query()->sole()->id, 'amount' => '999.00', 'reason' => 'Fictional amount'])->assertHasNoActionErrors();
+        ->callAction('draftPriceVersion', data: ['price' => PlanPrice::query()->sole()->id, 'amount' => '999.00', 'minimum' => 3, 'reason' => 'Fictional amount'])->assertHasNoActionErrors();
     Livewire::test(PlatformBillingCatalogPage::class)
-        ->callAction('publishPriceVersion', data: ['version' => PlanPriceVersion::query()->sole()->id, 'from' => '2027-04-01', 'reason' => 'On sale today'])->assertHasNoActionErrors();
-    $this->get(PlatformBillingCatalogPage::getUrl())->assertOk()->assertSee('₹999.00')->assertSee('IN-UI');
+        ->callAction('requestPublication', data: ['version' => PlanPriceVersion::query()->sole()->id, 'from' => '2027-04-01', 'reason' => 'On sale today'])->assertHasNoActionErrors();
+    // B-13 maker-checker: the maker sees no approve button on their own request; the second operator approves it.
+    $approval = FinancialApproval::query()->sole();
+    expect(PlanPriceVersion::query()->sole()->status->value)->toBe('draft');
+    Livewire::test(PlatformApprovalsPage::class, ['approval' => $approval->reference])->assertActionHidden('approve')->assertActionVisible('withdraw');
+    $this->actingAs($this->checker);
+    $this->get(PlatformApprovalsPage::getUrl(['approval' => $approval->reference]))->assertOk()->assertSee('Price publication')->assertSee('On sale today');
+    Livewire::test(PlatformApprovalsPage::class, ['approval' => $approval->reference])->assertActionHidden('withdraw')
+        ->callAction('approve', data: ['reason' => 'Amount matches the price sheet'])->assertHasNoActionErrors();
+    expect([$approval->fresh()->status, PlanPriceVersion::query()->sole()->status->value, $approval->fresh()->checker_id])->toBe([ApprovalStatus::Approved, 'published', $this->checker->id]);
+    $this->actingAs($this->op);
+    $this->get(PlatformBillingCatalogPage::getUrl())->assertOk()->assertSee('₹999.00')->assertSee('IN-UI')->assertSee('minimum 3');
 
     $sub = app(CommercialSubscriptions::class)->start($this->tenant, $this->growth, '2027-04-01', null, 'Contract', $this->op);
     Livewire::test(PlatformBillingAccountsPage::class, ['tenant' => $this->tenant->id])
@@ -112,6 +126,10 @@ it('runs the whole setup and billing flow from the pages, each step reasoned and
     expect($payment->reconciliation_code)->toBe('amount_mismatch');
     $this->get(PlatformPaymentsPage::getUrl(['payment' => $payment->reference]))->assertOk()->assertSee('amount_mismatch');
     Livewire::test(PlatformPaymentsPage::class, ['payment' => $payment->reference])
-        ->callAction('resolveException', data: ['note' => 'Refunded by bank outside PeopleOS'])->assertHasNoActionErrors();
-    expect($payment->fresh()->reconciliation_status)->toBe(ReconciliationStatus::Resolved)->and($draft->fresh()->status)->toBe(InvoiceStatus::Issued);
+        ->callAction('requestResolution', data: ['outcome' => 'accept', 'reason' => 'Customer short-paid bank charges; accept'])->assertHasNoActionErrors();
+    expect($payment->fresh()->reconciliation_status)->toBe(ReconciliationStatus::Exception);
+    $this->actingAs($this->checker);
+    Livewire::test(PlatformApprovalsPage::class, ['approval' => FinancialApproval::query()->where('action', 'exception_resolution')->sole()->reference])
+        ->callAction('approve', data: ['reason' => 'Bank charges confirmed'])->assertHasNoActionErrors();
+    expect($payment->fresh()->reconciliation_status)->toBe(ReconciliationStatus::Resolved)->and($draft->fresh()->status)->toBe(InvoiceStatus::Paid);
 });

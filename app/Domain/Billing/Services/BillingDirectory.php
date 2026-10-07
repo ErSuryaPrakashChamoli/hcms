@@ -33,7 +33,7 @@ final class BillingDirectory
     {
         $profiles = TenantBillingProfile::query()->withoutTenancy()->with('market')->whereDate('effective_from', '<=', $day)
             ->orderBy('effective_from')->orderBy('version')->get()->keyBy('tenant_id');
-        $open = Invoice::query()->withoutTenancy()->where('status', InvoiceStatus::Issued)->selectRaw('tenant_id, count(*) as open_count')
+        $open = Invoice::query()->withoutTenancy()->whereIn('status', [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid])->selectRaw('tenant_id, count(*) as open_count')
             ->groupBy('tenant_id')->pluck('open_count', 'tenant_id');
 
         return Tenant::query()->orderBy('name')->get()->map(fn (Tenant $t) => ['tenant' => $t, 'profile' => $profiles->get($t->id), 'open_invoices' => (int) ($open[$t->id] ?? 0)]);

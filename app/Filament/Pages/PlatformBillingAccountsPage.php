@@ -2,16 +2,21 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Billing\Enums\InvoiceStatus;
 use App\Domain\Billing\Models\BillingMarket;
+use App\Domain\Billing\Models\BillingPeriod;
 use App\Domain\Billing\Models\Invoice;
 use App\Domain\Billing\Models\PlanPrice;
 use App\Domain\Billing\Models\PlanPriceVersion;
+use App\Domain\Billing\Models\PriceChangeNotice;
 use App\Domain\Billing\Models\SubscriptionBillingTerm;
 use App\Domain\Billing\Models\TenantBillingProfile;
 use App\Domain\Billing\Services\BillingCatalog;
 use App\Domain\Billing\Services\BillingDirectory;
+use App\Domain\Billing\Services\BillingPeriods;
 use App\Domain\Billing\Services\BillingProfiles;
 use App\Domain\Billing\Services\BillingTerms;
+use App\Domain\Billing\Services\PriceNotices;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Subscriptions\Models\TenantSubscription;
@@ -42,6 +47,10 @@ use UnitEnum;
  * invoices, and for one tenant its billing profile versions (market, B2B/B2C, jurisdiction, tax registration),
  * the billing terms of its subscriptions (which price applies on which day) and its invoices and payments. A
  * tenant without a profile cannot be invoiced; nothing is created for any tenant by default.
+ *
+ * SaaS.7 completion: annual terms with a committed quantity, price-increase notices and the re-pin worklist
+ * (B-15), and the calculated billing periods with their frozen quantity evidence; an operator may run the billing
+ * calculation for the tenant (drafts only) and redraft a period whose draft was discarded.
  */
 class PlatformBillingAccountsPage extends Page
 {
@@ -116,6 +125,20 @@ class PlatformBillingAccountsPage extends Page
         return $this->inTenant(fn () => Payment::query()->orderByDesc('id')->limit(50)->get());
     }
 
+    /** @return Collection<int, BillingPeriod> */
+    public function periods(): Collection
+    {
+        $tenant = $this->selectedTenant();
+
+        return $tenant === null ? collect() : app(BillingPeriods::class)->periods($tenant, 60);
+    }
+
+    /** @return Collection<int, PriceChangeNotice> */
+    public function notices(): Collection
+    {
+        return $this->inTenant(fn () => PriceChangeNotice::query()->with('toVersion', 'fromVersion')->orderByDesc('effective_from')->limit(50)->get());
+    }
+
     public function format(Money $money, ?string $locale = null): string
     {
         return MoneyFormatter::format($money, $locale ?? 'en');
@@ -162,12 +185,47 @@ class PlatformBillingAccountsPage extends Page
                     Select::make('subscription')->label('Subscription')->required()->live()->options(fn () => $this->inTenant(fn () => TenantSubscription::query()->orderByDesc('id')->pluck('id', 'id')->map(fn ($id) => "#{$id}")->all())),
                     DatePicker::make('from')->label('From')->native(false)->required()->live()->default(now()->toDateString()),
                     Select::make('version')->label('Price version on sale')->required()->options(fn (Get $get) => $this->priceOptions((int) $get('subscription'), substr((string) ($get('from') ?: $this->today()), 0, 10))),
+                    TextInput::make('committed')->label('Committed employees (annual terms only)')->numeric()->minValue(1)
+                        ->helperText('Annual terms are billed in advance on this quantity (at least the price\'s minimum); months above it are billed as true-up.'),
                     TextInput::make('reference')->label('Contract or order reference')->maxLength(100),
                     $reason(),
                 ])
                 ->action(fn (array $data) => $this->attempt(fn () => app(BillingTerms::class)->set($this->inTenant(fn () => TenantSubscription::query()->findOrFail((int) $data['subscription'])),
-                    PlanPriceVersion::query()->findOrFail((int) $data['version']), substr((string) $data['from'], 0, 10), $data['reason'], auth()->user(), $data['reference'] ?? null), 'Billing terms set')),
+                    PlanPriceVersion::query()->findOrFail((int) $data['version']), substr((string) $data['from'], 0, 10), $data['reason'], auth()->user(), $data['reference'] ?? null,
+                    blank($data['committed'] ?? null) ? null : (int) $data['committed']), 'Billing terms set')),
+            Action::make('recordNotice')->label('Record price notice')->icon(Heroicon::OutlinedEnvelope)->visible(fn () => $hasTenant() && $this->inTenant(fn () => SubscriptionBillingTerm::query()->exists()))
+                ->modalDescription('A price increase reaches an existing subscriber only after a written notice of at least 30 days, at the next period (monthly) or renewal (annual). Recording the notice changes no price: re-pin the terms when it falls due.')
+                ->schema([
+                    Select::make('subscription')->label('Subscription')->required()->live()->options(fn () => $this->inTenant(fn () => TenantSubscription::query()->orderByDesc('id')->pluck('id', 'id')->map(fn ($id) => "#{$id}")->all())),
+                    DatePicker::make('effective')->label('New price from')->native(false)->required()->live(),
+                    Select::make('version')->label('New price version')->required()->options(fn (Get $get) => $get('effective') ? $this->priceOptions((int) $get('subscription'), substr((string) $get('effective'), 0, 10)) : []),
+                    DatePicker::make('notice_date')->label('Notice sent on')->native(false)->required()->default(now()->toDateString()),
+                    TextInput::make('reference')->label('Letter or e-mail reference')->maxLength(100),
+                    $reason(),
+                ])
+                ->action(fn (array $data) => $this->attempt(fn () => app(PriceNotices::class)->record($this->inTenant(fn () => TenantSubscription::query()->findOrFail((int) $data['subscription'])),
+                    PlanPriceVersion::query()->findOrFail((int) $data['version']), substr((string) $data['notice_date'], 0, 10), substr((string) $data['effective'], 0, 10), $data['reason'],
+                    auth()->user(), $data['reference'] ?? null), 'Price notice recorded')),
+            Action::make('runBilling')->label('Calculate billing periods')->icon(Heroicon::OutlinedCalculator)->visible(fn () => $hasTenant() && $this->inTenant(fn () => SubscriptionBillingTerm::query()->exists()))
+                ->modalDescription('Calculates the periods that are due for this tenant and drafts their invoices (nothing is issued or sent). Periods already calculated are never recalculated.')
+                ->action(fn () => $this->attempt(function () {
+                    $summary = app(BillingPeriods::class)->run($this->selectedTenant());
+                    Notification::make()->info()->title("{$summary['created']} period(s): {$summary['drafted']} drafted, {$summary['nothing_due']} nothing due, {$summary['exceptions']} exception(s)")->send();
+                }, 'Billing calculated')),
+            Action::make('redraftPeriod')->label('Redraft a period')->icon(Heroicon::OutlinedArrowPath)->color('gray')
+                ->visible(fn () => $hasTenant() && $this->redraftable() !== [])
+                ->modalDescription('Drafts again a period whose draft was discarded, from its frozen quantity and amount (never from today\'s employee data).')
+                ->schema([Select::make('period')->label('Period')->required()->options(fn () => $this->redraftable()), $reason()])
+                ->action(fn (array $data) => $this->attempt(fn () => app(BillingPeriods::class)->redraft($this->inTenant(fn () => BillingPeriod::query()->findOrFail((int) $data['period'])),
+                    $data['reason'], auth()->user()), 'Period redrafted')),
         ];
+    }
+
+    /** @return array<int, string> */
+    private function redraftable(): array
+    {
+        return $this->periods()->filter(fn (BillingPeriod $p) => $p->status === BillingPeriod::DRAFTED && $p->invoice?->status === InvoiceStatus::Discarded)
+            ->mapWithKeys(fn (BillingPeriod $p) => [$p->id => "{$p->kind->label()} {$p->period_start->toDateString()} · {$p->currency->value} {$p->amount()->toDecimal()}"])->all();
     }
 
     /** @return array<int, string> the price versions on sale on $day for the subscription's plan version in the tenant's market */

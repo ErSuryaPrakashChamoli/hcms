@@ -10,13 +10,15 @@
                 <div><dt class="text-gray-500 dark:text-gray-400">Method</dt><dd>{{ $payment->method?->value ?? '—' }}</dd></div>
                 <div><dt class="text-gray-500 dark:text-gray-400">Initiated</dt><dd>{{ $payment->initiated_at?->toDateTimeString() }}</dd></div>
                 <div><dt class="text-gray-500 dark:text-gray-400">Completed</dt><dd>{{ $payment->completed_at?->toDateTimeString() ?? '—' }}</dd></div>
+                <div><dt class="text-gray-500 dark:text-gray-400">Settlement to Markedge</dt><dd>@if ($payment->settlement_recorded_at){{ $payment->settlement_currency }} {{ \App\Support\Money\Money::ofMinor($payment->settlement_amount_minor, $payment->settlement_currency)->toDecimal() }} · rate {{ rtrim(rtrim((string) $payment->settlement_fx_rate, '0'), '.') }} ({{ $payment->settlement_fx_source }}, reporting only)@else — @endif</dd></div>
+                <div><dt class="text-gray-500 dark:text-gray-400">Provider transaction</dt><dd>{{ $payment->provider_transaction_reference ?? '—' }}</dd></div>
                 <div><dt class="text-gray-500 dark:text-gray-400">Invoice</dt><dd>@if ($ref = $this->invoiceReference())<a class="text-primary-600 underline dark:text-primary-400" href="{{ \App\Filament\Pages\PlatformInvoicesPage::getUrl(['invoice' => $ref]) }}">open invoice</a>@endif</dd></div>
                 <div class="sm:col-span-2 lg:col-span-4"><dt class="text-gray-500 dark:text-gray-400">Note</dt><dd>{{ $payment->reconciliation_note ?? $payment->reason }}</dd></div>
             </dl>
         </x-filament::section>
     @endif
 
-    <x-filament::section heading="Payments" description="A payment settles its invoice only when a verified amount matches the invoice exactly. Partial payments, overpayments and duplicates are exceptions for an operator.">
+    <x-filament::section heading="Payments" description="A payment settles its invoice only when a verified amount matches the amount due exactly (total less credit notes and declared TDS). Other short payments, overpayments and duplicates are exceptions, accepted or written off with a second operator's approval.">
         <div class="mb-3 text-sm"><label class="inline-flex items-center gap-2"><input type="checkbox" wire:model.live="exceptions" class="fi-checkbox-input rounded"> <span>Exceptions only</span></label></div>
         <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Payments">
         <table class="w-full text-sm">

@@ -669,6 +669,22 @@ return [
         // Provider webhooks: largest accepted body and requests per minute per IP.
         'webhook_max_bytes' => max(1024, (int) env('PEOPLEOS_BILLING_WEBHOOK_MAX_BYTES', 65536)),
         'webhook_rate_per_minute' => max(10, (int) env('PEOPLEOS_BILLING_WEBHOOK_RATE', 120)),
+        // SaaS.7 completion (approved decisions). B-5: business customers only at launch. B-11: net 15 from the issue date.
+        'b2b_only' => (bool) env('PEOPLEOS_BILLING_B2B_ONLY', true),
+        'payment_terms_days' => max(0, (int) env('PEOPLEOS_BILLING_PAYMENT_TERMS_DAYS', 15)),
+        // The billing run (drafts only; issue stays an operator step). Off unless enabled: no price exists until B-4.
+        'run_enabled' => (bool) env('PEOPLEOS_BILLING_RUN_ENABLED', false),
+        // B-10: Razorpay, TEST MODE ONLY. Enabled only with rzp_test_ keys and never in production (ProviderRegistry);
+        // the currencies offered are confirmed with Razorpay at merchant onboarding (international payments).
+        'razorpay' => [
+            'enabled' => (bool) env('PEOPLEOS_RAZORPAY_ENABLED', false),
+            'key_id' => env('PEOPLEOS_RAZORPAY_KEY_ID'),
+            'key_secret' => env('PEOPLEOS_RAZORPAY_KEY_SECRET'),
+            'webhook_secret' => env('PEOPLEOS_RAZORPAY_WEBHOOK_SECRET'),
+            'base_url' => 'https://api.razorpay.com/v1',
+            'timeout_seconds' => 15,
+            'currencies' => array_values(array_filter(array_map('trim', explode(',', (string) env('PEOPLEOS_RAZORPAY_CURRENCIES', 'INR,USD,GBP,EUR,AED'))))),
+        ],
     ],
 
     'settings' => [
