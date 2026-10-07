@@ -230,6 +230,30 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 58. **Billing never authorises.** Payment state, invoices and prices never reach entitlements, authorisation, subscriptions or HCM;
     only payment reconciliation runs for suspended tenants (`RunsForSuspendedTenants`, exact allow-list).
 
+## SaaS.7 completion additions (approved commercial decisions)
+
+59. **Dual control for money going out or coming off the books.** Price publication, credit notes (incl. an invoice's
+    cancellation), refunds, invoice write-offs and payment-exception resolutions run only through an approval request that
+    another platform operator approves; the operation executes in the approving transaction. Executors refuse anything but an
+    approved, unexecuted request of their action (`FinancialApprovals::claim`), and the approval model refuses self-approval,
+    approved rows created directly and any second decision or execution. Approvals are platform records no tenant user reaches.
+60. **A billed quantity never changes.** A billing period freezes its quantity, evidence (peak day, employee ids and their
+    SHA-256, daily counts, method) and amount, and its invoice line copies them; later HR data never recalculates it (model
+    guard: only the draft link moves, when a discarded draft is replaced from the frozen period). One period per subscription,
+    kind and start (unique index); the run only drafts.
+61. **No silent repricing.** A published price version never changes; an increase reaches an existing subscriber only through a
+    re-pin backed by a recorded notice at least 30 days earlier, at a period start or annual renewal; annual terms change only
+    at renewal.
+62. **Corrections are documents, never edits.** Credit notes are numbered in their own series, mirror the invoice's original
+    tax, never exceed it in total, and never change; refunds never exceed their credit note or their payment.
+63. **Settlement is not the invoice.** A settlement snapshot (amount, currency, implied rate, source) is written once beside a
+    payment; invoice and payment amounts and currencies never change for it, and no amount is ever converted.
+64. **A short payment is never assumed to be TDS.** Only an operator's declaration (amount from the customer's statement, Indian
+    supplier and customer, INR) changes the amount due; the invoice is paid only with its certificate recorded.
+65. **No live payment provider.** Razorpay is enabled only with `rzp_test_` keys and a webhook secret, outside production; its
+    webhooks are HMAC-verified over the raw body and applied once per event id; it is the only code that calls a provider over
+    HTTP (architecture test).
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |

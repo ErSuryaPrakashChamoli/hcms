@@ -1,6 +1,6 @@
 # SaaS.7 — Billing, tax and payments (global-ready): the developer's map
 
-Full report: `docs/saas/SaaS-7-Billing-GST-Payments-Report.md`. Design and decisions: `docs/saas/SaaS-7-Baseline.md`. What it reads: `saas-6-subscriptions.md` (subscriptions), `saas-4-plans.md` (plan versions).
+Full report: `docs/saas/SaaS-7-Billing-GST-Payments-Report.md`; completion pass (approved decisions B-1 to B-15): `docs/saas/SaaS-7-Completion-Report.md`. Design and decisions: `docs/saas/SaaS-7-Baseline.md`, `docs/saas/SaaS-7-Commercial-Decisions.md`. What it reads: `saas-6-subscriptions.md` (subscriptions), `saas-4-plans.md` (plan versions).
 
 ## The shape
 
@@ -9,9 +9,13 @@ app/Support/Money           Currency (ISO-4217 catalogue, minor units) · Money 
 app/Domain/Tax              jurisdiction-neutral: regimes, treatments, verified rules, determination, pure calculator
    └─ Jurisdictions/India   GST states, GSTIN check, determination (intra-state / intra-UT / inter-state), presentation rows
 app/Domain/Billing          markets, prices + versions, supplier profiles, number series   (platform catalogue)
-                            billing profiles, billing terms, invoices + lines + tax lines   (tenant-owned, fail-closed)
-app/Domain/Payments         provider contract, manual + sandbox providers, payments (tenant), provider events (platform),
-                            reconciler, webhook intake, tenant-aware job, sweep
+                            financial approvals (maker-checker, platform)
+                            billing profiles, billing terms, price notices, billing periods, invoices + lines + tax lines,
+                            credit notes, TDS claims   (tenant-owned, fail-closed)
+                            BillableQuantity (monthly peak from lifecycle history) · BillingPeriods (the billing run)
+app/Domain/Payments         provider contract, manual + sandbox + Razorpay (test mode) providers, payments and refunds (tenant),
+                            provider events (platform), reconciler, webhook intake, tenant-aware job, sweep,
+                            TdsSettlement, ApprovalDesk (approves and executes maker-checker requests)
 
 Payments ──► Billing ──► Tax ──► Support/Money          Billing ──► Subscriptions, plan versions (read only)
 Nothing that authorises, no HCM module, the entitlement engine and the subscription lifecycle depend on Billing, Tax or Payments.
@@ -31,6 +35,10 @@ Nothing that authorises, no HCM module, the entitlement engine and the subscript
 | A payment succeeds only through `PaymentReconciler::apply()`, from a verified provider event, a server-side `fetch()`, or `Payments::recordBankTransfer()` | No browser or return URL ever confirms a payment |
 | Provider SDK fields stay in the provider adapter and the encrypted event payload; never a provider column on `payments` or `invoices` | Provider replaceable without touching invoices, tax, subscriptions or entitlements |
 | Billing never feeds entitlements, authorisation, subscriptions or HCM | ADR-0048; payment failure never denies anything |
+| A financial operation that needs dual control (price publication, credit note, refund, write-off, exception resolution) has a `request…()` method for the maker and an `execute…()` method that starts with `FinancialApprovals::claim()`. Only `ApprovalDesk::approve()` calls executors | ADR-0052; the model refuses self-approval and second executions |
+| A billed quantity is never recalculated: read it from the `billing_periods` row or the invoice line's `quantity_evidence` | ADR-0049/0050; a correction is a credit note |
+| Under the invoice (or payment) lock, read sums of credit notes, TDS claims and refunds with `sharedLock()` | MySQL repeatable read: a plain read can return the snapshot from before the lock wait (found by race 11) |
+| Settlement (what reached Markedge) goes only into the payment's `settlement_*` fields; never change an invoice or payment amount for it | ADR-0054 |
 
 ## Locks
 
@@ -44,6 +52,11 @@ Nothing that authorises, no HCM module, the entitlement engine and the subscript
 | Tax rules | The scope's rows; unique version per scope |
 | Provider events | Unique `(provider, event_id)`; leased claim (`claimed_until`) when applied |
 | One open provider payment per invoice | Generated `open_invoice_id` unique (operator-recorded transfers never hold it) |
+| Billing periods | Unique `(subscription_id, kind, period_start)`; the period and its draft in one transaction |
+| Approvals | The approval row (`FOR UPDATE`) in the approving transaction, then what the executor locks; unique `correlation_key` |
+| Credit notes | The invoice row, then the open credit-note series covering the day; sums read with `sharedLock()` |
+| Refunds | The payment row; refunded sums read with `sharedLock()`; unique `(provider, provider_refund_reference)` |
+| TDS | The invoice row; unique `invoice_id` on `invoice_tds_claims` |
 
 ## Adding a jurisdiction
 
@@ -57,7 +70,8 @@ Nothing that authorises, no HCM module, the entitlement engine and the subscript
 | Kind | Where |
 |---|---|
 | Feature | `tests/Feature/Billing/` (money, tax engine, pricing, billing profiles, invoices, payments, security, pages) |
-| MySQL races | `tests/MySql/BillingConcurrencyTest.php` (6 races + invariants after each) |
+| Feature (completion) | `BillingRunTest`, `FinancialControlsTest`, `SettlementTest`, `RazorpayTest`, `PriceNoticeTest` (the 24 critical cases) |
+| MySQL races | `tests/MySql/BillingConcurrencyTest.php` (6 races) and `BillingCompletionConcurrencyTest.php` (races 7–11), invariants after each |
 | Test-only regimes | `tests/Feature/Billing/TestRegimes.php` (UK VAT and US sales tax determiners, never wired in production) |
 | Helpers | `tests/Feature/Billing/BillingTestHelpers.php` (fictional GSTINs on pseudo-PAN `ZZZZZ9999Z`, odd test rates) |
 
@@ -66,3 +80,6 @@ Test gotchas:
 - Entitlement decisions carry their evaluation day: compare decisions for a fixed day.
 - A model's `tenant_id` column means "tenant-owned" to the platform invariants; a platform record that points at a tenant uses another name (`resolved_tenant_id`).
 - Never run `migrate --database=sqlite` locally: the SQLite path falls back to `DB_DATABASE` and creates a stray file.
+- Every test runs inside a transaction, so a "must run inside a transaction" guard cannot be shown to fail in a feature test.
+- Razorpay is always faked (`fakeRazorpay()`): no test sends a request to Razorpay, and its keys are fictional `rzp_test_` values.
+- Back-dated lifecycle history is how billing tests build employees (`staff()`, `staffExit()`): the engine records the effective dates.

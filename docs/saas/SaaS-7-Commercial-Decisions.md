@@ -545,3 +545,34 @@ What the SaaS.7 completion pass must build for the approved decisions. Nothing i
 | B-4 amounts | "Not yet: keep PENDING" |
 
 **SaaS.7 decision-resolution status: BLOCKED**, on B-4 (prices), B-7 (entity, legal), B-8 (India GST incl. export, tax adviser) and B-9 (foreign treatments, tax advisers).
+
+## 14. Completion pass (8 October 2026)
+
+The SaaS.7 completion pass implemented every approved decision. It changed no decision's status. Report: [SaaS-7 completion report](SaaS-7-Completion-Report.md); ADR-0049 to 0057 in the [decision register](../architecture/decision-register.md).
+
+**Clarifications given by the business owner in that pass** (they refine approved decisions; none is a new decision):
+
+| Question | Choice |
+|---|---|
+| How is a partial month before an annual term billed? (B-3) | "Monthly terms, in arrears": peak × unit × days ÷ days in the month; the annual term starts on the 1st of the next month, with a commitment of at least the price's minimum |
+| When can annual terms change? (B-3, B-15) | "Only at renewal": price, plan, interval and commitment alike; the true-up is max(0, monthly peak − commitment) × the same unit, in arrears |
+| What do "cancellation" and "write-off" cover? (B-13) | "Invoice cancellation + both write-offs": an issued invoice cancelled by a full credit note; an unpaid invoice written off; a payment exception accepted or written off. Subscription cancellation stays the SaaS.6 operator action |
+| How far does the billing run go? (B-3) | "Draft invoices only": an operator issues them, gated by a verified tax rule |
+
+**What each approved decision became:**
+
+| Decision | Implemented as |
+|---|---|
+| B-1 | PEPM unit amount on price versions, with an optional `minimum_quantity`; flat prices stay representable but are never billed by the run |
+| B-2 | `BillableQuantity`: monthly peak employed count rebuilt from `employee_lifecycle_transitions`, frozen with its evidence on the billing period and the invoice line |
+| B-3 | `billing_periods` and `peopleos:billing:run` (drafts only; scheduled only when enabled): monthly in arrears, annual in advance on the commitment, monthly true-up; calendar anchoring; proration B; trials not billed, grace billed |
+| B-5 | Billing profiles refuse B2C customers (`peopleos.billing.b2b_only`, on by default); prices stay tax-exclusive |
+| B-6 | No change (trials are not billed) |
+| B-10 | Bank transfers (existing) and a `RazorpayProvider` adapter in **test mode only** (`rzp_test_` keys, never production) |
+| B-11 | Net 15 default due date; operator-declared customer TDS (amount due = total − credit notes − TDS; partially paid only while the certificate is pending); every other short or over payment stays an exception |
+| B-12 | Credit notes (own series, original tax; a full one cancels the invoice) and refunds only against them; debit notes deferred |
+| B-13 | `financial_approvals` and the Approvals page: price publication, credit notes, refunds, invoice write-offs and exception resolutions need a second operator; self-approval refused in the service and the model |
+| B-14 | The provider's INR settlement (and the implied rate, for reporting) recorded once on the payment; invoices and payments stay in the market currency |
+| B-15 | `price_change_notices` (≥ 30 days, at a period start or renewal) and the re-pin worklist; a re-pin to a higher version of the same price is refused without one |
+
+**Still open, unchanged:** B-4 (prices, owner), B-7 (entity details, legal), B-8 (India GST incl. export of services and the INR reporting value, tax adviser), B-9 (foreign customer-side treatments, tax advisers), B-16 (retention, legal; SaaS.9). Until B-4, B-7, B-8 and B-9 are resolved no real price exists, no foreign invoice can be issued and no invoice should be issued to a real customer. **SaaS.7 status: BLOCKED.**

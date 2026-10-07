@@ -1,0 +1,146 @@
+{
+ "phase": "SaaS.7 completion",
+ "date": "2026-10-08",
+ "target": "disposable hcm_saas7c_ui_showcase (UxShowcaseSeeder + fictional markets in INR and USD, PEPM prices with minimums published by maker-checker, a fictional verified India rule at test rates, billing profiles, monthly, stub and annual subscriptions with back-dated lifecycle history, billing periods from the billing run, invoices, a TDS declaration, credit notes and pending approvals), served on 127.0.0.1:8094 with the array cache, dropped afterwards",
+ "browser": "Chromium (Playwright), 1440x900 light and dark, 390x844",
+ "operators": "two fictional platform operators (maker and checker), password + TOTP; credentials generated into the session scratchpad, never printed",
+ "operations_through_the_ui": [
+  "TDS certificate recorded (partially paid -> paid)",
+  "credit note requested by the maker",
+  "price publication approved by the checker (published at once)",
+  "full credit note approved by the checker (invoice credited)",
+  "write-off rejected by the checker"
+ ],
+ "checks": [
+  {
+   "name": "maker operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "Billing catalogue opens",
+   "ok": true
+  },
+  {
+   "name": "PEPM prices per market with minimums, never converted between markets",
+   "ok": true
+  },
+  {
+   "name": "publishing is a request, not a direct publish",
+   "ok": true
+  },
+  {
+   "name": "Approvals opens",
+   "ok": true
+  },
+  {
+   "name": "pending requests listed: price publication, credit note, refund, write-off",
+   "ok": true
+  },
+  {
+   "name": "maker: own request shows \"another operator must approve\", Withdraw but no Approve",
+   "ok": true
+  },
+  {
+   "name": "a request shows what it does, before and after, maker and correlation key",
+   "ok": true
+  },
+  {
+   "name": "billing periods with peak, days and evidence",
+   "ok": true
+  },
+  {
+   "name": "price notice worklist shows the notified increase",
+   "ok": true
+  },
+  {
+   "name": "billing run and redraft are operator actions",
+   "ok": true
+  },
+  {
+   "name": "annual terms with commitment, advance and true-up periods",
+   "ok": true
+  },
+  {
+   "name": "partially paid only while the TDS certificate is pending",
+   "ok": true
+  },
+  {
+   "name": "quantity evidence frozen on the invoice",
+   "ok": true
+  },
+  {
+   "name": "recording the certificate through the UI settles the invoice",
+   "ok": true
+  },
+  {
+   "name": "credit note numbered in its own series, with a pending refund request elsewhere",
+   "ok": true
+  },
+  {
+   "name": "a USD invoice of the Indian entity is drafted in USD and refused at issue (export pending B-8)",
+   "ok": true
+  },
+  {
+   "name": "the credit note request waits for a second operator",
+   "ok": true
+  },
+  {
+   "name": "Payments opens",
+   "ok": true
+  },
+  {
+   "name": "checker operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "checker: Approve and Reject offered, no Withdraw",
+   "ok": true
+  },
+  {
+   "name": "approving publishes the price at once and records the result",
+   "ok": true
+  },
+  {
+   "name": "approving a full credit note cancels the invoice (credited)",
+   "ok": true
+  },
+  {
+   "name": "a rejected request records the checker and changes nothing",
+   "ok": true
+  },
+  {
+   "name": "phone: no page-level horizontal scroll (approvals, invoice, billing account)",
+   "ok": true
+  },
+  {
+   "name": "tenant administrator: approvals and billing pages refused (403), no platform menu link",
+   "ok": true
+  }
+ ],
+ "checks_passed": 26,
+ "checks_total": 26,
+ "axe": {
+  "standard": "WCAG 2 A/AA, 2.1 A/AA (axe-core)",
+  "violations_per_state": {
+   "billing catalogue": 0,
+   "approvals list": 0,
+   "approval detail (maker)": 0,
+   "billing account (periods)": 0,
+   "invoice detail (settlement)": 0,
+   "TDS certificate modal": 0,
+   "credit note modal": 0,
+   "payments": 0,
+   "approval detail (checker)": 0,
+   "approve modal": 0,
+   "approval detail (dark)": 0,
+   "invoice detail (dark)": 0,
+   "phone approvals": 0,
+   "phone billing account": 0
+  }
+ },
+ "console_errors": [],
+ "notes": [
+  "The tenant-administrator check signs in as the seeded tenant administrator (admin@demo.local); the first run used a UX persona whose password differs on this database and was re-run with the seeded administrator.",
+  "Statuses for the tenant administrator: 403 on all five pages, no platform link in the menu."
+ ]
+}
