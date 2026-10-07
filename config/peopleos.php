@@ -655,6 +655,21 @@ return [
             'retention_days' => max(1, (int) env('PEOPLEOS_ENTITLEMENTS_SHADOW_RETENTION_DAYS', 90)),
         ],
     ],
+    /*
+    | SaaS.7 billing, tax and payments. No market, price, tax rule, supplier or provider account is configured here:
+    | those are operator data and business decisions. Only the sandbox provider (test mode, no money moves) can be
+    | enabled, and never in production; its webhook secret comes from the environment only.
+    */
+    'billing' => [
+        'sandbox' => [
+            'enabled' => (bool) env('PEOPLEOS_BILLING_SANDBOX', false),
+            'webhook_secret' => env('PEOPLEOS_BILLING_SANDBOX_SECRET'),
+            'tolerance_seconds' => max(30, (int) env('PEOPLEOS_BILLING_SANDBOX_TOLERANCE', 300)),
+        ],
+        // Provider webhooks: largest accepted body and requests per minute per IP.
+        'webhook_max_bytes' => max(1024, (int) env('PEOPLEOS_BILLING_WEBHOOK_MAX_BYTES', 65536)),
+        'webhook_rate_per_minute' => max(10, (int) env('PEOPLEOS_BILLING_WEBHOOK_RATE', 120)),
+    ],
 
     'settings' => [
         'branding.display_name' => null,

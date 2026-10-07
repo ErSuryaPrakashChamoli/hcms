@@ -31,6 +31,7 @@ entry that breaks them fails the build.
 | `Attendance\Jobs\ProcessAttendanceDay` | 3 / 300 s | Process one attendance day |
 | `Learning\Jobs\GenerateCertificateDocument`, `SendLearningReminders` | 2–3 / 300 s | Certificates and reminders |
 | `Performance`, `Talent`, `Workforce`, `Compensation` reminder jobs, `EffectDueCompensation`, `ServiceDesk\Jobs\ProcessServiceDesk` | 2 / 300 s / 60 | Per-tenant `--queue` variants of the scheduled sweeps (unique per tenant) |
+| `Payments\Jobs\ApplyProviderEvent` | 1 / 120 s | **SaaS.7.** Apply one verified payment-provider event to its payment (unique per event, leased claim, idempotent; runs for suspended tenants) |
 
 In-app notifications are **no longer queued**. Phase 14 stores them at once (`notifyNow`), so a
 delivery marked `sent` is really in the bell. Email and the other external channels go through
@@ -41,7 +42,7 @@ delivery marked `sent` is really in the bell. Email and the other external chann
 Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterates tenants goes through
 `App\Support\Tenancy\TenantRunner`:
 
-- **Suspended tenants are skipped.** There are two exceptions. Retention purge runs because purging is an obligation. Subscription settlement (SaaS.6) runs because commercial dates do not stop for a technical suspension, and it never changes the tenant's status.
+- **Suspended tenants are skipped.** There are two scheduled exceptions, plus one queued one. Retention purge runs because purging is an obligation. Subscription settlement (SaaS.6) runs because commercial dates do not stop for a technical suspension, and it never changes the tenant's status. Payment reconciliation (`ApplyProviderEvent`, SaaS.7, marked `RunsForSuspendedTenants`) runs because a provider already moved the money; it touches only commercial records.
 - **One tenant's failure is isolated.** It is reported and logged with the tenant id and exception class, the
   next tenant still runs, and the command exits non-zero.
 - **Every run gets a correlation id** (`request_id` in Context), carried by its logs, audit rows and notifications.
@@ -72,6 +73,7 @@ Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterat
 | `peopleos:reports:run-due` | hourly | **conditional claim of `next_run_at` (Phase 14)**; runs as the report owner | Scheduled report exports |
 | `peopleos:integrations:process` | every minute | leased claim | Apply due inbound integration events, retries, expired leases |
 | `peopleos:webhooks:deliver` | every minute | leased claim | Outbound webhook deliveries, retries, dead letters |
+| `peopleos:billing:provider-events` | every 5 min | **leased claim per provider event; the reconciler ignores outcomes already recorded (SaaS.7)** | Retry payment-provider events that arrived before their payment was known, failed, or were left by a crashed worker. Platform-level: it iterates events, not tenants; each event is applied in a tenant-aware job bound to the tenant resolved from the verified provider reference |
 
 ## Configuration
 

@@ -83,6 +83,12 @@ it('scopes every domain model to a tenant except the documented platform-level m
         StatutoryExportLayout::class, // Phase 6.2: platform export layouts
         // SaaS.4: Markedge's commercial plan catalogue (no tenant). A tenant's plan assignment is tenant-scoped.
         Plan::class, PlanVersion::class, PlanEntitlement::class,
+        // SaaS.7: Markedge's billing catalogue (markets, prices and their versions, selling entities, tax rules, invoice
+        // number series) and verified payment-provider events (they arrive without a tenant; one is resolved from a verified
+        // reference into resolved_tenant_id). A tenant's billing profile, terms, invoices and payments are tenant-scoped.
+        \App\Domain\Billing\Models\BillingMarket::class, \App\Domain\Billing\Models\PlanPrice::class, \App\Domain\Billing\Models\PlanPriceVersion::class,
+        \App\Domain\Billing\Models\SupplierProfile::class, \App\Domain\Billing\Models\InvoiceNumberSeries::class, \App\Domain\Tax\Models\TaxRule::class,
+        \App\Domain\Payments\Models\PaymentProviderEvent::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -176,6 +182,11 @@ it('audits every domain model except the documented append-only or derived table
         // SaaS.6: subscriptions and their periods are audited explicitly by CommercialSubscriptions on the tenant and platform
         // chains, with the state and plan version before and after, the effective date and the trigger.
         'Subscriptions\Models\TenantSubscription', 'Subscriptions\Models\SubscriptionPeriod',
+        // SaaS.7: billing, tax and payment records are audited explicitly by their services (BillingAudit: the platform chain,
+        // and the tenant chain for tenant records) with the reason, before and after, effective date and correlation key.
+        'Billing\Models\BillingMarket', 'Billing\Models\PlanPrice', 'Billing\Models\PlanPriceVersion', 'Billing\Models\SupplierProfile',
+        'Billing\Models\InvoiceNumberSeries', 'Billing\Models\TenantBillingProfile', 'Billing\Models\SubscriptionBillingTerm', 'Billing\Models\Invoice',
+        'Billing\Models\InvoiceLine', 'Billing\Models\InvoiceTaxLine', 'Tax\Models\TaxRule', 'Payments\Models\Payment', 'Payments\Models\PaymentProviderEvent',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -200,6 +211,9 @@ it('bypasses tenant scoping only in the documented platform services', function 
         // SaaS.6: the operators' cross-tenant subscription overview (tenant names and commercial states only) and the
         // platform-chain subscription audit trail.
         'app/Domain/Subscriptions/Services/SubscriptionDirectory.php',
+        // SaaS.7: the operators' cross-tenant invoice and payment lists (headers and tenant names only), and the provider
+        // webhook pipeline, which resolves a payment (and so its tenant) from a verified provider reference only.
+        'app/Domain/Billing/Services/BillingDirectory.php', 'app/Domain/Payments/Services/PaymentDirectory.php', 'app/Domain/Payments/Services/ProviderEvents.php',
         'app/Domain/Platform/Actions/ProvisionTenantAction.php',
         'app/Http/Controllers/Sso/SsoController.php',
         'app/Support/Tenancy/Jobs/BindTenantContext.php',
@@ -223,6 +237,8 @@ it('keeps commercial plans out of HCM code and writes them only through the two 
         // SaaS.6: subscriptions pin plan versions and show the assignments they project (they write through EntitlementConfiguration).
         'app/Domain/Subscriptions/Models/SubscriptionPeriod.php', 'app/Domain/Subscriptions/Services/CommercialSubscriptions.php',
         'app/Domain/Subscriptions/Services/SubscriptionDirectory.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php',
+        // SaaS.7: a price belongs to a published plan version (read only; prices never feed the entitlement engine).
+        'app/Domain/Billing/Models/PlanPrice.php', 'app/Domain/Billing/Services/BillingCatalog.php', 'app/Filament/Pages/PlatformBillingCatalogPage.php',
     ];
     expect(array_values(array_diff(appFilesMatching('/Entitlements.Models.(Plan|PlanVersion|PlanEntitlement|TenantPlanAssignment)\b/'), $readers)))->toBe([]);
 
@@ -245,7 +261,10 @@ it('keeps commercial entitlement out of authorisation: HCM only observes, nothin
         'app/Filament/Pages/PlatformPlansPage.php', 'app/Providers/AppServiceProvider.php', 'app/Domain/Enterprise/Services/Retention.php',
         // SaaS.6: the commercial subscription lifecycle (platform operations) writes plans in force through the entitlement API.
         'app/Domain/Subscriptions/Models/SubscriptionPeriod.php', 'app/Domain/Subscriptions/Services/CommercialSubscriptions.php',
-        'app/Domain/Subscriptions/Services/SubscriptionDirectory.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php'];
+        'app/Domain/Subscriptions/Services/SubscriptionDirectory.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php',
+        // SaaS.7: billing reads published plan versions and pins terms under the tenant's commercial lock; it never evaluates entitlements.
+        'app/Domain/Billing/Models/PlanPrice.php', 'app/Domain/Billing/Services/BillingCatalog.php', 'app/Domain/Billing/Services/BillingTerms.php',
+        'app/Filament/Pages/PlatformBillingCatalogPage.php'];
     $users = array_values(array_filter(appFilesMatching('/App.Domain.Entitlements/'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Entitlements/')));
     sort($users);
     $allowed = array_merge($observers, $platform);
@@ -292,9 +311,43 @@ it('keeps the entitlement engine independent of subscriptions: subscriptions fee
         ->and(array_values(array_filter(appFilesMatching('/App.Domain.Subscriptions/'), fn (string $f) => preg_match('#^app/(Domain/Identity/|Domain/[^/]+/Policies/|Support/Tenancy/|Policies/)#', $f) === 1)))->toBe([])
         // Only the subscription domain, its page and its command use it.
         ->and(array_values(array_filter(appFilesMatching('/App.Domain.Subscriptions/'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Subscriptions/'))))
-        ->toBe(['app/Console/Commands/SettleSubscriptions.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php'])
+        ->toBe(['app/Console/Commands/SettleSubscriptions.php',
+            // SaaS.7: billing reads the subscription timeline (terms pin a price to the plan version in force) and never writes it.
+            'app/Domain/Billing/Models/SubscriptionBillingTerm.php', 'app/Domain/Billing/Services/BillingTerms.php', 'app/Domain/Billing/Services/Invoices.php',
+            'app/Filament/Pages/PlatformBillingAccountsPage.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php'])
         // One writer: only the guarded subscription service projects a subscription onto plan assignments.
         ->and(appFilesMatching('/->projectSubscription\(/'))->toBe(['app/Domain/Subscriptions/Services/CommercialSubscriptions.php']);
+});
+
+it('keeps billing, tax and payments out of authorisation, entitlements, HCM, payroll and the subscription lifecycle (SaaS.7)', function () {
+    $users = array_values(array_filter(appFilesMatching('/App.Domain.(Billing|Tax|Payments)./'),
+        fn (string $f) => preg_match('#^app/Domain/(Billing|Tax|Payments)/#', $f) !== 1));
+    expect($users)->toBe(['app/Console/Commands/ProcessBillingProviderEvents.php', 'app/Filament/Pages/PlatformBillingAccountsPage.php',
+        'app/Filament/Pages/PlatformBillingCatalogPage.php', 'app/Filament/Pages/PlatformInvoicesPage.php', 'app/Filament/Pages/PlatformPaymentsPage.php',
+        'app/Filament/Pages/PlatformTaxSetupPage.php', 'app/Http/Controllers/Billing/ProviderWebhookController.php']);
+    // The dependency runs Payments → Billing → Tax: tax is pure, billing never reaches into payments.
+    expect(array_values(array_filter(appFilesMatching('/App.Domain.(Billing|Payments|Subscriptions|Entitlements|Payroll|People|Compliance)./'),
+        fn (string $f) => str_starts_with($f, 'app/Domain/Tax/'))))->toBe([])
+        ->and(array_values(array_filter(appFilesMatching('/App.Domain.Payments./'), fn (string $f) => str_starts_with($f, 'app/Domain/Billing/'))))->toBe([]);
+});
+
+it('keeps country-specific tax code inside its jurisdiction module, wired only by the tax registry (SaaS.7)', function () {
+    expect(array_values(array_filter(appFilesMatching('/App.Domain.Tax.Jurisdictions./'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Tax/Jurisdictions/'))))
+        ->toBe(['app/Domain/Tax/Services/TaxRegistry.php'])
+        // No GST-specific code anywhere outside the Tax domain (comments may name examples).
+        ->and(array_values(array_filter(appFilesMatching('/\\b(GSTIN|CGST|SGST|IGST|UTGST|IN_GST)\\b/'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Tax/')
+            && preg_match('/\\b(GSTIN|CGST|SGST|IGST|UTGST|IN_GST)\\b/', preg_replace('#//[^\n]*|/\*.*?\*/#s', '', file_get_contents(base_path($f)))) === 1)))->toBe([]);
+});
+
+it('computes money without floats or FX, and keeps provider code inside its adapters (SaaS.7)', function () {
+    $money = collect(appFilesMatching('/./'))->filter(fn (string $f) => preg_match('#^app/(Domain/(Billing|Tax|Payments)|Support/Money)/#', $f) === 1);
+    $code = fn (string $f) => preg_replace('#//[^\n]*|/\*.*?\*/#s', '', file_get_contents(base_path($f)));
+    expect($money->filter(fn (string $f) => preg_match('/\(float\)|floatval\(|\bround\(|number_format\(|\bfloat \$/', $code($f)) === 1)->values()->all())
+        ->toBe(['app/Support/Money/MoneyFormatter.php'])                                    // display only, bounded to exact magnitudes
+        ->and($money->filter(fn (string $f) => preg_match('/CurrencyRates|exchange_rates|ExchangeRate/', $code($f)) === 1)->values()->all())->toBe([])
+        ->and(appFilesMatching('/Providers.(SandboxProvider|ManualBankTransferProvider)\\b/'))->toBe(['app/Domain/Payments/Services/ProviderRegistry.php'])
+        // Only payment reconciliation runs while a tenant is suspended (it records money that already moved).
+        ->and(appFilesMatching('/implements[^{]*RunsForSuspendedTenants/'))->toBe(['app/Domain/Payments/Jobs/ApplyProviderEvent.php']);
 });
 
 it('measures exactly the limits that are observed, and no other (SaaS.5)', function () {

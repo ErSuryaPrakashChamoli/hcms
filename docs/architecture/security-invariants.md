@@ -212,11 +212,29 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 52. **Commercial and technical lifecycles stay apart.** No SaaS.6 code changes `tenants.status`; the settlement covers
     suspended tenants without touching them.
 
+## SaaS.7 additions (billing, tax and payments)
+
+53. **Only platform operators change billing, tax and payment records**, through their services (`OperatorChange`: operator and reason
+    in the service), audited on the platform chain and, for tenant records, the tenant chain. Tax rules are verified by an operator
+    other than their author. Every tenant user is refused every billing page.
+54. **Money is exact and currency-explicit.** Integer minor units with an ISO-4217 code; no float, `round()` or FX in billing, tax or
+    payment calculation (architecture test); amounts of different currencies are never combined.
+55. **An issued invoice never changes**: number (gap-free, from the series covering the day), tax, totals and snapshots are fixed in
+    one transaction; model guards refuse any edit or deletion of invoices, lines and tax lines.
+56. **Tax fails closed.** Without a determiner, a verified rule in force or a priced outcome, issue is refused; no default tax exists.
+    Country-specific code stays in its jurisdiction module; nothing is reported as legally "supported" by software.
+57. **A payment is confirmed only by a verified provider event, a server-side provider fetch or an operator-recorded transfer.**
+    Webhooks are signature- and timestamp-verified over the raw body, stored once per event id (a different body under a known id is
+    refused), encrypted at rest, and resolve the tenant only from the verified provider reference; there is no browser confirmation
+    route. Only an exact amount in the invoice's currency settles it.
+58. **Billing never authorises.** Payment state, invoices and prices never reach entitlements, authorisation, subscriptions or HCM;
+    only payment reconciliation runs for suspended tenants (`RunsForSuspendedTenants`, exact allow-list).
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
 |---|---|---|
-| `TenantContext::bypass()` / `withoutTenancy()` | 12 files (SaaS.2: +1, SaaS.3: +1; SaaS.6: +1, `SubscriptionDirectory`: the operators' cross-tenant overview of names and commercial states, and the platform audit chain; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
+| `TenantContext::bypass()` / `withoutTenancy()` | 15 files (SaaS.2: +1, SaaS.3: +1; SaaS.7: +3, `BillingDirectory` and `PaymentDirectory` (operators' cross-tenant invoice and payment headers) and `ProviderEvents` (resolving a payment from a verified provider reference); SaaS.6: +1, `SubscriptionDirectory`: the operators' cross-tenant overview of names and commercial states, and the platform audit chain; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
 | `withoutGlobalScope(AccessScope::class)` (345 call sites in 110 files) and `AccessScope::withoutScoping()` (32) | Mechanically each removes only the **organisation** scope; the fail-closed tenant scope stays. Reviewed by category (not line by line): domain services checking a target by id after an explicit `AccessScopes::allows` check, background sweeps, aggregate analytics with small-group suppression, and identity checks (Phase 14: tenant-wide on purpose) |
 | `withoutGlobalScopes()` (all) | 1 | `NumberSequences::highest`. Phase 14 narrowed it to the access scope with an explicit `tenant_id` filter |
 | `DB::table()` | 13 | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only) |

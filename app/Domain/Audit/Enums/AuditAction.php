@@ -232,6 +232,35 @@ enum AuditAction: string
     case SubscriptionExpired = 'SUBSCRIPTION_EXPIRED';
     case SubscriptionCancelled = 'SUBSCRIPTION_CANCELLED';
     case SubscriptionPlanChanged = 'SUBSCRIPTION_PLAN_CHANGED';
+    // SaaS.7: billing, tax and payments (platform chain; tenant records also on the tenant chain).
+    case BillingMarketCreated = 'BILLING_MARKET_CREATED';
+    case BillingMarketUpdated = 'BILLING_MARKET_UPDATED';
+    case PriceCreated = 'PRICE_CREATED';
+    case PriceVersionDrafted = 'PRICE_VERSION_DRAFTED';
+    case PriceVersionPublished = 'PRICE_VERSION_PUBLISHED';
+    case PriceVersionRetired = 'PRICE_VERSION_RETIRED';
+    case SupplierProfileRecorded = 'SUPPLIER_PROFILE_RECORDED';
+    case InvoiceSeriesCreated = 'INVOICE_SERIES_CREATED';
+    case InvoiceSeriesClosed = 'INVOICE_SERIES_CLOSED';
+    case TaxRuleDrafted = 'TAX_RULE_DRAFTED';
+    case TaxRuleSubmitted = 'TAX_RULE_SUBMITTED';
+    case TaxRuleVerified = 'TAX_RULE_VERIFIED';
+    case TaxRuleRetired = 'TAX_RULE_RETIRED';
+    case BillingProfileRecorded = 'BILLING_PROFILE_RECORDED';
+    case BillingTermsSet = 'BILLING_TERMS_SET';
+    case BillingTermsEnded = 'BILLING_TERMS_ENDED';
+    case InvoiceDrafted = 'INVOICE_DRAFTED';
+    case InvoiceIssued = 'INVOICE_ISSUED';
+    case InvoiceDiscarded = 'INVOICE_DISCARDED';
+    case InvoicePaid = 'INVOICE_PAID';
+    case PaymentInitiated = 'PAYMENT_INITIATED';
+    case PaymentRecorded = 'PAYMENT_RECORDED';
+    case PaymentPending = 'PAYMENT_PENDING';
+    case PaymentSucceeded = 'PAYMENT_SUCCEEDED';
+    case PaymentFailed = 'PAYMENT_FAILED';
+    case PaymentCancelled = 'PAYMENT_CANCELLED';
+    case PaymentReconciliationException = 'PAYMENT_RECONCILIATION_EXCEPTION';
+    case PaymentExceptionResolved = 'PAYMENT_EXCEPTION_RESOLVED';
 
     public function label(): string
     {

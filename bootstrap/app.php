@@ -3,6 +3,7 @@
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\ApiResponseContract;
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Controllers\Billing\ProviderWebhookController;
 use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnforceIdempotency;
 use App\Http\Middleware\EnsureSessionIsValid;
@@ -27,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function () {
             Route::get('/health/live', [HealthController::class, 'live'])->name('health.live');
             Route::get('/health/ready', [HealthController::class, 'ready'])->middleware('throttle:60,1')->name('health.ready');
+            // SaaS.7: payment-provider webhooks. Outside the web and api groups (no session, CSRF or API key): the
+            // provider's signature over the raw body authenticates; rate-limited per IP.
+            Route::post('/webhooks/billing/{provider}', ProviderWebhookController::class)->where('provider', '[a-z0-9_-]{1,32}')
+                ->middleware('throttle:billing-webhooks')->name('billing.webhooks');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

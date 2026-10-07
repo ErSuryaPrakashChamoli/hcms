@@ -547,6 +547,8 @@ class AppServiceProvider extends ServiceProvider
      */
     private function registerRateLimits(): void
     {
+        // SaaS.7: payment-provider webhooks, per IP (providers retry; a flood is cut off before any work).
+        RateLimiter::for('billing-webhooks', fn (Request $request) => Limit::perMinute((int) config('peopleos.billing.webhook_rate_per_minute', 120))->by('billing-webhooks:'.$request->ip()));
         RateLimiter::for('api', function (Request $request) {
             $presented = (string) ($request->header('X-Api-Key') ?: $request->bearerToken() ?: '');
             $bucket = match (true) {

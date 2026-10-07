@@ -18,7 +18,8 @@ use RuntimeException;
  *
  * Phase 14 hardening:
  * - A TenantAwareJob without a tenant fails; it never runs unscoped.
- * - A job for a suspended tenant is skipped and logged, not run.
+ * - A job for a suspended tenant is skipped and logged, not run, unless it records something that already happened
+ *   outside PeopleOS (RunsForSuspendedTenants: payment reconciliation only, SaaS.7).
  * - Per-user organisation scopes cached by AccessScopes are cleared before and after each job, so a
  *   long-running worker never carries one job's scope into the next.
  */
@@ -38,7 +39,7 @@ final class BindTenantContext
         }
 
         $tenant = $context->bypass(fn () => Tenant::query()->findOrFail($tenantId));
-        if (! $tenant->isAccessible()) {
+        if (! $tenant->isAccessible() && ! $job instanceof RunsForSuspendedTenants) {
             Log::warning('Queued job skipped: tenant suspended', ['job' => $job::class, 'tenant_id' => $tenant->id]);
 
             return null;
