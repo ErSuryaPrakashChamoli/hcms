@@ -1,0 +1,494 @@
+{
+    "persona": "meera.iyer",
+    "path": "\/admin\/workforce-command-centre",
+    "status": 200,
+    "wall_ms": 1150,
+    "queries": 118,
+    "db_ms": 526,
+    "by_caller": [
+        {
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "queries": 17,
+            "ms": 390.5,
+            "chain": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:41",
+                "app\/Filament\/Pages\/WorkforceCommandCentre.php:75",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:45"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/WorkforcePulse.php:46",
+            "queries": 2,
+            "ms": 36.3,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:46",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:49",
+                "app\/Filament\/Pages\/WorkforceCommandCentre.php:75",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:45"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:156",
+            "queries": 1,
+            "ms": 28.5,
+            "chain": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:156",
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:73",
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:92",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:59"
+            ]
+        },
+        {
+            "caller": "app\/Http\/Middleware\/AssignRequestId.php:30",
+            "queries": 3,
+            "ms": 11,
+            "chain": [
+                "app\/Http\/Middleware\/AssignRequestId.php:30"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/WorkforcePulse.php:45",
+            "queries": 2,
+            "ms": 8.5,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:45",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:49",
+                "app\/Filament\/Pages\/WorkforceCommandCentre.php:75",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:45"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Platform\/Services\/FeatureFlags.php:41",
+            "queries": 26,
+            "ms": 7.9,
+            "chain": [
+                "app\/Domain\/Platform\/Services\/FeatureFlags.php:41",
+                "app\/Domain\/Platform\/Services\/FeatureFlags.php:20",
+                "app\/Filament\/Pages\/WorkforceIntelligence.php:33",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:45"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/WorkforcePulse.php:44",
+            "queries": 2,
+            "ms": 7.6,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:44",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:49",
+                "app\/Filament\/Pages\/WorkforceCommandCentre.php:75",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:45"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Pages\/MyHr.php:92",
+            "queries": 7,
+            "ms": 4.4,
+            "chain": [
+                "app\/Filament\/Pages\/MyHr.php:92",
+                "app\/Filament\/Pages\/MyHr.php:87",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:61"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Support\/ServiceDeskActions.php:44",
+            "queries": 8,
+            "ms": 4.1,
+            "chain": [
+                "app\/Filament\/Support\/ServiceDeskActions.php:44",
+                "app\/Filament\/Pages\/AnnouncementsFeed.php:33",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:61"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Support\/LearningActions.php:35",
+            "queries": 8,
+            "ms": 3.8,
+            "chain": [
+                "app\/Filament\/Support\/LearningActions.php:35",
+                "app\/Filament\/Support\/TalentActions.php:16",
+                "app\/Filament\/Pages\/MyCareer.php:57",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/ApprovalCenter.php:143",
+            "queries": 8,
+            "ms": 3.2,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:143",
+                "app\/Filament\/Pages\/WorkforceCommandCentre.php:126",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:45",
+                "app\/Http\/Middleware\/SetAuditSource.php:16"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/WorkforcePulse.php:47",
+            "queries": 2,
+            "ms": 2.7,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:47",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:49",
+                "app\/Filament\/Pages\/WorkforceCommandCentre.php:75",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:45"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Platform\/Services\/SettingsRepository.php:37",
+            "queries": 6,
+            "ms": 2.1,
+            "chain": [
+                "app\/Domain\/Platform\/Services\/SettingsRepository.php:37",
+                "app\/Domain\/Platform\/Services\/SettingsRepository.php:23",
+                "app\/Domain\/Enterprise\/Services\/SecurityPolicy.php:15",
+                "app\/Http\/Middleware\/EnforceSecurityPolicy.php:27"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Pages\/MyCompensation.php:49",
+            "queries": 4,
+            "ms": 1.9,
+            "chain": [
+                "app\/Filament\/Pages\/MyCompensation.php:49",
+                "app\/Filament\/Pages\/MyCompensation.php:37",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:61"
+            ]
+        },
+        {
+            "caller": "app\/Filament\/Pages\/MyTeam.php:44",
+            "queries": 3,
+            "ms": 1.7,
+            "chain": [
+                "app\/Filament\/Pages\/MyTeam.php:44",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:61",
+                "app\/Domain\/Experience\/Services\/ExperienceNavigation.php:233"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:70",
+            "queries": 1,
+            "ms": 1.5,
+            "chain": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:70",
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:92",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:59",
+                "app\/Filament\/Pages\/WorkforceCommandCentre.php:75"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Identity\/Models\/User.php:156",
+            "queries": 2,
+            "ms": 1.4,
+            "chain": [
+                "app\/Domain\/Identity\/Models\/User.php:156",
+                "app\/Domain\/Identity\/Models\/User.php:148",
+                "app\/Providers\/AppServiceProvider.php:753",
+                "app\/Filament\/Pages\/WorkforceCommandCentre.php:41"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:207",
+            "queries": 2,
+            "ms": 1.1,
+            "chain": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:207",
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:71",
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:92",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:59"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Letters\/Policies\/LetterPolicy.php:15",
+            "queries": 2,
+            "ms": 1.1,
+            "chain": [
+                "app\/Domain\/Letters\/Policies\/LetterPolicy.php:15",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:75",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:61",
+                "app\/Domain\/Experience\/Services\/ExperienceNavigation.php:233"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/RoleLens.php:114",
+            "queries": 2,
+            "ms": 1,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/RoleLens.php:114",
+                "app\/Domain\/Experience\/Services\/RoleLens.php:59",
+                "app\/Domain\/Experience\/Services\/RoleLens.php:84",
+                "app\/Filament\/Pages\/Approvals.php:57"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:132",
+            "queries": 1,
+            "ms": 0.9,
+            "chain": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:132",
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:68",
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:92",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:59"
+            ]
+        },
+        {
+            "caller": "view:6fafd708cfadfc7eca85f38b6c2a4d53.php",
+            "queries": 1,
+            "ms": 0.7,
+            "chain": []
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/QuickActions.php:83",
+            "queries": 1,
+            "ms": 0.6,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/QuickActions.php:83",
+                "app\/Domain\/Experience\/Services\/CommandSearch.php:138",
+                "app\/Domain\/Experience\/Services\/CommandSearch.php:76",
+                "app\/Livewire\/Experience\/CommandCenter.php:63"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Identity\/Models\/User.php:197",
+            "queries": 1,
+            "ms": 0.6,
+            "chain": [
+                "app\/Domain\/Identity\/Models\/User.php:197"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/RoleLens.php:118",
+            "queries": 1,
+            "ms": 0.6,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/RoleLens.php:118",
+                "app\/Domain\/Experience\/Services\/RoleLens.php:59",
+                "app\/Domain\/Experience\/Services\/RoleLens.php:84",
+                "app\/Filament\/Pages\/Approvals.php:57"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:142",
+            "queries": 1,
+            "ms": 0.6,
+            "chain": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:142",
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:69",
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:92",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:59"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:198",
+            "queries": 1,
+            "ms": 0.6,
+            "chain": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:198",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:60",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:197",
+                "app\/Domain\/Experience\/Services\/WorkforcePulse.php:60"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Experience\/Services\/ExperiencePreferences.php:48",
+            "queries": 1,
+            "ms": 0.5,
+            "chain": [
+                "app\/Domain\/Experience\/Services\/ExperiencePreferences.php:48",
+                "app\/Domain\/Experience\/Services\/ExperienceNavigation.php:195",
+                "app\/Domain\/Experience\/Services\/ExperienceNavigation.php:152",
+                "app\/Providers\/Filament\/AdminPanelProvider.php:101"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Identity\/Services\/AccessScopes.php:50",
+            "queries": 1,
+            "ms": 0.5,
+            "chain": [
+                "app\/Domain\/Identity\/Services\/AccessScopes.php:50",
+                "app\/Support\/Tenancy\/TenantContext.php:84",
+                "app\/Domain\/Identity\/Services\/AccessScopes.php:48",
+                "app\/Domain\/Identity\/Services\/AccessScopes.php:61"
+            ]
+        },
+        {
+            "caller": "app\/Domain\/Performance\/Policies\/EmployeeOwnedPolicy.php:44",
+            "queries": 1,
+            "ms": 0.5,
+            "chain": [
+                "app\/Domain\/Performance\/Policies\/EmployeeOwnedPolicy.php:44",
+                "app\/Filament\/Pages\/CareerPassportPage.php:47",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:88",
+                "app\/Domain\/Experience\/Services\/ModuleCatalogue.php:61"
+            ]
+        }
+    ],
+    "duplicates": [
+        {
+            "count": 3,
+            "ms": 67.4,
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ?",
+            "callers": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 55.3,
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ?",
+            "callers": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106"
+            ]
+        },
+        {
+            "count": 29,
+            "ms": 15.3,
+            "sql": "select * from `employees` where `user_id` = ? and `employees`.`tenant_id` = ? limit 1",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/RoleLens.php:114",
+                "app\/Filament\/Support\/ServiceDeskActions.php:44",
+                "app\/Domain\/Performance\/Policies\/EmployeeOwnedPolicy.php:44",
+                "app\/Filament\/Support\/LearningActions.php:35",
+                "app\/Filament\/Pages\/MyCompensation.php:49",
+                "app\/Filament\/Pages\/MyHr.php:92"
+            ]
+        },
+        {
+            "count": 26,
+            "ms": 7.9,
+            "sql": "select * from `cache` where `key` in (?)",
+            "callers": [
+                "app\/Domain\/Platform\/Services\/FeatureFlags.php:41"
+            ]
+        },
+        {
+            "count": 8,
+            "ms": 3.2,
+            "sql": "select * from `cache` where `key` in (?)",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/ApprovalCenter.php:143"
+            ]
+        },
+        {
+            "count": 4,
+            "ms": 2.2,
+            "sql": "select exists(select * from `reporting_relationships` where `reporting_relationships`.`manager_id` = ? and `reporting_relationships`.`manager_id` is not null and (`reporting_relationships`.`effective_from` is null or `re",
+            "callers": [
+                "app\/Domain\/Experience\/Services\/RoleLens.php:118",
+                "app\/Filament\/Pages\/MyTeam.php:44"
+            ]
+        },
+        {
+            "count": 6,
+            "ms": 2.1,
+            "sql": "select * from `cache` where `key` in (?)",
+            "callers": [
+                "app\/Domain\/Platform\/Services\/SettingsRepository.php:37"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 1.1,
+            "sql": "select * from `payroll_runs` where `status` in (?, ?) and `payroll_runs`.`tenant_id` = ? order by `finalized_at` desc limit 1",
+            "callers": [
+                "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:207"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 1.1,
+            "sql": "select exists(select * from `employees` where `user_id` = ? and `employees`.`tenant_id` = ?) as `exists`",
+            "callers": [
+                "app\/Domain\/Letters\/Policies\/LetterPolicy.php:15"
+            ]
+        },
+        {
+            "count": 2,
+            "ms": 0.8,
+            "sql": "select * from `sessions` where `id` = ? limit 1",
+            "callers": [
+                "app\/Http\/Middleware\/AssignRequestId.php:30"
+            ]
+        }
+    ],
+    "slowest": [
+        {
+            "ms": 31.8,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 31.6,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 28.5,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:156",
+            "sql": "select `joining_date` from `employees` where `lifecycle_state` in (?, ?, ?, ?, ?, ?, ?, ?) and `joining_date` is not null and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 27.4,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 25.9,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 25.4,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 23.5,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 22.8,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 21.7,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 21,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 20.3,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 20.3,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 20.1,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 20,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        },
+        {
+            "ms": 19.8,
+            "caller": "app\/Domain\/Analytics\/Services\/WorkforceMetrics.php:106",
+            "sql": "select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date` is null or date(`exit_date`) >= ? or (date(`exit_date`) < ? and `lifecycle_state` not in (?, ?))) and `employees`.`tenant_id` = ?"
+        }
+    ]
+}

@@ -1,0 +1,234 @@
+{
+ "browser": "Chromium 151.0.7922.34",
+ "keyboard": [
+  {
+   "who": "priya.nair",
+   "firstStop": "Skip to content",
+   "skipLinkLandsInMain": true,
+   "stops": 40,
+   "withoutVisibleFocus": [],
+   "hiddenFocused": []
+  },
+  {
+   "who": "amit.verma",
+   "firstStop": "Skip to content",
+   "skipLinkLandsInMain": true,
+   "stops": 40,
+   "withoutVisibleFocus": [],
+   "hiddenFocused": []
+  },
+  {
+   "who": "neha.kapoor",
+   "firstStop": "Skip to content",
+   "skipLinkLandsInMain": true,
+   "stops": 40,
+   "withoutVisibleFocus": [],
+   "hiddenFocused": []
+  },
+  {
+   "who": "meera.iyer",
+   "firstStop": "Skip to content",
+   "skipLinkLandsInMain": true,
+   "stops": 39,
+   "withoutVisibleFocus": [],
+   "hiddenFocused": []
+  },
+  {
+   "who": "kavya.menon",
+   "firstStop": "Skip to content",
+   "skipLinkLandsInMain": true,
+   "stops": 40,
+   "withoutVisibleFocus": [],
+   "hiddenFocused": []
+  }
+ ],
+ "overlays": [
+  {
+   "overlay": "Command center",
+   "focusMovesIn": true,
+   "focusName": "Search people, requests, policies… or type what yo",
+   "tabStaysInside": true,
+   "escapeCloses": true,
+   "focusReturnsToTrigger": true
+  },
+  {
+   "overlay": "Person sheet (drawer)",
+   "focusMovesIn": true,
+   "focusName": "Close panel",
+   "tabStaysInside": true,
+   "escapeCloses": true,
+   "focusReturnsToTrigger": true
+  },
+  {
+   "overlay": "Request leave (modal form)",
+   "focusMovesIn": true,
+   "focusName": "Select an option Earned leave (EL) · 17.5 availabl",
+   "tabStaysInside": true,
+   "escapeCloses": true,
+   "focusReturnsToTrigger": true
+  },
+  {
+   "overlay": "Assistant panel",
+   "focusMovesIn": true,
+   "focusName": "Ask anything…",
+   "tabStaysInside": true,
+   "escapeCloses": true,
+   "focusReturnsToTrigger": true
+  },
+  {
+   "overlay": "Notifications sheet",
+   "focusMovesIn": true,
+   "focusName": "Notifications 3 Mark all as read Clear Rahul Sharm",
+   "tabStaysInside": true,
+   "escapeCloses": true,
+   "focusReturnsToTrigger": true
+  }
+ ],
+ "lists": [
+  {
+   "list": "Approval Center (J/K)",
+   "focusMoves": true,
+   "seen": [
+    "leave:2",
+    "regularisation:1",
+    "leave:2"
+   ]
+  }
+ ],
+ "reflow": [
+  {
+   "mode": "320 CSS px",
+   "who": "neha.kapoor",
+   "path": "/admin",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "320 CSS px",
+   "who": "neha.kapoor",
+   "path": "/admin/people?view=list",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "320 CSS px",
+   "who": "neha.kapoor",
+   "path": "/admin/employees/3",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "320 CSS px",
+   "who": "amit.verma",
+   "path": "/admin/approvals",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "320 CSS px",
+   "who": "kavya.menon",
+   "path": "/admin/users",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "320 CSS px",
+   "who": "priya.nair",
+   "path": "/admin/my-work",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "200% zoom of 1280",
+   "who": "neha.kapoor",
+   "path": "/admin",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "200% zoom of 1280",
+   "who": "neha.kapoor",
+   "path": "/admin/people?view=list",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "200% zoom of 1280",
+   "who": "neha.kapoor",
+   "path": "/admin/employees/3",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "200% zoom of 1280",
+   "who": "amit.verma",
+   "path": "/admin/approvals",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "200% zoom of 1280",
+   "who": "kavya.menon",
+   "path": "/admin/users",
+   "overflowPx": 0,
+   "pass": true
+  },
+  {
+   "mode": "200% zoom of 1280",
+   "who": "priya.nair",
+   "path": "/admin/my-work",
+   "overflowPx": 0,
+   "pass": true
+  }
+ ],
+ "spacing": [
+  {
+   "who": "neha.kapoor",
+   "path": "/admin",
+   "width": 390,
+   "overflow": 0,
+   "clipped": [
+    "pos-signal-verb: Open: Probation decisions over",
+    "pos-signal-verb: Open: Probation ends within 14",
+    "pos-signal-verb: Open: Onboarding tasks overdue"
+   ],
+   "clippedCount": 3
+  },
+  {
+   "who": "amit.verma",
+   "path": "/admin/approvals",
+   "width": 1440,
+   "overflow": 0,
+   "clipped": [],
+   "clippedCount": 0
+  },
+  {
+   "who": "kavya.menon",
+   "path": "/admin",
+   "width": 390,
+   "overflow": 0,
+   "clipped": [],
+   "clippedCount": 0
+  },
+  {
+   "who": "neha.kapoor",
+   "path": "/admin/employees/3",
+   "width": 1440,
+   "overflow": 0,
+   "clipped": [],
+   "clippedCount": 0
+  }
+ ],
+ "motion": [
+  {
+   "prefersReducedMotion": "reduce",
+   "elementsWithMotionOver10ms": 0
+  }
+ ],
+ "tree": {
+  "phoneBar": "- navigation \"Primary\":\n  - link \"Home\":\n    - /url: http://127.0.0.1:8090/admin\n  - link \"Approvals, 6 waiting\":\n    - /url: http://127.0.0.1:8090/admin/approvals\n    - text: Approvals\n  - 'button \"Start something: leave, requests, approvals and more\"': Actions\n  - link \"Team\":\n    - /url: http://127.0.0.1:8090/admin/my-team\n  - link \"Work\":\n    - /url: http://127.0.0.1:8090/admin/my-work",
+  "homeHeadings": "  - heading \"Good morning, Amit.\" [level=1]\n  - tablist \"View Home as\":\n    - tab \"For you\"\n    - tab \"Your team\" [selected]\n    - heading \"Welcome to PeopleOS. Your work comes to you here.\" [level=2]\n    - heading \"Decisions waiting for you 6\" [level=2]\n    - heading \"Your team 2\" [level=2]\n    - heading \"Your day\" [level=2]\n    - heading \"What changed\" [level=2]\n    - heading \"For you 2\" [level=2]\n      - heading \"PeopleOS Intelligence\" [level=2]\n      - heading \"Team pulse\" [level=2]\n      - heading \"Start something\" [level=2]",
+  "commandCenter": "- dialog \"Command center\":\n  - heading \"Command center\" [level=2]\n  - combobox \"Search people, requests, policies… or type what you want to do\" [expanded]: leave\n  - button \"Cancel\"\n  - tablist \"Search scope\":\n    - tab \"Everything\" [selected]\n    - tab \"Actions\"\n    - tab \"People\"\n  - listbox \"Results\":\n    - group \"Actions\":\n      - paragraph: Actions\n      - option \"Review 6 approvals Approve Leave, attendance, compensation, letters, workflow steps\" [selected]:\n        - paragraph: Review 6 approvals Approve\n        - paragraph: Leave, attendance, compensation, letters, workflow steps\n      - option \"Team leave calendar Review Who is away and when\":\n        - paragraph: Team leave calendar Review\n        - paragraph: Who is away and when\n      - option \"Request leave Request Pick dates, see your balance, submit\":\n        - paragraph: Request leave Request\n        - paragraph: Pick dates, see your balance, submit\n    - group \"Navigation\":\n      - paragraph: Navigation\n      - option \"Leave requests People · Leave\":\n        - paragraph: Leave requests\n        - paragraph: People · Leave",
+  "decisionSheet": "- dialog \"Decision\":\n  - banner:\n    - heading \"Decision\" [level=2]\n    - button \"Close panel\"\n  - article \"Casual leave · 1 day\":\n    - text: Leave Urgent\n    - heading \"Casual leave · 1 day\" [level=3]\n    - button \"Rahul Sharma\"\n    - text: Requested by Rahul Sharma · 21 hours ago\n    - blockquote: Medical appointment\n    - list \"Context\":\n      - listitem: No one else in the team is away on these dates\n      - listitem: Mon, 05 Oct\n    - group \"Before → After\":\n      - paragraph: Before → After\n      - text: Effective 5 Oct 2026\n      - term: Casual leave balance\n      - definition: from 7 days to 6 days\n    - button \"Approve\"\n    - button \"Reject\"\n    - link \"View details\":\n      - /url: http://127.0.0.1:8090/admin/leave-requests\n    - paragraph: Need more information? This kind of request can’t be sent back in PeopleOS. Reject with a reason the requester will see, or ask Rahul Sharma directly first."
+ }
+}

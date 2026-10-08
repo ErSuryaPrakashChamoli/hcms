@@ -1,22 +1,10 @@
 <x-filament-panels::page>
     @php($readiness = $this->getReadiness())
-    <div class="grid gap-4 md:grid-cols-4">
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Employees without a salary</div>
-            <div class="text-2xl font-semibold {{ $readiness['no_salary'] > 0 ? 'text-warning-600' : '' }}">{{ $readiness['no_salary'] }}</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Without a primary bank account</div>
-            <div class="text-2xl font-semibold {{ $readiness['no_bank'] > 0 ? 'text-warning-600' : '' }}">{{ $readiness['no_bank'] }}</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Without PAN</div>
-            <div class="text-2xl font-semibold {{ $readiness['no_pan'] > 0 ? 'text-warning-600' : '' }}">{{ $readiness['no_pan'] }}</div>
-        </x-filament::section>
-        <x-filament::section compact>
-            <div class="text-sm text-gray-500">Statutory rules in force</div>
-            <div class="text-2xl font-semibold {{ $readiness['rules'] === 0 ? 'text-danger-600' : '' }}">{{ $readiness['rules'] }}</div>
-        </x-filament::section>
+    <div class="pos-panel pos-panel-pad pos-figures">
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $readiness['no_salary'] > 0 ? 'warning' : '' }}">{{ $readiness['no_salary'] }}</span><span class="pos-figure-label">Employees without a salary</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $readiness['no_bank'] > 0 ? 'warning' : '' }}">{{ $readiness['no_bank'] }}</span><span class="pos-figure-label">Without a primary bank account</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $readiness['no_pan'] > 0 ? 'warning' : '' }}">{{ $readiness['no_pan'] }}</span><span class="pos-figure-label">Without PAN</span></div>
+        <div class="pos-figure"><span class="pos-figure-value" data-meaning="{{ $readiness['rules'] === 0 ? 'bad' : '' }}">{{ $readiness['rules'] }}</span><span class="pos-figure-label">Statutory rules in force</span></div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

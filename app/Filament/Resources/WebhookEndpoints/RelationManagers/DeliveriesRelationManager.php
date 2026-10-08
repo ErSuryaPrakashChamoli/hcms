@@ -31,7 +31,7 @@ class DeliveriesRelationManager extends RelationManager
                 TextColumn::make('created_at')->dateTime()->sortable(),
                 TextColumn::make('event')->badge()->color('gray'),
                 TextColumn::make('status')->badge()->color(fn (string $state) => match ($state) {
-                    'delivered' => 'success', 'failed' => 'danger', default => 'warning'
+                    'delivered' => 'success', 'failed', 'dead_letter' => 'danger', default => 'warning'
                 }),
                 TextColumn::make('attempts'),
                 TextColumn::make('response_code')->label('HTTP')->placeholder('—'),
@@ -39,12 +39,19 @@ class DeliveriesRelationManager extends RelationManager
                 TextColumn::make('delivered_at')->dateTime()->placeholder('—'),
             ])
             ->defaultSort('id', 'desc')
-            ->filters([SelectFilter::make('status')->options(['pending' => 'Pending', 'delivered' => 'Delivered', 'failed' => 'Failed'])])
+            ->filters([SelectFilter::make('status')->options(['pending' => 'Pending', 'delivered' => 'Delivered', 'dead_letter' => 'Dead letter', 'failed' => 'Failed (before Phase 14)'])])
             ->recordActions([
                 Action::make('payload')->label('Payload')->icon('heroicon-m-eye')->modalSubmitAction(false)->modalCancelActionLabel('Close')
                     ->schema([TextEntry::make('payload')->state(fn (WebhookDelivery $record) => json_encode($record->payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))->prose(), TextEntry::make('response_excerpt')->placeholder('—')]),
-                Action::make('retry')->label('Retry now')->icon('heroicon-m-arrow-path')->visible(fn (WebhookDelivery $record) => $record->status !== 'delivered')
-                    ->action(fn (WebhookDelivery $record) => ServiceDeskActions::run(fn () => app(Webhooks::class)->attempt($record->forceFill(['status' => 'pending']) && $record ? $record : $record), fn ($o) => $o === 'delivered' ? 'Delivered' : 'Still failing')),
+                // Phase 14: a pending delivery is attempted now through the same claim as the scheduler (never twice at once);
+                // a dead letter is replayed with a fresh attempt budget (audited).
+                Action::make('retry')->label('Retry now')->icon('heroicon-m-arrow-path')->visible(fn (WebhookDelivery $record) => $record->status === 'pending')
+                    ->action(fn (WebhookDelivery $record) => ServiceDeskActions::run(fn () => app(Webhooks::class)->deliver($record->id, force: true), fn ($o) => match ($o) {
+                        'delivered' => 'Delivered', 'skipped' => 'Another attempt is in progress', 'dead_letter' => 'Moved to dead letter', default => 'Still failing'
+                    })),
+                Action::make('replay')->label('Replay')->icon('heroicon-m-arrow-uturn-right')->requiresConfirmation()
+                    ->visible(fn (WebhookDelivery $record) => in_array($record->status, ['dead_letter', 'failed'], true))
+                    ->action(fn (WebhookDelivery $record) => ServiceDeskActions::run(fn () => app(Webhooks::class)->replay($record, auth()->user()), 'Queued for delivery again')),
             ]);
     }
 }

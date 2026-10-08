@@ -4,19 +4,19 @@ namespace App\Filament\Resources\LearningAssignments\Pages;
 
 use App\Domain\Learning\Services\Learning;
 use App\Filament\Resources\LearningAssignments\LearningAssignmentResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageLearningAssignments extends ManageRecords
+class ManageLearningAssignments extends PeopleManageRecords
 {
     protected static string $resource = LearningAssignmentResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
-                ->mutateDataUsing(fn (array $data) => $data + ['created_by' => auth()->id()])
-                ->after(fn ($record) => app(Learning::class)->applyAssignment($record, auth()->user())),
+            // Phase 8: created and applied through Learning::assign — scope checks, one audited bulk operation.
+            CreateAction::make()->label('Assign learning')
+                ->using(fn (array $data) => app(Learning::class)->assign($data, auth()->user())),
         ];
     }
 }

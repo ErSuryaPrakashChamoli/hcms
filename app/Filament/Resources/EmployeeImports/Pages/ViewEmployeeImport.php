@@ -4,9 +4,9 @@ namespace App\Filament\Resources\EmployeeImports\Pages;
 
 use App\Filament\Resources\EmployeeImports\EmployeeImportResource;
 use App\Filament\Support\ImportActions;
-use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Support\Pages\PeopleViewRecord;
 
-class ViewEmployeeImport extends ViewRecord
+class ViewEmployeeImport extends PeopleViewRecord
 {
     protected static string $resource = EmployeeImportResource::class;
 

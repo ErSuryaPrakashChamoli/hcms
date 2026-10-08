@@ -15,6 +15,13 @@ class AssessmentAttempt extends Model
     use BelongsToTenant;
     use ScopedByEmployee;
 
+    protected static function booted(): void
+    {
+        // Phase 8: a submitted attempt is a finalized result.
+        static::updating(fn () => throw new \RuntimeException('Assessment attempts are immutable.'));
+        static::deleting(fn () => throw new \RuntimeException('Assessment attempts are immutable.'));
+    }
+
     protected function casts(): array
     {
         return ['answers' => 'array', 'score' => 'decimal:2', 'passed' => 'boolean', 'submitted_at' => 'datetime'];

@@ -7,19 +7,21 @@ use App\Domain\Workflow\Exceptions\WorkflowException;
 use App\Domain\Workflow\Models\Workflow;
 use App\Domain\Workflow\Services\WorkflowEngine;
 use App\Domain\Workflow\Services\Workflows;
+use App\Domain\Workflow\Services\WorkflowWebhookSigning;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
 use App\Filament\Resources\Workflows\WorkflowResource;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\HtmlString;
 
-class EditWorkflow extends EditRecord
+class EditWorkflow extends PeopleEditRecord
 {
     use GovernedEdit;
 
@@ -71,6 +73,29 @@ class EditWorkflow extends EditRecord
                     } catch (WorkflowException $e) {
                         Notification::make()->danger()->title('Could not start')->body($e->getMessage())->send();
                     }
+                }),
+            // SaaS.2: the secret webhook receivers use to verify X-PeopleOS-Signature. Opening it is audited.
+            Action::make('webhookSigningSecret')
+                ->label('Webhook signing secret')
+                ->icon(Heroicon::OutlinedKey)
+                ->color('gray')
+                ->authorize(fn () => auth()->user()->can('workflow.update'))
+                ->modalHeading('Webhook signing secret')
+                ->modalDescription('Receivers verify X-PeopleOS-Signature: sha256 HMAC of "<X-PeopleOS-Timestamp>.<raw body>" with this secret. Refuse timestamps older than 5 minutes and drop repeated X-PeopleOS-Delivery ids.')
+                ->modalContent(fn (Workflow $record) => new HtmlString('<code class="pos-secret" style="word-break:break-all">'.e(app(WorkflowWebhookSigning::class)->reveal($record, auth()->user())).'</code>'))
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Close'),
+            Action::make('rotateWebhookSigningSecret')
+                ->label('Rotate signing secret')
+                ->icon(Heroicon::OutlinedArrowPath)
+                ->color('danger')
+                ->authorize(fn () => auth()->user()->can('workflow.update'))
+                ->requiresConfirmation()
+                ->modalDescription('The old secret stops working at once. Update every receiver with the new secret.')
+                ->schema([AuditReasonField::make()->required()])
+                ->action(function (Workflow $record, array $data) {
+                    app(WorkflowWebhookSigning::class)->rotate($record, auth()->user(), (string) ($data[AuditReasonField::NAME] ?? ''));
+                    Notification::make()->success()->title('Signing secret rotated')->body('Open "Webhook signing secret" to copy the new one.')->send();
                 }),
             DeleteAction::make(),
         ];

@@ -8,10 +8,10 @@ use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Services\EstablishmentAssignments;
 use App\Filament\Resources\EstablishmentAssignments\EstablishmentAssignmentResource;
 use App\Filament\Resources\StatutoryRegistrations\StatutoryRegistrationResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\Action;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageEstablishmentAssignments extends ManageRecords
+class ManageEstablishmentAssignments extends PeopleManageRecords
 {
     protected static string $resource = EstablishmentAssignmentResource::class;
 

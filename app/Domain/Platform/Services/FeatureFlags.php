@@ -10,6 +10,9 @@ final class FeatureFlags
 {
     private const TTL_SECONDS = 3600;
 
+    /** @var array<int, array<string, bool>> UX.18: this request's flags per tenant (one cache read instead of one per check) */
+    private array $loaded = [];
+
     public function __construct(
         private readonly TenantContext $tenants,
         private readonly Cache $cache,
@@ -38,7 +41,7 @@ final class FeatureFlags
             return $defaults;
         }
 
-        $stored = $this->cache->remember(
+        $stored = $this->loaded[$tenantId] ??= $this->cache->remember(
             $this->cacheKey($tenantId),
             self::TTL_SECONDS,
             fn () => TenantFeature::query()->pluck('enabled', 'feature')->map(fn ($v) => (bool) $v)->all(),
@@ -63,6 +66,7 @@ final class FeatureFlags
         $tenantId ??= $this->tenants->id();
 
         if ($tenantId !== null) {
+            unset($this->loaded[$tenantId]);
             $this->cache->forget($this->cacheKey($tenantId));
         }
     }

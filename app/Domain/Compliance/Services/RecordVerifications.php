@@ -37,7 +37,7 @@ final class RecordVerifications
         if ($document !== null && $document !== '') {
             $sha = hash('sha256', $document);
             $path = 'compliance-evidence/'.$record->getTable()."/{$record->tenant_id}/{$record->getKey()}/{$sha}-".(preg_replace('/[^A-Za-z0-9._-]+/', '_', basename((string) $filename)) ?: 'document');
-            Storage::disk('local')->put($path, $document);
+            Storage::disk(config('peopleos.storage.compliance_disk', 'local'))->put($path, $document);
         }
 
         $record->forceFill(['verification_status' => 'review', 'verification_reference' => trim($reference), 'verification_evidence_path' => $path, 'verification_evidence_sha256' => $sha, 'verification_submitted_by' => $maker->getKey(), 'verification_submitted_at' => now(), 'verification_notes' => $notes, 'verified_by' => null, 'verified_at' => null])

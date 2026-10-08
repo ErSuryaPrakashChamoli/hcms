@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Letters\Pages;
 
 use App\Filament\Resources\Letters\LetterResource;
-use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Support\Pages\PeopleViewRecord;
 
-class ViewLetter extends ViewRecord
+class ViewLetter extends PeopleViewRecord
 {
     protected static string $resource = LetterResource::class;
 

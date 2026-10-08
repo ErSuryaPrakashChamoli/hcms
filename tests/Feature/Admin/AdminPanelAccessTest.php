@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Platform\Services\PlatformTenantAccess;
 use App\Filament\Resources\Companies\CompanyResource;
 use App\Filament\Resources\Companies\Pages\CreateCompany;
 use App\Filament\Resources\Tenants\TenantResource;
@@ -37,12 +38,16 @@ it('denies users without the permission', function () {
 });
 
 it('keeps suspended users and users of suspended tenants out of the panel', function () {
+    // SaaS.2: the session is signed out, not merely refused, so reactivation does not revive it.
+    $login = filament()->getPanel('admin')->getLoginUrl();
     $this->actingAs(tenantUser($this->tenantA, ['company.*'], ['status' => 'suspended']));
-    $this->get(CompanyResource::getUrl('index'))->assertForbidden();
+    $this->get(CompanyResource::getUrl('index'))->assertRedirect($login);
+    $this->assertGuest();
 
     $this->tenantB->update(['status' => 'suspended']);
     $this->actingAs(tenantUser($this->tenantB, ['company.*']));
-    $this->get(CompanyResource::getUrl('index'))->assertForbidden();
+    $this->get(CompanyResource::getUrl('index'))->assertRedirect($login);
+    $this->assertGuest();
 });
 
 it('hides tenant administration from tenant users but shows it to platform admins', function () {
@@ -59,12 +64,18 @@ it('lets a platform admin enter a tenant and see its data, and leave it again', 
 
     $this->get(CompanyResource::getUrl('index'))->assertOk()->assertDontSee('Alpha Co');
 
+    // SaaS.2: the old bare session key no longer opens a tenant.
+    actAsTenant(null);
     $this->withSession([ResolveTenant::SESSION_KEY => $this->tenantA->id])
-        ->get(CompanyResource::getUrl('index'))->assertOk()->assertSee('Alpha Co');
+        ->get(CompanyResource::getUrl('index'))->assertOk()->assertDontSee('Alpha Co');
 
-    $this->withSession([ResolveTenant::SESSION_KEY => $this->tenantA->id])
-        ->post(route('admin.exit-tenant'))->assertRedirect();
-    expect(session()->has(ResolveTenant::SESSION_KEY))->toBeFalse();
+    app(PlatformTenantAccess::class)->enter($admin, $this->tenantA, 'Customer support ticket review', 'SUP-1', session()->driver());
+    $this->get(CompanyResource::getUrl('index'))->assertOk()->assertSee('Alpha Co');
+
+    $this->post(route('admin.exit-tenant'))->assertRedirect();
+    expect(session()->has(PlatformTenantAccess::SESSION_KEY))->toBeFalse();
+    actAsTenant(null); // a new request starts unbound (the scoped context outlives requests only inside a test)
+    $this->get(CompanyResource::getUrl('index'))->assertOk()->assertDontSee('Alpha Co');
 });
 
 it('creates a company from the admin form, stamped with the tenant and audited', function () {

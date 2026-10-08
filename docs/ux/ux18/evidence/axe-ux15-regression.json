@@ -1,0 +1,576 @@
+[
+ {
+  "theme": "light",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "priya.nair",
+  "path": "/admin/my-work",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "priya.nair",
+  "path": "/admin/my-hr",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "priya.nair",
+  "path": "/admin/people",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "amit.verma",
+  "path": "/admin/approvals",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "amit.verma",
+  "path": "/admin/my-work",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "amit.verma",
+  "path": "/admin/approvals",
+  "state": "decide",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "drawer-approval",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list&group=department",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=changed",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/2",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/organisation-map",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/organisation-map?mode=departments",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "email": "neha.kapoor@demo.local",
+  "path": "/admin/people",
+  "state": "drawer-person",
+  "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.pos-person-card').first()\u001b[22m\n"
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/people",
+  "state": "drawer-person",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list",
+  "state": "peek",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "email": "neha.kapoor@demo.local",
+  "path": "/admin",
+  "state": "drawer-change",
+  "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button.pos-stream-row').filter({ hasText: 'Joining' }).first()\u001b[22"
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin",
+  "state": "drawer-change",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin",
+  "state": "command-pick",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "meera.iyer",
+  "path": "/admin/workforce-command-centre",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "meera.iyer",
+  "path": "/admin/workforce-command-centre",
+  "state": "drawer-pulse",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "meera.iyer",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "kavya.menon",
+  "path": "/admin/admin-centre",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "kavya.menon",
+  "path": "/admin/leave-requests",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "kavya.menon",
+  "path": "/admin/leave-requests",
+  "state": "area-menu",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "kavya.menon",
+  "path": "/admin/employees/2?action=assignPosition",
+  "state": "modal",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/leave-requests",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/leave-requests",
+  "state": "lens",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/employees",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/tickets/1",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "kavya.menon",
+  "path": "/admin/departments",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "kavya.menon",
+  "path": "/admin/departments/create",
+  "state": "review-create",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "kavya.menon",
+  "path": "/admin/departments/1/edit",
+  "state": "review-edit",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "kavya.menon",
+  "path": "/admin/audit-events",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "kavya.menon",
+  "path": "/admin/leave-types",
+  "state": "drawer-form",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "arjun.bose",
+  "path": "/admin/payroll-runs",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "amit.verma",
+  "path": "/admin/my-team",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/2#journey",
+  "state": "view-journey",
+  "violations": []
+ },
+ {
+  "theme": "light",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/2#records",
+  "state": "view-records",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "priya.nair",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "priya.nair",
+  "path": "/admin/my-work",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "priya.nair",
+  "path": "/admin/my-hr",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "priya.nair",
+  "path": "/admin/people",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "amit.verma",
+  "path": "/admin/approvals",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "amit.verma",
+  "path": "/admin/my-work",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "amit.verma",
+  "path": "/admin/approvals",
+  "state": "decide",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "amit.verma",
+  "path": "/admin",
+  "state": "drawer-approval",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list&group=department",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=changed",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/2",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/organisation-map",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/organisation-map?mode=departments",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "email": "neha.kapoor@demo.local",
+  "path": "/admin/people",
+  "state": "drawer-person",
+  "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.pos-person-card').first()\u001b[22m\n"
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/people",
+  "state": "drawer-person",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/people?view=list",
+  "state": "peek",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "email": "neha.kapoor@demo.local",
+  "path": "/admin",
+  "state": "drawer-change",
+  "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button.pos-stream-row').filter({ hasText: 'Joining' }).first()\u001b[22"
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin",
+  "state": "drawer-change",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin",
+  "state": "command-pick",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "meera.iyer",
+  "path": "/admin/workforce-command-centre",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "meera.iyer",
+  "path": "/admin/workforce-command-centre",
+  "state": "drawer-pulse",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "meera.iyer",
+  "path": "/admin",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "kavya.menon",
+  "path": "/admin/admin-centre",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "kavya.menon",
+  "path": "/admin/leave-requests",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "kavya.menon",
+  "path": "/admin/leave-requests",
+  "state": "area-menu",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "kavya.menon",
+  "path": "/admin/employees/2?action=assignPosition",
+  "state": "modal",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/leave-requests",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/leave-requests",
+  "state": "lens",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/employees",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/tickets/1",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "kavya.menon",
+  "path": "/admin/departments",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "kavya.menon",
+  "path": "/admin/departments/create",
+  "state": "review-create",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "kavya.menon",
+  "path": "/admin/departments/1/edit",
+  "state": "review-edit",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "kavya.menon",
+  "path": "/admin/audit-events",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "kavya.menon",
+  "path": "/admin/leave-types",
+  "state": "drawer-form",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "arjun.bose",
+  "path": "/admin/payroll-runs",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "amit.verma",
+  "path": "/admin/my-team",
+  "state": "",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/2#journey",
+  "state": "view-journey",
+  "violations": []
+ },
+ {
+  "theme": "dark",
+  "who": "neha.kapoor",
+  "path": "/admin/employees/2#records",
+  "state": "view-records",
+  "violations": []
+ }
+]

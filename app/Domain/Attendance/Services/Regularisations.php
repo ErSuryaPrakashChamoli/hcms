@@ -10,6 +10,7 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Platform\Services\SettingsRepository;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -69,9 +70,9 @@ final class Regularisations
         return $regularisation;
     }
 
-    public function approve(AttendanceRegularisation $regularisation, ?string $note = null): AttendanceRegularisation
+    public function approve(AttendanceRegularisation $regularisation, ?string $note = null, ?User $actor = null): AttendanceRegularisation
     {
-        $this->review($regularisation, 'approved', $note);
+        $this->review($regularisation, 'approved', $note, $actor);
         $record = $this->processor->process($regularisation->employee, $regularisation->date);
         $regularisation->update(['resulting_snapshot' => $this->snapshot($record)]);
         AttendanceEvent::dispatch('attendance.regularisation_approved', $regularisation->employee, $regularisation, ['date' => $regularisation->date->toDateString(), 'note' => $note]);
@@ -79,9 +80,9 @@ final class Regularisations
         return $regularisation->refresh();
     }
 
-    public function reject(AttendanceRegularisation $regularisation, string $note): AttendanceRegularisation
+    public function reject(AttendanceRegularisation $regularisation, string $note, ?User $actor = null): AttendanceRegularisation
     {
-        $this->review($regularisation, 'rejected', $note);
+        $this->review($regularisation, 'rejected', $note, $actor);
         AttendanceEvent::dispatch('attendance.regularisation_rejected', $regularisation->employee, $regularisation, ['date' => $regularisation->date->toDateString(), 'note' => $note]);
 
         return $regularisation->refresh();
@@ -166,13 +167,24 @@ final class Regularisations
         });
     }
 
-    private function review(AttendanceRegularisation $regularisation, string $status, ?string $note): void
+    /**
+     * Phase 12: the review records its actor (explicit, else the signed-in user) and the employee
+     * concerned never reviews their own regularisation.
+     */
+    private function review(AttendanceRegularisation $regularisation, string $status, ?string $note, ?User $actor = null): void
     {
-        DB::transaction(function () use ($regularisation, $status, $note) {
+        $actor ??= auth()->user();
+        if ($actor === null) {
+            throw new RuntimeException('A regularisation is reviewed by a person.');
+        }
+        DB::transaction(function () use ($regularisation, $status, $note, $actor) {
             $locked = AttendanceRegularisation::query()->whereKey($regularisation->getKey())->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== 'pending') {
                 throw new RuntimeException('This request has already been reviewed.');
+            }
+            if (Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($locked->employee_id)->value('user_id') === $actor->id) {
+                throw new RuntimeException('You cannot review your own regularisation.');
             }
 
             $regularisation->loadMissing('employee');
@@ -180,12 +192,12 @@ final class Regularisations
 
             $regularisation->withAuditReason($note)->update([
                 'status' => $status,
-                'reviewed_by' => auth()->id(),
+                'reviewed_by' => $actor->id,
                 'reviewed_at' => now(),
                 'review_note' => $note,
                 'original_snapshot' => $status === 'approved' ? $this->snapshot($original) : $regularisation->original_snapshot,
             ]);
-            $this->audit->record($status === 'approved' ? AuditAction::RegularisationApproved : AuditAction::RegularisationRejected, 'attendance', $regularisation, reason: $note, metadata: ['date' => $regularisation->date->toDateString(), 'type' => $regularisation->type]);
+            $this->audit->record($status === 'approved' ? AuditAction::RegularisationApproved : AuditAction::RegularisationRejected, 'attendance', $regularisation, reason: $note, actor: $actor, metadata: ['date' => $regularisation->date->toDateString(), 'type' => $regularisation->type]);
         });
     }
 

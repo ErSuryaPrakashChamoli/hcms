@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Departments\Pages;
 
 use App\Filament\Resources\Departments\DepartmentResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateDepartment extends CreateRecord
+class CreateDepartment extends PeopleCreateRecord
 {
     protected static string $resource = DepartmentResource::class;
 }

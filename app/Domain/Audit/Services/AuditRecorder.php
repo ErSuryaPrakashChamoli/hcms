@@ -31,6 +31,11 @@ final class AuditRecorder
     /**
      * @param  array<int, array{field: string, before: mixed, after: mixed, sensitive?: bool}>  $changes
      * @param  array<string, mixed>  $metadata
+     * @param  bool  $anonymous  Phase 13: record the event without anything that identifies who caused it
+     *                           (no actor, IP, user agent or request id) — used for anonymous survey
+     *                           responses and anonymous feedback, whose content must never be linkable to a person
+     * @param  bool  $platform  SaaS.2: write to the platform chain (no tenant) whatever tenant is bound; used for
+     *                          Markedge's own record of what platform operators did
      */
     public function record(
         AuditAction $action,
@@ -45,10 +50,20 @@ final class AuditRecorder
         ?int $tenantId = null,
         ?User $actor = null,
         ?string $operationId = null,
+        bool $anonymous = false,
+        bool $platform = false,
     ): AuditEvent {
-        $tenantId ??= ($entity?->getAttributes()['tenant_id'] ?? null) ?? $this->tenants->id();
-        $actor ??= $this->resolveActor();
-        $occurredAt = Carbon::now();
+        // SaaS.2: an entity without a tenant_id column can name its own chain (a Tenant is audited in its own
+        // chain), so a platform operator who has entered tenant A never writes tenant B's changes into A's chain.
+        $tenantId = $platform ? null : ($tenantId
+            ?? ($entity?->getAttributes()['tenant_id'] ?? null)
+            ?? ($entity !== null && method_exists($entity, 'auditTenantId') ? $entity->auditTenantId() : null)
+            ?? $this->tenants->id());
+        $actor = $anonymous ? null : ($actor ?? $this->resolveActor());
+        // SaaS.2: everything a platform operator does inside a tenant carries the id of that controlled access.
+        if (! $anonymous && ($accessId = Context::get('platform.access_id')) !== null && ! array_key_exists('platform_access_id', $metadata)) {
+            $metadata['platform_access_id'] = $accessId;
+        }
 
         $normalisedChanges = array_values(array_map(fn (array $change) => [
             'field' => $change['field'],
@@ -58,7 +73,6 @@ final class AuditRecorder
         ], $changes));
 
         $attributes = [
-            'id' => (string) Str::ulid(),
             'tenant_id' => $tenantId,
             'actor_id' => $actor?->getKey(),
             'actor_name' => $actor?->name,
@@ -68,11 +82,10 @@ final class AuditRecorder
             'entity_type' => $entity ? $entity::class : null,
             'entity_id' => $entity ? (string) $entity->getKey() : null,
             'entity_label' => $entityLabel ?? $this->labelFor($entity),
-            'occurred_at' => $occurredAt->format('Y-m-d H:i:s.u'),
-            'ip_address' => $this->request->ip(),
-            'user_agent' => Str::limit((string) $this->request->userAgent(), 500, ''),
-            'source' => $this->resolveSource(),
-            'request_id' => Context::get('request_id'),
+            'ip_address' => $anonymous ? null : $this->request->ip(),
+            'user_agent' => $anonymous ? null : Str::limit((string) $this->request->userAgent(), 500, ''),
+            'source' => $anonymous ? 'anonymous' : $this->resolveSource(),
+            'request_id' => $anonymous ? null : Context::get('request_id'),
             'operation_id' => $operationId ?? Context::get('audit.operation_id'),
             'reason' => $reason,
             'approval_reference' => $approvalReference,
@@ -82,8 +95,17 @@ final class AuditRecorder
 
         // Writes cross tenant boundaries by design (platform events have no tenant), so the
         // tenant scope is bypassed here and only here.
-        return $this->tenants->bypass(fn () => DB::transaction(function () use ($attributes, $normalisedChanges, $occurredAt) {
-            $previousHash = AuditEvent::query()
+        return $this->tenants->bypass(fn () => DB::transaction(function () use ($attributes, $normalisedChanges) {
+            // Phase 13: chain writers queue on their chain's row in audit_chain_locks first.
+            // - Before, they met on the "last audit row FOR UPDATE" read. Its next-key / gap locks let two
+            //   writers deadlock on MySQL (one inserting into the gap the other held while waiting).
+            // - The tenants row is no alternative: every insert's foreign-key check holds a shared lock on
+            //   it.
+            // - No foreign key points at audit_chain_locks, so only chain writers ever lock its rows.
+            // The serialisation point is unchanged. The last-hash read below stays a locking (current)
+            // read, so it never reads from an older snapshot.
+            $this->lockChain($attributes['tenant_id']);
+            $previous = AuditEvent::query()
                 ->when(
                     $attributes['tenant_id'] === null,
                     fn ($q) => $q->whereNull('tenant_id'),
@@ -91,8 +113,16 @@ final class AuditRecorder
                 )
                 ->orderByDesc('id')
                 ->lockForUpdate()
-                ->value('hash');
+                ->first(['id', 'hash']);
+            $previousHash = $previous?->hash;
 
+            // Phase 13: the id (a time-ordered ULID) and the time are taken here, inside the chain lock.
+            // Taken before it, a writer that waited for the lock could carry an earlier id than the event
+            // it links to, and the chain (verified in id order) would read as broken under concurrent
+            // writes. The id is also kept strictly after the previous event's id.
+            $occurredAt = Carbon::now();
+            $attributes['id'] = $this->nextId($previous?->id);
+            $attributes['occurred_at'] = $occurredAt->format('Y-m-d H:i:s.u');
             $attributes['previous_hash'] = $previousHash;
             $attributes['hash'] = AuditEvent::computeHash(
                 $previousHash,
@@ -109,6 +139,50 @@ final class AuditRecorder
 
             return $event;
         }));
+    }
+
+    /** A ULID that sorts after the chain's previous event (a new millisecond is awaited in the rare same-millisecond case). */
+    private function nextId(?string $previousId): string
+    {
+        $id = (string) Str::ulid();
+        for ($try = 0; $previousId !== null && strcmp($id, $previousId) <= 0 && $try < 50; $try++) {
+            usleep(1000);
+            $id = (string) Str::ulid();
+        }
+
+        return $id;
+    }
+
+    /** One row per chain ("tenant:{id}" or "platform"); created on a chain's first event. */
+    private function lockChain(?int $tenantId): void
+    {
+        $chain = $tenantId === null ? 'platform' : 'tenant:'.$tenantId;
+        $lock = fn () => DB::table('audit_chain_locks')->where('chain', $chain)->lockForUpdate()->exists();
+        if (! $lock()) {
+            DB::table('audit_chain_locks')->insertOrIgnore(['chain' => $chain]);
+            $lock();
+        }
+    }
+
+    /**
+     * Run a callback with every audit event inside carrying the given operation id (no summary row).
+     * Phase 12: a service request's domain execution shares the request's operation id, so the
+     * domain's own audit trail answers "which request caused this change".
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public function withinOperation(string $operationId, callable $callback): mixed
+    {
+        $previous = Context::get('audit.operation_id');
+        Context::add('audit.operation_id', $operationId);
+        try {
+            return $callback();
+        } finally {
+            $previous === null ? Context::forget('audit.operation_id') : Context::add('audit.operation_id', $previous);
+        }
     }
 
     /**

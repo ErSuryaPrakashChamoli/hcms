@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\ExportLayouts\Pages;
 
 use App\Filament\Resources\ExportLayouts\ExportLayoutResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListExportLayouts extends ListRecords
+class ListExportLayouts extends PeopleListRecords
 {
     protected static string $resource = ExportLayoutResource::class;
 }

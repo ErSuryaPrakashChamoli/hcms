@@ -103,7 +103,11 @@ class LetterResource extends Resource
                 ->action(fn (Letter $record) => ServiceDeskActions::run(fn () => app(Letters::class)->issue($record, auth()->user()), 'Letter issued')),
             Action::make('download')->label('Download')->icon(Heroicon::OutlinedArrowDownTray)->color('gray')
                 ->visible(fn (Letter $record) => $record->status === 'issued')
-                ->action(fn (Letter $record) => response()->streamDownload(fn () => print (app(Letters::class)->html($record)), $record->number.'.html', ['Content-Type' => 'text/html'])),
+                ->action(function (Letter $record) {
+                    $html = app(Letters::class)->download($record, auth()->user());
+
+                    return response()->streamDownload(fn () => print ($html), $record->number.'.html', ['Content-Type' => 'text/html']);
+                }),
         ];
     }
 

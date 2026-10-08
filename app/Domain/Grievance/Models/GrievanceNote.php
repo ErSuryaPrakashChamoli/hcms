@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Case file entry: note, evidence, action, decision, or a message to/from the employee. */
-#[Fillable(['tenant_id', 'grievance_id', 'author_id', 'type', 'body', 'visible_to_employee', 'attachment_path', 'attachment_name'])]
+#[Fillable(['tenant_id', 'grievance_id', 'author_id', 'type', 'body', 'visible_to_employee', 'attachment_path', 'attachment_name', 'attachment_sha256'])]
 class GrievanceNote extends Model
 {
     use Auditable, BelongsToTenant;

@@ -3,6 +3,7 @@
 namespace App\Domain\Enterprise\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Support\Http\OutboundUrlGuard;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,16 @@ class WebhookEndpoint extends Model
     use Auditable, BelongsToTenant;
 
     protected $attributes = ['status' => 'active'];
+
+    /** Production readiness closure: a destination that can never be called is refused when saved (the full check runs per request). */
+    protected static function booted(): void
+    {
+        static::saving(function (self $endpoint) {
+            if ($endpoint->isDirty('url')) {
+                app(OutboundUrlGuard::class)->staticParts((string) $endpoint->url);
+            }
+        });
+    }
 
     protected function casts(): array
     {

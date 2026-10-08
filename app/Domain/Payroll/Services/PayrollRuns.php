@@ -5,9 +5,14 @@ namespace App\Domain\Payroll\Services;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Payroll\Models\PayrollEntry;
@@ -30,10 +35,13 @@ final class PayrollRuns
         private readonly AuditRecorder $audit,
         private readonly ComplianceRules $complianceRules,
         private readonly PayrollReconciliation $reconciliation,
+        private readonly CompensationOutput $compensation,
     ) {}
 
     public function open(Company $company, int $year, int $month, ?User $actor = null): PayrollRun
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Payroll, 'payroll.run.open');
         $period = PayrollPeriod::for($company, $year, $month);
 
         if ($period->status === 'closed') {
@@ -54,19 +62,18 @@ final class PayrollRuns
     /** Employees whose current position sits in the run's company and who were employed at any point in the period. */
     public function population(PayrollRun $run): Collection
     {
-        $period = $run->period;
-
-        return Employee::query()
-            ->with(['person', 'statutoryDetail', 'bankAccounts'])
-            ->whereHas('positions', fn ($q) => $q->where('company_id', $run->company_id)->effectiveOn($period->end_date))
-            ->where(fn ($q) => $q->whereNull('joining_date')->orWhere('joining_date', '<=', $period->end_date->toDateString().' 23:59:59'))
-            ->where(fn ($q) => $q->whereNull('exit_date')->orWhere('exit_date', '>=', $period->start_date->toDateString()))
-            ->whereNotIn('lifecycle_state', ['pre_employee', 'alumni', 'offer_accepted', 'candidate'])
-            ->orderBy('employee_code')
-            ->get();
+        return $this->populationQuery($run)->orderBy('employee_code')->get();
     }
 
-    /** Same population, streamed in chunks for large runs (Phase 4 §55). */
+    /**
+     * Same population, streamed in chunks for large runs (Phase 4 §55).
+     *
+     * SaaS.2: eligibility is a positive list of lifecycle states (LifecycleState::isPayrollEligible), so an
+     * employee who has not joined yet (pre-employee, preboarding, onboarding) is never in a run, and a state
+     * added later is excluded until it is classified. The earlier exclusion list let preboarding employees
+     * through (RMS pre-employees have no joining date, which also passed the date filter) and named two
+     * states that do not exist.
+     */
     public function populationQuery(PayrollRun $run)
     {
         $period = $run->period;
@@ -76,11 +83,13 @@ final class PayrollRuns
             ->whereHas('positions', fn ($q) => $q->where('company_id', $run->company_id)->effectiveOn($period->end_date))
             ->where(fn ($q) => $q->whereNull('joining_date')->orWhere('joining_date', '<=', $period->end_date->toDateString().' 23:59:59'))
             ->where(fn ($q) => $q->whereNull('exit_date')->orWhere('exit_date', '>=', $period->start_date->toDateString()))
-            ->whereNotIn('lifecycle_state', ['pre_employee', 'alumni', 'offer_accepted', 'candidate']);
+            ->whereIn('lifecycle_state', LifecycleState::payrollEligibleValues());
     }
 
     public function calculate(PayrollRun $run, ?User $actor = null): PayrollRun
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Payroll, 'payroll.run.calculate');
         $run->loadMissing('period');
 
         return DB::transaction(function () use ($run, $actor) {
@@ -103,7 +112,7 @@ final class PayrollRuns
                 $entry = PayrollEntry::create([
                     'payroll_run_id' => $run->id,
                     'employee_id' => $employee->id,
-                    'employee_salary_assignment_id' => $c->assignment?->id,
+                    'employee_salary_assignment_id' => $c->compensation?->compensation->assignmentId,
                     'legal_entity_id' => $c->inputs['statutory_context']['legal_entity_id'] ?? null,
                     'establishment_id' => $c->inputs['statutory_context']['establishment_id'] ?? null,
                     'days_in_period' => $c->daysInPeriod,
@@ -203,6 +212,8 @@ final class PayrollRuns
     /** Locks attendance for the period, closes the period and generates payslips. */
     public function finalize(PayrollRun $run, ?User $actor = null): PayrollRun
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Payroll, 'payroll.run.finalize');
         if ($run->status !== 'approved') {
             throw new RuntimeException('Only an approved run can be finalized.');
         }
@@ -225,6 +236,10 @@ final class PayrollRuns
             if (! $reconciliation['balanced']) {
                 throw new RuntimeException('Run totals do not reconcile with its entries; recalculate before finalizing.');
             }
+            // Phase 11: every entry must still match the approved compensation it was calculated on.
+            // Compensation locks this run row before writing compensation for a period it covers, so
+            // such a write has either committed (and is seen here) or waits and then sees the run final.
+            $this->assertCompensationUnchanged($run);
             $employeeIds = $run->entries()->pluck('employee_id');
 
             AttendanceRecord::query()->whereIn('employee_id', $employeeIds)
@@ -242,6 +257,16 @@ final class PayrollRuns
 
             return $run->refresh();
         });
+    }
+
+    private function assertCompensationUnchanged(PayrollRun $run): void
+    {
+        $entries = $run->entries()->withoutGlobalScope(AccessScope::class)->get(['id', 'employee_id', 'inputs']);
+        $current = $this->compensation->fingerprints($entries->pluck('employee_id')->map(fn ($id) => (int) $id)->all(), $run->period->start_date, $run->period->end_date);
+        $stale = $entries->filter(fn (PayrollEntry $e) => ($e->inputs['compensation']['fingerprint'] ?? null) !== ($current[(int) $e->employee_id] ?? null))->count();
+        if ($stale > 0) {
+            throw new RuntimeException("Compensation changed for {$stale} employee(s) since the run was calculated; recalculate before finalizing.");
+        }
     }
 
     /**

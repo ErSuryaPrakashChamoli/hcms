@@ -7,6 +7,8 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\ReportingRelationship;
+use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Lifecycle\Services\Timeline;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -20,6 +22,31 @@ final class ChangeManagerAction
         private readonly AuditRecorder $audit,
         private readonly Timeline $timeline,
     ) {}
+
+    /**
+     * Phase 12: the standalone manager change (Employee 360, an approved HR service request, the API).
+     * The actor must hold employee.position and reach both people within organisation scope. The
+     * composite actions (hire, transfer, promote, rehire, pre-employee) authorize at their own level
+     * and call handle() as one of their steps.
+     */
+    public function change(
+        Employee $employee,
+        Employee $manager,
+        User $actor,
+        string $type = 'line',
+        CarbonInterface|string|null $effectiveFrom = null,
+        ?string $reason = null,
+    ): ReportingRelationship {
+        if (! $actor->hasPermission('employee.position')) {
+            throw new InvalidArgumentException('This needs employee.position.');
+        }
+        $scopes = app(AccessScopes::class);
+        if (! $scopes->allows($actor, $employee) || ! $scopes->allows($actor, $manager)) {
+            throw new InvalidArgumentException('That employee or manager is outside your organisation scope.');
+        }
+
+        return $this->handle($employee, $manager, $type, $effectiveFrom, $reason);
+    }
 
     public function handle(
         Employee $employee,

@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\LearningPaths\Pages;
 
 use App\Filament\Resources\LearningPaths\LearningPathResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateLearningPath extends CreateRecord
+class CreateLearningPath extends PeopleCreateRecord
 {
     protected static string $resource = LearningPathResource::class;
 

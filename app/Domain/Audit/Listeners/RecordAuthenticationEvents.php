@@ -9,6 +9,7 @@ use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Events\Dispatcher;
 
 final class RecordAuthenticationEvents
@@ -22,6 +23,7 @@ final class RecordAuthenticationEvents
             Logout::class => 'onLogout',
             Failed::class => 'onFailed',
             PasswordReset::class => 'onPasswordReset',
+            Verified::class => 'onVerified',
         ];
     }
 
@@ -91,6 +93,25 @@ final class RecordAuthenticationEvents
 
         $this->recorder->record(
             action: AuditAction::PasswordChanged,
+            module: 'identity',
+            entity: $user,
+            metadata: ['method' => 'reset_link'],
+            tenantId: $user->tenant_id,
+            actor: $user,
+        );
+    }
+
+    /** SaaS.2: the owner proved a (new) e-mail address through the signed verification link. */
+    public function onVerified(Verified $event): void
+    {
+        $user = $event->user;
+
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $this->recorder->record(
+            action: AuditAction::EmailVerified,
             module: 'identity',
             entity: $user,
             tenantId: $user->tenant_id,

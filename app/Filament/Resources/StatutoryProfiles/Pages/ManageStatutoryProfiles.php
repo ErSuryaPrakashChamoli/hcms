@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\StatutoryProfiles\Pages;
 
 use App\Filament\Resources\StatutoryProfiles\StatutoryProfileResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageStatutoryProfiles extends ManageRecords
+class ManageStatutoryProfiles extends PeopleManageRecords
 {
     protected static string $resource = StatutoryProfileResource::class;
 

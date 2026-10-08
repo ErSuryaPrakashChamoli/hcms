@@ -1,0 +1,30 @@
+{
+ "desktopTabStops": 30,
+ "desktopWithoutRing": [],
+ "ctrlKOpens": true,
+ "cancelHiddenOnDesktop": true,
+ "desktopEscCloses": true,
+ "signalLinkName": "Review : Multi-factor sign-in is not required",
+ "signalRowRing": true,
+ "moreBefore": "false",
+ "moreAfter": "true",
+ "moreKeepsFocus": true,
+ "barNames": [
+  "Home [current]",
+  "Admin",
+  "Start something: leave, requests, approvals and more",
+  "Users",
+  "Work, 6 waiting"
+ ],
+ "triggerName": "Search people, requests, actions…",
+ "paletteFocus": true,
+ "barHiddenUnderPalette": true,
+ "cancelInSheet": "Cancel",
+ "escCloses": true,
+ "focusBackOnTrigger": true,
+ "cancelCloses": true,
+ "barBackAfterClose": true,
+ "filtersBefore": "false",
+ "filtersAfter": "true",
+ "filtersVisible": true
+}

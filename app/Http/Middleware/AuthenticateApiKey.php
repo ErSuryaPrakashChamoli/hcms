@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Integration\Services\ApiKeys;
 use App\Support\Tenancy\TenantContext;
 use Closure;
@@ -33,6 +35,16 @@ class AuthenticateApiKey
 
         $this->tenants->set($key->tenant);
         $key->forceFill(['last_used_at' => now()])->saveQuietly();
+
+        // SaaS.3: shadow entitlement observations for the API itself and the module behind each required scope.
+        // Scopes and the tenant still decide access, exactly as before; these never refuse a request.
+        $entitlements = app(Entitlements::class);
+        $entitlements->observe(Capability::IntegrationsApi, 'api.request');
+        foreach ($scopes as $scope) {
+            if (($capability = Capability::forApiScope($scope)) !== null) {
+                $entitlements->observe($capability, 'api.request');
+            }
+        }
 
         Context::add('audit.source', 'api:'.$key->name);
         Context::add('api_key_id', $key->id);

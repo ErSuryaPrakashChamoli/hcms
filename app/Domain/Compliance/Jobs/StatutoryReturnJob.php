@@ -21,6 +21,9 @@ abstract class StatutoryReturnJob implements ShouldBeUnique, ShouldQueue, Tenant
 
     public int $tries = 2;
 
+    /** @var list<int> Phase 14: retry with backoff instead of hammering a failing dependency. */
+    public array $backoff = [60];
+
     public int $timeout = 1800;
 
     public ?int $tenantId;

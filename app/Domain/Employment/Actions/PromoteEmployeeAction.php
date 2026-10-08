@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Promotion foundation: a new effective-dated position (designation / level / grade / department…)
- * and, optionally, a new line manager, in one transaction. Compensation changes stay with the
- * Payroll domain (Salaries::assign) and are not part of this action (Phase 1 §30, §33).
+ * and, optionally, a new line manager, in one transaction. Compensation changes are not part of this
+ * action (Phase 1 §30, §33): since Phase 11 they are proposed and approved in the Compensation domain.
  */
 final class PromoteEmployeeAction
 {

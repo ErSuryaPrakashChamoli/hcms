@@ -1,0 +1,321 @@
+{
+  "base": "http://127.0.0.1:8093",
+  "label": "before",
+  "rows": [
+    {
+      "viewer": "manager",
+      "size": "phone",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 276
+      },
+      "actions": {
+        "top": 336,
+        "height": 36
+      },
+      "nav": {
+        "top": 420,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 1040,
+        "height": 225
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 844,
+      "bar": 78,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.36,
+      "viewer_panel_in_first_screen": false
+    },
+    {
+      "viewer": "manager",
+      "size": "tablet",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 226
+      },
+      "actions": {
+        "top": 286,
+        "height": 36
+      },
+      "nav": {
+        "top": 370,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 916,
+        "height": 210
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 1024,
+      "bar": 79,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.24,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "manager",
+      "size": "desktop",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 132
+      },
+      "actions": {
+        "top": 108,
+        "height": 36
+      },
+      "nav": {
+        "top": 276,
+        "height": 45
+      },
+      "viewer_panel": {
+        "top": 381,
+        "height": 225
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 900,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.15,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "hr",
+      "size": "phone",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 372
+      },
+      "actions": {
+        "top": 336,
+        "height": 132
+      },
+      "nav": {
+        "top": 516,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 1071,
+        "height": 243
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 844,
+      "bar": 78,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.49,
+      "viewer_panel_in_first_screen": false
+    },
+    {
+      "viewer": "hr",
+      "size": "tablet",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 230
+      },
+      "actions": {
+        "top": 286,
+        "height": 40
+      },
+      "nav": {
+        "top": 374,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 863,
+        "height": 229
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 1024,
+      "bar": 79,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.24,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "hr",
+      "size": "desktop",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 184
+      },
+      "actions": {
+        "top": 244,
+        "height": 36
+      },
+      "nav": {
+        "top": 328,
+        "height": 45
+      },
+      "viewer_panel": {
+        "top": 433,
+        "height": 243
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 900,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.2,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "admin",
+      "size": "phone",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 372
+      },
+      "actions": {
+        "top": 336,
+        "height": 132
+      },
+      "nav": {
+        "top": 516,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 1136,
+        "height": 309
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 844,
+      "bar": 78,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.49,
+      "viewer_panel_in_first_screen": false
+    },
+    {
+      "viewer": "admin",
+      "size": "tablet",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 230
+      },
+      "actions": {
+        "top": 286,
+        "height": 40
+      },
+      "nav": {
+        "top": 374,
+        "height": 53
+      },
+      "viewer_panel": {
+        "top": 920,
+        "height": 274
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 1024,
+      "bar": 79,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.24,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "admin",
+      "size": "desktop",
+      "status": 200,
+      "header": {
+        "top": 104,
+        "height": 184
+      },
+      "actions": {
+        "top": 244,
+        "height": 36
+      },
+      "nav": {
+        "top": 328,
+        "height": 45
+      },
+      "viewer_panel": {
+        "top": 433,
+        "height": 309
+      },
+      "main": {
+        "top": 71,
+        "height": 1
+      },
+      "viewport": 900,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": 0.2,
+      "viewer_panel_in_first_screen": true
+    },
+    {
+      "viewer": "employee (own)",
+      "size": "phone",
+      "status": 403,
+      "header": null,
+      "actions": null,
+      "nav": null,
+      "viewer_panel": null,
+      "main": null,
+      "viewport": 844,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": null,
+      "viewer_panel_in_first_screen": null
+    },
+    {
+      "viewer": "employee (own)",
+      "size": "tablet",
+      "status": 403,
+      "header": null,
+      "actions": null,
+      "nav": null,
+      "viewer_panel": null,
+      "main": null,
+      "viewport": 1024,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": null,
+      "viewer_panel_in_first_screen": null
+    },
+    {
+      "viewer": "employee (own)",
+      "size": "desktop",
+      "status": 403,
+      "header": null,
+      "actions": null,
+      "nav": null,
+      "viewer_panel": null,
+      "main": null,
+      "viewport": 900,
+      "bar": 0,
+      "overflow": 0,
+      "header_share_of_first_screen": null,
+      "viewer_panel_in_first_screen": null
+    }
+  ]
+}

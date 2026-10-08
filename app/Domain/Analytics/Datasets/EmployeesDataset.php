@@ -2,11 +2,15 @@
 
 namespace App\Domain\Analytics\Datasets;
 
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Employment\Models\Employee;
 use Illuminate\Database\Eloquent\Builder;
 
 class EmployeesDataset extends Dataset
 {
+    /** @var array<int, float>|null annual CTC by employee, loaded once per dataset instance */
+    private ?array $ctc = null;
+
     public function key(): string
     {
         return 'employees';
@@ -48,13 +52,14 @@ class EmployeesDataset extends Dataset
             'grade' => ['label' => 'Grade', 'type' => 'string', 'value' => fn ($e) => $pos($e)?->grade?->name],
             'employment_type' => ['label' => 'Employment type', 'type' => 'string', 'value' => fn ($e) => $pos($e)?->employmentType?->name],
             'manager' => ['label' => 'Manager', 'type' => 'string', 'value' => fn ($e) => $e->currentManager?->manager?->person?->full_name],
-            'ctc_annual' => ['label' => 'Annual CTC', 'type' => 'number', 'sensitive' => true, 'value' => fn ($e) => (float) ($e->salaryAssignments->filter(fn ($a) => $a->isEffectiveOn())->sortByDesc('effective_from')->first()?->ctc_annual ?? 0) ?: null],
+            // Phase 11: approved compensation through the Compensation read contract (one query per report).
+            'ctc_annual' => ['label' => 'Annual CTC', 'type' => 'number', 'sensitive' => true, 'permission' => 'compensation.view', 'value' => fn ($e) => ($this->ctc ??= app(CompensationOutput::class)->annualCtcOn())[$e->id] ?? null],
             'headcount' => ['label' => 'Headcount (1 per row)', 'type' => 'number', 'value' => fn ($e) => 1],
         ];
     }
 
     public function query(): Builder
     {
-        return Employee::query()->with(['person', 'currentPosition.company', 'currentPosition.location', 'currentPosition.department', 'currentPosition.designation', 'currentPosition.level', 'currentPosition.grade', 'currentPosition.employmentType', 'currentManager.manager.person', 'salaryAssignments'])->orderBy('employee_code');
+        return Employee::query()->with(['person', 'currentPosition.company', 'currentPosition.location', 'currentPosition.department', 'currentPosition.designation', 'currentPosition.level', 'currentPosition.grade', 'currentPosition.employmentType', 'currentManager.manager.person'])->orderBy('employee_code');
     }
 }

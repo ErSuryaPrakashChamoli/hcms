@@ -1,8 +1,8 @@
 <?php
 
 use App\Domain\Audit\Models\AuditEvent;
+use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Models\TicketCategory;
-use App\Domain\ServiceDesk\Models\TicketComment;
 use App\Domain\ServiceDesk\Services\ServiceDesk;
 use Illuminate\Support\Facades\Storage;
 
@@ -18,7 +18,7 @@ beforeEach(function () {
     $this->tenantB = provisionTenant('Other');
     actAsTenant($this->tenant);
     $this->hr = tenantUser($this->tenant, ['*']);
-    $this->agent = tenantUser($this->tenant, ['servicedesk.view', 'employee.view']);
+    $this->agent = tenantUser($this->tenant, ['servicedesk.view', 'servicedesk.agent', 'employee.view']);
     $this->actingAs($this->hr);
     $this->employee = activeEmployee(null, ['servicedesk.request', 'task.view']);
     $this->stranger = activeEmployee(null, ['servicedesk.request', 'task.view']);
@@ -27,8 +27,8 @@ beforeEach(function () {
     $this->ticket = $this->desk->open($this->employee, TicketCategory::query()->first(), 'Payslip copy', 'Need last payslip');
     Storage::disk('local')->put('servicedesk/payslip.pdf', '%PDF-1.4 test');
     $this->comment = $this->desk->comment($this->ticket, $this->agent, 'Attached.', false, 'servicedesk/payslip.pdf', 'payslip.pdf');
-    Storage::disk('local')->put('servicedesk/internal.txt', 'internal');
-    $this->internal = $this->desk->comment($this->ticket, $this->agent, 'Internal note', true, 'servicedesk/internal.txt', 'internal.txt');
+    Storage::disk('local')->put('servicedesk/internal.pdf', '%PDF-1.4 internal');
+    $this->internal = $this->desk->comment($this->ticket, $this->agent, 'Internal note', true, 'servicedesk/internal.pdf', 'internal.pdf');
     $this->url = $this->desk->attachmentUrl($this->comment);
 });
 
@@ -36,7 +36,7 @@ it('serves the attachment to the agent and to the employee who owns the ticket, 
     $this->actingAs($this->agent)->get($this->url)->assertOk()->assertDownload('payslip.pdf');
     $this->actingAs($this->employee->user)->get($this->url)->assertOk()->assertDownload('payslip.pdf');
 
-    expect(AuditEvent::query()->where('action', 'DOWNLOAD')->where('entity_type', TicketComment::class)->where('entity_id', (string) $this->comment->id)->count())->toBe(2);
+    expect(AuditEvent::query()->where('action', 'ATTACHMENT_DOWNLOADED')->where('entity_type', Ticket::class)->where('entity_id', (string) $this->ticket->id)->where('metadata->comment_id', $this->comment->id)->count())->toBe(2);
 });
 
 it('refuses users who cannot view the ticket and hides internal notes from the employee', function () {
@@ -44,7 +44,7 @@ it('refuses users who cannot view the ticket and hides internal notes from the e
     $this->actingAs($this->employee->user)->get($this->desk->attachmentUrl($this->internal))->assertForbidden();
     $this->actingAs($this->agent)->get($this->desk->attachmentUrl($this->internal))->assertOk();
 
-    expect(AuditEvent::query()->where('action', 'DOWNLOAD')->where('entity_id', (string) $this->internal->id)->count())->toBe(1);
+    expect(AuditEvent::query()->where('action', 'ATTACHMENT_DOWNLOADED')->where('metadata->comment_id', $this->internal->id)->count())->toBe(1);
 });
 
 it('fails closed for another tenant, for unsigned or expired links, and for guessed storage paths', function () {
@@ -62,7 +62,7 @@ it('fails closed for another tenant, for unsigned or expired links, and for gues
     $this->travel(16)->minutes();
     $this->actingAs($this->agent)->get($this->url)->assertForbidden();
 
-    expect(AuditEvent::query()->where('action', 'DOWNLOAD')->where('entity_type', TicketComment::class)->count())->toBe(0);
+    expect(AuditEvent::query()->where('action', 'ATTACHMENT_DOWNLOADED')->count())->toBe(0);
 });
 
 it('does not link attachments through the storage url helper anywhere in the application', function () {

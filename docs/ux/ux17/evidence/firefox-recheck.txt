@@ -1,0 +1,13 @@
+before (1220a27 code) · desktop: 0 of 16 loads with a page error {}
+before (1220a27 code) · phone: 0 of 16 loads with a page error {}
+after (UX.17) · desktop: 0 of 16 loads with a page error {}
+after (UX.17) · phone: 0 of 16 loads with a page error {}
+--- interleaved (ff17b.mjs) ---
+before (1220a27 code) · desktop: 0 of 32 loads with a page error {}
+after (UX.17) · desktop: 0 of 32 loads with a page error {}
+before (1220a27 code) · phone: 0 of 32 loads with a page error {}
+after (UX.17) · phone: 0 of 32 loads with a page error {}
+--- in the browser matrix (browser17.mjs, Firefox, 72 loads per run) ---
+before (1220a27 code): 1 of 72 (manager Home, tablet)
+after (UX.17), run 1: 0 of 72
+after (UX.17), final run: 2 of 72 (manager and payroll Home, desktop)

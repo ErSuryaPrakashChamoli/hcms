@@ -2,13 +2,13 @@
 
 namespace App\Filament\Resources\SalaryStructures;
 
+use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Organisation\Enums\ActiveStatus;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\SalaryStructures\Pages\CreateSalaryStructure;
 use App\Filament\Resources\SalaryStructures\Pages\EditSalaryStructure;
 use App\Filament\Resources\SalaryStructures\Pages\ListSalaryStructures;
-use App\Filament\Resources\SalaryStructures\RelationManagers\ItemsRelationManager;
+use App\Filament\Resources\SalaryStructures\RelationManagers\VersionsRelationManager;
 use App\Filament\Support\AuditReasonField;
 use BackedEnum;
 use Filament\Actions\EditAction;
@@ -22,14 +22,14 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use UnitEnum;
 
-/** Salary structures (§30): which components, in which order, with optional formula overrides. */
+/** Compensation structures (§30; Phase 11: owned by Compensation): which payroll components, in which order, with optional formula overrides. */
 class SalaryStructureResource extends Resource
 {
     protected static ?string $model = SalaryStructure::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Payroll';
+    protected static string|UnitEnum|null $navigationGroup = 'Compensation';
 
     protected static ?string $navigationLabel = 'Salary structures';
 
@@ -52,7 +52,8 @@ class SalaryStructureResource extends Resource
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code'),
-                TextColumn::make('items_count')->counts('items')->label('Components'),
+                TextColumn::make('current_version')->label('Version in force')->state(fn (SalaryStructure $record) => ($v = $record->versionOn()) ? 'v'.$v->version.' since '.$v->effective_from->toDateString() : '—'),
+                TextColumn::make('versions_count')->counts('versions')->label('Versions'),
                 TextColumn::make('assignments_count')->counts('assignments')->label('Employees'),
                 TextColumn::make('status')->badge(),
             ])
@@ -61,7 +62,7 @@ class SalaryStructureResource extends Resource
 
     public static function getRelations(): array
     {
-        return [ItemsRelationManager::class, AuditHistoryRelationManager::class];
+        return [VersionsRelationManager::class, AuditHistoryRelationManager::class];
     }
 
     public static function getPages(): array

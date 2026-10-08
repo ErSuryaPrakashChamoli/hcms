@@ -4,12 +4,12 @@ namespace App\Filament\Resources\Employees\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\SavesCustomFields;
 use Filament\Actions\ViewAction;
-use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class EditEmployee extends EditRecord
+class EditEmployee extends PeopleEditRecord
 {
     use SavesCustomFields;
 

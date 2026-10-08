@@ -4,12 +4,15 @@ namespace App\Filament\Resources\Skills;
 
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\People\Models\Skill;
+use App\Domain\Skills\Models\SkillScale;
 use App\Filament\Resources\Skills\Pages\ManageSkills;
 use App\Filament\Support\AuditReasonField;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -25,7 +28,7 @@ class SkillResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSparkles;
 
-    protected static string|UnitEnum|null $navigationGroup = 'People Setup';
+    protected static string|UnitEnum|null $navigationGroup = 'Learning';
 
     protected static ?int $navigationSort = 80;
 
@@ -35,7 +38,12 @@ class SkillResource extends Resource
             TextInput::make('name')->required()->maxLength(255),
             TextInput::make('code')->required()->maxLength(64)->alphaDash(),
             TextInput::make('category')->maxLength(64)->placeholder('technical, behavioural, domain…'),
+            Select::make('skill_type')->label('Type')->options(config('peopleos.skills.types')),
+            Select::make('skill_scale_id')->label('Proficiency scale')->placeholder('Default scale')->options(fn () => SkillScale::query()->where('status', 'active')->pluck('name', 'id')->all()),
             Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            DatePicker::make('effective_from')->native(false),
+            DatePicker::make('effective_to')->native(false)->afterOrEqual('effective_from'),
+            Textarea::make('description')->rows(2)->columnSpanFull(),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

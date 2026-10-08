@@ -1,0 +1,12 @@
+before run1: neha.kapoor HR Home 200 q= 274 db= 225ms wall= 773ms bytes= 164901 snapshot= 7738
+after run1: neha.kapoor HR Home 200 q= 273 db= 263ms wall= 842ms bytes= 170099 snapshot= 8276
+before run1: amit.verma Manager My work 200 q= 189 db= 148ms wall= 502ms bytes= 181995 snapshot
+after run1: amit.verma Manager My work 200 q= 190 db= 186ms wall= 611ms bytes= 184161 snapshot=
+before run2: neha.kapoor HR Home 200 q= 274 db= 242ms wall= 791ms bytes= 164811 snapshot= 7728
+after run2: neha.kapoor HR Home 200 q= 273 db= 251ms wall= 837ms bytes= 170099 snapshot= 8276
+before run2: amit.verma Manager My work 200 q= 189 db= 171ms wall= 550ms bytes= 182040 snapshot
+after run2: amit.verma Manager My work 200 q= 190 db= 159ms wall= 581ms bytes= 184211 snapshot=
+before run3: neha.kapoor HR Home 200 q= 274 db= 236ms wall= 782ms bytes= 164856 snapshot= 7733
+after run3: neha.kapoor HR Home 200 q= 273 db= 248ms wall= 781ms bytes= 170199 snapshot= 8286
+before run3: amit.verma Manager My work 200 q= 189 db= 156ms wall= 503ms bytes= 181950 snapshot
+after run3: amit.verma Manager My work 200 q= 190 db= 160ms wall= 528ms bytes= 184211 snapshot=

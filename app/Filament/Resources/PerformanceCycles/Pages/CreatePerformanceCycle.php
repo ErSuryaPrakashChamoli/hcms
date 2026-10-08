@@ -5,9 +5,9 @@ namespace App\Filament\Resources\PerformanceCycles\Pages;
 use App\Domain\Performance\Models\PerformanceTemplateVersion;
 use App\Domain\Performance\Services\PerformanceTemplates;
 use App\Filament\Resources\PerformanceCycles\PerformanceCycleResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreatePerformanceCycle extends CreateRecord
+class CreatePerformanceCycle extends PeopleCreateRecord
 {
     protected static string $resource = PerformanceCycleResource::class;
 

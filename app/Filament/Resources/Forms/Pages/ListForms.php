@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Forms\Pages;
 
 use App\Filament\Resources\Forms\FormResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListForms extends ListRecords
+class ListForms extends PeopleListRecords
 {
     protected static string $resource = FormResource::class;
 

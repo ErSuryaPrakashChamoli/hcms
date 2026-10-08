@@ -182,7 +182,7 @@ final class RuleVerifications
         $sha = hash('sha256', $contents);
         $safe = preg_replace('/[^A-Za-z0-9._-]+/', '_', basename($filename)) ?: 'evidence';
         $path = "compliance-evidence/{$rule->getKey()}/{$sha}-{$safe}";
-        Storage::disk('local')->put($path, $contents);
+        Storage::disk(config('peopleos.storage.compliance_disk', 'local'))->put($path, $contents);
 
         $document = ComplianceEvidenceDocument::query()->firstOrCreate(
             ['compliance_rule_id' => $rule->getKey(), 'sha256' => $sha],

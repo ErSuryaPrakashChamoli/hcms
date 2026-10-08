@@ -10,7 +10,8 @@
         "filament/filament": "^5.8",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
-        "league/csv": "^9.28"
+        "league/csv": "^9.28",
+        "league/flysystem-aws-s3-v3": "^3.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

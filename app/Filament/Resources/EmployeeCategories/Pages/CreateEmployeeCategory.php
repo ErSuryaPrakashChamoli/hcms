@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\EmployeeCategories\Pages;
 
 use App\Filament\Resources\EmployeeCategories\EmployeeCategoryResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateEmployeeCategory extends CreateRecord
+class CreateEmployeeCategory extends PeopleCreateRecord
 {
     protected static string $resource = EmployeeCategoryResource::class;
 }

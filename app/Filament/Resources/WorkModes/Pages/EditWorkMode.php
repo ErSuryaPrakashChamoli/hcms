@@ -4,10 +4,10 @@ namespace App\Filament\Resources\WorkModes\Pages;
 
 use App\Filament\Resources\WorkModes\WorkModeResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditWorkMode extends EditRecord
+class EditWorkMode extends PeopleEditRecord
 {
     use GovernedEdit;
 

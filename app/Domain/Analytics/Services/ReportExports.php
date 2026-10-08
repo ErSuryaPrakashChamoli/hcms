@@ -47,6 +47,31 @@ final class ReportExports
         return $run->refresh();
     }
 
+    /**
+     * Phase 14: a stored export holds what its runner could see (fields, sensitive values, organisation
+     * scope). Only that runner, or the report owner for a scheduled run (which ran with the owner's
+     * rights), may re-download it. Everyone else runs the report under their own rights.
+     */
+    public function canDownload(ReportRun $run, User $user): bool
+    {
+        if (! $run->hasFile() || ! ($user->hasPermission('analytics.export') || $user->hasPermission('analytics.manage'))) {
+            return false;
+        }
+
+        return (int) $run->run_by === (int) $user->id || ($run->report_schedule_id !== null && (int) $run->report?->owner_id === (int) $user->id);
+    }
+
+    /** Re-download of a stored export: authorised as above and audited. */
+    public function download(ReportRun $run, User $user): string
+    {
+        if (! $this->canDownload($run, $user)) {
+            throw new \RuntimeException('Only the person who produced this export (or the report owner, for a scheduled run) may download it.');
+        }
+        $this->audit->record(AuditAction::Download, 'analytics', $run->report, [], null, actor: $user, metadata: ['run_id' => $run->id, 'rows' => $run->row_count, 'redownload' => true]);
+
+        return (string) $this->contents($run);
+    }
+
     public function contents(ReportRun $run): ?string
     {
         return $run->hasFile() ? Storage::disk($run->disk)->get($run->path) : null;

@@ -62,11 +62,11 @@ final class GrievanceActions
             Action::make('assign')->label('Assign')->icon(Heroicon::OutlinedUserPlus)->color('gray')
                 ->visible(fn (Grievance $record) => $record->isOpen() && (auth()->user()->can('grievance.manage') || $record->assignee_id === auth()->id()))
                 ->schema([Select::make('assignee_id')->label('Handler')->required()->searchable()->options(fn () => User::forCurrentTenant()->get()->filter(fn (User $u) => $u->hasPermission('grievance.view') || $u->hasPermission('grievance.manage'))->pluck('name', 'id')->all())])
-                ->action(fn (Grievance $record, array $data) => ServiceDeskActions::run(fn () => app(Grievances::class)->assign($record, User::query()->findOrFail($data['assignee_id']), auth()->user()), 'Assigned')),
+                ->action(fn (Grievance $record, array $data) => ServiceDeskActions::run(fn () => app(Grievances::class)->assign($record, User::forCurrentTenant()->findOrFail($data['assignee_id']), auth()->user()), 'Assigned')),
             Action::make('grant')->label('Grant access')->icon(Heroicon::OutlinedKey)->color('warning')
                 ->visible(fn (Grievance $record) => $record->isOpen() && (auth()->user()->can('grievance.manage') || $record->assignee_id === auth()->id()))
                 ->schema([Select::make('user_id')->label('User')->required()->searchable()->options(fn () => User::forCurrentTenant()->pluck('name', 'id')->all()), Textarea::make('reason')->required()->maxLength(255)])
-                ->action(fn (Grievance $record, array $data) => ServiceDeskActions::run(fn () => app(Grievances::class)->grantAccess($record, User::query()->findOrFail($data['user_id']), $data['reason'], auth()->user()), 'Access granted')),
+                ->action(fn (Grievance $record, array $data) => ServiceDeskActions::run(fn () => app(Grievances::class)->grantAccess($record, User::forCurrentTenant()->findOrFail($data['user_id']), $data['reason'], auth()->user()), 'Access granted')),
             Action::make('resolve')->label('Resolve')->icon(Heroicon::OutlinedCheckCircle)->color('success')
                 ->visible(fn (Grievance $record) => $record->isOpen() && $handler($record))
                 ->schema([Textarea::make('resolution')->required()->rows(5)->maxLength(8000)])

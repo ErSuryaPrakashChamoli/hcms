@@ -1,0 +1,12 @@
+{"name":"Home (employee)","status":200,"ttfb":430,"boxes":16,"outer":16,"fontSizes":["11px","11.5px","12.5px","13px","13.5px","14px","15px","16px","19px","20px","21px","24px","26px","37.44px"],"primaryPainted":38,"dom":355}
+{"name":"Home (manager)","status":200,"ttfb":400,"boxes":17,"outer":17,"fontSizes":["11px","11.5px","12px","12.5px","13px","13.5px","15px","16px","19px","20px","21px","22px","24px","26px","37.44px"],"primaryPainted":35,"dom":400}
+{"name":"Home (HR)","status":200,"ttfb":469,"boxes":13,"outer":13,"fontSizes":["11.5px","12px","12.5px","13px","13.5px","15px","16px","19px","21px","22px","24px","26px","37.44px"],"primaryPainted":25,"dom":287}
+{"name":"Home (executive)","status":200,"ttfb":408,"boxes":13,"outer":13,"fontSizes":["11.5px","12px","12.5px","13px","13.5px","15px","16px","19px","21px","22px","24px","26px","37.44px"],"primaryPainted":28,"dom":232}
+{"name":"My work","status":200,"ttfb":343,"boxes":1,"outer":1,"fontSizes":["12px","12.5px","13px","13.5px","15px","34.56px"],"primaryPainted":0,"dom":48}
+{"name":"Approvals","status":200,"ttfb":287,"boxes":0,"outer":0,"fontSizes":["11px","12px","12.5px","13px","13.5px","15px","16px","34.56px"],"primaryPainted":2,"dom":41}
+{"name":"People","status":200,"ttfb":275,"boxes":0,"outer":0,"fontSizes":["12.5px","13px","13.5px","15px","17px","34.56px"],"primaryPainted":1,"dom":253}
+{"name":"Employee 360","status":200,"ttfb":396,"boxes":7,"outer":7,"fontSizes":["9.5px","11px","11.5px","12px","12.5px","13px","13.5px","14px","15px","16px","21px","34.56px"],"primaryPainted":6,"dom":849}
+{"name":"Org map","status":200,"ttfb":262,"boxes":1,"outer":1,"fontSizes":["11.5px","12.5px","13px","13.5px","15px","34.56px"],"primaryPainted":1,"dom":106}
+{"name":"Workforce Command Center","status":200,"ttfb":262,"boxes":13,"outer":13,"fontSizes":["11px","11.5px","12px","12.5px","13px","13.5px","14px","15px","16px","26px","34.56px"],"primaryPainted":4,"dom":241}
+{"name":"Services (My HR)","status":200,"ttfb":328,"boxes":2,"outer":2,"fontSizes":["12px","12.5px","13.5px","14px","15px","16px","34.56px"],"primaryPainted":1,"dom":80}
+{"name":"Admin Centre","status":200,"ttfb":553,"boxes":37,"outer":37,"fontSizes":["11.5px","12.5px","13.5px","14px","15px","19px","34.56px"],"primaryPainted":1,"dom":1121}

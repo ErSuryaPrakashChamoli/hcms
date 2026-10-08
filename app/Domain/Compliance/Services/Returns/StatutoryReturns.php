@@ -163,7 +163,7 @@ final class StatutoryReturns
         }
 
         $path = "statutory-exports/{$return->tenant_id}/{$return->getKey()}/{$file['filename']}";
-        Storage::disk('local')->put($path, $file['content']);
+        Storage::disk(config('peopleos.storage.compliance_disk', 'local'))->put($path, $file['content']);
         $checksum = hash('sha256', $file['content']);
 
         if ($return->export_checksum !== null && $return->export_checksum !== $checksum) {
@@ -185,13 +185,13 @@ final class StatutoryReturns
     {
         $this->requirePermission($actor, 'compliance.returns.export');
 
-        if ($return->export_path === null || ! Storage::disk('local')->exists($return->export_path)) {
+        if ($return->export_path === null || ! Storage::disk(config('peopleos.storage.compliance_disk', 'local'))->exists($return->export_path)) {
             throw new RuntimeException('Export the return first.');
         }
 
         $this->recordAccess($return, $actor, $source, 'export_download');
 
-        return (string) Storage::disk('local')->get($return->export_path);
+        return (string) Storage::disk(config('peopleos.storage.compliance_disk', 'local'))->get($return->export_path);
     }
 
     /**

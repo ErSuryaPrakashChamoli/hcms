@@ -85,7 +85,7 @@ class GrievanceResource extends Resource
                 TextEntry::make('assignee.name')->label('Handler')->placeholder('Unassigned'),
                 TextEntry::make('created_at')->label('Raised')->dateTime(),
                 TextEntry::make('due_on')->label('Due')->date()->placeholder('—')->color(fn (Grievance $record) => $record->isOpen() && $record->due_on?->isPast() ? 'danger' : null),
-                TextEntry::make('access')->label('Also visible to')->state(fn (Grievance $record) => User::query()->whereIn('id', $record->access_user_ids ?? [])->pluck('name')->implode(', '))->placeholder('Handlers only'),
+                TextEntry::make('access')->label('Also visible to')->state(fn (Grievance $record) => User::forCurrentTenant()->whereIn('id', $record->access_user_ids ?? [])->pluck('name')->implode(', '))->placeholder('Handlers only'),
                 TextEntry::make('details')->columnSpanFull(),
                 TextEntry::make('resolution')->placeholder('—')->columnSpanFull()->visible(fn (Grievance $record) => $record->resolution !== null),
             ]),

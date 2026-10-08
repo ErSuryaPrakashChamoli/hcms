@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\JobFamilies\Pages;
 
 use App\Filament\Resources\JobFamilies\JobFamilyResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateJobFamily extends CreateRecord
+class CreateJobFamily extends PeopleCreateRecord
 {
     protected static string $resource = JobFamilyResource::class;
 }

@@ -1,0 +1,12 @@
+# UX.18 environment evidence (2026-10-05). Kernel OOM-killer records while validating:
+# 11:02 Android emulator at 4 GB; 13:30 emulator at 2 GB (the owner's editor killed); 15:17 an 8-process parallel test run (editor killed).
+Oct 05 11:02:34 host kernel: systemd invoked oom-killer: gfp_mask=0x140cca(GFP_HIGHUSER_MOVABLE|__GFP_COMP), order=0, oom_score_adj=100
+Oct 05 11:02:35 host kernel: Out of memory: Killed process 2167405 (qemu-system-x86) total-vm:6688704kB, anon-rss:4796700kB, file-rss:104kB, shmem-rss:4kB, UID:1000 pgtables:10772kB oom_score_adj:200
+Oct 05 13:30:16 host kernel: connection invoked oom-killer: gfp_mask=0x140cca(GFP_HIGHUSER_MOVABLE|__GFP_COMP), order=0, oom_score_adj=0
+Oct 05 13:30:18 host kernel: Out of memory: Killed process 2170061 (code) total-vm:1518529400kB, anon-rss:465836kB, file-rss:164kB, shmem-rss:132224kB, UID:1000 pgtables:3428kB oom_score_adj:300
+Oct 05 15:17:16 host kernel: gnome-shell invoked oom-killer: gfp_mask=0x140cca(GFP_HIGHUSER_MOVABLE|__GFP_COMP), order=0, oom_score_adj=100
+Oct 05 15:17:16 host kernel: Out of memory: Killed process 2313800 (code) total-vm:1518536844kB, anon-rss:491076kB, file-rss:8kB, shmem-rss:135632kB, UID:1000 pgtables:3452kB oom_score_adj:300
+
+# Memory: 15352 MB total, swap 4095 MB
+# Apple tooling: xcrun=absent, safaridriver=absent, uname=Linux
+# Android: AVD test_emulator (Pixel 6, Android 14 google_apis, Chrome installed) booted at 4 GB and 2 GB; no physical device attached.

@@ -73,11 +73,6 @@ class PayrollEntry extends Model
         return $this->belongsTo(Employee::class);
     }
 
-    public function assignment(): BelongsTo
-    {
-        return $this->belongsTo(EmployeeSalaryAssignment::class, 'employee_salary_assignment_id');
-    }
-
     public function lines(): HasMany
     {
         return $this->hasMany(PayrollEntryLine::class)->orderBy('sort_order');

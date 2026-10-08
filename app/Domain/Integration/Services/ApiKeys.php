@@ -45,6 +45,11 @@ final class ApiKeys
         if ($key === null || ! hash_equals($key->secret_hash, hash('sha256', $secret)) || ! $key->isUsable()) {
             return null;
         }
+        // Phase 14: a suspended or closed tenant's keys stop authenticating with the tenant itself.
+        $tenant = $this->tenants->bypass(fn () => $key->tenant()->first());
+        if ($tenant === null || ! $tenant->isAccessible()) {
+            return null;
+        }
 
         return $key;
     }

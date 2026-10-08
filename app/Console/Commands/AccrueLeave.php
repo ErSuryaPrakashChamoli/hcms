@@ -9,6 +9,7 @@ use App\Domain\Leave\Services\LeaveAccrual;
 use App\Domain\Leave\Services\LeaveYear;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -20,12 +21,13 @@ class AccrueLeave extends Command
 
     public function handle(LeaveAccrual $accrual, LeaveYear $years, TenantContext $tenants): int
     {
+        $runner = TenantRunner::for($this);
         $asOf = Carbon::parse($this->option('date') ?? now())->startOfDay();
 
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each(function (Tenant $tenant) use ($accrual, $years, $tenants, $asOf) {
+            ->each($runner->isolate(function (Tenant $tenant) use ($accrual, $years, $tenants, $asOf) {
                 $tenants->runAs($tenant, function () use ($accrual, $years, $tenant, $asOf) {
                     $entries = 0;
                     $closed = 0;
@@ -53,8 +55,8 @@ class AccrueLeave extends Command
 
                     $this->info("{$tenant->slug}: {$entries} accrual(s), {$closed} year-end movement(s)");
                 });
-            });
+            }));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

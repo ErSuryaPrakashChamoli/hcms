@@ -5,10 +5,10 @@ namespace App\Filament\Resources\Tenants\Pages;
 use App\Domain\Platform\Actions\ProvisionTenantAction;
 use App\Filament\Resources\Tenants\TenantResource;
 use App\Filament\Support\AuditReasonField;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class CreateTenant extends CreateRecord
+class CreateTenant extends PeopleCreateRecord
 {
     protected static string $resource = TenantResource::class;
 
@@ -18,10 +18,10 @@ class CreateTenant extends CreateRecord
 
         return app(ProvisionTenantAction::class)->handle(
             tenantData: $data,
+            // SaaS.2: no password from the operator; the first administrator is invited.
             adminData: [
                 'name' => $this->data['admin_name'],
                 'email' => $this->data['admin_email'],
-                'password' => $this->data['admin_password'],
             ],
             reason: $reason,
         );

@@ -20,6 +20,9 @@ require_once __DIR__.'/../Attendance/AttendanceTestHelpers.php';
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 
 beforeEach(function () {
+    // The record list filters from the start of the current month; pin the clock to the data's month
+    // (the test was date-dependent and failed from 1 October 2026 onwards).
+    $this->travelTo('2026-09-25 09:00:00');
     $this->tenant = provisionTenant();
     actAsTenant($this->tenant);
     $this->admin = tenantUser($this->tenant, ['*']);

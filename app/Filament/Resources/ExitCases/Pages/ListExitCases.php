@@ -4,9 +4,9 @@ namespace App\Filament\Resources\ExitCases\Pages;
 
 use App\Filament\Resources\ExitCases\ExitCaseResource;
 use App\Filament\Support\ExitActions;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListExitCases extends ListRecords
+class ListExitCases extends PeopleListRecords
 {
     protected static string $resource = ExitCaseResource::class;
 

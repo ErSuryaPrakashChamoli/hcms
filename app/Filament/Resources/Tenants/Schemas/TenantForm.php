@@ -32,11 +32,17 @@ class TenantForm
                             ->alphaDash()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
+                        // SaaS.2: chosen at creation only. Afterwards the status changes through Suspend / Reactivate,
+                        // which require a reason, end sessions and are audited.
                         Select::make('status')
                             ->options(TenantStatus::class)
                             ->default(TenantStatus::Active)
-                            ->required(),
-                        DateTimePicker::make('trial_ends_at')->native(false),
+                            ->required()
+                            ->disabledOn('edit')
+                            ->dehydrated(fn (string $operation) => $operation === 'create')
+                            ->helperText(fn (string $operation) => $operation === 'edit' ? 'Use Suspend or Reactivate on the tenants list.' : null),
+                        // Tenant metadata only: nothing enforces trials, tiers or regions yet (commercial work is deferred).
+                        DateTimePicker::make('trial_ends_at')->label('Trial ends (metadata)')->native(false),
                     ]),
                 Section::make('Locale defaults')
                     ->columns(4)
@@ -47,13 +53,12 @@ class TenantForm
                         TextInput::make('currency')->required()->default('INR')->length(3),
                     ]),
                 Section::make('First administrator')
-                    ->description('Provisioned as Tenant Super Admin together with the system roles, default features and settings.')
-                    ->columns(3)
+                    ->description('Provisioned as Tenant Super Admin together with the system roles, default features and settings. They receive an invitation e-mail and choose their own password.')
+                    ->columns(2)
                     ->visibleOn('create')
                     ->schema([
                         TextInput::make('admin_name')->label('Name')->required()->dehydrated(false),
                         TextInput::make('admin_email')->label('Email')->email()->required()->dehydrated(false)->unique('users', 'email'),
-                        TextInput::make('admin_password')->label('Password')->password()->revealable()->minLength(12)->required()->dehydrated(false),
                     ]),
                 AuditReasonField::make(),
             ]);

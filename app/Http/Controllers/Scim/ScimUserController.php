@@ -37,12 +37,20 @@ class ScimUserController extends Controller
 
     public function replace(int $id, Request $request): JsonResponse
     {
-        return $this->scimJson($this->scim->resource($this->scim->replace($this->find($id), $request->all())));
+        try {
+            return $this->scimJson($this->scim->resource($this->scim->replace($this->find($id), $request->all())));
+        } catch (RuntimeException $e) {
+            return $this->error($e->getMessage(), $e->getCode() ?: 400);
+        }
     }
 
     public function patch(int $id, Request $request): JsonResponse
     {
-        return $this->scimJson($this->scim->resource($this->scim->patch($this->find($id), $request->input('Operations', []))));
+        try {
+            return $this->scimJson($this->scim->resource($this->scim->patch($this->find($id), $request->input('Operations', []))));
+        } catch (RuntimeException $e) {
+            return $this->error($e->getMessage(), $e->getCode() ?: 400);
+        }
     }
 
     public function destroy(int $id): JsonResponse

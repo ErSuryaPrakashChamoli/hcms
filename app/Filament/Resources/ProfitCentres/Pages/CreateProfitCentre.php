@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\ProfitCentres\Pages;
 
 use App\Filament\Resources\ProfitCentres\ProfitCentreResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateProfitCentre extends CreateRecord
+class CreateProfitCentre extends PeopleCreateRecord
 {
     protected static string $resource = ProfitCentreResource::class;
 }

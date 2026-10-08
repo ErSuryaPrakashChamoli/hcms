@@ -13,6 +13,22 @@ final class SettingsRepository
 {
     private const TTL_SECONDS = 3600;
 
+    /**
+     * SaaS.2: per-request memo of each tenant's settings. The security policy is read on every request (IP
+     * allow-list, idle timeout, MFA requirement); with a database-backed cache each read was a query. The memo
+     * is process-wide (every instance, including ones held by long-lived services, sees one answer), cleared
+     * by forget() together with the cache, and flushed at the end of every request and before every queued job
+     * (AppServiceProvider), so no answer outlives its request or job.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    private static array $memo = [];
+
+    public static function flushMemo(): void
+    {
+        self::$memo = [];
+    }
+
     public function __construct(
         private readonly TenantContext $tenants,
         private readonly Cache $cache,
@@ -34,13 +50,11 @@ final class SettingsRepository
             return config('peopleos.settings', []);
         }
 
-        $stored = $this->cache->remember(
+        return self::$memo[$tenantId] ??= array_merge(config('peopleos.settings', []), $this->cache->remember(
             $this->cacheKey($tenantId),
             self::TTL_SECONDS,
             fn () => TenantSetting::query()->pluck('value', 'key')->all(),
-        );
-
-        return array_merge(config('peopleos.settings', []), $stored);
+        ));
     }
 
     public function set(string $key, mixed $value, ?string $reason = null): TenantSetting
@@ -59,6 +73,7 @@ final class SettingsRepository
         $tenantId ??= $this->tenants->id();
 
         if ($tenantId !== null) {
+            unset(self::$memo[$tenantId]);
             $this->cache->forget($this->cacheKey($tenantId));
         }
     }

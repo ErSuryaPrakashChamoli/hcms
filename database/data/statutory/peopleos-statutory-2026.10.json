@@ -1,0 +1,2040 @@
+{
+ "dataset_version": "2026.10",
+ "title": "PeopleOS statutory dataset 2026.10",
+ "researched_on": "2026-10-08",
+ "notice": "Current statutory values for the launch jurisdictions, researched against official sources on the date shown. They are configuration data, loaded pending and activated by a second operator; every value is versioned and replaced by a new version when the law changes. Loading them is not a claim of legal compliance: Markedge's tax advisers remain responsible for its treatment (decisions B-8, B-9). Values marked pending_verification cannot be used until an operator verifies them with a reference.",
+ "jurisdictions": {
+  "IN": "India GST: supplier side (domestic and export).",
+  "GB": "UK VAT: destination side.",
+  "EU": "EU VAT: destination side, one rule per member state (27).",
+  "AE": "UAE VAT: destination side.",
+  "US": "US sales tax: destination side, one rule per state. Researched: California (two versions), Texas, New York, Washington, Pennsylvania. Every other state and the District of Columbia: PENDING_VERIFICATION (no rule; invoices to them are refused)."
+ },
+ "tax_rules": [
+  {
+   "key": "IN.GST.peopleos-subscription",
+   "jurisdiction": "India",
+   "regime": "IN_GST",
+   "country": "IN",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "IN-GST-9983-18",
+   "effective_from": "2025-09-22",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "India GST on PeopleOS (IT / online services): 18 % (CGST 9 + SGST/UTGST 9, or IGST 18); export of services zero-rated under LUT when the export conditions are met",
+   "outcomes": {
+    "intra_state": {
+     "components": [
+      {
+       "type": "CGST",
+       "rate": "9"
+      },
+      {
+       "type": "SGST",
+       "rate": "9"
+      }
+     ],
+     "treatment": "standard",
+     "description": "Supplier and place of supply in the same State: CGST (CGST Act s.9(1)) + SGST, 9 % each (Notification 11/2017-CT(R) S.No. 21(ii) as amended by 15/2025-CT(R))."
+    },
+    "intra_union_territory": {
+     "components": [
+      {
+       "type": "CGST",
+       "rate": "9"
+      },
+      {
+       "type": "UTGST",
+       "rate": "9"
+      }
+     ],
+     "treatment": "standard",
+     "description": "Same Union territory without legislature (UTGST Act s.2(8): Andaman & Nicobar, Lakshadweep, Dadra and Nagar Haveli and Daman and Diu, Ladakh, Chandigarh): CGST + UTGST (UTGST Act s.7(1)), 9 % each."
+    },
+    "inter_state": {
+     "components": [
+      {
+       "type": "IGST",
+       "rate": "18"
+      }
+     ],
+     "treatment": "standard",
+     "description": "Different States/UTs: IGST (IGST Act s.5(1), s.7(3)), 18 % (Notification 8/2017-IT(R) as amended by 15/2025-IT(R))."
+    },
+    "export_of_services": {
+     "components": [],
+     "treatment": "zero_rated",
+     "conditions": {
+      "customer_outside_supplier_country": true,
+      "invoice_currency_not": [
+       "INR"
+      ],
+      "supplier_registration": "IN_LUT",
+      "customer_special_status_not": [
+       "supplier_establishment"
+      ],
+      "reporting_currency": "INR"
+     },
+     "failure_code": "EXPORT_CONDITIONS_NOT_SATISFIED",
+     "wording": "SUPPLY MEANT FOR EXPORT/SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX",
+     "description": "Export of services (IGST Act s.2(6)): supplier in India, recipient outside India, place of supply outside India (s.13(2)/(12): recipient's location), payment in convertible foreign exchange, not a distinct person; zero-rated (s.16(1)(a)) and supplied under a Letter of Undertaking without payment of IGST (s.16(3), CGST Rules r.96A, LUT in FORM GST RFD-11 valid for the financial year). Invoice wording: CGST Rules r.46 proviso (form in force since 01.11.2024)."
+    }
+   },
+   "classification": null,
+   "source": "CBIC / GST Council",
+   "source_reference": "Notification No. 11/2017-Central Tax (Rate) S.No. 21(ii), as amended by No. 15/2025-Central Tax (Rate) dated 17.09.2025 (w.e.f. 22.09.2025); IGST Notification No. 8/2017-Integrated Tax (Rate), amended by 15/2025-Integrated Tax (Rate); CGST Act s.9; IGST Act ss.2(6), 5, 7, 8, 12, 13, 16; UTGST Act s.7; CGST Rules rr.34(2), 46, 96A",
+   "source_url": "https://taxinformation.cbic.gov.in/api/cbic-notification-msts/download/1010453/ENG",
+   "source_date": "2025-09-17",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Rates read in the notification texts on the CBIC portal (no later amendment found through 30.09.2026); Act and Rule sections read on CBIC's consolidated pages."
+   },
+   "statutory_notes": {
+    "place_of_supply": "Both in India: IGST Act s.12(2) (registered recipient: its location; unregistered: address on record, else supplier's location). Cross-border: s.13(2) location of the recipient; online information and database access or retrieval services (OIDAR, s.2(17) as widened from 01.10.2023, which lists cloud services) s.13(12), also the recipient's location.",
+    "zero_rating": "s.16(1)(a). Two routes: under LUT/bond without IGST (s.16(3), r.96A) — configured here; or with IGST and refund (s.16(4), Notification 01/2023-IT as amended by 05/2023-IT: all services) — not configured.",
+    "export_conditions_evaluated": "recipient outside India; invoice in a foreign currency (payment in convertible foreign exchange; INR where permitted by the RBI is not configured); a valid IN_LUT registration on the supplier profile; customer not recorded as an establishment of the supplier; the value reported in INR.",
+    "reporting_value": "CGST Rules r.34(2): the rate of exchange for taxable services is the rate determined under generally accepted accounting principles for the date of time of supply.",
+    "classification": "The SAC of PeopleOS is a judgement to be confirmed by Markedge's GST adviser (no CBIC circular classifies SaaS). Candidates, all at 18 %: 998314 IT design and development services; 998315 Hosting and IT infrastructure provisioning services; 997331 Licensing services for the right to use computer software and databases; 998431/998439 on-line content. Notification 78/2020-CT: 4-digit SAC up to Rs 5 crore turnover, 6 digits above. Invoices cannot be issued until the SAC is recorded in a new version of this rule.",
+    "rounding": "Each tax amount is rounded once per line to the paisa, half up (a configuration choice; CGST Act s.170 rounds amounts payable to the nearest rupee).",
+    "not_configured": "SEZ supplies, UIN holders, the export-with-payment route, INR export receipts permitted by the RBI."
+   }
+  },
+  {
+   "key": "GB.VAT.peopleos-subscription",
+   "jurisdiction": "United Kingdom",
+   "regime": "GB_VAT",
+   "country": "GB",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "GB-VAT-DEST-20",
+   "effective_from": "2011-01-04",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "UK VAT on services from abroad: business customers account for VAT (reverse charge); consumers: 20 % due from a UK-registered supplier",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "GB_VAT"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "description": "B2B general rule: supplied where the customer belongs (VATA 1994 s.7A(2)(a); VAT Notice 741A para 6.3); the UK business customer accounts for the VAT (s.8; Notice 741A para 5.6); the amount payable excludes UK VAT (para 5.12). Evidence: the customer's VAT number (para 2.4); HMRC also accepts other commercial evidence (para 6.3), which PeopleOS does not record, so a VAT number is required here."
+    },
+    "b2c_digital_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "20"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "GB_VAT",
+     "description": "Digital services to UK consumers: supplied where the consumer belongs; a supplier based outside the UK must register for UK VAT, with no threshold (HMRC digital services guidance; Notice 741A para 2.6; Notice 700/1 para 9.3). Standard rate 20 % since 4 January 2011."
+    }
+   },
+   "source": "HMRC / GOV.UK",
+   "source_reference": "VAT rates (standard rate 20 % from 4 Jan 2011); VATA 1994 ss.7A, 8 (as reproduced in HMRC manual VATPOSS06200, VATPOSS14200); VAT Notice 741A paras 2.4, 2.6, 5.6, 5.12, 6.3; VAT rules for supplies of digital services to consumers",
+   "source_url": "https://www.gov.uk/vat-rates",
+   "source_date": "2026-09-30",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "GOV.UK pages and HMRC manuals read; legislation.gov.uk could not be opened (bot challenge), the statute text was read as reproduced by HMRC."
+   },
+   "statutory_notes": {
+    "place_of_supply": "B2B: where the customer belongs (s.7A(2)(a)); B2C: where the supplier belongs, except digital services to consumers (where the consumer belongs).",
+    "reverse_charge": "The UK business customer accounts for VAT; an overseas supplier making only reverse-charge supplies is not entitled to register (Notice 741A para 2.6).",
+    "invoice_wording": "HMRC prescribes no wording for an invoice from a supplier outside the UK; none is configured.",
+    "evidence": "VAT number presumption (para 2.4); without a VAT number or other evidence, treat as B2C (para 6.3; digital services guidance).",
+    "use_and_enjoyment": "Electronically supplied services B2B may be subject to use-and-enjoyment adjustments (Notice 741A s.13) — not configured."
+   }
+  },
+  {
+   "key": "AE.VAT.peopleos-subscription",
+   "jurisdiction": "United Arab Emirates",
+   "regime": "AE_VAT",
+   "country": "AE",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "AE-VAT-DEST-5",
+   "effective_from": "2026-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "UAE VAT on electronic services from a non-resident: a VAT-registered recipient accounts for VAT (reverse charge); otherwise 5 % due from a UAE-registered supplier",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "AE_TRN"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "description": "Place of supply in the UAE (Decree-Law Art. 30(2) B2B; Art. 31 electronic services: where used and enjoyed); a VAT-registered recipient receiving services from a non-resident who does not charge VAT accounts for it (Art. 48; Executive Regulation Art. 48(3), (5)(a)); self-invoicing removed for imports from 1 January 2026 (FDL No. 16 of 2025; FTA VATP046)."
+    },
+    "unregistered_recipient": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "5"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "AE_TRN",
+     "description": "No registered recipient to account for the tax: a non-resident must register regardless of the threshold (Decree-Law Art. 13(2); Executive Regulation Art. 7(6)) and charge the standard rate of 5 % (Art. 3)."
+    }
+   },
+   "source": "Federal Tax Authority (UAE)",
+   "source_reference": "Federal Decree-Law No. 8 of 2017 on VAT (consolidated to FDL 16/2024) Arts. 3, 13, 30, 31, 45, 48, 85; Executive Regulation (Cabinet Decision 52/2017, consolidated to Cabinet Decision 149/2026) Arts. 7, 8, 23, 31, 48; FDL No. 16 of 2025 (from 1 Jan 2026); FTA public clarification VATP046",
+   "source_url": "https://tax.gov.ae/Datafolder/Files/Legislation/2025/Federal-Decree-Law-No-8-of-2017-and-amendments.pdf",
+   "source_date": "2026-01-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "FTA consolidated English texts read (each marked 'not an official translation'; the Arabic text is binding); the amended wording of Art. 48(1) after FDL 16/2025 was not obtained."
+   },
+   "statutory_notes": {
+    "standard_rate": "5 % (Art. 3) since 1 January 2018 (Art. 85).",
+    "electronic_services": "Executive Regulation Art. 23(2): services automatically delivered over the internet, including the supply and updating of software. Treating PeopleOS as an electronic service is an interpretation (no FTA ruling found).",
+    "zero_rating_and_export": "Supplier side (a UAE supplier): exports of services are zero-rated (Decree-Law Art. 45(1); Executive Regulation Art. 31(1)(a): recipient without residence in an Implementing State and outside the State). Not applicable to Markedge's Indian entity; recorded for completeness.",
+    "registration": "Non-residents: Art. 13(2), no threshold where no other person is obliged to pay the tax. Residents: mandatory AED 375,000 (Executive Regulation Art. 7(1)); voluntary AED 187,500 (Art. 8(1)).",
+    "unregistered_business": "A UAE business customer without a TRN cannot account under Art. 48 (which applies to a Taxable Person): treated like any unregistered recipient (supplier registration required). Adviser to confirm.",
+    "trn": "15 characters on the FTA verification form (no official statement of the format found)."
+   }
+  },
+  {
+   "key": "BE.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Belgium",
+   "regime": "EU_VAT",
+   "country": "BE",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-BE-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Belgium: business customers with a VAT number account for VAT (reverse charge); consumers: 21 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Belgium (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "21"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Belgium: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Belgium's VAT (21 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "BE",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "BG.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Bulgaria",
+   "regime": "EU_VAT",
+   "country": "BG",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-BG-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Bulgaria: business customers with a VAT number account for VAT (reverse charge); consumers: 20 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Bulgaria (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "20"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Bulgaria: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Bulgaria's VAT (20 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "BG",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "CZ.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Czechia",
+   "regime": "EU_VAT",
+   "country": "CZ",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-CZ-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Czechia: business customers with a VAT number account for VAT (reverse charge); consumers: 21 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Czechia (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "21"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Czechia: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Czechia's VAT (21 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "CZ",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "DK.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Denmark",
+   "regime": "EU_VAT",
+   "country": "DK",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-DK-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Denmark: business customers with a VAT number account for VAT (reverse charge); consumers: 25 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Denmark (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "25"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Denmark: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Denmark's VAT (25 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "DK",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "DE.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Germany",
+   "regime": "EU_VAT",
+   "country": "DE",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-DE-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Germany: business customers with a VAT number account for VAT (reverse charge); consumers: 19 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Germany (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "19"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Germany: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Germany's VAT (19 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "DE",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "EE.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Estonia",
+   "regime": "EU_VAT",
+   "country": "EE",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-EE-VAT-DEST",
+   "effective_from": "2025-07-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Estonia: business customers with a VAT number account for VAT (reverse charge); consumers: 24 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Estonia (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "24"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Estonia: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Estonia's VAT (24 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB); EMTA",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://emta.ee/en/business-client/taxes-and-payment/value-added-tax/vat-rates-and-supply-exempt-tax/standard-vat-rate",
+   "source_date": "2025-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB and confirmed on the national tax authority's site. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "the current rate started on this date (confirmed by the national tax authority)",
+    "vat_number_prefix": "EE",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "IE.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Ireland",
+   "regime": "EU_VAT",
+   "country": "IE",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-IE-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Ireland: business customers with a VAT number account for VAT (reverse charge); consumers: 23 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Ireland (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "23"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Ireland: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Ireland's VAT (23 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "IE",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "GR.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Greece",
+   "regime": "EU_VAT",
+   "country": "GR",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-GR-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Greece: business customers with a VAT number account for VAT (reverse charge); consumers: 24 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Greece (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "24"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Greece: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Greece's VAT (24 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08 (TEDB snapshot dated 2025-01-01: stale); Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "pending_verification",
+    "checked_on": "2026-10-08",
+    "method": "TEDB returned an old snapshot (2025-01-01) for Greece and the rate was not confirmed with AADE: verify before use."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "EL",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "ES.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Spain",
+   "regime": "EU_VAT",
+   "country": "ES",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-ES-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Spain: business customers with a VAT number account for VAT (reverse charge); consumers: 21 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Spain (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "21"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Spain: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Spain's VAT (21 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "ES",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "FR.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — France",
+   "regime": "EU_VAT",
+   "country": "FR",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-FR-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "France: business customers with a VAT number account for VAT (reverse charge); consumers: 20 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in France (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "20"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in France: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for France's VAT (20 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "FR",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "HR.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Croatia",
+   "regime": "EU_VAT",
+   "country": "HR",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-HR-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Croatia: business customers with a VAT number account for VAT (reverse charge); consumers: 25 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Croatia (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "25"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Croatia: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Croatia's VAT (25 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "HR",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "IT.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Italy",
+   "regime": "EU_VAT",
+   "country": "IT",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-IT-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Italy: business customers with a VAT number account for VAT (reverse charge); consumers: 22 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Italy (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "22"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Italy: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Italy's VAT (22 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "IT",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "CY.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Cyprus",
+   "regime": "EU_VAT",
+   "country": "CY",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-CY-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Cyprus: business customers with a VAT number account for VAT (reverse charge); consumers: 19 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Cyprus (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "19"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Cyprus: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Cyprus's VAT (19 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "CY",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "LV.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Latvia",
+   "regime": "EU_VAT",
+   "country": "LV",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-LV-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Latvia: business customers with a VAT number account for VAT (reverse charge); consumers: 21 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Latvia (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "21"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Latvia: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Latvia's VAT (21 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "LV",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "LT.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Lithuania",
+   "regime": "EU_VAT",
+   "country": "LT",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-LT-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Lithuania: business customers with a VAT number account for VAT (reverse charge); consumers: 21 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Lithuania (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "21"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Lithuania: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Lithuania's VAT (21 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "LT",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "LU.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Luxembourg",
+   "regime": "EU_VAT",
+   "country": "LU",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-LU-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Luxembourg: business customers with a VAT number account for VAT (reverse charge); consumers: 17 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Luxembourg (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "17"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Luxembourg: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Luxembourg's VAT (17 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "LU",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "HU.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Hungary",
+   "regime": "EU_VAT",
+   "country": "HU",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-HU-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Hungary: business customers with a VAT number account for VAT (reverse charge); consumers: 27 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Hungary (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "27"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Hungary: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Hungary's VAT (27 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "HU",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "MT.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Malta",
+   "regime": "EU_VAT",
+   "country": "MT",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-MT-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Malta: business customers with a VAT number account for VAT (reverse charge); consumers: 18 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Malta (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "18"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Malta: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Malta's VAT (18 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "MT",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "NL.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Netherlands",
+   "regime": "EU_VAT",
+   "country": "NL",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-NL-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Netherlands: business customers with a VAT number account for VAT (reverse charge); consumers: 21 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Netherlands (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "21"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Netherlands: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Netherlands's VAT (21 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "NL",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "AT.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Austria",
+   "regime": "EU_VAT",
+   "country": "AT",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-AT-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Austria: business customers with a VAT number account for VAT (reverse charge); consumers: 20 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Austria (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "20"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Austria: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Austria's VAT (20 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "AT",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "PL.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Poland",
+   "regime": "EU_VAT",
+   "country": "PL",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-PL-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Poland: business customers with a VAT number account for VAT (reverse charge); consumers: 23 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Poland (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "23"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Poland: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Poland's VAT (23 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "PL",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "PT.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Portugal",
+   "regime": "EU_VAT",
+   "country": "PT",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-PT-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Portugal: business customers with a VAT number account for VAT (reverse charge); consumers: 23 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Portugal (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "23"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Portugal: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Portugal's VAT (23 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "PT",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "RO.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Romania",
+   "regime": "EU_VAT",
+   "country": "RO",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-RO-VAT-DEST",
+   "effective_from": "2025-08-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Romania: business customers with a VAT number account for VAT (reverse charge); consumers: 21 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Romania (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "21"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Romania: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Romania's VAT (21 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB); ANAF (Law 141/2025; Fiscal Code Art. 291)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://static.anaf.ro/static/10/Anaf/AsistentaContribuabili_r/Cotele_de_TVA_09.2025.pdf",
+   "source_date": "2025-08-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB and confirmed on the national tax authority's site. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "the current rate started on this date (confirmed by the national tax authority)",
+    "vat_number_prefix": "RO",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "SI.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Slovenia",
+   "regime": "EU_VAT",
+   "country": "SI",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-SI-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Slovenia: business customers with a VAT number account for VAT (reverse charge); consumers: 22 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Slovenia (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "22"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Slovenia: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Slovenia's VAT (22 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "SI",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "SK.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Slovakia",
+   "regime": "EU_VAT",
+   "country": "SK",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-SK-VAT-DEST",
+   "effective_from": "2025-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Slovakia: business customers with a VAT number account for VAT (reverse charge); consumers: 23 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Slovakia (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "23"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Slovakia: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Slovakia's VAT (23 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB); Financna sprava (VAT Act s.27)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://www.financnasprava.sk/sk/podnikatelia/dane/dan-z-pridanej-hodnoty/sadzby-dane",
+   "source_date": "2025-01-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB and confirmed on the national tax authority's site. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "the current rate started on this date (confirmed by the national tax authority)",
+    "vat_number_prefix": "SK",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "FI.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Finland",
+   "regime": "EU_VAT",
+   "country": "FI",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-FI-VAT-DEST",
+   "effective_from": "2024-09-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Finland: business customers with a VAT number account for VAT (reverse charge); consumers: 25.5 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Finland (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "25.5"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Finland: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Finland's VAT (25.5 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB); Vero",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://www.vero.fi/en/businesses-and-corporations/taxes-and-charges/vat/rates-of-vat/new-vat-rate-from-1-september-2024--instructions-for-vat-reporting/",
+   "source_date": "2024-09-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB and confirmed on the national tax authority's site. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "the current rate started on this date (confirmed by the national tax authority)",
+    "vat_number_prefix": "FI",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "SE.VAT.peopleos-subscription",
+   "jurisdiction": "European Union — Sweden",
+   "regime": "EU_VAT",
+   "country": "SE",
+   "subdivision": null,
+   "tax_category": "peopleos.subscription",
+   "rule_code": "EU-SE-VAT-DEST",
+   "effective_from": "2024-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Sweden: business customers with a VAT number account for VAT (reverse charge); consumers: 25 % due from a registered supplier (non-Union OSS)",
+   "outcomes": {
+    "b2b_reverse_charge": {
+     "components": [],
+     "treatment": "reverse_charge",
+     "conditions": {
+      "customer_types": [
+       "business"
+      ],
+      "customer_tax_id_types": [
+       "EU_VAT_ID"
+      ]
+     },
+     "failure_code": "CUSTOMER_TAX_STATUS_UNRESOLVED",
+     "wording": "Reverse charge",
+     "description": "Place of supply: the customer's establishment in Sweden (Directive 2006/112/EC Art. 44); VAT payable by the customer as the supplier is not established there (Art. 196). Evidence: a VAT identification number validated through VIES (Regulation 282/2011 Art. 18(1); Regulation 904/2010 Art. 31); for electronically supplied services a customer without a VAT number may be treated as a non-taxable person (Art. 18(2)). Invoice mention 'Reverse charge' (Art. 226(11a))."
+    },
+    "b2c_electronic_services": {
+     "components": [
+      {
+       "type": "VAT",
+       "rate": "25"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "EU_OSS_NON_UNION",
+     "description": "Electronically supplied services to a consumer in Sweden: supplied where the customer resides (Art. 58(1)(c); Annex II; Regulation 282/2011 Art. 7). A supplier not established in the EU accounts for Sweden's VAT (25 % standard) through the non-Union scheme (Arts. 358a, 359) from the first euro (the EUR 10,000 threshold of Art. 59c applies only to suppliers established in one member state)."
+    }
+   },
+   "source": "European Commission — Taxes in Europe Database (TEDB)",
+   "source_reference": "TEDB standard rate, retrieved 2026-10-08; Directive 2006/112/EC (consolidated 14.04.2025) Arts. 44, 58, 59c, 196, 226(11a), 358a, 359, Annex II; Implementing Regulation (EU) 282/2011 Arts. 7, 18",
+   "source_url": "https://ec.europa.eu/taxation_customs/tedb/",
+   "source_date": "2026-07-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Standard rate read from the European Commission's TEDB. Directive and Regulation articles read in the consolidated texts."
+   },
+   "statutory_notes": {
+    "effective_from": "unchanged in every TEDB snapshot since 1 January 2024 (its earlier start date is not recorded here)",
+    "vat_number_prefix": "SE",
+    "b2b": "No VAT charged by a non-EU supplier; the customer accounts for it at its member state's rate.",
+    "classification": "SaaS is treated as an electronically supplied service under Regulation 282/2011 Art. 7(1) (an application of the test, not an explicit rule)."
+   }
+  },
+  {
+   "key": "US.CA.SALES.peopleos-subscription",
+   "jurisdiction": "United States — California",
+   "regime": "US_SALES_TAX",
+   "country": "US",
+   "subdivision": "US-CA",
+   "tax_category": "peopleos.subscription",
+   "rule_code": "US-CA-SAAS",
+   "effective_from": "2026-10-08",
+   "effective_to": "2026-12-31",
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "California: SaaS not taxable until 31 December 2026",
+   "outcomes": {
+    "saas": {
+     "components": [],
+     "treatment": "not_taxable",
+     "description": "Not taxable: a prewritten program transferred by remote telecommunications, the purchaser obtaining no tangible personal property (Regulation 1502(f)(1)(D)). Ends 31 December 2026 (SB 122)."
+    }
+   },
+   "source": "California Department of Tax and Fee Administration (CDTFA)",
+   "source_reference": "Sales and Use Tax Regulation 1502(f)(1)(D), (c)(7)",
+   "source_url": "https://cdtfa.ca.gov/lawguides/vol1/sutr/1502.html",
+   "source_date": "2026-10-08",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Official state tax authority pages and statutes read."
+   },
+   "statutory_notes": {
+    "effective_from": "in force on 2026-10-08 (earlier start not recorded)",
+    "economic_nexus": "over $500,000 of sales for delivery in California in the current or preceding calendar year (R&TC s.6203(c)(4)), no transaction count",
+    "purchaser_use_tax": "none today (SaaS is not tangible personal property until 2027)"
+   }
+  },
+  {
+   "key": "US.CA.SALES.peopleos-subscription.2027",
+   "jurisdiction": "United States — California",
+   "regime": "US_SALES_TAX",
+   "country": "US",
+   "subdivision": "US-CA",
+   "tax_category": "peopleos.subscription",
+   "rule_code": "US-CA-SAAS-2027",
+   "effective_from": "2027-01-01",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "California: SaaS taxable from 1 January 2027 (7.25 % + district taxes)",
+   "outcomes": {
+    "saas": {
+     "components": [
+      {
+       "type": "STATE",
+       "rate": "7.25"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "US_STATE:US-CA",
+     "conditions": {
+      "local_rates_required": true
+     },
+     "description": "Taxable from 1 January 2027: digital products, including prewritten SaaS accessed remotely, become tangible personal property (SB 122, Stats. 2026 ch. 23; CDTFA Special Notice L-1036). Statewide rate 7.25 % plus district taxes (0.10 %–2.00 %) by the customer's address; sourced to the customer's (billing) address."
+    }
+   },
+   "source": "California Department of Tax and Fee Administration (CDTFA)",
+   "source_reference": "SB 122 (Stats. 2026, ch. 23); CDTFA Special Notice L-1036 (September 2026); CDTFA sales and use tax rates; R&TC s.6203(c)(4)",
+   "source_url": "https://cdtfa.ca.gov/formspubs/l1036.pdf",
+   "source_date": "2026-09-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Official state tax authority pages and statutes read."
+   },
+   "statutory_notes": {
+    "economic_nexus": "over $500,000 (R&TC s.6203(c)(4)); SaaS sales count once digital products are tangible personal property (an inference)",
+    "large_buyer": "over $5,000,000 of digital products to one purchaser in 2027 may shift liability to the purchaser (use tax direct payment permit)",
+    "local_rates": "district taxes vary by address (CDTFA 'Find a Sales and Use Tax Rate by Address'): not configured",
+    "purchaser_use_tax": "purchaser reports use tax when the seller does not collect (from 2027)"
+   }
+  },
+  {
+   "key": "US.TX.SALES.peopleos-subscription",
+   "jurisdiction": "United States — Texas",
+   "regime": "US_SALES_TAX",
+   "country": "US",
+   "subdivision": "US-TX",
+   "tax_category": "peopleos.subscription",
+   "rule_code": "US-TX-SAAS",
+   "effective_from": "2026-10-08",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Texas: SaaS taxable as data processing, 6.25 % on 80 % of the price + local",
+   "outcomes": {
+    "saas": {
+     "components": [
+      {
+       "type": "STATE",
+       "rate": "6.25"
+      }
+     ],
+     "treatment": "standard",
+     "taxable_percent": "80",
+     "requires_supplier_registration": "US_STATE:US-TX",
+     "conditions": {
+      "local_rates_required": true
+     },
+     "description": "SaaS is a data processing service (Publication 96-259; Tax Code s.151.0035; Rule 3.330), taxable at 6.25 % (s.151.051(b)) on 80 % of the charge (20 % exempt, s.151.351), plus local taxes up to 2 % (or the 1.75 % single local use tax rate a remote seller may elect, Rule 3.334)."
+    }
+   },
+   "source": "Texas Comptroller of Public Accounts",
+   "source_reference": "Tax Code ss.151.0035, 151.051(b), 151.351; 34 TAC Rules 3.286, 3.330, 3.334; Publication 96-259 (January 2026)",
+   "source_url": "https://comptroller.texas.gov/taxes/publications/96-259.php",
+   "source_date": "2026-01-01",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Official state tax authority pages and statutes read."
+   },
+   "statutory_notes": {
+    "effective_from": "in force on 2026-10-08 (the 80 % rule since 1 October 1999)",
+    "economic_nexus": "total Texas revenue of $500,000 or more in the preceding twelve months (Rule 3.286), no transaction count, effective 1 October 2019",
+    "local_rates": "up to 2 % by location (Sales Tax Rate Locator) or the 1.75 % single local use tax rate (Rule 3.334): not configured",
+    "purchaser_use_tax": "Texas purchasers owe use tax when the seller does not charge Texas tax"
+   }
+  },
+  {
+   "key": "US.NY.SALES.peopleos-subscription",
+   "jurisdiction": "United States — New York",
+   "regime": "US_SALES_TAX",
+   "country": "US",
+   "subdivision": "US-NY",
+   "tax_category": "peopleos.subscription",
+   "rule_code": "US-NY-SAAS",
+   "effective_from": "2026-10-08",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "New York: SaaS taxable, 4 % + local",
+   "outcomes": {
+    "saas": {
+     "components": [
+      {
+       "type": "STATE",
+       "rate": "4"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "US_STATE:US-NY",
+     "conditions": {
+      "local_rates_required": true
+     },
+     "description": "Remote access to prewritten software is taxable (TB-ST-128; Tax Law ss.1101(b)(6), (14), 1115(o)): state rate 4 % plus local city, county or school district taxes (and 0.375 % in the MCTD), sourced to where the purchaser uses or directs the use of the software."
+    }
+   },
+   "source": "New York State Department of Taxation and Finance",
+   "source_reference": "Tax Bulletin TB-ST-128 (updated 31 March 2026); Tax Law ss.1101(b)(6), 1101(b)(14), 1115(a)(28), 1115(o); Publication 718",
+   "source_url": "https://www.tax.ny.gov/pubs_and_bulls/tg_bulletins/st/computer_software.htm",
+   "source_date": "2026-03-31",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Official state tax authority pages and statutes read."
+   },
+   "statutory_notes": {
+    "effective_from": "in force on 2026-10-08 (earlier start not recorded)",
+    "economic_nexus": "over $500,000 of receipts AND more than 100 sales into New York in the preceding four sales tax quarters, effective 21 June 2018",
+    "multi_location_users": "tax applies to the share of the price for users in New York",
+    "local_rates": "by jurisdiction (Jurisdiction/Rate Lookup by Address): not configured",
+    "purchaser_use_tax": "purchasers file use tax (Form ST-130) when sales tax is not paid"
+   }
+  },
+  {
+   "key": "US.WA.SALES.peopleos-subscription",
+   "jurisdiction": "United States — Washington",
+   "regime": "US_SALES_TAX",
+   "country": "US",
+   "subdivision": "US-WA",
+   "tax_category": "peopleos.subscription",
+   "rule_code": "US-WA-SAAS",
+   "effective_from": "2026-10-08",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Washington: SaaS taxable, 6.5 % + local",
+   "outcomes": {
+    "saas": {
+     "components": [
+      {
+       "type": "STATE",
+       "rate": "6.5"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "US_STATE:US-WA",
+     "conditions": {
+      "local_rates_required": true
+     },
+     "description": "Remote access software is a retail sale (RCW 82.04.050(6)(b)(i); WAC 458-20-15503) subject to retail sales tax: state rate 6.5 % plus local rates by location. ESSB 5814 (from 1 October 2025) also taxes IT services such as implementation and training."
+    }
+   },
+   "source": "Washington State Department of Revenue",
+   "source_reference": "RCW 82.04.050(6)(b)(i), 82.08.0208(4); WAC 458-20-15503; ESSB 5814 (2025 c 422)",
+   "source_url": "https://dor.wa.gov/taxes-rates/retail-sales-tax",
+   "source_date": "2026-10-08",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Official state tax authority pages and statutes read."
+   },
+   "statutory_notes": {
+    "effective_from": "in force on 2026-10-08 (earlier start not recorded)",
+    "economic_nexus": "over $100,000 of gross receipts sourced to Washington in the current or prior calendar year (from 1 January 2020), no transaction count; retailing B&O tax also applies (not configured)",
+    "multiple_points_of_use": "business buyers using the software in and outside Washington may give an exemption certificate and self-assess (RCW 82.08.0208(4))",
+    "local_rates": "by location (Tax Rate Lookup Tool): not configured",
+    "purchaser_use_tax": "businesses report use tax on their excise return"
+   }
+  },
+  {
+   "key": "US.PA.SALES.peopleos-subscription",
+   "jurisdiction": "United States — Pennsylvania",
+   "regime": "US_SALES_TAX",
+   "country": "US",
+   "subdivision": "US-PA",
+   "tax_category": "peopleos.subscription",
+   "rule_code": "US-PA-SAAS",
+   "effective_from": "2026-10-08",
+   "effective_to": null,
+   "rounding": "half_up",
+   "amount_basis": "exclusive",
+   "summary": "Pennsylvania: SaaS taxable, 6 % (+ Allegheny 1 %, Philadelphia 2 %)",
+   "outcomes": {
+    "saas": {
+     "components": [
+      {
+       "type": "STATE",
+       "rate": "6"
+      }
+     ],
+     "treatment": "standard",
+     "requires_supplier_registration": "US_STATE:US-PA",
+     "conditions": {
+      "local_rates_required": true
+     },
+     "description": "Canned software accessed through a SaaS agreement is taxable when the user is in Pennsylvania (72 P.S. s.7201(k)(1), (m)(2), Act 84 of 2016): state rate 6 %, plus 1 % in Allegheny County and 2 % in Philadelphia; a Pennsylvania billing address presumes all users are in Pennsylvania."
+    }
+   },
+   "source": "Pennsylvania Department of Revenue",
+   "source_reference": "72 P.S. ss.7201(k)(1), 7201(m)(2) (Act 84 of 2016); Act 13 of 2019",
+   "source_url": "https://www.pa.gov/agencies/revenue/resources/tax-types-and-information/sales-use-and-hotel-occupancy-tax/canned-computer-software-digital-goods",
+   "source_date": "2026-10-08",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08",
+    "method": "Official state tax authority pages and statutes read."
+   },
+   "statutory_notes": {
+    "effective_from": "in force on 2026-10-08 (the Act 84 start date is not stated on the official page)",
+    "economic_nexus": "Pennsylvania annual gross sales greater than $100,000 in the prior year (from 1 July 2019), no transaction count",
+    "local_rates": "Allegheny County 1 %, Philadelphia 2 %: locality not configured",
+    "purchaser_use_tax": "use tax at the sales tax rate when no sales tax is paid to a vendor"
+   }
+  }
+ ],
+ "parameters": [
+  {
+   "key": "invoice.number_max_length",
+   "scope": "IN",
+   "value": 16,
+   "effective_from": "2017-07-01",
+   "summary": "Tax invoice serial number: at most 16 characters, unique for a financial year",
+   "source": "CBIC",
+   "source_reference": "CGST Rules, 2017, rule 46(b)",
+   "source_url": "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html",
+   "source_date": "2017-06-19",
+   "verification": {
+    "status": "source_verified",
+    "checked_on": "2026-10-08"
+   }
+  }
+ ]
+}

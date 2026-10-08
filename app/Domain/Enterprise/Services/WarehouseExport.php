@@ -6,6 +6,7 @@ use App\Domain\Analytics\Services\DatasetRegistry;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Identity\Models\User;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Storage;
 
@@ -21,14 +22,19 @@ final class WarehouseExport
         $tenant = $this->tenants->current();
         $folder = "warehouse/{$tenant->slug}/".now()->format('Y-m-d');
         $out = [];
+        $truncated = [];
 
         foreach ($this->datasets->all() as $key => $dataset) {
             if ($only !== null && ! in_array($key, $only, true)) {
                 continue;
             }
-            $fields = array_keys($dataset->fields());
+            // Phase 14: the feed carries non-sensitive fields only (as a run without a user would), unless the
+            // tenant explicitly enabled sensitive fields in the warehouse feed (setting warehouse.include_sensitive).
+            $fields = array_keys(app(SettingsRepository::class)->get('warehouse.include_sensitive', false) ? $dataset->fields() : $dataset->fieldsFor(null));
             $lines = [];
-            $dataset->query()->limit((int) config('peopleos.analytics.max_rows', 10000))->get()->each(function ($model) use ($dataset, $fields, &$lines) {
+            $max = (int) config('peopleos.analytics.max_rows', 10000);
+            $truncated[$key] = $dataset->query()->count() > $max;
+            $dataset->query()->limit($max)->get()->each(function ($model) use ($dataset, $fields, &$lines) {
                 $row = ['_exported_at' => now()->toIso8601String()];
                 foreach ($fields as $field) {
                     $row[$field] = $dataset->value($field, $model);
@@ -39,7 +45,7 @@ final class WarehouseExport
             $out[$key] = count($lines);
         }
 
-        Storage::disk($disk)->put("{$folder}/manifest.json", json_encode(['tenant' => $tenant->slug, 'exported_at' => now()->toIso8601String(), 'datasets' => $out], JSON_PRETTY_PRINT));
+        Storage::disk($disk)->put("{$folder}/manifest.json", json_encode(['tenant' => $tenant->slug, 'exported_at' => now()->toIso8601String(), 'datasets' => $out, 'truncated' => array_keys(array_filter($truncated))], JSON_PRETTY_PRINT));
         $this->audit->record(AuditAction::Export, 'enterprise', null, [], 'Warehouse export', actor: $actor, metadata: ['datasets' => $out, 'folder' => $folder]);
 
         return $out;

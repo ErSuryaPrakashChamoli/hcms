@@ -7,14 +7,17 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Services\Timeline;
 use App\Domain\Notifications\Services\NotificationContext;
 use App\Domain\Notifications\Services\NotificationEngine;
+use App\Support\Storage\FileSafety;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Document management core (§39, §83): private storage, versions per type, verification,
@@ -29,11 +32,18 @@ final class Documents
         private readonly NotificationContext $context,
     ) {}
 
-    public function store(Employee $employee, UploadedFile $file, ?DocumentType $type = null, ?string $title = null, ?string $expiresOn = null, ?string $issuedOn = null, ?string $reason = null): EmployeeDocument
+    /**
+     * $generatedBySystem is for files PeopleOS itself produced (issued letters); every other file is a
+     * user upload and passes the server-side file safety checks.
+     */
+    public function store(Employee $employee, UploadedFile $file, ?DocumentType $type = null, ?string $title = null, ?string $expiresOn = null, ?string $issuedOn = null, ?string $reason = null, bool $generatedBySystem = false): EmployeeDocument
     {
         $disk = config('peopleos.documents.disk');
         $tenantId = $employee->tenant_id;
-        $path = $file->storeAs("tenants/{$tenantId}/employees/{$employee->id}", Str::ulid().'.'.$file->getClientOriginalExtension(), $disk);
+        // Production readiness closure: extension allowlist, size limit and content sniffing on the server.
+        $extension = $generatedBySystem ? strtolower($file->getClientOriginalExtension())
+            : FileSafety::assertAllowed($file->getClientOriginalName(), (int) $file->getSize(), FileSafety::sniffFile((string) $file->getRealPath()) ?? $file->getMimeType());
+        $path = $file->storeAs("tenants/{$tenantId}/employees/{$employee->id}", Str::ulid().'.'.$extension, $disk);
 
         $version = $type
             ? (int) EmployeeDocument::query()->where('employee_id', $employee->id)->where('document_type_id', $type->id)->max('version') + 1
@@ -67,17 +77,22 @@ final class Documents
         return $document;
     }
 
-    public function review(EmployeeDocument $document, bool $verified, ?string $note = null): EmployeeDocument
+    public function review(EmployeeDocument $document, bool $verified, ?string $note = null, ?User $actor = null): EmployeeDocument
     {
+        $actor ??= auth()->user();
+        // Phase 12: separation of duties — whoever uploaded a document does not verify it.
+        if ($actor !== null && $document->uploaded_by !== null && (int) $document->uploaded_by === (int) $actor->id) {
+            throw new RuntimeException('The person who uploaded a document cannot verify it.');
+        }
         $document->loadMissing(['employee', 'type']);
         $document->withAuditReason($note)->update([
             'status' => $verified ? 'verified' : 'rejected',
-            'verified_by' => auth()->id(),
+            'verified_by' => $actor?->id,
             'verified_at' => now(),
             'review_note' => $note,
         ]);
 
-        $this->audit->record($verified ? AuditAction::Approved : AuditAction::Rejected, 'documents', $document, reason: $note);
+        $this->audit->record($verified ? AuditAction::Approved : AuditAction::Rejected, 'documents', $document, reason: $note, actor: $actor);
 
         if ($verified) {
             $this->timeline->record($document->employee, 'document', "{$document->title} verified", now(), $note, $document);
@@ -96,11 +111,12 @@ final class Documents
 
     public function recordAccess(EmployeeDocument $document, string $purpose = 'download'): void
     {
-        if (! $document->isSensitive()) {
+        // Phase 14: every download is audited; previews only for sensitive documents.
+        if ($purpose !== 'download' && ! $document->isSensitive()) {
             return;
         }
 
-        $this->audit->record($purpose === 'download' ? AuditAction::Download : AuditAction::View, 'documents', $document, metadata: ['purpose' => $purpose, 'employee_id' => $document->employee_id], reason: $purpose);
+        $this->audit->record($purpose === 'download' ? AuditAction::Download : AuditAction::View, 'documents', $document, metadata: ['purpose' => $purpose, 'employee_id' => $document->employee_id, 'sensitive' => $document->isSensitive()], reason: $purpose);
     }
 
     public function delete(EmployeeDocument $document, ?string $reason = null): void

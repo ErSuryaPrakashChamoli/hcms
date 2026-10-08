@@ -1,10 +1,10 @@
 <x-filament-panels::page>
     @php($a = $this->getAnalytics())
-    <div class="grid gap-4 md:grid-cols-4">
-        <x-filament::section compact><div class="text-sm text-gray-500">Exit interviews</div><div class="text-2xl font-semibold">{{ $a['count'] }}</div><div class="text-xs text-gray-500">{{ $a['employee_count'] }} answered by employees</div></x-filament::section>
-        <x-filament::section compact><div class="text-sm text-gray-500">Would recommend</div><div class="text-2xl font-semibold">{{ $a['would_recommend'] === null ? '—' : $a['would_recommend'] . '%' }}</div></x-filament::section>
-        <x-filament::section compact><div class="text-sm text-gray-500">Would rejoin</div><div class="text-2xl font-semibold">{{ $a['would_rejoin'] === null ? '—' : $a['would_rejoin'] . '%' }}</div></x-filament::section>
-        <x-filament::section compact><div class="text-sm text-gray-500">Exits by type</div>@foreach ($this->getExitsByType() as $type => $n)<div class="text-sm flex justify-between"><span>{{ config('peopleos.exit.types.' . $type, $type) }}</span><span class="font-semibold">{{ $n }}</span></div>@endforeach</x-filament::section>
+    <div class="pos-panel pos-panel-pad pos-figures">
+        <div class="pos-figure"><span class="pos-figure-value">{{ $a['count'] }}</span><span class="pos-figure-label">Exit interviews</span><span class="pos-figure-delta">{{ $a['employee_count'] }} answered by employees</span></div>
+        <div class="pos-figure"><span class="pos-figure-value">{{ $a['would_recommend'] === null ? '—' : $a['would_recommend'] . '%' }}</span><span class="pos-figure-label">Would recommend</span></div>
+        <div class="pos-figure"><span class="pos-figure-value">{{ $a['would_rejoin'] === null ? '—' : $a['would_rejoin'] . '%' }}</span><span class="pos-figure-label">Would rejoin</span></div>
+        <div class="pos-figure"><span class="pos-figure-label">Exits by type</span><dl class="pos-figure-list">@foreach ($this->getExitsByType() as $type => $n)<div><dt>{{ config('peopleos.exit.types.' . $type, $type) }}</dt><dd class="pos-num">{{ $n }}</dd></div>@endforeach</dl></div>
     </div>
     <div class="grid gap-4 md:grid-cols-2">
         <x-filament::section heading="Reasons for leaving" description="Employee answers are shown separately from HR-inferred reasons.">

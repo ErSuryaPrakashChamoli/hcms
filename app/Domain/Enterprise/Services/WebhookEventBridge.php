@@ -4,9 +4,14 @@ namespace App\Domain\Enterprise\Services;
 
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
+use App\Domain\Career\Events\CareerEvent;
+use App\Domain\Communication\Events\CommunicationEvent;
+use App\Domain\Compensation\Events\CompensationEvent;
 use App\Domain\Compliance\Events\ComplianceEvent;
+use App\Domain\Development\Events\DevelopmentEvent;
 use App\Domain\Documents\Events\DocumentExpiring;
 use App\Domain\Employment\Events\EmploymentEvent;
+use App\Domain\Engagement\Events\EngagementEvent;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Learning\Events\LearningEvent;
 use App\Domain\Leave\Events\LeaveEvent;
@@ -14,7 +19,11 @@ use App\Domain\Lifecycle\Events\EmployeeLifecycleChanged;
 use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
+use App\Domain\Skills\Events\SkillEvent;
+use App\Domain\Succession\Events\SuccessionEvent;
+use App\Domain\Talent\Events\TalentEvent;
 use App\Domain\Workflow\Events\WorkflowCompleted;
+use App\Domain\Workforce\Events\WorkforceEvent;
 use Illuminate\Events\Dispatcher;
 
 /** Domain events → outbound webhooks (§88). Payloads carry identifiers and business fields, never sensitive detail. */
@@ -27,7 +36,15 @@ final class WebhookEventBridge
         return [
             EmployeeLifecycleChanged::class => 'onLifecycle',
             LeaveEvent::class => 'onNamed', EmploymentEvent::class => 'onNamed', AttendanceEvent::class => 'onNamed', PayrollEvent::class => 'onNamed', PerformanceEvent::class => 'onNamed',
-            LearningEvent::class => 'onNamed', AssetEvent::class => 'onNamed', ServiceDeskEvent::class => 'onNamed', ExitEvent::class => 'onNamed', ComplianceEvent::class => 'onNamed',
+            LearningEvent::class => 'onNamed', AssetEvent::class => 'onNamed', SkillEvent::class => 'onNamed', DevelopmentEvent::class => 'onNamed', ServiceDeskEvent::class => 'onNamed', ExitEvent::class => 'onNamed', ComplianceEvent::class => 'onNamed',
+            // Phase 9: only the allow-listed architecture events pass onNamed (never candidacy, pools or readiness).
+            CareerEvent::class => 'onNamed', TalentEvent::class => 'onNamed', SuccessionEvent::class => 'onNamed',
+            // Phase 10: position capacity events only (no costs, no plan content).
+            WorkforceEvent::class => 'onNamed',
+            // Phase 11: allow-listed compensation lifecycle facts only (no amounts, reasons or notes).
+            CompensationEvent::class => 'onNamed',
+            // Phase 13: allow-listed survey / campaign / communication lifecycle facts (never responses, feedback or recipients).
+            EngagementEvent::class => 'onNamed', CommunicationEvent::class => 'onNamed',
             WorkflowCompleted::class => 'onWorkflowCompleted', DocumentExpiring::class => 'onDocumentExpiring',
         ];
     }

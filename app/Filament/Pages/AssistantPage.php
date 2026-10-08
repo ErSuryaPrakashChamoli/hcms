@@ -4,6 +4,9 @@ namespace App\Filament\Pages;
 
 use App\Domain\Ai\Models\AiInteraction;
 use App\Domain\Ai\Services\AiGateway;
+use App\Domain\Experience\Services\ExperiencePreferences;
+use App\Domain\Experience\Services\RoleLens;
+use App\Livewire\Experience\AiAssistant;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -42,7 +45,8 @@ class AssistantPage extends Page
     {
         $available = $this->getAssistants();
         if ($this->assistant === null || ! isset($available[$this->assistant])) {
-            $this->assistant = array_key_first($available);
+            // UX.16: open on the assistant for the person's experience, as the shell panel does.
+            $this->assistant = AiAssistant::preferredFor(auth()->user(), $available);
         }
     }
 
@@ -54,7 +58,14 @@ class AssistantPage extends Page
 
     public function getExamples(): array
     {
-        return $this->assistant ? app(AiGateway::class)->examples($this->assistant) : [];
+        if ($this->assistant === null) {
+            return [];
+        }
+        // UX.16: the role's own question first when this is that role's assistant.
+        $experience = RoleLens::experienceOf(app(RoleLens::class)->primary(auth()->user(), app(ExperiencePreferences::class)->for(auth()->user())['lens'] ?? null));
+        [$owner, $question] = AiAssistant::ROLE_PROMPTS[$experience] ?? [null, null];
+
+        return array_values(array_unique([...($owner === $this->assistant ? [$question] : []), ...app(AiGateway::class)->examples($this->assistant)]));
     }
 
     public function getDescription(): string

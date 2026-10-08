@@ -35,6 +35,18 @@ class Tenant extends Model
         return 'platform';
     }
 
+    /** SaaS.2: changes to a tenant's own record belong to that tenant's audit chain, never to the one bound. */
+    public function auditTenantId(): ?int
+    {
+        return $this->getKey();
+    }
+
+    /** @return list<string> */
+    public function auditExcludedAttributes(): array
+    {
+        return [...config('peopleos.audit.ignored_attributes', []), 'session_epoch'];
+    }
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class);

@@ -2,9 +2,9 @@
 
 namespace App\Domain\Attendance\Policies;
 
-use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\AccessScopes;
+use App\Domain\Identity\Services\OwnRecords;
 use Illuminate\Database\Eloquent\Model;
 
 class AttendanceRecordPolicy
@@ -29,9 +29,10 @@ class AttendanceRecordPolicy
         return $user->hasPermission('attendance.manage') && $this->inScope($user, $model);
     }
 
+    /** Phase 12: approvers never approve their own attendance. */
     public function approve(User $user, Model $model): bool
     {
-        return $user->hasPermission('attendance.approve') && $this->inScope($user, $model);
+        return $user->hasPermission('attendance.approve') && $this->inScope($user, $model) && ! $this->isOwn($user, $model);
     }
 
     public function regularise(User $user, Model $model): bool
@@ -52,6 +53,7 @@ class AttendanceRecordPolicy
 
     private function isOwn(User $user, Model $model): bool
     {
-        return Employee::query()->where('user_id', $user->id)->where('id', $model->employee_id)->exists();
+        // Same query as before; inside an authorisation pass the viewer's own ids are read once (OwnRecords).
+        return app(OwnRecords::class)->isOwn($user, $model->employee_id);
     }
 }

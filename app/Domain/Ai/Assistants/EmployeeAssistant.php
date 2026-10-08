@@ -133,11 +133,12 @@ final class EmployeeAssistant implements Assistant
 
     private function requests(Employee $employee): AiAnswer
     {
-        $open = Ticket::query()->with('category')->where('employee_id', $employee->id)->whereIn('status', Ticket::OPEN)->get();
+        // Phase 12: only the employee's own visible requests (never a confidential case raised about them).
+        $open = Ticket::query()->with(['category', 'service'])->where('employee_id', $employee->id)->where('visible_to_employee', true)->whereIn('status', Ticket::OPEN)->get();
         if ($open->isEmpty()) {
             return AiAnswer::text('You have no open HR requests. I can raise one for you from My Day → Ask HR.', 'requests', [], [['label' => 'Ask HR', 'url' => url('/admin/my-day')]]);
         }
-        $lines = $open->map(fn ($t) => "{$t->number} {$t->subject} — ".config("peopleos.servicedesk.statuses.{$t->status}"))->all();
+        $lines = $open->map(fn ($t) => "{$t->number} {$t->serviceName()} — ".config("peopleos.servicedesk.statuses.{$t->status}"))->all();
 
         return new AiAnswer("Your open requests:\n- ".implode("\n- ", $lines), [['label' => 'Service desk']], [['label' => 'My requests', 'url' => url('/admin/tickets')]], 'requests', false, ['open' => $lines]);
     }

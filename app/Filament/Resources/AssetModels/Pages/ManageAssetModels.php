@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\AssetModels\Pages;
 
 use App\Filament\Resources\AssetModels\AssetModelResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageAssetModels extends ManageRecords
+class ManageAssetModels extends PeopleManageRecords
 {
     protected static string $resource = AssetModelResource::class;
 

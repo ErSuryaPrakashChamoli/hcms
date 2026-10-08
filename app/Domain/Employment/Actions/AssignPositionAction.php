@@ -4,6 +4,7 @@ namespace App\Domain\Employment\Actions;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Employment\Contracts\PositionAssignmentGuard;
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Exceptions\OverlappingAssignmentException;
 use App\Domain\Employment\Models\Employee;
@@ -23,6 +24,8 @@ final class AssignPositionAction
     public function __construct(
         private readonly AuditRecorder $audit,
         private readonly Timeline $timeline,
+        // Phase 10: validates a named position (seat) under its row lock; absent when Workforce is not bound.
+        private readonly ?PositionAssignmentGuard $positionGuard = null,
     ) {}
 
     /** @param  array<string, mixed>  $attributes  dimension ids (company_id, department_id, ...) */
@@ -40,7 +43,7 @@ final class AssignPositionAction
             fn ($value) => $value !== null && $value !== '',
         );
 
-        return DB::transaction(function () use ($employee, $dimensions, $changeType, $from, $reason) {
+        return DB::transaction(function () use ($employee, $attributes, $dimensions, $changeType, $from, $reason) {
             $current = $employee->positions()->effectiveOn($from)->first();
 
             if ($current !== null && $current->effective_from->gte($from)) {
@@ -53,10 +56,15 @@ final class AssignPositionAction
                 throw new OverlappingAssignmentException('A position already starts on '.$future->effective_from->toDateString().'; positions cannot overlap. Use an effective date after it, or correct that position first.');
             }
 
+            // Phase 10: a named position is validated and locked here, inside this transaction, and
+            // supplies its dimensions; explicit dimensions still win. Without one the seat carries forward.
+            $seat = $this->positionGuard?->resolve($employee, $current, $attributes, $from)
+                ?? ['position_id' => $current?->position_id, 'fte' => $current?->fte, 'dimensions' => []];
+
             // Carry forward unchanged dimensions so a transfer only needs to state what changed.
             $merged = $current
-                ? array_merge(array_intersect_key($current->getAttributes(), EmployeePosition::DIMENSIONS), $dimensions)
-                : $dimensions;
+                ? array_merge(array_intersect_key($current->getAttributes(), EmployeePosition::DIMENSIONS), $seat['dimensions'], $dimensions)
+                : array_merge($seat['dimensions'], $dimensions);
 
             if (empty($merged['company_id'])) {
                 throw new InvalidArgumentException('A position must belong to a company.');
@@ -65,6 +73,8 @@ final class AssignPositionAction
             $current?->withAuditReason($reason)->update(['effective_to' => $from->copy()->subDay()]);
 
             $position = new EmployeePosition($merged + [
+                'position_id' => $seat['position_id'],
+                'fte' => $seat['fte'],
                 'employee_id' => $employee->getKey(),
                 'change_type' => $changeType,
                 'effective_from' => $from,

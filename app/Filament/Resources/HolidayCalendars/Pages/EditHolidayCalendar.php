@@ -4,10 +4,10 @@ namespace App\Filament\Resources\HolidayCalendars\Pages;
 
 use App\Filament\Resources\HolidayCalendars\HolidayCalendarResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditHolidayCalendar extends EditRecord
+class EditHolidayCalendar extends PeopleEditRecord
 {
     use GovernedEdit;
 

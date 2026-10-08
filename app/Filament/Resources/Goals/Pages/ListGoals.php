@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Goals\Pages;
 
 use App\Filament\Resources\Goals\GoalResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListGoals extends ListRecords
+class ListGoals extends PeopleListRecords
 {
     protected static string $resource = GoalResource::class;
 

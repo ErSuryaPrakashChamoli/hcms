@@ -62,9 +62,7 @@ final class Scim
         if ($email === '') {
             throw new RuntimeException('userName is required.');
         }
-        if (User::forCurrentTenant()->where('email', $email)->exists()) {
-            throw new RuntimeException('A user with this userName already exists.', 409);
-        }
+        $this->assertEmailAvailable($email);
         $name = trim((string) ($payload['displayName'] ?? trim((data_get($payload, 'name.givenName', '')).' '.data_get($payload, 'name.familyName', '')))) ?: Str::before($email, '@');
 
         $user = User::create(['tenant_id' => $this->tenants->id(), 'name' => $name, 'email' => $email, 'password' => Str::random(40), 'status' => ($payload['active'] ?? true) ? UserStatus::Active : UserStatus::Suspended, 'external_id' => $payload['externalId'] ?? null]);
@@ -77,6 +75,7 @@ final class Scim
     public function replace(User $user, array $payload): User
     {
         $email = strtolower((string) ($payload['userName'] ?? $user->email));
+        $this->assertEmailAvailable($email, $user);
         $name = trim((string) ($payload['displayName'] ?? trim((data_get($payload, 'name.givenName', '')).' '.data_get($payload, 'name.familyName', '')))) ?: $user->name;
         $user->forceFill(['email' => $email, 'name' => $name, 'external_id' => $payload['externalId'] ?? $user->external_id, 'status' => ($payload['active'] ?? $user->isActive()) ? UserStatus::Active : UserStatus::Suspended])->save();
         $this->link($user, $payload);
@@ -110,12 +109,27 @@ final class Scim
                 };
             }
         }
+        if (isset($changes['email'])) {
+            $this->assertEmailAvailable($changes['email'], $user);
+        }
         if ($changes !== []) {
             $user->forceFill($changes)->save();
             $this->audit->record(AuditAction::Update, 'enterprise', $user, array_map(fn ($k, $v) => ['field' => $k, 'before' => null, 'after' => $v instanceof \BackedEnum ? $v->value : $v], array_keys($changes), $changes), 'SCIM patch', metadata: ['scim' => true]);
         }
 
         return $user->refresh();
+    }
+
+    /**
+     * Phase 14: logins are unique platform-wide. A userName used anywhere (this tenant or another) is
+     * refused with 409 and the same message, so the response never says which organisation holds it.
+     * Before, another tenant's address surfaced as a 500.
+     */
+    private function assertEmailAvailable(string $email, ?User $except = null): void
+    {
+        if (User::query()->where('email', $email)->when($except, fn ($q) => $q->whereKeyNot($except->id))->exists()) {
+            throw new RuntimeException('This userName is not available.', 409);
+        }
     }
 
     public function deactivate(User $user): void

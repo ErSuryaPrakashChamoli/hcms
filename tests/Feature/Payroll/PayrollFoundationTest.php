@@ -2,6 +2,7 @@
 
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Audit\Models\AuditEvent;
+use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Integration\Services\ApiKeys;
@@ -16,11 +17,8 @@ use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Models\SalaryComponent;
-use App\Domain\Payroll\Models\SalaryStructure;
-use App\Domain\Payroll\Models\SalaryStructureComponent;
 use App\Domain\Payroll\Services\PayrollCalculator;
 use App\Domain\Payroll\Services\PayrollRuns;
-use App\Domain\Payroll\Services\Salaries;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Bus;
@@ -61,7 +59,7 @@ function fullRun($runs, $company, $approver): PayrollRun
 
 it('splits a mid-month salary revision into dated segments instead of paying the new salary for the whole month', function () {
     $employee = salariedEmployee(600000);
-    app(Salaries::class)->assign($employee, $this->structure, 720000, '2026-09-15', ['CONV' => 1600], 'revision', 'Mid-month increment');
+    compensate($employee, 720000, '2026-09-15', ['CONV' => 1600], 'revision', 'Mid-month increment');
 
     $c = app(PayrollCalculator::class)->calculate($employee, $this->period);
     $expectedBasic = round(20000 * 14 / 30 + 24000 * 16 / 30, 2);
@@ -105,7 +103,8 @@ it('pays approved overtime only through a configured component and flags it othe
     expect(collect($c->exceptions)->pluck('type'))->toContain('overtime_unpaid')->and($c->has('OT'))->toBeFalse();
 
     $ot = SalaryComponent::create(['name' => 'Overtime', 'code' => 'OT', 'type' => 'earning', 'classification' => 'other', 'calculation_method' => 'formula', 'formula' => 'overtime_hours * 250', 'taxable' => true, 'include_in_gross' => true, 'is_recurring' => true, 'is_proratable' => false, 'sort_order' => 90, 'status' => 'active']);
-    SalaryStructureComponent::create(['salary_structure_id' => $this->structure->id, 'salary_component_id' => $ot->id, 'sort_order' => 90]);
+    // Phase 11: structures are versioned; the overtime component arrives in an approved version from 1 September.
+    approveStructureVersion('STANDARD', '2026-09-01', [$ot->id => 90]);
 
     $c = app(PayrollCalculator::class)->calculate($employee->fresh(), $this->period);
     expect($c->amount('OT'))->toBe(500.0)->and(collect($c->exceptions)->pluck('type'))->not->toContain('overtime_unpaid');
@@ -144,7 +143,7 @@ it('keeps finalized payroll immutable: entries, lines, adjustments and backdated
     expect(fn () => $entry->update(['net_pay' => 1]))->toThrow(RuntimeException::class, 'finalized payroll')
         ->and(fn () => PayrollEntryLine::query()->where('payroll_entry_id', $entry->id)->first()->delete())->toThrow(RuntimeException::class)
         ->and(fn () => PayrollAdjustment::create(['employee_id' => $employee->id, 'payroll_period_id' => $this->period->id, 'type' => 'earning', 'name' => 'Late bonus', 'amount' => 100]))->toThrow(RuntimeException::class, 'closed')
-        ->and(fn () => app(Salaries::class)->assign($employee, $this->structure, 900000, '2026-09-01', ['CONV' => 1600], 'revision', 'Backdated'))->toThrow(RuntimeException::class, 'closed payroll period')
+        ->and(fn () => compensate($employee, 900000, '2026-09-01', ['CONV' => 1600], 'revision', 'Backdated'))->toThrow(RuntimeException::class, 'closed payroll period')
         ->and(AttendanceRecord::query()->where('employee_id', $employee->id)->where('is_locked', true)->exists() || true)->toBeTrue();
 
     // The correction path: an arrear in the next open period, referencing the closed one.

@@ -6,10 +6,10 @@ use App\Domain\Performance\Models\PerformanceTemplateVersion;
 use App\Domain\Performance\Services\PerformanceTemplates;
 use App\Filament\Resources\PerformanceCycles\PerformanceCycleResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\PerformanceActions;
-use Filament\Resources\Pages\EditRecord;
 
-class EditPerformanceCycle extends EditRecord
+class EditPerformanceCycle extends PeopleEditRecord
 {
     use GovernedEdit;
 

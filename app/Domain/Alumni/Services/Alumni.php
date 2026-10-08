@@ -53,7 +53,9 @@ final class Alumni
         $letterType = config("peopleos.alumni.letter_for_request.{$request->type}");
         if ($letterType) {
             $employee = $request->profile()->firstOrFail()->employee()->firstOrFail();
-            $letter = $this->letters->generate($letterType, $employee, ['purpose' => $request->details ?? 'alumni request'], $handler, $request);
+            // The alumnus asked for the letter (Phase 12: the requester never approves it); the handler approves and issues.
+            $alumnus = $employee->user_id ? User::query()->find($employee->user_id) : null;
+            $letter = $this->letters->generate($letterType, $employee, ['purpose' => $request->details ?? 'alumni request'], $alumnus ?? $handler, $request);
             if ($letter->status === 'pending_approval') {
                 $this->letters->approve($letter, $handler, 'Alumni request '.$request->number);
             }

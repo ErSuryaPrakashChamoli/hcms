@@ -5,13 +5,13 @@ namespace App\Filament\Resources\BgvCases\Pages;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Services\Bgv;
 use App\Filament\Resources\BgvCases\BgvCaseResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 
-class ViewBgvCase extends ViewRecord
+class ViewBgvCase extends PeopleViewRecord
 {
     protected static string $resource = BgvCaseResource::class;
 

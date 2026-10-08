@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\CalibrationSessions\Pages;
 
 use App\Filament\Resources\CalibrationSessions\CalibrationSessionResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageCalibrationSessions extends ManageRecords
+class ManageCalibrationSessions extends PeopleManageRecords
 {
     protected static string $resource = CalibrationSessionResource::class;
 

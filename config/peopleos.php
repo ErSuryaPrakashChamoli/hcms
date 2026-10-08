@@ -7,6 +7,13 @@ use App\Domain\Attendance\Adapters\EsslAdapter;
 use App\Domain\Attendance\Adapters\GenericJsonAdapter;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Providers\ManualProvider;
+use App\Domain\Communication\Services\CommunicationTaskSource;
+use App\Domain\Compensation\Models\CompensationBudget;
+use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Compensation\Models\CompensationCycle;
+use App\Domain\Compensation\Models\CompensationRange;
+use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
+use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Compliance\Models\EpfReturnEntry;
@@ -33,6 +40,7 @@ use App\Domain\Configuration\Models\FormSubmission;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Models\PolicyAssignmentRule;
 use App\Domain\Configuration\Models\PolicyVersion;
+use App\Domain\Development\Models\DevelopmentPlan;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
@@ -43,7 +51,13 @@ use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Integration\Handlers\BgvResultsHandler;
+use App\Domain\Integration\Handlers\LinkReferenceHandler;
+use App\Domain\Integration\Handlers\RetireReferenceHandler;
+use App\Domain\Knowledge\Services\PolicyAcknowledgementTaskSource;
 use App\Domain\Learning\Models\Course;
+use App\Domain\Learning\Models\LearningCost;
+use App\Domain\Learning\Models\LearningEvidence;
 use App\Domain\Learning\Models\LearningPath;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Notifications\Channels\EmailChannel;
@@ -65,11 +79,9 @@ use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\ProfitCentre;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Models\SalaryComponent;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\People\Models\Skill;
 use App\Domain\Performance\Models\CalibrationAdjustment;
 use App\Domain\Performance\Models\CalibrationSession;
@@ -83,6 +95,30 @@ use App\Domain\Performance\Models\OneOnOne;
 use App\Domain\Performance\Models\PerformanceCheckIn;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
+use App\Domain\ServiceDesk\DomainActions\AddressChange;
+use App\Domain\ServiceDesk\DomainActions\BankAccountChange;
+use App\Domain\ServiceDesk\DomainActions\CompensationProposalLink;
+use App\Domain\ServiceDesk\DomainActions\EmergencyContactChange;
+use App\Domain\ServiceDesk\DomainActions\FamilyMemberChange;
+use App\Domain\ServiceDesk\DomainActions\LeaveRequestAction;
+use App\Domain\ServiceDesk\DomainActions\LetterRequestAction;
+use App\Domain\ServiceDesk\DomainActions\ManagerChange;
+use App\Domain\ServiceDesk\DomainActions\RegularisationAction;
+use App\Domain\ServiceDesk\DomainActions\StatutoryIdentityChange;
+use App\Domain\ServiceDesk\Services\ServiceDeskTaskSource;
+use App\Domain\Skills\Models\SkillAssessment;
+use App\Domain\Succession\Models\ReadinessAssessment;
+use App\Domain\Succession\Models\SuccessionPlan;
+use App\Domain\Succession\Models\Successor;
+use App\Domain\Talent\Models\TalentAssessment;
+use App\Domain\Talent\Models\TalentPoolMembership;
+use App\Domain\Talent\Models\TalentProfile;
+use App\Domain\Talent\Models\TalentReviewItem;
+use App\Domain\Workflow\Services\WorkflowTaskSource;
+use App\Domain\Workforce\Models\WorkforceBudget;
+use App\Domain\Workforce\Models\WorkforcePlanLine;
+use App\Domain\Workforce\Models\WorkforcePlanVersion;
+use App\Domain\Workforce\Models\WorkforceScenario;
 
 /*
 |--------------------------------------------------------------------------
@@ -208,6 +244,7 @@ return [
         ],
         'document' => [
             'document.view' => 'View and download employee documents',
+            'document.own' => 'View and download my own documents (Phase 12 self-service)',
             'document.upload' => 'Upload employee documents',
             'document.verify' => 'Verify or reject documents',
             'document.delete' => 'Delete documents',
@@ -219,6 +256,10 @@ return [
         ],
         'api_key' => [
             'api_key.manage' => 'Create and revoke integration API keys',
+        ],
+        'integration' => [
+            'integration.view' => 'View integrations, external references, mappings and inbound events (never payload bodies)',
+            'integration.manage' => 'Register integrations, rotate their signing secrets, map values, retire references and reprocess events (Phase 14)',
         ],
         'payroll' => [
             'payroll.view' => 'View payroll runs, entries and payslips (all employees)',
@@ -264,7 +305,7 @@ return [
             'ai.manager' => 'Use the Manager Assistant for direct reports',
             'ai.hr' => 'Use the HR Copilot (workforce questions, pending HR work, natural-language people search)',
             'ai.payroll_auditor' => 'Run the AI Payroll Auditor on payroll runs',
-            'ai.workforce' => 'Use Workforce Intelligence (trends, attrition risk, capacity)',
+            'ai.workforce' => 'Use Workforce Intelligence (trends, capacity, skills — aggregate facts; no individual risk scoring)',
             'ai.admin' => 'Review AI interaction logs and governance settings',
         ],
         'analytics' => [
@@ -293,9 +334,15 @@ return [
             'alumni.portal' => 'Use the alumni portal (own profile, documents, requests)',
         ],
         'servicedesk' => [
-            'servicedesk.view' => 'View and work every HR service desk ticket (agent)',
-            'servicedesk.manage' => 'Configure ticket categories, SLAs and assignment',
+            'servicedesk.view' => 'View HR service desk cases in your organisation scope (read only)',
+            'servicedesk.agent' => 'Work HR service desk cases in your organisation scope: acknowledge, assign, respond, resolve (Phase 12)',
+            'servicedesk.manage' => 'Configure ticket categories, SLA policies, assignment and draft service catalogue versions',
+            'servicedesk.catalogue_approve' => 'Approve service catalogue versions — never one you prepared (Phase 12)',
             'servicedesk.request' => 'Raise and follow own tickets',
+            'servicedesk.team' => 'See the status of HR requests raised by the people you manage — never sensitive or confidential cases (Phase 12)',
+            'servicedesk.confidential' => 'Work restricted (confidential / employee-relations) cases you are assigned or explicitly granted (Phase 12)',
+            'servicedesk.analytics' => 'View HR service analytics (aggregates, small groups suppressed) (Phase 12)',
+            'servicedesk.bulk' => 'Run bulk case operations (each case still authorised individually) (Phase 12)',
         ],
         'grievance' => [
             'grievance.view' => 'View grievance cases you are assigned to or granted access to',
@@ -304,17 +351,96 @@ return [
         ],
         'kb' => [
             'kb.view' => 'Read published knowledge base articles',
-            'kb.manage' => 'Write and publish knowledge base articles',
+            'kb.manage' => 'Write knowledge base articles, submit them for review and publish approved ones',
+            'kb.review' => 'Review and approve knowledge base articles — never your own (Phase 12)',
         ],
         'communication' => [
             'communication.view' => 'Read announcements',
-            'communication.manage' => 'Publish announcements, circulars and newsletters',
+            'communication.manage' => 'Prepare announcements, circulars and newsletters for the people in your scope, and publish approved ones',
+            'communication.approve' => 'Approve announcements — never one you prepared (Phase 13)',
+        ],
+        'engagement' => [
+            'engagement.view' => 'View surveys, audiences and campaigns (configuration only — never responses)',
+            'engagement.manage' => 'Prepare surveys, audiences and campaigns for the people in your scope',
+            'engagement.approve' => 'Approve surveys and campaigns — never one you prepared',
+            'engagement.analytics' => 'See survey results for surveys within your scope (aggregates only; small groups suppressed)',
+            'engagement.comments' => 'Read free-text survey comments above the privacy threshold (never attributed)',
+            'engagement.responses' => 'View individual responses to IDENTIFIED surveys within your scope (never confidential or anonymous)',
+            'engagement.confidential_identity' => 'Identify the author of one confidential response or feedback item, with a reason (audited). Anonymous responses can never be identified',
+            'engagement.team_results' => 'Managers: see your team\'s aggregate results where the survey allows it',
+            'engagement.participate' => 'Take surveys and give feedback',
+            'engagement.feedback' => 'Handle employee feedback and refer identified feedback to the service desk',
         ],
         'learning' => [
             'learning.view' => 'View courses, paths, sessions and every enrolment',
             'learning.manage' => 'Configure courses, learning paths, assessments and sessions',
             'learning.assign' => 'Assign learning to employees and mark attendance',
             'learning.learn' => 'Take assigned learning (own enrolments)',
+            'learning.team' => 'View the learning of employees I manage (configured relationships)',
+            'learning.approve' => 'Approve or reject learning requests (never my own)',
+            'learning.publish' => 'Approve catalogue items for publication (second person)',
+            'learning.certificates' => 'Record external certificates, review evidence and revoke certificates',
+            'learning.costs' => 'View and record learning costs',
+            'learning.analytics' => 'View aggregated learning analytics',
+        ],
+        'skills' => [
+            'skills.view' => 'View every employee skill profile and assessment (not private notes)',
+            'skills.manage' => 'Configure the skill library and skill scales',
+            'skills.assess' => 'Assess the skills of employees I manage',
+            'skills.self' => 'Maintain my own skill profile (self-declared, never verified)',
+            'skills.private_notes' => 'Read assessors\' private notes (access audited)',
+        ],
+        'development' => [
+            'development.view' => 'View every development plan (not private notes)',
+            'development.manage' => 'Manage any development plan',
+            'development.own' => 'Maintain my own development plans',
+            'development.team' => 'Create and manage development plans for employees I manage',
+        ],
+        'career' => [
+            'career.view' => 'View every career profile, aspiration, goal and mobility interest (within organisation scope)',
+            'career.manage' => 'Configure career tracks, career paths and role requirements',
+            'career.self' => 'Maintain my own career profile, aspirations, career goals and mobility interests',
+            'career.team' => 'View the career information employees I manage have chosen to share',
+        ],
+        'talent' => [
+            'talent.view' => 'View talent profiles and talent pool membership (no confidential notes)',
+            'talent.manage' => 'Configure talent pools and assessment models; manage pool membership and talent reviews',
+            'talent.assess' => 'Record talent assessments',
+            'talent.review' => 'Take part in talent review sessions and record decisions',
+            'talent.confidential' => 'Read confidential talent notes and assessments (access audited)',
+            'talent.analytics' => 'View aggregated talent and succession analytics',
+        ],
+        'succession' => [
+            'succession.view' => 'View critical positions, succession plans and successors (within organisation scope)',
+            'succession.manage' => 'Designate critical positions; manage succession plans and successors',
+            'succession.assess' => 'Record readiness assessments',
+            'succession.team' => 'View succession information about employees I manage',
+            'succession.own_candidacy' => 'See my own succession candidacy (granted only by explicit decision)',
+        ],
+        'workforce' => [
+            'workforce.view' => 'View positions, occupancy, vacancies, workforce plans and snapshots (within organisation scope; no costs)',
+            'workforce.manage' => 'Create and change positions and request position changes (propose, plan, open, freeze, hold, abolish, close)',
+            'workforce.approve' => 'Approve positions, position changes, scenarios, budgets and workforce plans (never one\'s own submission)',
+            'workforce.plan' => 'Prepare workforce plans, scenarios and budgets and submit them for approval',
+            'workforce.review' => 'Review submitted workforce plans',
+            'workforce.costs' => 'See and record planned, budget and actual workforce costs (field security)',
+            'workforce.team' => 'View headcount, open and planned positions and vacancies under the positions I hold or for employees I manage',
+            'workforce.analytics' => 'View workforce analytics and dashboards',
+        ],
+        // Phase 11: Compensation owns employee compensation; payroll permissions grant none of this.
+        'compensation' => [
+            'compensation.view' => 'View employee compensation, history, scheduled changes and change details within organisation scope (field security; audited)',
+            'compensation.propose' => 'Propose compensation changes (never for oneself)',
+            'compensation.review' => 'Review submitted compensation changes (never one\'s own proposal)',
+            'compensation.approve' => 'Approve, reject or cancel compensation changes (never one\'s own proposal or review)',
+            'compensation.execute' => 'Execute approved compensation changes into the effective-dated compensation history (never a change one proposed, reviewed or approved)',
+            'compensation.configure' => 'Maintain compensation structures, components and ranges (drafts; approval by another person)',
+            'compensation.cycles' => 'Prepare compensation cycles (annual increment, promotion, market adjustment)',
+            'compensation.budget' => 'Maintain compensation budgets',
+            'compensation.team' => 'View the approved compensation of employees I manage (configured manager relationships only)',
+            'compensation.self' => 'View my own approved compensation (when the tenant allows it)',
+            'compensation.analytics' => 'View compensation analytics (aggregates with small-group suppression)',
+            'compensation.export' => 'Export compensation data (audited)',
         ],
         'asset' => [
             'asset.view' => 'View the asset register',
@@ -355,6 +481,8 @@ return [
         ],
         'employee' => [
             'employee.view' => 'View employees and Employee 360 (non-sensitive tabs)',
+            // UX.19 (G12): the subject's own record only, read-only; every section keeps its own permission.
+            'employee.self' => 'Open your own Employee 360 (your record only, read-only; sensitive data keeps its own permission)',
             'employee.create' => 'Hire / create employees',
             'employee.update' => 'Update employee and personal data',
             'employee.delete' => 'Delete employee records',
@@ -379,12 +507,12 @@ return [
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'integration.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
             'description' => 'Operates HR processes.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.view', 'engagement.manage', 'engagement.approve', 'engagement.analytics', 'engagement.comments', 'engagement.responses', 'engagement.participate', 'engagement.feedback', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view'],
         ],
         'hr-executive' => [
             'name' => 'HR Executive',
@@ -394,7 +522,7 @@ return [
         'payroll-admin' => [
             'name' => 'Payroll Admin',
             'description' => 'Runs and approves payroll.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.sensitive.view', 'employee.sensitive.update', 'attendance.view', 'leave.view', 'payroll.*', 'compliance.view', 'ai.use', 'ai.payroll_auditor', 'task.view', 'task.act', 'audit.view'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.sensitive.view', 'employee.sensitive.update', 'attendance.view', 'leave.view', 'payroll.*', 'compensation.view', 'compensation.execute', 'compliance.view', 'ai.use', 'ai.payroll_auditor', 'task.view', 'task.act', 'audit.view'],
         ],
         'attendance-admin' => [
             'name' => 'Attendance Admin',
@@ -414,17 +542,17 @@ return [
         'manager' => [
             'name' => 'Manager',
             'description' => 'People manager.',
-            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
+            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'workforce.team', 'asset.own', 'servicedesk.request', 'servicedesk.team', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'engagement.team_results', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
         ],
         'employee' => [
             'name' => 'Employee',
             'description' => 'Standard employee access.',
-            'permissions' => ['task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'exit.resign', 'ai.use'],
+            'permissions' => ['employee.self', 'task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'document.own', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'exit.resign', 'ai.use'],
         ],
         'executive' => [
             'name' => 'Executive',
             'description' => 'Workforce Command Centre and dashboards; no transactional access.',
-            'permissions' => ['analytics.view', 'analytics.executive', 'analytics.reports', 'ai.workforce', 'company.view', 'organisation.view'],
+            'permissions' => ['analytics.view', 'analytics.executive', 'analytics.reports', 'ai.workforce', 'company.view', 'organisation.view', 'workforce.analytics', 'compensation.analytics'],
         ],
         'alumni' => [
             'name' => 'Alumni',
@@ -434,7 +562,7 @@ return [
         'auditor' => [
             'name' => 'Auditor',
             'description' => 'Read-only access with full audit visibility.',
-            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compliance.view', 'performance.view', 'learning.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
+            'permissions' => ['audit.*', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compensation.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'workforce.view', 'asset.view', 'servicedesk.view', 'kb.view', 'communication.view', 'engagement.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view'],
         ],
     ],
 
@@ -455,6 +583,128 @@ return [
     /*
     | Default setting values seeded per tenant.
     */
+    // Production readiness closure: the load balancer / TLS terminator addresses whose X-Forwarded-* headers are
+    // trusted (comma-separated IPs or CIDRs, or * when only the proxy can reach the app). Empty = trust none.
+    'http' => [
+        'trusted_proxies' => env('PEOPLEOS_TRUSTED_PROXIES', ''),
+    ],
+
+    // Production readiness closure: outbound requests to tenant-configured destinations (webhooks, workflow
+    // webhook nodes, SSO endpoints) pass the SSRF guard. Operators may exempt exact host names (never tenants).
+    'outbound' => [
+        'allow_http' => (bool) env('PEOPLEOS_OUTBOUND_ALLOW_HTTP', false),
+        'allowed_ports' => array_map('intval', array_filter(explode(',', (string) env('PEOPLEOS_OUTBOUND_ALLOWED_PORTS', '443,80,8443,8080')))),
+        'allowed_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('PEOPLEOS_OUTBOUND_ALLOWED_HOSTS', ''))))),
+    ],
+
+    // Production readiness closure: storage roles. Every role defaults to the local private disk for
+    // development; production on more than one node points them at shared private object storage (s3)
+    // and sets PEOPLEOS_SHARED_STORAGE_REQUIRED=true, so the validator refuses any local role.
+    'storage' => [
+        // Upload staging (Filament form uploads before the domain stores them).
+        'staging_disk' => env('PEOPLEOS_STAGING_DISK', 'local'),
+        // Statutory evidence, verification copies and generated return files (platform-level).
+        'compliance_disk' => env('PEOPLEOS_COMPLIANCE_DISK', 'local'),
+        'shared_required' => (bool) env('PEOPLEOS_SHARED_STORAGE_REQUIRED', false),
+    ],
+
+    // Phase 14 observability. The health token reveals counts and timings on /health/ready (never secrets).
+    'health' => [
+        'token' => env('PEOPLEOS_HEALTH_TOKEN', ''),
+        'heartbeat_max_age' => (int) env('PEOPLEOS_HEARTBEAT_MAX_AGE', 180),
+        'queue_backlog_warn' => (int) env('PEOPLEOS_QUEUE_BACKLOG_WARN', 1000),
+    ],
+    'observability' => [
+        // Queries slower than this are logged (SQL text only, never bindings). 0 disables.
+        'slow_query_ms' => (int) env('PEOPLEOS_SLOW_QUERY_MS', 1000),
+    ],
+
+    /*
+    | SaaS.2 foundation hardening. Technical defaults for identity and platform-operator governance; the
+    | per-tenant rules (security.mfa_required, password length, idle timeout) stay in tenant settings.
+    */
+    'security' => [
+        // Platform operators can reach every tenant, so they must use an authenticator. Production refuses to
+        // run with this off (ProductionConfigValidator); a developer may turn it off locally.
+        'platform_mfa_required' => (bool) env('PEOPLEOS_PLATFORM_MFA_REQUIRED', true),
+    ],
+    'identity' => [
+        // How long an invitation link stays valid.
+        'invitation_hours' => max(1, (int) env('PEOPLEOS_INVITATION_HOURS', 72)),
+    ],
+    'platform' => [
+        // How long one controlled operator access to a tenant lasts before it ends on its own.
+        'tenant_access_minutes' => max(5, (int) env('PEOPLEOS_PLATFORM_TENANT_ACCESS_MINUTES', 60)),
+    ],
+    'seed' => [
+        // The password DatabaseSeeder gives every demo account; when unset, one is generated per run.
+        'password' => env('PEOPLEOS_SEED_PASSWORD'),
+    ],
+    /*
+    | SaaS.3 commercial entitlements. SHADOW ONLY: decisions are evaluated and observed, never enforced (there is no
+    | enforcing mode). `off` stops observation without touching anything else. The catalogue is the Capability enum.
+    */
+    'entitlements' => [
+        'mode' => env('PEOPLEOS_ENTITLEMENTS_MODE', 'shadow'),
+        // How long a tenant's resolved entitlement state stays in the cache (it is also forgotten on every change).
+        'cache_seconds' => max(1, (int) env('PEOPLEOS_ENTITLEMENTS_CACHE_SECONDS', 600)),
+        'shadow' => [
+            // At most one database write per distinct observation per window, across all processes.
+            'window_seconds' => max(1, (int) env('PEOPLEOS_ENTITLEMENTS_SHADOW_WINDOW_SECONDS', 600)),
+            // Aggregated observations are purged by retention:purge after this many days.
+            'retention_days' => max(1, (int) env('PEOPLEOS_ENTITLEMENTS_SHADOW_RETENTION_DAYS', 90)),
+        ],
+    ],
+    /*
+    | SaaS.7 billing, tax and payments. No market, price, tax rule, supplier or provider account is configured here:
+    | those are operator data and business decisions. Only the sandbox provider (test mode, no money moves) can be
+    | enabled, and never in production; its webhook secret comes from the environment only.
+    */
+    'billing' => [
+        'sandbox' => [
+            'enabled' => (bool) env('PEOPLEOS_BILLING_SANDBOX', false),
+            'webhook_secret' => env('PEOPLEOS_BILLING_SANDBOX_SECRET'),
+            'tolerance_seconds' => max(30, (int) env('PEOPLEOS_BILLING_SANDBOX_TOLERANCE', 300)),
+        ],
+        // Provider webhooks: largest accepted body and requests per minute per IP.
+        'webhook_max_bytes' => max(1024, (int) env('PEOPLEOS_BILLING_WEBHOOK_MAX_BYTES', 65536)),
+        'webhook_rate_per_minute' => max(10, (int) env('PEOPLEOS_BILLING_WEBHOOK_RATE', 120)),
+        // The billing run (drafts only; issue stays an operator step). Off unless enabled: no price exists until B-4.
+        'run_enabled' => (bool) env('PEOPLEOS_BILLING_RUN_ENABLED', false),
+        // B-10: Razorpay, TEST MODE ONLY. Enabled only with rzp_test_ keys and never in production (ProviderRegistry);
+        // the currencies offered are confirmed with Razorpay at merchant onboarding (international payments).
+        'razorpay' => [
+            'enabled' => (bool) env('PEOPLEOS_RAZORPAY_ENABLED', false),
+            'key_id' => env('PEOPLEOS_RAZORPAY_KEY_ID'),
+            'key_secret' => env('PEOPLEOS_RAZORPAY_KEY_SECRET'),
+            'webhook_secret' => env('PEOPLEOS_RAZORPAY_WEBHOOK_SECRET'),
+            'base_url' => 'https://api.razorpay.com/v1',
+            'timeout_seconds' => 15,
+            'currencies' => array_values(array_filter(array_map('trim', explode(',', (string) env('PEOPLEOS_RAZORPAY_CURRENCIES', 'INR,USD,GBP,EUR,AED'))))),
+        ],
+    ],
+
+    /*
+    | SaaS.7 commercial configuration: the SHIPPED DEFAULTS of Markedge's commercial policy (approved decisions). They
+    | apply until an operator proposes and a second operator approves a version on Platform > Commercial policies, which
+    | then applies from its effective date (no deployment). Statutory values are not here: they ship in the statutory
+    | dataset (database/data/statutory) and become usable only once verified. Prices and customer deals are never config.
+    */
+    'commercial' => [
+        'policy_defaults' => [
+            'billing.payment_terms_days' => 15,          // B-11: net 15 from the issue date
+            'billing.b2b_only' => true,                  // B-5: business customers only at launch
+            'billing.price_increase_notice_days' => 30,  // B-15: written notice before an increase for an existing subscriber
+            'billing.prices_include_tax' => false,       // B-5: prices are tax-exclusive
+            'billing.proration_rounding' => 'half_up',   // B-3: a prorated line is rounded once, half up
+            'settlement.tds_jurisdictions' => [['country' => 'IN', 'currency' => 'INR']], // B-11: customer TDS (India)
+        ],
+        'statutory_dataset' => [
+            'path' => 'database/data/statutory',
+            'current' => '2026.10',
+        ],
+    ],
+
     'settings' => [
         'branding.display_name' => null,
         'branding.primary_colour' => '#f59e0b',
@@ -478,6 +728,8 @@ return [
         'payroll.adjustments.require_approval' => false,
         'attendance.process_on_punch' => true,
         'tenant.base_currency' => 'INR',
+        // Phase 11: employees see their own approved compensation (with compensation.self).
+        'compensation.self_service' => true,
         'tenant.locale' => 'en',
         'security.ip_allowlist' => '',
         'security.session_idle_minutes' => 0,
@@ -499,6 +751,10 @@ return [
         'leave.exclude_holidays' => true,
         // Lowest risk level that needs approval when the configuration.approval feature is on.
         'configuration.approval.minimum_risk' => 'medium',
+        // Phase 14: the warehouse feed carries non-sensitive dataset fields unless this is explicitly enabled.
+        'warehouse.include_sensitive' => false,
+        // Phase 14: what may leave the tenant for an external AI provider: none | allowed | restricted (prohibited data never does).
+        'ai.external_data_policy' => 'allowed',
     ],
 
     /*
@@ -793,6 +1049,8 @@ return [
             'whatsapp' => ['label' => 'WhatsApp', 'driver' => LogChannel::class],
             'push' => ['label' => 'Push', 'driver' => LogChannel::class],
         ],
+        // Phase 14: external channels are delivered by a tenant-bound job after the business transaction commits.
+        'async_channels' => ['email', 'sms', 'whatsapp', 'push'],
         'audience_types' => [
             'subject' => 'The subject employee', 'manager' => "Subject's line manager", 'initiator' => 'Who started it',
             'role' => 'Everyone with a role', 'user' => 'A specific user', 'assignee' => 'Task assignee',
@@ -813,6 +1071,12 @@ return [
             'learning.assigned', 'learning.due_soon', 'learning.overdue', 'learning.completed', 'learning.failed', 'learning.certificate_expiring', 'learning.session.registered',
             'asset.assigned', 'asset.returned', 'asset.transferred', 'asset.repair', 'asset.disposed', 'asset.lost',
             'servicedesk.ticket.created', 'servicedesk.ticket.assigned', 'servicedesk.ticket.commented', 'servicedesk.ticket.resolved', 'servicedesk.ticket.closed', 'servicedesk.ticket.escalated', 'servicedesk.ticket.reopened',
+            // Phase 12 service requests (references and statuses only — never form data, comments or resolutions).
+            'servicedesk.ticket.acknowledged', 'servicedesk.ticket.reassigned', 'servicedesk.ticket.waiting_for_employee', 'servicedesk.ticket.cancelled', 'servicedesk.ticket.approval_required',
+            'servicedesk.ticket.ready_to_execute', 'servicedesk.ticket.sla_warning', 'servicedesk.reminder.waiting_for_employee', 'servicedesk.reminder.waiting_for_hr',
+            'kb.article.review_requested', 'kb.policy.acknowledged', 'kb.reminder.acknowledgement',
+            // Phase 13 engagement and communication (identity-free for anonymous surveys; never answers or message bodies).
+            'survey.published', 'survey.opened', 'survey.closed', 'survey.review_requested', 'campaign.launched', 'communication.review_requested', 'communication.published',
             'grievance.raised', 'grievance.assigned', 'grievance.updated', 'grievance.resolved', 'grievance.escalated',
             'kb.article.published', 'communication.published',
             'exit.initiated', 'exit.withdrawn', 'exit.clearance.pending', 'exit.clearance.cleared', 'exit.clearance.blocked', 'exit.settlement.calculated', 'exit.settlement.approved', 'exit.settlement.paid', 'exit.interview.submitted', 'exit.completed', 'exit.alumni_created',
@@ -863,11 +1127,31 @@ return [
         'default_checks' => ['identity', 'address', 'education', 'employment'],
     ],
     'api' => [
+        /*
+        | SaaS.2: requests per minute for one API key (the limiter buckets by the key's public prefix, or by
+        | IP when no key is presented). 120 is the value that always applied while this key was undefined;
+        | it is a technical default, not a commercial quota (per-plan API quotas are future entitlement work).
+        */
+        'rate_limit_per_minute' => max(1, (int) env('PEOPLEOS_API_RATE_LIMIT_PER_MINUTE', 120)),
+        /*
+        | SaaS.2: how long an Idempotency-Key is remembered. A retry inside the window replays the stored
+        | response; after it, the key may be used again, and retention:purge deletes the expired rows.
+        */
+        'idempotency_ttl_hours' => max(1, (int) env('PEOPLEOS_API_IDEMPOTENCY_TTL_HOURS', 24)),
         'scopes' => [
             'rms.write' => 'Create pre-employees from recruitment', 'rms.read' => 'Read pre-employee status', 'bgv.write' => 'Post background verification results', 'attendance.write' => 'Push attendance punches (devices or any source) and raise regularisations',
             'employees.read' => 'Read employees and positions', 'employees.write' => 'Create employees and change lifecycle state', 'employees.sensitive.read' => 'Read sensitive employee fields (personal contacts, statutory ids, bank) — audited', 'organisation.read' => 'Read organisation reference data by code', 'attendance.read' => 'Read attendance records, exceptions, regularisations, shifts and schedules', 'leave.read' => 'Read leave types, balances, transactions, requests and the leave calendar', 'leave.write' => 'Submit and cancel leave requests on behalf of employees', 'payroll.read' => 'Read payroll runs and payslips (sensitive)', 'compliance.read' => 'Read establishments, statutory registrations (masked), rule versions, statutory returns, entries (masked) and reconciliations',
-            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'workflows.read' => 'Read workflow instances and tasks',
+            'documents.read' => 'Read document metadata', 'assets.read' => 'Read the asset register', 'performance.read' => 'Read performance cycles, goals, goal progress, reviews (final outcomes only), check-in / one-on-one / feedback / PIP metadata, competencies and suppressed analytics', 'performance.write' => 'Record goal progress (idempotent)', 'learning.read' => 'Read the learning catalogue, paths, programs, enrolments, assignments, completions, certificates (no codes or documents), skills, finalized assessment levels (no comments), development plan metadata and suppressed analytics', 'learning.write' => 'Enrol employees and record learning progress (idempotent)', 'learning.costs' => 'Include learning costs in learning API responses', 'career.read' => 'Read career architecture, career profiles (shared fields only), goals, skill gaps and mobility interests', 'talent.read' => 'Read talent pools and memberships, talent reviews (decisions only) and suppressed talent analytics — never confidential notes or assessments', 'succession.read' => 'Read critical positions, succession plans, successors and readiness — never confidential notes or deliberations', 'positions.read' => 'Read positions, their effective-dated versions, occupancy (employee codes) and vacancies', 'workforce.read' => 'Read workforce plans, scenarios, headcount, vacancies, snapshots and analytics (no costs)', 'workforce.costs' => 'Include planned, budget and actual workforce costs in workforce API responses', 'workflows.read' => 'Read workflow instances and tasks',
             'reports.run' => 'Run saved reports', 'scim' => 'SCIM 2.0 user provisioning', 'webhooks.read' => 'Read webhook deliveries',
+            // Phase 11: compensation definitions; employee amounts need the second scope (audited reads).
+            // Phase 13: engagement (survey definitions, own participation for identified surveys, suppressed aggregates) and communications (published content, preferences).
+            'integrations.write' => 'Post signed events to an integration registered in PeopleOS (Integration Hub inbound endpoint)',
+            'integrations.read' => 'Look up an integration\'s external references and the status of its inbound events',
+            'engagement.read' => 'Read survey definitions, an employee\'s surveys, aggregate participation and overall privacy-suppressed results — never responses, comments, respondents or anyone\'s participation in anonymous or confidential surveys',
+            'communications.read' => 'Read published communications with aggregate delivery counts and an employee\'s communication preferences — never audience criteria, recipient lists or delivery records',
+            // Phase 12: the HR service desk read API — never internal or restricted notes, confidential cases, sensitive form fields or attachments.
+            'servicedesk.read' => 'Read the HR service catalogue, service requests (status and employee-visible fields only), employee-visible comments, published knowledge and request tasks',
+            'compensation.read' => 'Read compensation structures, grades, pay ranges and cycles (read-only)', 'compensation.sensitive' => 'With compensation.read: read employee compensation and history by employee code (audited)',
         ],
     ],
 
@@ -954,6 +1238,24 @@ return [
     /*
     | Enterprise & international (§87, §96, §109, §110).
     */
+    /*
+    | Phase 14 Integration Hub (ADR-0011, ADR-0012, ADR-0014). Generic: vendor adapters are handlers
+    | registered here, each applying its events through the owning domain's actions.
+    */
+    'integration' => [
+        'kinds' => ['recruitment' => 'Recruitment / ATS', 'payroll_provider' => 'Payroll provider', 'attendance' => 'Attendance devices', 'finance' => 'Finance / ERP', 'identity' => 'Identity provider', 'benefits' => 'Benefits provider', 'learning' => 'Learning provider', 'bgv' => 'Background verification', 'hr_system' => 'External HR system', 'other' => 'Other'],
+        // event type => handler (App\Domain\Integration\Contracts\InboundEventHandler)
+        'handlers' => [
+            'reference.link' => LinkReferenceHandler::class,
+            'reference.retire' => RetireReferenceHandler::class,
+            // Production readiness closure: background-verification results (signed, idempotent; `bgv` integrations only).
+            'bgv.results' => BgvResultsHandler::class,
+        ],
+        'max_attempts' => (int) env('PEOPLEOS_INTEGRATION_MAX_ATTEMPTS', 5),
+        // Payload bodies of finished events are purged after this many days; metadata stays.
+        'payload_retention_days' => (int) env('PEOPLEOS_INTEGRATION_PAYLOAD_DAYS', 7),
+    ],
+
     'enterprise' => [
         'sso_providers' => ['entra' => 'Microsoft Entra ID', 'google' => 'Google Workspace', 'okta' => 'Okta', 'oidc' => 'Generic OpenID Connect'],
         'sso_presets' => [
@@ -964,10 +1266,21 @@ return [
         'webhook_events' => [
             'employee.created', 'employee.joined', 'employee.probation', 'employee.confirmed', 'employee.notice_period', 'employee.exited', 'employee.alumni',
             'employee.salary_changed', 'employee.transferred', 'employee.promoted', 'employee.manager_changed', 'employee.rehired', 'leave.requested', 'leave.approved', 'leave.rejected', 'leave.cancelled', 'attendance.regularisation_requested',
-            'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'performance.appraisal.finalized', 'performance.cycle.published', 'performance.goal.created', 'performance.goal.progress_updated', 'performance.review.submitted', 'performance.check_in.submitted', 'performance.feedback.received', 'learning.completed',
+            'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'performance.appraisal.finalized', 'performance.cycle.published', 'performance.goal.created', 'performance.goal.progress_updated', 'performance.review.submitted', 'performance.check_in.submitted', 'performance.feedback.received', 'learning.completed', 'learning.enrolment.requested', 'learning.enrolment.approved', 'learning.started', 'learning.certificate.issued', 'learning.certificate_expired', 'skill.assessed', 'development.plan.created', 'development.plan.completed',
             'asset.assigned', 'asset.returned', 'servicedesk.ticket.created', 'servicedesk.ticket.resolved', 'grievance.raised', 'exit.initiated', 'exit.completed',
+            // Phase 12: request lifecycle facts (number, service code, status, priority — never form data, comments or resolutions).
+            'servicedesk.ticket.assigned', 'servicedesk.ticket.closed', 'servicedesk.ticket.cancelled', 'servicedesk.ticket.escalated', 'kb.article.published', 'kb.policy.acknowledged',
+            // Phase 13: lifecycle facts only (codes, versions, counts) — never respondents, answers, audience members or message bodies.
+            'survey.published', 'survey.opened', 'survey.closed', 'campaign.launched', 'communication.published',
             'letter.issued', 'workflow.completed', 'document.expiring',
             'compliance.establishment_verified', 'compliance.return_reconciled', 'compliance.return_approved', 'compliance.return_exported', 'compliance.return_filed',
+            // Phase 9: architecture-level events only. Candidacy, pool membership, readiness and talent
+            // assessments are confidential and are never published as webhooks.
+            'career.path.published', 'succession.critical_position.created', 'talent.review.completed',
+            // Phase 10: capacity facts an integration (e.g. RecruitmentEdge, outside PeopleOS) may consume. No costs, no people.
+            'workforce.position.approved', 'workforce.position.opened', 'workforce.position.vacated', 'workforce.position.frozen', 'workforce.position.abolished', 'workforce.position.closed',
+            // Phase 11: compensation lifecycle facts (reference, type, dates, employee code — never amounts).
+            'compensation.change.approved', 'compensation.change.scheduled', 'compensation.change.effective', 'compensation.change.cancelled', 'compensation.structure.approved', 'compensation.cycle.executed',
         ],
         // Context keys never sent in webhook payloads (names of feedback authors, free text).
         'webhook_redacted_context' => ['from', 'note', 'reason', 'outcome', 'summary', 'comment'],
@@ -993,20 +1306,21 @@ return [
             'manager' => ['label' => 'Manager Assistant', 'permission' => 'ai.manager', 'feature' => 'ai.assistants', 'description' => 'Your team: attendance, leave, reviews, pending actions'],
             'hr' => ['label' => 'HR Copilot', 'permission' => 'ai.hr', 'feature' => 'ai.assistants', 'description' => 'Pending HR work and natural-language people questions'],
             'payroll_auditor' => ['label' => 'Payroll Auditor', 'permission' => 'ai.payroll_auditor', 'feature' => 'ai.payroll_auditor', 'description' => 'Anomalies in the latest payroll run'],
-            'workforce' => ['label' => 'Workforce Analyst', 'permission' => 'ai.workforce', 'feature' => 'ai.workforce_intelligence', 'description' => 'Trends, cost, attrition risk, skills, capacity'],
+            'workforce' => ['label' => 'Workforce Analyst', 'permission' => 'ai.workforce', 'feature' => 'ai.workforce_intelligence', 'description' => 'Trends, cost, skills, capacity — aggregate facts, never individual predictions'],
         ],
         'payroll_audit' => ['net_change_pct' => 30, 'deduction_share_pct' => 60, 'lop_days' => 10, 'tds_jump_pct' => 100, 'salary_revision_pct' => 50],
-        'attrition_risk' => ['bands' => ['low' => 2, 'medium' => 4], 'signals' => [
-            'short_tenure' => ['points' => 1, 'label' => 'Less than 12 months of tenure'],
-            'no_revision' => ['points' => 2, 'label' => 'No salary revision in 24 months'],
-            'low_rating' => ['points' => 2, 'label' => 'Latest final rating of 2 or below'],
-            'learning_overdue' => ['points' => 1, 'label' => 'Mandatory learning overdue'],
-            'no_one_on_one' => ['points' => 1, 'label' => 'No one-on-one in 90 days'],
-            'absences' => ['points' => 1, 'label' => 'Three or more unexplained absences in 30 days'],
-            'constructive_feedback' => ['points' => 1, 'label' => 'Constructive feedback in the last 60 days'],
-            'stalled_high_performer' => ['points' => 1, 'label' => 'High performer without promotion for 24 months'],
-            'open_grievance' => ['points' => 2, 'label' => 'Has an open grievance'],
-        ]],
+        // Phase 14: the per-employee attrition-risk score was retired (no employee scoring or prediction).
+        // AI data boundary: what may be sent to an external provider (ADR-0016). Prohibited data never
+        // leaves PeopleOS and is also never stored in the AI log; restricted data leaves only when the
+        // tenant setting ai.external_data_policy is "restricted"; everything else is allowed.
+        'data_policy' => [
+            'policies' => ['none' => 'Never send anything to an external AI provider', 'allowed' => 'Send allowed facts only (default)', 'restricted' => 'Also send restricted personal data (never prohibited data)'],
+            'prohibited_keys' => ['password', 'passcode', 'secret', 'token', 'api_key', 'apikey', 'private_key', 'encryption', 'credential', 'bearer', 'signature', 'otp', 'totp', 'mfa', 'recovery_code'],
+            'prohibited_values' => ['/\\b(?:pk|sk|whsec|sk-ant)[_-][A-Za-z0-9_\\-]{8,}/', '/\\beyJ[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{5,}/', '/\\bbase64:[A-Za-z0-9+\\/=]{20,}/', '/-----BEGIN [A-Z ]*PRIVATE KEY-----/', '/(?i)\\b(?:password|passcode|pwd)\\s*[:=]\\s*\\S+/'],
+            'restricted_keys' => ['bank', 'account_number', 'ifsc', 'pan', 'uan', 'aadhaar', 'esic', 'passport', 'tax', 'salary', 'ctc', 'amount', 'gross', 'net_pay', 'cost', 'compensation', 'rating', 'grievance', 'medical', 'health', 'date_of_birth', 'dob', 'personal_email', 'phone', 'address', 'note'],
+            'restricted_values' => ['/\\b[A-Z]{5}[0-9]{4}[A-Z]\\b/', '/\\b[0-9]{4}\\s?[0-9]{4}\\s?[0-9]{4}\\b/', '/\\b[A-Z]{4}0[A-Z0-9]{6}\\b/', '/\\b[0-9]{9,18}\\b/', '/[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}/'],
+        ],
+        'rate_limit_per_minute' => (int) env('PEOPLEOS_AI_RATE_LIMIT', 20),
         'config_search' => [
             ['keywords' => 'working hours shift timing schedule roster', 'label' => 'Shifts', 'url' => '/admin/shifts'],
             ['keywords' => 'working hours schedule week pattern roster', 'label' => 'Work schedules', 'url' => '/admin/work-schedules'],
@@ -1061,6 +1375,8 @@ return [
         'visualizations' => ['table' => 'Table', 'bar' => 'Bar chart', 'line' => 'Line chart', 'pie' => 'Pie chart', 'kpi' => 'Single number'],
         'formats' => ['csv' => 'CSV (Excel-compatible)'],
         'max_rows' => 10000,
+        // Phase 14: the privacy threshold for cross-domain People analytics (counts below it are suppressed).
+        'min_group' => (int) env('PEOPLEOS_ANALYTICS_MIN_GROUP', 5),
         'schedule_frequencies' => ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly'],
         'widget_types' => ['kpi' => 'KPI number', 'trend' => 'Trend (last 12 months)', 'chart' => 'Chart from a report', 'table' => 'Table from a report', 'leaderboard' => 'Leaderboard (top rows of a report)', 'alerts' => 'Needs attention counts'],
         'widget_sizes' => ['1' => 'Small', '2' => 'Half width', '4' => 'Full width'],
@@ -1107,8 +1423,71 @@ return [
     */
     'servicedesk' => [
         'priorities' => ['low' => 'Low', 'normal' => 'Normal', 'high' => 'High', 'urgent' => 'Urgent'],
-        'statuses' => ['new' => 'New', 'open' => 'Open', 'pending' => 'Waiting on employee', 'resolved' => 'Resolved', 'closed' => 'Closed'],
+        /*
+        | Phase 12 request / case lifecycle. A status moves only along `transitions` (RequestLifecycle).
+        | Every move is authorised, locked, audited, timestamped and attributed, and some need a reason.
+        | `awaiting_approval` extends the suggested foundation, so that a workflow approval wait is not
+        | counted as service time.
+        */
+        'statuses' => [
+            'draft' => 'Draft', 'submitted' => 'Submitted', 'acknowledged' => 'Acknowledged', 'assigned' => 'Assigned', 'in_progress' => 'In progress',
+            'awaiting_approval' => 'Awaiting approval', 'waiting_employee' => 'Waiting for employee', 'waiting_hr' => 'Waiting for HR',
+            'resolved' => 'Resolved', 'closed' => 'Closed', 'cancelled' => 'Cancelled',
+        ],
+        'transitions' => [
+            'draft' => ['submitted', 'cancelled'],
+            'submitted' => ['acknowledged', 'assigned', 'in_progress', 'awaiting_approval', 'waiting_employee', 'resolved', 'cancelled'],
+            'acknowledged' => ['submitted', 'assigned', 'in_progress', 'awaiting_approval', 'waiting_employee', 'resolved', 'cancelled'],
+            'assigned' => ['acknowledged', 'submitted', 'in_progress', 'awaiting_approval', 'waiting_employee', 'waiting_hr', 'resolved', 'cancelled'],
+            'in_progress' => ['acknowledged', 'submitted', 'awaiting_approval', 'waiting_employee', 'waiting_hr', 'resolved', 'cancelled'],
+            'awaiting_approval' => ['in_progress', 'resolved', 'cancelled'],
+            'waiting_employee' => ['in_progress', 'waiting_hr', 'resolved', 'cancelled'],
+            'waiting_hr' => ['in_progress', 'waiting_employee', 'resolved', 'cancelled'],
+            'resolved' => ['closed', 'in_progress'],
+            'closed' => ['in_progress'],
+            'cancelled' => [],
+        ],
+        // Transitions that need a reason (cancel, reopen); resolving needs a resolution.
+        'reason_required' => ['cancelled', 'reopen'],
+        // Statuses in which the SLA clock stops (configurable; an SLA policy may override).
+        'sla_pause_statuses' => ['waiting_employee', 'awaiting_approval'],
+        /*
+        | Default service hours for business-hours SLAs (an SLA policy may override). Holidays come from
+        | the employee's attendance holiday calendar, and the timezone from their work location. There
+        | is no second holiday calendar.
+        */
+        'business_hours' => ['days' => [1, 2, 3, 4, 5], 'start' => '09:00', 'end' => '18:00'],
+        'confidentiality' => ['standard' => 'Standard', 'sensitive' => 'Sensitive (protected fields)', 'restricted' => 'Restricted (explicit access only)'],
+        'comment_visibilities' => ['employee' => 'Visible to the employee', 'internal' => 'Internal HR note', 'restricted' => 'Restricted (people with explicit case access)'],
+        'sources' => ['web' => 'Employee self-service', 'hr' => 'Raised by HR', 'manager' => 'Raised by a manager', 'api' => 'API', 'system' => 'System'],
+        'field_classes' => ['standard' => 'Standard', 'sensitive' => 'Sensitive', 'restricted' => 'Restricted'],
+        'attachment_rules' => ['none' => 'No attachments', 'optional' => 'Optional', 'required' => 'Required'],
+        'domain_action_statuses' => ['awaiting_approval' => 'Awaiting approval', 'ready' => 'Ready to execute', 'executed' => 'Executed', 'rejected' => 'Not approved', 'refused' => 'Approval refused (separation of duties)', 'cancelled' => 'Cancelled'],
+        /*
+        | Domain actions a service may hand off to. Service Delivery never writes another module's
+        | tables: each handler calls the owning domain's action / contract (see
+        | docs/architecture/employee-experience.md).
+        */
+        'domain_actions' => [
+            'leave.request' => LeaveRequestAction::class,
+            'attendance.regularisation' => RegularisationAction::class,
+            'letter.request' => LetterRequestAction::class,
+            'compensation.proposal' => CompensationProposalLink::class,
+            'profile.bank_account' => BankAccountChange::class,
+            'profile.statutory_identity' => StatutoryIdentityChange::class,
+            'profile.address' => AddressChange::class,
+            'profile.emergency_contact' => EmergencyContactChange::class,
+            'profile.family_member' => FamilyMemberChange::class,
+            'employment.manager_change' => ManagerChange::class,
+        ],
         'auto_close_days' => 5,
+        // Reminders (idempotent through service_desk_reminder_logs; a reminder never triggers another).
+        'waiting_employee_reminder_days' => 3,
+        'waiting_employee_max_reminders' => 3,
+        'waiting_hr_reminder_hours' => 24,
+        'sla_risk_hours' => 8,
+        'policy_acknowledgement_reminder_days' => 7,
+        'analytics_min_group' => (int) env('PEOPLEOS_SERVICEDESK_MIN_GROUP', 5),
         'defaults' => [
             ['code' => 'LETTER', 'name' => 'Letters & certificates', 'description' => 'Experience, salary, address, NOC and other letters', 'sla_hours' => 72],
             ['code' => 'PAYROLL', 'name' => 'Payroll & tax query', 'sla_hours' => 48],
@@ -1117,6 +1496,32 @@ return [
             ['code' => 'IT', 'name' => 'IT & assets', 'sla_hours' => 24],
             ['code' => 'POLICY', 'name' => 'Policy question', 'sla_hours' => 48],
             ['code' => 'OTHER', 'name' => 'Something else', 'sla_hours' => 72],
+        ],
+        // Starter SLA policy (business hours; HR may replace it). Examples only — configurable, not code.
+        'sla_defaults' => [
+            'code' => 'STANDARD', 'name' => 'Standard HR service', 'calendar' => 'business', 'warn_percent' => 75,
+            'targets' => [
+                'low' => ['first_response_hours' => 8, 'resolution_hours' => 27],
+                'normal' => ['first_response_hours' => 4, 'resolution_hours' => 18],
+                'high' => ['first_response_hours' => 2, 'resolution_hours' => 9],
+                'urgent' => ['first_response_hours' => 1, 'resolution_hours' => 4],
+            ],
+        ],
+        // Starter catalogue: seeded as DRAFT service versions; HR completes, submits and approves them.
+        'service_defaults' => [
+            ['code' => 'LEAVE_QUERY', 'name' => 'Leave query', 'category' => 'ATTENDANCE'],
+            ['code' => 'ATTENDANCE_CORRECTION', 'name' => 'Attendance correction', 'category' => 'ATTENDANCE', 'domain_action' => 'attendance.regularisation'],
+            ['code' => 'SALARY_CERTIFICATE', 'name' => 'Salary certificate', 'category' => 'LETTER', 'domain_action' => 'letter.request'],
+            ['code' => 'EMPLOYMENT_CERTIFICATE', 'name' => 'Employment certificate', 'category' => 'LETTER', 'domain_action' => 'letter.request'],
+            ['code' => 'ADDRESS_CHANGE', 'name' => 'Address change', 'category' => 'PROFILE', 'domain_action' => 'profile.address', 'confidentiality' => 'sensitive'],
+            ['code' => 'BANK_ACCOUNT_CHANGE', 'name' => 'Bank account change', 'category' => 'PROFILE', 'domain_action' => 'profile.bank_account', 'confidentiality' => 'sensitive', 'approval_required' => true],
+            ['code' => 'PAN_UPDATE', 'name' => 'PAN / UAN update', 'category' => 'PROFILE', 'domain_action' => 'profile.statutory_identity', 'confidentiality' => 'sensitive', 'approval_required' => true],
+            ['code' => 'EMERGENCY_CONTACT_UPDATE', 'name' => 'Emergency contact update', 'category' => 'PROFILE', 'domain_action' => 'profile.emergency_contact', 'confidentiality' => 'sensitive'],
+            ['code' => 'PAYROLL_QUERY', 'name' => 'Payroll query', 'category' => 'PAYROLL'],
+            ['code' => 'COMPENSATION_QUERY', 'name' => 'Compensation query', 'category' => 'PAYROLL', 'confidentiality' => 'sensitive'],
+            ['code' => 'HR_POLICY_QUERY', 'name' => 'HR policy query', 'category' => 'POLICY'],
+            ['code' => 'EXPERIENCE_LETTER', 'name' => 'Experience letter request', 'category' => 'LETTER', 'domain_action' => 'letter.request'],
+            ['code' => 'MANAGER_CHANGE', 'name' => 'Manager change request', 'category' => 'PROFILE', 'domain_action' => 'employment.manager_change', 'approval_required' => true, 'availability' => ['employee' => false, 'manager' => true, 'hr' => true]],
         ],
     ],
     'grievance' => [
@@ -1133,11 +1538,65 @@ return [
             ['code' => 'OTHER', 'name' => 'Other', 'is_confidential' => true, 'allow_anonymous' => true, 'sla_days' => 30],
         ],
     ],
+    /*
+    | Phase 12 employee experience: the domains that contribute to "My tasks" (each reads its own
+    | records through its own authorisation; the experience layer stores nothing). Surveys plug in
+    | through the SurveyTaskProvider binding in Phase 13.
+    */
+    'experience' => [
+        'task_sources' => [
+            WorkflowTaskSource::class,
+            ServiceDeskTaskSource::class,
+            PolicyAcknowledgementTaskSource::class,
+            CommunicationTaskSource::class,
+        ],
+    ],
     'kb' => [
         'categories' => ['hr_policy' => 'HR policies', 'attendance' => 'Attendance', 'leave' => 'Leave', 'travel' => 'Travel', 'posh' => 'PoSH', 'wfh' => 'Work from home', 'it' => 'IT', 'conduct' => 'Code of conduct', 'expense' => 'Expenses', 'benefits' => 'Benefits', 'payroll' => 'Payroll & tax', 'other' => 'Other'],
     ],
     'communication' => [
         'types' => ['announcement' => 'Announcement', 'circular' => 'Circular', 'newsletter' => 'Newsletter', 'policy' => 'Policy publication', 'instruction' => 'Instruction'],
+        /*
+        | Phase 13. Communication is an intentional organisational message, delivered through the
+        | existing Notifier (no second notification engine). Mandatory types cannot be switched off in
+        | preferences; transactional notifications are never subject to these preferences at all.
+        */
+        'mandatory_types' => ['policy', 'instruction'],
+        'priorities' => ['normal' => 'Normal', 'high' => 'High', 'critical' => 'Critical'],
+        'statuses' => ['draft' => 'Draft', 'in_review' => 'In review', 'approved' => 'Approved', 'scheduled' => 'Scheduled', 'published' => 'Published', 'archived' => 'Archived', 'cancelled' => 'Cancelled'],
+        // Real channels only: SMS / WhatsApp / push are log stubs in notifications.channels and are not offered.
+        'channels' => ['in_app' => 'In-app', 'email' => 'Email'],
+        'delivery_batch' => 200,
+        'recipient_statuses' => ['pending' => 'Pending', 'queued' => 'Queued', 'sent' => 'Sent', 'failed' => 'Failed', 'skipped' => 'Skipped (preference)'],
+    ],
+
+    /*
+    | Phase 13 engagement: surveys, feedback, campaigns. Descriptive only — no employee scores, no
+    | sentiment or attrition inference, no AI. Anonymity is architectural (docs/architecture/
+    | engagement-communication.md §3).
+    */
+    'engagement' => [
+        'survey_types' => ['engagement' => 'Engagement', 'pulse' => 'Pulse', 'feedback' => 'Feedback', 'culture' => 'Culture', 'onboarding' => 'Onboarding feedback', 'exit' => 'Exit feedback', 'event' => 'Event feedback', 'custom' => 'Custom'],
+        'categories' => ['engagement' => 'Engagement', 'wellbeing' => 'Wellbeing', 'culture' => 'Culture', 'operations' => 'Operations', 'events' => 'Events', 'other' => 'Other'],
+        'question_types' => ['single_choice' => 'Single choice', 'multiple_choice' => 'Multiple choice', 'rating' => 'Rating', 'likert' => 'Agreement scale (5 points)', 'yes_no' => 'Yes / No', 'text' => 'Free text', 'number' => 'Number', 'date' => 'Date'],
+        'likert_options' => ['1' => 'Strongly disagree', '2' => 'Disagree', '3' => 'Neutral', '4' => 'Agree', '5' => 'Strongly agree'],
+        'anonymity_modes' => ['anonymous' => 'Anonymous — nobody can link answers to a person', 'confidential' => 'Confidential — identity kept apart, revealed only by a reasoned, audited request', 'identified' => 'Identified'],
+        'response_rules' => ['once' => 'One response', 'multiple' => 'Several responses (identified only)', 'per_period' => 'One response per period (identified only)'],
+        'response_periods' => ['week' => 'Week', 'month' => 'Month', 'quarter' => 'Quarter'],
+        'statuses' => ['draft' => 'Draft', 'in_review' => 'In review', 'approved' => 'Approved', 'scheduled' => 'Scheduled', 'open' => 'Open', 'closed' => 'Closed', 'archived' => 'Archived'],
+        'breakdown_dimensions' => ['company' => 'Company', 'location' => 'Location', 'department' => 'Department', 'business_unit' => 'Business unit', 'grade' => 'Grade', 'manager' => 'Line manager'],
+        'participation_statuses' => ['invited' => 'Invited', 'opened' => 'Opened', 'submitted' => 'Submitted', 'expired' => 'Expired'],
+        // Small-group privacy (the PeopleOS principle); free text needs more respondents.
+        'analytics_min_group' => (int) env('PEOPLEOS_ENGAGEMENT_MIN_GROUP', 5),
+        'text_min_group' => (int) env('PEOPLEOS_ENGAGEMENT_TEXT_MIN_GROUP', 10),
+        // Default reminder policy (a version may override): reminders N days after opening, one closing reminder, then stop.
+        'reminders' => ['after_days' => [3], 'closing_days_before' => 2, 'max' => 2],
+        'feedback_modes' => ['identified' => 'Identified', 'confidential' => 'Confidential', 'anonymous' => 'Anonymous'],
+        'feedback_categories' => ['workplace' => 'Workplace', 'process' => 'Processes & tools', 'wellbeing' => 'Wellbeing', 'communication' => 'Communication', 'idea' => 'Idea / suggestion', 'other' => 'Other'],
+        'feedback_statuses' => ['new' => 'New', 'in_review' => 'In review', 'referred' => 'Referred to HR service desk', 'closed' => 'Closed'],
+        'campaign_statuses' => ['draft' => 'Draft', 'in_review' => 'In review', 'approved' => 'Approved', 'scheduled' => 'Scheduled', 'active' => 'Active', 'completed' => 'Completed', 'cancelled' => 'Cancelled'],
+        // Optional approval workflows (existing engine); empty = maker-checker by a second person.
+        'approval_workflows' => ['survey' => null, 'announcement' => null, 'campaign' => null],
     ],
 
     /*
@@ -1147,12 +1606,189 @@ return [
         'course_types' => ['video' => 'Video', 'document' => 'Document / reading', 'elearning' => 'E-learning (external link)', 'classroom' => 'Classroom training', 'virtual' => 'Virtual training', 'assessment' => 'Assessment only'],
         'categories' => ['compliance' => 'Compliance', 'onboarding' => 'Onboarding', 'technical' => 'Technical', 'leadership' => 'Leadership', 'soft_skills' => 'Soft skills', 'product' => 'Product', 'safety' => 'Health & safety', 'other' => 'Other'],
         'module_types' => ['video' => 'Video', 'document' => 'Document', 'link' => 'External link', 'text' => 'Text', 'assessment' => 'Assessment'],
-        'enrolment_statuses' => ['enrolled' => 'Enrolled', 'in_progress' => 'In progress', 'completed' => 'Completed', 'failed' => 'Failed', 'overdue' => 'Overdue', 'expired' => 'Expired', 'withdrawn' => 'Withdrawn'],
+        'enrolment_statuses' => ['assigned' => 'Assigned', 'requested' => 'Requested', 'pending_approval' => 'Pending approval', 'approved' => 'Approved', 'enrolled' => 'Enrolled', 'waitlisted' => 'Waitlisted', 'in_progress' => 'Started', 'overdue' => 'Overdue', 'completed' => 'Completed', 'failed' => 'Failed', 'withdrawn' => 'Withdrawn', 'expired' => 'Expired', 'cancelled' => 'Cancelled', 'rejected' => 'Rejected'],
+        // Phase 8 catalogue taxonomy — all configurable per installation, nothing hard-coded in services.
+        'delivery_modes' => ['classroom' => 'Classroom', 'virtual' => 'Virtual', 'self_paced' => 'Self-paced', 'blended' => 'Blended', 'on_the_job' => 'On-the-job', 'external' => 'External', 'workshop' => 'Workshop', 'conference' => 'Conference', 'certification' => 'Certification'],
+        'difficulties' => ['introductory' => 'Introductory', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced', 'expert' => 'Expert'],
+        'languages' => ['en' => 'English', 'hi' => 'Hindi', 'ar' => 'Arabic'],
+        'provider_types' => ['internal' => 'Internal L&D', 'external' => 'External provider'],
+        'priorities' => ['low' => 'Low', 'normal' => 'Normal', 'high' => 'High', 'critical' => 'Critical'],
+        'grades' => ['distinction' => 'Distinction', 'merit' => 'Merit', 'pass' => 'Pass', 'fail' => 'Fail'],
+        'attendance' => ['full' => 'Attended in full', 'partial' => 'Partially attended', 'none' => 'Did not attend'],
+        // Delivery modes whose learner may report their own progress (instructor-led progress comes from attendance).
+        'self_reported_progress_modes' => ['self_paced', 'on_the_job', 'blended', 'external'],
+        // A course must be approved by a second person (learning.publish) before it is published.
+        'require_catalogue_approval' => (bool) env('PEOPLEOS_LEARNING_REQUIRE_APPROVAL', true),
+        'recertification_lead_days' => 60,
+        'analytics_min_group' => (int) env('PEOPLEOS_LEARNING_MIN_GROUP', 5),
+        'reminder_days_before' => 3,
+        'overdue_reminder_every_days' => 7,
+        // Render an HTML certificate document onto the private disk (queued) when a certificate is issued.
+        'generate_certificate_documents' => (bool) env('PEOPLEOS_LEARNING_CERTIFICATE_DOCUMENTS', true),
+        // Assignment populations are processed in chunks so large tenants are never loaded at once.
+        'assignment_chunk' => 500,
+        'evidence_max_kb' => 10240,
+        'evidence_mimes' => ['application/pdf', 'image/png', 'image/jpeg'],
         'session_statuses' => ['scheduled' => 'Scheduled', 'completed' => 'Completed', 'cancelled' => 'Cancelled'],
         'attendee_statuses' => ['registered' => 'Registered', 'attended' => 'Attended', 'absent' => 'Absent', 'cancelled' => 'Cancelled'],
         'due_soon_days' => 7,
         'certificate_expiry_notice_days' => 30,
         'certificate_prefix' => 'CERT',
+    ],
+
+    /*
+    | Skills & development (Phase 8). Taxonomies are configurable; nothing is inferred from job titles.
+    */
+    'skills' => [
+        'types' => ['technical' => 'Technical', 'behavioural' => 'Behavioural', 'functional' => 'Functional', 'leadership' => 'Leadership', 'domain' => 'Domain', 'digital' => 'Digital', 'language' => 'Language'],
+        'confidence' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High'],
+        // Seeded once per tenant as version 1 of the default scale; edits are new versions.
+        'default_scale' => ['code' => 'PROFICIENCY', 'name' => 'Proficiency', 'levels' => [
+            ['value' => 1, 'label' => 'Beginner', 'description' => 'Learning the basics; needs guidance', 'indicator' => 'Completes simple tasks with support'],
+            ['value' => 2, 'label' => 'Intermediate', 'description' => 'Works independently on routine work', 'indicator' => 'Handles common cases without help'],
+            ['value' => 3, 'label' => 'Advanced', 'description' => 'Handles complex work; guides others', 'indicator' => 'Solves non-routine problems; reviews others'],
+            ['value' => 4, 'label' => 'Expert', 'description' => 'Recognised authority; shapes practice', 'indicator' => 'Sets standards; teaches the skill'],
+        ]],
+    ],
+
+    /*
+    | Career, talent & succession (Phase 9). Every label is configuration; nothing here is computed
+    | into a recommendation. Readiness and criticality are recorded by people.
+    */
+    'career' => [
+        'track_types' => ['individual_contributor' => 'Individual contributor', 'people_manager' => 'People manager', 'technical_specialist' => 'Technical specialist', 'functional_specialist' => 'Functional specialist', 'leadership' => 'Leadership'],
+        'aspiration_terms' => ['short' => 'Short term (≤ 1 year)', 'medium' => 'Medium term (1–3 years)', 'long' => 'Long term (3+ years)'],
+        'goal_types' => ['role' => 'Reach a role', 'skill' => 'Build a skill', 'capability' => 'Build a capability', 'move' => 'Move function / location', 'assignment' => 'Assignment / experience'],
+        'goal_statuses' => ['active' => 'Active', 'achieved' => 'Achieved', 'paused' => 'Paused', 'abandoned' => 'Abandoned'],
+        'mobility_interest_types' => ['position' => 'Position', 'job_family' => 'Job family', 'department' => 'Department', 'location' => 'Location', 'career_track' => 'Career track'],
+        'mobility_options' => ['relocation' => 'Open to relocation', 'international' => 'Open to international moves', 'role_change' => 'Open to a role change', 'travel' => 'Open to travel'],
+    ],
+
+    'talent' => [
+        'readiness_levels' => ['ready_now' => 'Ready now', 'lt_1_year' => 'Ready < 1 year', '1_2_years' => 'Ready 1–2 years', 'longer_term' => 'Longer term', 'not_assessed' => 'Not assessed'],
+        'readiness_validity_months' => 12,
+        'criticality_levels' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High', 'critical' => 'Critical'],
+        'impact_levels' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High'],
+        'vacancy_risk_levels' => ['low' => 'Low', 'medium' => 'Medium', 'high' => 'High'],
+        'mobility_levels' => ['not_mobile' => 'Not mobile', 'within_location' => 'Within location', 'national' => 'National', 'international' => 'International'],
+        'review_decisions' => ['retain_and_develop' => 'Retain and develop', 'accelerate_development' => 'Accelerate development', 'add_to_pool' => 'Add to a talent pool', 'nominate_successor' => 'Nominate as successor', 'no_change' => 'No change', 'revisit' => 'Revisit next review'],
+        'development_action_types' => ['learning_path' => 'Complete a learning path', 'certification' => 'Gain a certification', 'skill' => 'Build a skill', 'project' => 'Project assignment', 'mentoring' => 'Mentoring', 'coaching' => 'Coaching', 'stretch' => 'Stretch assignment', 'rotation' => 'Job rotation'],
+        // A default assessment model; tenants configure their own (a 9-box is one possible configuration).
+        'default_model' => ['code' => 'PERF_POTENTIAL', 'name' => 'Performance and potential', 'dimensions' => [
+            ['key' => 'performance', 'label' => 'Performance', 'levels' => [['value' => 1, 'label' => 'Below'], ['value' => 2, 'label' => 'Meets'], ['value' => 3, 'label' => 'Exceeds']]],
+            ['key' => 'potential', 'label' => 'Potential', 'levels' => [['value' => 1, 'label' => 'Limited'], ['value' => 2, 'label' => 'Moderate'], ['value' => 3, 'label' => 'Strong']]],
+        ]],
+        // Employees do not see their own succession candidacy unless granted succession.own_candidacy.
+        'analytics_min_group' => (int) env('PEOPLEOS_TALENT_MIN_GROUP', 5),
+        'review_reminder_days' => 14,
+        // Optional approval workflows (keys of published workflows); empty = people decide directly.
+        'review_workflow_key' => env('PEOPLEOS_TALENT_REVIEW_WORKFLOW'),
+        'succession_plan_workflow_key' => env('PEOPLEOS_SUCCESSION_PLAN_WORKFLOW'),
+    ],
+
+    /*
+    | Phase 10: workforce planning and position management. A position is capacity, never a person;
+    | "occupied" is derived from employee assignments, never typed.
+    */
+    'workforce' => [
+        'position_statuses' => ['draft' => 'Draft', 'proposed' => 'Proposed', 'approved' => 'Approved', 'planned' => 'Planned', 'open' => 'Open', 'frozen' => 'Frozen', 'on_hold' => 'On hold', 'abolished' => 'Abolished', 'closed' => 'Closed'],
+        // Allowed lifecycle moves. Tenants with other conventions change this map; "occupied" is never a target.
+        'position_transitions' => [
+            'draft' => ['proposed', 'closed'],
+            'proposed' => ['approved', 'draft', 'closed'],
+            'approved' => ['planned', 'open', 'closed'],
+            'planned' => ['open', 'frozen', 'on_hold', 'abolished', 'closed'],
+            'open' => ['frozen', 'on_hold', 'abolished', 'closed'],
+            'frozen' => ['open', 'abolished', 'closed'],
+            'on_hold' => ['open', 'frozen', 'abolished', 'closed'],
+            'abolished' => [],
+            'closed' => [],
+        ],
+        // Statuses in which a position counts as approved organisational capacity on a date.
+        'effective_statuses' => ['approved', 'planned', 'open', 'frozen', 'on_hold'],
+        // Statuses that accept a new employee assignment.
+        'assignable_statuses' => ['open'],
+        'worker_types' => ['employee' => 'Employee', 'contractor' => 'Contractor', 'apprentice' => 'Apprentice', 'intern' => 'Intern', 'consultant' => 'Consultant'],
+        'occupancy_modes' => ['single' => 'Single occupant', 'multiple' => 'Multiple occupants'],
+        // Position attribute groups whose change needs a second person's approval (true) or applies directly (false).
+        'change_approval' => ['headcount' => true, 'fte' => true, 'status' => false, 'organisation' => true, 'location' => false, 'grade' => true, 'definition' => false],
+        // Statuses reached only through approval (proposer ≠ approver).
+        'approval_statuses' => ['approved'],
+        'plan_statuses' => ['draft' => 'Draft', 'submitted' => 'Submitted', 'under_review' => 'Under review', 'approved' => 'Approved', 'active' => 'Active', 'superseded' => 'Superseded', 'archived' => 'Archived', 'rejected' => 'Rejected'],
+        'period_types' => ['monthly' => 'Monthly', 'quarterly' => 'Quarterly', 'half_year' => 'Half-year', 'annual' => 'Annual', 'custom' => 'Custom'],
+        // Plan line movements and their direction on planned headcount (+1 adds, -1 removes, 0 neutral).
+        'movement_types' => [
+            'baseline' => ['label' => 'Existing capacity (baseline)', 'sign' => 1],
+            'new_position' => ['label' => 'New position', 'sign' => 1],
+            'expansion' => ['label' => 'Position expansion', 'sign' => 1],
+            'transfer_in' => ['label' => 'Transfer in', 'sign' => 1],
+            'reduction' => ['label' => 'Position reduction', 'sign' => -1],
+            'position_closure' => ['label' => 'Position closure', 'sign' => -1],
+            'transfer_out' => ['label' => 'Transfer out', 'sign' => -1],
+            'retirement' => ['label' => 'Retirement', 'sign' => -1],
+            'known_exit' => ['label' => 'Known exit', 'sign' => -1],
+        ],
+        'cost_bases' => ['annual_salary' => 'Annualised salary', 'monthly_salary' => 'Monthly salary', 'employer_cost' => 'Employer cost', 'position_cost' => 'Configured position cost'],
+        // Planning assumptions a scenario may state explicitly (labelled as assumptions, never predictions).
+        'scenario_assumptions' => ['attrition_rate_percent' => 'Expected attrition % per year (planning assumption)', 'growth_rate_percent' => 'Expected growth % (planning assumption)', 'notes' => 'Other assumptions'],
+        'analytics_min_group' => (int) env('PEOPLEOS_WORKFORCE_MIN_GROUP', 5),
+        'approval_reminder_days' => 3,
+        'plan_expiry_reminder_days' => 30,
+        'vacancy_reminder_days' => 30,
+        // Optional approval workflows (keys of published workflows); empty = people decide directly.
+        'plan_workflow_key' => env('PEOPLEOS_WORKFORCE_PLAN_WORKFLOW'),
+    ],
+
+    /*
+    | Phase 11: compensation. Compensation owns employee compensation (employee_salary_assignments is
+    | its canonical history) and reaches Payroll only through the CompensationOutput contract. Every
+    | change is proposed, reviewed, approved and executed by four different people.
+    */
+    'compensation' => [
+        // Change types tenants may use (labels may be renamed; "correction" replaces a row on the same date).
+        'change_types' => [
+            'hire' => 'Hire / first compensation', 'annual_increment' => 'Annual increment', 'promotion' => 'Promotion-related increase',
+            'market_adjustment' => 'Market adjustment', 'correction' => 'Correction', 'allowance_change' => 'Allowance change',
+            'role_grade_adjustment' => 'Role / grade adjustment', 'retention_adjustment' => 'Retention adjustment', 'transfer' => 'Transfer',
+            'rehire' => 'Rehire', 'revision' => 'Revision', 'other' => 'Other',
+        ],
+        'sources' => ['manual' => 'Proposed by a person', 'cycle' => 'Compensation cycle', 'position' => 'From a position', 'plan' => 'From a workforce plan'],
+        // Payroll calculates monthly; other frequencies are refused until Payroll supports them.
+        'pay_frequencies' => ['monthly' => 'Monthly'],
+        // ISO 4217 codes accepted for compensation amounts.
+        'currencies' => ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'QAR', 'KWD', 'OMR', 'BHD', 'SGD', 'MYR', 'IDR', 'THB', 'PHP', 'VND', 'JPY', 'CNY', 'HKD', 'KRW', 'AUD', 'NZD', 'CAD', 'MXN', 'BRL', 'ZAR', 'KES', 'NGN', 'EGP', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 'TRY', 'ILS', 'LKR', 'BDT', 'NPR', 'PKR'],
+        /*
+        | Lifecycle (§41). "current": may receive compensation effective today or earlier; "future": may
+        | receive compensation effective later; "cycles": take part in compensation cycles. Exited and
+        | alumni employees receive nothing new (rehire returns the same employee record to an employed
+        | state and keeps every earlier row); a correction effective on or before the exit date is still
+        | allowed for the states in "correction_after_exit".
+        */
+        'lifecycle' => [
+            'current' => ['preboarding', 'onboarding', 'joined', 'probation', 'confirmed', 'active', 'on_leave', 'suspended', 'notice_period'],
+            'future' => ['pre_employee', 'preboarding', 'onboarding', 'joined', 'probation', 'confirmed', 'active', 'on_leave', 'suspended', 'notice_period'],
+            'cycles' => ['probation', 'confirmed', 'active', 'on_leave'],
+            'correction_after_exit' => ['exited'],
+        ],
+        // Structure version components: fixed or variable pay, and how often the component is paid.
+        'pay_natures' => ['fixed' => 'Fixed', 'variable' => 'Variable'],
+        'component_frequencies' => ['monthly' => 'Monthly', 'annual' => 'Annual', 'one_time' => 'One-time'],
+        // Range model: "min_mid_max" requires a midpoint; "min_max" makes it optional (compa-ratio then undefined).
+        'range_model' => env('PEOPLEOS_COMPENSATION_RANGE_MODEL', 'min_mid_max'),
+        // Bulk cycles and the change type their lines carry.
+        'cycle_types' => [
+            'annual_increment' => ['label' => 'Annual increment cycle', 'change_type' => 'annual_increment'],
+            'promotion' => ['label' => 'Promotion cycle', 'change_type' => 'promotion'],
+            'market_adjustment' => ['label' => 'Market adjustment cycle', 'change_type' => 'market_adjustment'],
+        ],
+        'analytics_min_group' => (int) env('PEOPLEOS_COMPENSATION_MIN_GROUP', 5),
+        // Reminders: changes waiting for a decision longer than this (days); throttled per change.
+        'approval_reminder_days' => 3,
+    ],
+
+    'development' => [
+        'item_statuses' => ['open' => 'Open', 'done' => 'Done', 'cancelled' => 'Cancelled'],
+        'milestone_reminder_days' => 7,
     ],
 
     /*
@@ -1311,10 +1947,24 @@ return [
             WebhookEndpoint::class => ['secret'],
             // Phase 7: manager-private one-on-one notes (encrypted, hidden, masked in audit).
             OneOnOne::class => ['private_notes'],
+            // Phase 8: assessor / manager private notes (encrypted, hidden, masked in audit).
+            SkillAssessment::class => ['private_notes'],
+            DevelopmentPlan::class => ['private_notes'],
+            // Phase 9: confidential talent and succession notes (encrypted, hidden, masked in audit).
+            TalentProfile::class => ['confidential_notes'],
+            TalentAssessment::class => ['confidential_notes'],
+            SuccessionPlan::class => ['confidential_notes'],
+            Successor::class => ['confidential_notes'],
+            // Phase 11: internal compensation proposal notes (encrypted, masked in audit, never shown to the employee).
+            CompensationChange::class => ['internal_notes'],
         ],
         'financial' => [
-            EmployeeSalaryAssignment::class, PayrollEntry::class, ParallelPayrollLine::class,
-            Payslip::class, FinalSettlement::class,
+            // Phase 11: employee compensation, compensation changes and pay ranges (amounts masked in audit).
+            EmployeeSalaryAssignment::class, CompensationChange::class, CompensationRange::class, CompensationBudget::class,
+            PayrollEntry::class, ParallelPayrollLine::class,
+            Payslip::class, FinalSettlement::class, LearningCost::class,
+            // Phase 10: workforce budgets (amounts masked in audit; workforce.costs only).
+            WorkforceBudget::class,
         ],
         'statutory' => [EmployeeTaxDeclaration::class, CompanyStatutoryProfile::class, EstablishmentStatutoryProfile::class, EmployeeEstablishmentAssignment::class, StatutoryReturn::class, StatutorySnapshot::class, EpfReturnEntry::class, TdsAnnualLedger::class, TdsCertificate::class, TdsEmployeeInvestment::class],
         'confidential' => [
@@ -1323,6 +1973,16 @@ return [
             FeedbackEntry::class, PerformanceCheckIn::class,
             CalibrationSession::class, CalibrationAdjustment::class,
             ImprovementPlanCheckpoint::class,
+            SkillAssessment::class, LearningEvidence::class,
+            // Phase 9: talent and succession records are confidential (explicit permissions, audited reads).
+            TalentProfile::class, TalentPoolMembership::class,
+            TalentAssessment::class, TalentReviewItem::class,
+            SuccessionPlan::class, Successor::class,
+            ReadinessAssessment::class,
+            // Phase 10: workforce plans and scenarios are management-confidential planning records.
+            WorkforcePlanVersion::class, WorkforcePlanLine::class, WorkforceScenario::class,
+            // Phase 11: compensation cycles (proposed pay for many people) are management-confidential.
+            CompensationCycle::class,
         ],
     ],
 
@@ -1332,5 +1992,11 @@ return [
         // Attribute names masked in audit_event_changes unless the model says otherwise.
         'sensitive_attributes' => ['password', 'account_number', 'pan', 'aadhaar_reference', 'uan', 'pf_number', 'esic_number', 'salary'],
         'mask' => '••••',
+    ],
+
+    // UX.18 visual regression: a frozen clock for the disposable *_visual_showcase database only (never in production),
+    // so dates, greetings and "x minutes ago" are identical on every run. See tests/visual/README.md.
+    'visual' => [
+        'frozen_now' => env('PEOPLEOS_VISUAL_FROZEN_NOW'),
     ],
 ];

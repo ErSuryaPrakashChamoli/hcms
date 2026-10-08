@@ -1,0 +1,90 @@
+{
+  "base": "http://127.0.0.1:8090",
+  "viewport": "390x844 touch",
+  "results": [
+    {
+      "role": "Employee",
+      "ask": "I need to request leave.",
+      "answered": true,
+      "taps": 1,
+      "screens": 0,
+      "in_first_screen": null,
+      "action_control_uncovered": true,
+      "results_above_keyboard": null,
+      "ms": 608,
+      "path": "tap \"Request leave\""
+    },
+    {
+      "role": "Manager",
+      "ask": "I need to approve this request.",
+      "answered": true,
+      "taps": 1,
+      "screens": 0,
+      "in_first_screen": null,
+      "action_control_uncovered": true,
+      "results_above_keyboard": null,
+      "ms": 409,
+      "path": "tap \"Review\""
+    },
+    {
+      "role": "HR",
+      "ask": "Which employee changes need attention?",
+      "answered": true,
+      "taps": 0,
+      "screens": 0,
+      "in_first_screen": true,
+      "action_control_uncovered": null,
+      "results_above_keyboard": null,
+      "ms": 63,
+      "path": "in the first screen"
+    },
+    {
+      "role": "Executive",
+      "ask": "What is happening in my workforce?",
+      "answered": true,
+      "taps": 0,
+      "screens": 0,
+      "in_first_screen": true,
+      "action_control_uncovered": null,
+      "results_above_keyboard": null,
+      "ms": 65,
+      "path": "in the first screen"
+    },
+    {
+      "role": "Administrator",
+      "ask": "What requires system attention?",
+      "answered": true,
+      "taps": 0,
+      "screens": 0,
+      "in_first_screen": true,
+      "action_control_uncovered": null,
+      "results_above_keyboard": null,
+      "ms": 96,
+      "path": "in the first screen"
+    },
+    {
+      "role": "Manager",
+      "ask": "Show me my team.",
+      "answered": true,
+      "taps": 1,
+      "screens": 1,
+      "in_first_screen": true,
+      "action_control_uncovered": null,
+      "results_above_keyboard": null,
+      "ms": 1128,
+      "path": "tap \"Team\""
+    },
+    {
+      "role": "HR",
+      "ask": "Find Rahul Sharma.",
+      "answered": true,
+      "taps": 2,
+      "screens": 0,
+      "in_first_screen": null,
+      "action_control_uncovered": null,
+      "results_above_keyboard": true,
+      "ms": 1476,
+      "path": "tap \"Search people, requests, act\" → type \"Rahul\" → tap \"RS Rahul Sharma Software Eng\""
+    }
+  ]
+}

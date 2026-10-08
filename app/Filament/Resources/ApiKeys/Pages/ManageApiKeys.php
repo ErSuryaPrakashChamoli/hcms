@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\ApiKeys\Pages;
 
 use App\Filament\Resources\ApiKeys\ApiKeyResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageApiKeys extends ManageRecords
+class ManageApiKeys extends PeopleManageRecords
 {
     protected static string $resource = ApiKeyResource::class;
 

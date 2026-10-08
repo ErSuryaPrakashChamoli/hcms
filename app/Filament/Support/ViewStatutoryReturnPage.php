@@ -3,10 +3,10 @@
 namespace App\Filament\Support;
 
 use App\Domain\Compliance\Services\Returns\StatutoryReturns;
-use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Support\Pages\PeopleViewRecord;
 
 /** View page for a statutory return: lifecycle actions, and every view recorded as STATUTORY_OUTPUT_ACCESSED. */
-abstract class ViewStatutoryReturnPage extends ViewRecord
+abstract class ViewStatutoryReturnPage extends PeopleViewRecord
 {
     public function mount(int|string $record): void
     {

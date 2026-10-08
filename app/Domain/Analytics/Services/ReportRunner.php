@@ -4,6 +4,8 @@ namespace App\Domain\Analytics\Services;
 
 use App\Domain\Analytics\Datasets\Dataset;
 use App\Domain\Analytics\Models\Report;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Payroll\Services\FormulaEngine;
 use Illuminate\Support\Carbon;
@@ -27,6 +29,8 @@ final class ReportRunner
     /** @param  array<string, mixed>  $definition */
     public function execute(string $datasetKey, array $definition, ?User $user = null, ?int $limit = null): ReportResult
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Analytics, 'analytics.report.run');
         $dataset = $this->datasets->get($datasetKey);
         if ($user && ! $dataset->allowedFor($user)) {
             throw new RuntimeException('You cannot report on the '.$dataset->label().' dataset.');
@@ -38,9 +42,12 @@ final class ReportRunner
         $filters = collect($definition['filters'] ?? [])->filter(fn ($f) => ! empty($f['field']) && ! empty($f['operator']));
         $needed = collect($selected)->merge($filters->pluck('field'))->merge([$definition['group_by'] ?? null])->merge(collect($definition['aggregations'] ?? [])->pluck('field'))->filter()->unique()->filter(fn ($f) => isset($available[$f]))->values();
 
+        // Phase 14: rows are streamed and filtered first, then capped. The cap used to apply before the
+        // filters and silently dropped matching rows on large tenants; now a capped run says so.
         $max = (int) config('peopleos.analytics.max_rows', 10000);
         $rows = collect();
-        $dataset->query()->limit($max)->get()->each(function ($model) use (&$rows, $dataset, $needed, $calculated) {
+        $truncated = false;
+        foreach ($dataset->query()->lazy(500) as $model) {
             $row = [];
             foreach ($needed as $field) {
                 $row[$field] = $dataset->value($field, $model);
@@ -52,10 +59,15 @@ final class ReportRunner
                     $row[$key] = null;
                 }
             }
+            if (! $filters->every(fn ($f) => $this->matches($row[$f['field']] ?? null, $f['operator'], $f['value'] ?? null, $available[$f['field']]['type'] ?? 'string'))) {
+                continue;
+            }
+            if ($rows->count() >= $max) {
+                $truncated = true;
+                break;
+            }
             $rows->push($row);
-        });
-
-        $rows = $rows->filter(fn ($row) => $filters->every(fn ($f) => $this->matches($row[$f['field']] ?? null, $f['operator'], $f['value'] ?? null, $available[$f['field']]['type'] ?? 'string')))->values();
+        }
 
         $columns = [];
         foreach ($selected as $f) {
@@ -108,7 +120,7 @@ final class ReportRunner
             $rows = $rows->take($limit)->values();
         }
 
-        return new ReportResult($columns, $rows->all(), $total, $grouped, $this->chart($columns, $rows, $definition['visualization'] ?? [], $grouped, $groupBy), $this->kpi($rows, $columns, $definition['visualization'] ?? []));
+        return new ReportResult($columns, $rows->all(), $total, $grouped, $this->chart($columns, $rows, $definition['visualization'] ?? [], $grouped, $groupBy), $this->kpi($rows, $columns, $definition['visualization'] ?? []), $truncated);
     }
 
     private function aggKey(array $agg): string

@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\WorkflowInstances\Pages;
 
 use App\Filament\Resources\WorkflowInstances\WorkflowInstanceResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListWorkflowInstances extends ListRecords
+class ListWorkflowInstances extends PeopleListRecords
 {
     protected static string $resource = WorkflowInstanceResource::class;
 }

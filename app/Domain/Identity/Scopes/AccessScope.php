@@ -45,6 +45,14 @@ final class AccessScope implements Scope
             return;
         }
 
+        // Phase 10: records carrying several organisation dimensions (positions, workforce plans and
+        // budgets) constrain themselves on each scoped dimension (fail-closed on missing values).
+        if (method_exists($model, 'applyAccessScope')) {
+            $model->applyAccessScope($builder, $user, $scopes);
+
+            return;
+        }
+
         if (property_exists($model, 'accessScopeDimension')) {
             $dimension = $model->accessScopeDimension;
             $scopes->constrainOrganisation($builder, $user, $dimension);
@@ -53,6 +61,12 @@ final class AccessScope implements Scope
         }
 
         $scopes->constrainByEmployee($builder, $user);
+    }
+
+    /** Whether scoping is suspended right now (inside withoutScoping()). Read-only; used to key request memos. */
+    public static function suspended(): bool
+    {
+        return self::$disabled;
     }
 
     /** Run a callback with access scoping suspended (used to build the scope's own sub-selects). */

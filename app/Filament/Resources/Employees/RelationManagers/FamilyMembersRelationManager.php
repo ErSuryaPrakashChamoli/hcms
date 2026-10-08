@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\People\Actions\ChangeFamilyMemberAction;
+use App\Filament\Support\ProfileChangeActions;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -14,6 +16,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class FamilyMembersRelationManager extends PersonSatelliteRelationManager
 {
@@ -46,7 +49,11 @@ class FamilyMembersRelationManager extends PersonSatelliteRelationManager
                 IconColumn::make('is_nominee')->label('Nominee')->boolean(),
                 TextColumn::make('nominee_share')->suffix('%')->placeholder('—'),
             ])
-            ->headerActions([CreateAction::make()])
-            ->recordActions([EditAction::make(), DeleteAction::make()]);
+            // Phase 12: every write goes through the People change action (authorization, validation, audit).
+            ->headerActions([CreateAction::make()->using(fn (array $data) => ProfileChangeActions::run(fn () => app(ChangeFamilyMemberAction::class)->add($this->getOwnerRecord(), $data, auth()->user())))])
+            ->recordActions([
+                EditAction::make()->using(fn (Model $record, array $data) => ProfileChangeActions::run(fn () => app(ChangeFamilyMemberAction::class)->update($this->getOwnerRecord(), $record, $data, auth()->user()))),
+                DeleteAction::make()->using(fn (Model $record) => ProfileChangeActions::run(fn () => app(ChangeFamilyMemberAction::class)->remove($this->getOwnerRecord(), $record, auth()->user()) ?? true)),
+            ]);
     }
 }

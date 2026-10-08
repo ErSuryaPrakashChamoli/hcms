@@ -5,11 +5,11 @@ namespace App\Filament\Resources\PunchImports\Pages;
 use App\Domain\Attendance\Imports\PunchImports;
 use App\Domain\Employment\Imports\EmployeeImports;
 use App\Filament\Resources\PunchImports\PunchImportResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
-use Filament\Resources\Pages\ListRecords;
 
-class ListPunchImports extends ListRecords
+class ListPunchImports extends PeopleListRecords
 {
     protected static string $resource = PunchImportResource::class;
 

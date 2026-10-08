@@ -4,10 +4,10 @@ namespace App\Filament\Resources\WorkSchedules\Pages;
 
 use App\Filament\Resources\WorkSchedules\WorkScheduleResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditWorkSchedule extends EditRecord
+class EditWorkSchedule extends PeopleEditRecord
 {
     use GovernedEdit;
 

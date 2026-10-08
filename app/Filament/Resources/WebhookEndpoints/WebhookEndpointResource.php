@@ -12,6 +12,7 @@ use App\Filament\Resources\WebhookEndpoints\Pages\ListWebhookEndpoints;
 use App\Filament\Resources\WebhookEndpoints\RelationManagers\DeliveriesRelationManager;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\ServiceDeskActions;
+use App\Support\Validation\SafeOutboundUrl;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -48,7 +49,7 @@ class WebhookEndpointResource extends Resource
     {
         return $schema->columns(2)->components([
             TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('url')->url()->required()->maxLength(255)->helperText('HTTPS endpoint; requests are signed with X-PeopleOS-Signature (HMAC-SHA256 of timestamp.body)'),
+            TextInput::make('url')->url()->rule(new SafeOutboundUrl)->required()->maxLength(255)->helperText('HTTPS endpoint; requests are signed with X-PeopleOS-Signature (HMAC-SHA256 of timestamp.body)'),
             TextInput::make('secret')->password()->revealable()->default(fn () => Str::random(48))->required(fn (string $operation) => $operation === 'create')->dehydrated(fn ($state) => filled($state))->maxLength(255),
             Select::make('status')->options(['active' => 'Active', 'paused' => 'Paused'])->default('active')->required(),
             CheckboxList::make('events')->options(collect(config('peopleos.enterprise.webhook_events'))->mapWithKeys(fn ($e) => [$e => $e])->all())->columns(3)->columnSpanFull()->required()->bulkToggleable(),

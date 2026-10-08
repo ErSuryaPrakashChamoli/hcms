@@ -1,0 +1,12 @@
+{"name":"Home (employee)","status":200,"ttfb":360,"boxes":7,"outer":7,"fontSizes":["12px","13px","14px","16px","22px","36px"],"primaryPainted":10,"dom":199}
+{"name":"Home (manager)","status":200,"ttfb":630,"boxes":6,"outer":6,"fontSizes":["12px","13px","14px","16px","22px","36px"],"primaryPainted":14,"dom":282}
+{"name":"Home (HR)","status":200,"ttfb":565,"boxes":6,"outer":6,"fontSizes":["12px","13px","14px","16px","22px","36px"],"primaryPainted":9,"dom":229}
+{"name":"Home (executive)","status":200,"ttfb":506,"boxes":3,"outer":3,"fontSizes":["12px","13px","14px","16px","22px","36px"],"primaryPainted":9,"dom":135}
+{"name":"My work","status":200,"ttfb":333,"boxes":7,"outer":7,"fontSizes":["12px","13px","14px","18px","22px","28px"],"primaryPainted":3,"dom":288}
+{"name":"Approvals","status":200,"ttfb":331,"boxes":6,"outer":5,"fontSizes":["12px","13px","14px","18px","28px"],"primaryPainted":14,"dom":411}
+{"name":"People","status":200,"ttfb":335,"boxes":0,"outer":0,"fontSizes":["13px","14px","16px","28px"],"primaryPainted":0,"dom":279}
+{"name":"Employee 360","status":200,"ttfb":605,"boxes":20,"outer":20,"fontSizes":["12px","13px","14px","16px","18px","22px","28px"],"primaryPainted":8,"dom":866}
+{"name":"Org map","status":200,"ttfb":315,"boxes":1,"outer":1,"fontSizes":["12px","13px","14px","28px"],"primaryPainted":0,"dom":110}
+{"name":"Workforce Command Center","status":200,"ttfb":268,"boxes":5,"outer":5,"fontSizes":["12px","13px","14px","18px","22px","28px"],"primaryPainted":4,"dom":135}
+{"name":"Services (My HR)","status":200,"ttfb":260,"boxes":2,"outer":2,"fontSizes":["12px","13px","14px","28px"],"primaryPainted":2,"dom":117}
+{"name":"Admin Centre","status":200,"ttfb":341,"boxes":11,"outer":11,"fontSizes":["12px","13px","14px","22px","28px"],"primaryPainted":22,"dom":510}

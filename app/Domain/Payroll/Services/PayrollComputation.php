@@ -2,8 +2,8 @@
 
 namespace App\Domain\Payroll\Services;
 
+use App\Domain\Compensation\Support\CompensationSegment;
 use App\Domain\Employment\Models\Employee;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\SalaryComponent;
 
@@ -28,7 +28,8 @@ final class PayrollComputation
     public function __construct(
         public readonly Employee $employee,
         public readonly PayrollPeriod $period,
-        public readonly ?EmployeeSalaryAssignment $assignment,
+        /** The approved compensation in force at the end of the eligible window (from CompensationOutput). */
+        public readonly ?CompensationSegment $compensation,
     ) {}
 
     public function addLine(string $code, string $name, string $type, float $amount, array $extra = []): void

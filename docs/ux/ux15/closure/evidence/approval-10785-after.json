@@ -1,0 +1,46 @@
+[
+    {
+        "label": "after",
+        "viewer": "amit.verma",
+        "screen": "Approvals",
+        "status": 200,
+        "queries": 193,
+        "authz_exists": 15,
+        "db_ms": 224,
+        "ms": 796,
+        "heading": "202+ decisions need you"
+    },
+    {
+        "label": "after",
+        "viewer": "amit.verma",
+        "screen": "Home",
+        "status": 200,
+        "queries": 268,
+        "authz_exists": 28,
+        "db_ms": 411,
+        "ms": 1090,
+        "heading": "Good morning, Amit."
+    },
+    {
+        "label": "after",
+        "viewer": "amit.verma",
+        "screen": "My Work",
+        "status": 200,
+        "queries": 165,
+        "authz_exists": 13,
+        "db_ms": 213,
+        "ms": 717,
+        "heading": "My work"
+    },
+    {
+        "label": "after",
+        "viewer": "neha.kapoor",
+        "screen": "Approvals",
+        "status": 200,
+        "queries": 177,
+        "authz_exists": 0,
+        "db_ms": 112,
+        "ms": 584,
+        "heading": "202+ decisions need you"
+    }
+]

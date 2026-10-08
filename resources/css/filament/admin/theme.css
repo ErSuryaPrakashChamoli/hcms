@@ -1,0 +1,2098 @@
+/*
+ * PeopleOS design system (docs/ux/PeopleOS-Design-System.md, governed in UX.15.4).
+ *
+ * Governance rules (UX.15):
+ * - Every colour, font size, radius, shadow, duration and z-index comes from a token below. Component rules
+ *   never use literal values except 0, 1px hairlines and layout dimensions (widths, heights, grid tracks).
+ * - Colour carries meaning. Neutral = normal information; indigo = PeopleOS identity (primary action,
+ *   selection, focus, links); gold = high-value moments (milestones, recognition, the lifetime record);
+ *   green = positive / completed; amber = attention; red = critical / destructive; blue = informational.
+ * - Type uses one 8-step scale and never goes below 12 px.
+ *
+ * Layers:
+ * 1. Filament's theme (forms, tables, actions, authorisation-aware UI), imported unchanged.
+ * 2. Tokens: light, then a separately designed dark set; density; motion; elevation; states.
+ * 3. Presentation overrides that make Filament's chrome read as PeopleOS.
+ * 4. The PeopleOS component layer (.pos-*), used by resources/views/components/pos/*.
+ */
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../app/Livewire/**/*';
+@source '../../../../app/Domain/Experience/**/*';
+@source '../../../../resources/views/**/*';
+
+@theme {
+    --font-display: var(--serif-font-family, 'Instrument Serif'), 'Instrument Serif', ui-serif, Georgia, 'Times New Roman', serif;
+
+    --color-pos-canvas: var(--pos-canvas);
+    --color-pos-surface: var(--pos-surface);
+    --color-pos-surface-muted: var(--pos-surface-muted);
+    --color-pos-surface-elevated: var(--pos-surface-elevated);
+    --color-pos-border: var(--pos-border);
+    --color-pos-border-strong: var(--pos-border-strong);
+    --color-pos-text: var(--pos-text);
+    --color-pos-text-secondary: var(--pos-text-secondary);
+    --color-pos-text-muted: var(--pos-text-muted);
+    --color-pos-primary: var(--pos-primary);
+    --color-pos-primary-strong: var(--pos-primary-strong);
+    --color-pos-primary-soft: var(--pos-primary-soft);
+    --color-pos-accent: var(--pos-accent);
+    --color-pos-accent-soft: var(--pos-accent-soft);
+    --color-pos-success: var(--pos-success);
+    --color-pos-success-soft: var(--pos-success-soft);
+    --color-pos-warning: var(--pos-warning);
+    --color-pos-warning-soft: var(--pos-warning-soft);
+    --color-pos-danger: var(--pos-danger);
+    --color-pos-danger-soft: var(--pos-danger-soft);
+    --color-pos-info: var(--pos-info);
+    --color-pos-info-soft: var(--pos-info-soft);
+}
+
+/* ------------------------------------------------------------------ 1. Tokens: light */
+:root {
+    color-scheme: light;
+
+    /* Neutral ramp: a cool, almost colourless grey. Neutral is the default for normal information. */
+    --pos-n-0: #ffffff;
+    --pos-n-25: #fafbfc;
+    --pos-n-50: #f5f6f8;
+    --pos-n-100: #eef0f3;
+    --pos-n-150: #e6e8ec;
+    --pos-n-200: #d6d9e0;
+    --pos-n-400: #9ba1ad;
+    --pos-n-500: #646a77;
+    --pos-n-600: #4b515d;
+    --pos-n-900: #15171d;
+
+    /* Surfaces (contrast measured: text 17.9:1, secondary 8.0:1, muted 5.4:1 on surface; ≥ 4.7:1 on wells) */
+    --pos-canvas: var(--pos-n-50);
+    --pos-surface: var(--pos-n-0);
+    --pos-surface-muted: var(--pos-n-100);
+    --pos-surface-elevated: var(--pos-n-0);
+    --pos-surface-sunken: var(--pos-n-25);
+    --pos-overlay: rgb(14 17 26 / 0.44);
+
+    --pos-border: var(--pos-n-150);
+    --pos-border-strong: var(--pos-n-200);
+
+    --pos-text: var(--pos-n-900);
+    --pos-text-secondary: var(--pos-n-600);
+    --pos-text-muted: var(--pos-n-500);
+    --pos-text-disabled: var(--pos-n-400);
+    --pos-text-inverse: #ffffff;
+    --pos-on-fill: #ffffff;
+
+    /* Identity: the PeopleOS iris. Used for primary action, selection, focus and links only. */
+    --pos-primary: #574bc4;
+    --pos-primary-strong: #463ba6;
+    --pos-primary-soft: #efeefb;
+
+    /* High-value moments: champagne gold (text-safe and decorative variants). */
+    --pos-accent: #8a6418;
+    --pos-accent-soft: #f6efe1;
+    --pos-gold: #c9a25a;
+
+    /* Status (AA on white and on their soft fills); always paired with words or an icon. */
+    --pos-success: #0f7a55;
+    --pos-success-soft: #e4f3ec;
+    --pos-warning: #9a5309;
+    --pos-warning-soft: #fbf0dc;
+    --pos-danger: #b42335;
+    --pos-danger-soft: #fbe8eb;
+    --pos-info: #2a5fbf;
+    --pos-info-soft: #e7eefa;
+
+    /*
+     * Legacy category tones now resolve to meaning: rose = critical, emerald = positive, sky = informational,
+     * amber = attention, gold = high value; violet, indigo and teal are neutral (decoration is not a meaning).
+     */
+    --pos-tile-rose: var(--pos-danger);         --pos-tile-rose-bg: var(--pos-danger-soft);
+    --pos-tile-emerald: var(--pos-success);     --pos-tile-emerald-bg: var(--pos-success-soft);
+    --pos-tile-sky: var(--pos-info);            --pos-tile-sky-bg: var(--pos-info-soft);
+    --pos-tile-amber: var(--pos-warning);       --pos-tile-amber-bg: var(--pos-warning-soft);
+    --pos-tile-gold: var(--pos-accent);         --pos-tile-gold-bg: var(--pos-accent-soft);
+    --pos-tile-violet: var(--pos-text-secondary); --pos-tile-violet-bg: var(--pos-surface-muted);
+    --pos-tile-indigo: var(--pos-text-secondary); --pos-tile-indigo-bg: var(--pos-surface-muted);
+    --pos-tile-teal: var(--pos-text-secondary); --pos-tile-teal-bg: var(--pos-surface-muted);
+
+    /* Avatars: four calm, human tints with no meaning attached (initials only; never a status). */
+    --pos-avatar-0-fg: var(--pos-n-600);  --pos-avatar-0-bg: var(--pos-n-100);
+    --pos-avatar-1-fg: #3d4f78;           --pos-avatar-1-bg: #e8ecf5;
+    --pos-avatar-2-fg: #8a3a4c;           --pos-avatar-2-bg: #f6e9ec;
+    --pos-avatar-3-fg: #2f6650;           --pos-avatar-3-bg: #e5f0ea;
+    --pos-avatar-4-fg: #73592a;           --pos-avatar-4-bg: #f4ede0;
+
+    /* The rail: deep midnight ink in both themes; the active item is marked, not filled. */
+    --pos-rail-bg: #0f1424;
+    --pos-rail-bg-2: #141a2e;
+    --pos-rail-text: #c5cad8;
+    --pos-rail-muted: #8b92a6;
+    --pos-rail-strong: #ffffff;
+    --pos-rail-hover: rgb(255 255 255 / 0.06);
+    --pos-rail-active: rgb(255 255 255 / 0.09);
+    --pos-rail-indicator: #9d96f2;
+    --pos-rail-line: rgb(255 255 255 / 0.08);
+    --pos-rail-badge: #c4314b;
+    --pos-rail-gold: #e2c48c;
+
+    /* States: identical across components */
+    --pos-state-hover: color-mix(in srgb, var(--pos-text) 4%, transparent);
+    --pos-state-pressed: color-mix(in srgb, var(--pos-text) 8%, transparent);
+    --pos-state-selected: var(--pos-primary-soft);
+    --pos-state-selected-text: var(--pos-primary-strong);
+    --pos-state-disabled: var(--pos-surface-muted);
+    --pos-focus: #574bc4;
+    --pos-focus-ring: 0 0 0 2px var(--pos-surface), 0 0 0 4px var(--pos-focus);
+
+    /* Typography: one scale, nothing below 12 px. Serif only for display and page titles. */
+    --pos-fs-caption: 12px;   --pos-lh-caption: 16px;
+    --pos-fs-meta: 13px;      --pos-lh-meta: 18px;
+    --pos-fs-body: 14px;      --pos-lh-body: 21px;
+    --pos-fs-lead: 16px;      --pos-lh-lead: 24px;
+    --pos-fs-section: 18px;   --pos-lh-section: 26px;
+    --pos-fs-metric: 22px;    --pos-lh-metric: 28px;
+    --pos-fs-title: 28px;     --pos-lh-title: 34px;
+    --pos-fs-display: 36px;   --pos-lh-display: 42px;
+    --pos-fw-regular: 400;
+    --pos-fw-medium: 500;
+    --pos-fw-semibold: 600;
+    --pos-tracking-label: 0.06em;
+
+    /* Shape: four radii and a pill */
+    --pos-radius-sm: 4px;
+    --pos-radius-md: 8px;
+    --pos-radius-lg: 12px;
+    --pos-radius-xl: 16px;
+    --pos-radius-pill: 999px;
+
+    /* Spacing (4 px grid), layout rhythm and density */
+    --pos-space-1: 4px;
+    --pos-space-2: 8px;
+    --pos-space-3: 12px;
+    --pos-space-4: 16px;
+    --pos-space-5: 20px;
+    --pos-space-6: 24px;
+    --pos-space-8: 32px;
+    --pos-space-10: 40px;
+    --pos-space-12: 48px;
+    --pos-space-16: 64px;
+    --pos-gutter: 24px;
+    --pos-section-gap: 32px;
+    --pos-card-pad: 20px;
+    --pos-row-pad-y: 10px;
+    --pos-gap: 16px;
+
+    /* Elevation: flat hairline, raised, floating (peek, menus), overlay (drawer, dialog) */
+    --pos-shadow-0: 0 0 0 1px var(--pos-border);
+    --pos-shadow-1: 0 1px 2px rgb(16 20 30 / 0.05), 0 0 0 1px var(--pos-border);
+    --pos-shadow-2: 0 10px 28px -10px rgb(16 20 30 / 0.20), 0 0 0 1px var(--pos-border);
+    --pos-shadow-3: 0 28px 64px -18px rgb(16 20 30 / 0.34), 0 0 0 1px var(--pos-border);
+
+    /* Motion: micro, small, medium, large; one standard and one emphasised easing */
+    --pos-ease: cubic-bezier(0.2, 0, 0, 1);
+    --pos-ease-emphasised: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --pos-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --pos-dur-1: 160ms;
+    --pos-dur-2: 220ms;
+    --pos-dur-3: 280ms;
+    --pos-dur-4: 360ms;
+    --pos-peek-delay: 350ms;
+
+    /* Layers */
+    --pos-z-sticky: 20;
+    --pos-z-nav: 40;
+    --pos-z-overlay: 60;
+    --pos-z-drawer: 61;
+    --pos-z-command: 62;
+    --pos-z-peek: 70;
+
+    /* Data visualisation (ordered, distinguishable, redefined for dark); identity first */
+    --pos-chart-1: #574bc4;
+    --pos-chart-2: #2a8f8c;
+    --pos-chart-3: #c9a25a;
+    --pos-chart-4: #c9506a;
+    --pos-chart-5: #5b6b8c;
+    --pos-chart-grid: var(--pos-border);
+
+
+    /*
+     * Breakpoints (Tailwind's, used consistently): phone < 768 px (bottom bar, sheets), tablet 768–1279 px
+     * (collapsed rail, two columns), desktop ≥ 1280 px (rail, workspace + side column).
+     */
+}
+
+/* Density: comfortable is the default; compact is for operators living in tables. */
+[data-pos-density='compact'] {
+    --pos-card-pad: 14px;
+    --pos-row-pad-y: 6px;
+    --pos-gap: 12px;
+    --pos-section-gap: 24px;
+}
+
+@media (max-width: 767px) {
+    :root { --pos-gutter: 16px; --pos-section-gap: 24px; --pos-card-pad: 16px; }
+}
+
+/* ------------------------------------------------------------------ 1b. Tokens: dark (designed, not inverted) */
+.dark {
+    color-scheme: dark;
+
+    /* Graphite surfaces; depth comes from surface steps and hairlines, not shadow. */
+    --pos-canvas: #0e0f13;
+    --pos-surface: #16181d;
+    --pos-surface-muted: #1c1f25;
+    --pos-surface-elevated: #20232a;
+    --pos-surface-sunken: #121418;
+    --pos-overlay: rgb(3 4 8 / 0.64);
+
+    --pos-border: #2a2e36;
+    --pos-border-strong: #3a3f49;
+
+    --pos-text: #ecedf1;
+    --pos-text-secondary: #b9bdc7;
+    --pos-text-muted: #8f95a2;
+    --pos-text-disabled: #5f6470;
+    --pos-text-inverse: #0e0f13;
+    --pos-on-fill: #0e0f13;
+
+    --pos-primary: #a39ef5;
+    --pos-primary-strong: #c1bdf8;
+    --pos-primary-soft: rgb(163 158 245 / 0.14);
+    --pos-accent: #e2b86b;
+    --pos-accent-soft: rgb(226 184 107 / 0.13);
+    --pos-gold: #e2b86b;
+
+    --pos-success: #4cc797;
+    --pos-success-soft: rgb(76 199 151 / 0.13);
+    --pos-warning: #f0b44c;
+    --pos-warning-soft: rgb(240 180 76 / 0.13);
+    --pos-danger: #f27b84;
+    --pos-danger-soft: rgb(242 123 132 / 0.13);
+    --pos-info: #72a5f2;
+    --pos-info-soft: rgb(114 165 242 / 0.13);
+
+    /* Category tones resolve to the dark semantic values (stated explicitly so dark mode is fully designed) */
+    --pos-tile-rose: var(--pos-danger);         --pos-tile-rose-bg: var(--pos-danger-soft);
+    --pos-tile-emerald: var(--pos-success);     --pos-tile-emerald-bg: var(--pos-success-soft);
+    --pos-tile-sky: var(--pos-info);            --pos-tile-sky-bg: var(--pos-info-soft);
+    --pos-tile-amber: var(--pos-warning);       --pos-tile-amber-bg: var(--pos-warning-soft);
+    --pos-tile-gold: var(--pos-accent);         --pos-tile-gold-bg: var(--pos-accent-soft);
+    --pos-tile-violet: var(--pos-text-secondary); --pos-tile-violet-bg: var(--pos-surface-muted);
+    --pos-tile-indigo: var(--pos-text-secondary); --pos-tile-indigo-bg: var(--pos-surface-muted);
+    --pos-tile-teal: var(--pos-text-secondary); --pos-tile-teal-bg: var(--pos-surface-muted);
+
+    --pos-avatar-0-fg: #b9bdc7;  --pos-avatar-0-bg: #262a32;
+    --pos-avatar-1-fg: #b4c3e6;  --pos-avatar-1-bg: rgb(114 140 200 / 0.18);
+    --pos-avatar-2-fg: #ecb3c0;  --pos-avatar-2-bg: rgb(220 120 145 / 0.16);
+    --pos-avatar-3-fg: #a3d6bf;  --pos-avatar-3-bg: rgb(90 175 140 / 0.16);
+    --pos-avatar-4-fg: #e6cf9f;  --pos-avatar-4-bg: rgb(210 175 105 / 0.16);
+
+    --pos-rail-bg: #0a0b0e;
+    --pos-rail-bg-2: #0f1116;
+    --pos-rail-indicator: #a39ef5;
+
+    --pos-state-hover: color-mix(in srgb, var(--pos-text) 5%, transparent);
+    --pos-state-pressed: color-mix(in srgb, var(--pos-text) 9%, transparent);
+    --pos-focus: #c1bdf8;
+
+    --pos-shadow-0: 0 0 0 1px var(--pos-border);
+    --pos-shadow-1: 0 0 0 1px var(--pos-border);
+    --pos-shadow-2: 0 14px 32px -14px rgb(0 0 0 / 0.7), 0 0 0 1px var(--pos-border-strong);
+    --pos-shadow-3: 0 32px 72px -18px rgb(0 0 0 / 0.8), 0 0 0 1px var(--pos-border-strong);
+
+    --pos-chart-1: #a39ef5;
+    --pos-chart-2: #5cc4c0;
+    --pos-chart-3: #e2b86b;
+    --pos-chart-4: #ef8aa0;
+    --pos-chart-5: #9aa9c9;
+
+}
+
+/* ------------------------------------------------------------------ 2. Base */
+html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.fi-body {
+    background: var(--pos-canvas);
+    color: var(--pos-text);
+    font-size: var(--pos-fs-body);
+    line-height: var(--pos-lh-body);
+    font-feature-settings: 'ss01', 'cv11';
+}
+
+:where(.fi-body) :focus-visible {
+    outline: 2px solid var(--pos-focus);
+    outline-offset: 2px;
+    border-radius: var(--pos-radius-sm);
+}
+
+.pos-skip-link {
+    position: fixed;
+    left: 12px;
+    top: -60px;
+    z-index: 100;
+    padding: var(--pos-space-2) var(--pos-space-4);
+    border-radius: var(--pos-radius-md);
+    background: var(--pos-primary);
+    color: var(--pos-on-fill);
+    font-weight: var(--pos-fw-semibold);
+    transition: top var(--pos-dur-2) var(--pos-ease);
+}
+
+.pos-skip-link:focus {
+    top: 12px;
+}
+
+/* Filament 5.8 adds its own skip link right after ours; one is enough for keyboard users */
+.fi-skip-link {
+    display: none;
+}
+
+.pos-num {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ 3. Filament presentation overrides (the PeopleOS shell) */
+
+/* Context rail: deep navy, light labels, a bright active pill (both themes) */
+.fi-sidebar {
+    background: linear-gradient(180deg, var(--pos-rail-bg) 0%, var(--pos-rail-bg-2) 100%) !important;
+    border-inline-end: 0;
+}
+
+.fi-sidebar-header {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 0 !important;
+}
+
+.fi-sidebar-nav {
+    padding-inline: 12px;
+    gap: 2px;
+}
+
+.fi-sidebar-item-btn {
+    border-radius: var(--pos-radius-md) !important;
+    padding-block: 9px !important;
+    transition: background var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease);
+}
+
+.fi-sidebar .fi-sidebar-item-btn:hover { background: var(--pos-rail-hover) !important; }
+.fi-sidebar .fi-sidebar-item-label { font-weight: 500; color: var(--pos-rail-text) !important; }
+.fi-sidebar .fi-sidebar-item-btn > .fi-icon, .fi-sidebar .fi-sidebar-item-icon { color: var(--pos-rail-muted) !important; }
+/* The active section is marked by an indicator, not filled with colour */
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    background: var(--pos-rail-active) !important;
+    box-shadow: inset 3px 0 0 var(--pos-rail-indicator);
+}
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-label { color: var(--pos-rail-strong) !important; font-weight: var(--pos-fw-semibold); }
+.fi-sidebar .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-icon { color: var(--pos-rail-indicator) !important; }
+.fi-sidebar .fi-sidebar-item-has-active-child-items > .fi-sidebar-item-btn { background: var(--pos-rail-hover) !important; }
+.fi-sidebar .fi-sidebar-item-has-active-child-items > .fi-sidebar-item-btn .fi-sidebar-item-label { color: var(--pos-rail-strong) !important; }
+.fi-sidebar .fi-sidebar-item-grouped-border > * { background: var(--pos-rail-line) !important; }
+.fi-sidebar .fi-sidebar-item .fi-sidebar-item .fi-sidebar-item-btn { padding-block: 6px !important; }
+.fi-sidebar .fi-sidebar-item .fi-sidebar-item.fi-active > .fi-sidebar-item-btn { background: var(--pos-rail-active) !important; box-shadow: none; }
+.fi-sidebar .fi-badge { background: var(--pos-rail-badge) !important; color: var(--pos-rail-strong) !important; --tw-ring-color: transparent !important; }
+.fi-sidebar .fi-sidebar-group-label { color: var(--pos-rail-muted); }
+.fi-sidebar-close-collapse-sidebar-btn, .fi-sidebar .fi-icon-btn { color: var(--pos-rail-muted) !important; }
+
+.fi-sidebar-group-label {
+    font-size: var(--pos-fs-caption);
+    letter-spacing: var(--pos-tracking-label);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+/* Top bar: the canvas, with the command center at its centre; the logo sits on the navy rail */
+.fi-topbar {
+    background: color-mix(in srgb, var(--pos-canvas) 88%, transparent) !important;
+    backdrop-filter: saturate(140%) blur(10px);
+    border-bottom: 1px solid var(--pos-border);
+    box-shadow: none !important;
+}
+
+.fi-topbar-ctn {
+    box-shadow: none !important;
+}
+
+.fi-topbar-end { flex: 1; justify-content: flex-end; }
+
+@media (min-width: 1024px) {
+    .fi-body-has-navigation .fi-topbar { position: relative; }
+    .fi-body-has-navigation .fi-topbar-start { position: relative; z-index: 1; min-width: calc(var(--sidebar-width, 16rem) - 1rem); }
+    .fi-body-has-navigation .fi-topbar::before {
+        content: '';
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        width: var(--sidebar-width, 16rem);
+        background: var(--pos-rail-bg);
+    }
+    .fi-body-has-navigation .fi-topbar .pos-brand-word { color: var(--pos-rail-strong); }
+    .fi-body-has-navigation .fi-topbar .pos-brand-word span { color: var(--pos-rail-gold); }
+    .fi-body-has-navigation .fi-topbar .pos-brand-tag { color: var(--pos-rail-muted); }
+    .fi-body-has-navigation .fi-topbar .fi-topbar-collapse-sidebar-btn-ctn .fi-icon-btn { color: var(--pos-rail-muted); }
+    .fi-body-has-navigation:has(.fi-sidebar:not(.fi-sidebar-open)) .fi-topbar::before { width: var(--collapsed-sidebar-width, 4.5rem); }
+}
+
+.fi-main {
+    padding-top: 8px;
+}
+
+/* Page header: editorial heading, calm subheading */
+.fi-header-heading {
+    font-family: var(--font-display);
+    font-weight: var(--pos-fw-regular);
+    font-size: var(--pos-fs-title);
+    letter-spacing: -0.01em;
+    line-height: var(--pos-lh-title);
+    color: var(--pos-text);
+}
+
+.fi-header-subheading {
+    color: var(--pos-text-secondary);
+    font-size: var(--pos-fs-body);
+    line-height: var(--pos-lh-body);
+}
+
+/* Sections and cards: flat, hairline, no heavy rings */
+.fi-section {
+    border-radius: var(--pos-radius-lg) !important;
+    background: var(--pos-surface) !important;
+    box-shadow: var(--pos-shadow-1) !important;
+    --tw-ring-color: transparent !important;
+}
+
+.fi-section .fi-section-header-heading {
+    font-weight: 600;
+    letter-spacing: -0.005em;
+}
+
+/* Tables: sticky header, quiet chrome, density-aware rows */
+.fi-ta-ctn {
+    border-radius: var(--pos-radius-lg) !important;
+    box-shadow: var(--pos-shadow-1) !important;
+    --tw-ring-color: transparent !important;
+    background: var(--pos-surface) !important;
+}
+
+.fi-ta-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.fi-ta-header-cell {
+    background: var(--pos-surface-muted) !important;
+    font-size: var(--pos-fs-caption) !important;
+    text-transform: uppercase;
+    letter-spacing: var(--pos-tracking-label);
+    color: var(--pos-text-muted) !important;
+}
+
+.fi-ta-row {
+    transition: background var(--pos-dur-1) var(--pos-ease);
+}
+
+.fi-ta-row:hover {
+    background: var(--pos-state-hover) !important;
+}
+
+[data-pos-density='compact'] .fi-ta-cell > * {
+    padding-block: var(--pos-row-pad-y) !important;
+}
+
+/* Buttons and inputs: precise, tactile */
+.fi-btn {
+    border-radius: var(--pos-radius-md) !important;
+    font-weight: var(--pos-fw-semibold) !important;
+    transition: transform var(--pos-dur-1) var(--pos-ease), box-shadow var(--pos-dur-1) var(--pos-ease), background var(--pos-dur-1) var(--pos-ease);
+}
+
+.fi-btn:active {
+    transform: translateY(1px) scale(0.99);
+}
+
+.fi-input-wrp {
+    border-radius: var(--pos-radius-md) !important;
+}
+
+.fi-badge {
+    border-radius: var(--pos-radius-pill) !important;
+    font-weight: 600 !important;
+}
+
+.fi-modal-window {
+    border-radius: var(--pos-radius-xl) !important;
+    box-shadow: var(--pos-shadow-3) !important;
+}
+
+/* ------------------------------------------------------------------ 4. PeopleOS component layer */
+@layer components {
+    .pos-surface {
+        background: var(--pos-surface);
+        border-radius: var(--pos-radius-lg);
+        box-shadow: var(--pos-shadow-1);
+    }
+
+    .pos-card {
+        background: var(--pos-surface);
+        border-radius: var(--pos-radius-lg);
+        box-shadow: var(--pos-shadow-1);
+        padding: var(--pos-card-pad);
+    }
+
+    .pos-card-interactive {
+        transition: box-shadow var(--pos-dur-2) var(--pos-ease), transform var(--pos-dur-2) var(--pos-ease);
+    }
+
+    .pos-card-interactive:hover {
+        box-shadow: var(--pos-shadow-2);
+        transform: translateY(-1px);
+    }
+
+    .pos-well {
+        background: var(--pos-surface-muted);
+        border-radius: var(--pos-radius-md);
+    }
+
+    .pos-hairline {
+        border-color: var(--pos-border);
+    }
+
+    /* Typography scale */
+    .pos-display {
+        font-family: var(--font-display);
+        font-weight: 400;
+        font-size: var(--pos-fs-display);
+        line-height: 1.08;
+        letter-spacing: -0.015em;
+        color: var(--pos-text);
+    }
+
+    .pos-h1 {
+        font-size: var(--pos-fs-metric);
+        line-height: 1.25;
+        font-weight: 600;
+        letter-spacing: -0.012em;
+    }
+
+    .pos-h2 {
+        font-size: var(--pos-fs-section);
+        line-height: 1.3;
+        font-weight: 600;
+        letter-spacing: -0.008em;
+    }
+
+    .pos-h3 {
+        font-size: var(--pos-fs-lead);
+        line-height: 1.4;
+        font-weight: 600;
+    }
+
+    .pos-body {
+        font-size: var(--pos-fs-body);
+        line-height: 1.6;
+    }
+
+    .pos-body-sm {
+        font-size: var(--pos-fs-meta);
+        line-height: var(--pos-lh-meta);
+        color: var(--pos-text-secondary);
+    }
+
+    /* Caption: small supporting text. Label: the overline that names a block. */
+    .pos-caption {
+        font-size: var(--pos-fs-meta);
+        line-height: 1.45;
+        color: var(--pos-text-muted);
+    }
+
+    .pos-label {
+        font-size: var(--pos-fs-caption);
+        line-height: 1.4;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: var(--pos-text-muted);
+    }
+
+    .pos-metric {
+        font-size: var(--pos-fs-metric);
+        line-height: 1.1;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pos-metric-lg {
+        font-family: var(--font-display);
+        font-size: var(--pos-fs-display);
+        line-height: 1;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pos-muted {
+        color: var(--pos-text-muted);
+    }
+
+    .pos-secondary {
+        color: var(--pos-text-secondary);
+    }
+
+    /* Status chips: icon + label, never colour alone */
+    .pos-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 10px 2px 8px;
+        border-radius: var(--pos-radius-pill);
+        font-size: var(--pos-fs-meta);
+        font-weight: 600;
+        line-height: 20px;
+        white-space: nowrap;
+    }
+
+    .pos-status-neutral { background: var(--pos-surface-muted); color: var(--pos-text-secondary); }
+    .pos-status-primary { background: var(--pos-primary-soft); color: var(--pos-primary); }
+    .pos-status-success { background: var(--pos-success-soft); color: var(--pos-success); }
+    .pos-status-warning { background: var(--pos-warning-soft); color: var(--pos-warning); }
+    .pos-status-danger { background: var(--pos-danger-soft); color: var(--pos-danger); }
+    .pos-status-info { background: var(--pos-info-soft); color: var(--pos-info); }
+    .pos-status-accent { background: var(--pos-accent-soft); color: var(--pos-accent); }
+
+    .pos-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: var(--pos-radius-pill);
+        background: currentColor;
+        flex: none;
+    }
+
+    /* Avatar: initials on a deterministic, calm tint */
+    .pos-avatar {
+        display: inline-grid;
+        place-items: center;
+        flex: none;
+        border-radius: var(--pos-radius-pill);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: var(--pos-avatar-0-fg);
+        background: var(--pos-avatar-0-bg);
+    }
+
+    .pos-avatar[data-tone='1'] { color: var(--pos-avatar-1-fg); background: var(--pos-avatar-1-bg); }
+    .pos-avatar[data-tone='2'] { color: var(--pos-avatar-2-fg); background: var(--pos-avatar-2-bg); }
+    .pos-avatar[data-tone='3'] { color: var(--pos-avatar-3-fg); background: var(--pos-avatar-3-bg); }
+    .pos-avatar[data-tone='4'] { color: var(--pos-avatar-4-fg); background: var(--pos-avatar-4-bg); }
+
+    /* Buttons (for PeopleOS surfaces outside Filament actions) */
+    .pos-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 36px;
+        padding: 0 14px;
+        border-radius: var(--pos-radius-md);
+        font-size: var(--pos-fs-body);
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        transition: background var(--pos-dur-1) var(--pos-ease), box-shadow var(--pos-dur-1) var(--pos-ease), transform var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease);
+        white-space: nowrap;
+    }
+
+    .pos-btn:active { transform: translateY(1px) scale(0.99); }
+    .pos-btn[disabled], .pos-btn[aria-disabled='true'] { background: var(--pos-state-disabled); color: var(--pos-text-disabled); box-shadow: none; pointer-events: none; }
+
+    .pos-btn-primary { background: var(--pos-primary); color: var(--pos-on-fill); }
+    .pos-btn-primary:hover { background: var(--pos-primary-strong); }
+
+    .pos-btn-secondary { background: var(--pos-surface); color: var(--pos-text); box-shadow: inset 0 0 0 1px var(--pos-border-strong); }
+    .pos-btn-secondary:hover { background: var(--pos-surface-muted); }
+
+    .pos-btn-ghost { background: transparent; color: var(--pos-text-secondary); }
+    .pos-btn-ghost:hover { background: var(--pos-surface-muted); color: var(--pos-text); }
+
+    .pos-btn-danger { background: var(--pos-danger); color: var(--pos-on-fill); }
+    .pos-btn-success { background: var(--pos-success); color: var(--pos-on-fill); }
+
+    .pos-btn-sm { height: 32px; padding: 0 12px; font-size: var(--pos-fs-meta); }
+
+    .pos-kbd {
+        display: inline-flex;
+        align-items: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: var(--pos-radius-sm);
+        font: var(--pos-fw-semibold) var(--pos-fs-caption)/1 var(--font-sans);
+        color: var(--pos-text-muted);
+        background: var(--pos-surface);
+        box-shadow: inset 0 0 0 1px var(--pos-border-strong), 0 1px 0 var(--pos-border-strong);
+    }
+
+    /* Command trigger in the top bar */
+    .pos-command-trigger {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: min(520px, 46vw);
+        height: 38px;
+        padding: 0 8px 0 12px;
+        border-radius: var(--pos-radius-md);
+        background: var(--pos-surface);
+        color: var(--pos-text-muted);
+        box-shadow: inset 0 0 0 1px var(--pos-border);
+        font-size: var(--pos-fs-body);
+        transition: box-shadow var(--pos-dur-1) var(--pos-ease);
+    }
+
+    .pos-command-trigger:hover { box-shadow: inset 0 0 0 1px var(--pos-border-strong), var(--pos-shadow-1); }
+
+    /* Overlay surfaces: drawers, sheets, command center */
+    .pos-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--pos-overlay);
+        z-index: 60;
+    }
+
+    .pos-drawer {
+        position: fixed;
+        inset-block: 0;
+        inset-inline-end: 0;
+        z-index: 61;
+        width: min(560px, 100vw);
+        display: flex;
+        flex-direction: column;
+        background: var(--pos-surface);
+        box-shadow: var(--pos-shadow-3);
+        border-start-start-radius: var(--pos-radius-xl);
+        border-end-start-radius: var(--pos-radius-xl);
+        outline: none;
+    }
+
+    .pos-drawer-wide { width: min(760px, 100vw); }
+
+    .pos-drawer-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--pos-border);
+    }
+
+    .pos-drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        overscroll-behavior: contain;
+    }
+
+    .pos-drawer-footer {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        padding: 14px 20px;
+        border-top: 1px solid var(--pos-border);
+        background: var(--pos-surface);
+    }
+
+    .pos-command {
+        position: fixed;
+        z-index: 62;
+        top: min(14vh, 120px);
+        left: 50%;
+        width: min(720px, calc(100vw - 24px));
+        transform: translateX(-50%);
+        background: var(--pos-surface-elevated);
+        border-radius: var(--pos-radius-xl);
+        box-shadow: var(--pos-shadow-3);
+        overflow: hidden;
+    }
+
+    .pos-command-input {
+        width: 100%;
+        border: 0;
+        outline: none;
+        background: transparent;
+        font-size: var(--pos-fs-lead);
+        color: var(--pos-text);
+        padding: 16px 0;
+    }
+
+    .pos-command-input::placeholder { color: var(--pos-text-muted); }
+
+    .pos-command-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 9px 12px;
+        border-radius: var(--pos-radius-md);
+        text-align: left;
+        color: var(--pos-text);
+    }
+
+    .pos-command-item[aria-selected='true'] { background: var(--pos-primary-soft); }
+    .pos-command-item[aria-selected='true'] .pos-command-hint { opacity: 1; }
+    .pos-command-item[aria-selected='true'] .pos-command-verb, .pos-command-item[aria-selected='true'] .pos-command-sub { color: var(--pos-text-secondary); }
+    .pos-command-hint { opacity: 0; transition: opacity var(--pos-dur-1) var(--pos-ease); }
+
+    /* Timelines and journeys */
+    .pos-timeline { position: relative; }
+    .pos-timeline::before {
+        content: '';
+        position: absolute;
+        inset-block: 6px;
+        inset-inline-start: 7px;
+        width: 2px;
+        background: var(--pos-border);
+        border-radius: var(--pos-radius-sm);
+    }
+
+    .pos-timeline-node {
+        position: relative;
+        width: 16px;
+        height: 16px;
+        border-radius: var(--pos-radius-pill);
+        background: var(--pos-surface);
+        box-shadow: inset 0 0 0 2px var(--pos-border-strong);
+        flex: none;
+    }
+
+    .pos-journey-stage {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        min-width: 84px;
+        flex: 1;
+        text-align: center;
+        cursor: pointer;
+        color: var(--pos-text-muted);
+    }
+
+    .pos-journey-stage::before {
+        content: '';
+        position: absolute;
+        top: 11px;
+        inset-inline-start: calc(-50% + 14px);
+        width: calc(100% - 28px);
+        height: 2px;
+        background: var(--pos-border);
+    }
+
+    .pos-journey-stage:first-child::before { display: none; }
+    .pos-journey-stage[data-state='done']::before,
+    .pos-journey-stage[data-state='current']::before { background: var(--pos-primary); }
+
+    .pos-journey-dot {
+        position: relative;
+        z-index: 1;
+        width: 24px;
+        height: 24px;
+        border-radius: var(--pos-radius-pill);
+        display: grid;
+        place-items: center;
+        background: var(--pos-surface);
+        box-shadow: inset 0 0 0 2px var(--pos-border-strong);
+        transition: transform var(--pos-dur-2) var(--pos-ease), box-shadow var(--pos-dur-2) var(--pos-ease);
+    }
+
+    .pos-journey-stage[data-state='done'] .pos-journey-dot { background: var(--pos-primary); box-shadow: none; color: var(--pos-text-inverse); }
+    .pos-journey-stage[data-state='current'] .pos-journey-dot {
+        background: var(--pos-surface);
+        box-shadow: inset 0 0 0 2px var(--pos-primary), 0 0 0 6px var(--pos-primary-soft);
+    }
+    .pos-journey-stage[data-state='current'] { color: var(--pos-text); font-weight: 600; }
+    .pos-journey-stage:hover .pos-journey-dot { transform: scale(1.1); }
+    .pos-journey-stage[aria-pressed='true'] .pos-journey-label { text-decoration: underline; text-underline-offset: 4px; }
+
+    /* Before → after */
+    .pos-ba {
+        border-radius: var(--pos-radius-md);
+        background: var(--pos-surface-muted);
+        padding: 12px 14px;
+    }
+
+    .pos-ba-rows { display: grid; gap: 6px; margin-top: 6px; }
+    .pos-ba-row { display: grid; grid-template-columns: minmax(96px, 34%) 1fr; gap: 12px; align-items: baseline; }
+    .pos-ba-values { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
+    .pos-ba-before { color: var(--pos-text-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--pos-text-muted) 55%, transparent); }
+    .pos-ba-arrow { color: var(--pos-text-muted); }
+    .pos-ba-after { font-weight: 600; color: var(--pos-text); background: var(--pos-primary-soft); border-radius: var(--pos-radius-sm); padding: 0 6px; }
+    .pos-ba-changed { font-weight: 600; color: var(--pos-primary); }
+
+    /* Insight / attention rows */
+    .pos-attention {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 14px;
+        border-radius: var(--pos-radius-md);
+        transition: background var(--pos-dur-1) var(--pos-ease);
+    }
+
+    .pos-attention:hover { background: var(--pos-state-hover); }
+
+    .pos-icon-tile {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--pos-radius-md);
+        flex: none;
+    }
+
+    /* Tabs used by workspaces */
+    .pos-tabs {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        border-radius: var(--pos-radius-md);
+        background: var(--pos-surface-muted);
+        width: max-content;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .pos-tab {
+        padding: 6px 12px;
+        border-radius: var(--pos-radius-md);
+        font-size: var(--pos-fs-body);
+        font-weight: 600;
+        color: var(--pos-text-secondary);
+        white-space: nowrap;
+        transition: background var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease);
+    }
+
+    .pos-tab[aria-selected='true'], .pos-tab[aria-current='page'] {
+        background: var(--pos-surface);
+        color: var(--pos-text);
+        box-shadow: var(--pos-shadow-1);
+    }
+
+    /* Skeletons that mirror the final layout */
+    .pos-skeleton {
+        position: relative;
+        overflow: hidden;
+        background: var(--pos-surface-muted);
+        border-radius: var(--pos-radius-sm);
+    }
+
+    .pos-skeleton::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        transform: translateX(-100%);
+        background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--pos-surface) 60%, transparent), transparent);
+        animation: pos-shimmer 1.4s var(--pos-ease) infinite;
+    }
+
+    /* Mobile bottom navigation */
+    .pos-bottom-nav {
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        z-index: 40;
+        display: grid;
+        grid-auto-columns: 1fr;
+        grid-auto-flow: column;
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+        background: color-mix(in srgb, var(--pos-surface) 94%, transparent);
+        backdrop-filter: blur(12px);
+        border-top: 1px solid var(--pos-border);
+    }
+
+    .pos-bottom-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        min-height: 48px;
+        padding: 6px 0 4px;
+        border-radius: var(--pos-radius-md);
+        font-size: var(--pos-fs-caption);
+        font-weight: 600;
+        color: var(--pos-text-muted);
+    }
+
+    .pos-bottom-item[aria-current='page'] { color: var(--pos-state-selected-text); }
+    .pos-bottom-item[aria-current='page'] > span:first-child::after { content: ''; position: absolute; inset-inline: -10px; bottom: -4px; height: 3px; border-radius: var(--pos-radius-pill); background: var(--pos-primary); }
+    .pos-bottom-action { color: var(--pos-text); }
+    .pos-bottom-action-icon { display: grid; place-items: center; width: 40px; height: 32px; border-radius: var(--pos-radius-pill); background: var(--pos-primary); color: var(--pos-on-fill); }
+
+    .pos-bottom-badge {
+        position: absolute;
+        top: -4px;
+        inset-inline-end: -10px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: var(--pos-radius-pill);
+        background: var(--pos-danger);
+        color: var(--pos-on-fill);
+        font-size: var(--pos-fs-caption);
+        line-height: 18px;
+        text-align: center;
+    }
+
+    @media (min-width: 1024px) {
+        .pos-bottom-nav { display: none; }
+    }
+
+    /* Charts */
+    .pos-spark-fig { color: var(--pos-chart-1); }
+    .pos-spark { display: block; width: 100%; height: 56px; overflow: visible; }
+    .pos-spark-area { fill: color-mix(in srgb, var(--pos-chart-1) 14%, transparent); stroke: none; }
+    .pos-chart-axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: var(--pos-fs-caption); color: var(--pos-text-muted); }
+}
+
+/* ------------------------------------------------------------------ 4b. Shell, workspaces and signature components */
+@layer components {
+    /* Brand */
+    .pos-brand { display: inline-flex; align-items: center; gap: 10px; }
+    .pos-brand-mark { width: 32px; height: 32px; flex: none; }
+    .pos-brand-text { display: flex; flex-direction: column; line-height: 1; }
+    .pos-brand-word { font-family: var(--font-display); font-size: var(--pos-fs-metric); line-height: 1; letter-spacing: -0.01em; color: var(--pos-text); }
+    .pos-brand-word span { color: var(--pos-primary); }
+    .pos-brand-tag { display: none; }
+
+    /* Top bar: command trigger and quick launch */
+    .pos-command-trigger { margin-inline: auto; cursor: text; border-radius: var(--pos-radius-lg); }
+    .pos-command-trigger-label { flex: 1; text-align: start; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .pos-quick-launch { margin-inline-end: 6px; }
+    @media (max-width: 767px) {
+        .pos-command-trigger { width: 40px; padding: 0; justify-content: center; margin-inline-start: 8px; }
+        .pos-command-trigger-label, .pos-command-trigger .pos-kbd { display: none; }
+        .pos-quick-launch-label { display: none; }
+        .pos-quick-launch { width: 34px; padding: 0; justify-content: center; }
+        .pos-quick-launch svg { flex-shrink: 0; }
+    }
+
+    /* Rail footer: a compact "Ask PeopleOS" entry (the assistant explains; it never decides) */
+    .pos-rail-ai { display: flex; align-items: center; gap: var(--pos-space-3); width: calc(100% - var(--pos-space-2)); margin: var(--pos-space-2) var(--pos-space-1) var(--pos-space-1); padding: var(--pos-space-2) var(--pos-space-3); border-radius: var(--pos-radius-md); box-shadow: inset 0 0 0 1px var(--pos-rail-line); text-align: start; }
+    .pos-rail-ai:hover { background: var(--pos-rail-hover); }
+    .pos-rail-ai-orb { display: block; width: 20px; height: 20px; flex: none; border-radius: var(--pos-radius-pill); background: conic-gradient(from 200deg, var(--pos-rail-gold), var(--pos-rail-indicator), var(--pos-rail-gold)); -webkit-mask: radial-gradient(circle, transparent 46%, #000 48%); mask: radial-gradient(circle, transparent 46%, #000 48%); }
+    .pos-rail-ai-title { font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); color: var(--pos-rail-strong); }
+    .pos-rail-ai-text { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-rail-muted); }
+
+    /* Context rail extras: pinned people and recent items */
+    .pos-rail { margin: var(--pos-space-4) var(--pos-space-1) var(--pos-space-2); padding-top: var(--pos-space-3); border-top: 1px solid var(--pos-rail-line); }
+    .pos-rail-label { padding: 0 10px 6px; font-size: var(--pos-fs-caption); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; font-weight: 600; color: var(--pos-rail-muted); }
+    .pos-rail-list { display: grid; gap: 1px; margin-bottom: 12px; }
+    .pos-rail-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-body); color: var(--pos-rail-text); text-align: start; }
+    .pos-rail-item:hover { background: var(--pos-rail-hover); color: var(--pos-rail-strong); }
+    .pos-rail-dot { width: 6px; height: 6px; border-radius: var(--pos-radius-pill); background: var(--pos-rail-muted); flex: none; margin-inline: 5px; }
+
+    /* Space bar: the modules of the current area, one click away */
+    .pos-spacebar { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; padding: 6px; border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-1); max-width: 100%; }
+    .pos-spacebar-title { flex: none; padding-inline: 8px; font-size: var(--pos-fs-meta); font-weight: 600; color: var(--pos-text-muted); white-space: nowrap; }
+    .pos-spacebar-scroll { display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 92%, transparent); }
+    .pos-spacebar-scroll::-webkit-scrollbar { display: none; }
+    .pos-spacebar-group { flex: none; margin-inline: 10px 2px; font-size: var(--pos-fs-caption); letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: var(--pos-text-muted); }
+    .pos-spacebar-group:first-child { margin-inline-start: 0; }
+    .pos-spacebar-link { flex: none; padding: 6px 10px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-body); font-weight: 500; color: var(--pos-text-secondary); white-space: nowrap; }
+    .pos-spacebar-link:hover { background: var(--pos-surface-muted); color: var(--pos-text); }
+    .pos-spacebar-link[aria-current='page'] { background: var(--pos-primary-soft); color: var(--pos-primary); font-weight: 600; }
+    .pos-spacebar-more-wrap { position: relative; flex: none; margin-inline-start: auto; }
+    .pos-spacebar-more { display: inline-flex; align-items: center; gap: var(--pos-space-1); height: 32px; padding: 0 var(--pos-space-3); border-radius: var(--pos-radius-md); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-text-secondary); white-space: nowrap; }
+    .pos-spacebar-more:hover, .pos-spacebar-more[aria-expanded='true'] { background: var(--pos-state-hover); color: var(--pos-text); }
+    /* "All in {area}": an in-flow disclosure below the bar (it pushes content down; nothing is covered) */
+    .pos-spacebar-menu { margin-bottom: var(--pos-space-3); padding: var(--pos-space-4); border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-1); }
+    .pos-spacebar-find { max-width: none; margin-bottom: var(--pos-space-3); }
+    .pos-spacebar-groups { display: grid; gap: var(--pos-space-4) var(--pos-space-6); grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+    .pos-spacebar-mgroup ul { display: grid; gap: 2px; margin-top: var(--pos-space-1); }
+    @media (max-width: 767px) { .pos-spacebar-title { display: none; } }
+
+    /* Generic building blocks */
+    .pos-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .pos-link { font-size: var(--pos-fs-body); font-weight: 600; color: var(--pos-primary); text-underline-offset: 3px; }
+    .pos-link:hover { text-decoration: underline; }
+    .pos-list { display: grid; gap: 2px; }
+    .pos-list-row { display: flex; align-items: center; gap: 12px; padding: var(--pos-row-pad-y) 10px; border-radius: var(--pos-radius-md); }
+    .pos-list-row[data-focused] { background: var(--pos-primary-soft); outline: none; }
+    .pos-count { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; margin-inline-start: 4px; border-radius: var(--pos-radius-pill); background: var(--pos-surface-muted); color: var(--pos-text-secondary); font-size: var(--pos-fs-caption); font-weight: 600; font-variant-numeric: tabular-nums; vertical-align: 1px; }
+    .pos-count[data-tone='danger'] { background: var(--pos-danger-soft); color: var(--pos-danger); }
+    .pos-severity { width: 4px; align-self: stretch; min-height: 32px; border-radius: var(--pos-radius-sm); background: var(--pos-border-strong); flex: none; }
+    .pos-attention[data-severity='danger'] .pos-severity { background: var(--pos-danger); }
+    .pos-attention[data-severity='warning'] .pos-severity { background: var(--pos-warning); }
+    .pos-attention[data-severity='info'] .pos-severity { background: var(--pos-info); }
+    .pos-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pos-chip { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); font-weight: 600; color: var(--pos-text-secondary); box-shadow: inset 0 0 0 1px var(--pos-border); background: var(--pos-surface); transition: background var(--pos-dur-1) var(--pos-ease); }
+    .pos-chip:hover { background: var(--pos-surface-muted); }
+    .pos-chip[aria-pressed='true'], .pos-chip[aria-selected='true'] { background: var(--pos-state-selected); color: var(--pos-state-selected-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 30%, transparent); }
+    .pos-inline-callout { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--pos-radius-md); background: var(--pos-primary-soft); color: var(--pos-primary); font-size: var(--pos-fs-body); font-weight: 600; text-align: start; transition: filter var(--pos-dur-1) var(--pos-ease); }
+    .pos-inline-callout:hover { filter: brightness(0.97); }
+    .pos-icon-btn { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: var(--pos-radius-md); color: var(--pos-text-secondary); }
+    .pos-icon-btn:hover { background: var(--pos-surface-muted); color: var(--pos-text); }
+    .pos-icon-tile { background: var(--pos-surface-muted); color: var(--pos-text-secondary); }
+    .pos-quote { margin: 0; padding: 8px 12px; border-inline-start: 3px solid var(--pos-border-strong); background: var(--pos-surface-muted); border-radius: 0 var(--pos-radius-sm) var(--pos-radius-sm) 0; font-size: var(--pos-fs-body); color: var(--pos-text-secondary); }
+    .pos-meter { height: 6px; border-radius: var(--pos-radius-pill); background: var(--pos-surface-muted); overflow: hidden; }
+    .pos-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--pos-primary); transition: width var(--pos-dur-4) var(--pos-ease); }
+    .pos-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 16px; text-align: center; max-width: 440px; margin-inline: auto; }
+    .pos-empty .pos-icon-tile { background: var(--pos-surface-muted); color: var(--pos-text-muted); }
+    .pos-check-lg { width: 48px; height: 48px; stroke: var(--pos-success); stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .pos-done { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 40px 12px; }
+    .pos-facts { display: grid; gap: 12px; }
+    .pos-facts > div { display: grid; grid-template-columns: 120px 1fr; gap: 12px; align-items: baseline; }
+    .pos-facts dt { font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
+    .pos-facts dd { font-size: var(--pos-fs-body); color: var(--pos-text); min-width: 0; overflow-wrap: anywhere; }
+    .pos-person-inline { display: inline-flex; align-items: center; gap: 8px; border-radius: var(--pos-radius-pill); padding: 2px 8px 2px 2px; font-size: var(--pos-fs-body); font-weight: 500; color: var(--pos-text); }
+    .pos-person-inline:hover { background: var(--pos-surface-muted); }
+    .pos-textarea { display: block; width: 100%; margin-top: 6px; padding: 8px 10px; border-radius: var(--pos-radius-md); border: 0; box-shadow: inset 0 0 0 1px var(--pos-border-strong); background: var(--pos-surface); color: var(--pos-text); font-size: var(--pos-fs-body); resize: vertical; }
+    .pos-textarea:focus { outline: 2px solid var(--pos-focus); outline-offset: 0; }
+    .pos-spinner { width: 16px; height: 16px; border-radius: var(--pos-radius-pill); border: 2px solid var(--pos-border-strong); border-top-color: var(--pos-primary); animation: pos-spin 700ms linear infinite; flex: none; }
+
+    /* Avatars: sizes */
+    .pos-avatar { width: 36px; height: 36px; font-size: var(--pos-fs-meta); overflow: hidden; }
+    .pos-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .pos-avatar-xs { width: 22px; height: 22px; font-size: var(--pos-fs-caption); }
+    .pos-avatar-sm { width: 30px; height: 30px; font-size: var(--pos-fs-caption); }
+    .pos-avatar-lg { width: 52px; height: 52px; font-size: var(--pos-fs-lead); }
+    .pos-avatar-xl { width: 64px; height: 64px; font-size: var(--pos-fs-section); }
+
+    /* Home */
+    .pos-lens { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -6px; }
+    .pos-lens-chip { height: 30px; padding: 0 12px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); font-weight: 600; color: var(--pos-text-secondary); box-shadow: inset 0 0 0 1px var(--pos-border); background: var(--pos-surface); transition: background var(--pos-dur-1) var(--pos-ease); }
+    .pos-lens-chip[aria-pressed='true'] { background: var(--pos-state-selected); color: var(--pos-state-selected-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 30%, transparent); }
+    @media (min-width: 1100px) { .pos-home-grid { grid-template-columns: minmax(0, 1fr) 360px; } }
+    @media (max-width: 1099px) { .pos-home-side { order: -1; } }
+    .pos-people-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pos-person-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 220px; padding: 4px 10px 4px 4px; border-radius: var(--pos-radius-pill); box-shadow: inset 0 0 0 1px var(--pos-border); font-size: var(--pos-fs-body); font-weight: 500; }
+    .pos-person-chip:hover { background: var(--pos-surface-muted); }
+    .pos-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+    .pos-metric-cell { padding: 12px 14px; border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); }
+    .pos-action-grid { display: grid; gap: 6px; }
+    .pos-action-tile { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px; border-radius: var(--pos-radius-md); text-align: start; transition: background var(--pos-dur-1) var(--pos-ease), transform var(--pos-dur-1) var(--pos-ease); }
+    .pos-action-tile:hover { background: var(--pos-surface-muted); }
+    .pos-action-tile:active { transform: scale(0.99); }
+    .pos-action-text { display: flex; flex-direction: column; min-width: 0; }
+    .pos-action-text > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* What changed */
+    .pos-feed { display: grid; gap: 4px; }
+    .pos-feed-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px; border-radius: var(--pos-radius-md); }
+    .pos-feed-item:hover { background: var(--pos-surface-muted); }
+    .pos-feed-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--pos-radius-pill); flex: none; background: var(--pos-surface-muted); color: var(--pos-text-secondary); }
+    .pos-feed-item[data-tone='success'] .pos-feed-icon { background: var(--pos-success-soft); color: var(--pos-success); }
+    .pos-feed-item[data-tone='danger'] .pos-feed-icon { background: var(--pos-danger-soft); color: var(--pos-danger); }
+    .pos-feed-item[data-tone='info'] .pos-feed-icon { background: var(--pos-info-soft); color: var(--pos-info); }
+    .pos-feed-item[data-tone='primary'] .pos-feed-icon { background: var(--pos-primary-soft); color: var(--pos-primary); }
+    .pos-feed-item[data-tone='accent'] .pos-feed-icon, .pos-feed-item[data-tone='warning'] .pos-feed-icon { background: var(--pos-accent-soft); color: var(--pos-accent); }
+    .pos-feed-type { font-weight: 600; color: var(--pos-text-secondary); }
+
+    /* Approvals and My work */
+    .pos-group-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+    /* PeopleApproval: .pos-approval is one approval in a list (keyboard target); .pos-approval-card is its detail */
+    .pos-approval { outline: none; }
+    .pos-approval-card { outline: none; transition: box-shadow var(--pos-dur-2) var(--pos-ease); }
+    .pos-approval-card[data-group='urgent'] { box-shadow: var(--pos-shadow-1), inset 3px 0 0 var(--pos-danger); }
+    .pos-approval-card:focus-visible { box-shadow: 0 0 0 2px var(--pos-focus), var(--pos-shadow-2); }
+    .pos-approval-flat { box-shadow: none !important; padding: 0; }
+    .pos-decide { margin-top: 4px; padding: 12px; border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); }
+    .pos-work-row { outline: none; }
+
+    /* People directory */
+    .pos-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .pos-search { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; max-width: 420px; height: 38px; padding: 0 12px; border-radius: var(--pos-radius-md); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); }
+    .pos-search:focus-within { box-shadow: inset 0 0 0 1px var(--pos-primary), 0 0 0 3px var(--pos-primary-soft); }
+    .pos-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font-size: var(--pos-fs-body); color: var(--pos-text); }
+    .pos-select { height: 38px; padding: 0 30px 0 12px; border-radius: var(--pos-radius-md); border: 0; background-color: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); font-size: var(--pos-fs-body); color: var(--pos-text); }
+    .pos-segmented { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); }
+    .pos-segmented > button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-meta); font-weight: 600; color: var(--pos-text-secondary); }
+    .pos-segmented > button[aria-pressed='true'] { background: var(--pos-surface); color: var(--pos-text); box-shadow: var(--pos-shadow-1); }
+    .pos-people-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); }
+    .pos-person-card { display: flex; flex-direction: column; align-items: center; width: 100%; text-align: center; padding-block: 22px 18px; }
+    /* UX.15.19: long names and department names stay inside the card (a centred column otherwise lets them overflow) */
+    .pos-person-card > * { max-width: 100%; min-width: 0; }
+    .pos-person-card-name { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+    @media (max-width: 640px) {
+        .pos-people-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .pos-person-card { padding: 16px 10px; }
+    }
+    .pos-table { width: 100%; border-collapse: collapse; font-size: var(--pos-fs-body); }
+    .pos-table th { position: sticky; top: 0; background: var(--pos-surface-muted); padding: 10px 14px; text-align: start; font-size: var(--pos-fs-caption); letter-spacing: 0.07em; text-transform: uppercase; color: var(--pos-text-muted); font-weight: 600; }
+    .pos-table td { padding: var(--pos-row-pad-y) 14px; border-top: 1px solid var(--pos-border); }
+    .pos-table tbody tr:hover { background: var(--pos-state-hover); }
+    .pos-popover { position: absolute; z-index: 30; top: calc(100% + 6px); inset-inline-start: 0; min-width: 300px; padding: 6px; border-radius: var(--pos-radius-lg); background: var(--pos-surface-elevated); box-shadow: var(--pos-shadow-3); }
+    .pos-popover-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-body); text-align: start; }
+    .pos-popover-item:hover { background: var(--pos-surface-muted); }
+
+    /* Organisation map */
+    .pos-org-canvas { position: relative; height: min(72vh, 760px); overflow: auto; border-radius: var(--pos-radius-lg); background-color: var(--pos-surface); background-image: radial-gradient(var(--pos-border) 1px, transparent 1px); background-size: 22px 22px; box-shadow: var(--pos-shadow-1); cursor: grab; outline: none; }
+    .pos-org-canvas.is-dragging { cursor: grabbing; }
+    .pos-org-canvas:focus-visible { box-shadow: 0 0 0 2px var(--pos-focus); }
+    .pos-org-zoom { position: sticky; top: 12px; left: 12px; z-index: 5; display: inline-flex; align-items: center; gap: 2px; margin: 12px; padding: 4px; border-radius: var(--pos-radius-md); background: var(--pos-surface-elevated); box-shadow: var(--pos-shadow-2); }
+    .pos-org-stage { transform-origin: 0 0; padding: 8px 32px 48px; width: max-content; transition: transform var(--pos-dur-1) var(--pos-ease); }
+    .pos-org-tree, .pos-org-children { display: flex; gap: 20px; }
+    .pos-org-tree { align-items: flex-start; }
+    .pos-org-branch { display: flex; flex-direction: column; align-items: center; position: relative; }
+    .pos-org-children { position: relative; padding-top: 28px; align-items: flex-start; }
+    .pos-org-children::before { content: ''; position: absolute; top: 0; left: 50%; height: 14px; border-left: 1.5px solid var(--pos-border-strong); }
+    .pos-org-children > .pos-org-branch { padding-top: 14px; }
+    .pos-org-children > .pos-org-branch::before { content: ''; position: absolute; top: 0; left: 50%; height: 14px; border-left: 1.5px solid var(--pos-border-strong); }
+    .pos-org-children > .pos-org-branch::after { content: ''; position: absolute; top: 0; left: -10px; right: -10px; border-top: 1.5px solid var(--pos-border-strong); }
+    .pos-org-children > .pos-org-branch:first-child::after { left: 50%; }
+    .pos-org-children > .pos-org-branch:last-child::after { right: 50%; }
+    .pos-org-children > .pos-org-branch:only-child::after { display: none; }
+    .pos-org-node { position: relative; display: flex; flex-direction: column; align-items: center; }
+    .pos-org-card { display: flex; align-items: center; gap: 10px; width: 228px; padding: 10px 12px; border-radius: var(--pos-radius-lg); background: var(--pos-surface-elevated); box-shadow: var(--pos-shadow-1), inset 0 0 0 1px var(--pos-border); text-align: start; transition: box-shadow var(--pos-dur-2) var(--pos-ease), transform var(--pos-dur-2) var(--pos-ease); }
+    .pos-org-card:hover { box-shadow: var(--pos-shadow-2), inset 0 0 0 1px var(--pos-border-strong); transform: translateY(-1px); }
+    .pos-org-node.is-focus .pos-org-card { box-shadow: 0 0 0 2px var(--pos-primary), 0 0 0 7px var(--pos-primary-soft), var(--pos-shadow-2); }
+    .pos-org-toggle { display: inline-flex; align-items: center; gap: 4px; margin-top: -12px; z-index: 1; height: 26px; min-width: 40px; padding: 0 9px; border-radius: var(--pos-radius-pill); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border-strong); font-size: var(--pos-fs-caption); font-weight: 600; color: var(--pos-text-secondary); }
+    .pos-org-toggle:hover { color: var(--pos-primary); box-shadow: inset 0 0 0 1px var(--pos-primary); }
+    .pos-org-more { margin-top: 4px; height: 30px; padding: 0 12px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); font-weight: 600; color: var(--pos-primary); background: var(--pos-primary-soft); }
+    .pos-org-rels { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--pos-space-1); max-width: 228px; margin-top: var(--pos-space-1); }
+    .pos-org-rel { display: inline-flex; align-items: center; gap: var(--pos-space-1); padding: 0 var(--pos-space-2); border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: 20px; color: var(--pos-text-secondary); background: var(--pos-surface); border: 1px dashed var(--pos-info); }
+    .pos-org-rel-kind { font-weight: var(--pos-fw-semibold); color: var(--pos-info); }
+    .pos-org-node.is-related .pos-org-card { box-shadow: 0 0 0 2px var(--pos-surface), 0 0 0 4px var(--pos-info), var(--pos-shadow-2); outline: 2px dashed var(--pos-info); outline-offset: 6px; }
+    .pos-org-legend-solid, .pos-org-legend-dash { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--pos-border-strong); vertical-align: middle; }
+    .pos-org-legend-dash { border-top: 2px dashed var(--pos-info); }
+    .pos-dept-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+
+    /* Admin Centre (UX.15: governance workspace) */
+    .pos-search-lg { height: 48px; padding-inline: var(--pos-space-4); }
+    .pos-search-lg input { font-size: var(--pos-fs-lead); }
+    .pos-manage-grid { display: grid; gap: var(--pos-gap); grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); align-items: start; }
+    .pos-manage { display: grid; gap: var(--pos-space-3); }
+    .pos-manage-head { display: flex; gap: var(--pos-space-3); align-items: flex-start; }
+    .pos-manage-list { display: grid; gap: 2px; }
+    .pos-module-groups { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-items: start; }
+    .pos-module-link { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-inline: -8px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-body); color: var(--pos-text-secondary); }
+    .pos-module-link:hover { background: var(--pos-surface-muted); color: var(--pos-text); }
+
+    /* Command center */
+    .pos-command-head { display: flex; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--pos-border); }
+    .pos-command-input:focus, .pos-command-input:focus-visible { outline: none; box-shadow: none; }
+    /* UX.19: the input's focus shows on the bar it sits in (as the top-bar search and the assistant do), not only as a caret */
+    .pos-command-head:focus-within { box-shadow: inset 0 -2px 0 var(--pos-primary); }
+    .pos-search input:focus, .pos-search input:focus-visible { outline: none; }
+    .pos-command-modes { display: flex; gap: 6px; padding: 10px 14px 4px; }
+    .pos-command-pick { display: flex; align-items: center; gap: var(--pos-space-2); margin: var(--pos-space-3) var(--pos-space-4) 0; padding: var(--pos-space-2) var(--pos-space-3); border-radius: var(--pos-radius-md); background: var(--pos-state-selected); color: var(--pos-state-selected-text); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+    .pos-command-pick b { font-weight: var(--pos-fw-semibold); }
+    .pos-command-list { max-height: min(56vh, 520px); overflow-y: auto; padding: 6px 8px 10px; overscroll-behavior: contain; }
+    .pos-command-section + .pos-command-section { margin-top: 6px; }
+    .pos-command-group { padding: 10px 12px 4px; font-size: var(--pos-fs-caption); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; color: var(--pos-text-muted); }
+    .pos-command-item { cursor: pointer; }
+    .pos-command-actionbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; border-top: 1px solid var(--pos-border); background: var(--pos-surface); }
+    .pos-command-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--pos-radius-md); flex: none; background: var(--pos-surface-muted); color: var(--pos-text-secondary); }
+    .pos-command-icon[data-type='action'] { background: var(--pos-primary-soft); color: var(--pos-primary); }
+    .pos-command-icon[data-type='answer'] { background: var(--pos-accent-soft); color: var(--pos-accent); }
+    .pos-command-title { font-size: var(--pos-fs-body); font-weight: 500; color: var(--pos-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pos-command-verb { margin-inline-start: 6px; font-size: var(--pos-fs-caption); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--pos-text-muted); }
+    .pos-command-sub { font-size: var(--pos-fs-meta); color: var(--pos-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pos-command-answer { margin-top: 6px; display: grid; gap: 2px; font-size: var(--pos-fs-meta); color: var(--pos-text-secondary); }
+    .pos-command-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 52%; }
+    .pos-command-action { height: 26px; padding: 0 9px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-caption); font-weight: 600; color: var(--pos-primary); background: var(--pos-surface); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 30%, transparent); white-space: nowrap; }
+    .pos-command-action[data-active='true'], .pos-command-action:hover { background: var(--pos-primary); color: var(--pos-text-inverse); }
+    .pos-command-enter-hint { font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
+    .pos-command-empty { padding: 28px 18px; text-align: center; }
+    .pos-command-hint { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 16px; border-top: 1px solid var(--pos-border); font-size: var(--pos-fs-caption); color: var(--pos-text-muted); background: var(--pos-surface-muted); opacity: 1; }
+    .pos-command-hint > span { display: inline-flex; align-items: center; gap: 4px; }
+    @media (max-width: 767px) {
+        .pos-command { top: 8px; }
+        .pos-command-hint { display: none; }
+        .pos-command-actions { display: none !important; }
+    }
+    .pos-shortcuts { position: fixed; z-index: 62; top: 12vh; left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 24px)); padding: 20px; border-radius: var(--pos-radius-xl); background: var(--pos-surface-elevated); box-shadow: var(--pos-shadow-3); }
+    .pos-shortcut-list { display: grid; gap: 8px; }
+    .pos-shortcut-list > div { display: flex; justify-content: space-between; gap: 12px; font-size: var(--pos-fs-body); }
+    .pos-shortcut-list dt { display: flex; gap: 4px; align-items: center; color: var(--pos-text-muted); }
+
+    /* Employee 360 */
+    .pos-360-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 24px; padding: 4px 0 8px; }
+    .pos-360-identity { display: flex; align-items: flex-start; gap: 18px; min-width: 0; }
+    .pos-360-identity .fi-header-heading { margin-top: 2px; }
+    .pos-360-actions { display: flex; align-items: center; }
+    .pos-360-groups { display: grid; gap: 20px; }
+    .pos-360-cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+    .pos-360-card { padding: 12px 14px; border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); }
+    .pos-journey-track { display: flex; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin; }
+    .pos-journey-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 4px 2px; border-radius: var(--pos-radius-md); }
+    .pos-journey-btn[aria-selected='true'] .pos-journey-label { color: var(--pos-text); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; text-decoration-color: var(--pos-primary); }
+    .pos-journey-label { font-size: var(--pos-fs-meta); font-weight: 600; white-space: nowrap; }
+    .pos-journey-date { font-size: var(--pos-fs-caption); color: var(--pos-text-muted); }
+    .pos-journey-stage[data-state='skipped'] .pos-journey-dot { box-shadow: inset 0 0 0 2px var(--pos-border); background: var(--pos-surface-muted); }
+    .pos-journey-stage[data-state='skipped'] { opacity: 0.6; }
+    .pos-journey-panel { margin-top: 8px; padding: 14px 16px; border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); }
+    .pos-timeline-row { position: relative; display: flex; gap: 12px; padding: 6px 0; }
+    .pos-timeline-row .pos-timeline-node { margin-top: 3px; background: var(--pos-surface); }
+    .pos-timeline:has(.pos-timeline-row)::before { inset-block: 12px; }
+
+    /* Category icon tiles */
+    .pos-tile-icon { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: var(--pos-radius-lg); color: var(--pos-tile-indigo); background: var(--pos-tile-indigo-bg); }
+    .pos-tile-icon-sm { width: 34px; height: 34px; border-radius: var(--pos-radius-md); }
+    .pos-tile-icon-sm svg { width: 17px; height: 17px; }
+    .pos-tile-icon-lg { width: 48px; height: 48px; border-radius: var(--pos-radius-lg); }
+    .pos-tile-icon[data-tone='rose'] { color: var(--pos-tile-rose); background: var(--pos-tile-rose-bg); }
+    .pos-tile-icon[data-tone='emerald'] { color: var(--pos-tile-emerald); background: var(--pos-tile-emerald-bg); }
+    .pos-tile-icon[data-tone='sky'] { color: var(--pos-tile-sky); background: var(--pos-tile-sky-bg); }
+    .pos-tile-icon[data-tone='amber'] { color: var(--pos-tile-amber); background: var(--pos-tile-amber-bg); }
+    .pos-tile-icon[data-tone='violet'] { color: var(--pos-tile-violet); background: var(--pos-tile-violet-bg); }
+    .pos-tile-icon[data-tone='teal'] { color: var(--pos-tile-teal); background: var(--pos-tile-teal-bg); }
+    .pos-tile-icon[data-tone='gold'] { color: var(--pos-tile-gold); background: var(--pos-tile-gold-bg); }
+
+    /* KPI tiles (still used by the Workforce Command Center until UX.15.12) */
+    .pos-kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .pos-kpi { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-1); transition: box-shadow var(--pos-dur-2) var(--pos-ease), transform var(--pos-dur-2) var(--pos-ease); }
+    .pos-kpi-link:hover { box-shadow: var(--pos-shadow-2); transform: translateY(-2px); }
+    .pos-kpi-value { font-size: var(--pos-fs-metric); line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; color: var(--pos-text); }
+    .pos-kpi-label { font-size: var(--pos-fs-meta); color: var(--pos-text-secondary); }
+    .pos-ring { flex: none; }
+    .pos-kpi:has(.pos-ring) .pos-kpi-value { font-size: var(--pos-fs-section); }
+    .pos-kpi .pos-tile-icon { width: 40px; height: 40px; }
+    .pos-ring-track { fill: none; stroke: var(--pos-surface-muted); stroke-width: 8; }
+    .pos-ring-value { fill: none; stroke: var(--pos-primary); stroke-width: 8; stroke-linecap: round; transition: stroke-dasharray var(--pos-dur-4) var(--pos-ease); }
+
+    /* Compact journey */
+    .pos-journey-mini { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+    .pos-journey-mini > li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+    .pos-journey-mini > li::before { content: ''; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--pos-border); z-index: 0; }
+    .pos-journey-mini > li:first-child::before { display: none; }
+    .pos-journey-mini > li[data-state='done']::before, .pos-journey-mini > li[data-state='current']::before { background: var(--pos-primary); }
+    .pos-journey-mini-dot { position: relative; z-index: 1; width: 28px; height: 28px; border-radius: var(--pos-radius-pill); background: var(--pos-surface); box-shadow: inset 0 0 0 2px var(--pos-border-strong); }
+    .pos-journey-mini > li[data-state='done'] .pos-journey-mini-dot { background: var(--pos-tile-emerald-bg); box-shadow: inset 0 0 0 2px var(--pos-tile-emerald); }
+    .pos-journey-mini > li[data-state='current'] .pos-journey-mini-dot { background: var(--pos-primary); box-shadow: 0 0 0 6px var(--pos-primary-soft); }
+
+    /* Insights and charts */
+    .pos-bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; height: 96px; align-items: end; margin: 0; }
+    .pos-bar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+    .pos-bar-track { flex: 1; width: 100%; max-width: 22px; display: flex; align-items: flex-end; border-radius: var(--pos-radius-sm); background: color-mix(in srgb, var(--pos-chart-1) 10%, transparent); }
+    .pos-bar { display: block; width: 100%; border-radius: var(--pos-radius-sm); background: color-mix(in srgb, var(--pos-chart-1) 55%, transparent); transition: height var(--pos-dur-4) var(--pos-ease); }
+    .pos-bar.is-current { background: var(--pos-chart-1); }
+    .pos-bar-label { font-size: var(--pos-fs-caption); color: var(--pos-text-muted); }
+    .pos-donut { flex: none; }
+    .pos-donut-center { font-size: var(--pos-fs-body); font-weight: 600; fill: var(--pos-text); }
+    .pos-legend { display: grid; gap: 6px; font-size: var(--pos-fs-meta); color: var(--pos-text-secondary); }
+    .pos-legend li { display: flex; align-items: center; gap: 8px; }
+    .pos-legend span { width: 8px; height: 8px; border-radius: var(--pos-radius-pill); flex: none; }
+    .pos-legend b { margin-inline-start: auto; padding-inline-start: 8px; color: var(--pos-text); font-weight: 600; }
+    .pos-company-row { display: flex; align-items: center; gap: 12px; padding: 8px; margin-inline: -8px; border-radius: var(--pos-radius-md); }
+    a.pos-company-row:hover { background: var(--pos-surface-muted); }
+
+    /* Workforce command center */
+    .pos-wcc { display: grid; gap: var(--pos-gap); grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 1024px) { .pos-wcc { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .pos-columns { margin: 0; }
+    .pos-columns-plot { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; height: 140px; align-items: end; }
+    .pos-columns-group { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+    .pos-columns-bars { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; }
+    .pos-columns-bars > span { width: min(10px, 40%); min-height: 2px; border-radius: var(--pos-radius-sm) var(--pos-radius-sm) 1px 1px; transition: height var(--pos-dur-4) var(--pos-ease); }
+    .pos-legend-inline { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; }
+    .pos-legend-inline span { display: inline-flex; align-items: center; gap: 6px; width: auto; height: auto; border-radius: 0; }
+    .pos-legend-inline i { width: 9px; height: 9px; border-radius: var(--pos-radius-sm); }
+
+    /* Notification center */
+    /* UX.17: a read notification is quieter through its weight and icon only; fading the whole row failed text contrast */
+    .pos-notif.is-read > :first-child { opacity: 0.6; }
+    .pos-unread-dot { display: inline-block; width: 8px; height: 8px; margin-inline-end: 8px; border-radius: var(--pos-radius-pill); background: var(--pos-primary); vertical-align: 2px; }
+
+    /* Stepper (guided flows) */
+    .pos-stepper { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .pos-stepper > li { display: inline-flex; align-items: center; gap: 6px; font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
+    .pos-stepper-dot { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); font-weight: 600; background: var(--pos-surface-muted); color: var(--pos-text-secondary); box-shadow: inset 0 0 0 1px var(--pos-border-strong); }
+    .pos-stepper > li[data-state='done'] .pos-stepper-dot { background: var(--pos-tile-emerald-bg); color: var(--pos-tile-emerald); box-shadow: none; }
+    .pos-stepper > li[data-state='current'] { color: var(--pos-text); font-weight: 600; }
+    .pos-stepper > li[data-state='current'] .pos-stepper-dot { background: var(--pos-primary); color: var(--pos-on-fill); box-shadow: 0 0 0 4px var(--pos-primary-soft); }
+
+    /* What changed (rail) */
+    .pos-wc { position: relative; display: grid; gap: 2px; }
+    .pos-wc::before { content: ''; position: absolute; top: 10px; bottom: 10px; inset-inline-start: 50px; width: 2px; background: var(--pos-border); border-radius: var(--pos-radius-sm); }
+    .pos-wc-row { position: relative; display: grid; grid-template-columns: 40px 12px auto minmax(0, 1fr); align-items: center; gap: 8px; padding: 7px 0; }
+    .pos-wc-time { font-size: var(--pos-fs-caption); color: var(--pos-text-muted); text-align: end; }
+    .pos-wc-dot { position: relative; z-index: 1; width: 8px; height: 8px; margin-inline: auto; border-radius: var(--pos-radius-pill); background: var(--pos-primary); box-shadow: 0 0 0 3px var(--pos-surface); }
+    .pos-wc-row[data-tone='success'] .pos-wc-dot { background: var(--pos-tile-emerald); }
+    .pos-wc-row[data-tone='danger'] .pos-wc-dot { background: var(--pos-tile-rose); }
+    .pos-wc-row[data-tone='warning'] .pos-wc-dot, .pos-wc-row[data-tone='accent'] .pos-wc-dot { background: var(--pos-tile-gold); }
+
+    /* Assistant */
+    .pos-ai-card { position: relative; overflow: hidden; }
+    .pos-ai-card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 120px; background: radial-gradient(80% 100% at 0% 0%, var(--pos-primary-soft) 0%, transparent 70%); pointer-events: none; }
+    .pos-ai-head { position: relative; display: flex; align-items: center; gap: 10px; }
+    .pos-ai-panel .pos-ai-head { padding: 16px 20px; border-bottom: 1px solid var(--pos-border); }
+    /* The intelligence mark: a quiet gold-to-iris ring (generated content is always labelled in words too) */
+    .pos-ai-orb { width: 28px; height: 28px; flex: none; border-radius: var(--pos-radius-pill); background: conic-gradient(from 200deg, var(--pos-gold), var(--pos-primary), var(--pos-gold)); -webkit-mask: radial-gradient(circle, transparent 46%, #000 48%); mask: radial-gradient(circle, transparent 46%, #000 48%); }
+    .pos-ai-orb-sm { width: 16px; height: 16px; }
+    .pos-ai-hello { position: relative; margin-top: 14px; font-family: var(--font-display); font-size: var(--pos-fs-metric); line-height: 1.1; color: var(--pos-text); }
+    .pos-ai-prompts { display: grid; gap: 6px; }
+    .pos-ai-prompt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-meta); text-align: start; color: var(--pos-text-secondary); box-shadow: inset 0 0 0 1px var(--pos-border); background: var(--pos-surface); }
+    .pos-ai-prompt:hover { color: var(--pos-text); box-shadow: inset 0 0 0 1px var(--pos-primary); background: var(--pos-primary-soft); }
+    .pos-ai-prompt svg { color: var(--pos-primary); flex: none; }
+    .pos-ai-ask { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding: 4px 4px 4px 12px; border-radius: var(--pos-radius-lg); background: var(--pos-surface-muted); box-shadow: inset 0 0 0 1px var(--pos-border); }
+    .pos-ai-ask:focus-within { box-shadow: inset 0 0 0 1px var(--pos-primary), 0 0 0 3px var(--pos-primary-soft); }
+    .pos-ai-ask input { flex: 1; min-width: 0; height: 34px; border: 0; outline: none; background: transparent; font-size: var(--pos-fs-body); color: var(--pos-text); }
+    .pos-ai-ask input:focus-visible { outline: none; }
+    .pos-ai-send { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: var(--pos-radius-md); color: var(--pos-on-fill); background: var(--pos-primary); }
+    .pos-ai-thread { display: grid; gap: 12px; margin-top: 12px; }
+    .pos-ai-thread-card { max-height: 360px; overflow-y: auto; }
+    .pos-ai-response { padding: 14px; border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); }
+    .pos-ai-q { font-size: var(--pos-fs-meta); font-weight: 600; color: var(--pos-primary); }
+    .pos-ai-block { margin-top: 10px; }
+    .pos-ai-facts { margin-top: 4px; display: grid; gap: 4px; font-size: var(--pos-fs-body); color: var(--pos-text); }
+    .pos-ai-facts li { position: relative; padding-inline-start: 14px; }
+    .pos-ai-facts li::before { content: ''; position: absolute; inset-inline-start: 2px; top: 8px; width: 5px; height: 5px; border-radius: var(--pos-radius-pill); background: var(--pos-primary); }
+    .pos-ai-sources { margin-top: 4px; display: grid; gap: 3px; font-size: var(--pos-fs-meta); color: var(--pos-text-secondary); }
+    .pos-ai-sources li { display: flex; align-items: center; gap: 6px; }
+    .pos-ai-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--pos-border); }
+    .pos-ai-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); font-weight: 600; letter-spacing: 0.04em; color: var(--pos-accent); background: var(--pos-accent-soft); }
+
+    /* Drawer */
+    .pos-drawer[data-depth='1'], .pos-drawer[data-depth='2'], .pos-drawer[data-depth='3'] { box-shadow: var(--pos-shadow-3), -12px 0 0 -6px color-mix(in srgb, var(--pos-surface) 70%, transparent); }
+    @media (max-width: 767px) {
+        .pos-drawer { inset-block-start: auto; height: min(88vh, 100%); width: 100vw; border-radius: var(--pos-radius-xl) var(--pos-radius-xl) 0 0; }
+    }
+}
+
+/* ------------------------------------------------------------------ 4c. UX.15 foundation components
+ * The building blocks every UX.15 workspace uses. Each maps to a PeopleOS component name in the design
+ * system (PeopleSection, PeopleStream, PeopleTimeline, PeopleMetric, PeopleInsight / PeopleAI, PeopleState,
+ * PeoplePerson + PeoplePeek, PeopleChange, PeopleWorkspace header).
+ */
+@layer components {
+    /* Typography utilities on the governed scale */
+    .pos-title { font-family: var(--font-display); font-weight: var(--pos-fw-regular); font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); letter-spacing: -0.01em; color: var(--pos-text); text-wrap: balance; }
+    .pos-section-title { font-size: var(--pos-fs-section); line-height: var(--pos-lh-section); font-weight: var(--pos-fw-semibold); letter-spacing: -0.005em; color: var(--pos-text); }
+    .pos-lead { font-size: var(--pos-fs-lead); line-height: var(--pos-lh-lead); color: var(--pos-text-secondary); }
+    .pos-meta { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+    .pos-strong { font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+    .pos-gold-text { color: var(--pos-accent); }
+
+    /* PeopleWorkspace header: where am I, what matters, what can I do */
+    .pos-ws { display: grid; gap: var(--pos-section-gap); min-width: 0; }
+    .pos-ws-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--pos-space-4) var(--pos-space-6); }
+    .pos-ws-head-text { display: grid; gap: var(--pos-space-2); min-width: 0; max-width: 72ch; }
+    .pos-ws-eyebrow { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; font-weight: var(--pos-fw-semibold); color: var(--pos-text-muted); }
+    .pos-ws-title { font-family: var(--font-display); font-weight: var(--pos-fw-regular); font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); letter-spacing: -0.01em; color: var(--pos-text); text-wrap: balance; }
+    .pos-ws-title-display { font-size: var(--pos-fs-display); line-height: var(--pos-lh-display); }
+    .pos-ws-brief { font-size: var(--pos-fs-lead); line-height: var(--pos-lh-lead); color: var(--pos-text-secondary); text-wrap: pretty; }
+    .pos-ws-brief b, .pos-ws-brief strong { color: var(--pos-text); font-weight: var(--pos-fw-semibold); }
+    .pos-ws-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); }
+    .pos-ws-cols { display: grid; gap: var(--pos-section-gap); grid-template-columns: minmax(0, 1fr); align-items: start; }
+    .pos-ws-main, .pos-ws-side { display: grid; gap: var(--pos-section-gap); grid-template-columns: minmax(0, 1fr); min-width: 0; align-content: start; }
+    @media (min-width: 1280px) { .pos-ws-cols { grid-template-columns: minmax(0, 1fr) 352px; } }
+
+    /* PeopleSection: a titled region; no box unless the content is an independent object */
+    .pos-sec { display: grid; gap: var(--pos-space-3); min-width: 0; }
+    .pos-sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--pos-space-1) var(--pos-space-3); }
+    .pos-sec-title { display: inline-flex; align-items: baseline; gap: var(--pos-space-2); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; font-weight: var(--pos-fw-semibold); color: var(--pos-text-muted); }
+    .pos-sec-title .pos-sec-count { letter-spacing: 0; text-transform: none; font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
+    .pos-sec-sub { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+    .pos-panel { background: var(--pos-surface); border-radius: var(--pos-radius-lg); box-shadow: var(--pos-shadow-1); min-width: 0; }
+    .pos-panel-pad { padding: var(--pos-card-pad); }
+    .pos-panel-flush > :first-child { border-start-start-radius: inherit; border-start-end-radius: inherit; }
+
+    /* PeopleStream: rows of things to read or act on (divided list, not a grid of cards) */
+    .pos-stream { display: grid; min-width: 0; }
+    .pos-stream-row { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--pos-space-3); padding: var(--pos-row-pad-y) var(--pos-space-4); text-align: start; outline: none; transition: background var(--pos-dur-1) var(--pos-ease); }
+    .pos-stream-row + .pos-stream-row { box-shadow: inset 0 1px 0 var(--pos-border); }
+    .pos-stream-row:is(a, button):hover, .pos-stream-row.is-interactive:hover { background: var(--pos-state-hover); }
+    .pos-stream-row[data-focused], .pos-stream-row[aria-selected='true'], .pos-stream-row[aria-current='true'] { background: var(--pos-state-selected); }
+    .pos-stream-row:focus-visible { box-shadow: inset 0 0 0 2px var(--pos-focus); }
+    .pos-stream-body { display: grid; gap: 2px; min-width: 0; }
+    .pos-stream-title { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-medium); color: var(--pos-text); overflow-wrap: anywhere; }
+    .pos-stream-meta { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); overflow-wrap: anywhere; }
+    .pos-stream-end { display: flex; align-items: center; gap: var(--pos-space-2); justify-self: end; }
+    .pos-stream-mark { width: 3px; align-self: stretch; min-height: 28px; border-radius: var(--pos-radius-pill); background: var(--pos-border-strong); }
+    .pos-stream-row[data-tone='danger'] .pos-stream-mark { background: var(--pos-danger); }
+    .pos-stream-row[data-tone='warning'] .pos-stream-mark { background: var(--pos-warning); }
+    .pos-stream-row[data-tone='success'] .pos-stream-mark { background: var(--pos-success); }
+    .pos-stream-row[data-tone='info'] .pos-stream-mark { background: var(--pos-info); }
+    .pos-stream-row[data-tone='accent'] .pos-stream-mark { background: var(--pos-gold); }
+    .pos-stream-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--pos-radius-pill); background: var(--pos-surface-muted); color: var(--pos-text-secondary); flex: none; }
+    [data-tone='danger'] > .pos-stream-icon { background: var(--pos-danger-soft); color: var(--pos-danger); }
+    [data-tone='warning'] > .pos-stream-icon { background: var(--pos-warning-soft); color: var(--pos-warning); }
+    [data-tone='success'] > .pos-stream-icon { background: var(--pos-success-soft); color: var(--pos-success); }
+    [data-tone='info'] > .pos-stream-icon { background: var(--pos-info-soft); color: var(--pos-info); }
+    [data-tone='accent'] > .pos-stream-icon { background: var(--pos-accent-soft); color: var(--pos-accent); }
+    .pos-stream-divided { box-shadow: inset 0 1px 0 var(--pos-border); }
+    .pos-tl-note { padding-inline-start: calc(64px + 11px + var(--pos-space-3) * 2); }
+    @media (max-width: 767px) { .pos-tl-note { padding-inline-start: calc(52px + 11px + var(--pos-space-2) * 2); } }
+    .pos-welcome-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-3) var(--pos-space-4); }
+    .pos-welcome-note > .min-w-0 { flex: 1 1 280px; }
+    @media (max-width: 767px) { .pos-welcome-note > .pos-ai-orb { display: none; } }
+    .pos-lens { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); }
+    .pos-next-up { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-4) var(--pos-space-6); box-shadow: var(--pos-shadow-1), inset 3px 0 0 var(--pos-warning); }
+    .pos-next-up[data-tone='danger'] { box-shadow: var(--pos-shadow-1), inset 3px 0 0 var(--pos-danger); }
+    /* Decision workspace (Approval Center) */
+    .pos-decide-ws { display: grid; gap: var(--pos-section-gap); grid-template-columns: minmax(0, 1fr); align-items: start; }
+    .pos-queue { display: grid; gap: var(--pos-section-gap); min-width: 0; }
+    .pos-decision-pane { display: none; min-width: 0; }
+    @media (min-width: 1280px) {
+        .pos-decide-ws { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); }
+        .pos-decision-pane { display: block; position: sticky; top: var(--pos-space-4); }
+    }
+    .pos-queue-row[aria-current='true'] { background: var(--pos-state-selected); }
+    .pos-queue-row[aria-current='true'] .pos-stream-title { color: var(--pos-state-selected-text); }
+    .pos-approval-detail { padding: var(--pos-space-6); }
+    .pos-decision-context { display: grid; gap: var(--pos-space-2); }
+    .pos-decision-context li { display: flex; gap: var(--pos-space-2); align-items: flex-start; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); color: var(--pos-text-secondary); }
+    .pos-decision-context svg { flex: none; margin-top: 3px; color: var(--pos-text-muted); }
+    /* Employee 360 person workspace (UX.15) */
+    .pos-360-ribbon { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2) var(--pos-space-3); margin-top: var(--pos-space-2); }
+    .pos-360-reports { display: inline-flex; align-items: center; gap: var(--pos-space-2); }
+    .pos-360-nav { margin-top: var(--pos-space-2); }
+    .pos-360-ws { display: grid; gap: var(--pos-section-gap); }
+    .pos-360-sec { display: grid; gap: var(--pos-section-gap); scroll-margin-top: var(--pos-space-16); }
+    .pos-fact-grid { display: grid; gap: var(--pos-space-4) var(--pos-space-6); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .pos-fact-grid dt { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+    .pos-fact-grid dd { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); color: var(--pos-text); overflow-wrap: anywhere; }
+    .pos-ws-cols.pos-pulse-pair { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .pos-event-head { display: flex; align-items: center; gap: var(--pos-space-3); }
+    .pos-stream-more { display: flex; justify-content: center; padding: var(--pos-space-2); box-shadow: inset 0 1px 0 var(--pos-border); }
+
+    /* PeopleTimeline: time-ordered events with a quiet spine */
+    .pos-tl { position: relative; display: grid; }
+    .pos-tl::before { content: ''; position: absolute; inset-block: var(--pos-space-4); inset-inline-start: calc(64px + var(--pos-space-3) + 5px); width: 1px; background: var(--pos-border-strong); }
+    .pos-tl-row { position: relative; display: grid; grid-template-columns: 64px 11px minmax(0, 1fr) auto; align-items: start; gap: var(--pos-space-3); padding-block: var(--pos-space-2); }
+    .pos-tl-time { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-body); color: var(--pos-text-muted); text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .pos-tl-dot { position: relative; z-index: 1; width: 11px; height: 11px; margin-top: 5px; border-radius: var(--pos-radius-pill); background: var(--pos-surface); box-shadow: inset 0 0 0 2px var(--pos-border-strong), 0 0 0 3px var(--pos-canvas); }
+    .pos-panel .pos-tl-dot { box-shadow: inset 0 0 0 2px var(--pos-border-strong), 0 0 0 3px var(--pos-surface); }
+    .pos-tl-row[data-tone='primary'] .pos-tl-dot { box-shadow: inset 0 0 0 6px var(--pos-primary), 0 0 0 3px var(--pos-surface); }
+    .pos-tl-row[data-tone='success'] .pos-tl-dot { box-shadow: inset 0 0 0 6px var(--pos-success), 0 0 0 3px var(--pos-surface); }
+    .pos-tl-row[data-tone='warning'] .pos-tl-dot { box-shadow: inset 0 0 0 6px var(--pos-warning), 0 0 0 3px var(--pos-surface); }
+    .pos-tl-row[data-tone='danger'] .pos-tl-dot { box-shadow: inset 0 0 0 6px var(--pos-danger), 0 0 0 3px var(--pos-surface); }
+    .pos-tl-row[data-tone='info'] .pos-tl-dot { box-shadow: inset 0 0 0 6px var(--pos-info), 0 0 0 3px var(--pos-surface); }
+    .pos-tl-row[data-tone='accent'] .pos-tl-dot { box-shadow: inset 0 0 0 6px var(--pos-gold), 0 0 0 3px var(--pos-surface); }
+    .pos-tl-row[data-now] .pos-tl-time { color: var(--pos-primary); font-weight: var(--pos-fw-semibold); }
+    @media (max-width: 767px) {
+        .pos-tl::before { inset-inline-start: calc(52px + var(--pos-space-2) + 5px); }
+        .pos-tl-row { grid-template-columns: 52px 11px minmax(0, 1fr); gap: var(--pos-space-2); }
+        .pos-tl-row > .pos-stream-end { grid-column: 3; justify-self: start; }
+    }
+
+    /* PeopleMetric: one figure primitive (value, label, change), used everywhere a number is shown */
+    .pos-figures { display: flex; flex-wrap: wrap; gap: var(--pos-space-4) var(--pos-space-8); }
+    .pos-figure { display: grid; gap: 2px; min-width: 0; }
+    .pos-figure-value { font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); letter-spacing: -0.01em; color: var(--pos-text); font-variant-numeric: tabular-nums; }
+    .pos-figure-label { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+    .pos-figure-delta { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); font-variant-numeric: tabular-nums; }
+    .pos-figure-delta[data-meaning='good'] { color: var(--pos-success); }
+    .pos-figure-delta[data-meaning='bad'] { color: var(--pos-danger); }
+    button.pos-figure, a.pos-figure { margin: calc(var(--pos-space-2) * -1); padding: var(--pos-space-2); border-radius: var(--pos-radius-md); text-align: start; transition: background var(--pos-dur-1) var(--pos-ease); }
+    button.pos-figure:hover, a.pos-figure:hover { background: var(--pos-state-hover); }
+
+    /* PeopleInsight / PeopleAI: contextual intelligence, computed from what the viewer may see, always labelled */
+    .pos-intel { display: grid; gap: var(--pos-space-3); padding: var(--pos-card-pad); border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-1), inset 0 2px 0 var(--pos-gold); }
+    .pos-intel-head { display: flex; align-items: center; gap: var(--pos-space-2); }
+    .pos-intel-title { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+    .pos-intel-tag { margin-inline-start: auto; display: inline-flex; align-items: center; height: 20px; padding: 0 var(--pos-space-2); border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); color: var(--pos-accent); background: var(--pos-accent-soft); }
+    .pos-intel-list { display: grid; gap: var(--pos-space-3); }
+    .pos-intel-item { display: grid; gap: var(--pos-space-1); padding-inline-start: var(--pos-space-3); box-shadow: inset 2px 0 0 var(--pos-border-strong); }
+    .pos-intel-item[data-tone='danger'] { box-shadow: inset 2px 0 0 var(--pos-danger); }
+    .pos-intel-item[data-tone='warning'] { box-shadow: inset 2px 0 0 var(--pos-warning); }
+    .pos-intel-item[data-tone='success'] { box-shadow: inset 2px 0 0 var(--pos-success); }
+    .pos-intel-item[data-tone='info'] { box-shadow: inset 2px 0 0 var(--pos-info); }
+    .pos-intel-text { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); color: var(--pos-text); }
+    .pos-intel-source { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+    .pos-intel-foot { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+
+    /* PeopleState: loading, empty, caught up, filtered, error + retry, permission denied, stale, partial failure */
+    .pos-state { display: flex; flex-direction: column; align-items: center; gap: var(--pos-space-2); padding: var(--pos-space-8) var(--pos-space-4); text-align: center; }
+    .pos-state[data-size='inline'] { flex-direction: row; align-items: flex-start; gap: var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); text-align: start; }
+    .pos-state-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--pos-radius-pill); background: var(--pos-surface-muted); color: var(--pos-text-secondary); flex: none; }
+    .pos-state[data-size='inline'] .pos-state-icon { width: 32px; height: 32px; }
+    .pos-state[data-variant='caught-up'] .pos-state-icon { background: var(--pos-success-soft); color: var(--pos-success); }
+    .pos-state[data-variant='error'] .pos-state-icon, .pos-state[data-variant='partial'] .pos-state-icon { background: var(--pos-danger-soft); color: var(--pos-danger); }
+    .pos-state[data-variant='stale'] .pos-state-icon { background: var(--pos-warning-soft); color: var(--pos-warning); }
+    .pos-state-text { display: grid; gap: 2px; max-width: 52ch; }
+    .pos-state-title { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+    .pos-state-why { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+    .pos-state-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--pos-space-2); margin-top: var(--pos-space-2); }
+    .pos-state[data-size='inline'] .pos-state-actions { justify-content: flex-start; margin-top: var(--pos-space-1); }
+    .pos-stale-note { display: inline-flex; align-items: center; gap: var(--pos-space-1); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+
+    /* PeoplePerson: a person named anywhere. Hover or focus = peek; click = drawer; "Open profile" = workspace */
+    .pos-person { display: inline-flex; align-items: center; gap: var(--pos-space-2); max-width: 100%; min-width: 0; padding: 2px var(--pos-space-2) 2px 2px; border-radius: var(--pos-radius-pill); font-weight: var(--pos-fw-medium); color: var(--pos-text); text-align: start; vertical-align: middle; transition: background var(--pos-dur-1) var(--pos-ease); }
+    .pos-person:hover { background: var(--pos-state-hover); }
+    .pos-person-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pos-person-sub { color: var(--pos-text-muted); font-weight: var(--pos-fw-regular); }
+    .pos-person[data-plain] { padding: 0; }
+
+    /* PeoplePeek: small contextual card; never more than the viewer may see in the directory */
+    .pos-peek { position: fixed; z-index: var(--pos-z-peek); width: 300px; max-width: calc(100vw - 24px); padding: var(--pos-space-4); border-radius: var(--pos-radius-lg); background: var(--pos-surface-elevated); box-shadow: var(--pos-shadow-2); pointer-events: auto; }
+    .pos-peek-head { display: flex; align-items: center; gap: var(--pos-space-3); min-width: 0; }
+    .pos-peek-name { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); overflow-wrap: anywhere; }
+    .pos-peek-role { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); overflow-wrap: anywhere; }
+    .pos-peek-facts { display: grid; gap: var(--pos-space-1); margin-top: var(--pos-space-3); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+    .pos-peek-facts > div { display: flex; gap: var(--pos-space-2); min-width: 0; }
+    .pos-peek-facts dt { flex: none; width: 76px; color: var(--pos-text-muted); }
+    .pos-peek-facts dd { min-width: 0; overflow-wrap: anywhere; }
+    .pos-peek-actions { display: flex; gap: var(--pos-space-2); margin-top: var(--pos-space-3); padding-top: var(--pos-space-3); box-shadow: inset 0 1px 0 var(--pos-border); }
+    .pos-peek-hint { margin-top: var(--pos-space-2); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+
+    /* PeopleChange: what changes, from what to what, and from when */
+    .pos-change { display: grid; gap: var(--pos-space-2); padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-md); background: var(--pos-surface-sunken); box-shadow: inset 0 0 0 1px var(--pos-border); }
+    .pos-change-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-2); }
+    .pos-change-label { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; font-weight: var(--pos-fw-semibold); color: var(--pos-text-muted); }
+    .pos-change-when { display: inline-flex; align-items: center; gap: var(--pos-space-1); height: 22px; padding: 0 var(--pos-space-2); border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); color: var(--pos-text-secondary); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); font-variant-numeric: tabular-nums; }
+    .pos-change-rows { display: grid; gap: var(--pos-space-2); }
+    .pos-change-row { display: grid; grid-template-columns: minmax(88px, 28%) minmax(0, 1fr); gap: var(--pos-space-3); align-items: baseline; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); }
+    .pos-change-field { font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
+    .pos-change-values { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--pos-space-1) var(--pos-space-2); min-width: 0; font-variant-numeric: tabular-nums; }
+    .pos-change-before { color: var(--pos-text-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--pos-text-muted) 50%, transparent); overflow-wrap: anywhere; }
+    .pos-change-arrow { color: var(--pos-text-muted); }
+    .pos-change-after { font-weight: var(--pos-fw-semibold); color: var(--pos-text); overflow-wrap: anywhere; }
+    .pos-change-row[data-unchanged] .pos-change-after { font-weight: var(--pos-fw-regular); color: var(--pos-text-secondary); }
+
+    /* Section navigation inside a workspace (Now · Journey · Work …): a quiet underline, not a tab strip */
+    .pos-sectnav { position: sticky; top: 0; z-index: var(--pos-z-sticky); display: flex; gap: var(--pos-space-1); overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--pos-gutter) * -0.5); padding-inline: calc(var(--pos-gutter) * 0.5); background: color-mix(in srgb, var(--pos-canvas) 92%, transparent); backdrop-filter: blur(8px); box-shadow: inset 0 -1px 0 var(--pos-border); }
+    .pos-sectnav::-webkit-scrollbar { display: none; }
+    .pos-sectnav a, .pos-sectnav button { position: relative; flex: none; padding: var(--pos-space-3) var(--pos-space-3); font-size: var(--pos-fs-body); font-weight: var(--pos-fw-medium); color: var(--pos-text-secondary); white-space: nowrap; }
+    .pos-sectnav a:hover, .pos-sectnav button:hover { color: var(--pos-text); }
+    .pos-sectnav [aria-current='true'], .pos-sectnav [aria-selected='true'] { color: var(--pos-text); font-weight: var(--pos-fw-semibold); }
+    .pos-sectnav [aria-current='true']::after, .pos-sectnav [aria-selected='true']::after { content: ''; position: absolute; inset-inline: var(--pos-space-3); bottom: 0; height: 2px; border-radius: var(--pos-radius-pill); background: var(--pos-primary); }
+
+    /* Gold moments: milestones and the lifetime record */
+    .pos-moment { display: inline-flex; align-items: center; gap: var(--pos-space-1); height: 24px; padding: 0 var(--pos-space-2); border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); color: var(--pos-accent); background: var(--pos-accent-soft); }
+
+    /* Filament notifications (toasts) on the PeopleOS scale */
+    .fi-no-notification { border-radius: var(--pos-radius-lg) !important; box-shadow: var(--pos-shadow-2) !important; }
+}
+
+
+/* ------------------------------------------------------------------ 5. Motion (purposeful, interruptible, reduced-motion aware) */
+@keyframes pos-shimmer {
+    100% { transform: translateX(100%); }
+}
+
+@keyframes pos-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pos-sheet-in {
+    from { transform: translateY(24px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pos-fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pos-scale-in {
+    from { opacity: 0; transform: translateX(-50%) scale(0.98); }
+    to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+@keyframes pos-drawer-in {
+    from { transform: translateX(24px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* UX.15 motion: progression grows from where it started; a swapped decision rises into place. */
+@keyframes pos-grow-x {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+@keyframes pos-ring-once {
+    0% { box-shadow: inset 0 0 0 2px var(--pos-primary), 0 0 0 0 color-mix(in srgb, var(--pos-primary) 35%, transparent); }
+    100% { box-shadow: inset 0 0 0 2px var(--pos-primary), 0 0 0 10px transparent; }
+}
+
+@keyframes pos-swap-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pos-peek-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pos-check-draw {
+    from { stroke-dashoffset: 24; }
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes pos-pulse-once {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pos-success) 40%, transparent); }
+    100% { box-shadow: 0 0 0 10px transparent; }
+}
+
+/*
+ * Enter animations use fill-mode "backwards": the start state applies before the animation and nothing is left
+ * behind afterwards. A retained transform would make the element the containing block for position: fixed
+ * descendants (Filament modals inside a page would then be positioned against the page, not the viewport).
+ */
+.pos-enter { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) backwards; }
+.pos-enter-2 { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) 60ms backwards; }
+.pos-enter-3 { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) 120ms backwards; }
+.pos-command-enter { animation: pos-scale-in var(--pos-dur-2) var(--pos-ease) both; }
+.pos-drawer-enter { animation: pos-drawer-in var(--pos-dur-3) var(--pos-ease) both; }
+.pos-success-pulse { animation: pos-pulse-once 700ms var(--pos-ease) 1; }
+.pos-drawer-in { animation: pos-drawer-in var(--pos-dur-3) var(--pos-ease) both; }
+.pos-drawer-out { animation: pos-drawer-in var(--pos-dur-2) var(--pos-ease-in) reverse both; }
+.pos-command-in { animation: pos-scale-in var(--pos-dur-2) var(--pos-ease) both; }
+.pos-command-out { animation: pos-scale-in var(--pos-dur-1) var(--pos-ease-in) reverse both; }
+@media (max-width: 767px) {
+    .pos-drawer-in { animation-name: pos-sheet-in; }
+    .pos-drawer-out { animation-name: pos-sheet-in; }
+}
+.pos-peek-in { animation: pos-peek-in var(--pos-dur-1) var(--pos-ease) both; }
+.pos-swap-in { animation: pos-swap-in var(--pos-dur-2) var(--pos-ease) backwards; }
+/* Journey progression: completed connectors grow in order, then the current stage rings once. */
+.pos-journey-stage[data-state='done']::before,
+.pos-journey-stage[data-state='current']::before { transform-origin: left center; animation: pos-grow-x var(--pos-dur-4) var(--pos-ease-emphasised) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+.pos-journey-stage[data-state='current'] .pos-journey-dot { animation: pos-ring-once 900ms var(--pos-ease) calc(var(--i, 0) * 70ms + 300ms) 1 backwards; }
+@media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+}
+.pos-check path { stroke-dasharray: 24; animation: pos-check-draw var(--pos-dur-4) var(--pos-ease) both; }
+
+/* Page transitions in SPA mode */
+.fi-page { animation: pos-fade-up var(--pos-dur-3) var(--pos-ease) backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* UX.15 touch: comfortable targets on coarse pointers (phones, tablets) without changing desktop density */
+@media (pointer: coarse) {
+    .pos-btn-sm { height: 40px; padding-inline: var(--pos-space-4); }
+    /* UX.15.21: the icon-only quick launch on phones keeps no padding (the rule above squeezed its + to 2px) */
+    @media (max-width: 767px) { .pos-btn-sm.pos-quick-launch { width: 40px; padding-inline: 0; } }
+    .pos-chip, .pos-lens-chip { min-height: 40px; }
+    .pos-sectnav a, .pos-sectnav button { padding-block: var(--pos-space-4); }
+    .pos-stream-row { min-height: 52px; }
+    .pos-person { min-height: 36px; }
+    .pos-link { padding-block: var(--pos-space-2); }
+}
+
+@media (max-width: 767px) {
+    /* Workspace headers stack: title and brief first, then full-width actions */
+    .pos-ws-actions { width: 100%; }
+    .pos-ws-actions > .pos-btn { flex: 1 1 auto; }
+    .pos-360-header { gap: var(--pos-space-4); }
+    .pos-360-actions { width: 100%; flex-wrap: wrap; gap: var(--pos-space-2); }
+    /* UX.19 (M16): the phone header was half the first screen. Summarise and the action groups flow as one row of
+       buttons (Summarise sat alone on a full row), and the avatar is smaller. Identity, lifecycle, relationship and
+       every action stay. */
+    .pos-360-actions > .fi-ac { display: contents; }
+    .pos-360-actions > .pos-btn { margin-inline-end: 0; }
+    .pos-360-identity { gap: var(--pos-space-3); }
+    .pos-360-identity > .pos-avatar-xl { width: 48px; height: 48px; font-size: var(--pos-fs-lead); }
+    .pos-ws-title-display { font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); }
+    .pos-next-up .pos-ws-actions > * { flex: 1 1 auto; }
+}
+
+/* Mobile: leave room for the bottom navigation */
+@media (max-width: 1023px) {
+    .fi-main { padding-bottom: 84px; }
+}
+
+/* Inputs embedded in a focus-styled container show the container's focus ring, not their own. */
+.pos-command-input:focus-visible,
+.pos-ai-ask input:focus-visible,
+.pos-search input:focus-visible {
+    outline: none;
+}
+
+/* ------------------------------------------------------------------ D. UX.15 closure: the PeopleOS module experience
+   Every resource page now composes the same language as the workspaces: context first (the subheading says what you
+   can see), what matters as a lens, search before tools, people as chips, records opening in drawers, forms ending in
+   a review. These rules style that layer and quiet the Filament chrome around it. */
+
+/* List context: the lens and the Approval Center hand-off, between the header and the table */
+.pos-module-context { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-3) var(--pos-space-4); margin-block: calc(-1 * var(--pos-space-2)) var(--pos-space-4); }
+.pos-lens-row { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); min-width: 0; }
+.pos-module-context .pos-lens-chip { display: inline-flex; align-items: center; gap: var(--pos-space-2); cursor: pointer; }
+.pos-module-context .pos-lens-chip:hover { background: var(--pos-state-hover); }
+.pos-module-context .pos-lens-chip[aria-pressed='true'] { background: var(--pos-state-selected); color: var(--pos-state-selected-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 30%, transparent); }
+.pos-module-context .pos-lens-chip .pos-count { margin-inline-start: 0; }
+.pos-lens-dot { width: 6px; height: 6px; border-radius: var(--pos-radius-pill); background: var(--pos-text-muted); flex: none; }
+.pos-lens-chip[data-tone='warning'] .pos-lens-dot { background: var(--pos-warning); }
+.pos-lens-chip[data-tone='danger'] .pos-lens-dot { background: var(--pos-danger); }
+.pos-lens-chip[data-tone='success'] .pos-lens-dot { background: var(--pos-success); }
+.pos-lens-chip[data-tone='info'] .pos-lens-dot { background: var(--pos-info); }
+.pos-module-decide { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-1) var(--pos-space-2); padding: var(--pos-space-2) var(--pos-space-3); border-radius: var(--pos-radius-md); background: var(--pos-warning-soft); color: var(--pos-text); font-size: var(--pos-fs-meta); text-decoration: none; transition: box-shadow var(--pos-dur-1) var(--pos-ease); }
+.pos-module-decide:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-warning) 40%, transparent); }
+.pos-module-decide .fi-icon { color: var(--pos-warning); }
+.fi-header-subheading { max-width: 80ch; }
+
+/* Search before tools: the search field leads the table toolbar and takes the room */
+.fi-ta-header-toolbar { flex-wrap: wrap; gap: var(--pos-space-3); }
+.fi-ta-header-toolbar > div:last-child { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: flex-start; gap: var(--pos-space-2); }
+.fi-ta-search-field { order: -1; flex: 1 1 280px; max-width: 520px; margin-inline-end: auto; }
+
+/* Rows: people as chips. Row actions keep full colour: dimming them failed contrast (closure accessibility audit) */
+.pos-person-inline { display: inline-flex; align-items: center; gap: var(--pos-space-2); max-width: 100%; }
+.pos-person-inline-name { font-weight: var(--pos-fw-semibold); overflow-wrap: anywhere; }
+.pos-person-inline:hover .pos-person-inline-name { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--pos-primary) 45%, transparent); }
+.fi-ta-empty-state-heading { font-size: var(--pos-fs-section) !important; }
+/* Wide tables scroll sideways; the row actions stay pinned to the right edge so they never scroll out of reach */
+@media (min-width: 641px) {
+    .fi-ta-content-ctn .fi-ta-row > td:last-child:has(> .fi-ta-actions),
+    .fi-ta-content-ctn .fi-ta-table thead th.fi-ta-actions-header-cell:last-child { position: sticky; inset-inline-end: 0; z-index: 1; box-shadow: -12px 0 12px -12px rgb(15 17 22 / 0.16); }
+    .fi-ta-content-ctn .fi-ta-row > td:last-child:has(> .fi-ta-actions) { background-color: var(--pos-surface); }
+    .fi-ta-content-ctn .fi-ta-table thead th.fi-ta-actions-header-cell:last-child { background: var(--pos-surface-muted); }
+    .fi-ta-content-ctn .fi-ta-row:is(:hover, .fi-selected, .fi-striped) > td:last-child:has(> .fi-ta-actions) { background-image: linear-gradient(var(--pos-state-hover), var(--pos-state-hover)); }
+}
+
+
+/* Records open beside the list: Filament slide-overs become PeopleOS drawers */
+.fi-modal-slide-over .fi-modal-window { border-radius: 0 !important; box-shadow: var(--pos-shadow-3) !important; border-inline-start: 1px solid var(--pos-border); background: var(--pos-surface-elevated) !important; }
+.fi-modal-slide-over .fi-modal-heading { font-family: var(--font-display); font-size: var(--pos-fs-title) !important; font-weight: 400 !important; letter-spacing: -0.01em; }
+
+/* Forms: Context → Information → Change → Review → Confirm */
+.pos-form-review { position: sticky; bottom: var(--pos-space-4); z-index: var(--pos-z-sticky); display: grid; gap: var(--pos-space-3); margin-top: var(--pos-space-6); padding: var(--pos-space-4) var(--pos-space-5); background: var(--pos-surface-elevated); border: 1px solid var(--pos-border); border-radius: var(--pos-radius-lg); box-shadow: var(--pos-shadow-2); }
+.pos-form-review-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-3); }
+.pos-form-review-head .pos-sec-title { margin: 0; }
+.pos-form-review-list { display: grid; gap: var(--pos-space-2); max-height: 34vh; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+.pos-form-review-list li { display: grid; grid-template-columns: minmax(120px, 220px) minmax(0, 1fr); gap: var(--pos-space-3); align-items: baseline; font-size: var(--pos-fs-body); }
+.pos-form-review-label { color: var(--pos-text-secondary); }
+.pos-form-review-values { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); min-width: 0; }
+@media (max-width: 640px) { .pos-form-review-list li { grid-template-columns: 1fr; gap: var(--pos-space-1); } .pos-form-review { bottom: calc(var(--pos-space-16) + env(safe-area-inset-bottom, 0px)); } }
+
+/* Phones: table rows stack into readable entries with their actions in reach */
+@media (max-width: 640px) {
+    .fi-ta-content-ctn .fi-ta-table thead { display: none; }
+    .fi-ta-content-ctn .fi-ta-table, .fi-ta-content-ctn .fi-ta-table tbody { display: block; width: 100%; }
+    .fi-ta-content-ctn .fi-ta-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); border-top: 1px solid var(--pos-border); }
+    .fi-ta-content-ctn .fi-ta-row > td { display: block; padding: 0; border: 0; min-width: 0; }
+    .fi-ta-content-ctn .fi-ta-row > td > *, .fi-ta-content-ctn .fi-ta-row > td [class*='fi-ta-']:not(.fi-badge):not(.fi-ta-actions) { padding-block: var(--pos-space-1) !important; padding-inline: 0 !important; }
+    .fi-ta-content-ctn .fi-ta-row { padding-block: var(--pos-space-3); row-gap: var(--pos-space-1); }
+    .fi-ta-content-ctn .fi-ta-row > td.fi-ta-cell:first-of-type { flex: 1 1 100%; }
+    .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-actions) { flex: 1 1 100%; }
+    .fi-ta-content-ctn .fi-ta-row > td:has(.fi-ta-record-checkbox) { flex: 0 0 auto; }
+}
+
+/* Record pages read like the workspaces. Tabs (record sections, relation tabs, list tabs) use the section-nav
+   underline of the Employee 360 instead of a floating pill bar; section headings use the panel label. */
+.fi-tabs:not(.fi-vertical) { margin-inline: 0 !important; justify-content: flex-start; column-gap: var(--pos-space-1); border-radius: 0 !important; background: transparent !important; box-shadow: inset 0 -1px 0 var(--pos-border) !important; --tw-ring-color: transparent !important; padding: 0 !important; scrollbar-width: none; }
+.fi-tabs.fi-contained:not(.fi-vertical) { border-bottom: 0 !important; padding-inline: var(--pos-space-4) !important; }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item { position: relative; border-radius: 0 !important; background: transparent !important; padding: var(--pos-space-3) !important; }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item .fi-tabs-item-label { color: var(--pos-text-secondary); font-weight: var(--pos-fw-medium); }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item:hover .fi-tabs-item-label { color: var(--pos-text); }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item.fi-active .fi-tabs-item-label { color: var(--pos-text); font-weight: var(--pos-fw-semibold); }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item.fi-active::after { content: ''; position: absolute; inset-inline: var(--pos-space-3); bottom: 0; height: 2px; border-radius: var(--pos-radius-pill); background: var(--pos-primary); }
+.fi-tabs:not(.fi-vertical) .fi-tabs-item:focus-visible { outline: 2px solid var(--pos-focus, var(--pos-primary)); outline-offset: -2px; }
+.fi-section .fi-section-header-heading { font-size: var(--pos-fs-caption) !important; line-height: var(--pos-lh-caption) !important; letter-spacing: var(--pos-tracking-label); text-transform: uppercase; font-weight: var(--pos-fw-semibold) !important; color: var(--pos-text-muted) !important; }
+.fi-section .fi-section-header-description { color: var(--pos-text-secondary); }
+
+/* Accessibility (UX.15 closure audit): the Filament chrome now inside the PeopleOS layer meets WCAG AA.
+   Empty-value placeholders use the muted text token (Filament's grey 400/500 reached 2.5:1 and 3.2:1). */
+.fi-ta-cell .fi-ta-placeholder, .fi-in-entry .fi-in-placeholder { color: var(--pos-text-muted); }
+/* A 24px target for the clear-selection control; the glyph stays 16px */
+.fi-select-input .fi-select-input-value-remove-btn { width: 24px; height: 24px; -webkit-mask-size: 16px 16px; mask-size: 16px 16px; }
+/* Dark filled success/warning/danger buttons carry white text, so they sit one shade deeper (600 gave 3.5–4.3:1) */
+.dark .fi-btn:not(.fi-outlined).fi-color:is(.fi-color-success, .fi-color-warning, .fi-color-danger).dark\:fi-bg-color-600 { --dark-bg: var(--color-700); }
+.dark .fi-btn:not(.fi-outlined).fi-color:is(.fi-color-success, .fi-color-warning, .fi-color-danger).dark\:hover\:fi-bg-color-700 { --dark-hover-bg: var(--color-800); }
+/* Earlier custom pages use light-only grey utilities; in dark they take the PeopleOS text tokens (an explicit dark: wins) */
+.dark :is(.text-gray-400, .text-gray-500):not([class*='dark:text-']) { color: var(--pos-text-muted); }
+.dark .text-gray-600:not([class*='dark:text-']) { color: var(--pos-text-secondary); }
+
+/* Employee 360 (UX.15 closure P1-04): one coherent person workspace. Now holds the core; the deep record sections and the
+   record tabs (rendered by Filament after the workspace) belong to the Records view. Without the view attribute (no
+   script) everything stays visible. */
+html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.fi-resource-view-record-page .pos-360-deep,
+html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.fi-resource-view-record-page .fi-page-content > .fi-sc > .fi-grid-col:nth-child(n+2) { display: none; }
+.pos-360-next { display: grid; gap: var(--pos-space-2); padding-top: var(--pos-space-4); border-top: 1px solid var(--pos-border); }
+.pos-360-next .pos-label { display: flex; align-items: center; gap: var(--pos-space-2); }
+.pos-360-sec { scroll-margin-top: var(--pos-space-16); }
+
+/* Earlier custom pages (UX.15 closure): KPI tiles became figure strips; a figure's value carries its meaning */
+.pos-figure-value[data-meaning='bad'] { color: var(--pos-danger); }
+.pos-figure-value[data-meaning='warning'] { color: var(--pos-warning); }
+.pos-figure-value[data-meaning='good'] { color: var(--pos-success); }
+.pos-figure-value[data-meaning='info'] { color: var(--pos-info); }
+.pos-figure-list { display: grid; gap: var(--pos-space-1); margin: var(--pos-space-1) 0 0; font-size: var(--pos-fs-meta); }
+.pos-figure-list > div { display: flex; justify-content: space-between; gap: var(--pos-space-3); }
+.pos-figure-list dt { color: var(--pos-text-secondary); }
+.pos-figure-list dd { margin: 0; font-weight: var(--pos-fw-semibold); }
+
+/* ------------------------------------------------------------------ E. UX.16: role experiences
+   The same components, composed per role. Difference comes from priority, context, information and action;
+   never from colour coding. */
+.pos-signal-count { flex: none; inline-size: 3.5rem; text-align: center; }
+.pos-workforce-headline { font-family: var(--font-display); font-size: var(--pos-fs-title); line-height: 1.3; color: var(--pos-text); max-width: 62ch; text-wrap: balance; }
+.pos-movement { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); column-gap: var(--pos-space-6); }
+.pos-stream-row-compact { padding-block: var(--pos-space-2); }
+
+/* ------------------------------------------------------------------ F. UX.17: mobile and responsive
+   One PeopleOS, laid out for the way each role works on a phone. The breakpoints are the existing ones: 640 (cards),
+   768 (phone), 1024 (the rail replaces the bar), 1280 (two columns). Nothing here changes what anyone may open. */
+
+/* Device wording: keyboard and hover hints with a mouse, tap wording on touch screens */
+.pos-for-touch { display: none; }
+@media (pointer: coarse) {
+    .pos-for-fine { display: none; }
+    .pos-for-touch { display: revert; }
+}
+.pos-phone-only { display: none; }
+@media (max-width: 767px) {
+    .pos-phone-only { display: inline-flex; }
+    .pos-wide-only { display: none; }
+}
+
+/* The bar steps aside while an overlay owns the screen (a modal form, the menu, the palette, a sheet, the assistant):
+   it covered modal footers and the menu. Overlays lock page scroll on <html> (Alpine x-trap.noscroll). */
+@media (max-width: 1023px) {
+    html.pos-command-open .pos-bottom-nav,
+    html[style*='overflow: hidden'] .pos-bottom-nav,
+    body:has(.fi-sidebar.fi-sidebar-open) .pos-bottom-nav { display: none; }
+    /* One way to start something where the bar shows: its Actions button. The top bar's New and Home's
+       "Start something" belong to the rail layout. */
+    .pos-quick-launch, .pos-with-rail { display: none; }
+    .pos-bottom-item > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+/* Tablets: a centred bar rather than five 150 px cells */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .pos-bottom-nav { margin-inline: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 560px; padding-bottom: 6px; border: 1px solid var(--pos-border); border-radius: var(--pos-radius-xl); box-shadow: var(--pos-shadow-2); }
+}
+
+/* Home and My Work: the view switcher and the filters on one scrolling row on phones */
+@media (max-width: 767px) {
+    .pos-lens-scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; margin-inline: calc(var(--pos-gutter) * -1); padding-inline: var(--pos-gutter); mask-image: linear-gradient(90deg, transparent, #000 var(--pos-gutter), #000 calc(100% - 28px), transparent); }
+    .pos-lens-scroll::-webkit-scrollbar { display: none; }
+    .pos-lens-scroll > * { flex: none; scroll-snap-align: start; }
+    /* A compact header: the brief at body size, the welcome as a short note */
+    .pos-home .pos-ws-head { gap: var(--pos-space-3); }
+    .pos-home .pos-ws-brief { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); }
+    .pos-welcome-note { padding: var(--pos-space-3) var(--pos-space-4); gap: var(--pos-space-2) var(--pos-space-3); }
+}
+
+/* Role signals (governance, operations, team, personal) on phones: the count inline, the text full width, the whole row
+   is the link (same URL, same accessible name "Review: …"), a chevron says it opens */
+.pos-signal-chevron { display: none; }
+@media (max-width: 767px) {
+    .pos-signal-row { grid-template-columns: 2.75rem minmax(0, 1fr) auto; gap: var(--pos-space-1) var(--pos-space-3); padding-inline: var(--pos-space-3) var(--pos-space-2); }
+    .pos-signal-row > .pos-signal-count { inline-size: 2.75rem; font-size: var(--pos-fs-section); }
+    .pos-signal-row .pos-signal-link { position: static; width: 32px; height: 32px; padding: 0; background: none; box-shadow: none; color: var(--pos-text-muted); }
+    .pos-signal-row .pos-signal-link::after { content: ''; position: absolute; inset: 0; }
+    .pos-signal-row .pos-signal-link:focus-visible { outline: none; }
+    .pos-signal-row:has(.pos-signal-link:focus-visible) { box-shadow: inset 0 0 0 2px var(--pos-focus); }
+    .pos-signal-row:has(.pos-signal-link:active) { background: var(--pos-state-hover); }
+    .pos-signal-row .pos-signal-verb { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .pos-signal-row .pos-signal-chevron { display: block; }
+}
+
+/* Progressive disclosure on phones (x-pos.phone-cap): three rows (or one insight) first, the rest in place */
+.pos-phone-more { display: none; }
+@media (max-width: 767px) {
+    .pos-phone-cap:not([data-all='true']) .pos-stream > :nth-child(n+4 of .pos-stream-row),
+    .pos-phone-cap:not([data-all='true']) .pos-tl > :nth-child(n+4 of .pos-tl-row),
+    .pos-phone-cap[data-cap='1']:not([data-all='true']) .pos-intel-list > :nth-child(n+2 of .pos-intel-item) { display: none; }
+    .pos-phone-more { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 40px; margin-top: var(--pos-space-1); border-radius: var(--pos-radius-md); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-primary); }
+    .pos-phone-more:hover { background: var(--pos-state-hover); }
+    /* While a list is capped, its "N more in …" link waits until the rest is shown (the section header links there) */
+    .pos-phone-cap:not([data-all='true']) .pos-stream-more { display: none; }
+    /* Figures as a line of facts (value beside its label; nothing hidden, no scroll region); rows with two actions put
+       them under the text */
+    .pos-figures-compact { display: flex; flex-wrap: wrap; gap: var(--pos-space-1) var(--pos-space-4); }
+    .pos-figures-compact .pos-figure { display: inline-flex; align-items: baseline; gap: var(--pos-space-1); min-height: 24px; }
+    .pos-figures-compact .pos-figure-value { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); }
+    .pos-row-actions-below { grid-template-columns: auto minmax(0, 1fr); }
+    .pos-row-actions-below > .pos-stream-end { grid-column: 2; justify-self: start; }
+}
+
+/* Employee 360 Now: on desktop the aside (viewer panel first) spans both rows beside Now and Recently; on narrower
+   screens the same order reads Now → viewer panel → intelligence → snapshot → Recently */
+@media (min-width: 1280px) {
+    .pos-360-now { grid-template-rows: auto 1fr; }
+    .pos-360-now > .pos-ws-main { grid-column: 1; }
+    .pos-360-now > .pos-ws-main:last-child { grid-row: 2; }
+    .pos-360-now > .pos-ws-side { grid-column: 2; grid-row: 1 / span 2; }
+}
+
+/* People directory on phones: filters behind one button; the list view reads as cards (no sideways scroll) */
+@media (max-width: 767px) {
+    .pos-toolbar-filters { display: none; }
+    .pos-toolbar-filters[data-open='true'] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pos-space-2); width: 100%; }
+    .pos-toolbar-filters .pos-select { width: 100%; min-width: 0; }
+}
+@media (min-width: 768px) { .pos-toolbar-filters { display: contents; } }
+@media (max-width: 640px) {
+    .pos-table-cards thead { display: none; }
+    .pos-table-cards, .pos-table-cards tbody { display: block; width: 100%; }
+    .pos-table-cards tr { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); }
+    .pos-table-cards tr + tr { border-top: 1px solid var(--pos-border); }
+    .pos-table-cards td { display: block; padding: 0; border: 0; }
+    .pos-table-cards td.hidden:not(.pos-card-meta) { display: none; }
+    .pos-table-cards td:first-child { flex: 1 1 auto; min-width: 0; }
+    .pos-table-cards td.pos-card-status { flex: none; margin-inline-start: auto; }
+    .pos-table-cards td:nth-child(2) { flex: 1 1 100%; font-size: var(--pos-fs-meta); }
+    .pos-table-cards td.pos-card-meta { flex: none; font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
+    .pos-table-cards td.pos-card-meta + td.pos-card-meta::before { content: '·'; margin-inline-end: var(--pos-space-2); }
+}
+
+/* The icon-only search button on phones keeps its name for assistive technology (UX.15 hid the label entirely) */
+@media (max-width: 767px) {
+    .pos-command-trigger { position: relative; }
+    .pos-command-trigger .pos-command-trigger-label { display: block; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* Command center on phones: a full-screen sheet sized to the visible viewport (the on-screen keyboard never covers
+   the results), safe-area aware, with Cancel. Desktop ⌘K/Ctrl+K and its card are unchanged. */
+.pos-command-cancel { display: none; }
+@media (max-width: 767px) {
+    .pos-command { top: 0; width: 100vw; height: var(--pos-vvh, 100dvh); border-radius: 0; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+    .pos-command-list { flex: 1 1 auto; min-height: 0; max-height: none; }
+    .pos-command-head { padding-inline: var(--pos-space-4) var(--pos-space-2); }
+    .pos-command-cancel { display: inline-flex; align-items: center; flex: none; height: 40px; padding-inline: var(--pos-space-2); border-radius: var(--pos-radius-md); font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); color: var(--pos-primary); }
+}
+
+/* Notification center on phones: the text takes the width; Open, read and snooze sit under it */
+@media (max-width: 767px) {
+    .pos-notif { flex-wrap: wrap; }
+    .pos-notif > :last-child { flex-basis: 100%; justify-content: flex-start; padding-inline-start: 44px; }
+}
+
+/* Forms in modals on phones: the submit row stays in reach at the bottom of the window */
+@media (max-width: 767px) {
+    .fi-modal-window .fi-modal-footer { position: sticky; bottom: 0; z-index: 1; background-color: inherit; padding-block: var(--pos-space-3); box-shadow: 0 -1px 0 var(--pos-border); }
+}
+
+/* Touch targets on coarse pointers (phones, tablets): comfortable without inflating desktop density */
+@media (pointer: coarse) {
+    .fi-topbar .fi-icon-btn, .fi-topbar .fi-topbar-open-sidebar-btn, .fi-topbar .pos-command-trigger, .fi-topbar .fi-user-menu-trigger { min-width: 40px; min-height: 40px; }
+    .pos-spacebar-link { display: inline-flex; align-items: center; min-height: 40px; }
+    .pos-command-action { height: 40px; padding-inline: var(--pos-space-4); }
+    .fi-ta-actions .fi-link, .fi-ta-actions .fi-icon-btn { min-height: 32px; min-width: 32px; }
+    .fi-ta-filter-indicators .fi-badge-delete-btn, .fi-badge .fi-badge-delete-btn { min-width: 24px; min-height: 24px; }
+}
+
+/* ------------------------------------------------------------------ G. UX.18: accessibility hardening (full audit)
+   Fixes from the UX.18 audit (docs/ux/UX-18-Accessibility-Audit.md); each names the WCAG criterion it meets. */
+
+/* 1.4.3 Contrast: earlier custom pages colour small text with Filament's 600 status shades (warning-600 is 4.2:1 on
+   white and 4.3:1 on the dark surface). They take the PeopleOS status tokens, designed for text in both themes; an
+   explicit dark: utility still wins. */
+.text-warning-600:not([class*='dark:text-']) { color: var(--pos-warning); }
+.text-danger-600:not([class*='dark:text-']) { color: var(--pos-danger); }
+.text-success-600:not([class*='dark:text-']) { color: var(--pos-success); }
+
+/* 2.1.1 Keyboard: on tablets the wizard's step header scrolled sideways with nothing focusable inside, so keyboard
+   users could not scroll it. Between 768 and 1279 px the steps wrap into two columns instead of scrolling. */
+@media (min-width: 768px) and (max-width: 1279px) {
+    .fi-sc-wizard .fi-sc-wizard-header { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-x: visible; }
+    .fi-sc-wizard .fi-sc-wizard-header-step-text { width: auto; max-width: none; }
+    .fi-sc-wizard .fi-sc-wizard-header-step-separator { display: none; }
+}
+
+/* 4.1.2 Name, role, value (best practice): the approval queue is a real list. Each decision button sits in a list
+   item, so the rows keep their look: no bullets, and the divider moves to the item. */
+.pos-queue-list { margin: 0; padding: 0; list-style: none; }
+.pos-queue-item { display: block; }
+.pos-queue-item + .pos-queue-item > .pos-stream-row { box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-queue-item > .pos-stream-row { width: 100%; }
+
+/* 2.5.8 Target size (minimum): on desktop too, adjacent row actions in module tables (View, Edit) and the action
+   link under an intelligence statement are at least 24 px tall (they were 20 px). Coarse pointers keep their larger
+   UX.17 sizes. */
+.fi-ta-actions .fi-link { min-height: 24px; }
+.pos-intel-item > .pos-link { display: inline-flex; align-items: center; min-height: 24px; }

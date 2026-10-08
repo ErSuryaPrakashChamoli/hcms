@@ -4,10 +4,10 @@ namespace App\Filament\Resources\CustomFields\Pages;
 
 use App\Filament\Resources\CustomFields\CustomFieldResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditCustomField extends EditRecord
+class EditCustomField extends PeopleEditRecord
 {
     use GovernedEdit;
 

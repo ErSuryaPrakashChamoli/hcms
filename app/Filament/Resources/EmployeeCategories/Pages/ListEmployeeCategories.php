@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\EmployeeCategories\Pages;
 
 use App\Filament\Resources\EmployeeCategories\EmployeeCategoryResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListEmployeeCategories extends ListRecords
+class ListEmployeeCategories extends PeopleListRecords
 {
     protected static string $resource = EmployeeCategoryResource::class;
 

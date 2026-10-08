@@ -4,9 +4,9 @@ namespace App\Filament\Resources\LearningPaths\Pages;
 
 use App\Filament\Resources\LearningPaths\LearningPathResource;
 use App\Filament\Support\GovernedEdit;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Support\Pages\PeopleEditRecord;
 
-class EditLearningPath extends EditRecord
+class EditLearningPath extends PeopleEditRecord
 {
     use GovernedEdit;
 

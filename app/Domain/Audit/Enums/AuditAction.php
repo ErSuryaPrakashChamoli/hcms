@@ -25,6 +25,11 @@ enum AuditAction: string
     case Cancelled = 'CANCELLED';
     case Escalated = 'ESCALATED';
     case Delegated = 'DELEGATED';
+    // Phase 11: the review, scheduling, effective-date and correction steps of a controlled change.
+    case Reviewed = 'REVIEWED';
+    case Scheduled = 'SCHEDULED';
+    case Effected = 'EFFECTED';
+    case Corrected = 'CORRECTED';
 
     // Security
     case Login = 'LOGIN';
@@ -131,6 +136,160 @@ enum AuditAction: string
     case ExitInitiated = 'EXIT_INITIATED';
     case ExitCompleted = 'EXIT_COMPLETED';
     case AlumniCreated = 'ALUMNI_CREATED';
+
+    // Phase 12: HR service delivery (requests / cases, knowledge, policy acknowledgement).
+    case RequestCreated = 'REQUEST_CREATED';
+    case RequestSubmitted = 'REQUEST_SUBMITTED';
+    case RequestAssigned = 'REQUEST_ASSIGNED';
+    case RequestReassigned = 'REQUEST_REASSIGNED';
+    case RequestStatusChanged = 'REQUEST_STATUS_CHANGED';
+    case RequestEscalated = 'REQUEST_ESCALATED';
+    case RequestResolved = 'REQUEST_RESOLVED';
+    case RequestClosed = 'REQUEST_CLOSED';
+    case RequestCancelled = 'REQUEST_CANCELLED';
+    case CommentCreated = 'COMMENT_CREATED';
+    case AttachmentUploaded = 'ATTACHMENT_UPLOADED';
+    case AttachmentDownloaded = 'ATTACHMENT_DOWNLOADED';
+    case ConfidentialCaseViewed = 'CONFIDENTIAL_CASE_VIEWED';
+    case KnowledgePublished = 'KNOWLEDGE_PUBLISHED';
+    case PolicyAcknowledged = 'POLICY_ACKNOWLEDGED';
+
+    // Phase 13: engagement and communication. Anonymous survey responses and anonymous feedback are
+    // recorded without any actor, IP, user agent or request id (AuditRecorder::record(anonymous: true)).
+    case SurveyCreated = 'SURVEY_CREATED';
+    case SurveyVersionCreated = 'SURVEY_VERSION_CREATED';
+    case SurveyApproved = 'SURVEY_APPROVED';
+    case SurveyPublished = 'SURVEY_PUBLISHED';
+    case SurveyOpened = 'SURVEY_OPENED';
+    case SurveyClosed = 'SURVEY_CLOSED';
+    case SurveyArchived = 'SURVEY_ARCHIVED';
+    case SurveyInvitationSent = 'SURVEY_INVITATION_SENT';
+    case SurveyResponseSubmitted = 'SURVEY_RESPONSE_SUBMITTED';
+    case ConfidentialResponseIdentified = 'CONFIDENTIAL_RESPONSE_IDENTIFIED';
+    case FeedbackSubmitted = 'FEEDBACK_SUBMITTED';
+    case CampaignCreated = 'CAMPAIGN_CREATED';
+    case CampaignApproved = 'CAMPAIGN_APPROVED';
+    case CampaignPublished = 'CAMPAIGN_PUBLISHED';
+    case CampaignScheduled = 'CAMPAIGN_SCHEDULED';
+    case CampaignCancelled = 'CAMPAIGN_CANCELLED';
+    case AnnouncementCreated = 'ANNOUNCEMENT_CREATED';
+    case AnnouncementApproved = 'ANNOUNCEMENT_APPROVED';
+    case AnnouncementPublished = 'ANNOUNCEMENT_PUBLISHED';
+    case AnnouncementAcknowledged = 'ANNOUNCEMENT_ACKNOWLEDGED';
+    case AudienceCreated = 'AUDIENCE_CREATED';
+    case AudienceUsed = 'AUDIENCE_USED';
+    case CommunicationPreferenceChanged = 'COMMUNICATION_PREFERENCE_CHANGED';
+    // Phase 14: Integration Hub (inbound events, references, signing) and outbound webhook dead letters.
+    // Phase 14: an AI request left PeopleOS for an external provider (counts only; never content).
+    case AiExternalRequest = 'AI_EXTERNAL_REQUEST';
+    // Production readiness closure: an outbound request to a tenant-configured destination was refused by the SSRF guard.
+    case OutboundDestinationBlocked = 'OUTBOUND_DESTINATION_BLOCKED';
+    case IntegrationSecretRotated = 'INTEGRATION_SECRET_ROTATED';
+    case IntegrationSignatureRejected = 'INTEGRATION_SIGNATURE_REJECTED';
+    case IntegrationEventReceived = 'INTEGRATION_EVENT_RECEIVED';
+    case IntegrationEventProcessed = 'INTEGRATION_EVENT_PROCESSED';
+    case IntegrationEventFailed = 'INTEGRATION_EVENT_FAILED';
+    case IntegrationEventDeadLettered = 'INTEGRATION_EVENT_DEAD_LETTERED';
+    case IntegrationEventReprocessed = 'INTEGRATION_EVENT_REPROCESSED';
+    case ExternalReferenceLinked = 'EXTERNAL_REFERENCE_LINKED';
+    case ExternalReferenceRetired = 'EXTERNAL_REFERENCE_RETIRED';
+    case WebhookDeadLettered = 'WEBHOOK_DEAD_LETTERED';
+    case WebhookReplayed = 'WEBHOOK_REPLAYED';
+    // SaaS.2: identity lifecycle and platform operator governance. No event ever carries a token, code or secret.
+    case InvitationIssued = 'INVITATION_ISSUED';
+    case InvitationAccepted = 'INVITATION_ACCEPTED';
+    case InvitationRevoked = 'INVITATION_REVOKED';
+    case PasswordResetRequested = 'PASSWORD_RESET_REQUESTED';
+    case EmailVerified = 'EMAIL_VERIFIED';
+    case SessionsRevoked = 'SESSIONS_REVOKED';
+    case PlatformAccessStarted = 'PLATFORM_ACCESS_STARTED';
+    case PlatformAccessEnded = 'PLATFORM_ACCESS_ENDED';
+    case SigningSecretRotated = 'SIGNING_SECRET_ROTATED';
+    // SaaS.3: commercial entitlement configuration (never individual entitlement checks, which are observability).
+    case EntitlementConfigured = 'ENTITLEMENT_CONFIGURED';
+    case EntitlementSet = 'ENTITLEMENT_SET';
+    case EntitlementEnded = 'ENTITLEMENT_ENDED';
+    case EntitlementOverrideGranted = 'ENTITLEMENT_OVERRIDE_GRANTED';
+    case EntitlementOverrideRevoked = 'ENTITLEMENT_OVERRIDE_REVOKED';
+    // SaaS.4: the commercial plan catalogue (platform chain) and tenant plan assignments (tenant and platform chains).
+    case PlanCreated = 'PLAN_CREATED';
+    case PlanUpdated = 'PLAN_UPDATED';
+    case PlanVersionDrafted = 'PLAN_VERSION_DRAFTED';
+    case PlanVersionEdited = 'PLAN_VERSION_EDITED';
+    case PlanVersionPublished = 'PLAN_VERSION_PUBLISHED';
+    case PlanVersionRetired = 'PLAN_VERSION_RETIRED';
+    case PlanAssigned = 'PLAN_ASSIGNED';
+    case PlanAssignmentEnded = 'PLAN_ASSIGNMENT_ENDED';
+    // SaaS.6: the commercial subscription lifecycle (tenant and platform chains; module "subscriptions").
+    case TrialStarted = 'TRIAL_STARTED';
+    case TrialExtended = 'TRIAL_EXTENDED';
+    case TrialConverted = 'TRIAL_CONVERTED';
+    case SubscriptionActivated = 'SUBSCRIPTION_ACTIVATED';
+    case SubscriptionRenewed = 'SUBSCRIPTION_RENEWED';
+    case GraceEntered = 'GRACE_ENTERED';
+    case GraceExtended = 'GRACE_EXTENDED';
+    case SubscriptionReactivated = 'SUBSCRIPTION_REACTIVATED';
+    case SubscriptionExpired = 'SUBSCRIPTION_EXPIRED';
+    case SubscriptionCancelled = 'SUBSCRIPTION_CANCELLED';
+    case SubscriptionPlanChanged = 'SUBSCRIPTION_PLAN_CHANGED';
+    // SaaS.7: billing, tax and payments (platform chain; tenant records also on the tenant chain).
+    case BillingMarketCreated = 'BILLING_MARKET_CREATED';
+    case BillingMarketUpdated = 'BILLING_MARKET_UPDATED';
+    case PriceCreated = 'PRICE_CREATED';
+    case PriceVersionDrafted = 'PRICE_VERSION_DRAFTED';
+    case PriceVersionPublished = 'PRICE_VERSION_PUBLISHED';
+    case PriceVersionRetired = 'PRICE_VERSION_RETIRED';
+    case SupplierProfileRecorded = 'SUPPLIER_PROFILE_RECORDED';
+    case SupplierProfileProposed = 'SUPPLIER_PROFILE_PROPOSED';
+    case InvoiceSeriesCreated = 'INVOICE_SERIES_CREATED';
+    case InvoiceSeriesClosed = 'INVOICE_SERIES_CLOSED';
+    case TaxRuleDrafted = 'TAX_RULE_DRAFTED';
+    case TaxRuleSubmitted = 'TAX_RULE_SUBMITTED';
+    case TaxRuleVerified = 'TAX_RULE_VERIFIED';
+    case TaxRuleRetired = 'TAX_RULE_RETIRED';
+    case TaxRuleRejected = 'TAX_RULE_REJECTED';
+    case BillingProfileRecorded = 'BILLING_PROFILE_RECORDED';
+    case BillingTermsSet = 'BILLING_TERMS_SET';
+    case InvoiceDrafted = 'INVOICE_DRAFTED';
+    case InvoiceIssued = 'INVOICE_ISSUED';
+    case InvoiceDiscarded = 'INVOICE_DISCARDED';
+    case InvoicePaid = 'INVOICE_PAID';
+    case PaymentInitiated = 'PAYMENT_INITIATED';
+    case PaymentRecorded = 'PAYMENT_RECORDED';
+    case PaymentPending = 'PAYMENT_PENDING';
+    case PaymentSucceeded = 'PAYMENT_SUCCEEDED';
+    case PaymentFailed = 'PAYMENT_FAILED';
+    case PaymentCancelled = 'PAYMENT_CANCELLED';
+    case PaymentReconciliationException = 'PAYMENT_RECONCILIATION_EXCEPTION';
+    case PaymentExceptionResolved = 'PAYMENT_EXCEPTION_RESOLVED';
+    // SaaS.7 completion: billing periods, notices, maker-checker, credit notes, refunds, TDS, write-offs, settlement.
+    case BillingPeriodCalculated = 'BILLING_PERIOD_CALCULATED';
+    case BillingPeriodRedrafted = 'BILLING_PERIOD_REDRAFTED';
+    case PriceNoticeRecorded = 'PRICE_NOTICE_RECORDED';
+    case PriceNoticeApplied = 'PRICE_NOTICE_APPLIED';
+    case ApprovalRequested = 'FINANCIAL_APPROVAL_REQUESTED';
+    case ApprovalApproved = 'FINANCIAL_APPROVAL_APPROVED';
+    case ApprovalRejected = 'FINANCIAL_APPROVAL_REJECTED';
+    case ApprovalWithdrawn = 'FINANCIAL_APPROVAL_WITHDRAWN';
+    case CreditNoteIssued = 'CREDIT_NOTE_ISSUED';
+    case InvoiceCredited = 'INVOICE_CREDITED';
+    case InvoiceWrittenOff = 'INVOICE_WRITTEN_OFF';
+    case InvoicePartiallyPaid = 'INVOICE_PARTIALLY_PAID';
+    case TdsClaimRecorded = 'TDS_CLAIM_RECORDED';
+    case TdsClaimCertified = 'TDS_CLAIM_CERTIFIED';
+    case RefundStarted = 'REFUND_STARTED';
+    case RefundSucceeded = 'REFUND_SUCCEEDED';
+    case RefundFailed = 'REFUND_FAILED';
+    case PaymentSettlementRecorded = 'PAYMENT_SETTLEMENT_RECORDED';
+    // SaaS.7 configuration: negotiated prices, policies and statutory parameters, the statutory dataset.
+    case NegotiatedPriceCreated = 'NEGOTIATED_PRICE_CREATED';
+    case NegotiatedPriceVersionDrafted = 'NEGOTIATED_PRICE_VERSION_DRAFTED';
+    case NegotiatedPriceVersionPublished = 'NEGOTIATED_PRICE_VERSION_PUBLISHED';
+    case NegotiatedPriceVersionRetired = 'NEGOTIATED_PRICE_VERSION_RETIRED';
+    case ConfigurationProposed = 'CONFIGURATION_PROPOSED';
+    case ConfigurationApproved = 'CONFIGURATION_APPROVED';
+    case StatutoryDatasetLoaded = 'STATUTORY_DATASET_LOADED';
+    case StatutoryDatasetActivated = 'STATUTORY_DATASET_ACTIVATED';
 
     public function label(): string
     {

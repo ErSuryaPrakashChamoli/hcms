@@ -17,6 +17,7 @@ use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
+use App\Domain\Workforce\Models\Position;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Effective-dated organisational assignment. See AssignPositionAction for how rows are opened/closed. */
-#[Fillable(['tenant_id', 'employee_id', 'company_id', 'location_id', 'business_unit_id', 'division_id', 'department_id', 'team_id', 'designation_id', 'level_id', 'grade_id', 'employment_type_id', 'employee_category_id', 'work_mode_id', 'cost_centre_id', 'change_type', 'effective_from', 'effective_to', 'reason'])]
+#[Fillable(['tenant_id', 'employee_id', 'company_id', 'location_id', 'business_unit_id', 'division_id', 'department_id', 'team_id', 'designation_id', 'level_id', 'grade_id', 'employment_type_id', 'employee_category_id', 'work_mode_id', 'cost_centre_id', 'position_id', 'fte', 'change_type', 'effective_from', 'effective_to', 'reason'])]
 class EmployeePosition extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
@@ -52,12 +53,19 @@ class EmployeePosition extends Model
         return [
             'effective_from' => 'date',
             'effective_to' => 'date',
+            'fte' => 'decimal:2',
         ];
     }
 
     public function auditLabel(): string
     {
         return "Position from {$this->effective_from?->toDateString()}";
+    }
+
+    /** Phase 10: the position (seat) this assignment occupies, if any. */
+    public function position(): BelongsTo
+    {
+        return $this->belongsTo(Position::class);
     }
 
     public function employee(): BelongsTo

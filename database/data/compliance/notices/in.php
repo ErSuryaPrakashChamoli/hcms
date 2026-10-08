@@ -52,4 +52,37 @@ return [
         ],
         'retrieved_at' => '2026-09-28',
     ],
+    // Phase 8 evidence reconciliation (1 Oct 2026).
+    [
+        'jurisdiction' => 'IN',
+        'code' => 'EPF',
+        'state' => null,
+        'affects_versions' => [2],
+        'effective_date' => '2026-09-17',
+        'title' => 'EPF v2: EDLI ceiling and minimum admin charge contradicted by EPFO guidance; September split-period treatment not implemented',
+        'summary' => 'Gazette S.O. 5109(E) (17 Sep 2026, Code on Social Security, 2020, Chapter III) confirms the ₹25,000 wage ceiling from its date of publication; it is silent on rates, EPS, EDLI, administrative charges and the September 2026 transition. EPFO\'s Wage Ceiling FAQs (explanatory, not notified law) state that the revised ceiling applies to EDLI (EPF v2 carries an EDLI wage ceiling of ₹15,000) and that the minimum administrative charge is ₹500 per month for an establishment with a contributing member (EPF v2 carries ₹75). The FAQs split September 2026 into 1–16 Sep at ₹15,000 and 17–30 Sep at ₹25,000 with day-proportionate wages (Q7, Q9), while the Q9 table shows unprorated figures; PeopleOS payroll applies the version effective on the period end to the whole wage month. EPFO states that ECR instructions "are being issued"; none were found, and the EPF / EPS / EDLI scheme texts and S.O. 2702(E) were not retrieved. Publish a corrected version from the scheme texts, implement split-period calculation once EPFO\'s instructions are authoritative, then resolve this notice.',
+        'references' => [
+            ['title' => 'Gazette of India S.O. 5109(E), 17 Sep 2026 (CG-DL-E-17092026-276299)', 'url' => 'https://egazette.gov.in/WriteReadData/2026/276299.pdf', 'sha256' => '970c2ea088c808a2427f630ba344ab8cfc7a26a10ba9babee2f150b0451c70df'],
+            ['title' => 'EPFO circular E-1345653, 25 Sep 2026 (forwards S.O. 5109(E))', 'url' => 'https://pmvbry-cdn.epfindia.gov.in/wp-content/uploads/2026/09/Wage-Ceiling-Circular-28.09.2026.pdf', 'sha256' => '18799245629e0c4c382ccf2b031da62f55d0af872c2e7b28e4b9648d2b2d10fa'],
+            ['title' => 'EPFO Wage Ceiling FAQs, 24 Sep 2026', 'url' => 'https://pmvbry-cdn.epfindia.gov.in/wp-content/uploads/2026/09/EPFO_Wage_Ceiling_FAQs.pdf', 'sha256' => '47c22e56faaf6735bb8bd0b70db502e2f86efd4adb654cc4593ff85be6eb1052'],
+            ['title' => 'EPF / EPS / EDLI scheme texts and EPFO ECR instructions — not retrieved / not yet issued', 'url' => null],
+        ],
+        'retrieved_at' => '2026-10-01',
+    ],
+    [
+        'jurisdiction' => 'IN',
+        'code' => 'TDS',
+        'state' => null,
+        'affects_versions' => [3],
+        'effective_date' => '2026-04-01',
+        'title' => 'TDS v3: new-regime rates for salary TDS and 2025-Act deduction references not established',
+        'summary' => 'The Income-tax Act, 2025 confirms the new-regime slabs (s.202(1)), standard deductions (s.19(1)) and rebates (s.156), and salary TDS is deducted at the time of payment under s.392(1) at the "rates in force". Act s.2(90) takes those rates from the Finance Act, and Finance Act, 2026 s.3(10)(ii) applies Part III of the First Schedule, whose Paragraph A carries only the slabs from ₹2,50,000 and excludes s.202 income only for advance tax; the text applying the s.202(1) rates to salary TDS was not found. TDS v3 also names deductions by Income-tax Act, 1961 sections (80C, 80CCD, 80D, 80E, 80G, 80TTA) and the 1961 HRA exemption, and its new-regime 25% surcharge cap appears only in the advance-tax table. A qualified reviewer must settle these from the Act and the Income-tax Rules, 2026 (not retrieved) before v3 can be verified.',
+        'references' => [
+            ['title' => 'Income-tax Act, 2025 as amended by the Finance Act, 2026 (Income Tax Department)', 'url' => 'https://www.incometaxindia.gov.in/documents/d/guest/income_tax_act_2025_as_amended_by_fa_act_2026-pdf', 'sha256' => 'd54a0ed6a91673d1a4fbcef9b5e472c3efe441139fae38f85a5a0c5b2cfc998b'],
+            ['title' => 'The Finance Act, 2026 (No. 4 of 2026)', 'url' => 'https://egazette.gov.in/WriteReadData/2026/271439.pdf', 'sha256' => 'f01136356e61b2534328153941a68f13afd06fe8587d347757c89101d9cc564f'],
+            ['title' => 'ITD FAQs on Interplay and Transition (Q6.1, Q6.22–Q6.23)', 'url' => 'https://www.incometaxindia.gov.in/documents/81799/11848482/FAQs-on-Interplay-and-Transition.pdf/05f80c1a-073c-a5d7-fb6f-55509242be53?t=1774082865717', 'sha256' => '0b21c7063d19a81c91b5e2a8911458c003589c2a023c262954dea7fb968917ce'],
+            ['title' => 'Income-tax Rules, 2026 — not retrieved', 'url' => null],
+        ],
+        'retrieved_at' => '2026-10-01',
+    ],
 ];

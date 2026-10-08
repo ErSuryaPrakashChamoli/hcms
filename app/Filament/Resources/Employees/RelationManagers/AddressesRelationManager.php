@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\People\Actions\ChangeAddressAction;
+use App\Filament\Support\ProfileChangeActions;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -11,6 +13,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class AddressesRelationManager extends PersonSatelliteRelationManager
 {
@@ -43,7 +46,11 @@ class AddressesRelationManager extends PersonSatelliteRelationManager
                 TextColumn::make('effective_from')->date()->placeholder('—'),
                 TextColumn::make('effective_to')->date()->placeholder('Current'),
             ])
-            ->headerActions([CreateAction::make()])
-            ->recordActions([EditAction::make(), DeleteAction::make()]);
+            // Phase 12: every write goes through the People change action (authorization, validation, audit).
+            ->headerActions([CreateAction::make()->using(fn (array $data) => ProfileChangeActions::run(fn () => app(ChangeAddressAction::class)->add($this->getOwnerRecord(), $data, auth()->user())))])
+            ->recordActions([
+                EditAction::make()->using(fn (Model $record, array $data) => ProfileChangeActions::run(fn () => app(ChangeAddressAction::class)->update($this->getOwnerRecord(), $record, $data, auth()->user()))),
+                DeleteAction::make()->using(fn (Model $record) => ProfileChangeActions::run(fn () => app(ChangeAddressAction::class)->remove($this->getOwnerRecord(), $record, auth()->user()) ?? true)),
+            ]);
     }
 }

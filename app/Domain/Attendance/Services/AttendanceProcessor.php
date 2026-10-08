@@ -10,6 +10,8 @@ use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Attendance\Models\Shift;
 use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Platform\Services\SettingsRepository;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -36,6 +38,8 @@ final class AttendanceProcessor
 
     public function process(Employee $employee, Carbon|string $date): AttendanceRecord
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Attendance, 'attendance.day.process');
         $date = Carbon::parse($date)->startOfDay();
 
         return DB::transaction(function () use ($employee, $date) {

@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\RuleNotices\Pages;
 
 use App\Filament\Resources\RuleNotices\RuleNoticeResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListRuleNotices extends ListRecords
+class ListRuleNotices extends PeopleListRecords
 {
     protected static string $resource = RuleNoticeResource::class;
 }

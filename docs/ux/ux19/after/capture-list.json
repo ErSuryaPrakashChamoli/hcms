@@ -1,0 +1,130 @@
+[
+  {
+    "file": "hr-360-header-phone-light.png",
+    "persona": "neha.kapoor@demo.local",
+    "path": "/admin/employees/3",
+    "size": "phone",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "hr-360-header-phone-dark.png",
+    "persona": "neha.kapoor@demo.local",
+    "path": "/admin/employees/3",
+    "size": "phone",
+    "theme": "dark",
+    "status": 200
+  },
+  {
+    "file": "hr-360-header-tablet-light.png",
+    "persona": "neha.kapoor@demo.local",
+    "path": "/admin/employees/3",
+    "size": "tablet",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "hr-360-header-tablet-dark.png",
+    "persona": "neha.kapoor@demo.local",
+    "path": "/admin/employees/3",
+    "size": "tablet",
+    "theme": "dark",
+    "status": 200
+  },
+  {
+    "file": "hr-360-header-desktop-light.png",
+    "persona": "neha.kapoor@demo.local",
+    "path": "/admin/employees/3",
+    "size": "desktop",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "hr-360-header-desktop-dark.png",
+    "persona": "neha.kapoor@demo.local",
+    "path": "/admin/employees/3",
+    "size": "desktop",
+    "theme": "dark",
+    "status": 200
+  },
+  {
+    "file": "manager-360-header-phone-light.png",
+    "persona": "amit.verma@demo.local",
+    "path": "/admin/employees/3",
+    "size": "phone",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "admin-360-header-phone-light.png",
+    "persona": "kavya.menon@demo.local",
+    "path": "/admin/employees/3",
+    "size": "phone",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "employee-own-360-phone-light.png",
+    "persona": "priya.nair@demo.local",
+    "path": "/admin/employees/4",
+    "size": "phone",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "employee-own-360-phone-dark.png",
+    "persona": "priya.nair@demo.local",
+    "path": "/admin/employees/4",
+    "size": "phone",
+    "theme": "dark",
+    "status": 200
+  },
+  {
+    "file": "employee-own-360-desktop-light.png",
+    "persona": "priya.nair@demo.local",
+    "path": "/admin/employees/4",
+    "size": "desktop",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "employee-own-360-desktop-dark.png",
+    "persona": "priya.nair@demo.local",
+    "path": "/admin/employees/4",
+    "size": "desktop",
+    "theme": "dark",
+    "status": 200
+  },
+  {
+    "file": "manager-home-phone-light.png",
+    "persona": "amit.verma@demo.local",
+    "path": "/admin",
+    "size": "phone",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "manager-home-desktop-light.png",
+    "persona": "amit.verma@demo.local",
+    "path": "/admin",
+    "size": "desktop",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "employee-my-hr-phone-light.png",
+    "persona": "priya.nair@demo.local",
+    "path": "/admin/my-hr",
+    "size": "phone",
+    "theme": "light",
+    "status": 200
+  },
+  {
+    "file": "employee-my-hr-desktop-light.png",
+    "persona": "priya.nair@demo.local",
+    "path": "/admin/my-hr",
+    "size": "desktop",
+    "theme": "light",
+    "status": 200
+  }
+]

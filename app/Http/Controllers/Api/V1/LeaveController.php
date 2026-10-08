@@ -23,6 +23,8 @@ use RuntimeException;
  */
 class LeaveController extends Controller
 {
+    use PaginatesApi;
+
     public function types(Request $request): JsonResponse
     {
         return $this->page(LeaveType::query()->where('status', 'active')->orderBy('sort_order')->orderBy('code'), $request, fn (LeaveType $t) => [
@@ -136,16 +138,5 @@ class LeaveController extends Controller
     private function present(LeaveRequest $r): array
     {
         return ['id' => $r->id, 'employee_code' => $r->employee?->employee_code, 'leave_type' => $r->leaveType?->code, 'from_date' => $r->from_date->toDateString(), 'to_date' => $r->to_date->toDateString(), 'from_session' => $r->from_session, 'to_session' => $r->to_session, 'days' => (float) $r->days, 'status' => $r->status, 'reviewed_at' => $r->reviewed_at?->toIso8601String(), 'cancelled_at' => $r->cancelled_at?->toIso8601String()];
-    }
-
-    private function page(Builder $query, Request $request, callable $map): JsonResponse
-    {
-        $perPage = min(max((int) $request->query('per_page', 50), 1), 200);
-        $paginator = $query->paginate($perPage)->appends($request->query());
-
-        return response()->json([
-            'data' => collect($paginator->items())->map($map)->values()->all(),
-            'meta' => ['page' => $paginator->currentPage(), 'per_page' => $paginator->perPage(), 'total' => $paginator->total(), 'last_page' => $paginator->lastPage()],
-        ]);
     }
 }

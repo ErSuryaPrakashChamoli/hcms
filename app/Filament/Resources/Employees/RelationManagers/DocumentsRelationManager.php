@@ -6,6 +6,7 @@ use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Documents\Services\Documents;
 use App\Filament\Support\AuditReasonField;
+use App\Support\Storage\StagedUpload;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\DatePicker;
@@ -20,7 +21,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 /** Document collection (§39): private storage, verification, signed downloads. */
@@ -59,19 +59,22 @@ class DocumentsRelationManager extends RelationManager
                     ->schema([
                         Select::make('document_type_id')->label('Document type')->options(fn () => DocumentType::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all())->searchable()->live(),
                         TextInput::make('title')->maxLength(255)->helperText('Defaults to the document type name.'),
-                        FileUpload::make('file')->required()->disk('local')->directory('tmp-uploads')->maxSize(config('peopleos.documents.max_kb'))
+                        FileUpload::make('file')->required()->disk(StagedUpload::disk())->directory('tmp-uploads')->maxSize(config('peopleos.documents.max_kb'))
                             ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
                         DatePicker::make('issued_on')->native(false),
                         DatePicker::make('expires_on')->native(false)->required(fn (Get $get) => (bool) DocumentType::query()->find($get('document_type_id'))?->requires_expiry),
                         AuditReasonField::make(),
                     ])
                     ->action(function (array $data) {
-                        $path = Storage::disk('local')->path($data['file']);
-                        $file = new UploadedFile($path, basename($data['file']), Storage::disk('local')->mimeType($data['file']) ?: null, null, true);
+                        // Production readiness closure: works whatever the staging disk (no local ->path()).
+                        $file = StagedUpload::toUploadedFile($data['file']);
                         $type = isset($data['document_type_id']) ? DocumentType::query()->find($data['document_type_id']) : null;
 
-                        app(Documents::class)->store($this->getOwnerRecord(), $file, $type, $data['title'] ?? null, $data['expires_on'] ?? null, $data['issued_on'] ?? null, $data[AuditReasonField::NAME] ?? null);
-                        Storage::disk('local')->delete($data['file']);
+                        try {
+                            app(Documents::class)->store($this->getOwnerRecord(), $file, $type, $data['title'] ?? null, $data['expires_on'] ?? null, $data['issued_on'] ?? null, $data[AuditReasonField::NAME] ?? null);
+                        } finally {
+                            StagedUpload::discard($data['file'], $file);
+                        }
 
                         Notification::make()->success()->title('Document uploaded')->send();
                     }),

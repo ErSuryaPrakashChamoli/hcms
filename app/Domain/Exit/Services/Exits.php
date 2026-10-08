@@ -84,7 +84,8 @@ final class Exits
             $this->lifecycle->transition($employee, LifecycleState::NoticePeriod, now(), $reason ?? config("peopleos.exit.types.{$type}"), ['exit_case_id' => $case->id, 'type' => $type]);
             $employee->update(['exit_date' => $lwd]);
 
-            $this->timeline->record($employee, 'exit', config("peopleos.exit.types.{$type}").' initiated', now(), $reason, $case, ['last_working_day' => $lwd->toDateString()]);
+            // Phase 14: the free-text reason stays on the exit case (exit.view); the timeline carries the fact only.
+            $this->timeline->record($employee, 'exit', config("peopleos.exit.types.{$type}").' initiated', now(), null, $case, ['last_working_day' => $lwd->toDateString()]);
             ExitEvent::dispatch('exit.initiated', $employee, $case, ['number' => $case->number, 'type' => config("peopleos.exit.types.{$type}"), 'last_working_day' => $lwd->toDateString()], array_filter([$case->manager()->value('user_id')]));
 
             if ($immediate || $lwd->lte(now()->addDays((int) $this->settings->get('exit.clearance_lead_days', 7)))) {

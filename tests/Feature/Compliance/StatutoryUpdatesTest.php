@@ -58,7 +58,8 @@ it('binds historical payroll to the old rule and new payroll to the new rule, fl
 
     expect(($this->line)($august, 'PF_EE')['basis']['rule_version'])->toBe(1)
         ->and(($this->line)($august, 'PF_EE')['amount'])->toBe(1800.0)              // 12% of the ₹15,000 ceiling
-        ->and(collect($august->exceptions)->pluck('type'))->not->toContain('statutory_change_pending')
+        // August is not touched by the EPF change; it is flagged only by the Phase 8 TDS v3 notice (from 1 Apr 2026).
+        ->and(collect($august->exceptions)->where('type', 'statutory_change_pending')->pluck('message')->implode(' '))->not->toContain('EPF')->toContain('TDS v3')
         ->and(($this->line)($september, 'PF_EE')['basis']['rule_version'])->toBe(2)
         ->and(($this->line)($september, 'PF_EE')['amount'])->toBe(2400.0)           // basic 20,000 within ₹25,000
         ->and(collect($september->exceptions)->where('type', 'statutory_change_pending')->pluck('message')->implode(' '))->toContain('September 2026 intra-month treatment')
@@ -77,8 +78,10 @@ it('blocks EPF verification: carried-forward parameters are not confirmed and th
     $v2 = ComplianceRule::query()->where('code', 'EPF')->where('version', 2)->sole();
     $gaps = app(RuleVerifications::class)->coverageGaps($v2);
 
-    expect($gaps)->toContain('wage_ceiling not confirmed', 'edli_wage_ceiling not confirmed', 'round not confirmed')
-        ->and(ComplianceRuleNotice::query()->where('code', 'EPF')->where('status', 'open')->count())->toBe(2);
+    // Phase 8: the wage ceiling is covered by S.O. 5109(E) itself. Phase 9: the 2026 Schemes cover the
+    // rates and rounding; the EDLI ceiling, administrative charges and the EPS rate wording stay open.
+    expect($gaps)->toContain('edli_wage_ceiling not confirmed', 'admin_minimum not confirmed', 'admin_rate not confirmed', 'eps_rate not confirmed')->not->toContain('wage_ceiling not confirmed', 'round not confirmed')
+        ->and(ComplianceRuleNotice::query()->where('code', 'EPF')->where('status', 'open')->count())->toBe(3);
     expect(fn () => app(RuleVerifications::class)->verify($v2, platformAdmin(), 'Looks right'))->toThrow(RuntimeException::class, 'Parameter coverage is incomplete');
 
     config(['peopleos.payroll.enforce_verified_rules' => true]);
@@ -148,5 +151,5 @@ it('exposes the rule reference needed to reproduce every statutory line', functi
     foreach (['PF_EE', 'TDS'] as $code) {
         expect(($this->line)($c, $code)['basis'])->toHaveKeys(['rule_id', 'rule_code', 'rule_version', 'effective_from', 'effective_to', 'verification_status', 'rule_checksum', 'evidence_reference']);
     }
-    expect(PayrollCalculator::VERSION)->toBe('payroll-2.2');
+    expect(PayrollCalculator::VERSION)->toBe('payroll-2.3');   // Phase 11: 2.3 reads compensation through CompensationOutput; statutory lines unchanged
 });

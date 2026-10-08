@@ -1,0 +1,6 @@
+["firefox","/admin","amit.verma","run 1","script errors after settle",2,["uncaught exception [object Object] @ uncaught exception: [object Object]","uncaught exception Object @ uncaught exception: Object"]]
+["firefox","/admin","amit.verma","run 2","script errors after settle",0,[]]
+["firefox","/admin","amit.verma","run 3","script errors after settle",0,[]]
+# Firefox, Home load: Livewire update requests during load, before (8092) and after (8090):
+# before: 1 (Filament\Livewire\DatabaseNotifications:__lazyLoad)  after: 1 (the same)
+# Intermittent uncaught [object Object] when that request is aborted (NS_BINDING_ABORTED): before 1/16 runs, after 4/16 runs; pre-existing Filament behaviour.

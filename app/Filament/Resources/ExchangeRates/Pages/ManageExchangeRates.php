@@ -4,10 +4,10 @@ namespace App\Filament\Resources\ExchangeRates\Pages;
 
 use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Filament\Resources\ExchangeRates\ExchangeRateResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageExchangeRates extends ManageRecords
+class ManageExchangeRates extends PeopleManageRecords
 {
     protected static string $resource = ExchangeRateResource::class;
 

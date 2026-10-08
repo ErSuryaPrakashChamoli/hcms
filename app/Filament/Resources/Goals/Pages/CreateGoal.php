@@ -4,11 +4,11 @@ namespace App\Filament\Resources\Goals\Pages;
 
 use App\Domain\Performance\Services\Goals;
 use App\Filament\Resources\Goals\GoalResource;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class CreateGoal extends CreateRecord
+class CreateGoal extends PeopleCreateRecord
 {
     protected static string $resource = GoalResource::class;
 

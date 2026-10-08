@@ -5,14 +5,14 @@ namespace App\Filament\Resources\EpfReturns\Pages;
 use App\Domain\Compliance\Services\Returns\EpfReturns;
 use App\Domain\Organisation\Models\Establishment;
 use App\Filament\Resources\EpfReturns\EpfReturnResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\StatutoryReturnActions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Carbon;
 
-class ListEpfReturns extends ListRecords
+class ListEpfReturns extends PeopleListRecords
 {
     protected static string $resource = EpfReturnResource::class;
 

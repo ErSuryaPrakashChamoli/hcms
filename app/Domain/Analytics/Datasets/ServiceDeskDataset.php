@@ -26,6 +26,7 @@ class ServiceDeskDataset extends Dataset
     {
         return [
             'number' => ['label' => 'Ticket', 'type' => 'string', 'value' => fn ($t) => $t->number],
+            'service' => ['label' => 'Service', 'type' => 'string', 'value' => fn ($t) => $t->service?->name],
             'category' => ['label' => 'Category', 'type' => 'string', 'value' => fn ($t) => $t->category?->name],
             'employee_code' => ['label' => 'Employee code', 'type' => 'string', 'value' => fn ($t) => $t->employee?->employee_code],
             'priority' => ['label' => 'Priority', 'type' => 'string', 'value' => fn ($t) => $t->priority],
@@ -34,7 +35,7 @@ class ServiceDeskDataset extends Dataset
             'raised_on' => ['label' => 'Raised on', 'type' => 'date', 'value' => fn ($t) => $t->created_at],
             'month' => ['label' => 'Month', 'type' => 'string', 'value' => fn ($t) => $t->created_at?->format('Y-m')],
             'resolution_hours' => ['label' => 'Resolution time (hours)', 'type' => 'number', 'value' => fn ($t) => $t->resolved_at ? round($t->created_at->diffInMinutes($t->resolved_at) / 60, 1) : null],
-            'breached' => ['label' => 'SLA breached (1/0)', 'type' => 'number', 'value' => fn ($t) => $t->escalated_at ? 1 : 0],
+            'breached' => ['label' => 'SLA breached (1/0)', 'type' => 'number', 'value' => fn ($t) => $t->escalated_at || ($t->resolved_at && $t->due_at && $t->resolved_at->gt($t->due_at)) ? 1 : 0],
             'satisfaction' => ['label' => 'Satisfaction (1–5)', 'type' => 'number', 'value' => fn ($t) => $t->satisfaction],
             'count' => ['label' => 'Tickets (1 per row)', 'type' => 'number', 'value' => fn ($t) => 1],
         ];
@@ -42,6 +43,8 @@ class ServiceDeskDataset extends Dataset
 
     public function query(): Builder
     {
-        return Ticket::query()->with(['category', 'employee', 'assignee'])->orderByDesc('id');
+        // Phase 12: restricted (confidential / employee-relations) cases and drafts never enter reports;
+        // a report has no case-level explicit access to check.
+        return Ticket::query()->with(['category', 'service', 'employee', 'assignee'])->where('confidentiality', '!=', 'restricted')->where('status', '!=', 'draft')->orderByDesc('id');
     }
 }

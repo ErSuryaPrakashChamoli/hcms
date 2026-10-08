@@ -124,3 +124,115 @@ nothing was verified.
 Current state after Phase 7: 24 rule versions — 3 REVIEW (ESI v1, EPF v2, TDS v3), 21 DRAFT,
 **0 VERIFIED**; 3 open notices (EPF v1 wage ceiling; TDS v2 legal basis; EPF v1+v2 September
 2026 treatment). Statutory production readiness is not declared.
+
+## 9. Phase 8 evidence reconciliation (1 October 2026)
+
+The open EPF / TDS blockers were re-examined against newly retrieved official texts. The new
+evidence is recorded as an append-only **evidence revision** (`evidence_revisions` in the pack,
+submitted once per version, label `pack:in.php#phase-8-2026-10-01`). Earlier submissions stay in the
+history. Nothing was verified and no notice was resolved.
+
+| Rule | Now covered | Still not confirmed | Contradicted by official guidance |
+|---|---|---|---|
+| EPF v2 | `wage_ceiling` — S.O. 5109(E), 17 Sep 2026: ₹25,000 per month for Chapter III of the Code on Social Security, 2020, from publication | `eps_wage_ceiling`, `eps_rate`, `employee_rate`, `employer_rate`, `edli_rate`, `admin_rate`, `round` (EPFO FAQ illustrations only; the scheme texts were not retrieved) | `edli_wage_ceiling` (v2 carries ₹15,000; EPFO FAQ Q5 applies the new ceiling to EDLI) and `admin_minimum` (v2 carries ₹75; FAQ Q13: ₹500 for an establishment with a contributing member) |
+| TDS v3 | `legal_basis` (s.392(1); Finance Act 2026 s.3(10)(ii)), `deduction_trigger` (ITD FAQ Q6.22: salary by date of payment), `cess_rate` (s.3(16)), `surcharge` (Part III Para F) | `new` (values match s.202(1), s.19(1), s.156(2), but the text applying s.202 rates to s.392 salary TDS was not found, and 80CCD(2) is a 1961-Act section), `old` (values match Part III Para A, s.19(1), s.156(1); deduction identifiers and HRA are 1961-Act provisions), `surcharge_new_regime_cap` (only in the advance-tax table) | — |
+
+Corrections to Phase 7 citations (in the new submission; earlier records unchanged):
+- TDS v3 cited "Finance Act, 2026 s.2(10)(ii)" and "s.2(16)"; the provisions are s.3(10)(ii) and
+  s.3(16).
+- Its deduction trigger cited the general "earlier of credit or payment" rule (ITD FAQ Q6.1). The
+  salary-specific rule is Q6.22 (date of payment), which is what payroll already applies.
+
+New open notices (5 in total):
+- **EPF v2:** the two contradicted values and the September 2026 split.
+  - EPFO's FAQs prorate September by days (1–16 at ₹15,000, 17–30 at ₹25,000) and are internally
+    inconsistent.
+  - PeopleOS payroll applies the version effective on the period end to the whole wage month.
+  - EPFO's ECR instructions "are being issued".
+- **TDS v3:** the s.202 → s.392 rate linkage, the 1961-Act deduction references and the
+  advance-tax-only surcharge cap.
+
+**What a second verifier needs:**
+- the EPF / EPS / EDLI scheme texts;
+- S.O. 2702(E) of 29 May 2026;
+- EPFO's ECR instructions for September 2026;
+- the Income-tax Rules, 2026;
+- a qualified ruling on the s.202 / s.392 linkage.
+
+Then publish corrected versions where values change, resolve the notices and verify.
+
+Current state after Phase 8: 24 rule versions — 3 REVIEW, 21 DRAFT, **0 VERIFIED**; 5 open notices.
+Statutory production readiness is not declared.
+
+## 10. Phase 9 evidence maintenance (1 October 2026)
+
+Phase 9 was not a statutory readiness phase. Newly retrieved official texts were recorded as a
+further evidence revision (`pack:in.php#phase-9-2026-10-01`) of EPF v2 and TDS v3:
+
+- No payload changed and no version was published.
+- Nothing was verified and no notice was resolved or added.
+- Payroll is unchanged.
+
+Files and SHA-256 hashes: `database/data/compliance/evidence/README.md`.
+
+**Retrieved (official domains only):**
+- **EPF / EPS / EDLI Schemes, 2026:** EPF Scheme G.S.R. 525(E), EDLI Scheme G.S.R. 526(E) and EPS
+  G.S.R. 527(E), all of 29 Jun 2026 and made under the Code on Social Security, 2020.
+  - The EPF Scheme supersedes the EPF Scheme, 1952.
+- **Rate notifications of 1 Jul 2026:**
+  - S.O. 3580(E): EPS 8⅓%.
+  - S.O. 3581(E): EDLI 0.5%.
+  - S.O. 3582(E): EPF 12%, deemed in force from 21 Nov 2025.
+- **Corrigenda** G.S.R. 703(E), 704(E) and 705(E) of 4 Aug 2026.
+- **S.O. 2702(E)** of 29 May 2026: ₹15,000 for Chapter III, with no commencement clause. It is
+  superseded by S.O. 5109(E).
+- **Income-tax Rules, 2026** (G.S.R. 198(E), in force 1 Apr 2026).
+
+| Rule | Covered by notified text | Still open (not decided here) |
+|---|---|---|
+| EPF v2 | `wage_ceiling` (S.O. 5109(E); EPF para 18(3))<br>`eps_wage_ceiling` (EPS para 4(1), 11(3))<br>`employee_rate`, `employer_rate` (EPF para 18(2); S.O. 3582(E))<br>`edli_rate` (S.O. 3581(E))<br>`round` (EPF 18(5), EPS 4(3), EDLI 5(3): nearest rupee, 50 paise up) | `edli_wage_ceiling` — **contradicted by notified text**<br>`eps_rate` — **two notified texts differ**<br>`admin_rate`, `admin_minimum` — **not notified** |
+| TDS v3 | Unchanged. The Rules add rules 204 / 205 / 215 / 219 and Form No. 130 ("Surcharge, wherever applicable"; "Health and education cess @ 4%"). | `new`, `old`, `surcharge_new_regime_cap` — the Rules prescribe no rates, map no 1961 sections and do not settle the cap |
+
+**EPF v2 open items, in detail:**
+- **`edli_wage_ceiling`:** EDLI para 5(1) applies the clause (89) ceiling, which is ₹25,000 from
+  17 Sep 2026. v2 carries ₹15,000.
+- **`eps_rate`:** EPS para 4(1) says "eight and thirty-three hundredths per cent"; S.O. 3580(E)
+  says "eight and one-third per cent".
+- **`admin_rate`, `admin_minimum`:** EPF para 29(1) leaves the percentage to a notification, and
+  none was found. The "₹500" in para 29(2) is a daily late fee.
+
+**Not modelled:**
+- the 10% rate for notified classes;
+- the S.O. 3582(E) exceptions;
+- the 9.49% EPS joint option.
+
+**September 2026:** still not established by notified text.
+- EPF para 18(4) uses "wages actually drawn or payable during the month".
+- EPS para 11(1) prorates pensionable wages per wage-ceiling period for pension, not for
+  contributions.
+- No EPFO ECR instruction or circular after 25 Sep 2026 was found. The "Wage Ceiling Circular
+  28.09.2026" re-posts E-1345653.
+- This is recorded for the future payroll remediation phase. The blocking notice stays open.
+
+**EPF v1:** from 29 Jun 2026 its legal basis is the Code and the 2026 Schemes (S.O. 2702(E),
+₹15,000), not the EPF & MP Act, 1952 that its source names. Its values are consistent with those
+texts apart from the unnotified administrative charges. v1 is not changed.
+
+**Not found:**
+- a notification fixing EPF administrative charges under the 2026 Scheme;
+- EPFO ECR instructions for September 2026;
+- a CBDT circular on salary TDS for tax year 2026-27.
+
+**What a second verifier still needs:**
+- **EPF v2:**
+  - a ruling on the EDLI ceiling, then a corrected version;
+  - a ruling on the EPS rate wording (8.33% or 8⅓%);
+  - the administrative-charge notification;
+  - EPFO's September 2026 instructions.
+- **TDS v3:** a qualified ruling on the three open questions.
+
+Current state after Phase 9: 24 rule versions — 3 REVIEW, 21 DRAFT, **0 VERIFIED**; 5 open notices.
+The Phase 8 EPF notice says the scheme texts were "not retrieved". Notices are immutable, so this
+revision supersedes that statement without editing the notice.
+
+**Statutory production readiness: NOT DECLARED.**

@@ -14,9 +14,7 @@ use App\Domain\Compliance\Services\Tds\TdsLedgers;
 use App\Domain\Compliance\Services\Tds\TdsQuarterlyReturns;
 use App\Domain\Employment\Models\EmployeeStatutoryDetail;
 use App\Domain\Payroll\Models\PayrollRun;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\Payroll\Services\PayrollRuns;
-use App\Domain\Payroll\Services\Salaries;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -64,7 +62,7 @@ it('keeps an immutable annual ledger of what finalized payroll deducted, superse
     $september = PayrollRun::query()->whereHas('period', fn ($q) => $q->where('month', 9))->sole();
     app(PayrollRuns::class)->reopen($september, 'Raise', $this->payrollApprover);
     expect($this->ledgers->sync($this->entity, '2026-27')['withdrawn'])->toBe(2);
-    app(Salaries::class)->assign($this->withPan, SalaryStructure::query()->where('code', 'STANDARD')->firstOrFail(), 3000000, '2026-09-01', ['CONV' => 1600], 'revision', 'Raise');
+    compensate($this->withPan, 3000000, '2026-09-01', ['CONV' => 1600], 'revision', 'Raise');
     finalizedPayroll($this->company, 2026, 9, $this->preparer, $this->payrollApprover);
     $this->ledgers->sync($this->entity, '2026-27');
 

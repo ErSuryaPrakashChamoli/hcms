@@ -4,11 +4,11 @@ namespace App\Filament\Resources\EmployeeImports\Pages;
 
 use App\Domain\Employment\Imports\EmployeeImports;
 use App\Filament\Resources\EmployeeImports\EmployeeImportResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
-use Filament\Resources\Pages\ListRecords;
 
-class ListEmployeeImports extends ListRecords
+class ListEmployeeImports extends PeopleListRecords
 {
     protected static string $resource = EmployeeImportResource::class;
 

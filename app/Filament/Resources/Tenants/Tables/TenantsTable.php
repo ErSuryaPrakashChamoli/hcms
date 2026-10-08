@@ -2,17 +2,19 @@
 
 namespace App\Filament\Resources\Tenants\Tables;
 
-use App\Domain\Audit\Enums\AuditAction;
-use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
-use App\Http\Middleware\ResolveTenant;
+use App\Domain\Platform\Services\PlatformTenantAccess;
+use App\Domain\Platform\Services\TenantSuspensions;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use RuntimeException;
 
 class TenantsTable
 {
@@ -33,12 +35,25 @@ class TenantsTable
             ])
             ->defaultSort('name')
             ->recordActions([
+                // SaaS.2: controlled support access. A reason (and optionally a ticket) is required; the access is
+                // time-boxed and audited on the platform chain and on the tenant's own chain.
                 Action::make('enter')
                     ->label('Enter')
                     ->icon('heroicon-o-arrow-right-end-on-rectangle')
-                    ->visible(fn (Tenant $record) => $record->isAccessible())
-                    ->action(function (Tenant $record) {
-                        session()->put(ResolveTenant::SESSION_KEY, $record->id);
+                    ->modalHeading(fn (Tenant $record) => "Enter {$record->name}")
+                    ->modalDescription(fn () => 'Support access is recorded in Markedge\'s audit trail and in this tenant\'s own audit trail, and ends on its own after '.(int) config('peopleos.platform.tenant_access_minutes', 60).' minutes.')
+                    ->schema([
+                        Textarea::make('reason')->label('Why do you need access?')->required()->minLength(10)->maxLength(1000),
+                        TextInput::make('reference')->label('Ticket or case reference')->maxLength(100),
+                    ])
+                    ->action(function (Tenant $record, array $data, PlatformTenantAccess $access) {
+                        try {
+                            $access->enter(auth()->user(), $record, $data['reason'], $data['reference'] ?? null, session()->driver());
+                        } catch (RuntimeException $e) {
+                            Notification::make()->danger()->title($e->getMessage())->send();
+
+                            return null;
+                        }
 
                         return redirect()->to(filament()->getHomeUrl());
                     }),
@@ -48,11 +63,9 @@ class TenantsTable
                     ->color('danger')
                     ->visible(fn (Tenant $record) => $record->status !== TenantStatus::Suspended)
                     ->requiresConfirmation()
+                    ->modalDescription('Every user is signed out at once, API keys stop working and scheduled work pauses until the tenant is reactivated.')
                     ->schema([Textarea::make('reason')->required()->maxLength(1000)])
-                    ->action(function (Tenant $record, array $data, AuditRecorder $audit) {
-                        $record->withAuditReason($data['reason'])->update(['status' => TenantStatus::Suspended]);
-                        $audit->record(AuditAction::TenantSuspended, 'platform', $record, reason: $data['reason'], tenantId: $record->id);
-                    }),
+                    ->action(fn (Tenant $record, array $data, TenantSuspensions $suspensions) => $suspensions->suspend($record, $data['reason'], auth()->user())),
                 Action::make('reactivate')
                     ->label('Reactivate')
                     ->icon('heroicon-o-play-circle')
@@ -60,10 +73,7 @@ class TenantsTable
                     ->visible(fn (Tenant $record) => $record->status === TenantStatus::Suspended)
                     ->requiresConfirmation()
                     ->schema([Textarea::make('reason')->required()->maxLength(1000)])
-                    ->action(function (Tenant $record, array $data, AuditRecorder $audit) {
-                        $record->withAuditReason($data['reason'])->update(['status' => TenantStatus::Active]);
-                        $audit->record(AuditAction::TenantReactivated, 'platform', $record, reason: $data['reason'], tenantId: $record->id);
-                    }),
+                    ->action(fn (Tenant $record, array $data, TenantSuspensions $suspensions) => $suspensions->reactivate($record, $data['reason'], auth()->user())),
                 EditAction::make(),
             ]);
     }

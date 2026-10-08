@@ -19,7 +19,7 @@ beforeEach(function () {
     actAsTenant($this->tenant);
     $this->admin = tenantUser($this->tenant, ['*']);
     $this->actingAs($this->admin);
-    $this->sso = SsoConnection::create(['name' => 'Google', 'provider' => 'google', 'client_id' => 'x', 'client_secret' => 'y', 'authorization_url' => 'https://a', 'token_url' => 'https://t', 'userinfo_url' => 'https://u']);
+    $this->sso = SsoConnection::create(['name' => 'Google', 'provider' => 'google', 'client_id' => 'x', 'client_secret' => 'y', 'authorization_url' => 'https://idp.example.test/authorize', 'token_url' => 'https://idp.example.test/token', 'userinfo_url' => 'https://idp.example.test/userinfo']);
     $this->hook = WebhookEndpoint::create(['name' => 'ERP', 'url' => 'https://erp.example.test', 'secret' => 's', 'events' => ['payroll.finalized']]);
     $this->employee = activeEmployee(null, ['task.view']);
     actAsTenant(null);
@@ -39,7 +39,11 @@ it('renders the enterprise pages and saves the security policy', function () {
     expect((int) app(SettingsRepository::class)->get('security.session_idle_minutes'))->toBe(45)->and((bool) app(SettingsRepository::class)->get('security.mfa_required'))->toBeTrue();
     actAsTenant(null);
 
+    // SaaS.2: the policy just saved applies at once: an employee without an authenticator is sent to set one up.
     $this->actingAs($this->employee->user);
+    $this->get(SecurityPolicyPage::getUrl())->assertRedirect(route('filament.admin.auth.multi-factor-authentication.set-up-required'));
+    // With an authenticator proved, the pages are still refused.
+    proveMfa($this->employee->user);
     $this->get(SsoConnectionResource::getUrl('index'))->assertForbidden();
     $this->get(SecurityPolicyPage::getUrl())->assertForbidden();
 });

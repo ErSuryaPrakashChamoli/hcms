@@ -24,6 +24,7 @@ use Livewire\Livewire;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/../Performance/PerformanceTestHelpers.php';
+require_once __DIR__.'/../ServiceDesk/ServiceDeskTestHelpers.php';
 
 beforeEach(function () {
     $this->travelTo('2026-09-21 09:00:00');
@@ -36,7 +37,7 @@ beforeEach(function () {
     $this->ticket = app(ServiceDesk::class)->open($this->employee, TicketCategory::query()->where('code', 'PAYROLL')->first(), 'Payslip missing', 'August payslip not visible');
     $this->case = app(Grievances::class)->raise(GrievanceCategory::query()->where('code', 'SAFETY')->first(), $this->employee, 'Wiring', 'Loose cable', 'high', false, $this->employee->user);
     $this->article = Article::create(['title' => 'Leave policy', 'category' => 'leave', 'body' => '# Leave', 'requires_acknowledgement' => true]);
-    app(KnowledgeBase::class)->publish($this->article, $this->admin);
+    kbPublishForTests($this->article);
     actAsTenant(null);
 });
 

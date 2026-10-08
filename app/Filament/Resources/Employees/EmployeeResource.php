@@ -13,7 +13,11 @@ use App\Filament\Resources\Employees\RelationManagers\AssetsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\AttendanceRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\BankAccountsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\BgvRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\CareerRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\CertificationsRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\CompensationChangesRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\CompensationRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\DevelopmentRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\DocumentsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\EmergencyContactsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\ExperiencesRelationManager;
@@ -26,14 +30,16 @@ use App\Filament\Resources\Employees\RelationManagers\PositionsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\QualificationsRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\ReportingRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\RequestsRelationManager;
-use App\Filament\Resources\Employees\RelationManagers\SalaryRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\SkillsRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\SuccessionRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\TalentRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\TimelineRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\WorkflowsRelationManager;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Resources\Employees\Schemas\EmployeeInfolist;
 use App\Filament\Resources\Employees\Tables\EmployeesTable;
 use BackedEnum;
+use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -78,31 +84,26 @@ class EmployeeResource extends Resource
         return EmployeesTable::configure($table);
     }
 
+    /**
+     * Experience Transformation §14: the thirty record tabs are grouped into the 360 sections, so the
+     * profile reads as a person rather than a list of tables. Each manager keeps its own
+     * canViewForRecord(); a group with nothing visible disappears.
+     */
     public static function getRelations(): array
     {
         return [
             TimelineRelationManager::class,
-            OnboardingRelationManager::class,
-            AttendanceRelationManager::class,
-            LeaveRelationManager::class,
-            PerformanceRelationManager::class,
-            LearningRelationManager::class,
-            AssetsRelationManager::class,
-            RequestsRelationManager::class,
-            PositionsRelationManager::class,
-            SalaryRelationManager::class,
-            ReportingRelationManager::class,
-            AddressesRelationManager::class,
-            FamilyMembersRelationManager::class,
-            EmergencyContactsRelationManager::class,
-            QualificationsRelationManager::class,
-            ExperiencesRelationManager::class,
-            CertificationsRelationManager::class,
-            SkillsRelationManager::class,
-            DocumentsRelationManager::class,
-            BgvRelationManager::class,
-            BankAccountsRelationManager::class,
-            WorkflowsRelationManager::class,
+            RelationGroup::make('Employment', [PositionsRelationManager::class, ReportingRelationManager::class, OnboardingRelationManager::class,
+                RelationManagers\ExitRelationManager::class, WorkflowsRelationManager::class]),
+            RelationGroup::make('Time', [AttendanceRelationManager::class, LeaveRelationManager::class]),
+            RelationGroup::make('Growth', [PerformanceRelationManager::class, RelationManagers\GoalsRelationManager::class, LearningRelationManager::class,
+                SkillsRelationManager::class, CareerRelationManager::class, TalentRelationManager::class, SuccessionRelationManager::class,
+                CertificationsRelationManager::class, DevelopmentRelationManager::class]),
+            RelationGroup::make('Rewards', [CompensationRelationManager::class, CompensationChangesRelationManager::class, RelationManagers\PayslipsRelationManager::class]),
+            RelationGroup::make('Operations', [DocumentsRelationManager::class, RelationManagers\LettersRelationManager::class, RequestsRelationManager::class,
+                AssetsRelationManager::class, BgvRelationManager::class, RelationManagers\CommunicationsRelationManager::class]),
+            RelationGroup::make(fn (?Model $ownerRecord) => $ownerRecord !== null && BankAccountsRelationManager::canViewForRecord($ownerRecord, ViewEmployee::class) ? 'Bank & personal' : 'Personal', [AddressesRelationManager::class, FamilyMembersRelationManager::class, EmergencyContactsRelationManager::class,
+                QualificationsRelationManager::class, ExperiencesRelationManager::class, BankAccountsRelationManager::class]),
             AuditHistoryRelationManager::class,
         ];
     }

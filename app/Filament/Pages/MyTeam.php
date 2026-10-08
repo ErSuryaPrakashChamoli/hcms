@@ -6,6 +6,7 @@ use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Experience\Services\NeedsAttention;
+use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Support\ServiceDeskActions;
@@ -39,9 +40,11 @@ class MyTeam extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        $me = ServiceDeskActions::me();
+        // UX.18: the manager lens is this very check (own record has current direct reports), already answered once
+        // for the request; the navigation, the phone bar and the page asked again.
+        $user = auth()->user();
 
-        return $me !== null && $me->directReports()->currentlyEffective()->exists();
+        return $user !== null && app(RoleLens::class)->has($user, RoleLens::MANAGER);
     }
 
     public function reportIds()
