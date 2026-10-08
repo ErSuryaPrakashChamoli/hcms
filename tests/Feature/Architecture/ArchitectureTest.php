@@ -252,6 +252,10 @@ it('bypasses tenant scoping only in the documented platform services', function 
         // SaaS.8: a suspended tenant's deferred jobs are stored and released from a worker or the reactivation, before any
         // tenant is bound (rows always filtered by the tenant concerned).
         'app/Support/Tenancy/Jobs/DeferredTenantJobs.php',
+        // SaaS.8: the operators' per-tenant operations counts (grouped counts and states only, no tenant records) and the
+        // platform audit chain (tenant_id null only).
+        'app/Domain/Platform/Services/PlatformOperationsOverview.php',
+        'app/Domain/Audit/Services/PlatformAuditTrail.php',
         'app/Support/Tenancy/TenantContext.php',
         // Phase 14: readiness counts platform-wide dead letters (counts only, no tenant data leaves).
         'app/Support/Observability/HealthChecks.php',
