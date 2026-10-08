@@ -72,3 +72,28 @@ Tests: `tests/Feature/Security/OutboundSsrfTest.php`, covering:
 - **`SendWebhook` jobs** are `ShouldBeEncrypted`, so the queued payload (URL, headers including any `Authorization`, body) is encrypted in the `jobs` / `failed_jobs` tables.
 - **Logs:** the redaction tap masks secrets, tokens, `Authorization`, signatures and identifiers on every channel. No outbound path logs request bodies or headers.
 - **Audit:** metadata only (event, reason, redacted destination).
+- **SaaS.8:** the workflow webhook node's payload goes through `PayloadGuard` (secrets, identifiers, bank and salary fields removed by key), like every outbound webhook payload.
+- **SaaS.8:** work deferred during a tenant suspension (`tenant_deferred_jobs`) is stored encrypted with the application key; a deferred `SendWebhook` keeps its URL and headers encrypted at rest.
+
+## 4. Browser security headers (SaaS.8)
+
+`App\Http\Middleware\SecurityHeaders` adds these to every response (panel, API, downloads, health). A header a route already set is kept.
+
+| Header | Value | Why |
+|---|---|---|
+| `X-Frame-Options` | `SAMEORIGIN` | No other origin can frame the panel (clickjacking on approve, pay, suspend) |
+| `Content-Security-Policy` | `frame-ancestors 'self'` | The same, for modern browsers. Only this directive: a script policy needs Filament / Livewire nonces and is not attempted |
+| `X-Content-Type-Options` | `nosniff` | Downloads and API responses are not content-sniffed |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | No path or token leaves in a referrer |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | Unused browser features are off |
+| `Strict-Transport-Security` | `max-age=PEOPLEOS_HSTS_MAX_AGE` (31536000) | HTTPS requests only; subdomains not included (the operator's choice) |
+
+A reverse proxy may add headers. It must not remove these. Tests: `tests/Feature/Operations/SecurityHardeningTest.php`.
+
+## 5. API rate limit (SaaS.8)
+
+The `api` limiter resolves the presented key once per request (`ApiKeys::resolveFor`, shared with `AuthenticateApiKey`):
+- **Verified key:** 120 requests per minute (`PEOPLEOS_API_RATE_LIMIT_PER_MINUTE`) in its own bucket, keyed by its public prefix (never the secret).
+- **Missing, invalid or unverified key:** the caller's IP bucket.
+
+Before SaaS.8 the bucket came from the presented prefix before any check. Anyone who knew a key's prefix could exhaust that tenant's limit with garbage secrets, and every fresh random token had its own bucket (unlimited failed attempts per caller).

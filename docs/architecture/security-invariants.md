@@ -287,12 +287,27 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
     tax, payments or their pages; one reader of the policy defaults; no environment setting duplicates a policy.
 77. **Chargebacks are never silently dropped.** Until they are processed (B-12, with the provider's activation), a verified
     dispute event is stored, marked `chargeback_not_processed`, logged and flagged to operators.
+78. **Tenant lifecycle is authorised in the service.** Suspend, reactivate, provision, edit a tenant, send its first
+    administrator's invitation and release its deferred work refuse anyone but a platform operator (the console excepted),
+    whatever page or path reaches them; each records a reason on the tenant chain and the platform chain.
+79. **Queued work is never lost to a suspension.** A suspended tenant's job is stored encrypted and dispatched once after
+    reactivation; nothing is released while the tenant is suspended; payment-provider reconciliation still runs.
+80. **Reactivation restores, never upgrades.** A tenant returns to the status the suspension interrupted.
+81. **No pending invitation nobody received.** An invitation exists only if its e-mail was accepted by the transport; a
+    failure is recorded and leaves the tenant provisioned.
+82. **A notification is never resent automatically after an unknown outcome**, and a person resends a failed one only with
+    `notification.resend` and a reason, once.
+83. **Every response carries the framing, sniffing and referrer headers**; HSTS only over HTTPS.
+84. **Only a verified API key claims its rate-limit bucket**; everything else is limited per IP.
+85. **Uniqueness checks on tenant-owned tables never look at other tenants** (architecture test).
+86. **The platform audit trail shows the platform chain only**, and the operations page shows counts and states only.
+87. **Audit integrity has recorded, recent evidence**: a broken chain fails readiness; no result within 48 hours is STALE.
 
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
 |---|---|---|
-| `TenantContext::bypass()` / `withoutTenancy()` | 15 files (SaaS.2: +1, SaaS.3: +1; SaaS.7: +3, `BillingDirectory` and `PaymentDirectory` (operators' cross-tenant invoice and payment headers) and `ProviderEvents` (resolving a payment from a verified provider reference); SaaS.7 configuration: +0 files, one more read in the allow-listed `BillingDirectory`: the platform-chain trail of configuration changes; SaaS.6: +1, `SubscriptionDirectory`: the operators' cross-tenant overview of names and commercial states, and the platform audit chain; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
+| `TenantContext::bypass()` / `withoutTenancy()` | 18 files (SaaS.8: +3, `DeferredTenantJobs` (a suspended tenant's deferred jobs, always filtered by that tenant), `PlatformOperationsOverview` (operators' grouped per-tenant counts) and `PlatformAuditTrail` (`tenant_id IS NULL` only); `PlatformReadiness` no longer bypasses; SaaS.2: +1, SaaS.3: +1; SaaS.7: +3, `BillingDirectory` and `PaymentDirectory` (operators' cross-tenant invoice and payment headers) and `ProviderEvents` (resolving a payment from a verified provider reference); SaaS.7 configuration: +0 files, one more read in the allow-listed `BillingDirectory`: the platform-chain trail of configuration changes; SaaS.6: +1, `SubscriptionDirectory`: the operators' cross-tenant overview of names and commercial states, and the platform audit chain; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
 | `withoutGlobalScope(AccessScope::class)` (345 call sites in 110 files) and `AccessScope::withoutScoping()` (32) | Mechanically each removes only the **organisation** scope; the fail-closed tenant scope stays. Reviewed by category (not line by line): domain services checking a target by id after an explicit `AccessScopes::allows` check, background sweeps, aggregate analytics with small-group suppression, and identity checks (Phase 14: tenant-wide on purpose) |
 | `withoutGlobalScopes()` (all) | 1 | `NumberSequences::highest`. Phase 14 narrowed it to the access scope with an explicit `tenant_id` filter |
 | `DB::table()` | 13 | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only) |
