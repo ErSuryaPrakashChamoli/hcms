@@ -12,14 +12,22 @@ class ExportWarehouse extends Command
 {
     protected $signature = 'peopleos:warehouse:export {--tenant=} {--dataset=*}';
 
-    protected $description = 'Export every dataset as JSON Lines to the warehouse disk';
+    protected $description = 'Export every dataset as JSON Lines to the warehouse disk, for tenants that enabled the feed';
 
     public function handle(WarehouseExport $export, TenantContext $tenants): int
     {
         $runner = TenantRunner::for($this);
         $only = $this->option('dataset') ?: null;
         Tenant::query()->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))->orderBy('id')
-            ->each($runner->isolate(fn (Tenant $tenant) => $tenants->runAs($tenant, fn () => $this->info("{$tenant->slug}: ".json_encode($export->run(null, $only))))));
+            ->each($runner->isolate(fn (Tenant $tenant) => $tenants->runAs($tenant, function () use ($export, $only, $tenant) {
+                // SaaS.8: only tenants that enabled the feed (Security & retention policy).
+                if (! $export->enabled()) {
+                    $this->line("{$tenant->slug}: feed not enabled, skipped");
+
+                    return;
+                }
+                $this->info("{$tenant->slug}: ".json_encode($export->run(null, $only)));
+            })));
 
         return $runner->exitCode();
     }

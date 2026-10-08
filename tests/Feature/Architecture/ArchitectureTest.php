@@ -4,6 +4,7 @@ use App\Domain\Attendance\Contracts\LeaveDayResolver;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Audit\Models\AuditEventChange;
+use App\Domain\Audit\Models\AuditVerificationRun;
 use App\Domain\Billing\Models\BillingMarket;
 use App\Domain\Billing\Models\ConfigurationVersion;
 use App\Domain\Billing\Models\FinancialApproval;
@@ -104,6 +105,8 @@ it('scopes every domain model to a tenant except the documented platform-level m
         // SaaS.7 configuration: Markedge policy and statutory parameter versions are platform configuration (no tenant).
         // A customer's negotiated prices are tenant-scoped.
         ConfigurationVersion::class,
+        // SaaS.8: audit-chain verification results (one row per chain per run; subject_tenant_id names the chain verified).
+        AuditVerificationRun::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -214,6 +217,8 @@ it('audits every domain model except the documented append-only or derived table
         // SaaS.8: deferred jobs are an operational queue (an encrypted serialized job, deleted when dispatched again); the
         // release is audited with its count on the reactivation (TENANT_REACTIVATED) or the operator's command.
         'Platform\Models\TenantDeferredJob',
+        // SaaS.8: verification results are themselves the append-only record of the audit trail's integrity.
+        'Audit\Models\AuditVerificationRun',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 

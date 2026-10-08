@@ -2,14 +2,11 @@
 
 namespace App\Support\Observability;
 
-use App\Domain\Audit\Services\AuditIntegrityVerifier;
+use App\Domain\Audit\Services\AuditVerifications;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\ComplianceRuleNotice;
-use App\Domain\Platform\Models\Tenant;
-use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Schema;
 use League\Flysystem\AwsS3V3\AwsS3V3Adapter;
-use Throwable;
 
 /**
  * Phase 14 production readiness: one report combining configuration, runtime health, audit integrity,
@@ -34,7 +31,7 @@ final class PlatformReadiness
 
     public const UNVERIFIED = 'UNVERIFIED';
 
-    public function __construct(private readonly HealthChecks $health, private readonly AuditIntegrityVerifier $audit, private readonly TenantContext $tenants) {}
+    public function __construct(private readonly HealthChecks $health, private readonly AuditVerifications $verifications) {}
 
     /** @return array{checks: list<array{area: string, check: string, status: string, detail: string}>, summary: array<string, mixed>} */
     public function report(bool $verifyAudit = true): array
@@ -100,26 +97,22 @@ final class PlatformReadiness
             $add('runtime', "Health: {$name}", $c['status'] === 'ok' ? self::PASS : ($c['status'] === 'fail' ? self::FAIL : self::WARN), is_array($c['detail'] ?? null) ? json_encode($c['detail']) : (string) ($c['detail'] ?? ''));
         }
 
-        // Audit integrity
+        // Audit integrity. SaaS.8: live (and recorded) only when asked (the CLI); the page reads the scheduled results instead
+        // of re-hashing every audit event of every tenant on each load.
         if ($verifyAudit) {
-            $broken = [];
-            $checked = 0;
-            $this->tenants->bypass(fn () => Tenant::query()->orderBy('id')->get())->each(function (Tenant $tenant) use (&$broken, &$checked) {
-                try {
-                    $result = $this->audit->verify($tenant->id);
-                    $checked += $result['checked'];
-                    if (! $result['valid']) {
-                        $broken[] = $tenant->slug;
-                    }
-                } catch (Throwable) {
-                    $broken[] = $tenant->slug;
-                }
-            });
-            $platform = $this->audit->verify(null);
-            $checked += $platform['checked'];
-            $platform['valid'] || $broken[] = 'platform';
-            $add('audit', 'Audit hash chains intact (every tenant + platform)', $broken === [] ? self::PASS : self::FAIL, $broken === [] ? "{$checked} events verified" : 'broken: '.implode(', ', $broken));
+            $this->verifications->verify(trigger: 'readiness');
         }
+        $audit = $this->verifications->status();
+        $add('audit', 'Audit hash chains intact (every tenant + platform)', match ($audit['state']) {
+            AuditVerifications::PASS => self::PASS,
+            AuditVerifications::FAIL => self::FAIL,
+            default => $production ? self::FAIL : self::WARN,
+        }, match ($audit['state']) {
+            AuditVerifications::PASS => "{$audit['checked']} events verified across {$audit['chains']} chains (oldest result {$audit['oldest']})",
+            AuditVerifications::FAIL => 'broken: '.implode(', ', $audit['broken']),
+            default => trim(($audit['never'] !== [] ? 'never verified: '.implode(', ', array_slice($audit['never'], 0, 10)).(count($audit['never']) > 10 ? ' …' : '').'. ' : '')
+                .($audit['stale'] !== [] ? 'result too old: '.implode(', ', array_slice($audit['stale'], 0, 10)).'. ' : '').'Run peopleos:audit:verify (scheduled daily at 02:30).'),
+        });
 
         // Statutory production gate
         $statutory = $this->statutory();

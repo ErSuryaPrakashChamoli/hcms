@@ -37,6 +37,9 @@ Schedule::command('peopleos:webhooks:deliver')->everyMinute()->withoutOverlappin
 // SaaS.8: notification deliveries stuck in sending (worker lost) or left queued (job lost).
 Schedule::command('peopleos:notifications:recover')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:retention:purge')->dailyAt('03:30')->withoutOverlapping()->onOneServer();
+// SaaS.8: the audit chains are verified daily and the result recorded (it was never scheduled); queue tables pruned.
+Schedule::command('peopleos:audit:verify --scheduled')->dailyAt('02:30')->withoutOverlapping()->onOneServer();
+Schedule::command('peopleos:operations:prune')->dailyAt('03:45')->withoutOverlapping()->onOneServer();
 // SaaS.6: commercial expiries the dates already decided (idempotent; effective the day after each end, however late).
 Schedule::command('peopleos:subscriptions:settle')->dailyAt('00:15')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:billing:provider-events')->everyFiveMinutes()->withoutOverlapping()->onOneServer();

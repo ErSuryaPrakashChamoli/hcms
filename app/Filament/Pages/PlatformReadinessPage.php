@@ -37,6 +37,7 @@ class PlatformReadinessPage extends Page
     /** @return array{checks: list<array<string, string>>, summary: array<string, mixed>} */
     public function getReport(): array
     {
-        return app(PlatformReadiness::class)->report();
+        // SaaS.8: the recorded results of the scheduled audit verification, not a live re-hash of every event per load.
+        return app(PlatformReadiness::class)->report(verifyAudit: false);
     }
 }

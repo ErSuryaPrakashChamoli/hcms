@@ -56,9 +56,11 @@ Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterat
 | `peopleos:leave:accrue` | daily 01:00 | ledger keys | Post leave accruals; close leave years |
 | `peopleos:attendance:process` | daily 02:00 | recompute (deterministic) | Compute attendance records |
 | `peopleos:learning:tick` | daily 03:00 | per enrolment state | Rule assignments, overdue, certificate expiry |
-| `peopleos:retention:purge` | daily 03:30 | delete-by-age | Purge operational logs past retention (runs for suspended tenants too) |
+| `peopleos:audit:verify` (`--scheduled`) | daily 02:30 | append-only results | **SaaS.8.** Recompute every tenant chain and the platform chain; one `audit_verification_runs` row per chain. The readiness and operations pages read the latest results (STALE after `PEOPLEOS_AUDIT_VERIFICATION_MAX_AGE_HOURS`, 48). Exit code non-zero on a broken chain |
+| `peopleos:retention:purge` | daily 03:30 | delete-by-age (**batched, SaaS.8**) | Purge operational logs past retention, and (**SaaS.8**) warehouse snapshots past `warehouse.retention_days` (runs for suspended tenants too) |
+| `peopleos:operations:prune` | daily 03:45 | delete-by-age | **SaaS.8.** `queue:prune-failed` and `queue:prune-batches` older than `PEOPLEOS_FAILED_JOBS_RETENTION_HOURS` (720) |
 | `peopleos:exit:tick` | daily 04:00 | per exit state | Start clearance inside the lead window |
-| `peopleos:warehouse:export` | daily 05:00 | overwrite per day | Warehouse feed (non-sensitive fields unless enabled) |
+| `peopleos:warehouse:export` | daily 05:00 | overwrite per day | Warehouse feed (non-sensitive fields unless enabled). **SaaS.8: only tenants with `warehouse.export_enabled`** |
 | `peopleos:lifecycle:reminders` | daily 06:00 | **`scheduler_claims` per tenant per day (Phase 14)**; `--force` to re-run | Joining, probation and document-expiry reminder events |
 | `peopleos:performance:reminders` | daily 07:00 | reminder log | Performance reminders |
 | `peopleos:learning:send-reminders` | daily 07:30 | reminder log | Learning reminders |

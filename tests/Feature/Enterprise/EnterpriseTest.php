@@ -212,6 +212,7 @@ it('purges by retention windows and exports the warehouse feed', function () {
     $purged = app(Retention::class)->purge();
     expect($purged['ai_interactions'])->toBe(1)->and(AiInteraction::query()->count())->toBe(1);
 
+    app(SettingsRepository::class)->set('warehouse.export_enabled', true, 'Feed wanted'); // SaaS.8: opt-in
     $out = app(WarehouseExport::class)->run($this->hr, ['employees', 'assets']);
     expect($out)->toBe(['employees' => 1, 'assets' => 0]);
     $folder = 'warehouse/'.$this->tenant->slug.'/'.now()->format('Y-m-d');

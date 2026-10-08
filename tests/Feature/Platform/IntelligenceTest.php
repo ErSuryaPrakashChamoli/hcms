@@ -22,6 +22,7 @@ use App\Domain\Lifecycle\Services\Timeline;
 use App\Domain\Lifecycle\Support\TimelineCategories;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Location;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Pages\ChangeIntelligencePage;
 use App\Filament\Pages\PeopleAnalyticsPage;
 use App\Filament\Resources\AuditEvents\Pages\ListAuditEvents;
@@ -190,6 +191,7 @@ it('runs scheduled reports as the owner and never silently truncates', function 
     expect($filtered->truncated)->toBeFalse()->and($filtered->rows[0]['employee_code'])->toBe($this->rahul->employee_code);
 
     // The warehouse feed carries no sensitive fields and records truncation in its manifest.
+    app(SettingsRepository::class)->set('warehouse.export_enabled', true, 'Feed wanted'); // SaaS.8: opt-in
     app(WarehouseExport::class)->run($this->hr, ['employees']);
     $folder = 'warehouse/'.$this->tenant->slug.'/'.now()->format('Y-m-d');
     expect(Storage::disk('local')->get("{$folder}/employees.jsonl"))->not->toContain('ctc_annual')

@@ -614,6 +614,9 @@ return [
         'token' => env('PEOPLEOS_HEALTH_TOKEN', ''),
         'heartbeat_max_age' => (int) env('PEOPLEOS_HEARTBEAT_MAX_AGE', 180),
         'queue_backlog_warn' => (int) env('PEOPLEOS_QUEUE_BACKLOG_WARN', 1000),
+        // SaaS.8: failed jobs and finished job batches older than this are pruned daily (peopleos:operations:prune). Their
+        // payloads are serialized jobs; this is an operational window to investigate and retry, not a legal period.
+        'failed_jobs_retention_hours' => max(24, (int) env('PEOPLEOS_FAILED_JOBS_RETENTION_HOURS', 720)),
     ],
     'observability' => [
         // Queries slower than this are logged (SQL text only, never bindings). 0 disables.
@@ -758,6 +761,11 @@ return [
         'configuration.approval.minimum_risk' => 'medium',
         // Phase 14: the warehouse feed carries non-sensitive dataset fields unless this is explicitly enabled.
         'warehouse.include_sensitive' => false,
+        // SaaS.8: the daily warehouse feed is opt-in per tenant (it exported every tenant), and its daily snapshots are
+        // deleted after this many days by the retention purge (they were never deleted). Operational defaults, not legal
+        // retention periods (D-8 is open); each tenant can change both on Security & retention policy.
+        'warehouse.export_enabled' => false,
+        'warehouse.retention_days' => 30,
         // Phase 14: what may leave the tenant for an external AI provider: none | allowed | restricted (prohibited data never does).
         'ai.external_data_policy' => 'allowed',
     ],
@@ -2003,6 +2011,8 @@ return [
         // Attribute names masked in audit_event_changes unless the model says otherwise.
         'sensitive_attributes' => ['password', 'account_number', 'pan', 'aadhaar_reference', 'uan', 'pf_number', 'esic_number', 'salary'],
         'mask' => '••••',
+        // SaaS.8: peopleos:audit:verify runs daily and records each chain's result; older than this, readiness says STALE.
+        'verification_max_age_hours' => max(1, (int) env('PEOPLEOS_AUDIT_VERIFICATION_MAX_AGE_HOURS', 48)),
     ],
 
     // UX.18 visual regression: a frozen clock for the disposable *_visual_showcase database only (never in production),
