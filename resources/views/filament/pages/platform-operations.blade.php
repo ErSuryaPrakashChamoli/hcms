@@ -59,7 +59,7 @@
                 <tbody>
                     @foreach ($rows as $row)
                         <tr @class(['border-t border-gray-100 dark:border-gray-800', 'bg-primary-50 dark:bg-white/5' => $selected && $selected['tenant']->id === $row['tenant']->id])>
-                            <td class="py-1 pe-4"><button type="button" class="text-primary-600 underline dark:text-primary-400" wire:click="$set('tenant', {{ $row['tenant']->id }})">{{ $row['tenant']->name }}</button></td>
+                            <td class="py-1 pe-4"><button type="button" class="text-start text-primary-600 underline dark:text-primary-400" wire:click="$set('tenant', {{ $row['tenant']->id }})">{{ $row['tenant']->name }}</button></td>
                             <td class="pe-4">
                                 <x-filament::badge size="sm" :color="$row['tenant']->status->getColor()">{{ $row['tenant']->status->getLabel() }}</x-filament::badge>
                                 @if ($row['tenant']->suspended_at)<span class="text-xs text-gray-500">since {{ $row['tenant']->suspended_at->toDateString() }}{{ $row['tenant']->suspended_from ? ' (was '.$row['tenant']->suspended_from.')' : '' }}</span>@endif
@@ -68,7 +68,7 @@
                             <td class="pe-4">{{ $row['failed_notifications'] }} / <span @class(['font-semibold text-danger-600 dark:text-danger-400' => $row['stuck_notifications'] > 0])>{{ $row['stuck_notifications'] }}</span></td>
                             <td class="pe-4">{{ $row['failing_webhooks'] ?: '—' }}</td>
                             <td class="pe-4">{{ $row['dead_letters'] ?: '—' }}</td>
-                            <td class="pe-4">@if ($row['invitation_needed'])<x-filament::badge size="sm" color="warning">Invitation not sent</x-filament::badge>@else — @endif</td>
+                            <td class="pe-4">@if ($row['invitation_needed'])<span class="text-sm font-medium text-warning-700 dark:text-warning-400">Invitation not sent</span>@else — @endif</td>
                             <td>
                                 @php($run = $row['audit'])
                                 <x-filament::badge size="sm" :color="$run === null ? 'gray' : ($run->valid ? 'success' : 'danger')">{{ $run === null ? 'Not verified' : ($run->valid ? 'Intact' : 'Broken') }}</x-filament::badge>

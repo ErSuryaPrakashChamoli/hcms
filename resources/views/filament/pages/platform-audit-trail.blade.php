@@ -43,8 +43,8 @@
                     <tbody>
                         @foreach ($events as $e)
                             <tr @class(['border-t border-gray-100 dark:border-gray-800', 'bg-primary-50 dark:bg-white/5' => $selected && $selected->id === $e->id])>
-                                <td class="py-1 pe-4 whitespace-nowrap">{{ $e->occurred_at->format('Y-m-d H:i') }}</td>
-                                <td class="pe-4"><button type="button" class="text-primary-600 underline dark:text-primary-400" wire:click="$set('event', '{{ $e->id }}')">{{ $this->actionLabel($e) }}</button></td>
+                                <td class="py-1 pe-4">{{ $e->occurred_at->format('Y-m-d H:i') }}</td>
+                                <td class="pe-4"><button type="button" class="text-start text-primary-600 underline dark:text-primary-400" wire:click="$set('event', '{{ $e->id }}')">{{ $this->actionLabel($e) }}</button></td>
                                 <td class="pe-4">{{ $e->actor_name ?? 'System' }}</td>
                                 <td class="pe-4">{{ $e->metadata['subject_tenant'] ?? $e->entity_label ?? '—' }}</td>
                                 <td class="text-gray-600 dark:text-gray-300">{{ \Illuminate\Support\Str::limit((string) $e->reason, 80) ?: '—' }}</td>
