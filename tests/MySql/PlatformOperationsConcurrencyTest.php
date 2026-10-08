@@ -19,8 +19,10 @@ use App\Domain\Platform\Services\TenantSuspensions;
 use App\Support\Tenancy\Jobs\DeferredTenantJobs;
 use App\Support\Tenancy\TenantContext;
 use Filament\Facades\Filament;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Tests\Support\TenantAwareTestJob;
 
 require_once __DIR__.'/ConcurrencyHelpers.php';
@@ -107,8 +109,19 @@ it('3. reactivates once, restoring the interrupted trial, when two operators rea
     app(TenantSuspensions::class)->suspend(Tenant::query()->findOrFail($this->tenant->id), 'Race setup', $this->operator);
     $second = User::factory()->platformAdmin()->create();
 
-    $reactivate = fn (User $by) => fn () => app(TenantSuspensions::class)->reactivate(Tenant::query()->findOrFail($this->tenant->id), 'Cleared by '.$by->id, $by) ?: throw new RuntimeException('no change');
-    $results = race([$reactivate($this->operator), $reactivate($second)]);
+    // Both operators read "suspended" before either writes (each pauses right after that read); the first writes at about
+    // 0.3 s, the second at about 1.3 s, in a later second: MySQL reports changed (not matched) rows, so an update writing
+    // the same values in the same second would report none and hide a missing condition. Only the conditional update
+    // keeps it to one transition.
+    $reactivate = fn (User $by, float $pause) => function () use ($by, $pause) {
+        Event::listen(QueryExecuted::class, function (QueryExecuted $q) use ($pause) {
+            if (str_starts_with(strtolower($q->sql), 'select') && str_contains($q->sql, '`suspended_from`')) {
+                usleep((int) ($pause * 1_000_000));
+            }
+        });
+        app(TenantSuspensions::class)->reactivate(Tenant::query()->findOrFail($this->tenant->id), 'Cleared by '.$by->id, $by) ?: throw new RuntimeException('no change');
+    };
+    $results = race([$reactivate($this->operator, 0.3), $reactivate($second, 1.3)]);
 
     expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
         ->and(collect($results)->reject(fn ($r) => $r === 'ok')->values()->all())->toBe(['no change'])
@@ -122,7 +135,8 @@ it('4. records the interrupted status once when two operators suspend a trial te
     Tenant::query()->whereKey($this->tenant->id)->update(['status' => TenantStatus::Trial->value]);
 
     $suspend = fn (string $reason) => fn () => app(TenantSuspensions::class)->suspend(Tenant::query()->findOrFail($this->tenant->id), $reason, User::query()->findOrFail($this->operator->id)) ?: throw new RuntimeException('no change');
-    $results = race([$suspend('Operator one'), $suspend('Operator two')]);
+    // Every query pauses, so both operators read "trial" before either writes: only the conditional update keeps it to one.
+    $results = race([$suspend('Operator one'), $suspend('Operator two')], pause: 0.15, slow: [QueryExecuted::class]);
 
     expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
         ->and($this->tenant->fresh()->status)->toBe(TenantStatus::Suspended)
