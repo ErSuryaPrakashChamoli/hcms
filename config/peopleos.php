@@ -478,6 +478,7 @@ return [
             'notification.view' => 'View notification templates and rules',
             'notification.update' => 'Manage notification templates and rules',
             'notification.deliveries' => 'View the notification delivery log',
+            'notification.resend' => 'Send a failed notification delivery again (with a reason; audited)',
         ],
         'employee' => [
             'employee.view' => 'View employees and Employee 360 (non-sensitive tabs)',
@@ -1051,6 +1052,12 @@ return [
         ],
         // Phase 14: external channels are delivered by a tenant-bound job after the business transaction commits.
         'async_channels' => ['email', 'sms', 'whatsapp', 'push'],
+        // SaaS.8 recovery sweep (peopleos:notifications:recover, every five minutes). A delivery still `sending` after the
+        // lease (well above the delivery job's 60 s timeout) lost its worker: it is marked failed with an unknown outcome,
+        // never sent again automatically (it may have been received). An async delivery still `queued` after the requeue
+        // window lost its job: it is dispatched again (the delivery claim prevents a double send).
+        'sending_lease_minutes' => max(5, (int) env('PEOPLEOS_NOTIFICATIONS_SENDING_LEASE_MINUTES', 15)),
+        'requeue_after_minutes' => max(15, (int) env('PEOPLEOS_NOTIFICATIONS_REQUEUE_AFTER_MINUTES', 60)),
         'audience_types' => [
             'subject' => 'The subject employee', 'manager' => "Subject's line manager", 'initiator' => 'Who started it',
             'role' => 'Everyone with a role', 'user' => 'A specific user', 'assignee' => 'Task assignee',
