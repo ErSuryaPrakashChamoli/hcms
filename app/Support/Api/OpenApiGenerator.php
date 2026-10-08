@@ -79,7 +79,7 @@ final class OpenApiGenerator
                     .' errors return `{message, code, request_id, errors?}`;'
                     .' writes honour an `Idempotency-Key` header (24 h replay);'
                     .' `X-Correlation-Id` / `X-Request-Id` are accepted and echoed;'
-                    .' 120 requests per minute per key.',
+                    .' 120 requests per minute per verified key; requests with a missing, invalid or unverified key share a per-IP limit (SaaS.8).',
                     'Audiences: every operation here is an integration (machine-to-machine) API (`x-audience: integration`). Employee self-service, manager, HR and administrator user APIs are NOT part of this contract. People act in the PeopleOS application, where the full security chain (tenant → permission → organisation scope → relationship scope → field security) applies. A user-token API is deferred surface.',
                     'Sensitive data appears only behind the sensitive scopes listed in `x-data-classification: sensitive` operations and is audited.',
                 ]),
