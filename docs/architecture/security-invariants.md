@@ -275,6 +275,19 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
     value in their rows and snapshot; periods freeze their price source and discount; published price, deal and rule
     versions are immutable; a change is always a new version from a date.
 
+73. **A selling entity is changed by two operators.** A supplier profile version (identity and registrations, incl. the LUT)
+    applies only after another operator approves it; pending, rejected and withdrawn versions are never used for invoices or
+    numbering, and the model refuses an approval by its maker.
+74. **Local rates are never assumed.** Where a state rule requires local rates, the customer's recorded local tax jurisdiction
+    and its verified rule decide; no locality, no rule or an unverified rule refuses the invoice; the state rate never stands
+    alone and one locality's rule never applies to another.
+75. **An invoice records the configuration it used.** Policy versions (or shipped defaults), the due-date source, the
+    numbering limit and the local jurisdiction are frozen with the invoice; later configuration never changes it.
+76. **No business value in commercial code** (architecture test): no tax rate, literal amount, GSTIN, PAN or SAC in billing,
+    tax, payments or their pages; one reader of the policy defaults; no environment setting duplicates a policy.
+77. **Chargebacks are never silently dropped.** Until they are processed (B-12, with the provider's activation), a verified
+    dispute event is stored, marked `chargeback_not_processed`, logged and flagged to operators.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |

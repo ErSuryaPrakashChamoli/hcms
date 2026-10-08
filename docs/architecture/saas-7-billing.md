@@ -1,6 +1,6 @@
 # SaaS.7 — Billing, tax and payments (global-ready): the developer's map
 
-Full report: `docs/saas/SaaS-7-Billing-GST-Payments-Report.md`; completion pass (approved decisions B-1 to B-15): `docs/saas/SaaS-7-Completion-Report.md`; configuration pass (prices, deals, policy and statutory values as data): `docs/saas/SaaS-7-Configuration-Report.md`. Design and decisions: `docs/saas/SaaS-7-Baseline.md`, `docs/saas/SaaS-7-Commercial-Decisions.md`. What it reads: `saas-6-subscriptions.md` (subscriptions), `saas-4-plans.md` (plan versions).
+Full report: `docs/saas/SaaS-7-Billing-GST-Payments-Report.md`; completion pass (approved decisions B-1 to B-15): `docs/saas/SaaS-7-Completion-Report.md`; configuration pass (prices, deals, policy and statutory values as data): `docs/saas/SaaS-7-Configuration-Report.md`; final configuration gate: `docs/saas/SaaS-7-Final-Configuration-Gate-Report.md`; operator steps: `docs/operations/commercial-configuration-runbook.md`. Design and decisions: `docs/saas/SaaS-7-Baseline.md`, `docs/saas/SaaS-7-Commercial-Decisions.md`. What it reads: `saas-6-subscriptions.md` (subscriptions), `saas-4-plans.md` (plan versions).
 
 ## The shape
 
@@ -44,6 +44,9 @@ Nothing that authorises, no HCM module, the entitlement engine and the subscript
 | Statutory values come from the dataset (`database/data/statutory`) or an operator's rule version, with authority, reference, `https://` URL and date; never a constant | ADR-0059 |
 | Price lookup goes through precedence: `BillingTerms::priceFor()` (agreed > standard > NO_PRICE_CONFIGURED); pin with `BillingTerms::set()` (a standard or a negotiated version) | ADR-0062 |
 | A tax outcome's conditions use only the engine's named conditions (`TaxEngine::CONDITIONS`); a new condition is code, its parameters are data | ADR-0058; an unknown key refuses |
+| A selling entity changes only through `SupplierProfiles::propose()` + the approval desk; read the version in force with `inForce()` / `latestApproved()` (approved only) | ADR-0066 |
+| Local tax jurisdictions are rule scopes (`locality`) and a billing-profile field (`tax_locality`): never derive a locality from an address, never use a state rule as a local one | ADR-0065 |
+| Never write a tax rate, amount, GSTIN, PAN or SAC in commercial code, and never read `peopleos.commercial.policy_defaults` outside `CommercialConfiguration` | ADR-0069, architecture test |
 | A financial operation that needs dual control (price publication, credit note, refund, write-off, exception resolution) has a `request…()` method for the maker and an `execute…()` method that starts with `FinancialApprovals::claim()`. Only `ApprovalDesk::approve()` calls executors | ADR-0052; the model refuses self-approval and second executions |
 | A billed quantity is never recalculated: read it from the `billing_periods` row or the invoice line's `quantity_evidence` | ADR-0049/0050; a correction is a credit note |
 | Under the invoice (or payment) lock, read sums of credit notes, TDS claims and refunds with `sharedLock()` | MySQL repeatable read: a plain read can return the snapshot from before the lock wait (found by race 11) |
@@ -69,6 +72,8 @@ Nothing that authorises, no HCM module, the entitlement engine and the subscript
 | Configuration versions | The key and scope's rows (`FOR UPDATE` on the max version); unique `(domain, key, scope, version)`; the approval row when executed |
 | Negotiated prices | The subscription row (non-overlapping contract windows); the deal row (one draft); unique version per deal |
 | Statutory dataset | Unique `(dataset_version, dataset_key)` on load; the pending rules and parameters (`FOR UPDATE`) on verification |
+| Selling-entity versions | The entity's latest row (`FOR UPDATE`; a deadlocked first proposal retries at top level); unique version per entity; the approval row when executed |
+| Version numbering under `FOR UPDATE … max(version)` | On MySQL an empty range is a gap lock: concurrent first inserts can deadlock. Run the top-level transaction with `DB::transaction($cb, 3)` (configuration proposals, tax-rule drafts, entity proposals) |
 
 ## Adding a jurisdiction
 
@@ -85,6 +90,8 @@ Nothing that authorises, no HCM module, the entitlement engine and the subscript
 | A customer's deal | Billing accounts: new negotiated price (contract), draft its amount, request publication, another operator approves; pin it as billing terms |
 | A tax rate or treatment | Tax & invoicing: New rule version (pre-filled), submit, another operator verifies; it applies from its date |
 | A Markedge policy or statutory parameter | Commercial policies: Propose change from a date; another operator approves on Approvals |
+| A selling entity, its GSTIN, LUT or a registration abroad | Tax & invoicing: Propose selling entity version; another operator approves on Approvals |
+| A US local rate | Tax & invoicing: Draft tax rule (US sales tax, state, local tax jurisdiction code), submit, verify; record the code on the customer's billing profile |
 | A new law across jurisdictions | Ship `peopleos-statutory-{YYYY.MM}.json`; one operator loads it, another verifies it |
 
 ## Tests
@@ -93,8 +100,8 @@ Nothing that authorises, no HCM module, the entitlement engine and the subscript
 |---|---|
 | Feature | `tests/Feature/Billing/` (money, tax engine, pricing, billing profiles, invoices, payments, security, pages) |
 | Feature (completion) | `BillingRunTest`, `FinancialControlsTest`, `SettlementTest`, `RazorpayTest`, `PriceNoticeTest` (the 24 critical cases) |
-| Feature (configuration) | `CommercialPricingTest` (deals, precedence, markets, history, policy), `StatutoryDatasetTest` (dataset, India export, EU/UK/UAE, US states) |
-| MySQL races | `tests/MySql/BillingConcurrencyTest.php` (6 races), `BillingCompletionConcurrencyTest.php` (races 7–11) and `CommercialConfigurationConcurrencyTest.php` (races 12–15), invariants after each |
+| Feature (configuration) | `CommercialPricingTest` (deals, precedence, markets, history, policy), `StatutoryDatasetTest` (dataset, India export, EU/UK/UAE, US states and localities), `ConfigurationGateTest` (configuration-only changes, immutability, refusals, selling-entity approval, chargebacks) |
+| MySQL races | `tests/MySql/BillingConcurrencyTest.php` (6 races), `BillingCompletionConcurrencyTest.php` (races 7–11) and `CommercialConfigurationConcurrencyTest.php` (races 12–16), invariants after each |
 | Test-only regimes | `tests/Feature/Billing/TestRegimes.php` (UK VAT and US sales tax determiners, never wired in production) |
 | Helpers | `tests/Feature/Billing/BillingTestHelpers.php` (fictional GSTINs on pseudo-PAN `ZZZZZ9999Z`, odd test rates, `policyDefault()` to override a shipped policy default) |
 

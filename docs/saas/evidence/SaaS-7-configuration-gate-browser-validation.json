@@ -1,0 +1,95 @@
+{
+ "pass": "SaaS.7 configuration gate",
+ "date": "2026-10-08",
+ "environment": "disposable MySQL database hcm_saas7h_ui_showcase (UxShowcaseSeeder + fictional data: selling entity approved by a second operator, a pending entity version with a fictional Texas permit, a verified fictional local rule for TX-UI-01, a US customer with that local jurisdiction, a pending fixed annual deal, a fictional sandbox chargeback event), php artisan serve on 127.0.0.1:8094, Chromium (Playwright), axe-core WCAG 2 A/AA + 2.1 A/AA; dropped afterwards",
+ "operators": "two platform operators with password + TOTP (credentials generated into a 0600 scratch file, never printed)",
+ "summary": {
+  "checks": 17,
+  "passed": 17,
+  "axe_states": 9,
+  "axe_violations": 0,
+  "console_errors": 0
+ },
+ "checks": [
+  {
+   "name": "maker operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "Tax & invoicing opens",
+   "ok": true
+  },
+  {
+   "name": "selling entity: v1 APPROVED with its LUT, v2 (new Texas permit) PENDING APPROVAL",
+   "ok": true
+  },
+  {
+   "name": "local tax jurisdiction rules listed and counted per state",
+   "ok": true
+  },
+  {
+   "name": "entity changes are proposals, not edits",
+   "ok": true
+  },
+  {
+   "name": "registration placeholders show the format, never a made-up number",
+   "ok": true
+  },
+  {
+   "name": "customer billing profile records its local tax jurisdiction (US-TX / TX-UI-01)",
+   "ok": true
+  },
+  {
+   "name": "fixed annual deal shown per billing interval, pending approval",
+   "ok": true
+  },
+  {
+   "name": "billing profile form asks for the local tax jurisdiction for a US customer",
+   "ok": true
+  },
+  {
+   "name": "catalogue states the configured notice period and fixed-price meaning",
+   "ok": true
+  },
+  {
+   "name": "chargeback event flagged for manual handling (B-12 deferred)",
+   "ok": true
+  },
+  {
+   "name": "maker: own selling entity request shows what changes, no Approve",
+   "ok": true
+  },
+  {
+   "name": "checker operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "approved: the new selling entity version applies (no version left pending)",
+   "ok": true
+  },
+  {
+   "name": "approved fixed annual deal is scheduled from its contract date",
+   "ok": true
+  },
+  {
+   "name": "phone: no page-level horizontal scroll (tax, billing account, payments)",
+   "ok": true
+  },
+  {
+   "name": "tenant administrator: commercial configuration and billing pages refused (403), no platform link",
+   "ok": true
+  }
+ ],
+ "axe": {
+  "tax & invoicing": [],
+  "propose selling entity modal": [],
+  "billing account (US customer)": [],
+  "billing profile modal (US)": [],
+  "payments (chargeback flagged)": [],
+  "approval detail (selling entity, maker)": [],
+  "tax & invoicing (dark)": [],
+  "payments (dark)": [],
+  "phone tax & invoicing": []
+ },
+ "console_errors": []
+}

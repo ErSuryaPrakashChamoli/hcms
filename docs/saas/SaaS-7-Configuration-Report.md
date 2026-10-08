@@ -206,7 +206,7 @@ Issued invoices keep their prices, the price source (standard or negotiated vers
 - Source URLs must be `https://` and render with `rel="noopener noreferrer"`; the dataset is read only from the shipped directory by a `YYYY.MM` version; outcome JSON from the form is validated by the same normaliser as the dataset (known outcome keys, conditions, components, rates).
 - No float, no exchange-rate code, no HTTP outside the Razorpay adapter in billing, tax or payments (architecture tests).
 - Invariants 66–72 added (`docs/architecture/security-invariants.md`).
-- The leaked demo credential noted since SaaS.2, re-checked as booleans only: the platform operator account seeded with it exists in `hcm` and `hcm_ux_showcase` and the old credential still works there (the demo tenant administrator account does not exist in those databases). Rotation is the owner's action; no value was printed or written.
+- The leaked demo credential noted since SaaS.2, re-checked as booleans only: the platform operator account seeded with it exists in `hcm` and `hcm_ux_showcase` and the old credential still works there (the demo tenant administrator account does not exist in those databases). Rotation is the owner's action; no value was printed or written. *Erratum (final configuration gate): this check read the seeder of the wrong commit and tested the showcase fixture word; the actual leaked value still signs in the owner's administrator account in both databases, not the platform operator account (see the gate report §14).*
 
 ## 15. Test totals
 

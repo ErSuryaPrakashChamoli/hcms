@@ -603,3 +603,17 @@ The SaaS.7 configuration pass made every commercial value data: prices, customer
 | B-15 | `billing.price_increase_notice_days` (30) is a policy; customer deals change by contract, not by notice |
 
 **Still open, unchanged:** B-4, B-7, B-8, B-9, B-16. Loading the statutory dataset is not a claim of legal compliance; it is the current researched configuration, kept current by new versions. **SaaS.7 status: BLOCKED.**
+
+## 16. Final configuration gate (8 October 2026)
+
+The gate verified that every business value is configuration and closed the remaining technical gaps; it changed no decision's status. Report: [SaaS-7 final configuration gate report](SaaS-7-Final-Configuration-Gate-Report.md); ADR-0065 to 0069; operator steps: [commercial configuration runbook](../operations/commercial-configuration-runbook.md).
+
+| Decision | What the gate added |
+|---|---|
+| B-1 / B-4 | A fixed price is per billing interval (an annual fixed commitment is entered as the annual amount) |
+| B-7 | The selling entity, its GSTIN, the LUT and registrations abroad are proposed by one operator and applied only when another approves |
+| B-8 | Unchanged: the SAC is a new version of the India rule, entered when the adviser confirms it |
+| B-9 | US local rates are rules of each local tax jurisdiction, entered from Markedge's rate source; the customer's billing profile records its local jurisdiction |
+| B-12 | Chargebacks stay deferred to the provider's activation; a dispute event is stored, flagged and logged, never silently ignored |
+
+**Still open, unchanged:** B-4, B-7, B-8, B-9, B-16. They are inputs, entered as data without code (runbook). **SaaS.7: the technical gate is passed; real invoicing waits for those inputs.**
