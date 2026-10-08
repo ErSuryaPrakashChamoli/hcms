@@ -51,7 +51,7 @@ final class BillingDirectory
 
     /**
      * The platform-chain trail of commercial configuration changes, newest first: who proposed, approved, rejected or
-     * loaded what (prices, deals, tax rules, policies, the statutory dataset), why, with the values before and after.
+     * loaded what (prices, deals, tax rules, policies, selling entities, the statutory dataset), why, with the values before and after.
      *
      * @return Collection<int, AuditEvent>
      */
@@ -61,6 +61,7 @@ final class BillingDirectory
             AuditAction::TaxRuleDrafted, AuditAction::TaxRuleSubmitted, AuditAction::TaxRuleVerified, AuditAction::TaxRuleRejected, AuditAction::TaxRuleRetired,
             AuditAction::PriceVersionDrafted, AuditAction::PriceVersionPublished, AuditAction::PriceVersionRetired, AuditAction::NegotiatedPriceCreated,
             AuditAction::NegotiatedPriceVersionDrafted, AuditAction::NegotiatedPriceVersionPublished, AuditAction::NegotiatedPriceVersionRetired,
+            AuditAction::SupplierProfileProposed, AuditAction::SupplierProfileRecorded,
             AuditAction::ApprovalRequested, AuditAction::ApprovalApproved, AuditAction::ApprovalRejected, AuditAction::ApprovalWithdrawn];
 
         return AuditEvent::query()->withoutTenancy()->whereNull('tenant_id')->whereIn('action', array_map(fn (AuditAction $a) => $a->value, $actions))

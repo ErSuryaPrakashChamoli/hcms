@@ -25,6 +25,7 @@ use App\Domain\Payments\Services\ApprovalDesk;
 use App\Domain\Payments\Services\TdsSettlement;
 use App\Domain\Subscriptions\Services\CommercialSubscriptions;
 use App\Domain\Tax\Services\TaxRules;
+use App\Filament\Pages\PlatformCommercialPoliciesPage;
 use App\Filament\Pages\PlatformPaymentsPage;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Log;
@@ -209,6 +210,8 @@ it('applies a selling entity version (identity and registrations, e.g. the LUT) 
         ->where('metadata->version', $pending->version)->orderBy('id')->get();
     expect($events->map(fn ($e) => [$e->action->value, $e->actor_id])->all())
         ->toBe([['SUPPLIER_PROFILE_PROPOSED', $this->op->id], ['SUPPLIER_PROFILE_RECORDED', $this->checker->id]]);
+    $this->actingAs($this->op);
+    Livewire::test(PlatformCommercialPoliciesPage::class)->assertSee('SUPPLIER_PROFILE_PROPOSED')->assertSee('SUPPLIER_PROFILE_RECORDED');   // in the change history
 });
 
 it('records a chargeback event it cannot process yet as such, logs it and flags it to operators (B-12 deferred)', function () {
