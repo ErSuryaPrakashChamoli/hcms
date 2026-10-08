@@ -24,6 +24,7 @@ use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\Pages\PeopleCreateRecord;
+use App\Filament\Support\TenantUnique;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -86,7 +87,7 @@ class CreateEmployee extends PeopleCreateRecord
                 ->schema([
                     DatePicker::make('joining_date')->native(false)->required()->default(now()),
                     DatePicker::make('probation_end_date')->native(false)->helperText('Blank uses the tenant default probation length.'),
-                    TextInput::make('employee_code')->maxLength(32)->alphaDash()->unique('employees', 'employee_code')->helperText('Blank generates the next code.'),
+                    TextInput::make('employee_code')->maxLength(32)->alphaDash()->unique('employees', 'employee_code', modifyRuleUsing: TenantUnique::rule())->helperText('Blank generates the next code.'),
                     TextInput::make('work_email')->email()->maxLength(255),
                     TextInput::make('work_phone')->tel()->maxLength(32),
                 ]),

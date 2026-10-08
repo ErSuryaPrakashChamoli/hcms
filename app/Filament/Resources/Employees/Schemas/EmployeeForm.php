@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Employees\Schemas;
 use App\Domain\Employment\Models\Employee;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\CustomFieldsSchema;
+use App\Filament\Support\TenantUnique;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -26,7 +27,7 @@ class EmployeeForm
                 Section::make('Employment')
                     ->columns(3)
                     ->schema([
-                        TextInput::make('employee_code')->required()->maxLength(32)->alphaDash()->unique(ignoreRecord: true),
+                        TextInput::make('employee_code')->required()->maxLength(32)->alphaDash()->unique(ignoreRecord: true, modifyRuleUsing: TenantUnique::rule()),
                         TextInput::make('work_email')->email()->maxLength(255),
                         TextInput::make('work_phone')->tel()->maxLength(32),
                         DatePicker::make('joining_date')->native(false)->disabled()->dehydrated(false)->helperText('Set at hire; change via lifecycle actions.'),

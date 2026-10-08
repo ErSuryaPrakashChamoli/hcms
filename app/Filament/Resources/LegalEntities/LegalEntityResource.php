@@ -9,6 +9,7 @@ use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\LegalEntities\Pages\ManageLegalEntities;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\RecordVerificationActions;
+use App\Filament\Support\TenantUnique;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
@@ -48,7 +49,7 @@ class LegalEntityResource extends Resource
         return $schema->columns(2)->components([
             Select::make('company_id')->label('Company')->required()->disabledOn('edit')
                 ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all()),
-            TextInput::make('code')->required()->maxLength(32)->disabledOn('edit')->unique(ignoreRecord: true),
+            TextInput::make('code')->required()->maxLength(32)->disabledOn('edit')->unique(ignoreRecord: true, modifyRuleUsing: TenantUnique::rule()),
             TextInput::make('legal_name')->required()->maxLength(255),
             TextInput::make('trade_name')->maxLength(255),
             Select::make('legal_form')->options(config('peopleos.organisation.legal_forms')),

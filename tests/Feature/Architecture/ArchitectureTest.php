@@ -393,6 +393,33 @@ it('never builds direct storage urls, reads env() outside config, or leaves debu
         ->and(appFilesMatching('/^\s*(dd|dump|var_dump|ray)\(/m'))->toBe([]);
 });
 
+it('checks form uniqueness within the tenant: every Filament unique() rule is narrowed by TenantUnique (SaaS.8)', function () {
+    // Filament's unique() is a raw database rule that ignores the tenant scope. These are the only tables it may check
+    // across tenants, because their constraint is global and the value is not another tenant's data to infer.
+    $global = [
+        'app/Filament/Resources/Tenants/Schemas/TenantForm.php' => 2,          // tenants.slug and the first admin's users.email (platform pages)
+        'app/Filament/Resources/Users/Schemas/UserForm.php' => 1,               // users.email is global by design until D-17 is decided
+        'app/Filament/Resources/StatutoryProfiles/StatutoryProfileResource.php' => 1, // company_id: a global id offered from the tenant's own companies
+    ];
+    $found = [];
+    foreach (appFilesMatching('/->unique\(/') as $file) {
+        if (! str_starts_with($file, 'app/Filament/')) {
+            continue;
+        }
+        $source = file_get_contents(base_path($file));
+        // A field rule: unique( with arguments, or a bare unique() on a ::make( chain (collections use the bare form).
+        preg_match_all('/->unique\((?!\))(?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)|::make\([^;]*?->unique\(\)/s', $source, $m);
+        $blind = array_values(array_filter($m[0], fn (string $call) => ! str_contains($call, 'TenantUnique::rule()')));
+        if ($blind !== []) {
+            $found[$file] = count($blind);
+        }
+    }
+    ksort($found);
+    ksort($global);
+
+    expect($found)->toBe($global);
+});
+
 it('registers a policy for the model of every Filament resource', function () {
     $missing = collect(glob(app_path('Filament/Resources/*/*Resource.php')))
         ->map(fn (string $path) => 'App\\'.str_replace('/', '\\', Str::of($path)->after(app_path().'/')->before('.php')->toString()))
