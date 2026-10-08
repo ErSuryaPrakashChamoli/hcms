@@ -76,6 +76,8 @@ it('renders the readiness page from the recorded results', function () {
     $this->actingAs(platformAdmin());
 
     $this->get(PlatformReadinessPage::getUrl())->assertOk()->assertSee('events verified across 3 chains');
+    // The page re-hashes nothing: no new verification is recorded by loading it.
+    expect(AuditVerificationRun::query()->count())->toBe(3);
 });
 
 it('prunes failed jobs past the operational window and keeps recent ones', function () {
