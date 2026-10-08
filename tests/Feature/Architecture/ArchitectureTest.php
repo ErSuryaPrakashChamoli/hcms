@@ -319,7 +319,9 @@ it('keeps commercial entitlement out of authorisation: HCM only observes, nothin
         'app/Domain/Subscriptions/Services/SubscriptionDirectory.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php',
         // SaaS.7: billing reads published plan versions and pins terms under the tenant's commercial lock; it never evaluates entitlements.
         'app/Domain/Billing/Models/PlanPrice.php', 'app/Domain/Billing/Services/BillingCatalog.php', 'app/Domain/Billing/Services/BillingTerms.php',
-        'app/Filament/Pages/PlatformBillingCatalogPage.php'];
+        'app/Filament/Pages/PlatformBillingCatalogPage.php',
+        // SaaS.9: closing a tenant re-checks its subscriptions under the tenant's commercial lock; it never evaluates entitlements.
+        'app/Domain/Offboarding/Services/TenantOffboardings.php'];
     $users = array_values(array_filter(appFilesMatching('/App.Domain.Entitlements/'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Entitlements/')));
     sort($users);
     $allowed = array_merge($observers, $platform);

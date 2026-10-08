@@ -172,7 +172,9 @@ enum Capability: string
     {
         return match ($this) {
             self::Core => ['tenant', 'company', 'user', 'role', 'settings', 'features', 'audit', 'organisation', 'people_setup', 'custom_field', 'form',
-                'policy', 'configuration', 'blueprint', 'workflow', 'task', 'document', 'legal_entity', 'establishment', 'security', 'currency', 'notification', 'employee'],
+                'policy', 'configuration', 'blueprint', 'workflow', 'task', 'document', 'legal_entity', 'establishment', 'security', 'currency', 'notification', 'employee',
+                // SaaS.9: a customer's export of their own data is a core right, never sold separately.
+                'data'],
             self::Onboarding => ['onboarding', 'bgv'],
             self::Attendance => ['attendance'],
             self::Leave => ['leave'],
