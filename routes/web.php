@@ -5,6 +5,7 @@ use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\ExitTenantController;
 use App\Http\Controllers\GrievanceAttachmentController;
 use App\Http\Controllers\LearningCertificateDownloadController;
+use App\Http\Controllers\Offboarding\ExportDownloadController;
 use App\Http\Controllers\Sso\SsoController;
 use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Middleware\EnforceAccountSecurity;
@@ -48,6 +49,13 @@ Route::get('/announcements/{announcement}/attachment', AnnouncementAttachmentCon
     ->middleware($protected)
     ->whereNumber('announcement')
     ->name('announcements.attachment');
+
+// SaaS.9: a tenant export package: the full protected chain, a signed link that expires in minutes, and the person it
+// was made for (checked again with their rights in the controller).
+Route::get('/offboarding/exports/{reference}/download', ExportDownloadController::class)
+    ->middleware([...$protected, 'signed', 'throttle:30,1'])
+    ->where('reference', '[0-9A-HJKMNP-TV-Z]{26}')
+    ->name('offboarding.exports.download');
 
 Route::get('/sso/{connection}/redirect', [SsoController::class, 'redirect'])->middleware('web')->name('sso.redirect');
 Route::get('/sso/{connection}/callback', [SsoController::class, 'callback'])->middleware('web')->name('sso.callback');
