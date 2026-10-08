@@ -91,6 +91,7 @@ it('shows a tenant user only their own organisation\'s exports, and never anothe
     $this->actingAs($this->owner);
     actAsTenant($this->tenant); // as the panel's tenant middleware would
 
+    expect(Livewire::test(DataExportPage::class)->instance()->exports()->pluck('id')->all())->toBe([$mine->id]);
     Livewire::test(DataExportPage::class)->assertSee($mine->created_at->format('Y-m-d H:i'))
         ->assertDontSee($theirs->reference)
         ->callAction('passphrase', arguments: ['export' => $theirs->id])
