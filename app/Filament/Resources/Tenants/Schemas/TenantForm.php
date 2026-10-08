@@ -35,7 +35,8 @@ class TenantForm
                         // SaaS.2: chosen at creation only. Afterwards the status changes through Suspend / Reactivate,
                         // which require a reason, end sessions and are audited.
                         Select::make('status')
-                            ->options(TenantStatus::class)
+                            // SaaS.9: a tenant starts in use; closed and deleted are reached only through offboarding.
+                            ->options([TenantStatus::Trial->value => TenantStatus::Trial->getLabel(), TenantStatus::Active->value => TenantStatus::Active->getLabel()])
                             ->default(TenantStatus::Active)
                             ->required()
                             ->disabledOn('edit')

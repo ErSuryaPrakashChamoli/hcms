@@ -31,6 +31,8 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Knowledge\Models\ArticleRead;
 use App\Domain\Learning\Models\LearningInstructor;
 use App\Domain\Leave\Services\AttendanceLeaveDayResolver;
+use App\Domain\Offboarding\Models\RetentionPolicy;
+use App\Domain\Offboarding\Support\DataInventory;
 use App\Domain\Payments\Models\PaymentProviderEvent;
 use App\Domain\People\Models\Person;
 use App\Domain\Platform\Models\Tenant;
@@ -107,6 +109,8 @@ it('scopes every domain model to a tenant except the documented platform-level m
         ConfigurationVersion::class,
         // SaaS.8: audit-chain verification results (one row per chain per run; subject_tenant_id names the chain verified).
         AuditVerificationRun::class,
+        // SaaS.9: retention policies are platform configuration (per category and jurisdiction; no tenant).
+        RetentionPolicy::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -219,6 +223,11 @@ it('audits every domain model except the documented append-only or derived table
         'Platform\Models\TenantDeferredJob',
         // SaaS.8: verification results are themselves the append-only record of the audit trail's integrity.
         'Audit\Models\AuditVerificationRun',
+        // SaaS.9: the exit's records are audited explicitly by their services (OffboardingAudit: the platform chain, and the
+        // tenant chain while it exists) with operator, reason, references and outcome; automatic auditing would copy export
+        // passphrases and deletion plans into the trail.
+        'Offboarding\Models\TenantOffboarding', 'Offboarding\Models\TenantExport', 'Offboarding\Models\LegalHold', 'Offboarding\Models\RetentionPolicy',
+        'Offboarding\Models\TenantDeletion', 'Offboarding\Models\TenantDeletionStep',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -256,6 +265,13 @@ it('bypasses tenant scoping only in the documented platform services', function 
         // platform audit chain (tenant_id null only).
         'app/Domain/Platform/Services/PlatformOperationsOverview.php',
         'app/Domain/Audit/Services/PlatformAuditTrail.php',
+        // SaaS.9: the exit runs from the platform, before or without a bound tenant, always filtered by the tenant concerned:
+        // offboarding cases, exports (worker claims, signed downloads), legal holds and their lock, retention evaluation, the
+        // deletion plan, its steps and execution, the exit's audit, and the operators' read model.
+        'app/Domain/Offboarding/Services/DeletionExecutor.php', 'app/Domain/Offboarding/Services/DeletionPlanner.php',
+        'app/Domain/Offboarding/Services/LegalHolds.php', 'app/Domain/Offboarding/Services/OffboardingDirectory.php',
+        'app/Domain/Offboarding/Services/TenantDeletions.php', 'app/Domain/Offboarding/Services/TenantExports.php',
+        'app/Domain/Offboarding/Services/TenantOffboardings.php', 'app/Domain/Offboarding/Support/OffboardingAudit.php',
         'app/Support/Tenancy/TenantContext.php',
         // Phase 14: readiness counts platform-wide dead letters (counts only, no tenant data leaves).
         'app/Support/Observability/HealthChecks.php',
@@ -356,6 +372,8 @@ it('keeps the entitlement engine independent of subscriptions: subscriptions fee
             'app/Domain/Billing/Services/Invoices.php',
             // SaaS.7 configuration: a customer's negotiated price belongs to its subscription (read only).
             'app/Domain/Billing/Services/NegotiatedPrices.php', 'app/Domain/Billing/Services/PriceNotices.php',
+            // SaaS.9: closing a tenant refuses while a subscription continues (SubscriptionDirectory::continuing, read only).
+            'app/Domain/Offboarding/Services/TenantOffboardings.php',
             'app/Filament/Pages/PlatformBillingAccountsPage.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php'])
         // One writer: only the guarded subscription service projects a subscription onto plan assignments.
         ->and(appFilesMatching('/->projectSubscription\(/'))->toBe(['app/Domain/Subscriptions/Services/CommercialSubscriptions.php']);
@@ -365,6 +383,8 @@ it('keeps billing, tax and payments out of authorisation, entitlements, HCM, pay
     $users = array_values(array_filter(appFilesMatching('/App.Domain.(Billing|Tax|Payments)./'),
         fn (string $f) => preg_match('#^app/Domain/(Billing|Tax|Payments)/#', $f) !== 1));
     expect($users)->toBe(['app/Console/Commands/ProcessBillingProviderEvents.php', 'app/Console/Commands/RunBilling.php',
+        // SaaS.9: a deletion waits while financial items are open (Payments\Services\FinancialStanding, read only).
+        'app/Domain/Offboarding/Services/DeletionPlanner.php',
         'app/Filament/Pages/PlatformApprovalsPage.php', 'app/Filament/Pages/PlatformBillingAccountsPage.php',
         'app/Filament/Pages/PlatformBillingCatalogPage.php', 'app/Filament/Pages/PlatformCommercialPoliciesPage.php', 'app/Filament/Pages/PlatformInvoicesPage.php',
         'app/Filament/Pages/PlatformPaymentsPage.php', 'app/Filament/Pages/PlatformTaxSetupPage.php', 'app/Http/Controllers/Billing/ProviderWebhookController.php']);
@@ -391,8 +411,10 @@ it('computes money without floats or FX, and keeps provider code inside its adap
         ->and(appFilesMatching('/Providers.(SandboxProvider|ManualBankTransferProvider|RazorpayProvider)\\b/'))->toBe(['app/Domain/Payments/Services/ProviderRegistry.php'])
         // Only the Razorpay adapter talks HTTP to a provider (SaaS.7 completion: test mode only).
         ->and($money->filter(fn (string $f) => preg_match('/Facades.Http\\b|Http::/', $code($f)) === 1)->values()->all())->toBe(['app/Domain/Payments/Providers/RazorpayProvider.php'])
-        // Only payment reconciliation runs while a tenant is suspended (it records money that already moved).
-        ->and(appFilesMatching('/implements[^{]*RunsForSuspendedTenants/'))->toBe(['app/Domain/Payments/Jobs/ApplyProviderEvent.php']);
+        // Only payment reconciliation (it records money that already moved) and, SaaS.9, the tenant's own data exit (its export
+        // and its approved deletion) run while a tenant is not accessible.
+        ->and(appFilesMatching('/implements[^{]*RunsForSuspendedTenants/'))->toBe(['app/Domain/Offboarding/Jobs/ExecuteTenantDeletion.php',
+            'app/Domain/Offboarding/Jobs/GenerateTenantExport.php', 'app/Domain/Payments/Jobs/ApplyProviderEvent.php']);
 });
 
 it('measures exactly the limits that are observed, and no other (SaaS.5)', function () {
@@ -433,6 +455,29 @@ it('checks form uniqueness within the tenant: every Filament unique() rule is na
     ksort($global);
 
     expect($found)->toBe($global);
+});
+
+it('classifies every table of the schema in the data inventory, exactly once (SaaS.9)', function () {
+    $tenantTables = array_keys(DataInventory::tableCategories());
+    $classified = [...$tenantTables, ...array_keys(DataInventory::CHILDREN), ...DataInventory::PLATFORM];
+    expect(count($classified))->toBe(count(array_unique($classified)), 'a table is classified twice');
+    $schema = collect(Schema::getTables())->filter(fn (array $t) => ($t['schema'] ?? null) === null || $t['schema'] === Schema::getConnection()->getDatabaseName() || $t['schema'] === 'main')
+        ->pluck('name')->reject(fn (string $t) => str_starts_with($t, 'sqlite_'))->values()->all();
+    sort($schema);
+    $missing = array_values(array_diff($schema, $classified));
+    expect($missing)->toBe([], 'unclassified tables')
+        // Every table with tenant_id is a tenant table of the inventory, and no tenant table lacks it.
+        ->and(array_values(array_filter($schema, fn (string $t) => Schema::hasColumn($t, 'tenant_id') && ! in_array($t, $tenantTables, true))))->toBe([])
+        ->and(array_values(array_filter($tenantTables, fn (string $t) => ! Schema::hasColumn($t, 'tenant_id'))))->toBe([])
+        // Every category is defined, and Markedge's commercial records are never deleted with a tenant.
+        ->and(array_values(array_diff(array_keys(DataInventory::TABLES), DataInventory::categories())))->toBe([])
+        ->and(collect(DataInventory::CATEGORIES)->where('owner', 'markedge')->every(fn (array $c) => $c['action'] === DataInventory::RETAIN))->toBeTrue();
+});
+
+it('deletes audit rows only in the deletion executor, and never reaches platform files with a wildcard (SaaS.9)', function () {
+    expect(appFilesMatching("/DB::table\\('audit_events'\\)[^;]*->delete\\(|DB::table\\('audit_event_changes'\\)[^;]*->delete\\(/"))
+        ->toBe(['app/Domain/Offboarding/Services/DeletionExecutor.php'])
+        ->and(collect(DataInventory::prefixes(new Tenant(['slug' => 'x'])))->flatten(1)->filter(fn (array $p) => str_contains($p['prefix'], '*'))->all())->toBe([]);
 });
 
 it('registers a policy for the model of every Filament resource', function () {

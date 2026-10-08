@@ -47,7 +47,8 @@ final class TenantSuspensions
         $changed = DB::transaction(function () use ($tenant, &$before) {
             $before = Tenant::query()->whereKey($tenant->getKey())->value('status');
             $before = $before instanceof TenantStatus ? $before : TenantStatus::tryFrom((string) $before);
-            if ($before === null || $before === TenantStatus::Suspended) {
+            // SaaS.9: only a tenant in use is suspended (a closed or deleted tenant is already shut).
+            if ($before === null || ! $before->operating()) {
                 return false;
             }
             $rows = Tenant::query()->whereKey($tenant->getKey())->where('status', $before->value)

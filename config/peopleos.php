@@ -299,6 +299,7 @@ return [
             'security.manage' => 'Manage tenant security policy (IP allowlist, MFA, passwords, sessions, retention)',
             'currency.manage' => 'Maintain exchange rates and the base currency',
             'warehouse.export' => 'Export datasets to the data warehouse feed',
+            'data.export' => 'Request and download a full, encrypted export of the organisation\'s data (audited)',
         ],
         'ai' => [
             'ai.use' => 'Ask the Employee and Policy assistants about own data and policies',
@@ -633,6 +634,32 @@ return [
         'platform_mfa_required' => (bool) env('PEOPLEOS_PLATFORM_MFA_REQUIRED', true),
         // SaaS.8: Strict-Transport-Security on HTTPS responses (seconds; 0 = off). Subdomains are not included.
         'hsts_max_age' => max(0, (int) env('PEOPLEOS_HSTS_MAX_AGE', 31536000)),
+    ],
+    /*
+    | SaaS.9 data export, offboarding, retention and deletion. Retention PERIODS are not here: they are versioned policies
+    | (Platform → Retention policies), approved by a second operator. These are operational settings.
+    */
+    'offboarding' => [
+        // The destructive switch. Off, no deletion is ever executed (plans can still be reviewed and approved). It is turned
+        // on per environment only after the SaaS.9 validation gate, never for the showcase or a development copy.
+        'deletion_enabled' => (bool) env('PEOPLEOS_TENANT_DELETION_ENABLED', false),
+        // Days between the second operator's approval and the start of a deletion (SaaS.1 Target Architecture §9 proposal).
+        'cooling_off_days' => max(0, (int) env('PEOPLEOS_DELETION_COOLING_OFF_DAYS', 14)),
+        // A deletion needs an export that was delivered (downloaded, or delivered out of band) or explicitly waived.
+        'export_required_before_deletion' => (bool) env('PEOPLEOS_EXPORT_REQUIRED_BEFORE_DELETION', true),
+        // A ready export package is deleted after this many days (it stays recorded, with its checksums).
+        'export_expiry_days' => max(1, (int) env('PEOPLEOS_EXPORT_EXPIRY_DAYS', 7)),
+        // A download link (signed, bound to the person) lives this many minutes.
+        'download_link_minutes' => max(1, (int) env('PEOPLEOS_EXPORT_DOWNLOAD_LINK_MINUTES', 5)),
+        // An export whose worker has not reported for this long is picked up again; after max attempts it fails.
+        'export_lease_minutes' => max(5, (int) env('PEOPLEOS_EXPORT_LEASE_MINUTES', 30)),
+        'export_max_attempts' => max(1, (int) env('PEOPLEOS_EXPORT_MAX_ATTEMPTS', 5)),
+        // The private disk for export packages (outside every tenant prefix, so a deletion never removes a live package).
+        'export_disk' => env('PEOPLEOS_EXPORT_DISK', 'local'),
+        // Rows per statement when deleting or anonymising.
+        'batch_size' => max(50, (int) env('PEOPLEOS_DELETION_BATCH_SIZE', 1000)),
+        // A deletion whose worker has not reported for this long can be resumed by an operator.
+        'deletion_lease_minutes' => max(5, (int) env('PEOPLEOS_DELETION_LEASE_MINUTES', 30)),
     ],
     'identity' => [
         // How long an invitation link stays valid.

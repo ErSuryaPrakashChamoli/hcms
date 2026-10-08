@@ -59,6 +59,13 @@ final class ProvisionTenantAction
             $reason = PlatformOperator::reason($reason);
         }
         $metadata = $this->metadata($tenantData);
+        // SaaS.9: a tenant starts in use; closed and deleted are reached only through offboarding.
+        $status = $tenantData['status'] ?? TenantStatus::Active;
+        $status = $status instanceof TenantStatus ? $status : TenantStatus::tryFrom((string) $status);
+        if ($status === null || ! $status->operating()) {
+            throw new InvalidArgumentException('A tenant is provisioned as trial or active.');
+        }
+        $tenantData['status'] = $status;
         $invitee = null;
 
         $tenant = DB::transaction(function () use ($tenantData, $adminData, $reason, $actor, $metadata, &$invitee) {

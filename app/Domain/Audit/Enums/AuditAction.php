@@ -295,6 +295,41 @@ enum AuditAction: string
     case InvitationFailed = 'INVITATION_FAILED';
     case DeferredWorkReleased = 'DEFERRED_WORK_RELEASED';
     case NotificationResent = 'NOTIFICATION_RESENT'; // tenant chain
+    // SaaS.9: data export, offboarding, legal holds, retention and deletion (platform chain; tenant chain while it exists).
+    case OffboardingRequested = 'OFFBOARDING_REQUESTED';
+    case OffboardingCancelled = 'OFFBOARDING_CANCELLED';
+    case TenantClosed = 'TENANT_CLOSED';
+    case TenantReopened = 'TENANT_REOPENED';
+    case OffboardingCompleted = 'OFFBOARDING_COMPLETED';
+    case ExportRequested = 'EXPORT_REQUESTED';
+    case ExportStarted = 'EXPORT_STARTED';
+    case ExportCompleted = 'EXPORT_COMPLETED';
+    case ExportFailed = 'EXPORT_FAILED';
+    case ExportRetried = 'EXPORT_RETRIED';
+    case ExportDownloaded = 'EXPORT_DOWNLOADED';
+    case ExportPassphraseRevealed = 'EXPORT_PASSPHRASE_REVEALED';
+    case ExportDelivered = 'EXPORT_DELIVERED';
+    case ExportWaived = 'EXPORT_WAIVED';
+    case ExportExpired = 'EXPORT_EXPIRED';
+    case LegalHoldPlaced = 'LEGAL_HOLD_PLACED';
+    case LegalHoldReleaseRequested = 'LEGAL_HOLD_RELEASE_REQUESTED';
+    case LegalHoldReleased = 'LEGAL_HOLD_RELEASED';
+    case LegalHoldReleaseDeclined = 'LEGAL_HOLD_RELEASE_DECLINED';
+    case RetentionPolicyProposed = 'RETENTION_POLICY_PROPOSED';
+    case RetentionPolicyApproved = 'RETENTION_POLICY_APPROVED';
+    case RetentionPolicyRejected = 'RETENTION_POLICY_REJECTED';
+    case RetentionPolicyWithdrawn = 'RETENTION_POLICY_WITHDRAWN';
+    case RetentionEvaluated = 'RETENTION_EVALUATED';
+    case DeletionPlanned = 'DELETION_PLANNED';
+    case DeletionApproved = 'DELETION_APPROVED';
+    case DeletionRejected = 'DELETION_REJECTED';
+    case DeletionCancelled = 'DELETION_CANCELLED';
+    case DeletionStarted = 'DELETION_STARTED';
+    case DeletionCompleted = 'DELETION_COMPLETED';
+    case DeletionFailed = 'DELETION_FAILED';
+    case DeletionRetried = 'DELETION_RETRIED';
+    case DeletionCertified = 'DELETION_CERTIFIED';
+    case ExternalDeletionConfirmed = 'EXTERNAL_DELETION_CONFIRMED';
 
     public function label(): string
     {
