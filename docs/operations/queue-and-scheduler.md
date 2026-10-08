@@ -31,6 +31,8 @@ entry that breaks them fails the build.
 | `Attendance\Jobs\ProcessAttendanceDay` | 3 / 300 s | Process one attendance day |
 | `Learning\Jobs\GenerateCertificateDocument`, `SendLearningReminders` | 2–3 / 300 s | Certificates and reminders |
 | `Performance`, `Talent`, `Workforce`, `Compensation` reminder jobs, `EffectDueCompensation`, `ServiceDesk\Jobs\ProcessServiceDesk` | 2 / 300 s / 60 | Per-tenant `--queue` variants of the scheduled sweeps (unique per tenant) |
+| `Offboarding\Jobs\GenerateTenantExport` | 1 / 3600 s | **SaaS.9.** Generate one tenant export package (claimed; resumable from its checkpoint; runs for closed and suspended tenants) |
+| `Offboarding\Jobs\ExecuteTenantDeletion` | 1 / 3600 s | **SaaS.9.** Execute one approved tenant deletion (claimed; checkpointed steps; holds re-checked per batch; only when deletion is enabled; runs for closed tenants) |
 | `Payments\Jobs\ApplyProviderEvent` | 1 / 120 s | **SaaS.7.** Apply one verified payment-provider event to its payment (unique per event, leased claim, idempotent; runs for suspended tenants) |
 
 In-app notifications are **no longer queued**. Phase 14 stores them at once (`notifyNow`), so a
@@ -59,6 +61,7 @@ Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterat
 | `peopleos:audit:verify` (`--scheduled`) | daily 02:30 | append-only results | **SaaS.8.** Recompute every tenant chain and the platform chain; one `audit_verification_runs` row per chain. The readiness and operations pages read the latest results (STALE after `PEOPLEOS_AUDIT_VERIFICATION_MAX_AGE_HOURS`, 48). Exit code non-zero on a broken chain |
 | `peopleos:retention:purge` | daily 03:30 | delete-by-age (**batched, SaaS.8**) | Purge operational logs past retention, and (**SaaS.8**) warehouse snapshots past `warehouse.retention_days` (runs for suspended tenants too) |
 | `peopleos:operations:prune` | daily 03:45 | delete-by-age | **SaaS.8.** `queue:prune-failed` and `queue:prune-batches` older than `PEOPLEOS_FAILED_JOBS_RETENTION_HOURS` (720) |
+| `peopleos:offboarding:tick` | every 15 min | **conditional claims (SaaS.9)**: an export is claimed queued → generating (or a stale generating one), a deletion approved → in_progress | Exports whose worker stopped are dispatched again (resume from the checkpoint) or failed after `PEOPLEOS_EXPORT_MAX_ATTEMPTS`; ready packages past `PEOPLEOS_EXPORT_EXPIRY_DAYS` are deleted; approved tenant deletions past their cooling-off are dispatched and a stalled run is marked failed (**only when `PEOPLEOS_TENANT_DELETION_ENABLED=true`**). Platform-level: each export and deletion runs in a job bound to its own tenant |
 | `peopleos:exit:tick` | daily 04:00 | per exit state | Start clearance inside the lead window |
 | `peopleos:warehouse:export` | daily 05:00 | overwrite per day | Warehouse feed (non-sensitive fields unless enabled). **SaaS.8: only tenants with `warehouse.export_enabled`** |
 | `peopleos:lifecycle:reminders` | daily 06:00 | **`scheduler_claims` per tenant per day (Phase 14)**; `--force` to re-run | Joining, probation and document-expiry reminder events |

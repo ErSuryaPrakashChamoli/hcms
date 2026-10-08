@@ -40,6 +40,8 @@ Schedule::command('peopleos:retention:purge')->dailyAt('03:30')->withoutOverlapp
 // SaaS.8: the audit chains are verified daily and the result recorded (it was never scheduled); queue tables pruned.
 Schedule::command('peopleos:audit:verify --scheduled')->dailyAt('02:30')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:operations:prune')->dailyAt('03:45')->withoutOverlapping()->onOneServer();
+// SaaS.9: export recovery and expiry, due tenant deletions (deletions only when PEOPLEOS_TENANT_DELETION_ENABLED).
+Schedule::command('peopleos:offboarding:tick')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 // SaaS.6: commercial expiries the dates already decided (idempotent; effective the day after each end, however late).
 Schedule::command('peopleos:subscriptions:settle')->dailyAt('00:15')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:billing:provider-events')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
