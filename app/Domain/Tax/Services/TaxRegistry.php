@@ -53,6 +53,12 @@ class TaxRegistry
         return $class === null ? null : app($class);
     }
 
+    /** Whether customers in $country have a local tax jurisdiction inside their subdivision (US sales tax: county, city, district). */
+    public function usesLocalities(string $country): bool
+    {
+        return JurisdictionCatalogue::regimeFor(strtoupper($country)) === TaxRegime::UsSalesTax;
+    }
+
     /** Every outcome a rule of $regime may price: the supplier side's and the destination side's. @return array<string, string> */
     public function outcomes(TaxRegime $regime): array
     {

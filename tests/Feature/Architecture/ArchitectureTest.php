@@ -546,3 +546,16 @@ it('builds every resource page on a PeopleOS base page', function () {
 
     expect($offenders)->toBe([]);
 });
+
+it('keeps prices, tax rates, tax identifiers and Markedge policy out of commercial code: they are data (SaaS.7 configuration gate)', function () {
+    $commercial = array_values(array_filter(appFilesMatching('/./'), fn (string $f) => preg_match('#^app/(Domain/(Billing|Tax|Payments)|Support/(Money|Commercial)|Filament/Pages/Platform)#', $f) === 1));
+    $matching = fn (string $pattern) => array_values(array_filter($commercial, fn (string $f) => preg_match($pattern, file_get_contents(base_path($f))) === 1));
+    expect($matching("/['\"]rate['\"]\\s*=>\\s*['\"]?[0-9]/"))->toBe([])                          // no tax rate in code (rules are versioned data)
+        ->and($matching('/Money::(parse|ofMinor)\(\s*[\'"]?[0-9]/'))->toBe([])                   // no literal amount (prices are versions)
+        ->and($matching('/\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]\b/'))->toBe([])      // no GSTIN
+        ->and($matching('/\b[A-Z]{5}[0-9]{4}[A-Z]\b/'))->toBe([])                               // no PAN
+        ->and($matching('/\b99[0-9]{4}\b/'))->toBe([])                                          // no SAC (a rule's classification is data)
+        // One source for Markedge policy: only CommercialConfiguration reads the shipped defaults; no setting duplicates them.
+        ->and(appFilesMatching("/config\\(\\s*'peopleos\\.commercial\\.policy_defaults/"))->toBe(['app/Domain/Billing/Services/CommercialConfiguration.php'])
+        ->and(appFilesMatching('/peopleos\.billing\.(b2b_only|payment_terms_days|price_increase_notice_days|proration_rounding)/'))->toBe([]);
+});

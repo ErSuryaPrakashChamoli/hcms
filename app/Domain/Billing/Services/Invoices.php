@@ -177,7 +177,8 @@ final class Invoices
                     InvoiceTaxLine::query()->create(['invoice_id' => $locked->id, 'line_no' => $taxLine->lineNo, 'regime' => $leg->determination->regime,
                         'country' => $leg->determination->placeOfSupply->country, 'subdivision' => $leg->determination->placeOfSupply->subdivision,
                         'tax_type' => $taxLine->type, 'treatment' => $leg->treatment, 'rate' => $taxLine->rate, 'taxable_minor' => $taxLine->taxable->minor,
-                        'tax_minor' => $taxLine->tax->minor, 'currency' => $locked->currency, 'tax_rule_id' => $leg->rule->id, 'metadata' => ['leg' => $leg->role]]);
+                        'tax_minor' => $taxLine->tax->minor, 'currency' => $locked->currency, 'tax_rule_id' => $leg->rule->id,
+                        'metadata' => array_filter(['leg' => $leg->role, 'locality' => $leg->determination->placeOfSupply->locality])]);
                 }
             }
             $calculation = new TaxCalculation([], $taxTotal);
@@ -188,7 +189,8 @@ final class Invoices
                 'tax_rule_id' => $quote->rule->id, 'issued_by' => $actor->id, 'issued_at' => now(),
                 'snapshot' => ['market' => ['code' => $market->code, 'name' => $market->name, 'locale' => $market->locale, 'currency' => $locked->currency->value],
                     'supplier' => $supplier->snapshot(), 'customer' => $profile->snapshot(),
-                    'tax' => $quote->snapshot() + ['totals_by_type' => $byType], 'reporting' => $reportingValue]])->save();
+                    'tax' => $quote->snapshot() + ['totals_by_type' => $byType], 'reporting' => $reportingValue,
+                    'configuration' => $this->configurationApplied($today, $dueDate === null || trim($dueDate) === '' ? 'policy' : 'operator', $series)]])->save();
             $this->audit->both(AuditAction::InvoiceIssued, 'billing', $tenant, $locked, "invoice {$number}", [
                 ['field' => 'status', 'before' => 'draft', 'after' => 'issued'], ['field' => 'number', 'before' => null, 'after' => $number],
                 ['field' => 'total', 'before' => null, 'after' => "{$total->currency->value} {$total->toDecimal()}"],
@@ -348,6 +350,25 @@ final class Invoices
             'subtotal_minor' => $convert($subtotal), 'tax_minor' => $convert($tax), 'total_minor' => $convert($total)];
     }
 
+    /**
+     * The configuration this invoice was issued under, frozen with it: each Markedge policy version that applied (or
+     * the shipped default), where the due date came from, and the numbering limit of its series. A later change of
+     * any of them never touches the invoice; this records which values it used.
+     *
+     * @return array<string, mixed>
+     */
+    private function configurationApplied(string $today, string $dueDateSource, InvoiceNumberSeries $series): array
+    {
+        $policy = [];
+        foreach ([ConfigurationKey::PaymentTermsDays, ConfigurationKey::PricesIncludeTax, ConfigurationKey::B2bOnly] as $key) {
+            $resolved = $this->configuration->resolve($key, '', $today);
+            $policy[$key->value] = ['value' => $resolved['value'], 'source' => $resolved['source'], 'version_id' => $resolved['version']?->id,
+                'version' => $resolved['version']?->version];
+        }
+
+        return ['policy' => $policy, 'due_date_source' => $dueDateSource, 'series_id' => $series->id, 'invoice_number_max_length' => $series->max_length];
+    }
+
     /** @return array{0: TenantBillingProfile, 1: SupplierProfile, 2: TaxQuote} */
     private function prepare(Tenant $tenant, Invoice $invoice, string $today): array
     {
@@ -362,7 +383,7 @@ final class Invoices
         $context = new TaxContext(
             new TaxParty(new TaxJurisdiction($supplier->country, $supplier->subdivision), $supplier->tax_id_value === null ? TaxRegistration::Unregistered : TaxRegistration::Registered,
                 $supplier->tax_id_type, $supplier->tax_id_value, registrations: $supplier->registrations ?? []),
-            new TaxParty(new TaxJurisdiction($profile->country, $profile->subdivision), $profile->tax_registration, $profile->tax_id_type, $profile->tax_id_value,
+            new TaxParty(new TaxJurisdiction($profile->country, $profile->subdivision, $profile->tax_locality), $profile->tax_registration, $profile->tax_id_type, $profile->tax_id_value,
                 $profile->customer_type, $profile->special_tax_status),
             $category, $today, $invoice->currency);
         try {

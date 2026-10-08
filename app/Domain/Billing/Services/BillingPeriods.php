@@ -45,8 +45,9 @@ use RuntimeException;
  *
  * SaaS.7 configuration: the price comes from the term's source, the customer's agreed price or the standard
  * catalogue (CUSTOMER AGREED TERMS > PLAN PRICE VERSION > NO PRICE). An agreed discount is applied once to the unit
- * (the net unit, with the configured rounding) and frozen on the period with the list unit. A flat (fixed monthly)
- * price is billed as one unit per month, prorated like any month, and × 12 in advance for annual terms (no true-up).
+ * (the net unit, with the configured rounding) and frozen on the period with the list unit. A flat (fixed) price is
+ * per billing interval: monthly terms bill it as one unit per month, prorated like any month; annual terms bill the
+ * annual amount once, in advance (no true-up).
  * Billable days after the first terms with no terms in force are an exception, NO_PRICE_CONFIGURED: nothing is
  * billed at zero, at a guessed price, at another market's price or after a currency conversion.
  */
@@ -212,8 +213,8 @@ final class BillingPeriods
         if ($kind === BillingPeriodKind::AnnualAdvance) {
             $daysBilled = $daysInPeriod;
             $billed = $flat ? 1 : (int) $term->committed_quantity;
-            $amount = $exception === null ? Invoices::lineAmount($unit->times(12), $billed) : Money::zero($unit->currency);
-            $evidence = $flat ? ['method' => 'flat', 'months' => 12, 'computed_at' => now()->toIso8601String()]
+            $amount = $exception === null ? Invoices::lineAmount($flat ? $unit : $unit->times(12), $billed) : Money::zero($unit->currency);
+            $evidence = $flat ? ['method' => 'flat', 'per' => 'year', 'computed_at' => now()->toIso8601String()]
                 : ['method' => 'committed_quantity', 'committed_quantity' => $billed, 'months' => 12, 'computed_at' => now()->toIso8601String()];
         } elseif ($flat) {
             $daysBilled = count($due['days']);
@@ -319,7 +320,7 @@ final class BillingPeriods
     private function draft(Tenant $tenant, BillingPeriod $period, string $key, string $reason): Invoice
     {
         $annual = $period->kind === BillingPeriodKind::AnnualAdvance;
-        $unit = $annual ? $period->netUnitAmount()->times(12) : $period->netUnitAmount();
+        $unit = $annual && ($period->evidence['method'] ?? null) !== 'flat' ? $period->netUnitAmount()->times(12) : $period->netUnitAmount();
         $partial = ! $annual && $period->days_billed < $period->days_in_period;
         $rounding = ($period->evidence['rounding'] ?? 'half_up') === 'half_even' ? RoundingMode::HalfEven : RoundingMode::HalfUp;
         $line = new InvoiceLineInput($this->description($period), $period->billed_quantity, $unit, 'peopleos.subscription', $period->plan_price_version_id,
@@ -349,7 +350,7 @@ final class BillingPeriods
 
         return mb_substr(match (true) {
             $flat && $period->kind === BillingPeriodKind::AnnualAdvance => "{$plan} · annual term {$period->period_start->toDateString()} to {$period->period_end->toDateString()}"
-                ." · fixed {$unit} per month{$agreed} × 12 months",
+                ." · fixed {$unit} per year{$agreed}",
             $flat => "{$plan} · {$month} · fixed {$unit} per month{$agreed}{$days}",
             $period->kind === BillingPeriodKind::MonthlyArrears => "{$plan} · {$month} · peak {$period->measured_peak} employees on {$peak}"
                 .($period->minimum_quantity > $period->measured_peak ? " (minimum {$period->minimum_quantity})" : '')." · {$period->billed_quantity} × {$unit} per employee per month{$agreed}{$days}",
@@ -367,7 +368,7 @@ final class BillingPeriods
         $prorate = $days < $daysIn ? " × {$days}/{$daysIn}" : '';
 
         return match (true) {
-            $flat && $kind === BillingPeriodKind::AnnualAdvance => "fixed {$u} × 12 = {$amount->toDecimal()}",
+            $flat && $kind === BillingPeriodKind::AnnualAdvance => "fixed {$u} per year = {$amount->toDecimal()}",
             $flat => "fixed {$u}{$prorate} = {$amount->toDecimal()}",
             $kind === BillingPeriodKind::MonthlyArrears => "max(peak {$measured}, minimum {$point['minimum']}) = {$billed} × {$u}{$prorate} = {$amount->toDecimal()}",
             $kind === BillingPeriodKind::AnnualTrueUp => "max(0, peak {$measured} − committed {$committed}) = {$billed} × {$u}{$prorate} = {$amount->toDecimal()}",

@@ -69,11 +69,12 @@ it('carries out a financial operation only when a second operator approves, reco
         ->toBe(['CN/000001', CreditNote::FULL, 107500, $approved->id, $this->maker->id, $this->checker->id])
         ->and([$this->invoice->fresh()->status, $this->invoice->fresh()->closure_approval_id, $this->invoices->amountDue($this->invoice->fresh())->minor])
         ->toBe([InvoiceStatus::Credited, $approved->id, 0]);
+    $ofThis = fn ($query) => $query->where(fn ($q) => $q->whereNotIn('action', ['FINANCIAL_APPROVAL_REQUESTED', 'FINANCIAL_APPROVAL_APPROVED'])->orWhere('metadata->action', 'credit_note'));
     foreach (['FINANCIAL_APPROVAL_REQUESTED', 'FINANCIAL_APPROVAL_APPROVED', 'CREDIT_NOTE_ISSUED', 'INVOICE_CREDITED'] as $action) {
-        expect(AuditEvent::query()->withoutTenancy()->where('action', $action)->whereNotNull('tenant_id')->count())->toBe(1, $action)
-            ->and(AuditEvent::query()->withoutTenancy()->where('action', $action)->whereNull('tenant_id')->count())->toBe(1, $action);
+        expect($ofThis(AuditEvent::query()->withoutTenancy()->where('action', $action)->whereNotNull('tenant_id'))->count())->toBe(1, $action)
+            ->and($ofThis(AuditEvent::query()->withoutTenancy()->where('action', $action)->whereNull('tenant_id'))->count())->toBe(1, $action);
     }
-    expect(AuditEvent::query()->withoutTenancy()->where('action', 'FINANCIAL_APPROVAL_APPROVED')->whereNull('tenant_id')->sole()->metadata)
+    expect(AuditEvent::query()->withoutTenancy()->where('action', 'FINANCIAL_APPROVAL_APPROVED')->where('metadata->action', 'credit_note')->whereNull('tenant_id')->sole()->metadata)
         ->toMatchArray(['maker_id' => $this->maker->id, 'checker_id' => $this->checker->id, 'correlation_id' => $approved->correlation_key]);
 
     // The same credit note cannot be requested again; a credited invoice takes no further credit, write-off or payment.

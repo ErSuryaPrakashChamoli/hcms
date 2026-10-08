@@ -5,7 +5,6 @@ namespace App\Domain\Billing\Services;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Billing\Enums\ConfigurationKey;
 use App\Domain\Billing\Models\InvoiceNumberSeries;
-use App\Domain\Billing\Models\SupplierProfile;
 use App\Domain\Identity\Models\User;
 use App\Support\Commercial\OperatorChange;
 use Illuminate\Support\Carbon;
@@ -48,8 +47,8 @@ final class InvoiceSeries
         if ($to < $from) {
             throw new RuntimeException('The series ends after it starts.');
         }
-        $supplier = SupplierProfile::query()->where('entity_code', $supplierEntity)->orderByDesc('version')->first()
-            ?? throw new RuntimeException("Record the supplier profile of {$supplierEntity} first: numbering rules follow its jurisdiction.");
+        $supplier = app(SupplierProfiles::class)->latestApproved($supplierEntity)
+            ?? throw new RuntimeException("{$supplierEntity} has no approved supplier profile yet: numbering rules follow its jurisdiction.");
         // A statutory value (India: CGST Rules rule 46(b), 16 characters), configured and verified as data, not a constant.
         $maxLength = app(CommercialConfiguration::class)->value(ConfigurationKey::InvoiceNumberMaxLength, $supplier->country, $from);
         if ($maxLength !== null && strlen($prefix) + $padding > $maxLength) {

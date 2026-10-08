@@ -18,7 +18,7 @@ use RuntimeException;
  * invoice copies it at issue.
  */
 #[Fillable(['version', 'effective_from', 'market_id', 'customer_type', 'legal_name', 'billing_email', 'billing_contact', 'address_line1',
-    'address_line2', 'city', 'postal_code', 'country', 'subdivision', 'tax_registration', 'tax_id_type', 'tax_id_value', 'tax_id_status',
+    'address_line2', 'city', 'postal_code', 'country', 'subdivision', 'tax_locality', 'tax_registration', 'tax_id_type', 'tax_id_value', 'tax_id_status',
     'special_tax_status', 'reason', 'reference', 'created_by'])]
 class TenantBillingProfile extends Model
 {
@@ -51,7 +51,7 @@ class TenantBillingProfile extends Model
         return ['profile_id' => $this->id, 'version' => $this->version, 'customer_type' => $this->customer_type->value, 'legal_name' => $this->legal_name,
             'billing_email' => $this->billing_email, 'billing_contact' => $this->billing_contact,
             'address' => array_values(array_filter([$this->address_line1, $this->address_line2, trim("{$this->city} {$this->postal_code}")])),
-            'country' => $this->country, 'subdivision' => $this->subdivision, 'tax_registration' => $this->tax_registration->value,
+            'country' => $this->country, 'subdivision' => $this->subdivision, 'tax_locality' => $this->tax_locality, 'tax_registration' => $this->tax_registration->value,
             'tax_id_type' => $this->tax_id_type?->value, 'tax_id' => $this->tax_id_value, 'tax_id_status' => $this->tax_id_status, 'special_tax_status' => $this->special_tax_status];
     }
 }

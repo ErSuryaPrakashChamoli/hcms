@@ -9,9 +9,11 @@ use App\Domain\Billing\Models\ConfigurationVersion;
 use App\Domain\Billing\Models\FinancialApproval;
 use App\Domain\Billing\Models\NegotiatedPrice;
 use App\Domain\Billing\Models\NegotiatedPriceVersion;
+use App\Domain\Billing\Models\SupplierProfile;
 use App\Domain\Billing\Services\CommercialConfiguration;
 use App\Domain\Billing\Services\NegotiatedPrices;
 use App\Domain\Billing\Services\StatutoryDataset;
+use App\Domain\Billing\Services\SupplierProfiles;
 use App\Domain\Identity\Models\User;
 use App\Domain\Payments\Services\ApprovalDesk;
 use App\Domain\Subscriptions\Models\TenantSubscription;
@@ -129,4 +131,24 @@ it('15. loads and verifies the statutory dataset once per rule when operators ac
         ->and(ConfigurationVersion::query()->where(['dataset_version' => '2026.10', 'status' => ConfigurationVersion::APPROVED])->count())->toBe(1)
         ->and(AuditEvent::query()->withoutTenancy()->where('action', AuditAction::StatutoryDatasetActivated)->where('metadata->dataset_version', '2026.10')->count())->toBe(1)   // verified once
         ->and(collect($results)->first(fn ($r) => $r !== 'ok') ?? 'Nothing')->toContain('Nothing');
+});
+
+it('16. numbers two selling-entity versions proposed at the same moment distinctly, and applies a version once when two checkers approve it', function () {
+    $entity = 'ME-RACE-'.substr(uniqid(), -6);
+    $data = fn (string $name) => ['legal_name' => $name, 'address_line1' => '1 Race Street', 'city' => 'Mumbai', 'country' => 'IN', 'subdivision' => 'IN-MH',
+        'tax_id_type' => 'IN_GSTIN', 'tax_id_value' => fictionalGstin('27')];
+    $propose = fn (string $name) => configurationCall(fn (User $u) => app(SupplierProfiles::class)->propose($entity, $data($name), now()->toDateString(), 'Race proposal', $u), $this->op);
+    expect(race([$propose('Entity A'), $propose('Entity B')], slow: ['eloquent.creating: '.SupplierProfile::class]))->toBe(['ok', 'ok']);
+    $versions = SupplierProfile::query()->where('entity_code', $entity)->orderBy('version')->pluck('version')->all();
+    expect($versions)->toBe([1, 2]);
+
+    $request = FinancialApproval::query()->where('action', 'supplier_profile_change')->where('subject_id', SupplierProfile::query()->where(['entity_code' => $entity, 'version' => 1])->value('id'))->sole();
+    $results = race([
+        configurationCall(fn (User $u) => app(ApprovalDesk::class)->approve(FinancialApproval::query()->findOrFail($request->id), 'Checker one', $u), $this->checker),
+        configurationCall(fn (User $u) => app(ApprovalDesk::class)->approve(FinancialApproval::query()->findOrFail($request->id), 'Checker two', $u), $this->checker2),
+    ], slow: ['eloquent.updating: '.SupplierProfile::class]);
+    expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
+        ->and(collect($results)->first(fn ($r) => $r !== 'ok'))->toContain('already approved')
+        ->and(SupplierProfile::query()->where(['entity_code' => $entity, 'version' => 1])->value('status'))->toBe('approved')
+        ->and(AuditEvent::query()->withoutTenancy()->where('action', AuditAction::SupplierProfileRecorded)->where('entity_label', "Supplier {$entity} v1")->count())->toBe(1);
 });

@@ -17,6 +17,7 @@ enum ApprovalAction: string
     case ExceptionResolution = 'exception_resolution';     // accept or write off a payment reconciliation exception
     case NegotiatedPricePublication = 'negotiated_price_publication'; // a customer's agreed price (a price publication)
     case ConfigurationChange = 'configuration_change';     // a Markedge policy or statutory parameter version
+    case SupplierProfileChange = 'supplier_profile_change'; // a selling entity's identity and registrations (GSTIN, LUT, VAT, TRN, permits)
 
     public function label(): string
     {
@@ -28,6 +29,7 @@ enum ApprovalAction: string
             self::ExceptionResolution => 'Payment exception resolution',
             self::NegotiatedPricePublication => 'Negotiated price publication',
             self::ConfigurationChange => 'Policy or statutory parameter change',
+            self::SupplierProfileChange => 'Selling entity change',
         };
     }
 }

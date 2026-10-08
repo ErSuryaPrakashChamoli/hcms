@@ -9,7 +9,6 @@ use App\Domain\Billing\Services\CommercialConfiguration;
 use App\Domain\Billing\Services\Invoices;
 use App\Domain\Billing\Services\InvoiceSeries;
 use App\Domain\Billing\Services\StatutoryDataset;
-use App\Domain\Billing\Services\SupplierProfiles;
 use App\Domain\Identity\Models\User;
 use App\Domain\Tax\Enums\CustomerType;
 use App\Domain\Tax\Enums\JurisdictionStatus;
@@ -47,9 +46,9 @@ function supplierParty(array $registrations = []): TaxParty
 }
 
 function customerParty(string $country, ?string $subdivision = null, CustomerType $type = CustomerType::Business, ?TaxIdType $idType = null, ?string $id = null,
-    ?string $special = null): TaxParty
+    ?string $special = null, ?string $locality = null): TaxParty
 {
-    return new TaxParty(new TaxJurisdiction($country, $subdivision), $id === null ? TaxRegistration::Unregistered : TaxRegistration::Registered, $idType, $id, $type, $special);
+    return new TaxParty(new TaxJurisdiction($country, $subdivision, $locality), $id === null ? TaxRegistration::Unregistered : TaxRegistration::Registered, $idType, $id, $type, $special);
 }
 
 function lut(?string $to = null): array
@@ -172,8 +171,8 @@ it('zero-rates an export of services only when its statutory conditions hold, ad
         ->and($quote->reportingCurrency)->toBe('INR');
 
     // The invoice: issued only with the INR value (rate and source given by the operator), frozen in its snapshot.
-    app(SupplierProfiles::class)->record('MARKEDGE-IN-TEST', ['legal_name' => 'Markedge Test Pvt Ltd', 'address_line1' => '1 Test Street', 'city' => 'Mumbai', 'postal_code' => '400001',
-        'country' => 'IN', 'subdivision' => 'IN-MH', 'tax_id_type' => 'IN_GSTIN', 'tax_id_value' => fictionalGstin('27'), 'registrations' => [lut()]], now()->toDateString(), 'Fictional supplier', $this->maker);
+    supplierVersion('MARKEDGE-IN-TEST', ['legal_name' => 'Markedge Test Pvt Ltd', 'address_line1' => '1 Test Street', 'city' => 'Mumbai', 'postal_code' => '400001',
+        'country' => 'IN', 'subdivision' => 'IN-MH', 'tax_id_type' => 'IN_GSTIN', 'tax_id_value' => fictionalGstin('27'), 'registrations' => [lut()]], now()->toDateString(), $this->maker, $this->checker);
     $us = billingMarket($this->maker, 'US-TEST', 'USD', 'MARKEDGE-IN-TEST', 'en_US', ['US']);
     invoiceSeries($this->maker);
     $tenant = provisionTenant('Export customer');
@@ -220,19 +219,35 @@ it('keeps US sales tax state by state: dates per state, taxable share, registrat
         ->and($us->firstWhere('subdivision', 'US-TX')->outcome('saas'))->toMatchArray(['taxable_percent' => '80', 'requires_supplier_registration' => 'US_STATE:US-TX'])
         ->and(array_map(fn ($c) => "{$c->type} {$c->rate}", $us->firstWhere('subdivision', 'US-NY')->outcome('saas')['components']))->toBe(['STATE 4']);
 
+    // Local rates are data too: Texas requires them, so the customer's local tax jurisdiction and its verified rule decide.
     $texasPermit = supplierParty([lut(), ['type' => 'US_STATE:US-TX', 'reference' => 'FICTIONAL-TX', 'valid_from' => '2026-01-01', 'valid_to' => null]]);
-    expect(quoteOr($texasPermit, customerParty('US', 'US-TX')))->toBe('TAX_CONFIGURATION_MISSING');   // local rates are required and not configured
+    $austin = customerParty('US', 'US-TX', locality: 'TX-FICTIONAL-01');
+    expect(quoteOr($texasPermit, customerParty('US', 'US-TX')))->toBe('PLACE_OF_SUPPLY_UNRESOLVED')       // no local jurisdiction recorded
+        ->and(quoteOr($texasPermit, $austin))->toBe('TAX_CONFIGURATION_MISSING');                          // recorded, but no local rule: never the state rate alone
     try {
-        app(TaxEngine::class)->quote(new TaxContext($texasPermit, customerParty('US', 'US-TX'), 'peopleos.subscription', now()->toDateString(), Currency::USD));
+        app(TaxEngine::class)->quote(new TaxContext($texasPermit, $austin, 'peopleos.subscription', now()->toDateString(), Currency::USD));
     } catch (TaxUnavailableException $e) {
-        expect($e->getMessage())->toContain('local (county, city, district) rates');
+        expect($e->getMessage())->toContain('US-TX / TX-FICTIONAL-01');
     }
+    // A fictional local rule (an operator would take it from a rate source): pending until verified, then its own leg on the same taxable share.
+    $local = $this->rules->draft(TaxRegime::UsSalesTax, 'US', 'US-TX', 'peopleos.subscription', now()->toDateString(),
+        ['saas' => ['components' => [['type' => 'CITY', 'rate' => '1'], ['type' => 'COUNTY', 'rate' => '0.5']], 'treatment' => 'standard', 'taxable_percent' => '80']],
+        'half_up', null, 'Fictional local rates for tests', $this->maker, ['locality' => 'tx-fictional-01', 'source' => 'Fictional', 'source_reference' => 'Test only']);
+    $this->rules->submit($local, 'Review please', $this->maker);
+    expect(quoteOr($texasPermit, $austin))->toBe('TAX_RULE_UNVERIFIED');
+    $this->rules->verify($local, 'TEST-LOCAL', null, $this->checker);
+    $quote = quoteOr($texasPermit, $austin);
+    expect(array_map(fn ($l) => [$l->role, $l->rule->locality, array_map(fn ($c) => "{$c->type} {$c->rate}", $l->components)], $quote->legs()))
+        ->toBe([['supplier', '', []], ['destination', '', ['STATE 5']], ['destination_local', 'TX-FICTIONAL-01', ['CITY 0.8', 'COUNTY 0.4']]])
+        ->and(quoteOr($texasPermit, customerParty('US', 'US-TX', locality: 'TX-FICTIONAL-02')))->toBe('TAX_CONFIGURATION_MISSING')   // another locality's rule never applies
+        ->and($this->rules->inForce(TaxRegime::UsSalesTax, 'US', 'US-TX', 'peopleos.subscription', now()->toDateString())->locality)->toBe('')   // nor as the state rule
+        ->and($this->rules->state($local->fresh()))->toBe(TaxRuleState::Current);
 
     // California: not taxable today; taxable from 1 January 2027 by the scheduled version (it activates on its date).
     $caPermit = supplierParty([lut(), ['type' => 'US_STATE:US-CA', 'reference' => 'FICTIONAL-CA', 'valid_from' => '2026-01-01', 'valid_to' => null]]);
     $ca = $us->where('subdivision', 'US-CA')->sortBy('effective_from')->values();
     expect(quoteOr($caPermit, customerParty('US', 'US-CA'))->legs()[1]->rule->id)->toBe($ca[0]->id)
-        ->and(quoteOr($caPermit, customerParty('US', 'US-CA'), day: '2027-01-01'))->toBe('TAX_CONFIGURATION_MISSING');
+        ->and(quoteOr($caPermit, customerParty('US', 'US-CA'), day: '2027-01-01'))->toBe('PLACE_OF_SUPPLY_UNRESOLVED');   // from 2027 local rates apply too
     $this->travelTo('2027-01-02 09:00:00');
     expect([$this->rules->state($ca[0]), $this->rules->state($ca[1])])->toBe([TaxRuleState::Superseded, TaxRuleState::Current])
         ->and(quoteOr(supplierParty([lut()]), customerParty('US', 'US-CA')))->toBe('REGISTRATION_REQUIRED')
@@ -286,4 +301,29 @@ it('never falls back to an older version when the current one expires, applies a
         expect(fn () => $this->rules->draft(TaxRegime::UsSalesTax, 'US', 'US-NV', 'peopleos.subscription', '2027-01-01', ['saas' => [['type' => 'STATE', 'rate' => '1']]], 'half_up', null,
             'Bad source', $this->maker, ['source_url' => $url]))->toThrow(RuntimeException::class, 'https://');
     }
+});
+
+it('issues a US invoice with the state leg and the local leg of the customer\'s recorded local tax jurisdiction (US state/local aware)', function () {
+    shippedDatasetWithSac($this->maker, $this->checker);
+    supplierVersion('MARKEDGE-IN-TEST', ['legal_name' => 'Markedge Test Pvt Ltd', 'address_line1' => '1 Test Street', 'city' => 'Mumbai', 'country' => 'IN', 'subdivision' => 'IN-MH',
+        'tax_id_type' => 'IN_GSTIN', 'tax_id_value' => fictionalGstin('27'),
+        'registrations' => [lut(), ['type' => 'US_STATE:US-TX', 'reference' => 'FICTIONAL-TX', 'valid_from' => '2026-01-01', 'valid_to' => null]]], now()->toDateString(), $this->maker, $this->checker);
+    $local = $this->rules->draft(TaxRegime::UsSalesTax, 'US', 'US-TX', 'peopleos.subscription', now()->toDateString(),
+        ['saas' => ['components' => [['type' => 'CITY', 'rate' => '1'], ['type' => 'COUNTY', 'rate' => '0.5']], 'treatment' => 'standard', 'taxable_percent' => '80']],
+        'half_up', null, 'Fictional local rates for tests', $this->maker, ['locality' => 'TX-FICTIONAL-01', 'source' => 'Fictional', 'source_reference' => 'Test only']);
+    $this->rules->submit($local, 'Review please', $this->maker);
+    $this->rules->verify($local, 'TEST-LOCAL', null, $this->checker);
+    $us = billingMarket($this->maker, 'US-TEST', 'USD', 'MARKEDGE-IN-TEST', 'en_US', ['US']);
+    invoiceSeries($this->maker);
+    $tenant = provisionTenant('Texas customer');
+    billingProfile($tenant, $us, $this->maker, ['country' => 'US', 'subdivision' => 'US-TX', 'tax_locality' => 'tx-fictional-01', 'tax_registration' => 'unregistered',
+        'tax_id_type' => null, 'tax_id_value' => null]);
+    $issued = app(Invoices::class)->issue(draftInvoice($tenant, $us, $this->maker, ['1000.00']), null, 'Issue', $this->maker,
+        ['rate' => '83.25', 'source' => 'Fictional accounting rate', 'date' => now()->toDateString()]);
+    $lines = app(TenantContext::class)->runAs($tenant, fn () => InvoiceTaxLine::query()->where('invoice_id', $issued->id)->orderBy('id')->get());
+    expect($lines->map(fn ($l) => [$l->tax_type, (string) $l->rate, $l->tax_minor, $l->metadata['leg'], $l->metadata['locality'] ?? null])->all())
+        ->toBe([['STATE', '5.0000', 5000, 'destination', 'TX-FICTIONAL-01'], ['CITY', '0.8000', 800, 'destination_local', 'TX-FICTIONAL-01'], ['COUNTY', '0.4000', 400, 'destination_local', 'TX-FICTIONAL-01']])
+        ->and([$issued->tax_minor, $issued->total_minor])->toBe([6200, 106200])
+        ->and($issued->snapshot['customer']['tax_locality'])->toBe('TX-FICTIONAL-01')
+        ->and(array_column($issued->snapshot['tax']['legs'], 'role'))->toBe(['supplier', 'destination', 'destination_local']);
 });

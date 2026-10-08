@@ -10,6 +10,7 @@ use App\Domain\Billing\Services\CreditNotes;
 use App\Domain\Billing\Services\FinancialApprovals;
 use App\Domain\Billing\Services\Invoices;
 use App\Domain\Billing\Services\NegotiatedPrices;
+use App\Domain\Billing\Services\SupplierProfiles;
 use App\Domain\Identity\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -20,13 +21,14 @@ use Illuminate\Support\Facades\DB;
  * it executes both billing and payment operations, and the dependency runs Payments → Billing.
  *
  * SaaS.7 configuration: also a customer's negotiated price publication and a change of a Markedge policy or a
- * statutory parameter; a rejected or withdrawn configuration change closes its pending version.
+ * statutory parameter; a rejected or withdrawn configuration change closes its pending version. Configuration closure:
+ * a selling entity's version (identity and registrations) the same way.
  */
 final class ApprovalDesk
 {
     public function __construct(private readonly FinancialApprovals $approvals, private readonly BillingCatalog $catalog, private readonly CreditNotes $creditNotes,
         private readonly Invoices $invoices, private readonly Payments $payments, private readonly Refunds $refunds, private readonly NegotiatedPrices $negotiatedPrices,
-        private readonly CommercialConfiguration $configuration) {}
+        private readonly CommercialConfiguration $configuration, private readonly SupplierProfiles $suppliers) {}
 
     public function approve(FinancialApproval $approval, string $reason, User $checker): FinancialApproval
     {
@@ -40,6 +42,7 @@ final class ApprovalDesk
                 ApprovalAction::Refund => $this->refunds->execute($approved),
                 ApprovalAction::NegotiatedPricePublication => $this->negotiatedPrices->executePublication($approved),
                 ApprovalAction::ConfigurationChange => $this->configuration->executeChange($approved),
+                ApprovalAction::SupplierProfileChange => $this->suppliers->executeChange($approved),
             };
 
             return $approved->fresh();
@@ -58,9 +61,11 @@ final class ApprovalDesk
 
     private function closed(FinancialApproval $approval): FinancialApproval
     {
-        if ($approval->action === ApprovalAction::ConfigurationChange) {
-            $this->configuration->close($approval);
-        }
+        match ($approval->action) {
+            ApprovalAction::ConfigurationChange => $this->configuration->close($approval),
+            ApprovalAction::SupplierProfileChange => $this->suppliers->close($approval),
+            default => null,
+        };
 
         return $approval;
     }

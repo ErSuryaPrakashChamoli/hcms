@@ -63,7 +63,18 @@ final class ProviderEvents
         }
         $update = $provider->interpret($verified);
         if ($update === null) {
-            $event->forceFill(['status' => ProviderEventStatus::Ignored, 'outcome' => 'not_a_payment_event', 'processed_at' => now()])->save();
+            // B-12: chargebacks (disputes) are not processed in SaaS.7 (no live provider; deferred to the provider's
+            // activation). Such an event is stored, marked and logged for an operator, never silently dropped.
+            $outcome = match (true) {
+                preg_match('/dispute|chargeback/i', $verified->type) === 1 => 'chargeback_not_processed',
+                preg_match('/^refund\./i', $verified->type) === 1 => 'refund_event_not_processed',
+                default => 'not_a_payment_event',
+            };
+            if ($outcome === 'chargeback_not_processed') {
+                Log::warning('Billing webhook: a chargeback (dispute) event was received; chargebacks are not processed yet (B-12): handle it manually.',
+                    ['provider' => $providerKey, 'event_id' => $verified->eventId, 'type' => $verified->type, 'request_id' => $requestId]);
+            }
+            $event->forceFill(['status' => ProviderEventStatus::Ignored, 'outcome' => $outcome, 'processed_at' => now()])->save();
 
             return [200, 'ignored'];
         }

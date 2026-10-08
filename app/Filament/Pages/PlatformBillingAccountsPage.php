@@ -211,6 +211,9 @@ class PlatformBillingAccountsPage extends Page
                         ->visible(fn (Get $get) => $registry->subdivisions(strtoupper((string) $get('country'))) !== []),
                     TextInput::make('subdivision_text')->label('State or province (ISO 3166-2, optional)')->maxLength(8)
                         ->visible(fn (Get $get) => $registry->subdivisions(strtoupper((string) $get('country'))) === []),
+                    TextInput::make('tax_locality')->label('Local tax jurisdiction (county, city or district code from Markedge\'s rate source)')->maxLength(40)
+                        ->helperText('Needed where the state applies local rates; recorded, never derived from the address.')
+                        ->visible(fn (Get $get) => $registry->usesLocalities((string) $get('country'))),
                     Select::make('tax_registration')->label('Tax registration')->required()->options(collect(TaxRegistration::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all()),
                     Select::make('tax_id_type')->label('Tax identifier type')->options(collect(TaxIdType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all()),
                     TextInput::make('tax_id_value')->label('Tax identifier')->maxLength(32),
@@ -229,7 +232,7 @@ class PlatformBillingAccountsPage extends Page
                     Select::make('plan_version')->label('Published plan version')->required()->options(fn () => app(BillingCatalog::class)->publishedPlanVersions()),
                     Select::make('market')->label('Market (the deal is in its currency, never converted)')->required()->options(fn () => BillingMarket::query()->orderBy('code')->get()->mapWithKeys(fn ($m) => [$m->id => $m->label()])->all()),
                     Select::make('interval')->label('Interval')->required()->options(collect(BillingInterval::cases())->mapWithKeys(fn ($i) => [$i->value => $i->label()])->all()),
-                    Select::make('basis')->label('Basis')->required()->options(collect(PricingBasis::cases())->mapWithKeys(fn ($b) => [$b->value => $b === PricingBasis::Flat ? 'fixed amount per month' : $b->label()])->all()),
+                    Select::make('basis')->label('Basis')->required()->options(collect(PricingBasis::cases())->mapWithKeys(fn ($b) => [$b->value => $b === PricingBasis::Flat ? 'fixed amount per billing interval (a month, or a year for annual terms)' : $b->label()])->all()),
                     DatePicker::make('contract_start')->label('Contract starts')->native(false)->required(),
                     DatePicker::make('contract_end')->label('Contract ends (optional)')->native(false),
                     TextInput::make('contract_reference')->label('Contract reference')->maxLength(100),
@@ -243,10 +246,10 @@ class PlatformBillingAccountsPage extends Page
             Action::make('draftDealVersion')->label('Draft deal amount')->icon(Heroicon::OutlinedDocumentPlus)->visible(fn () => $hasTenant() && $this->deals()->isNotEmpty())
                 ->schema([
                     Select::make('deal')->label('Negotiated price')->required()->options(fn () => $this->deals()->mapWithKeys(fn (NegotiatedPrice $d) => [$d->id => $this->dealLabel($d)])->all()),
-                    TextInput::make('amount')->label('Agreed unit amount in the market currency (major units)')->required()->placeholder('1250.00')
-                        ->helperText('Per employee per month for PEPM, or the fixed monthly amount. Exact to the currency\'s decimals; never converted.'),
+                    TextInput::make('amount')->label('Agreed unit amount in the market currency (major units)')->required()->placeholder('amount in major units, e.g. 0000.00')
+                        ->helperText('Per employee per month for PEPM; for a fixed price, the amount per billing interval (per year for an annual deal). Exact to the currency\'s decimals; never converted.'),
                     TextInput::make('minimum')->label('Minimum employees (PEPM only, optional)')->numeric()->minValue(0)->default(0),
-                    TextInput::make('discount')->label('Discount % on the unit (optional)')->placeholder('10'),
+                    TextInput::make('discount')->label('Discount % on the unit (optional)')->placeholder('percentage, e.g. 0.00'),
                     $reason(),
                 ])
                 ->action(fn (array $data) => $this->attempt(fn () => app(NegotiatedPrices::class)->draftVersion($this->inTenant(fn () => NegotiatedPrice::query()->findOrFail((int) $data['deal'])),
@@ -282,7 +285,7 @@ class PlatformBillingAccountsPage extends Page
                     $this->pinnable((string) $data['version']), substr((string) $data['from'], 0, 10), $data['reason'], auth()->user(), $data['reference'] ?? null,
                     blank($data['committed'] ?? null) ? null : (int) $data['committed']), 'Billing terms set')),
             Action::make('recordNotice')->label('Record price notice')->icon(Heroicon::OutlinedEnvelope)->visible(fn () => $hasTenant() && $this->inTenant(fn () => SubscriptionBillingTerm::query()->exists()))
-                ->modalDescription('A standard price increase reaches an existing subscriber only after a written notice of at least the configured period (30 days, B-15), at the next period (monthly) or renewal (annual). Recording the notice changes no price: re-pin the terms when it falls due. A negotiated price changes by its contract instead.')
+                ->modalDescription(fn () => 'A standard price increase reaches an existing subscriber only after a written notice of at least the configured period ('.PriceNotices::noticeDays($this->today()).' days today; Commercial policies), at the next period (monthly) or renewal (annual). Recording the notice changes no price: re-pin the terms when it falls due. A negotiated price changes by its contract instead.')
                 ->schema([
                     Select::make('subscription')->label('Subscription')->required()->live()->options(fn () => $this->inTenant(fn () => TenantSubscription::query()->orderByDesc('id')->pluck('id', 'id')->map(fn ($id) => "#{$id}")->all())),
                     DatePicker::make('effective')->label('New price from')->native(false)->required()->live(),
@@ -377,7 +380,7 @@ class PlatformBillingAccountsPage extends Page
         $plan = $this->planLabels[$deal->plan_version_id] ??= app(BillingCatalog::class)->planLabel($deal->plan_version_id);
 
         return "#{$deal->subscription_id} · {$plan} · {$deal->market->code} · "
-            .($deal->basis === PricingBasis::Flat ? 'fixed per month' : $deal->basis->label()).", {$deal->interval->label()} · {$deal->contract_start->toDateString()} to "
+            .$deal->basis->label().", {$deal->interval->label()} · {$deal->contract_start->toDateString()} to "
             .($deal->contract_end?->toDateString() ?? 'open').($deal->contract_reference ? " · {$deal->contract_reference}" : '');
     }
 

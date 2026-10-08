@@ -24,7 +24,7 @@
                     @forelse ($this->profiles() as $profile)
                         <tr class="border-t border-gray-100 dark:border-gray-800">
                             <td class="py-1 pe-4">v{{ $profile->version }}</td><td class="pe-4">{{ $profile->effective_from->toDateString() }}</td><td class="pe-4">{{ $profile->market->code }}</td>
-                            <td class="pe-4">{{ $profile->customer_type->label() }}</td><td class="pe-4">{{ $profile->legal_name }}</td><td class="pe-4">{{ $profile->subdivision ?? $profile->country }}</td>
+                            <td class="pe-4">{{ $profile->customer_type->label() }}</td><td class="pe-4">{{ $profile->legal_name }}</td><td class="pe-4">{{ $profile->subdivision ?? $profile->country }}{{ $profile->tax_locality ? " / ".$profile->tax_locality : "" }}</td>
                             <td>{{ $profile->tax_registration->label() }}{{ $profile->tax_id_value ? ' · '.$profile->tax_id_value.' ('.str_replace('_', ' ', $profile->tax_id_status).')' : '' }}{{ $profile->special_tax_status ? ' · '.$profile->special_tax_status : '' }}</td>
                         </tr>
                     @empty
@@ -42,7 +42,7 @@
                 <tbody>
                     @forelse ($this->deals() as $deal)
                         <tr class="border-t border-gray-100 dark:border-gray-800 align-top">
-                            <td class="py-1 pe-4">#{{ $deal->subscription_id }} · {{ $deal->market->code }} ({{ $deal->currency->value }}) · {{ $deal->basis === \App\Domain\Billing\Enums\PricingBasis::Flat ? 'fixed per month' : $deal->basis->label() }}, {{ $deal->interval->label() }}</td>
+                            <td class="py-1 pe-4">#{{ $deal->subscription_id }} · {{ $deal->market->code }} ({{ $deal->currency->value }}) · {{ $deal->basis->label() }}, {{ $deal->interval->label() }}</td>
                             <td class="pe-4">{{ $deal->contract_start->toDateString() }} to {{ $deal->contract_end?->toDateString() ?? 'open' }}{{ $deal->contract_reference ? ' · '.$deal->contract_reference : '' }}@if ($deal->notes)<div class="text-xs text-gray-500 dark:text-gray-400">{{ $deal->notes }}</div>@endif</td>
                             <td>
                                 <ul class="space-y-0.5">
@@ -109,7 +109,7 @@
             </div>
         </x-filament::section>
 
-        <x-filament::section heading="Price notices" description="Written notices of standard price increases (at least the configured period ahead: 30 days, B-15). Pending notices are the re-pin worklist: set the new terms from the date shown.">
+        <x-filament::section heading="Price notices" description="Written notices of standard price increases (at least the configured period ahead: {{ \App\Domain\Billing\Services\PriceNotices::noticeDays(now()->toDateString()) }} days today, Commercial policies). Pending notices are the re-pin worklist: set the new terms from the date shown.">
             <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Price notices">
             <table class="w-full text-sm">
                 <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th scope="col" class="py-1 pe-4">Subscription</th><th scope="col" class="pe-4">Sent</th><th scope="col" class="pe-4">New price from</th><th scope="col" class="pe-4">Change</th><th scope="col">Status</th></tr></thead>

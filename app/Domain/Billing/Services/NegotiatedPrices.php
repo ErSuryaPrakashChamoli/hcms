@@ -45,7 +45,7 @@ final class NegotiatedPrices
     {
         OperatorChange::assert($actor, $reason, 'negotiated prices');
         $interval = BillingInterval::tryFrom($interval) ?? throw new RuntimeException('The interval is month or year.');
-        $basis = PricingBasis::tryFrom($basis) ?? throw new RuntimeException('The basis is per_active_employee (PEPM) or flat (a fixed monthly amount).');
+        $basis = PricingBasis::tryFrom($basis) ?? throw new RuntimeException('The basis is per_active_employee (PEPM) or flat (a fixed amount per billing interval).');
         [$start, $end] = [$this->day($contractStart), blank($contractEnd) ? null : $this->day((string) $contractEnd)];
         if ($end !== null && $end < $start) {
             throw new RuntimeException('The contract ends on or after it starts.');

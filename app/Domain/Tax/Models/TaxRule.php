@@ -23,7 +23,7 @@ use RuntimeException;
  * zero_rated, reverse_charge, not_taxable), conditions, the supplier registration it requires, the invoice wording
  * the law prescribes, and the reason code a failed condition reports.
  */
-#[Fillable(['regime', 'country', 'subdivision', 'tax_category', 'rule_code', 'version', 'effective_from', 'effective_to', 'outcomes', 'rounding_mode',
+#[Fillable(['regime', 'country', 'subdivision', 'locality', 'tax_category', 'rule_code', 'version', 'effective_from', 'effective_to', 'outcomes', 'rounding_mode',
     'rounding_stage', 'classification', 'conditions', 'statutory_notes', 'amount_basis', 'source', 'source_reference', 'source_url', 'source_date', 'origin', 'dataset_version',
     'dataset_key', 'dataset_status', 'status', 'reason', 'created_by', 'submitted_by', 'submitted_at', 'verified_by', 'verified_at', 'verification_reference',
     'verification_notes', 'retired_by', 'retired_at', 'rejected_by', 'rejected_at'])]
@@ -95,13 +95,13 @@ class TaxRule extends Model
 
     public function label(): string
     {
-        $scope = $this->subdivision !== '' ? $this->subdivision : $this->country;
+        $scope = ($this->subdivision !== '' ? $this->subdivision : $this->country).($this->locality !== '' && $this->locality !== null ? " / {$this->locality}" : '');
 
         return "{$this->regime->value} · {$scope} · {$this->tax_category} v{$this->version}";
     }
 
     public function scopeKey(): string
     {
-        return "{$this->regime->value}|{$this->country}|{$this->subdivision}|{$this->tax_category}";
+        return "{$this->regime->value}|{$this->country}|{$this->subdivision}|{$this->locality}|{$this->tax_category}";
     }
 }

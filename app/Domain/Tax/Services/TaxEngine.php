@@ -55,8 +55,17 @@ final class TaxEngine
             $destination = $this->registry->destination($destinationRegime)
                 ?? throw new TaxUnavailableException(TaxUnavailableException::TAX_CONFIGURATION_MISSING, "{$destinationRegime->label()} has no destination-side determination: the customer's treatment of the supply is unknown.");
             $destinationDetermination = $destination->determine($context);
-            $legs[] = $this->leg('destination', $destinationRegime, $destinationDetermination->placeOfSupply->country, $destinationDetermination->placeOfSupply->subdivision,
+            $legs[] = $state = $this->leg('destination', $destinationRegime, $destinationDetermination->placeOfSupply->country, $destinationDetermination->placeOfSupply->subdivision,
                 $destinationDetermination, $context);
+            // Local rates (US county, city, district): the rule of the customer's local tax jurisdiction, as data. None is ever assumed.
+            if (($state->conditionsMet['local_rates_required'] ?? false) === true) {
+                $place = $destinationDetermination->placeOfSupply;
+                if ($place->locality === null) {
+                    throw new TaxUnavailableException(TaxUnavailableException::PLACE_OF_SUPPLY_UNRESOLVED,
+                        "Local rates apply in {$place->subdivision}: the customer's local tax jurisdiction (county, city, district) is not recorded on its billing profile.");
+                }
+                $legs[] = $this->leg('destination_local', $destinationRegime, $place->country, $place->subdivision, $destinationDetermination, $context, $place->locality);
+            }
         }
         // Last: the classification an invoice of the regime must carry (e.g. India's SAC), once everything else resolved.
         foreach ($legs as $leg) {
@@ -158,12 +167,12 @@ final class TaxEngine
         return ['value' => $validator->validate($value, $subdivision), 'status' => 'format_valid'];
     }
 
-    private function leg(string $role, TaxRegime $regime, string $country, ?string $subdivision, TaxDetermination $determination, TaxContext $context): TaxLeg
+    private function leg(string $role, TaxRegime $regime, string $country, ?string $subdivision, TaxDetermination $determination, TaxContext $context, ?string $locality = null): TaxLeg
     {
-        $scope = $subdivision ?? $country;
-        $rule = $this->rules->inForce($regime, $country, $subdivision, $context->taxCategory, $context->taxPoint);
+        $scope = ($subdivision ?? $country).($locality !== null ? " / {$locality}" : '');
+        $rule = $this->rules->inForce($regime, $country, $subdivision, $context->taxCategory, $context->taxPoint, $locality);
         if ($rule === null) {
-            $why = $this->rules->whyNotInForce($regime, $country, $subdivision, $context->taxCategory, $context->taxPoint);
+            $why = $this->rules->whyNotInForce($regime, $country, $subdivision, $context->taxCategory, $context->taxPoint, $locality);
             throw new TaxUnavailableException($why === 'pending' ? TaxUnavailableException::TAX_RULE_UNVERIFIED : TaxUnavailableException::TAX_CONFIGURATION_MISSING,
                 match ($why) {
                     'pending' => "The {$regime->value} rule for {$scope} (\"{$context->taxCategory}\") is pending verification: it cannot be used until another operator verifies it.",
@@ -256,10 +265,9 @@ final class TaxEngine
                 case 'reporting_currency':
                     break; // reported on the quote: billing must record the value in this currency at issue
                 case 'local_rates_required':
-                    $hasLocal = collect($outcome['components'] ?? [])->contains(fn ($c) => in_array($c->type, ['COUNTY', 'CITY', 'DISTRICT'], true));
-                    if ($expected && ! $hasLocal) {
-                        $fail(TaxUnavailableException::TAX_CONFIGURATION_MISSING, 'local (county, city, district) rates for the customer\'s location are not configured.');
-                    }
+                    // The state's rule says local rates apply: quote() adds the verified rule of the customer's local tax
+                    // jurisdiction as its own leg, or refuses (no locality recorded, no rule, or not verified).
+                    $expected = (bool) $expected;
                     break;
                 default:
                     $fail(TaxUnavailableException::TAX_CONFIGURATION_MISSING, "the condition \"{$key}\" cannot be evaluated by this version of PeopleOS.");

@@ -123,7 +123,7 @@ it('bills Client B a fixed annual commitment in advance, ends its terms with the
     billingProfile($tenant, $this->in, $this->op);
     $sub = $this->subs->start($tenant, $this->growth, '2027-04-01', null, 'Contract', $this->op);
     $this->terms->set($sub, $this->standard, '2027-04-01', 'Order form', $this->op);
-    $annual = agreedVersion(null, $sub, $this->growth, $this->in, 'year', 'flat', '50000.00', '2027-05-01', $this->op, $this->checker, contractEnd: '2028-04-30');
+    $annual = agreedVersion(null, $sub, $this->growth, $this->in, 'year', 'flat', '600000.00', '2027-05-01', $this->op, $this->checker, contractEnd: '2028-04-30');   // a fixed annual commitment, entered as it is agreed
     expect(fn () => $this->deals->draftVersion($this->ctx->runAs($tenant, fn () => $annual->negotiatedPrice()->first()), '1.00', 5, null, null, 'Minimum on a fixed deal', $this->op))
         ->toThrow(RuntimeException::class, 'per-employee deal');
     $term = $this->terms->set($sub, $annual, '2027-05-01', 'Annual order form', $this->op);
@@ -135,7 +135,7 @@ it('bills Client B a fixed annual commitment in advance, ends its terms with the
     $periods = billingPeriodsOf($tenant);
     $advance = $periods->get('annual_advance 2027-05-01');
     expect([$advance->price_source, $advance->billed_quantity, $advance->amount()->toDecimal(), $advance->evidence['method'], $advance->period_end->toDateString()])
-        ->toBe(['negotiated', 1, '600000.00', 'flat', '2028-04-30'])                       // 50,000.00 a month × 12, in advance
+        ->toBe(['negotiated', 1, '600000.00', 'flat', '2028-04-30'])                       // the annual amount, once, in advance
         ->and($periods->get('monthly_arrears 2027-04-01')->amount()->toDecimal())->toBe('100.00')
         ->and($periods->has('annual_true_up 2027-05-01'))->toBeFalse();                   // a fixed price has no true-up
 

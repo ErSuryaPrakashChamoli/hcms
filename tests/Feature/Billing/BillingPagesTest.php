@@ -9,6 +9,7 @@ use App\Domain\Billing\Models\NegotiatedPriceVersion;
 use App\Domain\Billing\Models\PlanPrice;
 use App\Domain\Billing\Models\PlanPriceVersion;
 use App\Domain\Billing\Models\SubscriptionBillingTerm;
+use App\Domain\Billing\Models\SupplierProfile;
 use App\Domain\Billing\Models\TenantBillingProfile;
 use App\Domain\Payments\Enums\ReconciliationStatus;
 use App\Domain\Payments\Models\Payment;
@@ -64,6 +65,14 @@ it('runs the whole setup and billing flow from the pages, each step reasoned and
         ->callAction('recordSupplier', data: ['entity' => 'MARKEDGE-IN-UI', 'legal_name' => 'Markedge UI Test Pvt Ltd', 'address_line1' => '1 UI Street', 'city' => 'Testpur',
             'country' => 'IN', 'subdivision' => 'IN-MH', 'tax_id_type' => 'IN_GSTIN', 'tax_id_value' => fictionalGstin('27'), 'from' => '2027-04-01', 'reason' => 'Fictional entity'])
         ->assertHasNoActionErrors()
+        ->assertActionHidden('createSeries');                                                 // a selling entity applies once a second operator approves it
+    $entityRequest = FinancialApproval::query()->where('action', 'supplier_profile_change')->sole();
+    expect(SupplierProfile::query()->sole()->status)->toBe('pending');
+    $this->actingAs($this->checker);
+    Livewire::test(PlatformApprovalsPage::class, ['approval' => $entityRequest->reference])->callAction('approve', data: ['reason' => 'Matches the registration certificate'])
+        ->assertHasNoActionErrors();
+    $this->actingAs($this->op);
+    Livewire::test(PlatformTaxSetupPage::class)
         ->callAction('createSeries', data: ['entity' => 'MARKEDGE-IN-UI', 'prefix' => 'UI/', 'starts_on' => '2027-04-01', 'ends_on' => '2028-03-31', 'padding' => 5, 'reason' => 'Fictional series'])
         ->assertHasNoActionErrors()
         ->callAction('draftRule', data: ['regime' => 'IN_GST', 'country' => 'IN', 'category' => 'peopleos.subscription', 'from' => '2027-04-01',
@@ -92,7 +101,7 @@ it('runs the whole setup and billing flow from the pages, each step reasoned and
     Livewire::test(PlatformBillingCatalogPage::class)
         ->callAction('requestPublication', data: ['version' => PlanPriceVersion::query()->sole()->id, 'from' => '2027-04-01', 'reason' => 'On sale today'])->assertHasNoActionErrors();
     // B-13 maker-checker: the maker sees no approve button on their own request; the second operator approves it.
-    $approval = FinancialApproval::query()->sole();
+    $approval = FinancialApproval::query()->where('action', 'price_publication')->sole();
     expect(PlanPriceVersion::query()->sole()->status->value)->toBe('draft');
     Livewire::test(PlatformApprovalsPage::class, ['approval' => $approval->reference])->assertActionHidden('approve')->assertActionVisible('withdraw');
     $this->actingAs($this->checker);

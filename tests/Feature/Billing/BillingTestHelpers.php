@@ -56,9 +56,18 @@ function indiaSupplier(User $operator, string $entity = 'MARKEDGE-IN-TEST', stri
 {
     $code = substr(fictionalGstin(GstStates::code($subdivision)), 0, 2);
 
-    return app(SupplierProfiles::class)->record($entity, ['legal_name' => 'Markedge Test Supplier Pvt Ltd', 'address_line1' => '1 Test Street', 'city' => 'Testpur',
+    return supplierVersion($entity, ['legal_name' => 'Markedge Test Supplier Pvt Ltd', 'address_line1' => '1 Test Street', 'city' => 'Testpur',
         'postal_code' => '400001', 'country' => 'IN', 'subdivision' => $subdivision, 'tax_id_type' => 'IN_GSTIN', 'tax_id_value' => fictionalGstin($code)],
-        $from ?? now()->toDateString(), 'Fictional supplier for tests', $operator);
+        $from ?? now()->toDateString(), $operator);
+}
+
+/** A selling-entity version proposed by $maker and approved by a second operator (it applies only once approved). */
+function supplierVersion(string $entity, array $data, string $from, User $maker, ?User $checker = null): SupplierProfile
+{
+    $approval = app(SupplierProfiles::class)->propose($entity, $data, $from, 'Fictional supplier for tests', $maker);
+    approveAs($approval, $checker);
+
+    return SupplierProfile::query()->findOrFail($approval->subject_id);
 }
 
 function billingMarket(User $operator, string $code = 'IN-TEST', string $currency = 'INR', string $entity = 'MARKEDGE-IN-TEST', string $locale = 'en_IN', array $countries = ['IN']): BillingMarket

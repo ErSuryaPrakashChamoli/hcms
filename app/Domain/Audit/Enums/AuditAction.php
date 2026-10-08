@@ -240,6 +240,7 @@ enum AuditAction: string
     case PriceVersionPublished = 'PRICE_VERSION_PUBLISHED';
     case PriceVersionRetired = 'PRICE_VERSION_RETIRED';
     case SupplierProfileRecorded = 'SUPPLIER_PROFILE_RECORDED';
+    case SupplierProfileProposed = 'SUPPLIER_PROFILE_PROPOSED';
     case InvoiceSeriesCreated = 'INVOICE_SERIES_CREATED';
     case InvoiceSeriesClosed = 'INVOICE_SERIES_CLOSED';
     case TaxRuleDrafted = 'TAX_RULE_DRAFTED';

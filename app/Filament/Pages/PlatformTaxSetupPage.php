@@ -146,14 +146,18 @@ class PlatformTaxSetupPage extends Page
         };
         $us = [];
         foreach (app(TaxRegistry::class)->subdivisions('US') as $code => $name) {
-            $us[] = $row($code, $name, $rules->where('regime', TaxRegime::UsSalesTax)->where('subdivision', $code));
+            $state = $rules->where('regime', TaxRegime::UsSalesTax)->where('subdivision', $code);
+            $entry = $row($code, $name, $state->where('locality', ''));
+            $localities = $state->where('locality', '<>', '')->pluck('locality')->unique()->count();
+            $entry['summary'] .= $localities > 0 ? " · local rules for {$localities} local tax jurisdiction(s)" : '';
+            $us[] = $entry;
         }
         $eu = [];
         foreach (JurisdictionCatalogue::EU_MEMBERS as $code) {
             $eu[] = $row($code, $code, $rules->where('regime', TaxRegime::EuVat)->where('country', $code));
         }
 
-        return ['United States (state level; local rates are not configured)' => $us, 'European Union member states' => $eu];
+        return ['United States (state level; local rates are rules of each local tax jurisdiction)' => $us, 'European Union member states' => $eu];
     }
 
     /** @return Collection<int, ConfigurationVersion> statutory parameters (e.g. the invoice-number length) with their versions */
@@ -171,7 +175,13 @@ class PlatformTaxSetupPage extends Page
     /** @return Collection<int, TaxRule> */
     public function rules(): Collection
     {
-        return TaxRule::query()->orderBy('country')->orderBy('subdivision')->orderBy('regime')->orderBy('tax_category')->orderByDesc('version')->limit(300)->get();
+        return TaxRule::query()->where('locality', '')->orderBy('country')->orderBy('subdivision')->orderBy('regime')->orderBy('tax_category')->orderByDesc('version')->get();
+    }
+
+    /** @return Collection<int, TaxRule> local tax jurisdiction rules (US county, city, district), newest first; counted per state in the coverage table */
+    public function localRules(): Collection
+    {
+        return TaxRule::query()->where('locality', '<>', '')->orderByDesc('id')->limit(200)->get();
     }
 
     /** @return Collection<int, InvoiceNumberSeries> */
@@ -199,8 +209,8 @@ class PlatformTaxSetupPage extends Page
         $datasets = fn () => array_combine(app(StatutoryDataset::class)->versions(), app(StatutoryDataset::class)->versions());
 
         return [
-            Action::make('recordSupplier')->label('Record supplier entity')->icon(Heroicon::OutlinedBuildingOffice2)
-                ->modalDescription('A new version of a Markedge selling entity from a date. Issued invoices keep the version they were issued under.')
+            Action::make('recordSupplier')->label('Propose selling entity version')->icon(Heroicon::OutlinedBuildingOffice2)
+                ->modalDescription('A new version of a Markedge selling entity (identity, tax registration, LUT and other registrations) from a date. It applies only once another operator approves it on the Approvals page; issued invoices keep the version they were issued under.')
                 ->schema([
                     TextInput::make('entity')->label('Entity code')->required()->maxLength(32),
                     TextInput::make('legal_name')->label('Legal name')->required()->maxLength(200),
@@ -212,13 +222,13 @@ class PlatformTaxSetupPage extends Page
                     Select::make('tax_id_type')->label('Tax registration type')->options(collect(TaxIdType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all()),
                     TextInput::make('tax_id_value')->label('Tax registration number')->maxLength(32),
                     Textarea::make('registrations')->label('Registrations and undertakings (optional)')->rows(3)
-                        ->placeholder("IN_LUT AD270326000001X 2026-04-01 2027-03-31\nUS_STATE:US-TX 32000000000 2027-01-01")
+                        ->placeholder("IN_LUT <LUT reference> <valid from> <valid to>\nUS_STATE:US-TX <permit number> <valid from>")
                         ->helperText('One per line: TYPE reference valid-from [valid-to]. Types tax conditions require: IN_LUT, GB_VAT, EU_OSS_NON_UNION, AE_TRN, US_STATE:US-XX.'),
                     DatePicker::make('from')->label('From')->native(false)->required()->default(now()->toDateString()),
                     $reason(),
                 ])
-                ->action(fn (array $data) => $this->attempt(fn () => app(SupplierProfiles::class)->record($data['entity'], ['registrations' => $this->registrations((string) ($data['registrations'] ?? ''))] + $data,
-                    substr((string) $data['from'], 0, 10), $data['reason'], auth()->user()), 'Supplier recorded')),
+                ->action(fn (array $data) => $this->attempt(fn () => app(SupplierProfiles::class)->propose($data['entity'], ['registrations' => $this->registrations((string) ($data['registrations'] ?? ''))] + $data,
+                    substr((string) $data['from'], 0, 10), $data['reason'], auth()->user()), 'Selling entity version proposed: another operator approves it')),
             Action::make('loadDataset')->label('Load statutory dataset')->icon(Heroicon::OutlinedArrowDownTray)->visible(fn () => $datasets() !== [])
                 ->modalDescription('Loads the current statutory values shipped with PeopleOS (with their official sources) as rules pending verification. Nothing applies until another operator verifies the dataset; values the dataset marks pending stay pending.')
                 ->schema([Select::make('version')->label('Dataset')->required()->options($datasets)->default(config('peopleos.commercial.statutory_dataset.current')), $reason()])
@@ -242,6 +252,9 @@ class PlatformTaxSetupPage extends Page
                     Select::make('regime')->label('Regime')->required()->live()->options($regimes->mapWithKeys(fn (TaxRegime $r) => [$r->value => $r->label()])->all()),
                     TextInput::make('country')->label('Country (ISO code)')->required()->length(2)->live(onBlur: true),
                     Select::make('subdivision')->label('State (US rules are per state)')->searchable()->options(fn (Get $get) => $registry->subdivisions(strtoupper((string) $get('country'))))
+                        ->visible(fn (Get $get) => $get('regime') === TaxRegime::UsSalesTax->value),
+                    TextInput::make('locality')->label('Local tax jurisdiction (optional: a county, city or district code from your rate source)')->maxLength(40)
+                        ->helperText('Leave empty for the state rule. A local rule applies to customers whose billing profile records the same code, where the state rule requires local rates.')
                         ->visible(fn (Get $get) => $get('regime') === TaxRegime::UsSalesTax->value),
                     TextInput::make('category')->label('Tax category')->required()->default('peopleos.subscription'),
                     TextInput::make('rule_code')->label('Rule code (optional)')->maxLength(64)->placeholder('IN-GST-9983-18'),
@@ -277,7 +290,7 @@ class PlatformTaxSetupPage extends Page
                     $rule = TaxRule::query()->findOrFail((int) $data['rule']);
                     app(TaxRules::class)->draft($rule->regime, $rule->country, $rule->subdivision !== '' ? $rule->subdivision : null, $rule->tax_category, substr((string) $data['from'], 0, 10),
                         $this->json((string) $data['outcomes_json']), $rule->rounding_mode->value, $this->classification((string) ($data['classification'] ?? '')), $data['reason'], auth()->user(),
-                        $this->details($data) + ['amount_basis' => $rule->amount_basis, 'conditions' => $rule->conditions]);
+                        $this->details($data) + ['amount_basis' => $rule->amount_basis, 'conditions' => $rule->conditions, 'locality' => $rule->locality === '' ? null : $rule->locality]);
                 }, 'New rule version drafted: submit it for review')),
             Action::make('submitRule')->label('Submit for review')->icon(Heroicon::OutlinedPaperAirplane)->visible(fn () => TaxRule::query()->where('status', TaxRuleStatus::Draft)->exists())
                 ->schema([Select::make('rule')->label('Draft rule')->required()->options($ruleOptions(TaxRuleStatus::Draft)), $reason()])
@@ -296,14 +309,14 @@ class PlatformTaxSetupPage extends Page
                 ->modalDescription('A retired rule stops applying: invoices that would need it are refused until another is verified.')
                 ->schema([Select::make('rule')->label('Rule')->required()->options($ruleOptions(TaxRuleStatus::Draft, TaxRuleStatus::Review, TaxRuleStatus::Verified)), $reason()])
                 ->action(fn (array $data) => $this->attempt(fn () => app(TaxRules::class)->retire(TaxRule::query()->findOrFail((int) $data['rule']), $data['reason'], auth()->user()), 'Rule retired')),
-            Action::make('createSeries')->label('New number series')->icon(Heroicon::OutlinedHashtag)->visible(fn () => SupplierProfile::query()->exists())
+            Action::make('createSeries')->label('New number series')->icon(Heroicon::OutlinedHashtag)->visible(fn () => SupplierProfile::query()->where('status', SupplierProfile::APPROVED)->exists())
                 ->modalDescription('Gap-free numbers for one entity over an explicit window (e.g. a financial year). Open series never overlap.')
                 ->schema([
-                    Select::make('entity')->label('Entity')->required()->options(fn () => SupplierProfile::query()->distinct()->pluck('entity_code', 'entity_code')->all()),
+                    Select::make('entity')->label('Entity')->required()->options(fn () => SupplierProfile::query()->where('status', SupplierProfile::APPROVED)->distinct()->pluck('entity_code', 'entity_code')->all()),
                     TextInput::make('prefix')->label('Prefix')->required()->maxLength(16)->placeholder('PO/2027-28/'),
                     DatePicker::make('starts_on')->label('First day')->native(false)->required(),
                     DatePicker::make('ends_on')->label('Last day')->native(false)->required(),
-                    TextInput::make('padding')->label('Sequence digits')->numeric()->required()->minValue(1)->maxValue(12)->default(5),
+                    TextInput::make('padding')->label('Sequence digits')->numeric()->required()->minValue(1)->maxValue(12),
                     $reason(),
                 ])
                 ->action(fn (array $data) => $this->attempt(fn () => app(InvoiceSeries::class)->create($data['entity'], $data['prefix'], substr((string) $data['starts_on'], 0, 10),
@@ -356,7 +369,7 @@ class PlatformTaxSetupPage extends Page
     {
         return ['effective_to' => blank($data['to'] ?? null) ? null : substr((string) $data['to'], 0, 10), 'rule_code' => blank($data['rule_code'] ?? null) ? null : strtoupper(trim((string) $data['rule_code'])),
             'source' => $data['source'] ?? null, 'source_reference' => $data['source_reference'] ?? null, 'source_url' => $data['source_url'] ?? null,
-            'source_date' => blank($data['source_date'] ?? null) ? null : substr((string) $data['source_date'], 0, 10)];
+            'source_date' => blank($data['source_date'] ?? null) ? null : substr((string) $data['source_date'], 0, 10), 'locality' => $data['locality'] ?? null];
     }
 
     /** @return list<array{type: string, reference: string, valid_from: string, valid_to: ?string}> one per line: TYPE reference from [to] */

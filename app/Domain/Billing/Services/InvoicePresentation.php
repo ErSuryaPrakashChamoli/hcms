@@ -71,7 +71,9 @@ final class InvoicePresentation
             'rule' => $snapshot['tax']['rule']['label'] ?? null,
             // SaaS.7 configuration: each tax leg (the supplier's and, for a cross-border supply, the customer's
             // country), the statutory wording the rules require, and the local-currency reporting value, all frozen.
-            'legs' => $issued ? array_map(fn (array $leg) => ['role' => $leg['role'] === 'destination' ? "customer's country" : 'supplier', 'regime' => $leg['determination']['regime'] ?? null,
+            'legs' => $issued ? array_map(fn (array $leg) => ['role' => match ($leg['role']) {
+                'destination' => "customer's country", 'destination_local' => "customer's local jurisdiction", default => 'supplier'
+            }, 'regime' => $leg['determination']['regime'] ?? null,
                 'treatment' => TaxTreatment::tryFrom((string) ($leg['treatment'] ?? ''))?->label() ?? ($leg['treatment'] ?? null), 'rule' => $leg['rule']['rule_code'] ?? $leg['rule']['label'] ?? null],
                 $snapshot['tax']['legs'] ?? []) : [],
             'wording' => $issued ? array_values(array_filter((array) ($snapshot['tax']['wording'] ?? []))) : [],

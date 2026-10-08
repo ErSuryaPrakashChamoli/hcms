@@ -9,7 +9,6 @@ use App\Domain\Billing\Services\BillingCatalog;
 use App\Domain\Billing\Services\BillingPeriods;
 use App\Domain\Billing\Services\BillingTerms;
 use App\Domain\Billing\Services\Invoices;
-use App\Domain\Billing\Services\SupplierProfiles;
 use App\Domain\Payments\Enums\PaymentStatus;
 use App\Domain\Payments\Enums\ReconciliationStatus;
 use App\Domain\Payments\Services\Payments;
@@ -141,8 +140,8 @@ it('records the INR settlement of a foreign-currency payment beside it, never ch
     $rule = $rules->draft(TaxRegime::UsSalesTax, 'US', 'US-TX', 'peopleos.subscription', '2027-04-01', ['state' => [['type' => 'STATE', 'rate' => '6.25']]], 'half_up', null, 'Test-only rule', $this->op);
     $rules->submit($rule, 'Review please', $this->op);
     $rules->verify($rule, 'TEST-ONLY', null, $this->checker);
-    app(SupplierProfiles::class)->record('MARKEDGE-US-TEST', ['legal_name' => 'Markedge US Test Ltd', 'address_line1' => '1 Test Way', 'city' => 'Testville', 'country' => 'US',
-        'subdivision' => 'US-TX', 'tax_id_type' => 'US_SALES_TAX_PERMIT', 'tax_id_value' => 'TX-00000'], '2027-04-01', 'Fictional entity', $this->op);
+    supplierVersion('MARKEDGE-US-TEST', ['legal_name' => 'Markedge US Test Ltd', 'address_line1' => '1 Test Way', 'city' => 'Testville', 'country' => 'US',
+        'subdivision' => 'US-TX', 'tax_id_type' => 'US_SALES_TAX_PERMIT', 'tax_id_value' => 'TX-00000'], '2027-04-01', $this->op);
     invoiceSeries($this->op, 'MARKEDGE-US-TEST', 'US-');
     $usd = billingMarket($this->op, 'US-TEST', 'USD', 'MARKEDGE-US-TEST', 'en_US', ['US']);
     $us = provisionTenant('Texas Customer');

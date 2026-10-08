@@ -163,8 +163,8 @@ class PlatformBillingCatalogPage extends Page
             Action::make('draftPriceVersion')->label('Draft amount')->icon(Heroicon::OutlinedDocumentPlus)->visible(fn () => $this->prices()->isNotEmpty())
                 ->schema([
                     Select::make('price')->label('Price')->required()->options(fn () => $this->prices()->mapWithKeys(fn ($p) => [$p->id => app(BillingCatalog::class)->priceLabel($p)])->all()),
-                    TextInput::make('amount')->label('Unit amount in the market currency (major units)')->required()->placeholder('1499.00')
-                        ->helperText('Per employee per month for a per-employee price, whatever the interval. Exact to the currency\'s decimals (JPY none, BHD three). Never converted from another market.'),
+                    TextInput::make('amount')->label('Unit amount in the market currency (major units)')->required()->placeholder('amount in major units, e.g. 0000.00')
+                        ->helperText('Per employee per month for a per-employee price, whatever the interval; per billing interval for a fixed price. Exact to the currency\'s decimals (JPY none, BHD three). Never converted from another market.'),
                     TextInput::make('minimum')->label('Minimum quantity (employees, optional)')->numeric()->minValue(0)->default(0),
                     $reason(),
                 ])

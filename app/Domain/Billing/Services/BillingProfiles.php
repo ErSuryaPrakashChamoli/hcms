@@ -36,7 +36,7 @@ final class BillingProfiles
 
     /**
      * @param  array{customer_type: string, legal_name: string, billing_email: string, billing_contact?: ?string, address_line1: string,
-     *     address_line2?: ?string, city: string, postal_code?: ?string, country: string, subdivision?: ?string, tax_registration: string,
+     *     address_line2?: ?string, city: string, postal_code?: ?string, country: string, subdivision?: ?string, tax_locality?: ?string, tax_registration: string,
      *     tax_id_type?: ?string, tax_id_value?: ?string, special_tax_status?: ?string}  $data
      */
     public function record(Tenant $tenant, BillingMarket $market, array $data, string $effectiveFrom, string $reason, User $actor, ?string $reference = null): TenantBillingProfile
@@ -104,8 +104,10 @@ final class BillingProfiles
         }
         $country = strtoupper(trim((string) ($data['country'] ?? '')));
         $subdivision = trim((string) ($data['subdivision'] ?? '')) === '' ? null : strtoupper(trim((string) $data['subdivision']));
+        // The local tax jurisdiction (US county, city, district) as Markedge's rate source codes it: recorded, never derived.
+        $locality = trim((string) ($data['tax_locality'] ?? '')) === '' ? null : strtoupper(trim((string) $data['tax_locality']));
         try {
-            new TaxJurisdiction($country, $subdivision);
+            new TaxJurisdiction($country, $subdivision, $locality);
         } catch (InvalidArgumentException $e) {
             throw new RuntimeException($e->getMessage());
         }
@@ -141,8 +143,8 @@ final class BillingProfiles
         $contact = trim((string) ($data['billing_contact'] ?? ''));
 
         return self::address($data) + ['customer_type' => $type, 'billing_email' => $email, 'billing_contact' => $contact === '' ? null : mb_substr($contact, 0, 120),
-            'country' => $country, 'subdivision' => $subdivision, 'tax_registration' => $registration, 'tax_id_type' => $idType, 'tax_id_value' => $idValue,
-            'tax_id_status' => $idStatus, 'special_tax_status' => $special];
+            'country' => $country, 'subdivision' => $subdivision, 'tax_locality' => $locality, 'tax_registration' => $registration, 'tax_id_type' => $idType,
+            'tax_id_value' => $idValue, 'tax_id_status' => $idStatus, 'special_tax_status' => $special];
     }
 
     private function day(string $day): string

@@ -35,7 +35,7 @@ final class UsSalesTaxDestination implements TaxDeterminer
             throw new TaxUnavailableException(TaxUnavailableException::PLACE_OF_SUPPLY_UNRESOLVED, 'A US customer needs its state on record: there is no national US sales tax.');
         }
 
-        return new TaxDetermination(TaxRegime::UsSalesTax, TaxTreatment::Standard, 'saas', new TaxJurisdiction('US', $place->subdivision),
-            "Customer location: {$place->subdivision}");
+        return new TaxDetermination(TaxRegime::UsSalesTax, TaxTreatment::Standard, 'saas', new TaxJurisdiction('US', $place->subdivision, $place->locality),
+            "Customer location: {$place->subdivision}".($place->locality !== null ? ", local tax jurisdiction {$place->locality}" : ''));
     }
 }

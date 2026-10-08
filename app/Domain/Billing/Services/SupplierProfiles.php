@@ -3,6 +3,8 @@
 namespace App\Domain\Billing\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Billing\Enums\ApprovalAction;
+use App\Domain\Billing\Models\FinancialApproval;
 use App\Domain\Billing\Models\SupplierProfile;
 use App\Domain\Identity\Models\User;
 use App\Domain\Tax\Enums\TaxIdType;
@@ -19,10 +21,15 @@ use RuntimeException;
  * SaaS.7: Markedge's selling entities (platform catalogue). Each change is a new version from a date (today or
  * later); an invoice copies the version in force at issue. No entity, address or registration is shipped: they
  * are decision B-7.
+ *
+ * SaaS.7 configuration closure: an entity's identity and registrations (GSTIN, the LUT, foreign VAT, TRN, US state
+ * permits) decide how invoices are taxed, so a version is proposed by one operator and applies only once another
+ * approves it on the approval desk (`supplier_profile_change`); until then it is pending and never used.
  */
 final class SupplierProfiles
 {
-    public function __construct(private readonly BillingAudit $audit, private readonly TaxEngine $tax, private readonly TaxRegistry $registry) {}
+    public function __construct(private readonly BillingAudit $audit, private readonly FinancialApprovals $approvals, private readonly TaxEngine $tax,
+        private readonly TaxRegistry $registry) {}
 
     /**
      * @param  array{legal_name: string, address_line1: string, address_line2?: ?string, city: string, postal_code?: ?string, country: string, subdivision?: ?string,
@@ -30,9 +37,9 @@ final class SupplierProfiles
      *     registrations: undertakings and registrations elsewhere that tax conditions require (e.g. IN_LUT for an export under
      *     a letter of undertaking, GB_VAT, EU_OSS_NON_UNION, AE_TRN, US_STATE:US-TX), each with its validity
      */
-    public function record(string $entityCode, array $data, string $effectiveFrom, string $reason, User $actor): SupplierProfile
+    public function propose(string $entityCode, array $data, string $effectiveFrom, string $reason, User $maker): FinancialApproval
     {
-        OperatorChange::assert($actor, $reason, 'supplier profiles');
+        OperatorChange::assert($maker, $reason, 'supplier profiles');
         $entityCode = strtoupper(trim($entityCode));
         if (preg_match('/^[A-Z0-9_-]{2,32}$/', $entityCode) !== 1) {
             throw new RuntimeException('The entity code is 2 to 32 capital letters, digits, dash or underscore.');
@@ -55,28 +62,78 @@ final class SupplierProfiles
 
         $registrations = $this->registrations((array) ($data['registrations'] ?? []));
 
-        return DB::transaction(function () use ($entityCode, $address, $country, $subdivision, $type, $value, $registrations, $from, $reason, $actor) {
+        return DB::transaction(function () use ($entityCode, $address, $country, $subdivision, $type, $value, $registrations, $from, $reason, $maker) {
             $previous = SupplierProfile::query()->where('entity_code', $entityCode)->lockForUpdate()->orderByDesc('version')->first();
+            $current = $this->inForce($entityCode, $from);
             $profile = SupplierProfile::query()->create($address + ['entity_code' => $entityCode, 'version' => ($previous?->version ?? 0) + 1,
                 'country' => $country, 'subdivision' => $subdivision, 'tax_id_type' => $type, 'tax_id_value' => $value,
-                'registrations' => $registrations === [] ? null : $registrations, 'effective_from' => $from,
-                'reason' => $reason, 'created_by' => $actor->id]);
-            $this->audit->platform(AuditAction::SupplierProfileRecorded, 'billing', $profile, "Supplier {$entityCode} v{$profile->version}",
-                [['field' => 'legal_name', 'before' => $previous?->legal_name ?? 'none', 'after' => $profile->legal_name],
-                    ['field' => 'jurisdiction', 'before' => $previous ? ($previous->subdivision ?? $previous->country) : 'none', 'after' => $subdivision ?? $country],
-                    ['field' => 'tax_registration', 'before' => $previous?->tax_id_value ?? 'none', 'after' => $value ?? 'none'],
-                    ['field' => 'registrations', 'before' => $this->describeRegistrations($previous?->registrations ?? []), 'after' => $this->describeRegistrations($registrations)]],
-                $reason, $actor, ['entity' => $entityCode, 'version' => $profile->version], $from);
+                'registrations' => $registrations === [] ? null : $registrations, 'effective_from' => $from, 'status' => SupplierProfile::PENDING,
+                'reason' => $reason, 'created_by' => $maker->id]);
+            $changes = $this->changes($current, $profile);
+            $this->audit->platform(AuditAction::SupplierProfileProposed, 'billing', $profile, "Supplier {$entityCode} v{$profile->version}", $changes, $reason, $maker,
+                ['entity' => $entityCode, 'version' => $profile->version], $from);
+            $approval = $this->approvals->request(ApprovalAction::SupplierProfileChange, $profile, null,
+                ['entity' => $entityCode, 'version' => $profile->version, 'legal_name' => $profile->legal_name, 'jurisdiction' => $subdivision ?? $country,
+                    'tax_registration' => $value ?? 'none', 'registrations' => $this->describeRegistrations($registrations), 'effective_from' => $from],
+                collect($changes)->mapWithKeys(fn (array $c) => [$c['field'] => $c['before']])->all(), collect($changes)->mapWithKeys(fn (array $c) => [$c['field'] => $c['after']])->all(),
+                "{$entityCode}:v{$profile->version}", $reason, $maker);
+            $profile->forceFill(['approval_id' => $approval->id])->save();
 
-            return $profile;
-        });
+            return $approval;
+        }, 3);   // MySQL: two first proposals of one entity can deadlock on the version's gap lock; the retry numbers the loser next
     }
 
-    /** The version in force on $day: the latest started one. */
+    /** Executes an approved selling-entity version (called by the approval desk, inside its transaction). */
+    public function executeChange(FinancialApproval $approval): SupplierProfile
+    {
+        $approval = $this->approvals->claim($approval, ApprovalAction::SupplierProfileChange);
+        $locked = SupplierProfile::query()->lockForUpdate()->findOrFail($approval->subject_id);
+        if ($locked->status !== SupplierProfile::PENDING) {
+            throw new RuntimeException("This version is already {$locked->status}.");
+        }
+        if ($locked->effective_from->toDateString() < now()->toDateString()) {
+            throw new RuntimeException('This version was to start on '.$locked->effective_from->toDateString().', which has passed: reject it and propose it again from today or later.');
+        }
+        $checker = User::query()->findOrFail($approval->checker_id);
+        $current = $this->inForce($locked->entity_code, $locked->effective_from->toDateString());
+        $locked->forceFill(['status' => SupplierProfile::APPROVED, 'approved_by' => $checker->id, 'approved_at' => now()])->save();
+        $this->audit->platform(AuditAction::SupplierProfileRecorded, 'billing', $locked, "Supplier {$locked->entity_code} v{$locked->version}", $this->changes($current, $locked),
+            (string) $approval->checker_reason, $checker, ['entity' => $locked->entity_code, 'version' => $locked->version, 'approval' => $approval->reference,
+                'maker_id' => $approval->maker_id, 'checker_id' => $checker->id, 'correlation_id' => $approval->correlation_key], $locked->effective_from->toDateString());
+        $this->approvals->executed($approval, "Supplier {$locked->entity_code} v{$locked->version} from {$locked->effective_from->toDateString()}");
+
+        return $locked;
+    }
+
+    /** Keeps a version in step when its approval request is rejected or withdrawn (it never applies). */
+    public function close(FinancialApproval $approval): void
+    {
+        $profile = SupplierProfile::query()->find($approval->subject_id);
+        if ($profile !== null && $profile->status === SupplierProfile::PENDING && in_array($approval->status->value, [SupplierProfile::REJECTED, SupplierProfile::WITHDRAWN], true)) {
+            $profile->forceFill(['status' => $approval->status->value])->save();
+        }
+    }
+
+    /** The approved version in force on $day: the latest started one. A pending, rejected or withdrawn version never applies. */
     public function inForce(string $entityCode, string $day): ?SupplierProfile
     {
-        return SupplierProfile::query()->where('entity_code', $entityCode)->whereDate('effective_from', '<=', $day)
+        return SupplierProfile::query()->where(['entity_code' => $entityCode, 'status' => SupplierProfile::APPROVED])->whereDate('effective_from', '<=', $day)
             ->orderByDesc('effective_from')->orderByDesc('version')->first();
+    }
+
+    /** The latest approved version of an entity, whatever its start (numbering rules follow its jurisdiction). */
+    public function latestApproved(string $entityCode): ?SupplierProfile
+    {
+        return SupplierProfile::query()->where(['entity_code' => $entityCode, 'status' => SupplierProfile::APPROVED])->orderByDesc('version')->first();
+    }
+
+    /** @return list<array{field: string, before: ?string, after: ?string}> */
+    private function changes(?SupplierProfile $before, SupplierProfile $after): array
+    {
+        return [['field' => 'legal_name', 'before' => $before?->legal_name ?? 'none', 'after' => $after->legal_name],
+            ['field' => 'jurisdiction', 'before' => $before ? ($before->subdivision ?? $before->country) : 'none', 'after' => $after->subdivision ?? $after->country],
+            ['field' => 'tax_registration', 'before' => $before?->tax_id_value ?? 'none', 'after' => $after->tax_id_value ?? 'none'],
+            ['field' => 'registrations', 'before' => $this->describeRegistrations($before?->registrations ?? []), 'after' => $this->describeRegistrations($after->registrations ?? [])]];
     }
 
     /** @return list<array{type: string, reference: string, valid_from: string, valid_to: ?string}> */

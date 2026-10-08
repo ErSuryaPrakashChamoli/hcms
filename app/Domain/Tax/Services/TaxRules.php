@@ -81,7 +81,12 @@ final class TaxRules
     private function create(TaxRegime $regime, string $country, ?string $subdivision, string $category, string $from, array $outcomes, string $rounding,
         ?array $classification, array $details, array $attributes, User $actor): TaxRule
     {
-        $jurisdiction = new TaxJurisdiction(strtoupper($country), $subdivision === null || $subdivision === '' ? null : strtoupper($subdivision));
+        $locality = blank($details['locality'] ?? null) ? null : strtoupper(trim((string) $details['locality']));
+        try {
+            $jurisdiction = new TaxJurisdiction(strtoupper($country), $subdivision === null || $subdivision === '' ? null : strtoupper($subdivision), $locality);
+        } catch (InvalidArgumentException $e) {
+            throw new RuntimeException($e->getMessage());
+        }
         if (JurisdictionCatalogue::regimeFor($jurisdiction->country) !== $regime) {
             throw new RuntimeException("{$regime->value} is not the tax regime of {$jurisdiction->country}.");
         }
@@ -120,9 +125,10 @@ final class TaxRules
         return DB::transaction(function () use ($regime, $jurisdiction, $category, $from, $to, $normalised, $rounding, $classification, $conditions, $basis, $text,
             $sourceDate, $ruleCode, $attributes, $actor) {
             $subdivision = $jurisdiction->subdivision ?? '';
-            $version = (int) TaxRule::query()->where(['regime' => $regime, 'country' => $jurisdiction->country, 'subdivision' => $subdivision, 'tax_category' => $category])
-                ->lockForUpdate()->max('version') + 1;
-            $rule = TaxRule::query()->create(['regime' => $regime, 'country' => $jurisdiction->country, 'subdivision' => $subdivision, 'tax_category' => $category,
+            $locality = $jurisdiction->locality ?? '';
+            $version = (int) TaxRule::query()->where(['regime' => $regime, 'country' => $jurisdiction->country, 'subdivision' => $subdivision, 'locality' => $locality,
+                'tax_category' => $category])->lockForUpdate()->max('version') + 1;
+            $rule = TaxRule::query()->create(['regime' => $regime, 'country' => $jurisdiction->country, 'subdivision' => $subdivision, 'locality' => $locality, 'tax_category' => $category,
                 'rule_code' => $ruleCode, 'version' => $version, 'effective_from' => $from, 'effective_to' => $to, 'outcomes' => $normalised, 'rounding_mode' => $rounding,
                 'rounding_stage' => 'line', 'classification' => $classification === [] ? null : $classification, 'conditions' => $conditions === [] ? null : $conditions,
                 'statutory_notes' => blank($details['statutory_notes'] ?? null) ? null : (array) $details['statutory_notes'],
@@ -159,7 +165,7 @@ final class TaxRules
             }
             // Before/after for the audit trail: the version this one supersedes for its scope, if any.
             $previous = TaxRule::query()->where(['regime' => $locked->regime, 'country' => $locked->country, 'subdivision' => $locked->subdivision,
-                'tax_category' => $locked->tax_category, 'status' => TaxRuleStatus::Verified])->where('id', '<>', $locked->id)->orderByDesc('effective_from')->orderByDesc('version')->first();
+                'locality' => $locked->locality, 'tax_category' => $locked->tax_category, 'status' => TaxRuleStatus::Verified])->where('id', '<>', $locked->id)->orderByDesc('effective_from')->orderByDesc('version')->first();
 
             return $this->transition($locked, [TaxRuleStatus::Review], TaxRuleStatus::Verified, AuditAction::TaxRuleVerified, $reference, $actor,
                 ['verified_by' => $actor->id, 'verified_at' => now(), 'verification_reference' => Str::limit(trim($reference), 200, ''),
@@ -197,23 +203,25 @@ final class TaxRules
 
     /**
      * The verified rule in force on $day: a subdivision-specific one before a country-wide one; the latest started
-     * version (then the highest), unless it has expired (an expired rule never falls back to an older version).
+     * version (then the highest), unless it has expired (an expired rule never falls back to an older version). With
+     * $locality: only the rule of that local tax jurisdiction (never the state's or another locality's).
      */
-    public function inForce(TaxRegime $regime, string $country, ?string $subdivision, string $category, string $day): ?TaxRule
+    public function inForce(TaxRegime $regime, string $country, ?string $subdivision, string $category, string $day, ?string $locality = null): ?TaxRule
     {
-        $latest = $this->latestStarted($regime, $country, $subdivision, $category, $day);
+        $latest = $this->latestStarted($regime, $country, $subdivision, $category, $day, exact: $locality !== null, locality: $locality);
 
         return $latest === null || ($latest->effective_to !== null && $latest->effective_to->toDateString() < $day) ? null : $latest;
     }
 
     /** Why no rule is in force: 'expired', 'pending' (a version waits for verification) or 'missing'. */
-    public function whyNotInForce(TaxRegime $regime, string $country, ?string $subdivision, string $category, string $day): string
+    public function whyNotInForce(TaxRegime $regime, string $country, ?string $subdivision, string $category, string $day, ?string $locality = null): string
     {
-        if ($this->latestStarted($regime, $country, $subdivision, $category, $day) !== null) {
+        if ($this->latestStarted($regime, $country, $subdivision, $category, $day, exact: $locality !== null, locality: $locality) !== null) {
             return 'expired';
         }
-        $pending = TaxRule::query()->where(['regime' => $regime, 'country' => $country, 'tax_category' => $category])
-            ->whereIn('subdivision', array_values(array_unique(['', (string) $subdivision])))->whereIn('status', [TaxRuleStatus::Draft, TaxRuleStatus::Review])->exists();
+        $pending = TaxRule::query()->where(['regime' => $regime, 'country' => $country, 'tax_category' => $category, 'locality' => (string) $locality])
+            ->whereIn('subdivision', $locality !== null ? [(string) $subdivision] : array_values(array_unique(['', (string) $subdivision])))
+            ->whereIn('status', [TaxRuleStatus::Draft, TaxRuleStatus::Review])->exists();
 
         return $pending ? 'pending' : 'missing';
     }
@@ -230,7 +238,8 @@ final class TaxRules
             TaxRuleStatus::Retired => TaxRuleState::Retired,
             TaxRuleStatus::Verified => match (true) {
                 $rule->effective_from->toDateString() > $day => TaxRuleState::Scheduled,
-                $this->latestStarted($rule->regime, $rule->country, $rule->subdivision === '' ? null : $rule->subdivision, $rule->tax_category, $day, exact: true)?->id !== $rule->id => TaxRuleState::Superseded,
+                $this->latestStarted($rule->regime, $rule->country, $rule->subdivision === '' ? null : $rule->subdivision, $rule->tax_category, $day, exact: true,
+                    locality: $rule->locality === '' ? null : $rule->locality)?->id !== $rule->id => TaxRuleState::Superseded,
                 $rule->effective_to !== null && $rule->effective_to->toDateString() < $day => TaxRuleState::Expired,
                 default => TaxRuleState::Current,
             },
@@ -272,15 +281,16 @@ final class TaxRules
     /** Every version of a rule's scope, newest first (the history page). @return Collection<int, TaxRule> */
     public function history(TaxRule $rule): Collection
     {
-        return TaxRule::query()->where(['regime' => $rule->regime, 'country' => $rule->country, 'subdivision' => $rule->subdivision, 'tax_category' => $rule->tax_category])
+        return TaxRule::query()->where(['regime' => $rule->regime, 'country' => $rule->country, 'subdivision' => $rule->subdivision, 'locality' => $rule->locality,
+            'tax_category' => $rule->tax_category])
             ->orderByDesc('version')->get();
     }
 
-    private function latestStarted(TaxRegime $regime, string $country, ?string $subdivision, string $category, string $day, bool $exact = false): ?TaxRule
+    private function latestStarted(TaxRegime $regime, string $country, ?string $subdivision, string $category, string $day, bool $exact = false, ?string $locality = null): ?TaxRule
     {
         $subdivisions = $exact ? [(string) $subdivision] : array_values(array_unique(['', (string) $subdivision]));
 
-        return TaxRule::query()->where(['regime' => $regime, 'country' => $country, 'tax_category' => $category, 'status' => TaxRuleStatus::Verified])
+        return TaxRule::query()->where(['regime' => $regime, 'country' => $country, 'tax_category' => $category, 'status' => TaxRuleStatus::Verified, 'locality' => (string) $locality])
             ->whereIn('subdivision', $subdivisions)
             ->whereDate('effective_from', '<=', $day)
             ->get()

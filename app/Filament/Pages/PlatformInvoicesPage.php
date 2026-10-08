@@ -171,8 +171,8 @@ class PlatformInvoicesPage extends Page
                 ->modalDescription('Fixes the number, tax, totals and the supplier, customer and tax snapshots, dated today. Nothing financial changes afterwards.')
                 ->schema([DatePicker::make('due')->label('Due date (optional; the configured payment terms when empty)')->native(false),
                     TextInput::make('reporting_rate')->label('Reporting rate (foreign-currency invoices where the law requires the value in local currency)')
-                        ->placeholder('88.1234')->helperText('Units of the local currency per unit of the invoice currency on the date of supply, as used in Markedge\'s accounts. Recorded on the invoice; prices are never converted.'),
-                    TextInput::make('reporting_source')->label('Source of the rate')->maxLength(150)->placeholder('Reserve Bank of India reference rate'),
+                        ->placeholder('rate with up to 8 decimals')->helperText('Units of the local currency per unit of the invoice currency on the date of supply, as used in Markedge\'s accounts. Recorded on the invoice; prices are never converted.'),
+                    TextInput::make('reporting_source')->label('Source of the rate')->maxLength(150)->placeholder('where the rate comes from (as recorded in the accounts)'),
                     DatePicker::make('reporting_date')->label('Rate date')->native(false),
                     $reason()])
                 ->action(fn (array $data) => $this->attempt(fn () => app(Invoices::class)->issue($this->selected(), blank($data['due'] ?? null) ? null : substr((string) $data['due'], 0, 10), $data['reason'], auth()->user(),

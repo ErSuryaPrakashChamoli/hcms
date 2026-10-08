@@ -21,13 +21,13 @@
         </div>
     </x-filament::section>
 
-    <x-filament::section heading="Markedge selling entities" description="Versioned; an invoice copies the version in force on its issue date.">
+    <x-filament::section heading="Markedge selling entities" description="Versioned; a version applies once a second operator approves it; an invoice copies the approved version in force on its issue date.">
         <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Selling entities">
         <table class="w-full text-sm">
             <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th scope="col" class="py-1 pe-4">Entity</th><th scope="col" class="pe-4">Version</th><th scope="col" class="pe-4">Legal name</th><th scope="col" class="pe-4">Jurisdiction</th><th scope="col" class="pe-4">Tax registration</th><th scope="col" class="pe-4">Registrations and undertakings</th><th scope="col">From</th></tr></thead>
             <tbody>
                 @forelse ($this->suppliers() as $supplier)
-                    <tr class="border-t border-gray-100 dark:border-gray-800"><td class="py-1 pe-4"><code>{{ $supplier->entity_code }}</code></td><td class="pe-4">v{{ $supplier->version }}</td><td class="pe-4">{{ $supplier->legal_name }}</td>
+                    <tr class="border-t border-gray-100 dark:border-gray-800"><td class="py-1 pe-4"><code>{{ $supplier->entity_code }}</code></td><td class="pe-4">v{{ $supplier->version }} <x-filament::badge size="sm" :color="$supplier->status === 'approved' ? 'success' : ($supplier->status === 'pending' ? 'warning' : 'gray')">{{ $supplier->status === 'pending' ? 'PENDING APPROVAL' : strtoupper($supplier->status) }}</x-filament::badge></td><td class="pe-4">{{ $supplier->legal_name }}</td>
                         <td class="pe-4">{{ $supplier->subdivision ?? $supplier->country }}</td><td class="pe-4">{{ $supplier->tax_id_type?->label() }} {{ $supplier->tax_id_value ?? 'none' }}</td>
                         <td class="pe-4 text-xs">@forelse ($supplier->registrations ?? [] as $registration)<div>{{ $registration['type'] }} {{ $registration['reference'] }} ({{ $registration['valid_from'] }} to {{ $registration['valid_to'] ?? 'open' }})</div>@empty none @endforelse</td><td>{{ $supplier->effective_from->toDateString() }}</td></tr>
                 @empty
@@ -76,6 +76,28 @@
                     </tr>
                 @empty
                     <tr><td colspan="6" class="py-2 text-gray-500 dark:text-gray-400">No tax rule. Load the statutory dataset (and have another operator verify it), or draft a rule from a tax review.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+        </div>
+    </x-filament::section>
+
+    <x-filament::section heading="Local tax jurisdiction rules" description="Rules of one local tax jurisdiction (US county, city, district) inside a state, as your rate source codes it. Where a state rule requires local rates, the customer's billing profile must record its local jurisdiction and its rule must be verified: otherwise the invoice is refused, never taxed at the state rate alone." collapsible collapsed>
+        <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Local tax jurisdiction rules">
+        <table class="w-full text-sm">
+            <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th scope="col" class="py-1 pe-4">Rule</th><th scope="col" class="pe-4">State</th><th scope="col" class="pe-4">Effective</th><th scope="col" class="pe-4">Outcomes</th><th scope="col">Source</th></tr></thead>
+            <tbody>
+                @forelse ($this->localRules() as $rule)
+                    @php($state = $this->ruleState($rule))
+                    <tr class="border-t border-gray-100 dark:border-gray-800 align-top">
+                        <td class="py-1 pe-4"><code>{{ $rule->label() }}</code>@if ($rule->rule_code)<div class="text-xs text-gray-500 dark:text-gray-400">{{ $rule->rule_code }}</div>@endif</td>
+                        <td class="pe-4"><x-filament::badge size="sm" :color="$state->color()">{{ $state->label() }}</x-filament::badge></td>
+                        <td class="pe-4">{{ $rule->effective_from->toDateString() }} to {{ $rule->effective_to?->toDateString() ?? 'open' }}</td>
+                        <td class="pe-4 text-xs">@foreach ($this->outcomeLines($rule) as $line)<div>{{ $line }}</div>@endforeach</td>
+                        <td class="text-xs">{{ $rule->source ?? '—' }} {{ $rule->source_reference }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5" class="py-2 text-gray-500 dark:text-gray-400">No local rule. Draft one per local tax jurisdiction from your rate source (Draft tax rule, US sales tax, state and local jurisdiction code).</td></tr>
                 @endforelse
             </tbody>
         </table>

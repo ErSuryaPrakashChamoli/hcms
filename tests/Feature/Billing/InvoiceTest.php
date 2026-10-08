@@ -8,7 +8,6 @@ use App\Domain\Billing\Models\InvoiceTaxLine;
 use App\Domain\Billing\Services\InvoicePresentation;
 use App\Domain\Billing\Services\Invoices;
 use App\Domain\Billing\Services\InvoiceSeries;
-use App\Domain\Billing\Services\SupplierProfiles;
 use App\Domain\Billing\Support\InvoiceLineInput;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Tax\Enums\TaxRegime;
@@ -73,8 +72,8 @@ it('keeps an issued invoice exactly as issued after the customer, registration, 
 
     $this->travelTo('2027-04-20 09:00:00');
     billingProfile($this->tenant, $this->setup['market'], $this->operator, ['legal_name' => 'Renamed Customer Ltd', 'subdivision' => 'IN-MH']);   // new GSTIN, new state
-    app(SupplierProfiles::class)->record('MARKEDGE-IN-TEST', ['legal_name' => 'Renamed Supplier Ltd', 'address_line1' => 'New Street', 'city' => 'Newpur', 'country' => 'IN',
-        'subdivision' => 'IN-MH', 'tax_id_type' => 'IN_GSTIN', 'tax_id_value' => fictionalGstin('27', '3')], '2027-04-20', 'Supplier moved', $this->operator);
+    supplierVersion('MARKEDGE-IN-TEST', ['legal_name' => 'Renamed Supplier Ltd', 'address_line1' => 'New Street', 'city' => 'Newpur', 'country' => 'IN',
+        'subdivision' => 'IN-MH', 'tax_id_type' => 'IN_GSTIN', 'tax_id_value' => fictionalGstin('27', '3')], '2027-04-20', $this->operator);
     $newRule = verifiedIndiaRule($this->operator, $this->setup['verifier'], '2027-04-20', ['intra_state' => [['type' => 'CGST', 'rate' => '1'], ['type' => 'SGST', 'rate' => '1']], 'inter_state' => [['type' => 'IGST', 'rate' => '2']]]);
 
     expect([$issued->fresh()->toArray(), inTenant($this->tenant, fn () => InvoiceTaxLine::query()->where('invoice_id', $issued->id)->get()->toArray()),
@@ -143,8 +142,8 @@ it('keeps each invoice in its currency, with generic tax lines for VAT and sales
         $rules->submit($rule, 'Review please', $operator);
         $rules->verify($rule, 'TEST-ONLY', null, $verifier);
     }
-    $supplier = fn (string $entity, string $country, ?string $sub, ?string $type, ?string $id) => app(SupplierProfiles::class)->record($entity, ['legal_name' => "Markedge {$country} Test Ltd",
-        'address_line1' => '1 Test Way', 'city' => 'Testville', 'country' => $country, 'subdivision' => $sub, 'tax_id_type' => $type, 'tax_id_value' => $id], '2027-04-01', 'Fictional entity', $operator);
+    $supplier = fn (string $entity, string $country, ?string $sub, ?string $type, ?string $id) => supplierVersion($entity, ['legal_name' => "Markedge {$country} Test Ltd",
+        'address_line1' => '1 Test Way', 'city' => 'Testville', 'country' => $country, 'subdivision' => $sub, 'tax_id_type' => $type, 'tax_id_value' => $id], '2027-04-01', $operator);
     $supplier('MARKEDGE-GB-TEST', 'GB', null, 'GB_VAT', 'GB000000000');
     $supplier('MARKEDGE-US-TEST', 'US', 'US-TX', 'US_SALES_TAX_PERMIT', 'TX-00000');
     $gbp = billingMarket($operator, 'GB-TEST', 'GBP', 'MARKEDGE-GB-TEST', 'en_GB', ['GB']);

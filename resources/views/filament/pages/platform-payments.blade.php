@@ -39,14 +39,14 @@
         </div>
     </x-filament::section>
 
-    <x-filament::section heading="Provider events" description="Verified notifications from payment providers: status and outcome only (payloads are encrypted and never shown)." collapsible>
+    <x-filament::section heading="Provider events" description="Verified notifications from payment providers: status and outcome only (payloads are encrypted and never shown). Chargebacks (disputes) are not processed yet (B-12, with the provider's activation): such an event is flagged here and logged, and is handled manually." collapsible>
         <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Provider events">
         <table class="w-full text-sm">
             <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th scope="col" class="py-1 pe-4">Received</th><th scope="col" class="pe-4">Provider</th><th scope="col" class="pe-4">Event</th><th scope="col" class="pe-4">Type</th><th scope="col" class="pe-4">Status</th><th scope="col">Outcome</th></tr></thead>
             <tbody>
                 @forelse ($this->events() as $event)
                     <tr class="border-t border-gray-100 dark:border-gray-800"><td class="py-1 pe-4">{{ $event->received_at->toDateTimeString() }}</td><td class="pe-4">{{ $event->provider }}</td><td class="pe-4"><code>{{ $event->event_id }}</code></td>
-                        <td class="pe-4">{{ $event->type }}</td><td class="pe-4">{{ $event->status->value }}</td><td>{{ $event->outcome ?? '—' }} {{ $event->attempts ? '· '.$event->attempts.' attempt(s)' : '' }}</td></tr>
+                        <td class="pe-4">{{ $event->type }}</td><td class="pe-4">{{ $event->status->value }}</td><td>@if ($event->outcome === 'chargeback_not_processed')<x-filament::badge size="sm" color="danger">chargeback not processed: handle manually</x-filament::badge>@else{{ $event->outcome ?? '—' }}@endif {{ $event->attempts ? '· '.$event->attempts.' attempt(s)' : '' }}</td></tr>
                 @empty
                     <tr><td colspan="6" class="py-2 text-gray-500 dark:text-gray-400">No provider event received.</td></tr>
                 @endforelse

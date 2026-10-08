@@ -16,7 +16,7 @@ use RuntimeException;
 
 /**
  * SaaS.7 configuration: one version of a customer's agreed price (draft → published → retired): the unit amount (per
- * employee per month, or a fixed monthly amount), the minimum quantity, an optional discount, and the standard
+ * employee per month, or a fixed amount per billing interval), the minimum quantity, an optional discount, and the standard
  * version it was based on, if any. Published from a date by maker-checker; then it never changes.
  */
 #[Fillable(['negotiated_price_id', 'version', 'status', 'currency', 'unit_amount_minor', 'minimum_quantity', 'discount_percent', 'based_on_price_version_id',

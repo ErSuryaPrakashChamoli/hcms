@@ -6,20 +6,26 @@ use App\Domain\Audit\Services\AuditIntegrityVerifier;
 use App\Domain\Billing\Models\Invoice;
 use App\Domain\Billing\Models\InvoiceLine;
 use App\Domain\Billing\Models\InvoiceTaxLine;
+use App\Domain\Billing\Models\PlanPriceVersion;
 use App\Domain\Billing\Models\SubscriptionBillingTerm;
 use App\Domain\Billing\Models\TenantBillingProfile;
 use App\Domain\Billing\Services\BillingCatalog;
 use App\Domain\Billing\Services\BillingProfiles;
 use App\Domain\Billing\Services\BillingTerms;
+use App\Domain\Billing\Services\CreditNotes;
 use App\Domain\Billing\Services\Invoices;
 use App\Domain\Billing\Services\InvoiceSeries;
 use App\Domain\Billing\Services\SupplierProfiles;
 use App\Domain\Billing\Support\InvoiceLineInput;
+use App\Domain\Entitlements\Models\PlanVersion;
+use App\Domain\Entitlements\Models\TenantEntitlementProfile;
 use App\Domain\Identity\Models\User;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Payments\Services\Payments;
+use App\Domain\Payments\Services\TdsSettlement;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Services\PayrollRuns;
+use App\Domain\Subscriptions\Models\TenantSubscription;
 use App\Domain\Tax\Enums\TaxRegime;
 use App\Domain\Tax\Services\TaxRules;
 use App\Support\Money\Money;
@@ -57,7 +63,7 @@ it('refuses every non-operator in every billing, tax and payment service', funct
         foreach ([
             fn () => app(BillingCatalog::class)->createMarket('XX', 'X market', 'USD', ['US'], 'X1', 'en_US', 'Not allowed', $user),
             fn () => app(BillingCatalog::class)->draftPriceVersion($price, '1.00', 'Not allowed', $user),
-            fn () => app(SupplierProfiles::class)->record('X1', ['legal_name' => 'X', 'address_line1' => 'X', 'city' => 'X', 'country' => 'US'], '2027-04-01', 'Not allowed', $user),
+            fn () => app(SupplierProfiles::class)->propose('X1', ['legal_name' => 'X', 'address_line1' => 'X', 'city' => 'X', 'country' => 'US'], '2027-04-01', 'Not allowed', $user),
             fn () => app(InvoiceSeries::class)->create('MARKEDGE-IN-TEST', 'X/', '2027-04-01', '2027-04-30', 4, 'Not allowed', $user),
             fn () => app(TaxRules::class)->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['inter_state' => [['type' => 'IGST', 'rate' => '1']]], 'half_up', ['sac' => '1'], 'Not allowed', $user),
             fn () => app(TaxRules::class)->verify($this->setup['rule'], 'Self-verify', null, $user),
@@ -68,10 +74,10 @@ it('refuses every non-operator in every billing, tax and payment service', funct
             fn () => app(Payments::class)->recordBankTransfer($this->bInvoice, '1', 'INR', 'UTR-X-1', '2027-04-01', 'Not allowed', $user),
             fn () => app(Payments::class)->requestExceptionResolution($this->bPayment, 'write_off', 'Not allowed', $user),
             fn () => app(BillingCatalog::class)->requestPublication($price->versions()->firstOrNew(), '2027-04-01', 'Not allowed', $user),
-            fn () => app(\App\Domain\Billing\Services\CreditNotes::class)->request($this->bInvoice, null, 'Not allowed', $user),
+            fn () => app(CreditNotes::class)->request($this->bInvoice, null, 'Not allowed', $user),
             fn () => app(Invoices::class)->requestWriteOff($this->bInvoice, 'Not allowed', $user),
-            fn () => app(\App\Domain\Payments\Services\TdsSettlement::class)->declare($this->bInvoice, '1', null, 'Not allowed', $user),
-            fn () => app(\App\Domain\Billing\Services\BillingTerms::class)->set(new \App\Domain\Subscriptions\Models\TenantSubscription, new \App\Domain\Billing\Models\PlanPriceVersion, '2027-04-01', 'Not allowed', $user),
+            fn () => app(TdsSettlement::class)->declare($this->bInvoice, '1', null, 'Not allowed', $user),
+            fn () => app(BillingTerms::class)->set(new TenantSubscription, new PlanPriceVersion, '2027-04-01', 'Not allowed', $user),
             fn () => app(Payments::class)->initiate($this->bInvoice, 'manual', 'Not allowed', $user),
         ] as $attempt) {
             expect($attempt)->toThrow(RuntimeException::class, 'Only platform operators');
@@ -93,8 +99,8 @@ it('keeps each tenant\'s financial records to itself and shows nothing without a
 it('audits every financial change on the chains, with actor and reason, never rewritable', function () {
     $actions = AuditEvent::query()->withoutTenancy()->whereIn('module', ['billing', 'tax', 'payments'])->get();
     expect($actions->whereNull('tenant_id')->pluck('action')->map->value->unique()->sort()->values()->all())->toBe(['BILLING_MARKET_CREATED', 'BILLING_PROFILE_RECORDED',
-        'INVOICE_DRAFTED', 'INVOICE_ISSUED', 'INVOICE_SERIES_CREATED', 'PAYMENT_RECONCILIATION_EXCEPTION', 'PAYMENT_RECORDED', 'PAYMENT_SUCCEEDED', 'SUPPLIER_PROFILE_RECORDED',
-        'TAX_RULE_DRAFTED', 'TAX_RULE_SUBMITTED', 'TAX_RULE_VERIFIED'])
+        'FINANCIAL_APPROVAL_APPROVED', 'FINANCIAL_APPROVAL_REQUESTED', 'INVOICE_DRAFTED', 'INVOICE_ISSUED', 'INVOICE_SERIES_CREATED', 'PAYMENT_RECONCILIATION_EXCEPTION',
+        'PAYMENT_RECORDED', 'PAYMENT_SUCCEEDED', 'SUPPLIER_PROFILE_PROPOSED', 'SUPPLIER_PROFILE_RECORDED', 'TAX_RULE_DRAFTED', 'TAX_RULE_SUBMITTED', 'TAX_RULE_VERIFIED'])
         ->and($actions->where('tenant_id', $this->b->id)->pluck('action')->map->value->unique()->sort()->values()->all())->toBe(['BILLING_PROFILE_RECORDED',
             'INVOICE_DRAFTED', 'INVOICE_ISSUED', 'PAYMENT_RECONCILIATION_EXCEPTION', 'PAYMENT_RECORDED', 'PAYMENT_SUCCEEDED'])
         ->and($actions->every(fn ($e) => filled($e->reason) && $e->actor_id !== null))->toBeTrue()
@@ -107,7 +113,7 @@ it('audits every financial change on the chains, with actor and reason, never re
 it('creates nothing for tenants an operator has not configured, and never blocks payroll', function () {
     syncComplianceRules();
     expect(app(TenantContext::class)->runAs($this->a, fn () => [TenantBillingProfile::query()->count(), Invoice::query()->count(), Payment::query()->count(),
-        \App\Domain\Entitlements\Models\TenantEntitlementProfile::query()->count()]))->toBe([0, 0, 0, 0])
+        TenantEntitlementProfile::query()->count()]))->toBe([0, 0, 0, 0])
         ->and(fn () => app(Invoices::class)->issue(draftInvoice($this->a, $this->setup['market'], $this->operator), null, 'No profile', $this->operator))->toThrow(RuntimeException::class, 'no billing profile');
 
     // Beta has an unpaid invoice and an unreconciled short payment: its payroll runs to payslips regardless.
@@ -122,7 +128,7 @@ it('creates nothing for tenants an operator has not configured, and never blocks
     expect($run->status)->toBe('finalized')->and(Payslip::query()->where('employee_id', $employee->id)->exists())->toBeTrue();
 });
 
-function publishedPlanFor(User $operator): \App\Domain\Entitlements\Models\PlanVersion
+function publishedPlanFor(User $operator): PlanVersion
 {
     require_once __DIR__.'/../Entitlements/PlanTestHelpers.php';
 
