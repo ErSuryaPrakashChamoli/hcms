@@ -16,4 +16,10 @@ enum ExportStatus: string
     {
         return $this === self::Queued || $this === self::Generating;
     }
+
+    /** @return list<string> the stored values of the in-flight statuses (for queries) */
+    public static function inFlightValues(): array
+    {
+        return [self::Queued->value, self::Generating->value];
+    }
 }

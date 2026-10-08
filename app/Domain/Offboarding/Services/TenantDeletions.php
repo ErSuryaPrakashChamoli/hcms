@@ -5,13 +5,17 @@ namespace App\Domain\Offboarding\Services;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Identity\Models\User;
 use App\Domain\Offboarding\Enums\DeletionStatus;
+use App\Domain\Offboarding\Enums\ExportStatus;
+use App\Domain\Offboarding\Enums\OffboardingStatus;
 use App\Domain\Offboarding\Jobs\ExecuteTenantDeletion;
 use App\Domain\Offboarding\Models\TenantDeletion;
 use App\Domain\Offboarding\Models\TenantDeletionStep;
+use App\Domain\Offboarding\Models\TenantExport;
 use App\Domain\Offboarding\Models\TenantOffboarding;
 use App\Domain\Offboarding\Support\DataInventory;
 use App\Domain\Offboarding\Support\OffboardingAudit;
 use App\Domain\Offboarding\Support\SchemaGraph;
+use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\LifecycleRefused;
 use App\Domain\Platform\Support\PlatformOperator;
@@ -58,11 +62,16 @@ final class TenantDeletions
             throw new LifecycleRefused('No category is eligible for deletion today.');
         }
         try {
-            $deletion = $this->tenants->runAs($tenant, fn () => TenantDeletion::query()->create([
-                'tenant_id' => $tenant->getKey(), 'offboarding_id' => $case->getKey(), 'reference' => (string) Str::ulid(), 'status' => DeletionStatus::Planned,
-                'in_flight_key' => $tenant->getKey(), 'plan' => $plan, 'plan_sha256' => DeletionPlanner::fingerprint($plan),
-                'requested_by' => $actor?->getKey(), 'requested_at' => now(), 'request_reason' => $reason,
-            ]));
+            $deletion = DB::transaction(function () use ($tenant, $case, $plan, $actor, $reason) {
+                // Under the exit lock: the tenant was not reopened and no hold changed since the plan was made.
+                $this->assertUnchangedUnderLock($tenant, $case, $plan);
+
+                return $this->tenants->runAs($tenant, fn () => TenantDeletion::query()->create([
+                    'tenant_id' => $tenant->getKey(), 'offboarding_id' => $case->getKey(), 'reference' => (string) Str::ulid(), 'status' => DeletionStatus::Planned,
+                    'in_flight_key' => $tenant->getKey(), 'plan' => $plan, 'plan_sha256' => DeletionPlanner::fingerprint($plan),
+                    'requested_by' => $actor?->getKey(), 'requested_at' => now(), 'request_reason' => $reason,
+                ]));
+            });
         } catch (UniqueConstraintViolationException) {
             throw new LifecycleRefused('Another deletion of this tenant is already planned, approved, running or failed.');
         }
@@ -91,7 +100,9 @@ final class TenantDeletions
             throw new LifecycleRefused('The data, retention, holds or dependencies changed since this plan was made: reject it and plan again.');
         }
 
-        $approved = DB::transaction(function () use ($deletion, $actor, $reason, $current) {
+        $approved = DB::transaction(function () use ($deletion, $actor, $reason, $current, $tenant, $case) {
+            // Under the exit lock: still closed, no hold placed or released and no export started since the check above.
+            $this->assertUnchangedUnderLock($tenant, $case, $current);
             $rows = $this->tenants->bypass(fn () => TenantDeletion::query()->whereKey($deletion->getKey())->where('status', DeletionStatus::Planned->value)
                 ->where('requested_by', '!=', $actor?->getKey() ?? 0)
                 ->update(['status' => DeletionStatus::Approved->value, 'approved_by' => $actor?->getKey(), 'approved_at' => now(), 'approval_reason' => $reason,
@@ -182,11 +193,21 @@ final class TenantDeletions
         if ($step->kind !== 'external' || ! in_array($status, [TenantDeletionStep::EXTERNAL_REQUESTED, TenantDeletionStep::EXTERNAL_CONFIRMED, TenantDeletionStep::EXTERNAL_UNSUPPORTED], true)) {
             throw new LifecycleRefused('Not an external dependency, or not a valid status.');
         }
-        $detail = array_merge($step->detail ?? [], ['recorded_by' => $actor?->getKey(), 'recorded_at' => now()->toIso8601String(), 'recorded_note' => $reason]);
-        $this->tenants->bypass(fn () => TenantDeletionStep::query()->whereKey($step->getKey())->where('kind', 'external')
-            ->update(['status' => $status, 'detail' => json_encode($detail), 'updated_at' => now()]));
-        $step = $this->tenants->bypass(fn () => TenantDeletionStep::query()->findOrFail($step->getKey()));
         $deletion = $this->find($step->tenant_deletion_id);
+        if (! in_array($deletion->status, [DeletionStatus::Approved, DeletionStatus::InProgress, DeletionStatus::Failed, DeletionStatus::Completed], true)) {
+            throw new LifecycleRefused('This deletion was not approved, or was cancelled: there is nothing to record.');
+        }
+        // Conditional on the status read: two operators recording at once make one change; a confirmation is final.
+        $before = $this->tenants->bypass(fn () => TenantDeletionStep::query()->findOrFail($step->getKey()));
+        $detail = array_merge($before->detail ?? [], ['recorded_by' => $actor?->getKey(), 'recorded_at' => now()->toIso8601String(), 'recorded_note' => $reason,
+            'previous_status' => $before->status]);
+        $changed = $this->tenants->bypass(fn () => TenantDeletionStep::query()->whereKey($step->getKey())->where('kind', 'external')
+            ->where('status', $before->status)->where('status', '!=', TenantDeletionStep::EXTERNAL_CONFIRMED)
+            ->update(['status' => $status, 'detail' => json_encode($detail), 'updated_at' => now()]));
+        if ($changed !== 1) {
+            throw new LifecycleRefused('This external dependency is already confirmed, or was just recorded by someone else: reload.');
+        }
+        $step = $this->tenants->bypass(fn () => TenantDeletionStep::query()->findOrFail($step->getKey()));
         $this->audit->record(AuditAction::ExternalDeletionConfirmed, Tenant::query()->findOrFail($deletion->tenant_id), $deletion, $reason, $actor,
             ['deletion' => $deletion->reference, 'external' => $step->target, 'status' => $status]);
 
@@ -313,6 +334,28 @@ final class TenantDeletions
         $this->audit->record($action, Tenant::query()->findOrFail($deletion->tenant_id), $deletion, $reason, $actor, ['deletion' => $deletion->reference]);
 
         return $deletion;
+    }
+
+    /**
+     * Inside the transaction, under the exit lock (LegalHolds::lockFor): the case is still the tenant's open, closed case,
+     * the tenant is still closed, the active holds are exactly those the plan considered, and no export is generating.
+     * A reopen, a hold or an export request that committed meanwhile refuses the change instead of racing it.
+     */
+    private function assertUnchangedUnderLock(Tenant $tenant, TenantOffboarding $case, array $plan): void
+    {
+        $locked = LegalHolds::lockFor($tenant->getKey());
+        if ($locked === null || $locked->getKey() !== $case->getKey() || $locked->status !== OffboardingStatus::Closed
+            || Tenant::query()->whereKey($tenant->getKey())->value('status') !== TenantStatus::Closed) {
+            throw new LifecycleRefused('The tenant was reopened or changed meanwhile: nothing was changed.');
+        }
+        $holds = array_map(fn ($hold) => $hold->reference, app(LegalHolds::class)->holding($tenant->getKey()));
+        sort($holds);
+        if ($holds !== DeletionPlanner::holdReferences($plan)) {
+            throw new LifecycleRefused('A legal hold was placed or released meanwhile: plan again.');
+        }
+        if ($this->tenants->bypass(fn () => TenantExport::query()->where('tenant_id', $tenant->getKey())->whereIn('status', ExportStatus::inFlightValues())->exists())) {
+            throw new LifecycleRefused('An export of this tenant is being generated: wait until it is ready.');
+        }
     }
 
     private function assertEnabled(): void

@@ -24,9 +24,10 @@ use InvalidArgumentException;
  *
  * - Placing a hold protects at once: one platform operator with a reason (a hold never destroys anything).
  * - Releasing it allows destruction again: requested by one operator, approved by another.
- * - The race with a deletion: placing a hold and every deletion batch take the same lock (the tenant's open offboarding
- *   case, lockFor()). A hold that commits first stops the next batch (the worker re-checks under that lock immediately
- *   before deleting); a batch that commits first was already allowed. Nothing a hold covers is deleted after it exists.
+ * - The race with a deletion or a purge: placing a hold, every deletion batch and every retention purge batch take the
+ *   same lock (lockFor(): the tenant's row, then its open offboarding case). A hold that commits first stops the next
+ *   batch (the worker re-checks under that lock immediately before deleting); a batch that commits first was already
+ *   allowed. Nothing a hold covers is deleted after it exists.
  */
 final class LegalHolds
 {
@@ -126,13 +127,24 @@ final class LegalHolds
     }
 
     /**
-     * The tenant's exit lock: its open offboarding case row, locked for the transaction. Placing a hold and each deletion
-     * batch take it, so they never interleave. Without an open case no deletion can run, and the (gap) lock still
-     * serialises with a case being opened.
+     * The tenant's exit lock, for the current transaction: the tenant's row (every tenant has one, with or without an
+     * offboarding), then its open offboarding case, which is returned. Placing a hold, closing and reopening, planning and
+     * approving a deletion, requesting an export, each deletion batch and each retention purge batch take it, so none of
+     * them interleave. Always in this order (after the commercial lock where both are needed): no deadlock between them.
      */
     public static function lockFor(int $tenantId): ?TenantOffboarding
     {
+        Tenant::query()->whereKey($tenantId)->lockForUpdate()->value('id');
+
         return app(TenantContext::class)->bypass(fn () => TenantOffboarding::query()->where('open_key', $tenantId)->lockForUpdate()->first());
+    }
+
+    /** The references of the active holds (in effect or awaiting release) covering a category, read under lockFor(). */
+    public static function heldUnderLock(int $tenantId, string $category): array
+    {
+        self::lockFor($tenantId);
+
+        return app(self::class)->covering($tenantId, $category);
     }
 
     private function fresh(LegalHold $hold): LegalHold

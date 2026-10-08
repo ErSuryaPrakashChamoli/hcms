@@ -4,11 +4,14 @@ namespace App\Domain\Offboarding\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Identity\Models\User;
+use App\Domain\Offboarding\Enums\DeletionStatus;
 use App\Domain\Offboarding\Enums\ExportStatus;
 use App\Domain\Offboarding\Jobs\GenerateTenantExport;
+use App\Domain\Offboarding\Models\TenantDeletion;
 use App\Domain\Offboarding\Models\TenantExport;
 use App\Domain\Offboarding\Models\TenantOffboarding;
 use App\Domain\Offboarding\Support\OffboardingAudit;
+use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\LifecycleRefused;
 use App\Domain\Platform\Support\PlatformOperator;
@@ -71,11 +74,15 @@ final class TenantExports
         $purpose = $actor?->isPlatformAdmin() !== false && $case !== null ? TenantExport::PURPOSE_OFFBOARDING : TenantExport::PURPOSE_CUSTOMER;
 
         try {
-            $export = $this->tenants->runAs($tenant, fn () => TenantExport::query()->create([
-                'tenant_id' => $tenant->getKey(), 'offboarding_id' => $case?->getKey(), 'reference' => (string) Str::ulid(), 'purpose' => $purpose,
-                'status' => ExportStatus::Queued, 'in_flight_key' => $tenant->getKey(), 'requested_by' => $actor?->getKey(), 'reason' => $reason,
-                'disk' => (string) config('peopleos.offboarding.export_disk', 'local'),
-            ]));
+            $export = DB::transaction(function () use ($tenant, $case, $purpose, $actor, $reason) {
+                $this->assertNoDeletionUnderLock($tenant);
+
+                return $this->tenants->runAs($tenant, fn () => TenantExport::query()->create([
+                    'tenant_id' => $tenant->getKey(), 'offboarding_id' => $case?->getKey(), 'reference' => (string) Str::ulid(), 'purpose' => $purpose,
+                    'status' => ExportStatus::Queued, 'in_flight_key' => $tenant->getKey(), 'requested_by' => $actor?->getKey(), 'reason' => $reason,
+                    'disk' => (string) config('peopleos.offboarding.export_disk', 'local'),
+                ]));
+            });
         } catch (UniqueConstraintViolationException) {
             // Idempotent: one export generates at a time; the request joins it.
             return $this->tenants->bypass(fn () => TenantExport::query()->where('in_flight_key', $tenant->getKey())->firstOrFail());
@@ -138,8 +145,12 @@ final class TenantExports
         $this->authorize($tenant, $actor, 'retry this export');
         $reason = PlatformOperator::reason($reason);
         try {
-            $changed = $this->tenants->bypass(fn () => TenantExport::query()->whereKey($export->getKey())->where('status', ExportStatus::Failed->value)
-                ->update(['status' => ExportStatus::Queued->value, 'in_flight_key' => $tenant->getKey(), 'attempts' => 0, 'failure' => null, 'failed_at' => null, 'updated_at' => now()]));
+            $changed = DB::transaction(function () use ($export, $tenant) {
+                $this->assertNoDeletionUnderLock($tenant);
+
+                return $this->tenants->bypass(fn () => TenantExport::query()->whereKey($export->getKey())->where('status', ExportStatus::Failed->value)
+                    ->update(['status' => ExportStatus::Queued->value, 'in_flight_key' => $tenant->getKey(), 'attempts' => 0, 'failure' => null, 'failed_at' => null, 'updated_at' => now()]));
+            });
         } catch (UniqueConstraintViolationException) {
             throw new LifecycleRefused('Another export of this tenant is generating; retry this one when it is done.');
         }
@@ -253,6 +264,21 @@ final class TenantExports
     public function find(int $id): TenantExport
     {
         return $this->tenants->bypass(fn () => TenantExport::query()->findOrFail($id));
+    }
+
+    /**
+     * Under the exit lock (the one a deletion takes to start): no export is queued once a deletion is approved, running,
+     * stopped or has started, because the package would be read while the data is deleted. A deletion that starts later
+     * finds this export in flight and waits for it.
+     */
+    private function assertNoDeletionUnderLock(Tenant $tenant): void
+    {
+        $case = LegalHolds::lockFor($tenant->getKey());
+        $deleting = $this->tenants->bypass(fn () => TenantDeletion::query()->where('tenant_id', $tenant->getKey())
+            ->whereIn('status', [DeletionStatus::Approved->value, DeletionStatus::InProgress->value, DeletionStatus::Failed->value])->exists());
+        if ($deleting || $case?->deletion_started_at !== null || Tenant::query()->whereKey($tenant->getKey())->value('status') === TenantStatus::Deleted) {
+            throw new LifecycleRefused('A deletion of this tenant is approved or has started: no new export (the data would not be complete).');
+        }
     }
 
     private function fail(TenantExport $export, Tenant $tenant, string $failure): void

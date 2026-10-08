@@ -3,6 +3,7 @@
 namespace App\Domain\Offboarding\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Entitlements\Services\TenantCommercialLock;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\SessionSecurity;
 use App\Domain\Offboarding\Enums\DeletionStatus;
@@ -104,13 +105,16 @@ final class TenantOffboardings
         $actor = PlatformOperator::assert($actor, 'close a tenant');
         $reason = PlatformOperator::reason($reason);
         $tenant = $this->tenantOf($case);
-        if (($blockers = $this->closureBlockers($tenant)) !== []) {
-            throw new LifecycleRefused(implode(' ', array_column($blockers, 'detail')));
-        }
         $settings = app(SettingsRepository::class);
         $warehouse = (bool) $this->tenants->runAs($tenant, fn () => $settings->get('warehouse.export_enabled', false));
 
-        $before = DB::transaction(function () use ($case, $tenant, $actor, $warehouse) {
+        // Under the commercial lock (the one every subscription change takes) and then the exit lock: a subscription
+        // started, extended or reactivated meanwhile is seen here, and none can start once the tenant is closed.
+        $before = app(TenantCommercialLock::class)->run($tenant, fn () => DB::transaction(function () use ($case, $tenant, $actor, $warehouse) {
+            LegalHolds::lockFor($tenant->getKey());
+            if (($blockers = $this->closureBlockers($tenant)) !== []) {
+                throw new LifecycleRefused(implode(' ', array_column($blockers, 'detail')));
+            }
             $before = Tenant::query()->whereKey($tenant->getKey())->value('status');
             $before = $before instanceof TenantStatus ? $before : TenantStatus::tryFrom((string) $before);
             if (! in_array($before, [TenantStatus::Trial, TenantStatus::Active, TenantStatus::Suspended], true)) {
@@ -127,7 +131,7 @@ final class TenantOffboardings
             $this->sessions->revokeTenant($tenant);
 
             return $before;
-        });
+        }));
         if ($before === null) {
             throw new LifecycleRefused('Only a tenant in use or suspended can be closed.');
         }

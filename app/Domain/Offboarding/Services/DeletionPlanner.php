@@ -113,6 +113,15 @@ final class DeletionPlanner
         return hash('sha256', json_encode([$plan['tenant']['id'], $plan['offboarding'], $core]));
     }
 
+    /** @return list<string> the references of every active hold the plan considered, sorted */
+    public static function holdReferences(array $plan): array
+    {
+        $references = array_values(array_unique(array_merge([], ...array_values(array_map(fn (array $c) => $c['holds'], $plan['categories'])))));
+        sort($references);
+
+        return $references;
+    }
+
     /** @return list<array{code: string, detail: string}> */
     private function gates(Tenant $tenant, ?TenantOffboarding $case, ?TenantDeletion $ignoring): array
     {
@@ -126,6 +135,9 @@ final class DeletionPlanner
             if (! $delivered) {
                 $gates[] = ['code' => 'EXPORT_NOT_DELIVERED', 'detail' => 'No export has been delivered to the customer, and the export was not waived'];
             }
+        }
+        if ($this->tenants->bypass(fn () => TenantExport::query()->where('tenant_id', $tenant->getKey())->whereIn('status', ExportStatus::inFlightValues())->exists())) {
+            $gates[] = ['code' => 'EXPORT_IN_PROGRESS', 'detail' => 'An export is being generated: it reads the data a deletion would remove'];
         }
         foreach ($this->financial->openItems($tenant) as $item) {
             $gates[] = ['code' => 'FINANCIAL_'.$item['code'], 'detail' => $item['detail']];

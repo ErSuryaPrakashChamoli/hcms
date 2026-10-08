@@ -640,7 +640,7 @@ return [
     | (Platform → Retention policies), approved by a second operator. These are operational settings.
     */
     'offboarding' => [
-        // The destructive switch. Off, no deletion is ever executed (plans can still be reviewed and approved). It is turned
+        // The destructive switch. Off, no deletion is planned, approved or executed (the eligibility preview still shows). It is turned
         // on per environment only after the SaaS.9 validation gate, never for the showcase or a development copy.
         'deletion_enabled' => (bool) env('PEOPLEOS_TENANT_DELETION_ENABLED', false),
         // Days between the second operator's approval and the start of a deletion (SaaS.1 Target Architecture §9 proposal).

@@ -5,6 +5,7 @@ namespace App\Domain\Offboarding\Services;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Identity\Models\User;
 use App\Domain\Offboarding\Enums\DeletionStatus;
+use App\Domain\Offboarding\Enums\ExportStatus;
 use App\Domain\Offboarding\Enums\OffboardingStatus;
 use App\Domain\Offboarding\Models\TenantDeletion;
 use App\Domain\Offboarding\Models\TenantDeletionStep;
@@ -87,7 +88,10 @@ final class DeletionExecutor
         return true;
     }
 
-    /** Records the first start under the exit lock; refuses a tenant that is no longer closed. */
+    /**
+     * Records the first start under the exit lock; refuses a tenant that is no longer closed, and an export still being
+     * generated (it would package data while it is deleted). Once started, no export is requested and no reopening.
+     */
     private function start(TenantDeletion $deletion, Tenant $tenant): bool
     {
         return DB::transaction(function () use ($deletion, $tenant) {
@@ -95,6 +99,9 @@ final class DeletionExecutor
             if ($case === null || $case->getKey() !== (int) $deletion->offboarding_id || $case->status !== OffboardingStatus::Closed
                 || Tenant::query()->whereKey($tenant->getKey())->value('status') !== TenantStatus::Closed) {
                 throw new RuntimeException('The tenant is no longer closed under this offboarding: nothing deleted.');
+            }
+            if ($this->tenants->bypass(fn () => TenantExport::query()->where('tenant_id', $tenant->getKey())->whereIn('status', ExportStatus::inFlightValues())->exists())) {
+                throw new RuntimeException('An export of this tenant is being generated: nothing deleted; retry once it is ready.');
             }
             $first = $case->deletion_started_at === null;
             $this->tenants->bypass(fn () => TenantOffboarding::query()->whereKey($case->getKey())->whereNull('deletion_started_at')->update(['deletion_started_at' => now()]));
@@ -334,6 +341,7 @@ final class DeletionExecutor
         $signature = Signatures::sign('deletion-certificate', $certificate);
 
         DB::transaction(function () use ($deletion, $tenant, $case, $final, $certificate, $signature) {
+            LegalHolds::lockFor($tenant->getKey()); // the lock order every exit transition uses (tenant, case, then the rest)
             $this->tenants->bypass(fn () => TenantDeletion::query()->whereKey($deletion->getKey())->update([
                 'status' => DeletionStatus::Completed->value, 'in_flight_key' => null, 'completed_at' => now(), 'heartbeat_at' => now(),
                 'certificate' => json_encode($certificate), 'certificate_sha256' => hash('sha256', Signatures::canonical($certificate)),
@@ -423,6 +431,7 @@ final class DeletionExecutor
             'audit_chain' => $audit ?? ['deleted' => false, 'note' => 'The tenant\'s audit chain is retained (see retained categories).'],
             'verification' => $verification,
             'external_dependencies' => $external,
+            'external_dependencies_note' => 'Statuses when this certificate was issued. Later confirmations are recorded in the platform audit trail (EXTERNAL_DELETION_CONFIRMED); copies outside PeopleOS are not claimed deleted until confirmed.',
             'final' => $final,
             'status' => 'completed',
         ];
