@@ -10,6 +10,7 @@ use App\Domain\Entitlements\Models\TenantEntitlementProfile;
 use App\Domain\Entitlements\Services\EntitlementConfiguration;
 use App\Domain\Entitlements\Services\TenantCommercialLock;
 use App\Domain\Identity\Models\User;
+use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Subscriptions\Enums\CommercialStatus as S;
 use App\Domain\Subscriptions\Events\CommercialStatusChanged;
@@ -255,6 +256,12 @@ final class CommercialSubscriptions
             $current = $subscription === null ? null : TenantSubscription::query()->with('periods')->whereKey($subscription->id)->firstOrFail();
             $timeline = $current?->timeline() ?? SubscriptionTimeline::of([]);
             [$from, $periods, $action] = $plan($timeline);
+            // SaaS.9: a closed (offboarding) or deleted tenant gets no new entitled period; it is reopened first. Ending,
+            // cancelling and expiring still work. Read under this lock, which closing a tenant takes too.
+            if (array_filter($periods, fn (array $p) => $p[0]->entitled()) !== []
+                && in_array(Tenant::query()->whereKey($tenant->id)->value('status'), [TenantStatus::Closed, TenantStatus::Deleted], true)) {
+                throw new RuntimeException('This tenant is closed (offboarding): reopen it before it is entitled again.');
+            }
             if ($current !== null && $timeline->tailFrom($from) === $this->normalise($periods)) {
                 return $current; // the same change again: nothing to record
             }
