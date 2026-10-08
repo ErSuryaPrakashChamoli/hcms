@@ -576,3 +576,30 @@ The SaaS.7 completion pass implemented every approved decision. It changed no de
 | B-15 | `price_change_notices` (≥ 30 days, at a period start or renewal) and the re-pin worklist; a re-pin to a higher version of the same price is refused without one |
 
 **Still open, unchanged:** B-4 (prices, owner), B-7 (entity details, legal), B-8 (India GST incl. export of services and the INR reporting value, tax adviser), B-9 (foreign customer-side treatments, tax advisers), B-16 (retention, legal; SaaS.9). Until B-4, B-7, B-8 and B-9 are resolved no real price exists, no foreign invoice can be issued and no invoice should be issued to a real customer. **SaaS.7 status: BLOCKED.**
+
+## 15. Configuration pass (8 October 2026)
+
+The SaaS.7 configuration pass made every commercial value data: prices, customer deals, Markedge policy and statutory values are versioned, effective-dated and changed by two operators without a deployment. It changed no decision's status. Report: [SaaS-7 configuration report](SaaS-7-Configuration-Report.md); ADR-0058 to 0064 in the [decision register](../architecture/decision-register.md).
+
+**Three kinds of rule, kept apart:**
+
+| Kind | Where it lives | Who changes it |
+|---|---|---|
+| Statute (tax rates, treatments, conditions, invoice-number length) | `tax_rules`, statutory `configuration_versions`; shipped as the statutory dataset with sources | One operator loads or drafts, another verifies |
+| Markedge policy (decisions B-3, B-5, B-11, B-15) | `configuration_versions` (company policy), shipped defaults in `config/peopleos.php` | One operator proposes from a date, another approves |
+| Customer contract | `negotiated_prices` and their versions, pinned as billing terms | One operator records and drafts, another publishes |
+
+**What each decision became in this pass:**
+
+| Decision | Configuration |
+|---|---|
+| B-1 | Standard prices and customer deals both support PEPM and fixed monthly (flat) amounts; flat is now billed (one unit a month; × 12 in advance for annual terms) |
+| B-3 | Proration rounding is the policy `billing.proration_rounding` (half up) |
+| B-4 | **Still pending.** The structure is complete (markets, prices per plan version × market × interval, versions, deals); no amount is shipped; a combination without a price shows NO PRICE CONFIGURED and is never billed |
+| B-5 | `billing.b2b_only` (yes) and `billing.prices_include_tax` (no) are policies; an inclusive price is refused at issue rather than mis-taxed |
+| B-8 | **Still pending tax adviser.** The current India GST rule (18 %: CGST 9 + SGST/UTGST 9, IGST 18; export of services zero-rated only under its statutory conditions) ships with its notifications; the SAC classification (a judgement among candidate codes), the LUT itself and the INR rate source policy remain the adviser's: invoices are refused (TAX_CLASSIFICATION_PENDING) until a rule version with the SAC is verified |
+| B-9 | **Still pending tax advisers.** The current destination rules ship (UK 20 %, 27 EU member-state rates (Greece pending), UAE 5 %, five researched US states): whether Markedge registers abroad (OSS, UK VAT, UAE TRN, US state permits) is the advisers'; until a registration is recorded on the supplier profile, a consumer supply into those places is refused (REGISTRATION_REQUIRED) |
+| B-11 | `billing.payment_terms_days` (15) and `settlement.tds_jurisdictions` (India, INR) are policies |
+| B-15 | `billing.price_increase_notice_days` (30) is a policy; customer deals change by contract, not by notice |
+
+**Still open, unchanged:** B-4, B-7, B-8, B-9, B-16. Loading the statutory dataset is not a claim of legal compliance; it is the current researched configuration, kept current by new versions. **SaaS.7 status: BLOCKED.**

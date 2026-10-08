@@ -254,11 +254,32 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
     webhooks are HMAC-verified over the raw body and applied once per event id; it is the only code that calls a provider over
     HTTP (architecture test).
 
+66. **No hardcoded commercial value.** Prices, customer deals, tax rates, statutory parameters and Markedge policy are read
+    from versioned data (`plan_price_versions`, `negotiated_price_versions`, `tax_rules`, `configuration_versions`, policy
+    defaults in `config/peopleos.php`); code holds algorithms only. A value that is missing or expired for a day is refused
+    ([CONFIGURATION_MISSING], TAX_CONFIGURATION_MISSING, NO_PRICE_CONFIGURED), never assumed or taken from an older version.
+67. **Missing tax configuration is never 0 %.** No rule, an unverified, rejected, retired or expired rule, an unknown condition
+    or an unresolved place of supply refuses the invoice with its reason code; a zero-rated or not-taxable outcome is a
+    verified rule's explicit treatment with its conditions met.
+68. **Two operators for every commercial configuration change.** Tax rules and the statutory dataset (verified by an operator
+    other than the loader, author or submitter), negotiated price publication and policy changes (executed only by the
+    approval desk for another operator); a policy change is never approved after its start date.
+69. **Customer deals are the customer's alone.** Negotiated prices are tenant-owned and fail-closed; another tenant's deal is
+    not found when pinning terms; a deal never changes the standard catalogue or another customer's price.
+70. **No converted or borrowed price.** A deal is in its market's currency and is never based on another currency's price;
+    billing terms only pin a price of the tenant's billing market; the INR reporting value of an export invoice is a recorded
+    fact with its rate source, never used to compute an amount.
+71. **Statutory sources are links, not code.** A rule's or parameter's source URL is an `https://` address (validated), shown
+    with `rel="noopener noreferrer"`; the dataset is read only from the shipped directory by version (`YYYY.MM`).
+72. **History never moves.** Issued invoices keep their prices, price source, tax legs, rule versions, wording and reporting
+    value in their rows and snapshot; periods freeze their price source and discount; published price, deal and rule
+    versions are immutable; a change is always a new version from a date.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
 |---|---|---|
-| `TenantContext::bypass()` / `withoutTenancy()` | 15 files (SaaS.2: +1, SaaS.3: +1; SaaS.7: +3, `BillingDirectory` and `PaymentDirectory` (operators' cross-tenant invoice and payment headers) and `ProviderEvents` (resolving a payment from a verified provider reference); SaaS.6: +1, `SubscriptionDirectory`: the operators' cross-tenant overview of names and commercial states, and the platform audit chain; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
+| `TenantContext::bypass()` / `withoutTenancy()` | 15 files (SaaS.2: +1, SaaS.3: +1; SaaS.7: +3, `BillingDirectory` and `PaymentDirectory` (operators' cross-tenant invoice and payment headers) and `ProviderEvents` (resolving a payment from a verified provider reference); SaaS.7 configuration: +0 files, one more read in the allow-listed `BillingDirectory`: the platform-chain trail of configuration changes; SaaS.6: +1, `SubscriptionDirectory`: the operators' cross-tenant overview of names and commercial states, and the platform audit chain; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
 | `withoutGlobalScope(AccessScope::class)` (345 call sites in 110 files) and `AccessScope::withoutScoping()` (32) | Mechanically each removes only the **organisation** scope; the fail-closed tenant scope stays. Reviewed by category (not line by line): domain services checking a target by id after an explicit `AccessScopes::allows` check, background sweeps, aggregate analytics with small-group suppression, and identity checks (Phase 14: tenant-wide on purpose) |
 | `withoutGlobalScopes()` (all) | 1 | `NumberSequences::highest`. Phase 14 narrowed it to the access scope with an explicit `tenant_id` filter |
 | `DB::table()` | 13 | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only) |
