@@ -105,7 +105,11 @@ final class AuditRecorder
             // The serialisation point is unchanged. The last-hash read below stays a locking (current)
             // read, so it never reads from an older snapshot.
             $this->lockChain($attributes['tenant_id']);
+            // SaaS.8: the head is read through (tenant_id, id). Left to itself MySQL chose a backward scan of the primary
+            // key (EXPLAIN ANALYZE: 26,585 rows examined for a quiet tenant, against 1), reading and locking other
+            // tenants' newest rows under FOR UPDATE until it reached this chain's head.
             $previous = AuditEvent::query()
+                ->forceIndex('audit_events_chain_head_index')
                 ->when(
                     $attributes['tenant_id'] === null,
                     fn ($q) => $q->whereNull('tenant_id'),

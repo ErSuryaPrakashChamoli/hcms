@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
  * Without a (tenant_id, id) index MySQL answered it with a backward scan of the primary key (EXPLAIN: key PRIMARY,
  * "Backward index scan"), reading, and under FOR UPDATE locking, other tenants' newest audit rows until it reached one
  * of this tenant's: the cost and the lock footprint grew with every other tenant's activity. With this index the
- * head is one index entry of the chain itself.
+ * head is one index entry of the chain itself; AuditRecorder names it (the optimizer kept the primary-key scan otherwise).
  */
 return new class extends Migration
 {
