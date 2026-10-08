@@ -201,6 +201,7 @@ use App\Domain\Integration\Models\IntegrationMapping;
 use App\Domain\Integration\Models\IntegrationSystem;
 use App\Domain\Integration\Policies\ApiKeyPolicy;
 use App\Domain\Integration\Policies\IntegrationPolicy;
+use App\Domain\Integration\Services\ApiKeys;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Policies\ArticlePolicy;
 use App\Domain\Learning\Listeners\LearningWorkflowBridge;
@@ -542,22 +543,21 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * API limits are per key. Phase 14: the limiter key is the key's public prefix (or a hash of
-     * anything else presented), never the raw secret, so cache entries hold no credential.
+     * API limits are per verified key (its public prefix, never the secret, so cache entries hold no credential);
+     * anything unverified is limited per IP (SaaS.8).
      */
     private function registerRateLimits(): void
     {
         // SaaS.7: payment-provider webhooks, per IP (providers retry; a flood is cut off before any work).
         RateLimiter::for('billing-webhooks', fn (Request $request) => Limit::perMinute((int) config('peopleos.billing.webhook_rate_per_minute', 120))->by('billing-webhooks:'.$request->ip()));
+        // SaaS.8: a key's own bucket only once the key is verified. The bucket was taken from the presented prefix before any
+        // check, so anyone who saw a prefix could exhaust that tenant's limit with garbage secrets, and every new random
+        // token got a fresh bucket (unlimited failed attempts). Unverified, invalid or absent keys now share the caller's
+        // IP bucket.
         RateLimiter::for('api', function (Request $request) {
-            $presented = (string) ($request->header('X-Api-Key') ?: $request->bearerToken() ?: '');
-            $bucket = match (true) {
-                $presented === '' => 'ip:'.$request->ip(),
-                (bool) preg_match('/^(pk_[a-z0-9]{10})\./', $presented, $m) => 'key:'.$m[1],
-                default => 'token:'.hash('sha256', $presented),
-            };
+            $key = app(ApiKeys::class)->resolveFor($request);
 
-            return Limit::perMinute((int) config('peopleos.api.rate_limit_per_minute'))->by($bucket);
+            return Limit::perMinute((int) config('peopleos.api.rate_limit_per_minute'))->by($key !== null ? 'key:'.$key->prefix : 'ip:'.$request->ip());
         });
         // SaaS.2: AI questions are limited per user inside AiGateway (peopleos.ai.rate_limit_per_minute); the
         // named `ai` limiter registered here was never attached to a route and has been removed.

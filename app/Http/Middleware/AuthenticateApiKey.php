@@ -21,7 +21,7 @@ class AuthenticateApiKey
 
     public function handle(Request $request, Closure $next, string ...$scopes): Response
     {
-        $key = $this->keys->resolve($request->header('X-Api-Key') ?? $request->bearerToken());
+        $key = $this->keys->resolveFor($request);
 
         if ($key === null) {
             return response()->json(['message' => 'Invalid or expired API key.'], 401);

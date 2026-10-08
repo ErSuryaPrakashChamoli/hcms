@@ -198,7 +198,8 @@ final class PayrollRuns
             throw new RuntimeException('Only a validated run can be approved.');
         }
 
-        if ($run->created_by !== null && $run->created_by === $approver->id && ! $approver->is_platform_admin) {
+        // SaaS.8: no exception for platform operators (an operator inside a tenant could prepare and approve alone).
+        if ($run->created_by !== null && $run->created_by === $approver->id) {
             throw new RuntimeException('The person who prepared the run cannot approve it.');
         }
 

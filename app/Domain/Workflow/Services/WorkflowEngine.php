@@ -7,6 +7,7 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Identity\Models\User;
+use App\Domain\Integration\Support\PayloadGuard;
 use App\Domain\Notifications\Services\AudienceResolver;
 use App\Domain\Notifications\Services\NotificationContext;
 use App\Domain\Notifications\Services\Notifier;
@@ -185,7 +186,8 @@ final class WorkflowEngine
                     $this->renderer->render($config['url'], $vars),
                     $config['method'] ?? 'POST',
                     $config['headers'] ?? [],
-                    ['event' => 'workflow.'.$node['id'], 'instance_id' => $instance->id, 'subject' => Arr::get($vars, 'subject'), 'employee' => Arr::get($vars, 'employee'), 'context' => $instance->context],
+                    // SaaS.8: cleaned like every payload that leaves PeopleOS (the run context can hold anything a form collected).
+                    PayloadGuard::clean(['event' => 'workflow.'.$node['id'], 'instance_id' => $instance->id, 'subject' => Arr::get($vars, 'subject'), 'employee' => Arr::get($vars, 'employee'), 'context' => $instance->context]),
                 );
                 $this->log($instance, $node['id'], 'webhook.dispatched', ['url' => $config['url']]);
 

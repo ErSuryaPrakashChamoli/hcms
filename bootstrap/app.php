@@ -1,13 +1,14 @@
 <?php
 
+use App\Http\Controllers\Billing\ProviderWebhookController;
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\ApiResponseContract;
 use App\Http\Middleware\AssignRequestId;
-use App\Http\Controllers\Billing\ProviderWebhookController;
 use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnforceIdempotency;
 use App\Http\Middleware\EnsureSessionIsValid;
 use App\Http\Middleware\ResolveTenant;
+use App\Http\Middleware\SecurityHeaders;
 use App\Support\Tenancy\Exceptions\MissingTenantException;
 use App\Support\Tenancy\Exceptions\TenantMismatchException;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -36,6 +37,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
+        // SaaS.8: framing, sniffing, referrer and HSTS headers on every response.
+        $middleware->append(SecurityHeaders::class);
         $middleware->alias(['api.key' => AuthenticateApiKey::class, 'api.idempotent' => EnforceIdempotency::class]);
         $middleware->throttleApi();
         // Phase 14: one error envelope for every /api/* error; idempotency only after the key has bound the tenant.

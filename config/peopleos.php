@@ -628,10 +628,14 @@ return [
         // Platform operators can reach every tenant, so they must use an authenticator. Production refuses to
         // run with this off (ProductionConfigValidator); a developer may turn it off locally.
         'platform_mfa_required' => (bool) env('PEOPLEOS_PLATFORM_MFA_REQUIRED', true),
+        // SaaS.8: Strict-Transport-Security on HTTPS responses (seconds; 0 = off). Subdomains are not included.
+        'hsts_max_age' => max(0, (int) env('PEOPLEOS_HSTS_MAX_AGE', 31536000)),
     ],
     'identity' => [
         // How long an invitation link stays valid.
         'invitation_hours' => max(1, (int) env('PEOPLEOS_INVITATION_HOURS', 72)),
+        // SaaS.8: an operator cannot e-mail a tenant's first administrator two invitation links within this many seconds.
+        'invitation_resend_seconds' => max(0, (int) env('PEOPLEOS_INVITATION_RESEND_SECONDS', 60)),
     ],
     'platform' => [
         // How long one controlled operator access to a tenant lasts before it ends on its own.

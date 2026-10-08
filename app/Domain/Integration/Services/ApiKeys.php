@@ -4,6 +4,7 @@ namespace App\Domain\Integration\Services;
 
 use App\Domain\Integration\Models\ApiKey;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 final class ApiKeys
@@ -29,6 +30,24 @@ final class ApiKeys
         ]);
 
         return ['key' => $key, 'plaintext' => "{$prefix}.{$secret}"];
+    }
+
+    /**
+     * SaaS.8: the request's key, resolved once per request (the rate limiter needs it before AuthenticateApiKey runs, and
+     * both must agree). Only a verified key is returned.
+     */
+    public function resolveFor(Request $request): ?ApiKey
+    {
+        $token = $request->header('X-Api-Key') ?? $request->bearerToken();
+        $memo = $request->attributes->get('peopleos.api_key_resolution');
+        $fingerprint = hash('sha256', (string) $token);
+        if (is_array($memo) && $memo['token'] === $fingerprint) {
+            return $memo['key'];
+        }
+        $key = $this->resolve($token);
+        $request->attributes->set('peopleos.api_key_resolution', ['token' => $fingerprint, 'key' => $key]);
+
+        return $key;
     }
 
     /** Resolve a presented token to its key (cross-tenant lookup by design; the key carries the tenant). */
