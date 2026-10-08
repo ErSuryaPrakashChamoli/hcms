@@ -1,6 +1,6 @@
 <x-filament-panels::page>
     <x-filament::section heading="Policy in force today" description="Retention counts from the day a tenant closes. A category without an approved policy is never deleted. Nothing here is a legal value unless entered with its basis and approved.">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Retention policy in force per category">
             <table class="w-full text-sm">
                 <caption class="sr-only">Retention policy in force per category</caption>
                 <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1 pe-3">Category</th><th scope="col" class="pe-3">Owner</th><th scope="col">Policy in force (jurisdiction: company policy · legal minimum)</th></tr></thead>
@@ -28,7 +28,7 @@
         @if ($versions->isEmpty())
             <p class="text-sm text-gray-600 dark:text-gray-300">No policy has been proposed. Use Propose policy version.</p>
         @else
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Retention policy versions">
                 <table class="w-full text-sm">
                     <caption class="sr-only">Retention policy versions</caption>
                     <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1 pe-3">Category / jurisdiction</th><th scope="col" class="pe-3">Version</th><th scope="col" class="pe-3">Policy</th><th scope="col" class="pe-3">Legal minimum</th><th scope="col" class="pe-3">From</th><th scope="col" class="pe-3">Status</th><th scope="col">Actions</th></tr></thead>

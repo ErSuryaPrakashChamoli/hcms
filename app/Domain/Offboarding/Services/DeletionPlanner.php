@@ -146,7 +146,7 @@ final class DeletionPlanner
             ->whereIn('status', [DeletionStatus::Planned->value, DeletionStatus::Approved->value, DeletionStatus::InProgress->value, DeletionStatus::Failed->value])
             ->when($ignoring !== null, fn ($q) => $q->whereKeyNot($ignoring->getKey()))->exists());
         if ($inFlight) {
-            $gates[] = ['code' => 'DELETION_IN_FLIGHT', 'detail' => 'Another deletion of this tenant is planned, approved, running or failed'];
+            $gates[] = ['code' => 'DELETION_IN_FLIGHT', 'detail' => 'A deletion of this tenant is already planned, approved, running or failed: finish, cancel or reject it first'];
         }
 
         return $gates;

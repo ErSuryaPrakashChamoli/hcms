@@ -8,7 +8,7 @@
     @endif
 
     <x-filament::section heading="Tenants">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Tenants and their exit state">
             <table class="w-full text-sm">
                 <caption class="sr-only">Tenants and their exit state</caption>
                 <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1 pe-4">Tenant</th><th scope="col" class="pe-4">Status</th><th scope="col" class="pe-4">Offboarding</th><th scope="col" class="pe-4">Latest export</th><th scope="col" class="pe-4">Legal holds</th><th scope="col">Latest deletion</th></tr></thead>
@@ -59,7 +59,7 @@
                         <ul class="ms-5 list-disc">@foreach ($plan['gates'] as $g)<li><code>{{ $g['code'] }}</code> {{ $g['detail'] }}</li>@endforeach</ul>
                     </div>
                 @endif
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Data categories, their retention and what a deletion would do">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Data categories, their retention and what a deletion would do</caption>
                         <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1 pe-3">Category</th><th scope="col" class="pe-3">A deletion would</th><th scope="col" class="pe-3">Why</th><th scope="col" class="pe-3">Kept until</th><th scope="col" class="pe-3">Legal minimum</th><th scope="col" class="pe-3">Rows</th><th scope="col">Files</th></tr></thead>
@@ -69,8 +69,8 @@
                                     <td class="py-1 pe-3"><span class="font-medium">{{ $key }}</span><br><span class="text-xs text-gray-500">{{ $c['owner'] === 'markedge' ? 'Markedge\'s records' : ($c['owner'] === 'platform' ? 'platform' : 'customer data') }}</span></td>
                                     <td class="pe-3"><x-filament::badge size="sm" :color="match ($c['action']) { 'delete' => 'danger', 'anonymise' => 'warning', 'none' => 'gray', default => 'success' }">{{ match ($c['action']) { 'delete' => 'Delete', 'anonymise' => 'Anonymise', 'none' => 'Nothing to do', default => 'Keep' } }}</x-filament::badge></td>
                                     <td class="pe-3"><code class="text-xs">{{ $c['reason'] }}</code><br><span class="text-xs">{{ $c['detail'] }}@if ($c['protected_by'] !== []): {{ implode(', ', $c['protected_by']) }}@endif</span></td>
-                                    <td class="pe-3">{{ $c['retention']['until'] ?? '—' }}</td>
-                                    <td class="pe-3 text-xs">{{ $c['retention']['legal_minimum'] ?? '—' }}</td>
+                                    <td class="whitespace-nowrap pe-3">{{ $c['retention']['until'] ?? '—' }}</td>
+                                    <td class="pe-3 text-xs [overflow-wrap:anywhere]">{{ $c['retention']['legal_minimum'] ?? '—' }}</td>
                                     <td class="pe-3">{{ array_sum($c['tables']) }}</td>
                                     <td>{{ $c['files'] + $c['stored_files'] }}</td>
                                 </tr>
@@ -91,7 +91,7 @@
             @if ($exports->isEmpty())
                 <p class="text-sm text-gray-600 dark:text-gray-300">No export yet.</p>
             @else
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Export packages">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Export packages</caption>
                         <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1 pe-3">Reference</th><th scope="col" class="pe-3">Status</th><th scope="col" class="pe-3">Records / files</th><th scope="col" class="pe-3">SHA-256</th><th scope="col" class="pe-3">Expires</th><th scope="col" class="pe-3">Delivered</th><th scope="col">Actions</th></tr></thead>
@@ -122,7 +122,7 @@
             @if ($holds->isEmpty())
                 <p class="text-sm text-gray-600 dark:text-gray-300">No legal hold.</p>
             @else
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Legal holds">
                     <table class="w-full text-sm">
                         <caption class="sr-only">Legal holds</caption>
                         <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1 pe-3">Hold</th><th scope="col" class="pe-3">Status</th><th scope="col" class="pe-3">Covers</th><th scope="col" class="pe-3">Reason</th><th scope="col">Actions</th></tr></thead>
@@ -165,7 +165,7 @@
                     @php($steps = $this->directory()->steps($deletion->id))
                     @if ($steps->isNotEmpty())
                         <details class="mt-2"><summary class="cursor-pointer">Steps ({{ $steps->where('status', 'done')->count() }} of {{ $steps->where('kind', '!=', 'external')->count() }} done) and external dependencies</summary>
-                            <div class="overflow-x-auto">
+                            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Deletion steps">
                                 <table class="mt-2 w-full text-xs">
                                     <caption class="sr-only">Deletion steps</caption>
                                     <thead><tr class="text-left text-gray-500"><th scope="col" class="pe-2">#</th><th scope="col" class="pe-2">Category</th><th scope="col" class="pe-2">Step</th><th scope="col" class="pe-2">Target</th><th scope="col" class="pe-2">Status</th><th scope="col" class="pe-2">Done</th><th scope="col">Note</th></tr></thead>

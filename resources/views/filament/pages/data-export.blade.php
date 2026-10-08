@@ -9,7 +9,7 @@
         @if ($exports->isEmpty())
             <p class="text-sm text-gray-600 dark:text-gray-300">No export yet.</p>
         @else
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Your organisation's exports">
                 <table class="w-full text-sm">
                     <caption class="sr-only">Your organisation's exports</caption>
                     <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1 pe-3">Requested</th><th scope="col" class="pe-3">Status</th><th scope="col" class="pe-3">Records / files</th><th scope="col" class="pe-3">Available until</th><th scope="col">Actions</th></tr></thead>

@@ -312,7 +312,9 @@ final class ExportPackager
     private function zip(string $work, string $passphrase, string $reference): string
     {
         $zipPath = dirname($work)."/{$reference}.zip";
-        @unlink($zipPath);
+        if (is_file($zipPath)) {
+            unlink($zipPath);
+        }
         $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::EXCL) !== true) {
             throw new RuntimeException('The export package could not be created.');
