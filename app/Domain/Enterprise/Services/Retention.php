@@ -62,12 +62,13 @@ final class Retention
     private function inBatches(\Closure $query, int $batch = 1000): int
     {
         $deleted = 0;
-        do {
-            $ids = $query()->orderBy('id')->limit($batch)->pluck('id');
-            $deleted += $ids->isEmpty() ? 0 : $query()->whereKey($ids)->delete();
-        } while ($ids->count() === $batch);
+        // Each pass deletes the matching rows up to the batch-th matching id: at most $batch rows per statement, with no
+        // long list of bound ids.
+        while (($last = $query()->orderBy('id')->offset($batch - 1)->limit(1)->value('id')) !== null) {
+            $deleted += $query()->where('id', '<=', $last)->delete();
+        }
 
-        return $deleted;
+        return $deleted + $query()->delete();
     }
 
     /** Deletes expired idempotency rows in bounded batches, so one run never holds a long delete. */
