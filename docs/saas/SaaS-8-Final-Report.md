@@ -64,9 +64,9 @@ No business value, legal requirement, price or tax rule was invented. Retention 
 
 ## 3. Ending Commit
 
-- **Code and tests:** `f39078a` (test: SaaS.8 suspension and reactivation races read before either writes).
-- **Documentation:** the commit that adds this report, immediately after `f39078a`.
-- Twelve code commits and one documentation commit. Not pushed, merged or deployed.
+- **Code and tests:** `f190adc` (test: SaaS.8 the readiness page records no verification when it loads).
+- **Documentation:** `5ee9797`, plus the one-line correction of this section committed right after it.
+- Thirteen code and test commits and two documentation commits. Not pushed, merged or deployed.
 
 | Commit | Purpose |
 |---|---|
@@ -82,7 +82,9 @@ No business value, legal requirement, price or tax rule was invented. Retention 
 | `2403088` | perf: retention batches delete by id range |
 | `3d89b7b` | fix: operations and audit trail tables (left-aligned links, untruncated flag) |
 | `f39078a` | test: suspension and reactivation races read before either writes |
-| `(docs)` | docs: SaaS.8 discovery and scope, architecture, runbook, ADR-0070..0080, invariants 78-87, browser evidence, this report |
+| `f190adc` | test: the readiness page records no verification when it loads (kills S38) |
+| `5ee9797` | docs: SaaS.8 discovery and scope, architecture, runbook, ADR-0070..0080, invariants 78-87, browser evidence, this report |
+| (next) | docs: this section's ending commits |
 
 ## 4. Discovery Findings
 
