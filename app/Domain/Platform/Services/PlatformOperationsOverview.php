@@ -12,6 +12,7 @@ use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Models\TenantDeferredJob;
 use App\Support\Observability\HealthChecks;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -40,8 +41,7 @@ final class PlatformOperationsOverview
             $this->grouped(NotificationDelivery::query()->where('status', 'sending')->where('updated_at', '<', $lease)),
             $this->grouped(WebhookEndpoint::query()->where('status', 'active')->where('failure_count', '>', 0)),
             $this->grouped(InboundEvent::query()->where('status', 'dead_letter')),
-            User::query()->whereNotNull('tenant_id')->where('status', UserStatus::Invited->value)
-                ->whereHas('roles', fn ($q) => $q->where('slug', 'tenant-super-admin'))
+            $this->invitedAdministrators()
                 ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('user_invitations')->whereColumn('user_invitations.user_id', 'users.id')
                     ->whereNull('accepted_at')->whereNull('revoked_at')->where('expires_at', '>', now()))
                 ->distinct()->pluck('tenant_id')->flip(),
@@ -76,6 +76,24 @@ final class PlatformOperationsOverview
             'failed_jobs' => $this->failedJobs(),
             'platform_audit' => $this->latestVerifications()->get('platform'),
         ];
+    }
+
+    /**
+     * Tenants whose first super administrator has not accepted an invitation yet, in one query (the Tenants list offers
+     * "Send invitation" for them, instead of one query per row).
+     *
+     * @return list<int>
+     */
+    public function tenantsWithInvitedAdministrator(): array
+    {
+        return $this->tenants->bypass(fn () => $this->invitedAdministrators()->distinct()->pluck('tenant_id')->map(fn ($id) => (int) $id)->all());
+    }
+
+    /** @return Builder<User> (call inside bypass) */
+    private function invitedAdministrators()
+    {
+        return User::query()->whereNotNull('tenant_id')->where('status', UserStatus::Invited->value)
+            ->whereHas('roles', fn ($q) => $q->where('slug', 'tenant-super-admin'));
     }
 
     /** @return Collection<int|string, int> tenant id => count */

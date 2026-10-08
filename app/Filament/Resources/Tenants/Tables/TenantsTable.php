@@ -79,7 +79,7 @@ class TenantsTable
                 Action::make('sendInvitation')
                     ->label('Send invitation')
                     ->icon('heroicon-o-envelope')
-                    ->visible(fn (Tenant $record) => $record->status !== TenantStatus::Suspended && app(TenantFirstAdministrator::class)->invitee($record) !== null)
+                    ->visible(fn (Tenant $record, $livewire) => $record->status !== TenantStatus::Suspended && $livewire->hasInvitedAdministrator($record))
                     ->modalDescription('E-mails the first administrator a new invitation link (any earlier link stops working).')
                     ->schema([Textarea::make('reason')->required()->minLength(5)->maxLength(1000)])
                     ->action(function (Tenant $record, array $data, TenantFirstAdministrator $administrator) {
