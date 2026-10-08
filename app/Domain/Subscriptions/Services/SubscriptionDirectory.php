@@ -6,7 +6,9 @@ use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Entitlements\Models\PlanVersion;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Subscriptions\Models\SubscriptionPeriod;
+use App\Domain\Subscriptions\Models\TenantSubscription;
 use App\Domain\Subscriptions\Support\SubscriptionTimeline;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Collection;
 
 /**
@@ -51,5 +53,27 @@ final class SubscriptionDirectory
     {
         return AuditEvent::query()->withoutTenancy()->whereNull('tenant_id')->where('module', 'subscriptions')
             ->where('metadata->subject_tenant_id', $tenantId)->with('fieldChanges')->orderByDesc('id')->limit($limit)->get();
+    }
+
+    /**
+     * SaaS.9: the tenant's subscriptions that have not ended: still entitled today, or with a period that starts later. A
+     * tenant is closed only once these are ended through the subscription lifecycle (cancel / expire), never silently.
+     *
+     * @return list<array{subscription_id: int, status: string, until: ?string}>
+     */
+    public function continuing(Tenant $tenant, ?string $day = null): array
+    {
+        $day ??= today()->toDateString();
+
+        return app(TenantContext::class)->runAs($tenant, fn () => TenantSubscription::query()->with('periods')->orderBy('id')->get()
+            ->map(function (TenantSubscription $subscription) use ($day) {
+                $timeline = $subscription->timeline();
+                $state = $timeline->stateOn($day);
+                $last = $timeline->last();
+                $continues = ($state !== null && $state['status']->entitled())
+                    || ($last !== null && $last['from'] > $day && $last['status']->entitled());
+
+                return $continues ? ['subscription_id' => $subscription->id, 'status' => ($state['status'] ?? $last['status'])->value, 'until' => $last['to'] ?? null] : null;
+            })->filter()->values()->all());
     }
 }
