@@ -129,7 +129,11 @@ it('resumes a stopped export from its checkpoint, verifying what was already wri
         });
     } catch (RuntimeException) {
     }
-    expect(count(app(TenantExports::class)->find($export->id)->checkpoint['tables']))->toBeGreaterThanOrEqual(4);
+    $checkpoint = app(TenantExports::class)->find($export->id)->checkpoint;
+    expect(count($checkpoint['tables']))->toBeGreaterThanOrEqual(4);
+    // A file the dead worker wrote was damaged meanwhile: the resume must not trust it.
+    $written = collect($checkpoint['tables'])->flatMap(fn (array $t) => $t['files'])->first()['path'];
+    file_put_contents(storage_path("app/offboarding-work/{$export->reference}/{$written}"), "damaged\n", FILE_APPEND);
 
     $this->travel(31)->minutes();
     expect(app(TenantExports::class)->sweep())->toMatchArray(['resumed' => 1]);
@@ -193,6 +197,8 @@ it('refuses an export to someone without data.export, to another tenant\'s perso
     app(TenantContext::class)->runAs($this->tenant, fn () => $this->plain = tenantUser($this->tenant, ['employee.view']));
     $exports = app(TenantExports::class);
 
+    // The other organisation's owner, with their permissions already loaded in their own organisation (as in a request).
+    expect(app(TenantContext::class)->runAs($this->other, fn () => $this->otherUser->hasPermission('data.export')))->toBeTrue();
     expect(fn () => $exports->request($this->tenant, $this->plain, 'I want it all'))->toThrow(RuntimeException::class, 'cannot')
         ->and(fn () => $exports->request($this->tenant, $this->otherUser, 'Not mine'))->toThrow(RuntimeException::class, 'cannot');
 

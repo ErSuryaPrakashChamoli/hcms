@@ -3,6 +3,7 @@
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Integration\Services\ApiKeys;
 use App\Domain\Offboarding\Enums\OffboardingStatus;
+use App\Domain\Offboarding\Services\LegalHolds;
 use App\Domain\Offboarding\Services\TenantDeletions;
 use App\Domain\Offboarding\Services\TenantOffboardings;
 use App\Domain\Platform\Actions\ProvisionTenantAction;
@@ -103,13 +104,18 @@ it('refuses to reopen once a deletion is planned, and for good once one has star
     $this->offboardings->reopen($case->fresh(), $this->maker, 'Changed mind');
     expect($this->tenant->fresh()->status)->toBe(TenantStatus::Active);
 
-    // A deletion that started (even if it then stopped) means no reopening, ever.
+    // A deletion that started means no reopening, ever: here a partial one (a hold placed after the approval keeps people),
+    // so the case stays open and the tenant closed, and nothing but the started deletion refuses the reopen.
     $case = offboardAndClose($this->tenant, $this->maker);
     $this->offboardings->waiveExport($case, $this->maker, 'Waived again');
     $deletion = approvedDeletion($case->fresh(), $this->maker, $this->checker);
+    app(LegalHolds::class)->place($this->tenant, ['people'], 'Claim by a former employee (fictional)', null, null, $this->checker);
     $this->travel(15)->days();
     app(TenantDeletions::class)->dispatchDue();
-    expect(fn () => $this->offboardings->reopen($case->fresh(), $this->maker, 'Too late'))->toThrow(RuntimeException::class);
+    expect(app(TenantDeletions::class)->find($deletion->id)->status->value)->toBe('completed')
+        ->and($this->tenant->fresh()->status)->toBe(TenantStatus::Closed)
+        ->and($case->fresh()->deletion_started_at)->not->toBeNull()
+        ->and(fn () => $this->offboardings->reopen($case->fresh(), $this->maker, 'Too late'))->toThrow(RuntimeException::class, 'it can no longer be reopened');
 });
 
 it('keeps closed and deleted for offboarding only: no suspension, no provisioning in those states', function () {

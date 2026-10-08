@@ -155,3 +155,17 @@ it('records an export that storage refuses to write as failed, with no package, 
     $export = app(TenantExports::class)->find($export->id);
     expect($export->status->value)->toBe('ready')->and($disk->exists($export->path))->toBeTrue();
 });
+
+it('never deletes a category without an approved retention policy, and plans nothing when none has one', function () {
+    noRetentionPolicies();
+    retentionFor(['leave'], 0, $this->maker, $this->checker);
+    $case = offboardAndClose($this->tenant, $this->maker);
+    app(TenantOffboardings::class)->waiveExport($case, $this->maker, 'Customer took a copy');
+    $plan = app(DeletionPlanner::class)->plan($this->tenant->fresh(), $case->fresh());
+    expect($plan['categories']['people']['reason'])->toBe('RETENTION_POLICY_NOT_CONFIGURED')
+        ->and($plan['categories']['people']['action'])->toBe('retain')
+        ->and($plan['eligible'])->not->toContain('people')->not->toContain('identity')->not->toContain('employment');
+
+    noRetentionPolicies();
+    expect(fn () => $this->deletions->request($case->fresh(), $this->maker, 'Delete'))->toThrow(RuntimeException::class, 'No category is eligible');
+});
