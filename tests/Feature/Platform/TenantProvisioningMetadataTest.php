@@ -34,7 +34,10 @@ it('keeps the tier, data region and trial end given at provisioning', function (
         ->and($stored->region)->toBe('eu')
         ->and($stored->trial_ends_at?->toDateTimeString())->toBe('2026-11-30 18:30:00');
 
-    $provisioned = AuditEvent::query()->withoutTenancy()->where('action', 'TENANT_PROVISIONED')->sole();
+    // SaaS.8: also on the platform chain (no personal data there).
+    $provisioned = AuditEvent::query()->withoutTenancy()->where('action', 'TENANT_PROVISIONED')->whereNotNull('tenant_id')->sole();
+    expect(AuditEvent::query()->withoutTenancy()->where('action', 'TENANT_PROVISIONED')->whereNull('tenant_id')->sole()->metadata)
+        ->toMatchArray(['subject_tenant_id' => $tenant->id, 'tier' => 'dedicated', 'region' => 'eu'])->not->toHaveKey('admin_email');
     expect($provisioned->tenant_id)->toBe($tenant->id)
         ->and($provisioned->metadata)->toMatchArray(['tier' => 'dedicated', 'region' => 'eu', 'trial_ends_at' => '2026-11-30T18:30:00+00:00']);
 });
@@ -68,8 +71,12 @@ it('never changes the status from the edit form, and audits metadata edits in th
         ->assertHasNoFormErrors();
 
     expect($tenant->fresh()->status)->toBe(TenantStatus::Active)->and($tenant->fresh()->region)->toBe('in');
-    $update = AuditEvent::query()->withoutTenancy()->where('action', 'UPDATE')->where('entity_type', Tenant::class)->where('entity_id', (string) $tenant->id)->sole();
+    // SaaS.8: recorded as TENANT_PROFILE_CHANGED on the tenant's own chain and on the platform chain.
+    $update = AuditEvent::query()->withoutTenancy()->where('action', 'TENANT_PROFILE_CHANGED')->where('entity_type', Tenant::class)->where('entity_id', (string) $tenant->id)->sole();
     expect($update->tenant_id)->toBe($tenant->id)->and($update->reason)->toBe('Residency confirmed');
+    $platform = AuditEvent::query()->withoutTenancy()->where('action', 'TENANT_PROFILE_CHANGED')->whereNull('tenant_id')->sole();
+    expect($platform->actor_id)->toBe($operator->id)->and($platform->metadata['subject_tenant_id'])->toBe($tenant->id)
+        ->and($platform->fieldChanges()->pluck('field')->all())->toBe(['region']);
 });
 
 it('keeps tenant users out of tenant records, by URL and by policy', function () {

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Tenants\Tables;
 use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Services\PlatformTenantAccess;
+use App\Domain\Platform\Services\TenantFirstAdministrator;
 use App\Domain\Platform\Services\TenantSuspensions;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -64,7 +65,7 @@ class TenantsTable
                     ->visible(fn (Tenant $record) => $record->status !== TenantStatus::Suspended)
                     ->requiresConfirmation()
                     ->modalDescription('Every user is signed out at once, API keys stop working and scheduled work pauses until the tenant is reactivated.')
-                    ->schema([Textarea::make('reason')->required()->maxLength(1000)])
+                    ->schema([Textarea::make('reason')->required()->minLength(5)->maxLength(1000)])
                     ->action(fn (Tenant $record, array $data, TenantSuspensions $suspensions) => $suspensions->suspend($record, $data['reason'], auth()->user())),
                 Action::make('reactivate')
                     ->label('Reactivate')
@@ -72,8 +73,23 @@ class TenantsTable
                     ->color('success')
                     ->visible(fn (Tenant $record) => $record->status === TenantStatus::Suspended)
                     ->requiresConfirmation()
-                    ->schema([Textarea::make('reason')->required()->maxLength(1000)])
+                    ->schema([Textarea::make('reason')->required()->minLength(5)->maxLength(1000)])
                     ->action(fn (Tenant $record, array $data, TenantSuspensions $suspensions) => $suspensions->reactivate($record, $data['reason'], auth()->user())),
+                // SaaS.8: the first administrator's invitation, when provisioning could not e-mail it or it has lapsed.
+                Action::make('sendInvitation')
+                    ->label('Send invitation')
+                    ->icon('heroicon-o-envelope')
+                    ->visible(fn (Tenant $record) => $record->status !== TenantStatus::Suspended && app(TenantFirstAdministrator::class)->invitee($record) !== null)
+                    ->modalDescription('E-mails the first administrator a new invitation link (any earlier link stops working).')
+                    ->schema([Textarea::make('reason')->required()->minLength(5)->maxLength(1000)])
+                    ->action(function (Tenant $record, array $data, TenantFirstAdministrator $administrator) {
+                        try {
+                            $administrator->send($record, auth()->user(), $data['reason']);
+                            Notification::make()->success()->title('Invitation sent')->send();
+                        } catch (RuntimeException $e) {
+                            Notification::make()->danger()->title($e->getMessage())->send();
+                        }
+                    }),
                 EditAction::make(),
             ]);
     }

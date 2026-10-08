@@ -290,6 +290,11 @@ enum AuditAction: string
     case ConfigurationApproved = 'CONFIGURATION_APPROVED';
     case StatutoryDatasetLoaded = 'STATUTORY_DATASET_LOADED';
     case StatutoryDatasetActivated = 'STATUTORY_DATASET_ACTIVATED';
+    // SaaS.8: platform operations and tenant lifecycle (both chains unless noted).
+    case TenantProfileChanged = 'TENANT_PROFILE_CHANGED';
+    case InvitationFailed = 'INVITATION_FAILED';
+    case DeferredWorkReleased = 'DEFERRED_WORK_RELEASED';
+    case NotificationResent = 'NOTIFICATION_RESENT'; // tenant chain
 
     public function label(): string
     {

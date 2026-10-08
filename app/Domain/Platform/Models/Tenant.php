@@ -27,6 +27,8 @@ class Tenant extends Model
             'status' => TenantStatus::class,
             'trial_ends_at' => 'datetime',
             'metadata' => 'array',
+            // SaaS.8: written only by TenantSuspensions (not fillable).
+            'suspended_at' => 'datetime',
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Tenants\Pages;
 
+use App\Domain\Platform\Services\TenantProfiles;
 use App\Filament\Resources\Tenants\TenantResource;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\Pages\PeopleEditRecord;
@@ -14,9 +15,9 @@ class EditTenant extends PeopleEditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         // SaaS.2: the status never changes here, whatever the request carries (see TenantSuspensions).
-        unset($data['status']);
-        $record->withAuditReason(AuditReasonField::extract($data))->update($data);
+        // SaaS.8: an operator and a reason, both chains (TenantProfiles).
+        $reason = AuditReasonField::extract($data);
 
-        return $record;
+        return app(TenantProfiles::class)->update($record, $data, auth()->user(), $reason);
     }
 }

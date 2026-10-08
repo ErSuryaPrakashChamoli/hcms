@@ -211,6 +211,9 @@ it('audits every domain model except the documented append-only or derived table
         // (CommercialConfiguration, NegotiatedPrices: maker, checker, reason, before and after, effective date); published
         // versions are immutable.
         'Billing\Models\ConfigurationVersion', 'Billing\Models\NegotiatedPrice', 'Billing\Models\NegotiatedPriceVersion',
+        // SaaS.8: deferred jobs are an operational queue (an encrypted serialized job, deleted when dispatched again); the
+        // release is audited with its count on the reactivation (TENANT_REACTIVATED) or the operator's command.
+        'Platform\Models\TenantDeferredJob',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -241,6 +244,9 @@ it('bypasses tenant scoping only in the documented platform services', function 
         'app/Domain/Platform/Actions/ProvisionTenantAction.php',
         'app/Http/Controllers/Sso/SsoController.php',
         'app/Support/Tenancy/Jobs/BindTenantContext.php',
+        // SaaS.8: a suspended tenant's deferred jobs are stored and released from a worker or the reactivation, before any
+        // tenant is bound (rows always filtered by the tenant concerned).
+        'app/Support/Tenancy/Jobs/DeferredTenantJobs.php',
         'app/Support/Tenancy/TenantContext.php',
         // Phase 14: readiness counts platform-wide dead letters (counts only, no tenant data leaves).
         'app/Support/Observability/HealthChecks.php',

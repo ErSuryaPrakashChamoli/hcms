@@ -12,7 +12,6 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\PermissionRegistry;
-use App\Domain\Identity\Services\UserInvitations;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Letters\Services\LetterDefaults;
 use App\Domain\Organisation\Models\EmployeeCategory;
@@ -25,6 +24,8 @@ use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
+use App\Domain\Platform\Services\TenantFirstAdministrator;
+use App\Domain\Platform\Support\PlatformOperator;
 use App\Domain\ServiceDesk\Services\ServiceDeskDefaults;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
@@ -48,13 +49,19 @@ final class ProvisionTenantAction
      * @param  array{name: string, email: string, password?: string}|null  $adminData  SaaS.2: without a password (the
      *                                                                                 operator's form) the first administrator is invited by e-mail and chooses
      *                                                                                 their own; a password is accepted only from the seeder and tests
+     * @param  User|null  $actor  SaaS.8: the platform operator provisioning (required on the web; a reason too). Without one,
+     *                            only the console may provision (seeders, runbook commands).
      */
-    public function handle(array $tenantData, ?array $adminData = null, ?string $reason = null): Tenant
+    public function handle(array $tenantData, ?array $adminData = null, ?string $reason = null, ?User $actor = null): Tenant
     {
+        PlatformOperator::assert($actor, 'provision a tenant');
+        if ($actor !== null) {
+            $reason = PlatformOperator::reason($reason);
+        }
         $metadata = $this->metadata($tenantData);
         $invitee = null;
 
-        $tenant = DB::transaction(function () use ($tenantData, $adminData, $reason, $metadata, &$invitee) {
+        $tenant = DB::transaction(function () use ($tenantData, $adminData, $reason, $actor, $metadata, &$invitee) {
             $tenant = $this->tenants->bypass(fn () => Tenant::create([
                 'name' => $tenantData['name'],
                 'slug' => $tenantData['slug'] ?? Str::slug($tenantData['name']),
@@ -65,7 +72,7 @@ final class ProvisionTenantAction
                 'currency' => $tenantData['currency'] ?? 'INR',
             ] + $metadata));
 
-            return $this->tenants->runAs($tenant, function () use ($tenant, $adminData, $reason, &$invitee) {
+            return $this->tenants->runAs($tenant, function () use ($tenant, $adminData, $reason, $actor, &$invitee) {
                 $roles = $this->seedSystemRoles();
                 $this->seedFeatures();
                 $this->seedSettings();
@@ -94,15 +101,28 @@ final class ProvisionTenantAction
                     module: 'platform',
                     entity: $tenant,
                     reason: $reason,
+                    actor: $actor,
                     metadata: ['admin_email' => $adminData['email'] ?? null, 'tier' => $tenant->tier, 'region' => $tenant->region, 'trial_ends_at' => $tenant->trial_ends_at?->toIso8601String()],
+                );
+                // SaaS.8: provisioning is an operator action, so it is on the platform chain too (no personal data there).
+                $this->audit->record(
+                    action: AuditAction::TenantProvisioned,
+                    module: 'platform',
+                    reason: $reason,
+                    entityLabel: "Tenant {$tenant->name}",
+                    actor: $actor,
+                    metadata: ['subject_tenant_id' => $tenant->id, 'subject_tenant' => $tenant->slug, 'status' => $tenant->status->value, 'tier' => $tenant->tier, 'region' => $tenant->region, 'first_administrator' => $adminData !== null],
+                    platform: true,
                 );
 
                 return $tenant;
             });
         });
 
+        // SaaS.8: the e-mail is sent after the commit; a failure no longer escapes a tenant that exists. It is recorded, and
+        // the operator sends the invitation again from the Tenants list (TenantFirstAdministrator).
         if ($invitee !== null) {
-            app(UserInvitations::class)->issue($invitee, auth()->user(), 'First administrator of a new tenant');
+            app(TenantFirstAdministrator::class)->inviteAfterProvisioning($tenant, $invitee, $actor);
         }
 
         return $tenant;

@@ -60,7 +60,8 @@ class TenantForm
                         TextInput::make('admin_name')->label('Name')->required()->dehydrated(false),
                         TextInput::make('admin_email')->label('Email')->email()->required()->dehydrated(false)->unique('users', 'email'),
                     ]),
-                AuditReasonField::make(),
+                // SaaS.8: required: provisioning and every edit are operator actions on both audit chains.
+                AuditReasonField::make()->required()->minLength(5),
             ]);
     }
 }
