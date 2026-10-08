@@ -7,7 +7,9 @@ use App\Domain\Tax\Enums\TaxTreatment;
 
 /**
  * SaaS.7: the explainable outcome of a regime's determination: treatment, the outcome key the verified rule prices
- * (e.g. intra_state / inter_state), the place of supply and the basis in words, plus jurisdiction metadata.
+ * (e.g. intra_state / inter_state), the place of supply and the basis in words, plus jurisdiction metadata. A
+ * supplier-side determination whose place of supply is abroad (an export) asks for the destination jurisdiction's
+ * treatment too (reverse charge, registration, local taxability): requiresDestination.
  */
 final readonly class TaxDetermination
 {
@@ -19,12 +21,13 @@ final readonly class TaxDetermination
         public TaxJurisdiction $placeOfSupply,
         public string $basis,
         public array $metadata = [],
+        public bool $requiresDestination = false,
     ) {}
 
     /** @return array<string, mixed> */
     public function toArray(): array
     {
         return ['regime' => $this->regime->value, 'treatment' => $this->treatment->value, 'outcome' => $this->outcome,
-            'place_of_supply' => $this->placeOfSupply->toArray(), 'basis' => $this->basis, 'metadata' => $this->metadata];
+            'place_of_supply' => $this->placeOfSupply->toArray(), 'basis' => $this->basis, 'metadata' => $this->metadata, 'requires_destination' => $this->requiresDestination];
     }
 }

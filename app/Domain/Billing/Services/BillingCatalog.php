@@ -228,6 +228,85 @@ final class BillingCatalog
             ->filter()->values();
     }
 
+    /**
+     * The price matrix on $day: every published plan version × market × interval, with the version on sale, or
+     * NO_PRICE_CONFIGURED (never zero, another market's price or a converted one), or SCHEDULED when only a future
+     * version exists.
+     *
+     * @return list<array{plan_version: PlanVersion, market: BillingMarket, interval: BillingInterval, price: ?PlanPrice, version: ?PlanPriceVersion, state: string, next: ?PlanPriceVersion}>
+     */
+    public function matrix(string $day): array
+    {
+        // Three queries whatever the size: prices with their versions, published plan versions, markets.
+        $prices = PlanPrice::query()->with('versions')->get()->keyBy(fn (PlanPrice $p) => "{$p->plan_version_id}|{$p->market_id}|{$p->interval->value}");
+        $markets = BillingMarket::query()->orderBy('code')->get();
+        $rows = [];
+        foreach (PlanVersion::query()->with('plan')->where('status', VersionStatus::Published)->orderBy('plan_id')->orderBy('version')->get() as $planVersion) {
+            foreach ($markets as $market) {
+                foreach (BillingInterval::cases() as $interval) {
+                    $price = $prices->get("{$planVersion->id}|{$market->id}|{$interval->value}");
+                    $started = $price?->versions->filter(fn (PlanPriceVersion $v) => $v->status !== VersionStatus::Draft && $v->effective_from !== null && $v->effective_from->toDateString() <= $day)
+                        ->sortByDesc(fn (PlanPriceVersion $v) => $v->effective_from->toDateString())->first();
+                    $onSale = $started?->status === VersionStatus::Published ? $started : null;
+                    $next = $price?->versions->filter(fn (PlanPriceVersion $v) => $v->status === VersionStatus::Published && $v->effective_from->toDateString() > $day)
+                        ->sortBy(fn (PlanPriceVersion $v) => $v->effective_from->toDateString())->first();
+                    $rows[] = ['plan_version' => $planVersion, 'market' => $market, 'interval' => $interval, 'price' => $price, 'version' => $onSale, 'next' => $next,
+                        'state' => $onSale !== null ? 'CURRENT' : ($next !== null ? 'SCHEDULED' : 'NO_PRICE_CONFIGURED')];
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /** DRAFT, PENDING_APPROVAL, SCHEDULED, CURRENT, SUPERSEDED or RETIRED on $day. */
+    public function versionState(PlanPriceVersion $version, ?string $day = null, bool $pendingApproval = false): string
+    {
+        $day ??= now()->toDateString();
+
+        return match (true) {
+            $version->status === VersionStatus::Draft => $pendingApproval ? 'PENDING_APPROVAL' : 'DRAFT',
+            $version->status === VersionStatus::Retired => 'RETIRED',
+            $version->effective_from->toDateString() > $day => 'SCHEDULED',
+            $this->versionOnSale(PlanPrice::query()->findOrFail($version->plan_price_id), $day)?->id === $version->id => 'CURRENT',
+            default => 'SUPERSEDED',
+        };
+    }
+
+    /** The last day a published version is on sale: the day before the next version starts (null while open). */
+    public function versionEnds(PlanPriceVersion $version): ?string
+    {
+        if ($version->effective_from === null) {
+            return null;
+        }
+        $next = PlanPriceVersion::query()->where('plan_price_id', $version->plan_price_id)->where('status', '<>', VersionStatus::Draft->value)
+            ->whereDate('effective_from', '>', $version->effective_from->toDateString())->min('effective_from');
+
+        return $next === null ? null : Carbon::parse(substr((string) $next, 0, 10))->subDay()->toDateString();
+    }
+
+    /** @return array<int, string> published plan versions, for choosing what a price or a deal is for */
+    public function publishedPlanVersions(): array
+    {
+        return PlanVersion::query()->with('plan')->where('status', VersionStatus::Published)->get()->mapWithKeys(fn (PlanVersion $v) => [$v->id => $v->label()])->all();
+    }
+
+    /** The label of a published plan version (what a price or a deal may be for), refused otherwise. */
+    public function publishedPlanLabel(int $planVersionId): string
+    {
+        $planVersion = PlanVersion::query()->with('plan')->findOrFail($planVersionId);
+        if ($planVersion->status !== VersionStatus::Published) {
+            throw new RuntimeException("{$planVersion->label()} is {$planVersion->status->value}: only a published plan version can be priced.");
+        }
+
+        return $planVersion->label();
+    }
+
+    public function planLabel(int $planVersionId): string
+    {
+        return PlanVersion::query()->with('plan')->findOrFail($planVersionId)->label();
+    }
+
     public function priceLabel(PlanPrice $price): string
     {
         $price->loadMissing('planVersion.plan', 'market');

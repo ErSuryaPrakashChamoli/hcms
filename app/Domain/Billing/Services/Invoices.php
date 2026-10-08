@@ -4,14 +4,17 @@ namespace App\Domain\Billing\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Billing\Enums\ApprovalAction;
+use App\Domain\Billing\Enums\ConfigurationKey;
 use App\Domain\Billing\Enums\InvoiceStatus;
 use App\Domain\Billing\Models\BillingMarket;
 use App\Domain\Billing\Models\CreditNote;
 use App\Domain\Billing\Models\FinancialApproval;
 use App\Domain\Billing\Models\Invoice;
 use App\Domain\Billing\Models\InvoiceLine;
+use App\Domain\Billing\Models\InvoiceNumberSeries;
 use App\Domain\Billing\Models\InvoiceTaxLine;
 use App\Domain\Billing\Models\InvoiceTdsClaim;
+use App\Domain\Billing\Models\NegotiatedPriceVersion;
 use App\Domain\Billing\Models\PlanPriceVersion;
 use App\Domain\Billing\Models\SupplierProfile;
 use App\Domain\Billing\Models\TenantBillingProfile;
@@ -22,13 +25,16 @@ use App\Domain\Subscriptions\Models\TenantSubscription;
 use App\Domain\Tax\Enums\TaxRegistration;
 use App\Domain\Tax\Exceptions\TaxUnavailableException;
 use App\Domain\Tax\Services\TaxEngine;
+use App\Domain\Tax\Support\TaxCalculation;
 use App\Domain\Tax\Support\TaxContext;
 use App\Domain\Tax\Support\TaxJurisdiction;
 use App\Domain\Tax\Support\TaxParty;
 use App\Domain\Tax\Support\TaxQuote;
 use App\Support\Commercial\OperatorChange;
+use App\Support\Money\Currency;
 use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
+use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
@@ -49,7 +55,7 @@ final class Invoices
 {
     public function __construct(private readonly BillingAudit $audit, private readonly BillingProfiles $profiles, private readonly SupplierProfiles $suppliers,
         private readonly InvoiceSeries $series, private readonly TaxEngine $tax, private readonly TenantContext $tenants,
-        private readonly FinancialApprovals $approvals) {}
+        private readonly FinancialApprovals $approvals, private readonly CommercialConfiguration $configuration) {}
 
     /** @param  list<InvoiceLineInput>  $lines */
     public function draft(Tenant $tenant, BillingMarket $market, array $lines, string $reason, User $actor, ?TenantSubscription $subscription = null,
@@ -124,12 +130,17 @@ final class Invoices
         });
     }
 
-    public function issue(Invoice $invoice, ?string $dueDate, string $reason, User $actor): Invoice
+    /**
+     * @param  array{rate?: ?string, source?: ?string, date?: ?string}|null  $reporting  the rate the law requires the value to be reported at when
+     *                                                                                   the invoice is in another currency (India: INR at the accounting rate for the date of supply, CGST Rules rule 34(2)); a reporting
+     *                                                                                   value only: the invoice's amounts and currency never change.
+     */
+    public function issue(Invoice $invoice, ?string $dueDate, string $reason, User $actor, ?array $reporting = null): Invoice
     {
         OperatorChange::assert($actor, $reason, 'invoices');
         $tenant = Tenant::query()->findOrFail($invoice->tenant_id);
 
-        return $this->tenants->runAs($tenant, fn () => DB::transaction(function () use ($tenant, $invoice, $dueDate, $reason, $actor) {
+        return $this->tenants->runAs($tenant, fn () => DB::transaction(function () use ($tenant, $invoice, $dueDate, $reason, $actor, $reporting) {
             $locked = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
             if ($locked->status->isIssuedDocument()) {
                 return $locked; // issuing twice changes nothing
@@ -138,22 +149,38 @@ final class Invoices
                 throw new RuntimeException('A discarded draft cannot be issued.');
             }
             $today = now()->toDateString();
-            // B-11: net 15 (configurable) from the issue date unless the operator gives another date.
-            $due = $dueDate === null || trim($dueDate) === '' ? now()->addDays(max(0, (int) config('peopleos.billing.payment_terms_days', 15)))->toDateString() : $this->day($dueDate);
-            if ($due !== null && $due < $today) {
+            if ($this->configuration->required(ConfigurationKey::PricesIncludeTax, '', $today) === true) {
+                throw new RuntimeException('Markedge policy says prices include tax, but tax-inclusive invoicing is not enabled: change the policy or wait for that release.');
+            }
+            // The configured payment terms (B-11: net 15) from the issue date, unless the operator gives another date.
+            $due = $dueDate === null || trim($dueDate) === '' ? now()->addDays((int) $this->configuration->required(ConfigurationKey::PaymentTermsDays, '', $today))->toDateString() : $this->day($dueDate);
+            if ($due < $today) {
                 throw new RuntimeException('The due date is on or after the issue date.');
             }
             [$profile, $supplier, $quote] = $this->prepare($tenant, $locked, $today);
             $lines = InvoiceLine::query()->where('invoice_id', $locked->id)->orderBy('line_no')->get();
-            $calculation = $this->tax->calculate($quote, $locked->currency, $lines->mapWithKeys(fn (InvoiceLine $l) => [$l->line_no => $l->amount()])->all());
-            [$series, $sequence, $number] = $this->series->allocate($locked->supplier_entity, $today);
-            foreach ($calculation->lines as $taxLine) {
-                InvoiceTaxLine::query()->create(['invoice_id' => $locked->id, 'line_no' => $taxLine->lineNo, 'regime' => $quote->determination->regime,
-                    'country' => $quote->determination->placeOfSupply->country, 'subdivision' => $quote->determination->placeOfSupply->subdivision,
-                    'tax_type' => $taxLine->type, 'treatment' => $quote->determination->treatment, 'rate' => $taxLine->rate, 'taxable_minor' => $taxLine->taxable->minor,
-                    'tax_minor' => $taxLine->tax->minor, 'currency' => $locked->currency, 'tax_rule_id' => $quote->rule->id]);
+            $taxable = $lines->mapWithKeys(fn (InvoiceLine $l) => [$l->line_no => $l->amount()])->all();
+            $legs = $this->tax->calculateLegs($quote, $locked->currency, $taxable);
+            $taxTotal = Money::zero($locked->currency);
+            $byType = [];
+            foreach ($legs as ['calculation' => $calculation]) {
+                $taxTotal = $taxTotal->plus($calculation->total);
+                foreach ($calculation->totalsByType() as $type => $amount) {
+                    $byType[$type] = ($byType[$type] ?? 0) + $amount->minor;
+                }
             }
-            $total = $locked->subtotal()->plus($calculation->total);
+            $total = $locked->subtotal()->plus($taxTotal);
+            $reportingValue = $quote->reportingCurrency === null ? null : $this->reportingValue($quote->reportingCurrency, $locked->subtotal(), $taxTotal, $total, $reporting, $today);
+            [$series, $sequence, $number] = $this->series->allocate($locked->supplier_entity, $today);
+            foreach ($legs as ['leg' => $leg, 'calculation' => $calculation]) {
+                foreach ($calculation->lines as $taxLine) {
+                    InvoiceTaxLine::query()->create(['invoice_id' => $locked->id, 'line_no' => $taxLine->lineNo, 'regime' => $leg->determination->regime,
+                        'country' => $leg->determination->placeOfSupply->country, 'subdivision' => $leg->determination->placeOfSupply->subdivision,
+                        'tax_type' => $taxLine->type, 'treatment' => $leg->treatment, 'rate' => $taxLine->rate, 'taxable_minor' => $taxLine->taxable->minor,
+                        'tax_minor' => $taxLine->tax->minor, 'currency' => $locked->currency, 'tax_rule_id' => $leg->rule->id, 'metadata' => ['leg' => $leg->role]]);
+                }
+            }
+            $calculation = new TaxCalculation([], $taxTotal);
             $market = BillingMarket::query()->findOrFail($locked->market_id);
             $locked->forceFill(['status' => InvoiceStatus::Issued, 'series_id' => $series->id, 'sequence' => $sequence, 'number' => $number, 'issue_date' => $today,
                 'due_date' => $due, 'tax_minor' => $calculation->total->minor, 'total_minor' => $total->minor, 'tax_regime' => $quote->determination->regime->value,
@@ -161,13 +188,14 @@ final class Invoices
                 'tax_rule_id' => $quote->rule->id, 'issued_by' => $actor->id, 'issued_at' => now(),
                 'snapshot' => ['market' => ['code' => $market->code, 'name' => $market->name, 'locale' => $market->locale, 'currency' => $locked->currency->value],
                     'supplier' => $supplier->snapshot(), 'customer' => $profile->snapshot(),
-                    'tax' => $quote->snapshot() + ['totals_by_type' => array_map(fn (Money $m) => $m->minor, $calculation->totalsByType())]]])->save();
+                    'tax' => $quote->snapshot() + ['totals_by_type' => $byType], 'reporting' => $reportingValue]])->save();
             $this->audit->both(AuditAction::InvoiceIssued, 'billing', $tenant, $locked, "invoice {$number}", [
                 ['field' => 'status', 'before' => 'draft', 'after' => 'issued'], ['field' => 'number', 'before' => null, 'after' => $number],
                 ['field' => 'total', 'before' => null, 'after' => "{$total->currency->value} {$total->toDecimal()}"],
                 ['field' => 'tax', 'before' => null, 'after' => "{$calculation->total->currency->value} {$calculation->total->toDecimal()} ({$quote->determination->regime->value}, {$quote->determination->outcome})"],
             ], $reason, $actor, ['invoice_reference' => $locked->reference, 'number' => $number, 'series_id' => $series->id, 'tax_rule_id' => $quote->rule->id,
-                'billing_profile_id' => $profile->id, 'supplier_profile_id' => $supplier->id, 'idempotency_key' => $locked->reference], $today);
+                'tax_rule_ids' => array_map(fn ($l) => $l['leg']->rule->id, $legs), 'billing_profile_id' => $profile->id, 'supplier_profile_id' => $supplier->id,
+                'reporting' => $reportingValue, 'idempotency_key' => $locked->reference], $today);
 
             return $locked;
         }));
@@ -210,7 +238,7 @@ final class Invoices
         } catch (RuntimeException $e) {
             return ['ready' => false, 'problems' => [$e->getMessage()], 'quote' => null];
         }
-        $series = \App\Domain\Billing\Models\InvoiceNumberSeries::query()->where(['supplier_entity' => $invoice->supplier_entity, 'document_type' => 'invoice', 'status' => 'open'])
+        $series = InvoiceNumberSeries::query()->where(['supplier_entity' => $invoice->supplier_entity, 'document_type' => 'invoice', 'status' => 'open'])
             ->whereDate('starts_on', '<=', now()->toDateString())->whereDate('ends_on', '>=', now()->toDateString())->exists();
 
         return ['ready' => $series, 'problems' => $series ? [] : ["No open invoice number series of {$invoice->supplier_entity} covers today."], 'quote' => $quote];
@@ -297,6 +325,29 @@ final class Invoices
         });
     }
 
+    /**
+     * The invoice value in the reporting currency the law requires, at the rate the operator records with its source and
+     * date (never fetched or guessed). Converted once, half up, for reporting; nothing else uses it.
+     *
+     * @param  array{rate?: ?string, source?: ?string, date?: ?string}|null  $reporting
+     * @return array{currency: string, rate: string, source: string, date: string, subtotal_minor: int, tax_minor: int, total_minor: int}
+     */
+    private function reportingValue(string $currency, Money $subtotal, Money $tax, Money $total, ?array $reporting, string $today): array
+    {
+        $rate = trim((string) ($reporting['rate'] ?? ''));
+        $source = trim((string) ($reporting['source'] ?? ''));
+        if (preg_match('/^\d{1,6}(\.\d{1,8})?$/', $rate) !== 1 || ! BigDecimal::of($rate)->isPositive() || $source === '') {
+            throw new RuntimeException("[REPORTING_VALUE_REQUIRED] The law requires this invoice's value in {$currency}: give the rate for the date of supply and its source (e.g. the accounting rate used).");
+        }
+        $date = blank($reporting['date'] ?? null) ? $today : $this->day((string) $reporting['date']);
+        $target = Currency::of($currency);
+        $convert = fn (Money $m) => BigDecimal::ofUnscaledValue($m->minor, $m->currency->minorUnits())->multipliedBy($rate)
+            ->toScale($target->minorUnits(), RoundingMode::HalfUp)->withPointMovedRight($target->minorUnits())->toBigInteger()->toInt();
+
+        return ['currency' => $currency, 'rate' => $rate, 'source' => mb_substr($source, 0, 150), 'date' => $date,
+            'subtotal_minor' => $convert($subtotal), 'tax_minor' => $convert($tax), 'total_minor' => $convert($total)];
+    }
+
     /** @return array{0: TenantBillingProfile, 1: SupplierProfile, 2: TaxQuote} */
     private function prepare(Tenant $tenant, Invoice $invoice, string $today): array
     {
@@ -310,7 +361,7 @@ final class Invoices
         $category = (string) InvoiceLine::query()->where('invoice_id', $invoice->id)->value('tax_category');
         $context = new TaxContext(
             new TaxParty(new TaxJurisdiction($supplier->country, $supplier->subdivision), $supplier->tax_id_value === null ? TaxRegistration::Unregistered : TaxRegistration::Registered,
-                $supplier->tax_id_type, $supplier->tax_id_value),
+                $supplier->tax_id_type, $supplier->tax_id_value, registrations: $supplier->registrations ?? []),
             new TaxParty(new TaxJurisdiction($profile->country, $profile->subdivision), $profile->tax_registration, $profile->tax_id_type, $profile->tax_id_value,
                 $profile->customer_type, $profile->special_tax_status),
             $category, $today, $invoice->currency);
@@ -337,35 +388,48 @@ final class Invoices
         if (preg_match('/^[a-z0-9._-]{2,64}$/', $line->taxCategory) !== 1) {
             throw new RuntimeException("Line {$number} has no valid tax category.");
         }
+        if ($line->planPriceVersionId !== null && $line->negotiatedPriceVersionId !== null) {
+            throw new RuntimeException("Line {$number} is priced from one source: a standard or a negotiated price.");
+        }
         if ($line->planPriceVersionId !== null) {
             $version = PlanPriceVersion::query()->with('price')->findOrFail($line->planPriceVersionId);
             if ($version->price->market_id !== $market->id || $version->currency !== $market->currency) {
                 throw new RuntimeException("Line {$number} refers to a price of another market.");
             }
         }
+        if ($line->negotiatedPriceVersionId !== null) {
+            $agreed = NegotiatedPriceVersion::query()->with('negotiatedPrice')->findOrFail($line->negotiatedPriceVersionId);
+            if ($agreed->negotiatedPrice->market_id !== $market->id || $agreed->currency !== $market->currency) {
+                throw new RuntimeException("Line {$number} refers to a negotiated price of another market.");
+            }
+        }
+        if (! in_array($line->rounding, [RoundingMode::HalfUp, RoundingMode::HalfEven], true)) {
+            throw new RuntimeException("Line {$number}: a prorated amount is rounded half up or half even.");
+        }
         [$start, $end] = $this->period($line->periodStart, $line->periodEnd);
         if (($line->daysBilled === null) !== ($line->daysInPeriod === null)) {
             throw new RuntimeException("Line {$number} gives the days billed and the days in the period together.");
         }
         try {
-            $amount = self::lineAmount($line->unitAmount, $line->quantity, $line->daysBilled, $line->daysInPeriod);
+            $amount = self::lineAmount($line->unitAmount, $line->quantity, $line->daysBilled, $line->daysInPeriod, $line->rounding);
         } catch (InvalidArgumentException $e) {
             throw new RuntimeException($e->getMessage());
         }
 
         return ['line_no' => $number, 'description' => $description, 'tax_category' => $line->taxCategory, 'quantity' => $line->quantity,
             'unit_amount_minor' => $line->unitAmount->minor, 'amount_minor' => $amount->minor, 'currency' => $market->currency,
-            'plan_price_version_id' => $line->planPriceVersionId, 'plan_version_id' => $line->planVersionId, 'period_start' => $start, 'period_end' => $end,
+            'plan_price_version_id' => $line->planPriceVersionId, 'negotiated_price_version_id' => $line->negotiatedPriceVersionId, 'plan_version_id' => $line->planVersionId,
+            'period_start' => $start, 'period_end' => $end,
             'billing_period_id' => $line->billingPeriodId, 'days_billed' => $line->daysBilled, 'days_in_period' => $line->daysInPeriod,
             'quantity_evidence' => $line->quantityEvidence];
     }
 
-    /** B-3: quantity × unit, and for a partial month × days billed ÷ days in the month, rounded once half up to the minor unit. */
-    public static function lineAmount(Money $unit, int $quantity, ?int $daysBilled = null, ?int $daysInPeriod = null): Money
+    /** B-3: quantity × unit, and for a partial month × days billed ÷ days in the month, rounded once (the configured mode, B-3: half up) to the minor unit. */
+    public static function lineAmount(Money $unit, int $quantity, ?int $daysBilled = null, ?int $daysInPeriod = null, RoundingMode $mode = RoundingMode::HalfUp): Money
     {
         $full = $unit->times($quantity);
 
-        return $daysBilled === null || $daysInPeriod === null ? $full : $full->prorated($daysBilled, $daysInPeriod, RoundingMode::HalfUp);
+        return $daysBilled === null || $daysInPeriod === null ? $full : $full->prorated($daysBilled, $daysInPeriod, $mode);
     }
 
     /** @return array{0: ?string, 1: ?string} */

@@ -35,7 +35,35 @@
             </div>
         </x-filament::section>
 
-        <x-filament::section heading="Billing terms" description="The price version each subscription is billed at, from a date. Today's applicable price is shown; a plan change without a new pin is flagged, never re-priced.">
+        <x-filament::section heading="Negotiated prices" description="Customer-specific deals (PEPM or fixed, minimum, discount, contract window). Agreed terms take precedence over the standard price for the same plan version, market and interval; they never change the catalogue or another customer. Versions are published by maker-checker and never change.">
+            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Negotiated prices">
+            <table class="w-full text-sm">
+                <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th scope="col" class="py-1 pe-4">Deal</th><th scope="col" class="pe-4">Contract</th><th scope="col">Versions</th></tr></thead>
+                <tbody>
+                    @forelse ($this->deals() as $deal)
+                        <tr class="border-t border-gray-100 dark:border-gray-800 align-top">
+                            <td class="py-1 pe-4">#{{ $deal->subscription_id }} · {{ $deal->market->code }} ({{ $deal->currency->value }}) · {{ $deal->basis === \App\Domain\Billing\Enums\PricingBasis::Flat ? 'fixed per month' : $deal->basis->label() }}, {{ $deal->interval->label() }}</td>
+                            <td class="pe-4">{{ $deal->contract_start->toDateString() }} to {{ $deal->contract_end?->toDateString() ?? 'open' }}{{ $deal->contract_reference ? ' · '.$deal->contract_reference : '' }}@if ($deal->notes)<div class="text-xs text-gray-500 dark:text-gray-400">{{ $deal->notes }}</div>@endif</td>
+                            <td>
+                                <ul class="space-y-0.5">
+                                    @forelse ($deal->versions as $version)
+                                        @php($state = $this->dealState($version))
+                                        <li><x-filament::badge size="sm" :color="\App\Filament\Pages\PlatformBillingCatalogPage::stateColor($state)">{{ str_replace('_', ' ', $state) }}</x-filament::badge> {{ $this->describeDeal($version) }}{{ $version->effective_from ? ' from '.$version->effective_from->toDateString() : '' }}</li>
+                                    @empty
+                                        <li class="text-gray-500 dark:text-gray-400">No amount drafted yet.</li>
+                                    @endforelse
+                                </ul>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="3" class="py-2 text-gray-500 dark:text-gray-400">No negotiated price: the standard catalogue applies.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+            </div>
+        </x-filament::section>
+
+        <x-filament::section heading="Billing terms" description="The price each subscription is billed at, from a date: a negotiated (agreed) or a standard version. Today's applicable price and its source are shown; a plan change without a new pin is flagged, never re-priced. No terms means NO PRICE CONFIGURED: nothing is billed.">
             <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Billing terms">
             <table class="w-full text-sm">
                 <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th scope="col" class="py-1 pe-4">Subscription</th><th scope="col" class="pe-4">Applies today</th><th scope="col">Terms</th></tr></thead>
@@ -43,8 +71,10 @@
                     @forelse ($this->terms() as $row)
                         <tr class="border-t border-gray-100 dark:border-gray-800 align-top">
                             <td class="py-1 pe-4">#{{ $row['subscription']->id }}</td>
-                            <td class="pe-4">@if ($row['applies']){{ $this->format($row['applies']['unit_amount'], $row['applies']['term']->market->locale) }} {{ $row['applies']['term']->basis->label() }} {{ $row['applies']['term']->interval->label() }}@if (! $row['applies']['consistent']) <x-filament::badge size="sm" color="warning">plan changed: re-pin needed</x-filament::badge>@endif @else <span class="text-gray-500 dark:text-gray-400">no terms</span>@endif</td>
-                            <td>@foreach ($row['terms'] as $term)<div class="{{ $term->status === 'cancelled' ? 'line-through text-gray-500 dark:text-gray-400' : '' }}">{{ $term->effective_from->toDateString() }} to {{ $term->effective_to?->toDateString() ?? 'open' }} · {{ $term->currency->value }} {{ $term->priceVersion->amount()->toDecimal() }} (price v{{ $term->priceVersion->version }}{{ $term->priceVersion->minimum_quantity > 0 ? ', minimum '.$term->priceVersion->minimum_quantity : '' }}) · {{ $term->interval->label() }}{{ $term->committed_quantity !== null ? ' · '.$term->committed_quantity.' committed' : '' }} · {{ $term->reason }}</div>@endforeach</td>
+                            <td class="pe-4">@if ($row['applies']){{ $this->format($row['applies']['unit_amount'], $row['applies']['term']->market->locale) }} {{ $row['applies']['term']->basis->label() }} {{ $row['applies']['term']->interval->label() }} <x-filament::badge size="sm" :color="$row['applies']['source'] === 'negotiated' ? 'info' : 'gray'">{{ $row['applies']['source'] === 'negotiated' ? 'agreed price' : 'standard price' }}</x-filament::badge>@if (! $row['applies']['consistent']) <x-filament::badge size="sm" color="warning">plan changed: re-pin needed</x-filament::badge>@endif @else <x-filament::badge size="sm" color="danger">NO PRICE CONFIGURED</x-filament::badge>@endif</td>
+                            <td>@foreach ($row['terms'] as $term)
+                                @php($pinned = $term->negotiatedVersion ?? $term->priceVersion)
+                                <div class="{{ $term->status === 'cancelled' ? 'line-through text-gray-500 dark:text-gray-400' : '' }}">{{ $term->effective_from->toDateString() }} to {{ $term->effective_to?->toDateString() ?? 'open' }} · {{ $term->currency->value }} {{ $pinned->amount()->toDecimal() }} ({{ $term->negotiated_price_version_id ? 'agreed v' : 'price v' }}{{ $pinned->version }}{{ $pinned->minimum_quantity > 0 ? ', minimum '.$pinned->minimum_quantity : '' }}{{ $term->negotiated_price_version_id && $pinned->discount_percent !== null ? ', less '.$pinned->discount_percent.' %' : '' }}) · {{ $term->interval->label() }}{{ $term->committed_quantity !== null ? ' · '.$term->committed_quantity.' committed' : '' }} · {{ $term->reason }}</div>@endforeach</td>
                         </tr>
                     @empty
                         <tr><td colspan="3" class="py-2 text-gray-500 dark:text-gray-400">No subscription.</td></tr>
@@ -65,7 +95,7 @@
                             <td class="pe-4">{{ $period->kind->label() }}</td>
                             <td class="pe-4">{{ $period->days_billed }} / {{ $period->days_in_period }}</td>
                             <td class="pe-4">{{ $period->billed_quantity }}@if ($period->measured_peak !== null) <span class="text-gray-500 dark:text-gray-400">(peak {{ $period->measured_peak }})</span>@endif</td>
-                            <td class="pe-4">{{ $period->currency->value }} {{ $period->amount()->toDecimal() }}</td>
+                            <td class="pe-4">{{ $period->currency->value }} {{ $period->amount()->toDecimal() }}@if ($period->price_source === 'negotiated') <x-filament::badge size="sm" color="info">agreed price</x-filament::badge>@endif</td>
                             <td class="pe-4"><x-filament::badge size="sm" :color="$period->status === 'drafted' ? 'success' : ($period->status === 'exception' ? 'danger' : 'gray')">{{ str_replace('_', ' ', $period->status) }}</x-filament::badge>
                                 @if ($period->invoice) <a class="text-primary-600 underline dark:text-primary-400" href="{{ \App\Filament\Pages\PlatformInvoicesPage::getUrl(['invoice' => $period->invoice->reference]) }}">{{ $period->invoice->label() }}</a> ({{ $period->invoice->status->value }})@endif
                                 @if ($period->exception)<div class="text-danger-700 dark:text-danger-400">{{ $period->exception }}</div>@endif</td>
@@ -79,7 +109,7 @@
             </div>
         </x-filament::section>
 
-        <x-filament::section heading="Price notices" description="Written notices of price increases (at least 30 days ahead). Pending notices are the re-pin worklist: set the new terms from the date shown.">
+        <x-filament::section heading="Price notices" description="Written notices of standard price increases (at least the configured period ahead: 30 days, B-15). Pending notices are the re-pin worklist: set the new terms from the date shown.">
             <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Price notices">
             <table class="w-full text-sm">
                 <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th scope="col" class="py-1 pe-4">Subscription</th><th scope="col" class="pe-4">Sent</th><th scope="col" class="pe-4">New price from</th><th scope="col" class="pe-4">Change</th><th scope="col">Status</th></tr></thead>

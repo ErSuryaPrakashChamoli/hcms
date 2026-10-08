@@ -10,6 +10,7 @@ use App\Domain\Billing\Models\InvoiceTaxLine;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Tax\Enums\TaxTreatment;
 use App\Domain\Tax\Services\TaxEngine;
+use App\Support\Money\Currency;
 use App\Support\Money\Money;
 use App\Support\Money\MoneyFormatter;
 use App\Support\Tenancy\TenantContext;
@@ -68,8 +69,25 @@ final class InvoicePresentation
             'regime' => $snapshot['tax']['determination']['regime'] ?? null,
             'regime_rows' => $issued ? $this->tax->presentationRows($snapshot['tax'] ?? []) : [],
             'rule' => $snapshot['tax']['rule']['label'] ?? null,
+            // SaaS.7 configuration: each tax leg (the supplier's and, for a cross-border supply, the customer's
+            // country), the statutory wording the rules require, and the local-currency reporting value, all frozen.
+            'legs' => $issued ? array_map(fn (array $leg) => ['role' => $leg['role'] === 'destination' ? "customer's country" : 'supplier', 'regime' => $leg['determination']['regime'] ?? null,
+                'treatment' => TaxTreatment::tryFrom((string) ($leg['treatment'] ?? ''))?->label() ?? ($leg['treatment'] ?? null), 'rule' => $leg['rule']['rule_code'] ?? $leg['rule']['label'] ?? null],
+                $snapshot['tax']['legs'] ?? []) : [],
+            'wording' => $issued ? array_values(array_filter((array) ($snapshot['tax']['wording'] ?? []))) : [],
+            'reporting' => $issued && isset($snapshot['reporting']['currency']) ? $this->reporting($snapshot['reporting'], $locale) : null,
             'totals' => ['subtotal' => $format($invoice->subtotal()), 'tax' => $issued ? $format($invoice->tax()) : null, 'total' => $issued ? $format($invoice->total()) : null],
         ];
+    }
+
+    /** @param  array<string, mixed>  $reporting  @return array{currency: string, rate: string, source: string, date: string, subtotal: string, tax: string, total: string} */
+    private function reporting(array $reporting, string $locale): array
+    {
+        $currency = Currency::of((string) $reporting['currency']);
+        $format = fn (string $key) => MoneyFormatter::format(Money::ofMinor((int) $reporting[$key], $currency), $locale);
+
+        return ['currency' => $currency->value, 'rate' => (string) $reporting['rate'], 'source' => (string) $reporting['source'], 'date' => (string) $reporting['date'],
+            'subtotal' => $format('subtotal_minor'), 'tax' => $format('tax_minor'), 'total' => $format('total_minor')];
     }
 
     /** @param  array<string, mixed>  $party  @return array{name: string, lines: list<string>} */

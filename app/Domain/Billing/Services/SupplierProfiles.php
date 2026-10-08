@@ -24,7 +24,12 @@ final class SupplierProfiles
 {
     public function __construct(private readonly BillingAudit $audit, private readonly TaxEngine $tax, private readonly TaxRegistry $registry) {}
 
-    /** @param  array{legal_name: string, address_line1: string, address_line2?: ?string, city: string, postal_code?: ?string, country: string, subdivision?: ?string, tax_id_type?: ?string, tax_id_value?: ?string}  $data */
+    /**
+     * @param  array{legal_name: string, address_line1: string, address_line2?: ?string, city: string, postal_code?: ?string, country: string, subdivision?: ?string,
+     *     tax_id_type?: ?string, tax_id_value?: ?string, registrations?: list<array{type: string, reference: string, valid_from: string, valid_to?: ?string}>}  $data
+     *     registrations: undertakings and registrations elsewhere that tax conditions require (e.g. IN_LUT for an export under
+     *     a letter of undertaking, GB_VAT, EU_OSS_NON_UNION, AE_TRN, US_STATE:US-TX), each with its validity
+     */
     public function record(string $entityCode, array $data, string $effectiveFrom, string $reason, User $actor): SupplierProfile
     {
         OperatorChange::assert($actor, $reason, 'supplier profiles');
@@ -48,15 +53,19 @@ final class SupplierProfiles
             }
         }
 
-        return DB::transaction(function () use ($entityCode, $address, $country, $subdivision, $type, $value, $from, $reason, $actor) {
+        $registrations = $this->registrations((array) ($data['registrations'] ?? []));
+
+        return DB::transaction(function () use ($entityCode, $address, $country, $subdivision, $type, $value, $registrations, $from, $reason, $actor) {
             $previous = SupplierProfile::query()->where('entity_code', $entityCode)->lockForUpdate()->orderByDesc('version')->first();
             $profile = SupplierProfile::query()->create($address + ['entity_code' => $entityCode, 'version' => ($previous?->version ?? 0) + 1,
-                'country' => $country, 'subdivision' => $subdivision, 'tax_id_type' => $type, 'tax_id_value' => $value, 'effective_from' => $from,
+                'country' => $country, 'subdivision' => $subdivision, 'tax_id_type' => $type, 'tax_id_value' => $value,
+                'registrations' => $registrations === [] ? null : $registrations, 'effective_from' => $from,
                 'reason' => $reason, 'created_by' => $actor->id]);
             $this->audit->platform(AuditAction::SupplierProfileRecorded, 'billing', $profile, "Supplier {$entityCode} v{$profile->version}",
                 [['field' => 'legal_name', 'before' => $previous?->legal_name ?? 'none', 'after' => $profile->legal_name],
                     ['field' => 'jurisdiction', 'before' => $previous ? ($previous->subdivision ?? $previous->country) : 'none', 'after' => $subdivision ?? $country],
-                    ['field' => 'tax_registration', 'before' => $previous?->tax_id_value ?? 'none', 'after' => $value ?? 'none']],
+                    ['field' => 'tax_registration', 'before' => $previous?->tax_id_value ?? 'none', 'after' => $value ?? 'none'],
+                    ['field' => 'registrations', 'before' => $this->describeRegistrations($previous?->registrations ?? []), 'after' => $this->describeRegistrations($registrations)]],
                 $reason, $actor, ['entity' => $entityCode, 'version' => $profile->version], $from);
 
             return $profile;
@@ -68,6 +77,32 @@ final class SupplierProfiles
     {
         return SupplierProfile::query()->where('entity_code', $entityCode)->whereDate('effective_from', '<=', $day)
             ->orderByDesc('effective_from')->orderByDesc('version')->first();
+    }
+
+    /** @return list<array{type: string, reference: string, valid_from: string, valid_to: ?string}> */
+    private function registrations(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            $kind = strtoupper(trim((string) ($row['type'] ?? '')));
+            $reference = trim((string) ($row['reference'] ?? ''));
+            if (preg_match('/^[A-Z0-9_:-]{2,40}$/', $kind) !== 1 || $reference === '' || mb_strlen($reference) > 100) {
+                throw new RuntimeException('Each registration has a type (e.g. IN_LUT, GB_VAT, US_STATE:US-TX) and a reference of at most 100 characters.');
+            }
+            $from = $this->day((string) ($row['valid_from'] ?? ''));
+            $to = blank($row['valid_to'] ?? null) ? null : $this->day((string) $row['valid_to']);
+            if ($to !== null && $to < $from) {
+                throw new RuntimeException("The registration {$kind} ends after it starts.");
+            }
+            $out[] = ['type' => $kind, 'reference' => $reference, 'valid_from' => $from, 'valid_to' => $to];
+        }
+
+        return $out;
+    }
+
+    private function describeRegistrations(array $rows): string
+    {
+        return $rows === [] ? 'none' : implode('; ', array_map(fn (array $r) => "{$r['type']} {$r['reference']} ({$r['valid_from']} to ".($r['valid_to'] ?? 'open').')', $rows));
     }
 
     /** @return array{0: string, 1: ?string} */

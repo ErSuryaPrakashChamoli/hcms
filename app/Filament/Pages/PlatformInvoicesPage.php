@@ -169,8 +169,15 @@ class PlatformInvoicesPage extends Page
         return [
             Action::make('issue')->label('Issue invoice')->icon(Heroicon::OutlinedCheckBadge)->color('success')->visible($is(InvoiceStatus::Draft))
                 ->modalDescription('Fixes the number, tax, totals and the supplier, customer and tax snapshots, dated today. Nothing financial changes afterwards.')
-                ->schema([DatePicker::make('due')->label('Due date (optional; net 15 when empty)')->native(false), $reason()])
-                ->action(fn (array $data) => $this->attempt(fn () => app(Invoices::class)->issue($this->selected(), blank($data['due'] ?? null) ? null : substr((string) $data['due'], 0, 10), $data['reason'], auth()->user()), 'Invoice issued')),
+                ->schema([DatePicker::make('due')->label('Due date (optional; the configured payment terms when empty)')->native(false),
+                    TextInput::make('reporting_rate')->label('Reporting rate (foreign-currency invoices where the law requires the value in local currency)')
+                        ->placeholder('88.1234')->helperText('Units of the local currency per unit of the invoice currency on the date of supply, as used in Markedge\'s accounts. Recorded on the invoice; prices are never converted.'),
+                    TextInput::make('reporting_source')->label('Source of the rate')->maxLength(150)->placeholder('Reserve Bank of India reference rate'),
+                    DatePicker::make('reporting_date')->label('Rate date')->native(false),
+                    $reason()])
+                ->action(fn (array $data) => $this->attempt(fn () => app(Invoices::class)->issue($this->selected(), blank($data['due'] ?? null) ? null : substr((string) $data['due'], 0, 10), $data['reason'], auth()->user(),
+                    blank($data['reporting_rate'] ?? null) ? null : ['rate' => trim((string) $data['reporting_rate']), 'source' => (string) ($data['reporting_source'] ?? ''),
+                        'date' => blank($data['reporting_date'] ?? null) ? null : substr((string) $data['reporting_date'], 0, 10)]), 'Invoice issued')),
             Action::make('discard')->label('Discard draft')->icon(Heroicon::OutlinedTrash)->color('danger')->visible($is(InvoiceStatus::Draft))
                 ->schema([$reason()])
                 ->action(fn (array $data) => $this->attempt(fn () => app(Invoices::class)->discard($this->selected(), $data['reason'], auth()->user()), 'Draft discarded')),

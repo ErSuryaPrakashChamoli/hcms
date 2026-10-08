@@ -9,6 +9,7 @@ use App\Domain\Tax\Enums\TaxRounding;
 use App\Domain\Tax\Enums\TaxTreatment;
 use App\Domain\Tax\Exceptions\TaxUnavailableException;
 use App\Domain\Tax\Jurisdictions\India\GstinValidator;
+use App\Domain\Tax\Jurisdictions\India\GstStates;
 use App\Domain\Tax\Services\TaxCalculator;
 use App\Domain\Tax\Services\TaxEngine;
 use App\Domain\Tax\Services\TaxRules;
@@ -38,8 +39,8 @@ beforeEach(function () {
 function indiaContext(string $supplierState, string $customerCountry, ?string $customerState, TaxRegistration $registration = TaxRegistration::Registered,
     CustomerType $type = CustomerType::Business, ?string $special = null, bool $supplierRegistered = true, string $day = '2027-04-01'): TaxContext
 {
-    $supplierCode = \App\Domain\Tax\Jurisdictions\India\GstStates::code($supplierState);
-    $customerCode = $customerCountry === 'IN' ? \App\Domain\Tax\Jurisdictions\India\GstStates::code($customerState) : null;
+    $supplierCode = GstStates::code($supplierState);
+    $customerCode = $customerCountry === 'IN' ? GstStates::code($customerState) : null;
 
     return new TaxContext(
         new TaxParty(new TaxJurisdiction('IN', $supplierState), TaxRegistration::Registered, $supplierRegistered ? TaxIdType::InGstin : null, $supplierRegistered ? fictionalGstin($supplierCode) : null),
@@ -73,33 +74,33 @@ it('refuses rather than guesses: exports, SEZ, unregistered supplier, missing st
             expect($e->reasonCode)->toBe($code);
         }
     };
-    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'no_verified_rule');                 // nothing verified yet
+    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'TAX_CONFIGURATION_MISSING');        // nothing configured yet: never 0 %
     $rules = app(TaxRules::class);
     $draft = $rules->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['inter_state' => [['type' => 'IGST', 'rate' => '7.5']]], 'half_up', ['sac' => '000000'], 'Only inter-state', $this->author);
-    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'no_verified_rule');                 // a draft never applies
+    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'TAX_RULE_UNVERIFIED');              // a draft never applies
     $rules->submit($draft, 'Review please', $this->author);
-    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'no_verified_rule');                 // nor a rule in review
+    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'TAX_RULE_UNVERIFIED');              // nor a rule in review
     $rules->verify($draft, 'TEST-REVIEW-2', null, $this->verifier);
     expect(($this->engine)()->quote(indiaContext('IN-MH', 'IN', 'IN-KA'))->rule->id)->toBe($draft->id);
-    $refused(indiaContext('IN-MH', 'IN', 'IN-MH'), 'rule_outcome_missing');             // the rule does not price intra-state
-    $refused(indiaContext('IN-MH', 'US', null), 'export_not_configured');
-    $refused(indiaContext('IN-MH', 'IN', 'IN-KA', special: 'sez'), 'special_status_not_configured');
-    $refused(indiaContext('IN-MH', 'IN', null), 'customer_state');
-    $refused(indiaContext('IN-MH', 'IN', 'IN-KA', supplierRegistered: false), 'supplier_not_registered');
+    $refused(indiaContext('IN-MH', 'IN', 'IN-MH'), 'TAX_CONFIGURATION_MISSING');        // the rule does not price intra-state
+    $refused(indiaContext('IN-MH', 'US', 'US-CA'), 'TAX_CONFIGURATION_MISSING');        // the rule does not price export of services
+    $refused(indiaContext('IN-MH', 'IN', 'IN-KA', special: 'sez'), 'TAX_CONFIGURATION_MISSING');
+    $refused(indiaContext('IN-MH', 'IN', null), 'PLACE_OF_SUPPLY_UNRESOLVED');
+    $refused(indiaContext('IN-MH', 'IN', 'IN-KA', supplierRegistered: false), 'SUPPLIER_TAX_STATUS_UNRESOLVED');
     $rules->retire($draft, 'Withdrawn after review', $this->verifier);
-    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'no_verified_rule');                 // a retired rule stops applying
+    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'TAX_CONFIGURATION_MISSING');        // a retired rule stops applying (never an older one)
     // A standard-rated outcome priced with no component is refused, never read as "no tax".
     $empty = $rules->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['inter_state' => []], 'half_up', ['sac' => '000000'], 'Empty inter-state outcome', $this->author);
     $rules->submit($empty, 'Review please', $this->author);
     $rules->verify($empty, 'TEST-REVIEW-EMPTY', null, $this->verifier);
-    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'rule_outcome_missing');
+    $refused(indiaContext('IN-MH', 'IN', 'IN-KA'), 'TAX_CONFIGURATION_MISSING');
     $rules->retire($empty, 'Withdrawn after review', $this->verifier);
 
     $abroad = fn (string $country, ?string $sub) => new TaxContext(new TaxParty(new TaxJurisdiction($country, $sub), TaxRegistration::Registered),
         new TaxParty(new TaxJurisdiction($country, $sub), TaxRegistration::Unregistered, customerType: CustomerType::Business), 'peopleos.subscription', '2027-04-01', Currency::USD);
-    $refused($abroad('US', 'US-CA'), 'regime_not_supported');                          // architecture-ready only
-    $refused($abroad('DE', null), 'regime_not_supported');
-    $refused($abroad('JP', null), 'no_regime');
+    $refused($abroad('US', 'US-CA'), 'TAX_CONFIGURATION_MISSING');                     // no supplier-side determination outside India
+    $refused($abroad('DE', null), 'TAX_CONFIGURATION_MISSING');
+    $refused($abroad('JP', null), 'TAX_CONFIGURATION_MISSING');
 });
 
 it('keeps rules honest: maker-checker, immutable once submitted, effective-dated, today or later, regime-checked', function () {
@@ -120,9 +121,10 @@ it('keeps rules honest: maker-checker, immutable once submitted, effective-dated
         fn () => $rules->draft(TaxRegime::EuVat, 'DE', null, 'peopleos.subscription', '2027-04-01', ['standard' => [['type' => 'VAT', 'rate' => '19']]], 'half_up', null, 'No determiner', $this->author),
         fn () => $rules->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['inter_state' => [['type' => 'VAT', 'rate' => '1']]], 'half_up', ['sac' => '1'], 'Wrong type', $this->author),
         fn () => $rules->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['inter_state' => [['type' => 'IGST', 'rate' => '101']]], 'half_up', ['sac' => '1'], 'Bad rate', $this->author),
-        fn () => $rules->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['inter_state' => [['type' => 'IGST', 'rate' => '1']]], 'half_up', null, 'No SAC', $this->author),
         fn () => $rules->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['inter_state' => [['type' => 'IGST', 'rate' => '1']]], 'ceiling', ['sac' => '1'], 'Bad rounding', $this->author),
         fn () => $rules->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['export' => [['type' => 'IGST', 'rate' => '0']]], 'half_up', ['sac' => '1'], 'Unknown outcome', $this->author),
+        fn () => $rules->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['inter_state' => [['type' => 'IGST', 'rate' => '1']]], 'half_up', ['sac' => '1'], 'Expires first', $this->author, ['effective_to' => '2027-03-31']),
+        fn () => $rules->draft(TaxRegime::InGst, 'IN', null, 'peopleos.subscription', '2027-04-01', ['inter_state' => ['components' => [['type' => 'IGST', 'rate' => '1']], 'conditions' => ['unknown_condition' => true]]], 'half_up', ['sac' => '1'], 'Unknown condition', $this->author),
     ] as $attempt) {
         expect($attempt)->toThrow(RuntimeException::class);
     }
@@ -157,9 +159,9 @@ it('validates GSTINs by format, check character and state; other identifiers are
 it('reports jurisdiction status honestly and never claims support', function () {
     $engine = app(TaxEngine::class);
     expect($engine->status('IN'))->toBe(JurisdictionStatus::PendingTaxReview)
-        ->and($engine->status('US'))->toBe(JurisdictionStatus::NotSupported)
-        ->and($engine->status('DE'))->toBe(JurisdictionStatus::NotSupported)
-        ->and($engine->status('GB'))->toBe(JurisdictionStatus::NotSupported)
+        ->and($engine->status('US'))->toBe(JurisdictionStatus::PendingTaxReview)     // destination rules representable, none verified
+        ->and($engine->status('DE'))->toBe(JurisdictionStatus::PendingTaxReview)
+        ->and($engine->status('GB'))->toBe(JurisdictionStatus::PendingTaxReview)
         ->and($engine->status('JP'))->toBe(JurisdictionStatus::NotSupported);
     verifiedIndiaRule($this->author, $this->verifier);
     expect($engine->status('IN'))->toBe(JurisdictionStatus::Configured)

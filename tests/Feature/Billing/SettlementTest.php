@@ -126,7 +126,7 @@ it('never turns missing or pending tax configuration into 0 % tax: issue is refu
         expect(fn () => $this->invoices->issue($foreign, null, 'Foreign customer', $this->op))->toThrow(RuntimeException::class, $message)
             ->and($foreign->fresh()->status)->toBe(InvoiceStatus::Draft);
     }
-    expect(app(TaxEngine::class)->status('US'))->toBe(JurisdictionStatus::NotSupported)
+    expect(app(TaxEngine::class)->status('US'))->toBe(JurisdictionStatus::PendingTaxReview)   // destination rules representable, none verified
         ->and(app(TaxEngine::class)->status('AU'))->toBe(JurisdictionStatus::NotSupported)
         ->and(app(TaxEngine::class)->status('IN'))->toBe(JurisdictionStatus::Configured)
         ->and(collect(JurisdictionStatus::cases())->map->value->contains('supported'))->toBeTrue()          // representable…

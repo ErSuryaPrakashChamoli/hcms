@@ -17,33 +17,32 @@ final class JurisdictionCatalogue
 
     /**
      * @return array<string, array{name: string, countries: list<string>, currency: string, regime: TaxRegime, registration: TaxIdType,
-     *     customers: string, invoice_requirements: string, invoice_number_max_length: ?int}>
+     *     customers: string, invoice_requirements: string}>
      */
     public static function all(): array
     {
         return [
             'IN' => ['name' => 'India', 'countries' => ['IN'], 'currency' => 'INR', 'regime' => TaxRegime::InGst, 'registration' => TaxIdType::InGstin,
                 'customers' => 'Registered (GSTIN) and unregistered businesses; consumers',
-                'invoice_requirements' => 'Tax invoice content, consecutive series of at most 16 characters per financial year [pending tax review]',
-                'invoice_number_max_length' => 16],
+                'invoice_requirements' => 'Tax invoice content and a consecutive series per financial year (the length limit is a configured statutory parameter)'],
             'EU' => ['name' => 'European Union', 'countries' => self::EU_MEMBERS, 'currency' => 'EUR (most members)', 'regime' => TaxRegime::EuVat, 'registration' => TaxIdType::EuVatId,
-                'customers' => 'Businesses with a VAT ID (reverse charge across borders) and consumers', 'invoice_requirements' => 'Not configured', 'invoice_number_max_length' => null],
+                'customers' => 'Businesses with a VAT ID (reverse charge across borders) and consumers', 'invoice_requirements' => 'Not configured'],
             'GB' => ['name' => 'United Kingdom', 'countries' => ['GB'], 'currency' => 'GBP', 'regime' => TaxRegime::GbVat, 'registration' => TaxIdType::GbVat,
-                'customers' => 'VAT-registered businesses and consumers', 'invoice_requirements' => 'Not configured', 'invoice_number_max_length' => null],
+                'customers' => 'VAT-registered businesses and consumers', 'invoice_requirements' => 'Not configured'],
             'AE' => ['name' => 'United Arab Emirates', 'countries' => ['AE'], 'currency' => 'AED', 'regime' => TaxRegime::AeVat, 'registration' => TaxIdType::AeTrn,
-                'customers' => 'Registered businesses (TRN) and consumers', 'invoice_requirements' => 'Not configured', 'invoice_number_max_length' => null],
+                'customers' => 'Registered businesses (TRN) and consumers', 'invoice_requirements' => 'Not configured'],
             'US' => ['name' => 'United States', 'countries' => ['US'], 'currency' => 'USD', 'regime' => TaxRegime::UsSalesTax, 'registration' => TaxIdType::UsSalesTaxPermit,
-                'customers' => 'Businesses (exemption certificates) and consumers; state nexus decides', 'invoice_requirements' => 'Not configured', 'invoice_number_max_length' => null],
+                'customers' => 'Businesses (exemption certificates) and consumers; state nexus decides', 'invoice_requirements' => 'Not configured'],
             'CA' => ['name' => 'Canada', 'countries' => ['CA'], 'currency' => 'CAD', 'regime' => TaxRegime::CaSalesTax, 'registration' => TaxIdType::CaBn,
-                'customers' => 'Registered businesses and consumers; province decides GST/HST/PST/QST', 'invoice_requirements' => 'Not configured', 'invoice_number_max_length' => null],
+                'customers' => 'Registered businesses and consumers; province decides GST/HST/PST/QST', 'invoice_requirements' => 'Not configured'],
             'AU' => ['name' => 'Australia', 'countries' => ['AU'], 'currency' => 'AUD', 'regime' => TaxRegime::AuGst, 'registration' => TaxIdType::AuAbn,
-                'customers' => 'Businesses (ABN) and consumers', 'invoice_requirements' => 'Not configured', 'invoice_number_max_length' => null],
+                'customers' => 'Businesses (ABN) and consumers', 'invoice_requirements' => 'Not configured'],
             'SG' => ['name' => 'Singapore', 'countries' => ['SG'], 'currency' => 'SGD', 'regime' => TaxRegime::SgGst, 'registration' => TaxIdType::SgGst,
-                'customers' => 'GST-registered businesses and consumers', 'invoice_requirements' => 'Not configured', 'invoice_number_max_length' => null],
+                'customers' => 'GST-registered businesses and consumers', 'invoice_requirements' => 'Not configured'],
         ];
     }
 
-    /** @return array{key: string, name: string, countries: list<string>, currency: string, regime: TaxRegime, registration: TaxIdType, customers: string, invoice_requirements: string, invoice_number_max_length: ?int}|null */
+    /** @return array{key: string, name: string, countries: list<string>, currency: string, regime: TaxRegime, registration: TaxIdType, customers: string, invoice_requirements: string}|null */
     public static function forCountry(string $country): ?array
     {
         foreach (self::all() as $key => $entry) {

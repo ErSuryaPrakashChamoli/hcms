@@ -15,7 +15,7 @@ use RuntimeException;
  * billing period and freezes the quantity evidence it was priced from. Never changes.
  */
 #[Fillable(['invoice_id', 'line_no', 'description', 'tax_category', 'quantity', 'unit_amount_minor', 'amount_minor', 'currency',
-    'plan_price_version_id', 'plan_version_id', 'period_start', 'period_end', 'billing_period_id', 'days_billed', 'days_in_period', 'quantity_evidence'])]
+    'plan_price_version_id', 'negotiated_price_version_id', 'plan_version_id', 'period_start', 'period_end', 'billing_period_id', 'days_billed', 'days_in_period', 'quantity_evidence'])]
 class InvoiceLine extends Model
 {
     use BelongsToTenant;

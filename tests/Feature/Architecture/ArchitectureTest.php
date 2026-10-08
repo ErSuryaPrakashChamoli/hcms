@@ -4,6 +4,13 @@ use App\Domain\Attendance\Contracts\LeaveDayResolver;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Audit\Models\AuditEventChange;
+use App\Domain\Billing\Models\BillingMarket;
+use App\Domain\Billing\Models\ConfigurationVersion;
+use App\Domain\Billing\Models\FinancialApproval;
+use App\Domain\Billing\Models\InvoiceNumberSeries;
+use App\Domain\Billing\Models\PlanPrice;
+use App\Domain\Billing\Models\PlanPriceVersion;
+use App\Domain\Billing\Models\SupplierProfile;
 use App\Domain\Communication\Models\AnnouncementRead;
 use App\Domain\Compliance\Models\ComplianceEvidenceDocument;
 use App\Domain\Compliance\Models\ComplianceRule;
@@ -23,8 +30,10 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Knowledge\Models\ArticleRead;
 use App\Domain\Learning\Models\LearningInstructor;
 use App\Domain\Leave\Services\AttendanceLeaveDayResolver;
+use App\Domain\Payments\Models\PaymentProviderEvent;
 use App\Domain\People\Models\Person;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Tax\Models\TaxRule;
 use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\Pages\PeopleListRecords;
@@ -86,12 +95,15 @@ it('scopes every domain model to a tenant except the documented platform-level m
         // SaaS.7: Markedge's billing catalogue (markets, prices and their versions, selling entities, tax rules, invoice
         // number series) and verified payment-provider events (they arrive without a tenant; one is resolved from a verified
         // reference into resolved_tenant_id). A tenant's billing profile, terms, invoices and payments are tenant-scoped.
-        \App\Domain\Billing\Models\BillingMarket::class, \App\Domain\Billing\Models\PlanPrice::class, \App\Domain\Billing\Models\PlanPriceVersion::class,
-        \App\Domain\Billing\Models\SupplierProfile::class, \App\Domain\Billing\Models\InvoiceNumberSeries::class, \App\Domain\Tax\Models\TaxRule::class,
-        \App\Domain\Payments\Models\PaymentProviderEvent::class,
+        BillingMarket::class, PlanPrice::class, PlanPriceVersion::class,
+        SupplierProfile::class, InvoiceNumberSeries::class, TaxRule::class,
+        PaymentProviderEvent::class,
         // SaaS.7 completion: maker-checker requests are Markedge's operators' records (price publication has no tenant);
         // subject_tenant_id names the tenant concerned, if any. Credit notes, refunds, periods, notices and TDS are tenant-scoped.
-        \App\Domain\Billing\Models\FinancialApproval::class,
+        FinancialApproval::class,
+        // SaaS.7 configuration: Markedge policy and statutory parameter versions are platform configuration (no tenant).
+        // A customer's negotiated prices are tenant-scoped.
+        ConfigurationVersion::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -195,6 +207,10 @@ it('audits every domain model except the documented append-only or derived table
         // after and the correlation key; the rows themselves are immutable or move forward only.
         'Billing\Models\BillingPeriod', 'Billing\Models\PriceChangeNotice', 'Billing\Models\FinancialApproval', 'Billing\Models\CreditNote',
         'Billing\Models\InvoiceTdsClaim', 'Payments\Models\Refund',
+        // SaaS.7 configuration: configuration versions and negotiated prices are audited explicitly by their services
+        // (CommercialConfiguration, NegotiatedPrices: maker, checker, reason, before and after, effective date); published
+        // versions are immutable.
+        'Billing\Models\ConfigurationVersion', 'Billing\Models\NegotiatedPrice', 'Billing\Models\NegotiatedPriceVersion',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -322,7 +338,9 @@ it('keeps the entitlement engine independent of subscriptions: subscriptions fee
         ->toBe(['app/Console/Commands/SettleSubscriptions.php',
             // SaaS.7: billing reads the subscription timeline (terms pin a price to the plan version in force) and never writes it.
             'app/Domain/Billing/Models/SubscriptionBillingTerm.php', 'app/Domain/Billing/Services/BillingPeriods.php', 'app/Domain/Billing/Services/BillingTerms.php',
-            'app/Domain/Billing/Services/Invoices.php', 'app/Domain/Billing/Services/PriceNotices.php',
+            'app/Domain/Billing/Services/Invoices.php',
+            // SaaS.7 configuration: a customer's negotiated price belongs to its subscription (read only).
+            'app/Domain/Billing/Services/NegotiatedPrices.php', 'app/Domain/Billing/Services/PriceNotices.php',
             'app/Filament/Pages/PlatformBillingAccountsPage.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php'])
         // One writer: only the guarded subscription service projects a subscription onto plan assignments.
         ->and(appFilesMatching('/->projectSubscription\(/'))->toBe(['app/Domain/Subscriptions/Services/CommercialSubscriptions.php']);
@@ -333,8 +351,8 @@ it('keeps billing, tax and payments out of authorisation, entitlements, HCM, pay
         fn (string $f) => preg_match('#^app/Domain/(Billing|Tax|Payments)/#', $f) !== 1));
     expect($users)->toBe(['app/Console/Commands/ProcessBillingProviderEvents.php', 'app/Console/Commands/RunBilling.php',
         'app/Filament/Pages/PlatformApprovalsPage.php', 'app/Filament/Pages/PlatformBillingAccountsPage.php',
-        'app/Filament/Pages/PlatformBillingCatalogPage.php', 'app/Filament/Pages/PlatformInvoicesPage.php', 'app/Filament/Pages/PlatformPaymentsPage.php',
-        'app/Filament/Pages/PlatformTaxSetupPage.php', 'app/Http/Controllers/Billing/ProviderWebhookController.php']);
+        'app/Filament/Pages/PlatformBillingCatalogPage.php', 'app/Filament/Pages/PlatformCommercialPoliciesPage.php', 'app/Filament/Pages/PlatformInvoicesPage.php',
+        'app/Filament/Pages/PlatformPaymentsPage.php', 'app/Filament/Pages/PlatformTaxSetupPage.php', 'app/Http/Controllers/Billing/ProviderWebhookController.php']);
     // The dependency runs Payments → Billing → Tax: tax is pure, billing never reaches into payments.
     expect(array_values(array_filter(appFilesMatching('/App.Domain.(Billing|Payments|Subscriptions|Entitlements|Payroll|People|Compliance)./'),
         fn (string $f) => str_starts_with($f, 'app/Domain/Tax/'))))->toBe([])

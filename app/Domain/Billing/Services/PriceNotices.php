@@ -4,6 +4,7 @@ namespace App\Domain\Billing\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Billing\Enums\BillingInterval;
+use App\Domain\Billing\Enums\ConfigurationKey;
 use App\Domain\Billing\Models\PlanPrice;
 use App\Domain\Billing\Models\PlanPriceVersion;
 use App\Domain\Billing\Models\PriceChangeNotice;
@@ -22,15 +23,13 @@ use RuntimeException;
 
 /**
  * SaaS.7 completion (B-15): existing subscribers keep their pinned price until the next period (monthly) or renewal
- * (annual) after a written notice of at least 30 days. A notice records when it was sent (the letter or e-mail
+ * (annual) after a written notice of at least the configured period (B-15: 30 days; a Markedge policy). A notice records when it was sent (the letter or e-mail
  * reference), the new price version and the start of the new terms; it changes nothing by itself. The re-pin
  * (BillingTerms::set) refuses an increase without one and marks it applied. pending() is the renewal re-pin
  * worklist: notices whose new terms are due and not pinned yet.
  */
 final class PriceNotices
 {
-    public const NOTICE_DAYS = 30;
-
     public function __construct(private readonly BillingAudit $audit, private readonly BillingCatalog $catalog, private readonly TenantContext $tenants) {}
 
     public function record(TenantSubscription $subscription, PlanPriceVersion $to, string $noticeDate, string $effectiveFrom, string $reason, User $actor,
@@ -42,8 +41,9 @@ final class PriceNotices
         if ($sent > $today) {
             throw new RuntimeException('Record a notice once it has been sent: the notice date is today or earlier.');
         }
-        if ($from < $today || Carbon::parse($sent)->addDays(self::NOTICE_DAYS)->toDateString() > $from) {
-            throw new RuntimeException('A price increase takes effect at least '.self::NOTICE_DAYS." days after the notice (from {$sent}: ".Carbon::parse($sent)->addDays(self::NOTICE_DAYS)->toDateString().' or later).');
+        $days = self::noticeDays($sent);
+        if ($from < $today || Carbon::parse($sent)->addDays($days)->toDateString() > $from) {
+            throw new RuntimeException("A price increase takes effect at least {$days} days after the notice (from {$sent}: ".Carbon::parse($sent)->addDays($days)->toDateString().' or later).');
         }
         $tenant = Tenant::query()->findOrFail($subscription->tenant_id);
 
@@ -52,6 +52,9 @@ final class PriceNotices
             $current = SubscriptionBillingTerm::query()->where(['subscription_id' => $subscription->id, 'status' => SubscriptionBillingTerm::ACTIVE])
                 ->whereDate('effective_from', '<=', $dayBefore)->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $dayBefore))->first()
                 ?? throw new RuntimeException('The subscription has no billing terms before that date: a first price needs no notice.');
+            if ($current->negotiated_price_version_id !== null) {
+                throw new RuntimeException('The subscriber pays a negotiated price: a change is agreed in its contract (a new deal version), not by a notice of a standard price.');
+            }
             $to = PlanPriceVersion::query()->findOrFail($to->id);
             $price = PlanPrice::query()->findOrFail($to->plan_price_id);
             if ($to->status !== VersionStatus::Published || $this->catalog->versionOnSale($price, $from)?->id !== $to->id) {
@@ -99,6 +102,12 @@ final class PriceNotices
     {
         return $this->tenants->runAs($tenant, fn () => PriceChangeNotice::query()->with('toVersion', 'fromVersion')->where('status', PriceChangeNotice::PENDING)
             ->orderBy('effective_from')->get());
+    }
+
+    /** The configured notice period (B-15: 30 days) in force on the day the notice is sent. */
+    public static function noticeDays(string $day): int
+    {
+        return (int) app(CommercialConfiguration::class)->required(ConfigurationKey::PriceIncreaseNoticeDays, '', $day);
     }
 
     private function day(string $day): string

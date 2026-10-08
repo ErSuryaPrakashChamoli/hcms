@@ -47,6 +47,13 @@
                     </div>
                 @endif
                 <p class="mt-1 text-gray-500 dark:text-gray-400">Rule: {{ $doc['rule'] }}</p>
+                @if (count($doc['legs'] ?? []) > 1)
+                    <ul class="mt-1 text-gray-500 dark:text-gray-400">@foreach ($doc['legs'] as $leg)<li>{{ ucfirst($leg['role']) }}: {{ $leg['regime'] }} · {{ $leg['treatment'] }} · {{ $leg['rule'] }}</li>@endforeach</ul>
+                @endif
+                @foreach ($doc['wording'] ?? [] as $wording)<p class="mt-1 font-medium">{{ $wording }}</p>@endforeach
+                @if ($doc['reporting'] ?? null)
+                    <p class="mt-1 text-gray-500 dark:text-gray-400">Value in {{ $doc['reporting']['currency'] }} (rate {{ $doc['reporting']['rate'] }} of {{ $doc['reporting']['date'] }}, {{ $doc['reporting']['source'] }}): taxable {{ $doc['reporting']['subtotal'] }} · tax {{ $doc['reporting']['tax'] }} · total {{ $doc['reporting']['total'] }}</p>
+                @endif
             </div>
             @if ($doc['regime_rows'] !== [])
                 <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2">

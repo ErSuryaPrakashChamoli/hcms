@@ -1,8 +1,9 @@
 <?php
 
-use App\Domain\Billing\Models\TenantBillingProfile;
 use App\Domain\Billing\Services\BillingProfiles;
+use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Entitlements\Models\TenantEntitlementProfile;
+use App\Domain\Organisation\Models\LegalEntity;
 use App\Domain\Tax\Enums\CustomerType;
 use App\Domain\Tax\Enums\TaxRegistration;
 use App\Support\Tenancy\TenantContext;
@@ -29,7 +30,7 @@ it('records B2B and B2C explicitly, with registration rules that match the custo
     // B-5 (approved): business customers only at launch. B2C stays representable behind the launch rule.
     expect(fn () => billingProfile($this->tenant, $this->market, $this->operator, ['customer_type' => 'consumer', 'tax_registration' => 'not_applicable', 'tax_id_type' => null, 'tax_id_value' => null]))
         ->toThrow(RuntimeException::class, 'businesses only');
-    config(['peopleos.billing.b2b_only' => false]);
+    policyDefault('billing.b2b_only', false);
     $b2c = billingProfile($this->tenant, $this->market, $this->operator, ['customer_type' => 'consumer', 'tax_registration' => 'not_applicable', 'tax_id_type' => null, 'tax_id_value' => null]);
     expect([$b2c->customer_type, $b2c->tax_registration, $b2c->tax_id_value, $b2c->version])->toBe([CustomerType::Consumer, TaxRegistration::NotApplicable, null, 2]);
 
@@ -72,5 +73,5 @@ it('keeps versions: the one in force is the latest started, invoices keep theirs
         ->and(fn () => app(TenantContext::class)->runAs($this->tenant, fn () => $first->fresh()->delete()))->toThrow(RuntimeException::class, 'never deleted')
         // A billing profile is not entitlement configuration and not an HR record.
         ->and(app(TenantContext::class)->runAs($this->tenant, fn () => TenantEntitlementProfile::query()->count()))->toBe(0)
-        ->and(app(TenantContext::class)->runAs($this->tenant, fn () => [\App\Domain\Organisation\Models\LegalEntity::query()->count(), \App\Domain\Compliance\Models\StatutoryRegistration::query()->count()]))->toBe([0, 0]);
+        ->and(app(TenantContext::class)->runAs($this->tenant, fn () => [LegalEntity::query()->count(), StatutoryRegistration::query()->count()]))->toBe([0, 0]);
 });

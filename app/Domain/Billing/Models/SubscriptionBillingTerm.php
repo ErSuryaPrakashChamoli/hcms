@@ -17,8 +17,11 @@ use RuntimeException;
  * assignments). It answers "what price applied to this subscription on that day?". Only its end may move earlier
  * (or a future row be cancelled); the pinned price, market, currency, committed quantity (annual terms) and start
  * never change.
+ *
+ * SaaS.7 configuration: the price is a standard price version or a customer's negotiated price version (exactly one;
+ * agreed terms take precedence over the catalogue, see BillingTerms).
  */
-#[Fillable(['subscription_id', 'plan_price_version_id', 'plan_price_id', 'plan_version_id', 'market_id', 'currency', 'interval', 'basis', 'committed_quantity', 'price_notice_id',
+#[Fillable(['subscription_id', 'plan_price_version_id', 'plan_price_id', 'negotiated_price_version_id', 'plan_version_id', 'market_id', 'currency', 'interval', 'basis', 'committed_quantity', 'price_notice_id',
     'effective_from', 'effective_to', 'status', 'reason', 'reference', 'created_by', 'closed_by', 'closed_at', 'close_reason', 'superseded_by'])]
 class SubscriptionBillingTerm extends Model
 {
@@ -28,8 +31,18 @@ class SubscriptionBillingTerm extends Model
 
     public const CANCELLED = 'cancelled';
 
+    public const STANDARD = 'standard';
+
+    public const NEGOTIATED = 'negotiated';
+
     protected static function booted(): void
     {
+        static::creating(function (self $term): void {
+            if (($term->plan_price_version_id === null) === ($term->negotiated_price_version_id === null)
+                || ($term->plan_price_version_id !== null) !== ($term->plan_price_id !== null)) {
+                throw new RuntimeException('Billing terms pin exactly one price: a standard price version or a negotiated one.');
+            }
+        });
         static::updating(function (self $term): void {
             $dirty = array_keys($term->getDirty());
             $earlier = ! $term->isDirty('effective_to') || ($term->effective_to !== null
@@ -53,6 +66,25 @@ class SubscriptionBillingTerm extends Model
     public function priceVersion(): BelongsTo
     {
         return $this->belongsTo(PlanPriceVersion::class, 'plan_price_version_id');
+    }
+
+    public function negotiatedVersion(): BelongsTo
+    {
+        return $this->belongsTo(NegotiatedPriceVersion::class, 'negotiated_price_version_id');
+    }
+
+    /** standard or negotiated */
+    public function source(): string
+    {
+        return $this->negotiated_price_version_id !== null ? self::NEGOTIATED : self::STANDARD;
+    }
+
+    /** The pinned version, whichever its source. */
+    public function pinnedVersion(): PlanPriceVersion|NegotiatedPriceVersion
+    {
+        return $this->negotiated_price_version_id !== null
+            ? NegotiatedPriceVersion::query()->findOrFail($this->negotiated_price_version_id)
+            : PlanPriceVersion::query()->findOrFail($this->plan_price_version_id);
     }
 
     public function subscription(): BelongsTo

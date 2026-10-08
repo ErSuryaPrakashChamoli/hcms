@@ -3,10 +3,12 @@
 namespace App\Domain\Payments\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Billing\Enums\ConfigurationKey;
 use App\Domain\Billing\Enums\InvoiceStatus;
 use App\Domain\Billing\Models\Invoice;
 use App\Domain\Billing\Models\InvoiceTdsClaim;
 use App\Domain\Billing\Services\BillingAudit;
+use App\Domain\Billing\Services\CommercialConfiguration;
 use App\Domain\Billing\Services\Invoices;
 use App\Domain\Identity\Models\User;
 use App\Domain\Platform\Models\Tenant;
@@ -24,7 +26,8 @@ use RuntimeException;
  * assumed or computed), optionally with its certificate reference. The amount due becomes the total less that TDS:
  * a payment of exactly the remainder settles the invoice (paid, or partially paid until the certificate is
  * recorded), including a payment already received and held as an amount_mismatch exception. A short payment is
- * never treated as TDS without this declaration. Only invoices of an Indian supplier to an Indian customer, in INR.
+ * never treated as TDS without this declaration. Only where the TDS policy allows it (B-11: an Indian supplier and
+ * customer, in INR); no withholding rate is configured or computed.
  */
 final class TdsSettlement
 {
@@ -44,8 +47,12 @@ final class TdsSettlement
                     if ($locked->status !== InvoiceStatus::Issued) {
                         throw new RuntimeException("TDS is declared on an unpaid issued invoice; {$locked->label()} is {$locked->status->value}.");
                     }
-                    if (($locked->snapshot['supplier']['country'] ?? null) !== 'IN' || ($locked->snapshot['customer']['country'] ?? null) !== 'IN' || $locked->currency->value !== 'INR') {
-                        throw new RuntimeException('Customer TDS applies to an INR invoice from an Indian supplier to an Indian customer.');
+                    // Where customers may deduct withholding is Markedge policy (B-11: India, INR), configurable.
+                    $where = collect((array) app(CommercialConfiguration::class)->required(ConfigurationKey::TdsJurisdictions));
+                    $country = $locked->snapshot['customer']['country'] ?? null;
+                    if ($country !== ($locked->snapshot['supplier']['country'] ?? null) || ! $where->contains(fn (array $j) => $j['country'] === $country && $j['currency'] === $locked->currency->value)) {
+                        throw new RuntimeException('Customer withholding (TDS) applies only where Markedge policy allows it: a supplier and customer in '
+                            .($where->map(fn (array $j) => "{$j['country']} ({$j['currency']})")->implode(', ') ?: 'no country').'.');
                     }
                     try {
                         $money = Money::parse($amount, $locked->currency);

@@ -3,6 +3,7 @@
 namespace App\Domain\Billing\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Billing\Enums\ConfigurationKey;
 use App\Domain\Billing\Models\BillingMarket;
 use App\Domain\Billing\Models\TenantBillingProfile;
 use App\Domain\Identity\Models\User;
@@ -26,7 +27,7 @@ use RuntimeException;
  * operating country. B2B or B2C is explicit. A tax identifier must be one its country issues; its format is checked
  * where a jurisdiction module can (India GSTIN), otherwise it is stored as "not validated". No profile is created
  * for any tenant by SaaS.7: a tenant without one simply cannot be invoiced. Launch rule (B-5): business customers
- * only (config peopleos.billing.b2b_only).
+ * only (the B2B policy, configurable on Platform > Commercial policies).
  */
 final class BillingProfiles
 {
@@ -93,7 +94,7 @@ final class BillingProfiles
     {
         $type = CustomerType::tryFrom((string) ($data['customer_type'] ?? '')) ?? throw new RuntimeException('Say whether the customer is a business (B2B) or a consumer (B2C).');
         // B-5 (approved): PeopleOS is sold to businesses only at launch. B2C stays representable for a later decision.
-        if ($type === CustomerType::Consumer && (bool) config('peopleos.billing.b2b_only', true)) {
+        if ($type === CustomerType::Consumer && app(CommercialConfiguration::class)->required(ConfigurationKey::B2bOnly) === true) {
             throw new RuntimeException('PeopleOS is sold to businesses only (B2B): a consumer billing profile cannot be recorded.');
         }
         $registration = TaxRegistration::tryFrom((string) ($data['tax_registration'] ?? '')) ?? throw new RuntimeException('Say whether the customer is registered for tax.');

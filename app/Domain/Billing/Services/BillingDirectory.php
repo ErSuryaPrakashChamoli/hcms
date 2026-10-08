@@ -2,6 +2,8 @@
 
 namespace App\Domain\Billing\Services;
 
+use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Billing\Enums\InvoiceStatus;
 use App\Domain\Billing\Models\Invoice;
 use App\Domain\Billing\Models\TenantBillingProfile;
@@ -45,5 +47,23 @@ final class BillingDirectory
         $names = Tenant::query()->whereKey($invoices->pluck('tenant_id')->unique()->all())->pluck('name', 'id');
 
         return $invoices->each(fn (Invoice $i) => $i->setAttribute('tenant_name', $names[$i->tenant_id] ?? "#{$i->tenant_id}"));
+    }
+
+    /**
+     * The platform-chain trail of commercial configuration changes, newest first: who proposed, approved, rejected or
+     * loaded what (prices, deals, tax rules, policies, the statutory dataset), why, with the values before and after.
+     *
+     * @return Collection<int, AuditEvent>
+     */
+    public function configurationTrail(int $limit = 100): Collection
+    {
+        $actions = [AuditAction::ConfigurationProposed, AuditAction::ConfigurationApproved, AuditAction::StatutoryDatasetLoaded, AuditAction::StatutoryDatasetActivated,
+            AuditAction::TaxRuleDrafted, AuditAction::TaxRuleSubmitted, AuditAction::TaxRuleVerified, AuditAction::TaxRuleRejected, AuditAction::TaxRuleRetired,
+            AuditAction::PriceVersionDrafted, AuditAction::PriceVersionPublished, AuditAction::PriceVersionRetired, AuditAction::NegotiatedPriceCreated,
+            AuditAction::NegotiatedPriceVersionDrafted, AuditAction::NegotiatedPriceVersionPublished, AuditAction::NegotiatedPriceVersionRetired,
+            AuditAction::ApprovalRequested, AuditAction::ApprovalApproved, AuditAction::ApprovalRejected, AuditAction::ApprovalWithdrawn];
+
+        return AuditEvent::query()->withoutTenancy()->whereNull('tenant_id')->whereIn('action', array_map(fn (AuditAction $a) => $a->value, $actions))
+            ->with('fieldChanges', 'actor')->orderByDesc('id')->limit($limit)->get();
     }
 }

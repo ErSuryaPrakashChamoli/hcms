@@ -7,8 +7,10 @@ use App\Domain\Billing\Models\InvoiceNumberSeries;
 use App\Domain\Billing\Models\InvoiceTaxLine;
 use App\Domain\Billing\Services\InvoicePresentation;
 use App\Domain\Billing\Services\Invoices;
+use App\Domain\Billing\Services\InvoiceSeries;
 use App\Domain\Billing\Services\SupplierProfiles;
 use App\Domain\Billing\Support\InvoiceLineInput;
+use App\Domain\Platform\Models\Tenant;
 use App\Domain\Tax\Enums\TaxRegime;
 use App\Domain\Tax\Services\TaxRules;
 use App\Support\Money\Money;
@@ -96,7 +98,7 @@ it('refuses to issue when anything needed is missing, and gives the number back'
     app(TaxRules::class)->retire($this->setup['rule'], 'Rule withdrawn', $this->setup['verifier']);
     expect(fn () => $this->invoices->issue($draft, null, 'No rule', $this->operator))->toThrow(RuntimeException::class, 'No verified IN_GST rule');
     verifiedIndiaRule($this->operator, $this->setup['verifier']);
-    app(\App\Domain\Billing\Services\InvoiceSeries::class)->close(InvoiceNumberSeries::query()->sole(), 'Year closed', $this->operator);
+    app(InvoiceSeries::class)->close(InvoiceNumberSeries::query()->sole(), 'Year closed', $this->operator);
     expect(fn () => $this->invoices->issue($draft, null, 'No series', $this->operator))->toThrow(RuntimeException::class, 'No open invoice number series');
     $other = billingMarket($this->operator, 'IN-TWO', 'INR', 'MARKEDGE-IN-TEST', 'en_IN');
     $elsewhere = draftInvoice($this->tenant, $other, $this->operator);
@@ -156,7 +158,7 @@ it('keeps each invoice in its currency, with generic tax lines for VAT and sales
     $de = provisionTenant('German Customer');
     billingProfile($de, $eur, $operator, ['country' => 'DE', 'subdivision' => null, 'tax_id_type' => 'EU_VAT_ID', 'tax_id_value' => 'DE000000000']);
     $us = provisionTenant('Texas Customer');
-    config(['peopleos.billing.b2b_only' => false]);   // B2C stays representable (B-5 launches B2B only)
+    policyDefault('billing.b2b_only', false);   // B2C stays representable (B-5 launches B2B only)
     billingProfile($us, $usd, $operator, ['customer_type' => 'consumer', 'country' => 'US', 'subdivision' => 'US-TX', 'tax_registration' => 'not_applicable', 'tax_id_type' => null, 'tax_id_value' => null]);
 
     $gbInvoice = $this->invoices->issue(draftInvoice($uk, $gbp, $operator, ['1250.00']), null, 'UK invoice', $operator);
@@ -171,7 +173,7 @@ it('keeps each invoice in its currency, with generic tax lines for VAT and sales
         ->and($present($deInvoice)['treatment'])->toBe('Reverse charge')
         ->and([$usInvoice->currency->value, $usInvoice->tax_minor, $present($usInvoice)['totals']['total']])->toBe(['USD', 625, '$106.24'])
         ->and($present($usInvoice)['regime_rows'])->toBe([])                                          // no GST rows on a US invoice
-        ->and(collect([$gbInvoice, $usInvoice])->every(fn ($i) => inTenant(\App\Domain\Platform\Models\Tenant::query()->find($i->tenant_id), fn () => InvoiceTaxLine::query()->where('invoice_id', $i->id)->pluck('tax_type')->intersect(['CGST', 'SGST', 'IGST', 'UTGST'])->isEmpty())))->toBeTrue();
+        ->and(collect([$gbInvoice, $usInvoice])->every(fn ($i) => inTenant(Tenant::query()->find($i->tenant_id), fn () => InvoiceTaxLine::query()->where('invoice_id', $i->id)->pluck('tax_type')->intersect(['CGST', 'SGST', 'IGST', 'UTGST'])->isEmpty())))->toBeTrue();
 
     // An Indian invoice carries the GST rows; amounts are shown in its own locale.
     billingProfile($this->tenant, $this->setup['market'], $operator);

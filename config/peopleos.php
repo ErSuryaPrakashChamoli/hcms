@@ -669,9 +669,6 @@ return [
         // Provider webhooks: largest accepted body and requests per minute per IP.
         'webhook_max_bytes' => max(1024, (int) env('PEOPLEOS_BILLING_WEBHOOK_MAX_BYTES', 65536)),
         'webhook_rate_per_minute' => max(10, (int) env('PEOPLEOS_BILLING_WEBHOOK_RATE', 120)),
-        // SaaS.7 completion (approved decisions). B-5: business customers only at launch. B-11: net 15 from the issue date.
-        'b2b_only' => (bool) env('PEOPLEOS_BILLING_B2B_ONLY', true),
-        'payment_terms_days' => max(0, (int) env('PEOPLEOS_BILLING_PAYMENT_TERMS_DAYS', 15)),
         // The billing run (drafts only; issue stays an operator step). Off unless enabled: no price exists until B-4.
         'run_enabled' => (bool) env('PEOPLEOS_BILLING_RUN_ENABLED', false),
         // B-10: Razorpay, TEST MODE ONLY. Enabled only with rzp_test_ keys and never in production (ProviderRegistry);
@@ -684,6 +681,27 @@ return [
             'base_url' => 'https://api.razorpay.com/v1',
             'timeout_seconds' => 15,
             'currencies' => array_values(array_filter(array_map('trim', explode(',', (string) env('PEOPLEOS_RAZORPAY_CURRENCIES', 'INR,USD,GBP,EUR,AED'))))),
+        ],
+    ],
+
+    /*
+    | SaaS.7 commercial configuration: the SHIPPED DEFAULTS of Markedge's commercial policy (approved decisions). They
+    | apply until an operator proposes and a second operator approves a version on Platform > Commercial policies, which
+    | then applies from its effective date (no deployment). Statutory values are not here: they ship in the statutory
+    | dataset (database/data/statutory) and become usable only once verified. Prices and customer deals are never config.
+    */
+    'commercial' => [
+        'policy_defaults' => [
+            'billing.payment_terms_days' => 15,          // B-11: net 15 from the issue date
+            'billing.b2b_only' => true,                  // B-5: business customers only at launch
+            'billing.price_increase_notice_days' => 30,  // B-15: written notice before an increase for an existing subscriber
+            'billing.prices_include_tax' => false,       // B-5: prices are tax-exclusive
+            'billing.proration_rounding' => 'half_up',   // B-3: a prorated line is rounded once, half up
+            'settlement.tds_jurisdictions' => [['country' => 'IN', 'currency' => 'INR']], // B-11: customer TDS (India)
+        ],
+        'statutory_dataset' => [
+            'path' => 'database/data/statutory',
+            'current' => '2026.10',
         ],
     ],
 

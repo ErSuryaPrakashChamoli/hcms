@@ -2,9 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Billing\Enums\ApprovalAction;
+use App\Domain\Billing\Enums\ApprovalStatus;
 use App\Domain\Billing\Enums\BillingInterval;
 use App\Domain\Billing\Enums\PricingBasis;
 use App\Domain\Billing\Models\BillingMarket;
+use App\Domain\Billing\Models\FinancialApproval;
 use App\Domain\Billing\Models\PlanPrice;
 use App\Domain\Billing\Models\PlanPriceVersion;
 use App\Domain\Billing\Services\BillingCatalog;
@@ -31,6 +34,10 @@ use UnitEnum;
  * prices per plan version × market × interval with their versions. Every change goes through BillingCatalog
  * (operator-only, reasoned, audited); published price versions never change. No market or price exists until an
  * operator creates it: amounts, markets and intervals are business decisions.
+ *
+ * SaaS.7 configuration: the price matrix (plan version × market × interval) shows each combination as CURRENT,
+ * SCHEDULED or NO PRICE CONFIGURED, and each version its state (draft, pending approval, scheduled, current,
+ * superseded, retired) with the dates it is on sale. Customer-specific prices are on Billing accounts.
  */
 class PlatformBillingCatalogPage extends Page
 {
@@ -49,6 +56,8 @@ class PlatformBillingCatalogPage extends Page
     protected string $view = 'filament.pages.platform-billing-catalog';
 
     private ?Collection $prices = null;
+
+    private ?array $pending = null;
 
     public static function canAccess(): bool
     {
@@ -91,6 +100,32 @@ class PlatformBillingCatalogPage extends Page
             ->sortByDesc(fn (PlanPriceVersion $v) => $v->effective_from->toDateString())->first();
 
         return $latest?->status === VersionStatus::Published ? $latest : null;
+    }
+
+    /** The price matrix today: every published plan version × market × interval (CURRENT, SCHEDULED or NO_PRICE_CONFIGURED). */
+    public function matrix(): array
+    {
+        return app(BillingCatalog::class)->matrix($this->today());
+    }
+
+    /** DRAFT, PENDING_APPROVAL, SCHEDULED, CURRENT, SUPERSEDED or RETIRED today. */
+    public function versionState(PlanPriceVersion $version): string
+    {
+        $this->pending ??= FinancialApproval::query()->where(['action' => ApprovalAction::PricePublication, 'status' => ApprovalStatus::Pending])->pluck('subject_id')->all();
+
+        return app(BillingCatalog::class)->versionState($version, $this->today(), in_array($version->id, $this->pending, false));
+    }
+
+    public function versionEnds(PlanPriceVersion $version): ?string
+    {
+        return $version->status === VersionStatus::Published ? app(BillingCatalog::class)->versionEnds($version) : null;
+    }
+
+    public static function stateColor(string $state): string
+    {
+        return match ($state) {
+            'CURRENT' => 'success', 'SCHEDULED', 'PENDING_APPROVAL' => 'warning', 'NO_PRICE_CONFIGURED', 'EXPIRED' => 'danger', default => 'gray',
+        };
     }
 
     protected function getHeaderActions(): array
@@ -177,6 +212,7 @@ class PlatformBillingCatalogPage extends Page
             Notification::make()->danger()->title($e->getMessage())->send();
         } finally {
             $this->prices = null;
+            $this->pending = null;
         }
     }
 }

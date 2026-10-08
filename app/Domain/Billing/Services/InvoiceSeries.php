@@ -3,10 +3,10 @@
 namespace App\Domain\Billing\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Billing\Enums\ConfigurationKey;
 use App\Domain\Billing\Models\InvoiceNumberSeries;
 use App\Domain\Billing\Models\SupplierProfile;
 use App\Domain\Identity\Models\User;
-use App\Domain\Tax\Services\JurisdictionCatalogue;
 use App\Support\Commercial\OperatorChange;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +15,8 @@ use RuntimeException;
 /**
  * SaaS.7: invoice numbering. A series belongs to one Markedge entity and document type, with a prefix and an
  * explicit date window chosen by finance (e.g. a financial year; the format is decision B-8). Open series never
- * overlap. Numbers are allocated inside the issuing transaction under the series row lock (never max + 1), so
+ * overlap. A statutory maximum number length comes from the configured, verified statutory parameter of the entity's
+ * country (none is enforced where none is configured). Numbers are allocated inside the issuing transaction under the series row lock (never max + 1), so
  * they are unique, consecutive and gap-free: a rolled-back issue gives its number back. A jurisdiction's maximum
  * length (India: 16 characters, pending tax review) is enforced at creation and at allocation.
  *
@@ -49,7 +50,8 @@ final class InvoiceSeries
         }
         $supplier = SupplierProfile::query()->where('entity_code', $supplierEntity)->orderByDesc('version')->first()
             ?? throw new RuntimeException("Record the supplier profile of {$supplierEntity} first: numbering rules follow its jurisdiction.");
-        $maxLength = JurisdictionCatalogue::forCountry($supplier->country)['invoice_number_max_length'] ?? null;
+        // A statutory value (India: CGST Rules rule 46(b), 16 characters), configured and verified as data, not a constant.
+        $maxLength = app(CommercialConfiguration::class)->value(ConfigurationKey::InvoiceNumberMaxLength, $supplier->country, $from);
         if ($maxLength !== null && strlen($prefix) + $padding > $maxLength) {
             throw new RuntimeException("An invoice number of {$supplier->country} has at most {$maxLength} characters; this prefix and padding would exceed it.");
         }

@@ -246,6 +246,7 @@ enum AuditAction: string
     case TaxRuleSubmitted = 'TAX_RULE_SUBMITTED';
     case TaxRuleVerified = 'TAX_RULE_VERIFIED';
     case TaxRuleRetired = 'TAX_RULE_RETIRED';
+    case TaxRuleRejected = 'TAX_RULE_REJECTED';
     case BillingProfileRecorded = 'BILLING_PROFILE_RECORDED';
     case BillingTermsSet = 'BILLING_TERMS_SET';
     case InvoiceDrafted = 'INVOICE_DRAFTED';
@@ -279,6 +280,15 @@ enum AuditAction: string
     case RefundSucceeded = 'REFUND_SUCCEEDED';
     case RefundFailed = 'REFUND_FAILED';
     case PaymentSettlementRecorded = 'PAYMENT_SETTLEMENT_RECORDED';
+    // SaaS.7 configuration: negotiated prices, policies and statutory parameters, the statutory dataset.
+    case NegotiatedPriceCreated = 'NEGOTIATED_PRICE_CREATED';
+    case NegotiatedPriceVersionDrafted = 'NEGOTIATED_PRICE_VERSION_DRAFTED';
+    case NegotiatedPriceVersionPublished = 'NEGOTIATED_PRICE_VERSION_PUBLISHED';
+    case NegotiatedPriceVersionRetired = 'NEGOTIATED_PRICE_VERSION_RETIRED';
+    case ConfigurationProposed = 'CONFIGURATION_PROPOSED';
+    case ConfigurationApproved = 'CONFIGURATION_APPROVED';
+    case StatutoryDatasetLoaded = 'STATUTORY_DATASET_LOADED';
+    case StatutoryDatasetActivated = 'STATUTORY_DATASET_ACTIVATED';
 
     public function label(): string
     {
