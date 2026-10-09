@@ -73,7 +73,7 @@ final class TenantDeletions
                 ]));
             });
         } catch (UniqueConstraintViolationException) {
-            throw new LifecycleRefused('Another deletion of this tenant is already planned, approved, running or failed.');
+            throw new LifecycleRefused('A deletion of this tenant is already planned, approved, running or failed.');
         }
         $this->audit->record(AuditAction::DeletionPlanned, $tenant, $deletion, $reason, $actor, ['deletion' => $deletion->reference, 'plan_sha256' => $deletion->plan_sha256,
             'eligible' => $plan['eligible'], 'final' => $plan['final']]);

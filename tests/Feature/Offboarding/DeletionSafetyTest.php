@@ -74,7 +74,7 @@ it('needs a second operator, and only for the plan as it was made', function () 
     $deletion = $this->deletions->request($case->fresh(), $this->maker, 'Retention ended');
 
     expect(fn () => $this->deletions->approve($deletion, $this->maker, 'Approving my own'))->toThrow(RuntimeException::class, 'other than the one who planned it')
-        ->and(fn () => $this->deletions->request($case->fresh(), $this->checker, 'A second plan'))->toThrow(RuntimeException::class, 'Another deletion');
+        ->and(fn () => $this->deletions->request($case->fresh(), $this->checker, 'A second plan'))->toThrow(RuntimeException::class, 'is already planned, approved, running or failed');
 
     // The data changes after the plan (a hold now keeps payroll): the plan no longer holds, and the approval is refused.
     app(LegalHolds::class)->place($this->tenant, ['payroll'], 'Audit by the regulator (fictional)', null, null, $this->maker);
