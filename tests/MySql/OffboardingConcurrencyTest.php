@@ -14,6 +14,7 @@ use App\Domain\Offboarding\Services\LegalHolds;
 use App\Domain\Offboarding\Services\TenantDeletions;
 use App\Domain\Offboarding\Services\TenantExports;
 use App\Domain\Offboarding\Services\TenantOffboardings;
+use App\Domain\Offboarding\Services\TenantRetentionTerms;
 use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Subscriptions\Services\CommercialSubscriptions;
@@ -559,4 +560,27 @@ it('11. resumes a partial deletion once when two operators retry and the schedul
         ->and(($this->platformEvents)('DELETION_STARTED', $this->tenant))->toBe(1)
         ->and(($this->platformEvents)('DELETION_CERTIFIED', $this->tenant))->toBe(1)
         ->and(employeesOf($this->tenant))->toBe(0);
+});
+
+it('12. decides a contractual retention term once when an approval, a rejection and a withdrawal arrive at once', function () {
+    $term = app(TenantRetentionTerms::class)->propose($this->tenant, '*', 12, null, 'MSA 2026 cl. 14.2 (fictional)', today()->toDateString(), 'Contract requires it (race)', $this->maker);
+    $second = User::factory()->platformAdmin()->create();
+
+    // Three different outcomes, so a missing "still pending" condition would let more than one write change the row.
+    $results = race([
+        fn () => app(TenantRetentionTerms::class)->approve(app(TenantRetentionTerms::class)->find($term->id), User::query()->findOrFail($this->checker->id), 'Contract checked (race)'),
+        fn () => app(TenantRetentionTerms::class)->reject(app(TenantRetentionTerms::class)->find($term->id), User::query()->findOrFail($second->id), 'Wrong clause (race)'),
+        fn () => app(TenantRetentionTerms::class)->withdraw(app(TenantRetentionTerms::class)->find($term->id), User::query()->findOrFail($this->maker->id), 'Proposed in error (race)'),
+    ]);
+
+    $term = app(TenantRetentionTerms::class)->find($term->id);
+    $winner = collect($results)->search('ok');
+    $events = collect(['RETENTION_TERM_APPROVED', 'RETENTION_TERM_REJECTED', 'RETENTION_TERM_WITHDRAWN'])
+        ->mapWithKeys(fn ($action) => [$action => ($this->platformEvents)($action, $this->tenant)]);
+    expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
+        ->and(collect($results)->reject(fn ($r) => $r === 'ok')->values()->all())->toBe(['This term is no longer pending.', 'This term is no longer pending.'])
+        ->and($term->status->value)->toBe(['approved', 'rejected', 'withdrawn'][$winner])
+        ->and((int) $term->decided_by)->toBe([$this->checker->id, $second->id, $this->maker->id][$winner])
+        ->and($events->sum())->toBe(1)
+        ->and($events->values()->all()[$winner])->toBe(1);
 });
