@@ -61,7 +61,9 @@ The race design found and fixed real defects before any deployment:
 
 ## 3. Ending Commit
 
-⟨ENDING⟩. The SaaS.9 commits are listed in §28.
+`65b62cd` (docs: SaaS.9 discovery and scope, architecture, runbooks, ADR-0081..0096, invariants 88-101, evidence, final
+report), followed only by the commit recording this ending commit. 22 SaaS.9 commits in all; the code and test commits
+are listed in §28. Not pushed, merged or deployed.
 
 ## 4. Discovery Findings
 
@@ -479,7 +481,7 @@ fixed here (owner rotation required), and it is not hidden.
   disabled in both and was not run.
 - **Rollback** is safe only while no tenant is `closed` or `deleted`: reopen them first. A deletion cannot be undone.
 
-SaaS.9 commits, in order (plus the documentation commit that ends the phase, §3):
+SaaS.9 code and test commits, in order (then `65b62cd`, documentation, and the commit recording it, §3):
 
 - `60b7aae` feat: SaaS.9 exit schema, closed/deleted tenant states and the data inventory
 - `5641c83` feat: SaaS.9 retention policies, legal holds and the offboarding case
