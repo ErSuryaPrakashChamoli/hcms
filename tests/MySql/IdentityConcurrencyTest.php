@@ -18,8 +18,10 @@ use App\Domain\Platform\Services\TenantSuspensions;
 use App\Support\Tenancy\TenantContext;
 use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Facades\Filament;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
@@ -133,9 +135,37 @@ it('5. runs the action once when two requests re-use the same expired Idempotenc
     ApiIdempotencyKey::query()->update(['expires_at' => now()->subMinute()]);
     $again = ['person' => ['first_name' => 'Reused', 'last_name' => 'Key']] + $payload;
 
-    $post = fn () => tap($this->withHeaders(['X-Api-Key' => $key, 'Idempotency-Key' => 'race-expired-01'])->postJson('/api/v1/employees', $again),
-        fn ($r) => in_array($r->status(), [201, 409], true) || throw new RuntimeException('status '.$r->status().' '.$r->content()));
-    $results = race([$post, $post], slow: ['eloquent.creating: '.Employee::class]);
+    // Force the interleaving the full suite once hit under load: B's claim fails on the expired row, A deletes that row,
+    // and only then does B read it, finding nothing (SaaS.9 closure: that answered 422 "used for a different request").
+    // A pauses before its delete (so B's claim meets the row), raises a flag after it and sleeps before claiming again; B's
+    // read waits for the flag. Files, not queries, carry the signal.
+    $flag = tempnam(sys_get_temp_dir(), 'idem');
+    unlink($flag);
+    $post = fn (string $role) => function () use ($key, $again, $role, $flag) {
+        if ($role === 'deleter') {
+            DB::beforeExecuting(fn (string $sql) => str_starts_with($sql, 'delete from `api_idempotency_keys`') ? usleep(300_000) : null);
+            Event::listen(QueryExecuted::class, function (QueryExecuted $q) use ($flag) {
+                if (str_starts_with($q->sql, 'delete from `api_idempotency_keys`')) {
+                    touch($flag);
+                    usleep(800_000);
+                }
+            });
+        } else {
+            usleep(50_000); // after the deleter has read the expired row, before it deletes it
+            DB::beforeExecuting(function (string $sql) use ($flag) {
+                if (str_starts_with($sql, 'select') && str_contains($sql, '`api_idempotency_keys`')) {
+                    $until = microtime(true) + 10;
+                    while (! file_exists($flag) && microtime(true) < $until) {
+                        usleep(10_000);
+                    }
+                }
+            });
+        }
+        tap($this->withHeaders(['X-Api-Key' => $key, 'Idempotency-Key' => 'race-expired-01'])->postJson('/api/v1/employees', $again),
+            fn ($r) => in_array($r->status(), [201, 409], true) || throw new RuntimeException('status '.$r->status().' '.$r->content()));
+    };
+    $results = race([$post('deleter'), $post('reader')], slow: ['eloquent.creating: '.Employee::class]);
+    @unlink($flag);
 
     expect($results)->toBe(['ok', 'ok'])
         ->and(app(TenantContext::class)->runAs($this->tenant, fn () => Employee::query()->withoutGlobalScopes()->where('tenant_id', $this->tenant->id)->whereHas('person', fn ($q) => $q->where('first_name', 'Reused'))->count()))->toBe(1);

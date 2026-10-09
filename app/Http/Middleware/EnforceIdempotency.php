@@ -59,7 +59,18 @@ class EnforceIdempotency
 
                 return $this->complete($record, $next($request));
             }
-            if ($existing === null || ! hash_equals($existing->request_sha256, $fingerprint)) {
+            if ($existing === null) {
+                // The row that refused this claim is already gone: a concurrent request just deleted it as expired and
+                // is re-claiming it. Claim once more; losing again means that request is in flight (409), never 422.
+                try {
+                    $record = $claim();
+                } catch (UniqueConstraintViolationException) {
+                    return response()->json(['message' => 'A request with this Idempotency-Key is still being processed.', 'code' => 'idempotency_in_progress'], 409);
+                }
+
+                return $this->complete($record, $next($request));
+            }
+            if (! hash_equals($existing->request_sha256, $fingerprint)) {
                 return response()->json(['message' => 'This Idempotency-Key was already used for a different request.', 'code' => 'idempotency_key_reused'], 422);
             }
             if ($existing->status !== 'completed') {
