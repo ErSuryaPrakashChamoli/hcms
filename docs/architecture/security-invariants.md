@@ -349,6 +349,23 @@ SaaS.9 closure additions:
 107. **No credential value is ever printed, logged, committed or written into documentation**; credential checks report
      yes/no only.
 
+SaaS.10 additions (self-service signup):
+
+108. **Signup never creates or names a platform operator**, and the first administrator of a signup tenant holds the
+     explicit Account Owner role, never `*`.
+109. **No tenant user grants Tenant Super Admin, or writes permissions beyond their own into a role, unless they are a
+     Tenant Super Admin**; platform operators and the console only otherwise (user form, role editor, blueprint import,
+     SSO default roles).
+110. **One application provisions at most one tenant**: a fenced claim, a token re-checked under the row lock, and unique
+     tenant link, slug and owner address.
+111. **Provisioning commits tenant, owner and trial together or not at all; e-mail goes out only after the commit.**
+112. **Nothing an applicant sends chooses a tenant, a slug, a status, a plan version or a trial length**: all are
+     derived on the server from approved configuration.
+113. **Signup answers the same for every address**, in the same time; account existence is told only to the mailbox.
+114. **A signup link is stored as its hash, works once, expires, and is consumed only by a POST**; consuming it
+     regenerates the session id.
+115. **Signup never starts a paid subscription**: only the accepted offer's trial, through `startSignupTrial`.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
