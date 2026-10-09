@@ -19,6 +19,7 @@ use App\Domain\Signup\Services\SignupMaintenance;
 use App\Domain\Signup\Services\SignupProvisioning;
 use App\Domain\Signup\Services\SignupReview;
 use App\Domain\Signup\Support\SignupRefused;
+use App\Domain\Signup\Support\StaleClaim;
 use App\Domain\Subscriptions\Models\SubscriptionPeriod;
 use App\Domain\Subscriptions\Models\TenantSubscription;
 use App\Domain\Subscriptions\Services\CommercialSubscriptions;
@@ -27,6 +28,7 @@ use App\Filament\Pages\PlatformSignupsPage;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Notifications\ChannelManager;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
@@ -324,4 +326,18 @@ it('never writes a link, token or password into the logs during the whole flow',
         ->and($all)->not->toContain($token)
         ->and($all)->not->toContain('priya@acme-signup.test')
         ->and($all)->not->toContain('Passphrase');
+});
+
+it('stops inside the transaction when the claim token is no longer current (a newer run owns it)', function () {
+    $application = signupSubmitted();
+    SignupApplication::query()->whereKey($application->id)->update(['status' => 'provisioning', 'claim_token' => 'B'.str_repeat('0', 25), 'claimed_at' => now(), 'attempts' => 1]);
+    $core = Closure::bind(fn (int $id, string $token) => $this->core($id, $token, null), app(SignupProvisioning::class), SignupProvisioning::class);
+    $created = 0;
+    Event::listen('eloquent.creating: '.Tenant::class, function () use (&$created) {
+        $created++;
+    });
+
+    expect(fn () => DB::transaction(fn () => $core($application->id, 'A'.str_repeat('0', 25))))->toThrow(StaleClaim::class);
+    // It stops before doing any provisioning work, not only before committing it.
+    expect($created)->toBe(0)->and(Tenant::query()->count())->toBe(0)->and($application->fresh()->status)->toBe(SignupStatus::Provisioning);
 });

@@ -15,6 +15,7 @@ use App\Filament\Resources\SsoConnections\Pages\CreateSsoConnection;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Support\Tenancy\TenantContext;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 /*
@@ -205,7 +206,9 @@ it('never makes Tenant Super Admin the role SSO gives new users, in the form or 
     actAsTenant(null);
     $user = app(Sso::class)->resolveUser($connection->fresh(), ['sub' => 'new-1', 'email' => 'new.person@example.test', 'name' => 'New Person', 'email_verified' => true]);
 
-    expect($user->roleSlugs())->toBe([]);
+    // Read inside the tenant (roles are tenant-scoped) and straight from the pivot, so an attached role cannot hide.
+    expect(app(TenantContext::class)->runAs($this->tenant, fn () => $user->roleSlugs()))->toBe([])
+        ->and(DB::table('role_user')->where('user_id', $user->id)->count())->toBe(0);
 });
 
 it('keeps the console unrestricted (provisioning, seeders, permission sync) and a signed-out web request restricted', function () {
