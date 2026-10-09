@@ -1,6 +1,6 @@
 {
  "base": "http://127.0.0.1:8095",
- "ran_at": "2026-10-09T08:00:59.592Z",
+ "ran_at": "2026-10-09T09:22:36.914Z",
  "checks": [
   {
    "name": "operator signs in (password + TOTP)",
@@ -13,7 +13,7 @@
   {
    "name": "Fabrikam: closed case, delivered export, hold, eligibility reasons",
    "ok": true,
-   "detail": "{\"hold\":true,\"matter\":true,\"delivered\":true,\"plan\":true}"
+   "detail": "{\"hold\":true,\"matter\":true,\"delivered\":true,\"plan\":true,\"contractSection\":true,\"conflict\":true,\"contract\":true}"
   },
   {
    "name": "maker is not offered approval of their own plan",
@@ -38,7 +38,7 @@
   {
    "name": "Litware: completed deletion with steps, retained payroll, external dependencies, certificate",
    "ok": true,
-   "detail": "{\"completed\":true,\"backups\":true,\"payroll\":true,\"certificate\":true}"
+   "detail": "{\"completed\":true,\"backups\":true,\"payroll\":true,\"certificate\":true,\"notCompleteOutside\":true,\"retentionRequired\":true}"
   },
   {
    "name": "certificate downloads as signed JSON with deleted / retained / external",
@@ -46,11 +46,19 @@
    "detail": "certificate,sha256,signature"
   },
   {
+   "name": "certificate does not claim complete deletion while external copies are outstanding",
+   "ok": true
+  },
+  {
    "name": "axe: offboarding: Litware deletion and certificate (desktop)",
    "ok": true
   },
   {
    "name": "retention page: LEGAL_MINIMUM_NOT_CONFIGURED shown, pending proposal not approvable by its proposer",
+   "ok": true
+  },
+  {
+   "name": "retention page: a verified minimum shows its reviewer, an unverified one stays explicit, start events shown",
    "ok": true
   },
   {
@@ -63,6 +71,10 @@
   },
   {
    "name": "checker is offered approval",
+   "ok": true
+  },
+  {
+   "name": "checker may approve the pending contract term",
    "ok": true
   },
   {
@@ -197,7 +209,7 @@
   }
  ],
  "consoleErrors": [],
- "note": "SaaS.9 browser validation on the final tree: disposable database hcm_saas9_ui_showcase (fictional data), server with deletion switched off. Accounts signed in with generated credentials (never recorded); the export passphrase was checked for shape only.",
+ "note": "SaaS.9 closure browser validation on the closure tree: disposable database hcm_saas9_ui_showcase (fictional data), server with deletion switched off. Includes contract retention terms and conflicts, verified and unverified legal minimums, external-copy states and the certificate completeness fields. Accounts signed in with generated credentials (never recorded); the export passphrase was checked for shape only.",
  "axe_states": 8,
  "axe_violations": 0
 }

@@ -335,6 +335,20 @@ SaaS.9 additions (tenant data exit: `docs/architecture/saas-9-offboarding.md`):
      services refuse anyone but platform operators, and no API route reaches the exit.
 101. **Storage prefixes used for deletion are exact**: never a wildcard that could reach platform or another tenant's files.
 
+SaaS.9 closure additions:
+
+102. **An entered but unverified legal minimum never makes data deletable**: its category stays retained
+     (`LEGAL_MINIMUM_PENDING_VERIFICATION`) until a verified version (source, reviewer, date) replaces it.
+103. **A customer's contract never deletes anything.** A contractual minimum only extends retention; a contractual
+     deadline the retention runs past is a recorded conflict for people to resolve.
+104. **Decided retention policy versions and contract terms never change**, and an approved deletion plan is never
+     rewritten by a later version.
+105. **No certificate claims complete deletion while any external copy is unconfirmed**
+     (`complete_including_external_copies` is false, and `external_copies_outstanding` lists them).
+106. **A tenant deletion leaves no export package file of that tenant**; the export's record and checksums stay.
+107. **No credential value is ever printed, logged, committed or written into documentation**; credential checks report
+     yes/no only.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |

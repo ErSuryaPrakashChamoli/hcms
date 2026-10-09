@@ -3,6 +3,11 @@
 Data export, offboarding and retention (WS7). Branch `feature/oct_1_phase_1`, from `ae35542`. Not pushed, merged or
 deployed.
 
+> **Update, 9 October 2026 (SaaS.9 closure).** The credential described below was rotated in every local PeopleOS
+> database, with yes/no evidence, and the GitHub repository holding its history was found to be public. Retention
+> verification, customer contract terms and external-copy statuses were added. See
+> `docs/saas/SaaS-9-Closure-and-Release-Readiness-Report.md`. The rest of this report records SaaS.9 as delivered.
+>
 > **SaaS.9 STATUS: COMPLETE** for its scope: every item of the acceptance gate passes (§29–§37).
 >
 > **RELEASE STATUS: BLOCKED.** Deletion stays switched off until the owner decides, and the inherited credential blocker

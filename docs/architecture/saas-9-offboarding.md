@@ -155,6 +155,17 @@ Rules:
   used first, then `*`.
 - Every evaluation is recorded in the plan with the version applied.
 
+**SaaS.9 closure: three distinct inputs** (migration `2026_10_31_100001`).
+
+| Input | Stored as | Behaviour |
+|---|---|---|
+| A. Verified legal minimum | `legal_minimum_months`, `legal_minimum_status` (`not_configured` / `pending_verification` / `verified`), `legal_basis`, `legal_reference`, `legal_source`, `legal_verified_by`, `legal_verified_on` | Verified only with source, reviewer and date. A pending minimum keeps its category from deletion (`LEGAL_MINIMUM_PENDING_VERIFICATION`). None stays `LEGAL_MINIMUM_NOT_CONFIGURED`, never zero |
+| B. Company policy | `policy_months`, `policy_basis`, `start_event` (`tenant_closure` / `financial_year_end_after_closure`), `financial_year_end` (MM-DD) | Never below a configured A. Counted from its start event |
+| C. Customer contract | `tenant_retention_terms` (tenant, category or `*`, `minimum_months`, `maximum_days`, `contract_reference`, effective date, maker-checker status) | A minimum extends the retention date. A deadline the date runs past is a `CONTRACT_DELETION_DEADLINE_CONFLICT` in `plan.conflicts`, and never deletes anything |
+
+Decided versions and terms are immutable in their models. A later version never rewrites an approved plan: the executor
+skips what it now keeps. Open decisions and the verified legal facts: `docs/saas/SaaS-9-Retention-Decision-Register.md`.
+
 ## 7. Legal holds
 
 `legal_holds` records:
@@ -252,7 +263,9 @@ categories are kept as they are. The tenant row is a tombstone.
 reference it, and never when a hold covers identity. Personal columns are replaced deterministically (for example
 `deleted-user-{id}@deleted.invalid`), secrets and SSO links are cleared, and the account is suspended.
 
-**External dependencies.**
+**External dependencies** (statuses extended at the SaaS.9 closure: PENDING, REQUESTED, FAILED, RETENTION_REQUIRED
+with a kept-until date, UNSUPPORTED, CONFIRMED (final); backups are two entries, database and file storage with
+replicas; procedure in `docs/operations/runbooks/external-copies.md`).
 | Dependency | Starting status |
 |---|---|
 | Backups | `EXTERNAL_DELETE_REQUIRED` |
@@ -264,6 +277,12 @@ reference it, and never when a hold covers identity. Personal columns are replac
 An operator records `REQUESTED` or `CONFIRMED` with a reason. The update is conditional, and a confirmation is final.
 
 ## 10. Certificate
+
+SaaS.9 closure additions:
+- **`deletion_scope`:** PeopleOS's database and file storage.
+- **`external_copies_outstanding`:** every external copy not confirmed.
+- **`complete_including_external_copies`:** true only when every external copy is confirmed.
+- **`export_packages_removed`:** a deletion removes the tenant's export package files; the export records stay.
 
 Issued when a run completes, signed (HMAC-SHA256), with its sha256 stored. It contains:
 - tenant, offboarding, deletion and plan references;
@@ -380,6 +399,14 @@ Six additive tables in migration `2026_10_30_100001_saas9_offboarding_export_ret
 - `tenant_deletion_steps`
 
 `tenants.status` is a string column, so `closed` and `deleted` need no schema change.
+
+SaaS.9 closure, migration `2026_10_31_100001_saas9_closure_retention_verification_and_contract_terms` (additive;
+UP/DOWN/UP on MySQL):
+- `retention_policies` gains `legal_minimum_status`, `legal_source`, `legal_verified_by`, `legal_verified_on`,
+  `start_event` and `financial_year_end`;
+- one new table, `tenant_retention_terms` (classified as exit evidence, `offboarding_records`).
+
+Its DOWN drops the table and the columns.
 
 **Rollback.** DOWN drops the six tables. It is safe only while no tenant is `closed` or `deleted`, because the previous
 release does not know those statuses. Reopen closed tenants first. A deleted tenant cannot be undone.
