@@ -491,7 +491,7 @@ it('9. plans a deletion only once the export is delivered, while it completes', 
 it('10. keeps external records consistent while the deletion runs: a confirmation is final and audited once', function () {
     config(['peopleos.offboarding.batch_size' => 2]);
     $deletion = dueDeletion(closedWithExportWaived($this->tenant, $this->maker), $this->maker, $this->checker);
-    $backup = TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('target', 'backups')->firstOrFail();
+    $backup = TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('target', 'database backups')->firstOrFail();
 
     $run = function () use ($deletion) {
         slowDeletes(2_000);
@@ -515,7 +515,7 @@ it('10. keeps external records consistent while the deletion runs: a confirmatio
         ->and($confirmed !== 'ok' || $final === TenantDeletionStep::EXTERNAL_CONFIRMED)->toBeTrue($final)
         ->and($final)->toBeIn([TenantDeletionStep::EXTERNAL_REQUESTED, TenantDeletionStep::EXTERNAL_CONFIRMED])
         ->and(($this->platformEvents)('EXTERNAL_DELETION_CONFIRMED', $this->tenant))->toBe($recorded)
-        ->and(collect($deletion->certificate['external_dependencies'])->firstWhere('target', 'backups')['status'])
+        ->and(collect($deletion->certificate['external_dependencies'])->firstWhere('target', 'database backups')['status'])
         ->toBeIn([TenantDeletionStep::EXTERNAL_REQUIRED, TenantDeletionStep::EXTERNAL_REQUESTED, TenantDeletionStep::EXTERNAL_CONFIRMED]);
     foreach ([$confirmed, $requested] as $result) {
         expect($result === 'ok' || str_contains($result, 'already confirmed'))->toBeTrue($result);

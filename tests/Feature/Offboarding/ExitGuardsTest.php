@@ -91,7 +91,7 @@ it('records an external confirmation once and keeps it; nothing is recorded for 
     $case = offboardAndClose($this->tenant, $this->maker);
     app(TenantOffboardings::class)->waiveExport($case, $this->maker, 'Customer took a copy');
     $deletion = approvedDeletion($case->fresh(), $this->maker, $this->checker);
-    $backup = TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('target', 'backups')->firstOrFail();
+    $backup = TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('target', 'database backups')->firstOrFail();
 
     $this->deletions->recordExternal($backup, TenantDeletionStep::EXTERNAL_REQUESTED, $this->maker, 'Asked the backup provider');
     $this->deletions->recordExternal($backup->fresh(), TenantDeletionStep::EXTERNAL_CONFIRMED, $this->checker, 'Provider confirmed expiry');
@@ -204,7 +204,7 @@ it('lets no tenant user plan, approve, cancel or retry a deletion, or record an 
         ->and(fn () => $this->deletions->reject($deletion, $admin, 'Reject it'))->toThrow(RuntimeException::class, 'Only platform operators');
 
     $deletion = $this->deletions->approve($deletion, $this->checker, 'Plan reviewed');
-    $backup = TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('target', 'backups')->firstOrFail();
+    $backup = TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('target', 'database backups')->firstOrFail();
     expect(fn () => $this->deletions->recordExternal($backup, TenantDeletionStep::EXTERNAL_CONFIRMED, $admin, 'Our backups are gone'))->toThrow(RuntimeException::class, 'Only platform operators')
         ->and(fn () => $this->deletions->retry($deletion, $admin, 'Run it again'))->toThrow(RuntimeException::class, 'Only platform operators')
         ->and($backup->fresh()->status)->toBe(TenantDeletionStep::EXTERNAL_REQUIRED);

@@ -182,7 +182,7 @@ it('records external dependencies without claiming them, and a tampered certific
     $this->deletions->dispatchDue();
     $deletion = $this->deletions->find($deletion->id);
 
-    $backup = TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('target', 'backups')->firstOrFail();
+    $backup = TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('target', 'database backups')->firstOrFail();
     expect($backup->status)->toBe(TenantDeletionStep::EXTERNAL_REQUIRED);
     $this->deletions->recordExternal($backup, TenantDeletionStep::EXTERNAL_CONFIRMED, $this->checker, 'Backups before 2026-10-27 expired (ticket OPS-1)');
     expect($backup->fresh()->status)->toBe(TenantDeletionStep::EXTERNAL_CONFIRMED);

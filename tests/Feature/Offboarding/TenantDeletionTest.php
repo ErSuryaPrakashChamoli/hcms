@@ -8,6 +8,7 @@ use App\Domain\Documents\Services\Documents;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Offboarding\Enums\DeletionStatus;
 use App\Domain\Offboarding\Models\TenantDeletionStep;
+use App\Domain\Offboarding\Models\TenantExport;
 use App\Domain\Offboarding\Services\DeletionExecutor;
 use App\Domain\Offboarding\Services\DeletionPlanner;
 use App\Domain\Offboarding\Services\TenantDeletions;
@@ -92,10 +93,14 @@ it('deletes every eligible category of the leaving tenant, keeps Markedge\'s rec
             expect($count)->toBe(0, "{$table} ({$category}) should be deleted");
         }
     }
-    // Files: the tenant's documents and snapshots are gone; the export package is outside every tenant prefix and stays.
+    // Files: the tenant's documents and snapshots are gone, and so is the export package (a copy of the deleted data); the
+    // export's record, checksum and manifest stay as the exit's evidence.
+    $kept = TenantExport::query()->withoutTenancy()->find($export->id);
     expect(Storage::disk('local')->allFiles('tenants/'.$this->tenant->id))->toBe([])
         ->and(Storage::disk('local')->allFiles('warehouse/demo'))->toBe([])
-        ->and(Storage::disk('local')->exists($export->path))->toBeTrue();
+        ->and(Storage::disk('local')->exists($export->path))->toBeFalse()
+        ->and($kept->path)->toBeNull()->and($kept->status->value)->toBe('expired')->and($kept->sha256)->toBe($export->sha256)
+        ->and($deletion->certificate['export_packages_removed'])->toBe([$export->reference]);
     // The tenant is a tombstone, the case is complete, and the certificate is signed and says what happened.
     expect($this->tenant->fresh()->status)->toBe(TenantStatus::Deleted)
         ->and($case->fresh()->status->value)->toBe('completed');
@@ -107,7 +112,10 @@ it('deletes every eligible category of the leaving tenant, keeps Markedge\'s rec
         ->and($certificate['audit_chain']['final_hash'])->toHaveLength(64)
         ->and($certificate['verification']['dangling'])->toBe([])
         ->and($certificate['export']['reference'])->toBe($export->reference)
-        ->and(collect($certificate['external_dependencies'])->pluck('target'))->toContain('backups');
+        ->and(collect($certificate['external_dependencies'])->pluck('target'))->toContain('database backups', 'file storage backups and replicas')
+        // Deleted from PeopleOS, but not claimed complete while copies elsewhere are unconfirmed.
+        ->and($certificate['complete_including_external_copies'])->toBeFalse()
+        ->and($certificate['external_copies_outstanding'])->toContain('database backups (PENDING)', 'file storage backups and replicas (PENDING)');
     // Audit: the tenant chain is gone as a whole; the platform chain records the exit and still verifies.
     expect(AuditEvent::query()->withoutTenancy()->where('tenant_id', $this->tenant->id)->count())->toBe(0)
         ->and(app(AuditIntegrityVerifier::class)->verify(null)['valid'])->toBeTrue()

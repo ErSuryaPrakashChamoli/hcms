@@ -3,6 +3,7 @@
 use App\Domain\Offboarding\Models\RetentionPolicy;
 use App\Domain\Offboarding\Models\TenantDeletion;
 use App\Domain\Offboarding\Models\TenantExport;
+use App\Domain\Offboarding\Models\TenantRetentionTerm;
 use App\Domain\Offboarding\Services\TenantExports;
 use App\Domain\Platform\Enums\TenantStatus;
 use App\Filament\Pages\DataExportPage;
@@ -109,4 +110,29 @@ it('offers no API route into offboarding, export, holds or deletion: an API key 
     // The one web route (the package download) needs a signed link, a session and the person it was made for.
     $download = Route::getRoutes()->getByName('offboarding.exports.download');
     expect($download->gatherMiddleware())->toContain('signed')->toContain('auth');
+});
+
+it('records a customer contract term and a verified legal minimum from the pages, each approved by the second operator', function () {
+    $this->actingAs($this->maker);
+    Livewire::test(PlatformOffboardingPage::class)->set('tenant', $this->tenant->id)
+        ->assertSee('No contractual retention term recorded')
+        ->callAction('proposeRetentionTerm', data: ['category' => '*', 'minimum_months' => 12, 'contract_reference' => 'MSA 2026 cl. 14 (fictional)',
+            'effective_from' => today()->toDateString(), 'reason' => 'Customer keeps a year'])
+        ->assertNotified('Contract term proposed: another operator approves it')
+        ->assertSee('MSA 2026 cl. 14 (fictional)')->assertDontSee('>Approve<', false);
+    $term = TenantRetentionTerm::query()->withoutTenancy()->sole();
+    $this->actingAs($this->checker);
+    Livewire::test(PlatformOffboardingPage::class)->set('tenant', $this->tenant->id)
+        ->callAction('termApprove', data: ['reason' => 'Contract checked'], arguments: ['term' => $term->id])->assertNotified('Contract term approved');
+    expect($term->fresh()->status->value)->toBe('approved');
+
+    $this->actingAs($this->maker);
+    Livewire::test(PlatformRetentionPoliciesPage::class)
+        ->callAction('propose', data: ['category' => 'payroll', 'jurisdiction' => 'IN', 'legal_minimum_months' => 36, 'legal_basis' => 'Fictional statute (test)',
+            'legal_reference' => 'TEST-ACT s.9', 'legal_source' => 'https://example.test/official-text', 'legal_verified_by' => 'Counsel (fictional)',
+            'legal_verified_on' => today()->toDateString(), 'policy_months' => 48, 'start_event' => 'financial_year_end_after_closure', 'financial_year_end' => '03-31',
+            'effective_from' => today()->toDateString(), 'reason' => 'Payroll kept four years'])
+        ->assertNotified('Proposed: another operator approves it')
+        ->assertSee('verified by Counsel (fictional)')->assertSee('from the financial year end (03-31) after closure');
+    expect(RetentionPolicy::query()->sole()->legal_minimum_status)->toBe('verified');
 });
