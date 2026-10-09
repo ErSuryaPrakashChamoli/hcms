@@ -21,7 +21,7 @@ Date: 9 October 2026. Branch `feature/oct_1_phase_1`. Not pushed, merged or depl
 | | Commit |
 |---|---|
 | Start | `bead3b6` (docs: SaaS.9 final report ending commit), clean tree |
-| End | ⟨ENDING⟩ |
+| End | `a56ec54` (docs), followed only by the commit that records this hash in this table |
 
 Commits of this phase, in order:
 - `92f6306` feat: the legal minimum, company policy and customer contract stay distinct
@@ -30,7 +30,8 @@ Commits of this phase, in order:
 - `e4c0fdf` fix: the deletion step status column is too short for RETENTION_REQUIRED
 - `259ca5f` fix: idempotency key reclaim race answered 422 instead of 409
 - `ef086aa` test: contract retention term decided once under concurrency (MySQL race 12)
-- ⟨LATER⟩
+- `a56ec54` docs: credential remediation evidence, retention decision register, runbooks, release readiness report
+- a final docs commit recording the ending commit above
 
 ## 2. Branch and repository state
 
