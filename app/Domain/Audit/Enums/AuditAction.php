@@ -319,6 +319,10 @@ enum AuditAction: string
     case RetentionPolicyApproved = 'RETENTION_POLICY_APPROVED';
     case RetentionPolicyRejected = 'RETENTION_POLICY_REJECTED';
     case RetentionPolicyWithdrawn = 'RETENTION_POLICY_WITHDRAWN';
+    case RetentionTermProposed = 'RETENTION_TERM_PROPOSED';
+    case RetentionTermApproved = 'RETENTION_TERM_APPROVED';
+    case RetentionTermRejected = 'RETENTION_TERM_REJECTED';
+    case RetentionTermWithdrawn = 'RETENTION_TERM_WITHDRAWN';
     case RetentionEvaluated = 'RETENTION_EVALUATED';
     case DeletionPlanned = 'DELETION_PLANNED';
     case DeletionApproved = 'DELETION_APPROVED';

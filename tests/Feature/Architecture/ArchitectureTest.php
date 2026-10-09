@@ -228,6 +228,8 @@ it('audits every domain model except the documented append-only or derived table
         // passphrases and deletion plans into the trail.
         'Offboarding\Models\TenantOffboarding', 'Offboarding\Models\TenantExport', 'Offboarding\Models\LegalHold', 'Offboarding\Models\RetentionPolicy',
         'Offboarding\Models\TenantDeletion', 'Offboarding\Models\TenantDeletionStep',
+        // SaaS.9 closure: contractual retention terms, audited by TenantRetentionTerms on both chains.
+        'Offboarding\Models\TenantRetentionTerm',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -272,6 +274,8 @@ it('bypasses tenant scoping only in the documented platform services', function 
         'app/Domain/Offboarding/Services/LegalHolds.php', 'app/Domain/Offboarding/Services/OffboardingDirectory.php',
         'app/Domain/Offboarding/Services/TenantDeletions.php', 'app/Domain/Offboarding/Services/TenantExports.php',
         'app/Domain/Offboarding/Services/TenantOffboardings.php', 'app/Domain/Offboarding/Support/OffboardingAudit.php',
+        // SaaS.9 closure: a customer's contractual retention terms, read for the tenant concerned by the planner and operators.
+        'app/Domain/Offboarding/Services/TenantRetentionTerms.php',
         'app/Support/Tenancy/TenantContext.php',
         // Phase 14: readiness counts platform-wide dead letters (counts only, no tenant data leaves).
         'app/Support/Observability/HealthChecks.php',

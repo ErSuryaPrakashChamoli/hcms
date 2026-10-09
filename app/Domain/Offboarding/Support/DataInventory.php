@@ -113,7 +113,7 @@ final class DataInventory
         'payments' => ['payments', 'refunds'],
         'subscriptions' => ['entitlement_overrides', 'subscription_periods', 'tenant_entitlement_profiles', 'tenant_entitlements', 'tenant_plan_assignments', 'tenant_subscriptions'],
         'platform_operational' => ['api_idempotency_keys', 'employee_code_sequences', 'entitlement_shadow_observations', 'number_sequences', 'scheduler_claims', 'tenant_deferred_jobs', 'ux_metrics'],
-        'offboarding_records' => ['legal_holds', 'tenant_deletion_steps', 'tenant_deletions', 'tenant_exports', 'tenant_offboardings'],
+        'offboarding_records' => ['legal_holds', 'tenant_deletion_steps', 'tenant_deletions', 'tenant_exports', 'tenant_offboardings', 'tenant_retention_terms'],
         'warehouse_exports' => [],
     ];
 

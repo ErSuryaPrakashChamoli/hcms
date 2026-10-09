@@ -5,6 +5,7 @@ namespace App\Domain\Offboarding\Services;
 use App\Domain\Offboarding\Enums\DeletionStatus;
 use App\Domain\Offboarding\Enums\ExportStatus;
 use App\Domain\Offboarding\Enums\OffboardingStatus;
+use App\Domain\Offboarding\Models\RetentionPolicy;
 use App\Domain\Offboarding\Models\TenantDeletion;
 use App\Domain\Offboarding\Models\TenantExport;
 use App\Domain\Offboarding\Models\TenantOffboarding;
@@ -41,6 +42,7 @@ final class DeletionPlanner
 
     public function __construct(
         private readonly RetentionPolicies $policies,
+        private readonly TenantRetentionTerms $terms,
         private readonly LegalHolds $holds,
         private readonly FinancialStanding $financial,
         private readonly TenantContext $tenants,
@@ -61,7 +63,7 @@ final class DeletionPlanner
             }
             $files = $this->fileCount($tenant, $key);
             $stored = count(self::storedFiles($tenant, $key));
-            $retention = $closedAt === null ? null : $this->policies->retentionFor($key, (string) $tenant->country_code, $closedAt);
+            $retention = $closedAt === null ? null : $this->retention($tenant, $key, $closedAt);
             $holds = $this->holds->covering($tenant->getKey(), $key);
             [$action, $reason, $detail] = match (true) {
                 $definition['action'] === DataInventory::RETAIN && $definition['owner'] === 'markedge' => [DataInventory::RETAIN, 'RETAINED_MARKEDGE_RECORDS', 'Markedge\'s own commercial records: kept under Markedge\'s retention, never deleted with the tenant'],
@@ -70,11 +72,15 @@ final class DeletionPlanner
                 $holds !== [] => [DataInventory::RETAIN, 'LEGAL_HOLD', 'Held by '.implode(', ', $holds)],
                 $retention === null => [DataInventory::RETAIN, 'TENANT_NOT_CLOSED', 'Retention starts when the tenant is closed'],
                 ! $retention['configured'] => [DataInventory::RETAIN, 'RETENTION_POLICY_NOT_CONFIGURED', 'No approved retention policy for this category: nothing is assumed'],
-                $retention['until'] > today()->toDateString() => [DataInventory::RETAIN, 'RETENTION_RUNNING', "Kept until {$retention['until']}"],
+                $retention['legal_minimum_status'] === RetentionPolicy::LEGAL_PENDING_VERIFICATION => [DataInventory::RETAIN, RetentionPolicy::LEGAL_MINIMUM_PENDING_VERIFICATION,
+                    'A legal minimum was entered but not verified (source, reviewer, date): nothing is deleted until it is'],
+                $retention['until'] > today()->toDateString() => [DataInventory::RETAIN, 'RETENTION_RUNNING', "Kept until {$retention['until']}"
+                    .($retention['contract']['extends'] ? ' (customer contract: '.implode(', ', $retention['contract']['references']).')' : '')],
                 default => [$definition['action'], self::ELIGIBLE, $definition['action'] === DataInventory::DELETE ? 'Retention ended' : 'Retention ended; anonymised'],
             };
             $categories[$key] = ['label' => $definition['label'], 'owner' => $definition['owner'], 'action' => $action, 'reason' => $reason, 'detail' => $detail,
-                'retention' => $retention, 'holds' => $holds, 'tables' => $tables, 'files' => $files, 'stored_files' => $stored, 'protected_by' => [], 'anonymised_tables' => []];
+                'retention' => $retention, 'holds' => $holds, 'tables' => $tables, 'files' => $files, 'stored_files' => $stored, 'protected_by' => [], 'anonymised_tables' => [],
+                'conflicts' => $retention['contract']['conflict'] ?? null ? [$retention['contract']['conflict']] : []];
         }
 
         // 2. Dependencies: nothing kept may reference a deleted row (that would delete, null or orphan a kept record).
@@ -95,7 +101,36 @@ final class DeletionPlanner
             'eligible' => $eligible,
             'final' => $remaining === [], // after this deletion nothing of the customer's data would remain
             'deletable' => $gates === [] && $eligible !== [],
+            // Customer contracts that require deletion sooner than the data is kept: never acted on, shown for a decision.
+            'conflicts' => array_values(array_filter(array_map(fn (array $c) => $c['conflicts'][0] ?? null, $categories))),
         ];
+    }
+
+    /**
+     * A category's retention from the three distinct inputs: Markedge's policy (B, counted from its start event, with
+     * the legal minimum's verification state, A) and the customer's contract (C): a contractual minimum extends the date;
+     * a contractual deletion deadline that the date runs past is a conflict, recorded, never acted on.
+     *
+     * @return array<string, mixed>
+     */
+    private function retention(Tenant $tenant, string $category, Carbon $closedAt): array
+    {
+        $retention = $this->policies->retentionFor($category, (string) $tenant->country_code, $closedAt);
+        $contract = $this->terms->termsFor($tenant->getKey(), $category, $closedAt);
+        $closed = $closedAt->copy()->startOfDay();
+        $contractUntil = $contract['minimum_months'] === null ? null : $closed->copy()->addMonthsNoOverflow($contract['minimum_months'])->toDateString();
+        $extends = $retention['configured'] && $contractUntil !== null && $contractUntil > $retention['until'];
+        if ($extends) {
+            $retention['until'] = $contractUntil;
+        }
+        $deadline = $contract['maximum_days'] === null ? null : $closed->copy()->addDays($contract['maximum_days'])->toDateString();
+        $conflict = $deadline !== null && $retention['configured'] && $retention['until'] > $deadline
+            ? ['category' => $category, 'code' => 'CONTRACT_DELETION_DEADLINE_CONFLICT', 'deadline' => $deadline, 'kept_until' => $retention['until'],
+                'detail' => "The customer's contract (".implode(', ', $contract['references']).") requires deletion by {$deadline}, but the data is kept until {$retention['until']}: decide (legal), nothing is deleted automatically"]
+            : null;
+
+        return $retention + ['contract' => ['minimum_months' => $contract['minimum_months'], 'until' => $contractUntil, 'deletion_deadline' => $deadline,
+            'references' => $contract['references'], 'extends' => $extends, 'conflict' => $conflict]];
     }
 
     /**

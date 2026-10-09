@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <x-filament::section heading="Policy in force today" description="Retention counts from the day a tenant closes. A category without an approved policy is never deleted. Nothing here is a legal value unless entered with its basis and approved.">
+    <x-filament::section heading="Policy in force today" description="Three inputs stay separate: A. a verified legal minimum (or LEGAL_MINIMUM_NOT_CONFIGURED; an unverified one keeps the category from deletion), B. Markedge's company policy, counted from its start event, C. a customer's contractual requirement (per tenant, on the Offboarding page). A category without an approved policy is never deleted.">
         <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Retention policy in force per category">
             <table class="w-full text-sm">
                 <caption class="sr-only">Retention policy in force per category</caption>
@@ -11,7 +11,7 @@
                             <td class="pe-3 text-xs">{{ $row['owner'] === 'markedge' ? 'Markedge (never deleted with the tenant)' : ($row['action'] === 'retain' ? 'kept' : $row['owner']) }}</td>
                             <td>
                                 @forelse ($row['current'] as $p)
-                                    <div>{{ $p->jurisdiction }}: <strong>{{ $p->policy_months }} months</strong> · {{ $p->legal_minimum_months !== null ? $p->legal_minimum_months.' months ('.$p->legal_reference.')' : \App\Domain\Offboarding\Models\RetentionPolicy::LEGAL_MINIMUM_NOT_CONFIGURED }} <span class="text-xs text-gray-500">v{{ $p->version }} from {{ $p->effective_from->toDateString() }}</span></div>
+                                    <div>{{ $p->jurisdiction }}: <strong>{{ $p->policy_months }} months</strong> {{ $this->startLabel($p) }} · <span class="[overflow-wrap:anywhere]">{{ $this->legalLabel($p) }}</span> <span class="text-xs text-gray-500">v{{ $p->version }} from {{ $p->effective_from->toDateString() }}</span></div>
                                 @empty
                                     <span class="text-warning-700 dark:text-warning-400">Not configured</span>
                                 @endforelse
@@ -37,8 +37,8 @@
                             <tr class="border-t border-gray-100 align-top dark:border-gray-800">
                                 <td class="py-1 pe-3">{{ $p->category }} / {{ $p->jurisdiction }}<br><span class="text-xs text-gray-500">{{ $p->reason }}</span></td>
                                 <td class="pe-3">v{{ $p->version }}</td>
-                                <td class="pe-3">{{ $p->policy_months }} months<br><span class="text-xs text-gray-500">{{ $p->policy_basis }}</span></td>
-                                <td class="pe-3 text-xs">{{ $p->legal_minimum_months !== null ? $p->legal_minimum_months.' months — '.$p->legal_basis.' ('.$p->legal_reference.')' : \App\Domain\Offboarding\Models\RetentionPolicy::LEGAL_MINIMUM_NOT_CONFIGURED }}</td>
+                                <td class="pe-3">{{ $p->policy_months }} months {{ $this->startLabel($p) }}<br><span class="text-xs text-gray-500">{{ $p->policy_basis }}</span></td>
+                                <td class="pe-3 text-xs [overflow-wrap:anywhere]">{{ $this->legalLabel($p) }}@if ($p->legal_source)<br><span class="text-gray-500">Source: {{ $p->legal_source }}</span>@endif</td>
                                 <td class="pe-3">{{ $p->effective_from->toDateString() }}</td>
                                 <td class="pe-3">{{ ucfirst($p->status->value) }}</td>
                                 <td class="space-x-1 whitespace-nowrap">
