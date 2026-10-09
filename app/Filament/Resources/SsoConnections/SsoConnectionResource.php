@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SsoConnections;
 
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Identity\Models\Role;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\SsoConnections\Pages\CreateSsoConnection;
 use App\Filament\Resources\SsoConnections\Pages\EditSsoConnection;
@@ -11,6 +12,7 @@ use App\Filament\Resources\SsoConnections\Pages\ListSsoConnections;
 use App\Filament\Support\AuditReasonField;
 use App\Support\Validation\SafeOutboundUrl;
 use BackedEnum;
+use Closure;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -70,7 +72,16 @@ class SsoConnectionResource extends Resource
             Section::make('Provisioning & policy')->columns(3)->schema([
                 TagsInput::make('allowed_domains')->placeholder('example.com')->helperText('Empty = any domain'),
                 Toggle::make('auto_provision')->label('Create users on first login')->default(true)->inline(false),
-                Select::make('default_role_id')->label('Role for new users')->placeholder('None')->options(fn () => Role::query()->orderBy('name')->pluck('name', 'id')->all()),
+                // SaaS.10 (E3): the default role is granted to every user the connection creates, so it must be one the
+                // editor may grant; the Tenant Super Admin role never is (Sso::authenticate refuses it too).
+                Select::make('default_role_id')->label('Role for new users')->placeholder('None')
+                    ->options(fn () => Role::query()->where('slug', '!=', RoleGrants::SUPER_ADMIN)->orderBy('name')->pluck('name', 'id')->all())
+                    ->rule(fn () => function (string $attribute, mixed $value, Closure $fail): void {
+                        $role = filled($value) ? Role::query()->find((int) $value) : null;
+                        if ($role !== null && ($role->slug === RoleGrants::SUPER_ADMIN || ! app(RoleGrants::class)->canAssign(auth()->user(), $role))) {
+                            $fail($role->slug === RoleGrants::SUPER_ADMIN ? 'The Tenant Super Admin role cannot be given automatically to new SSO users.' : app(RoleGrants::class)->refusal($role));
+                        }
+                    }),
                 Toggle::make('enforce')->label('Show SSO as the primary login for this tenant')->inline(false),
                 Select::make('status')->options(['active' => 'Active', 'disabled' => 'Disabled'])->default('active')->required(),
             ]),

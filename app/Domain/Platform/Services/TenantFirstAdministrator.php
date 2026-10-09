@@ -37,11 +37,11 @@ final class TenantFirstAdministrator
         private readonly TenantContext $tenants,
     ) {}
 
-    /** The tenant's first super administrator who has not yet accepted an invitation, if any. */
+    /** The tenant's first administrator (Tenant Super Admin, or Account Owner after signup) not yet activated, if any. */
     public function invitee(Tenant $tenant): ?User
     {
         return $this->tenants->runAs($tenant, fn () => User::query()->where('tenant_id', $tenant->getKey())->where('status', UserStatus::Invited->value)
-            ->whereHas('roles', fn ($q) => $q->where('slug', 'tenant-super-admin'))->orderBy('id')->first());
+            ->whereHas('roles', fn ($q) => $q->whereIn('slug', (array) config('peopleos.identity.first_administrator_roles', ['tenant-super-admin'])))->orderBy('id')->first());
     }
 
     /** True when the invited first administrator holds no invitation they could still accept. */

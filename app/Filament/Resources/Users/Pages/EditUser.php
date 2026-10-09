@@ -6,6 +6,7 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\MultiFactor;
 use App\Domain\Identity\Services\PasswordResets;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Identity\Services\SessionSecurity;
 use App\Domain\Identity\Services\UserInvitations;
 use App\Filament\Resources\Users\Concerns\SavesAccessScope;
@@ -27,11 +28,20 @@ class EditUser extends PeopleEditRecord
 
     private ?string $emailBefore = null;
 
+    /** @var list<int> */
+    private array $rolesBefore = [];
+
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['access_scope'] = $this->currentAccessScope($this->getRecord());
 
         return $data;
+    }
+
+    /** SaaS.10: before validation, because Filament saves the roles relationship while it reads the form state. */
+    protected function beforeValidate(): void
+    {
+        $this->rolesBefore = $this->getRecord()->roles()->pluck('roles.id')->map(fn ($id) => (int) $id)->all();
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
@@ -44,6 +54,7 @@ class EditUser extends PeopleEditRecord
     protected function afterSave(): void
     {
         $this->persistAccessScope($this->getRecord(), $this->data['audit_reason'] ?? null);
+        app(RoleGrants::class)->recordChange($this->getRecord(), $this->rolesBefore, auth()->user(), $this->data['audit_reason'] ?? null);
 
         // SaaS.2: a new address is unproven. An invited user is re-invited at the new address (the old link
         // stops working); an active user is asked to verify the new address at their next request.

@@ -93,7 +93,7 @@ final class PlatformOperationsOverview
     private function invitedAdministrators()
     {
         return User::query()->whereNotNull('tenant_id')->where('status', UserStatus::Invited->value)
-            ->whereHas('roles', fn ($q) => $q->where('slug', 'tenant-super-admin'));
+            ->whereHas('roles', fn ($q) => $q->whereIn('slug', (array) config('peopleos.identity.first_administrator_roles', ['tenant-super-admin'])));
     }
 
     /** @return Collection<int|string, int> tenant id => count */

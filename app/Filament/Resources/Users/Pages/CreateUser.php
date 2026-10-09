@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Identity\Services\UserInvitations;
 use App\Filament\Resources\Users\Concerns\SavesAccessScope;
 use App\Filament\Resources\Users\UserResource;
@@ -30,6 +31,7 @@ class CreateUser extends PeopleCreateRecord
     protected function afterCreate(): void
     {
         $this->persistAccessScope($this->getRecord());
+        app(RoleGrants::class)->recordChange($this->getRecord(), [], auth()->user(), 'New user');
         app(UserInvitations::class)->issue($this->getRecord(), auth()->user(), 'New user');
     }
 

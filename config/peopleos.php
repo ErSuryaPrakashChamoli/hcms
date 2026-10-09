@@ -506,6 +506,15 @@ return [
             'description' => 'Full control of the tenant.',
             'permissions' => ['*'],
         ],
+        // SaaS.10: the first administrator of a self-service tenant. Explicit keys, never `*`: company and organisation
+        // set-up, people records, users and role assignments, tenant settings and security, the audit trail and the
+        // data export. Payroll, statutory, compensation and sensitive personal data need a specialist role, given
+        // explicitly (RoleGrants: never Tenant Super Admin, which only a holder or Markedge can give).
+        'account-owner' => [
+            'name' => 'Account Owner',
+            'description' => 'Sets up the organisation, invites people and gives them roles. Payroll, statutory and sensitive data need a specialist role, given explicitly.',
+            'permissions' => ['company.view', 'company.create', 'company.update', 'organisation.view', 'organisation.create', 'organisation.update', 'organisation.design', 'legal_entity.view', 'legal_entity.create', 'legal_entity.update', 'establishment.view', 'establishment.create', 'establishment.update', 'people_setup.view', 'people_setup.create', 'people_setup.update', 'policy.view', 'employee.view', 'employee.create', 'employee.update', 'employee.import', 'user.view', 'user.create', 'user.update', 'user.assign_roles', 'role.view', 'settings.view', 'settings.update', 'features.view', 'security.manage', 'audit.view', 'notification.view', 'data.export', 'task.view', 'task.act'],
+        ],
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
@@ -666,6 +675,9 @@ return [
         'invitation_hours' => max(1, (int) env('PEOPLEOS_INVITATION_HOURS', 72)),
         // SaaS.8: an operator cannot e-mail a tenant's first administrator two invitation links within this many seconds.
         'invitation_resend_seconds' => max(0, (int) env('PEOPLEOS_INVITATION_RESEND_SECONDS', 60)),
+        // SaaS.10: the roles a tenant's first administrator is given (operator provisioning: Tenant Super Admin; self-service
+        // signup: Account Owner). Used to find a first administrator still waiting for an invitation.
+        'first_administrator_roles' => ['tenant-super-admin', 'account-owner'],
     ],
     'platform' => [
         // How long one controlled operator access to a tenant lasts before it ends on its own.

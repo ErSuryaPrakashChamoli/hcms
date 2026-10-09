@@ -54,6 +54,9 @@ it('exports a tenant and imports it into another without employee data', functio
 
     $other = provisionTenant('Other');
     actAsTenant($other);
+    // SaaS.10 (RoleGrants): the importer is an administrator of the tenant imported into, holding the permissions the
+    // imported roles grant (an Acme user has no roles in Other, so could not write them).
+    $this->actingAs(tenantUser($other, ['*']));
 
     $counts = $this->blueprints->import($export, 'Copied from Acme');
 

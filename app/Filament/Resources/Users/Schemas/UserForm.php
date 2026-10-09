@@ -4,12 +4,14 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\Location;
 use App\Filament\Support\AuditReasonField;
+use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -52,7 +54,14 @@ class UserForm
                             ->preload()
                             ->searchable()
                             ->disabled(fn () => ! auth()->user()->can('user.assign_roles'))
-                            ->helperText('Tenant-wide role assignments. Organisational restrictions are set under Access scope below.'),
+                            // SaaS.10 (E1): a role newly given here must be one the editor may grant (RoleGrants).
+                            ->rule(fn (?User $record) => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                $refused = app(RoleGrants::class)->refused(auth()->user(), (array) $value, $record?->roles()->pluck('roles.id')->all() ?? []);
+                                if ($refused->isNotEmpty()) {
+                                    $fail(app(RoleGrants::class)->refusal($refused->first()));
+                                }
+                            })
+                            ->helperText('Tenant-wide role assignments. Organisational restrictions are set under Access scope below. You can give a custom role only if you hold all its permissions; only a Tenant Super Admin gives that role.'),
                     ]),
                 Section::make('Access scope')
                     ->description('Leave empty for tenant-wide access. Selections restrict the employees and organisation units this user can reach; dimensions combine with AND.')

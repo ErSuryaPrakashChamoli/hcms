@@ -6,7 +6,9 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Support\Http\SafeHttp;
 use App\Support\Http\UnsafeOutboundUrl;
 use App\Support\Tenancy\TenantContext;
@@ -96,8 +98,10 @@ final class Sso
                 if ($verified === true) {
                     $user->forceFill(['email_verified_at' => now()])->save();
                 }
-                if ($connection->default_role_id) {
-                    $user->roles()->attach($connection->default_role_id);
+                // SaaS.10 (E3): never the Tenant Super Admin role, even on a connection configured before the guard.
+                $role = $connection->default_role_id ? Role::query()->find($connection->default_role_id) : null;
+                if ($role !== null && $role->slug !== RoleGrants::SUPER_ADMIN) {
+                    $user->roles()->attach($role->id);
                 }
                 $this->audit->record(AuditAction::Create, 'enterprise', $user, [], 'Provisioned by SSO '.$connection->name, tenantId: $connection->tenant_id, metadata: ['sso' => $connection->slug]);
             }

@@ -54,9 +54,34 @@ final class ProvisionTenantAction
      */
     public function handle(array $tenantData, ?array $adminData = null, ?string $reason = null, ?User $actor = null): Tenant
     {
+        [$tenant, $invitee] = $this->provisionCore($tenantData, $adminData, $reason, $actor);
+
+        // SaaS.8: the e-mail is sent after the commit; a failure no longer escapes a tenant that exists. It is recorded, and
+        // the operator sends the invitation again from the Tenants list (TenantFirstAdministrator).
+        if ($invitee !== null) {
+            app(TenantFirstAdministrator::class)->inviteAfterProvisioning($tenant, $invitee, $actor);
+        }
+
+        return $tenant;
+    }
+
+    /**
+     * SaaS.10: the transactional core of provisioning, without the invitation e-mail. A caller that runs it inside its
+     * own transaction (self-service signup: tenant, owner and trial commit together) sends the invitation after its
+     * own commit, never from inside a transaction that may still roll back.
+     *
+     * @param  string  $adminRole  the first administrator's role: Tenant Super Admin (operators) or Account Owner (signup)
+     * @param  array<string, mixed>  $auditMetadata  added to both TENANT_PROVISIONED events (no personal data)
+     * @return array{0: Tenant, 1: ?User} the tenant, and the invited first administrator (null when a password was set)
+     */
+    public function provisionCore(array $tenantData, ?array $adminData, ?string $reason, ?User $actor, string $adminRole = 'tenant-super-admin', array $auditMetadata = []): array
+    {
         PlatformOperator::assert($actor, 'provision a tenant');
         if ($actor !== null) {
             $reason = PlatformOperator::reason($reason);
+        }
+        if (! in_array($adminRole, (array) config('peopleos.identity.first_administrator_roles', []), true)) {
+            throw new InvalidArgumentException("A first administrator cannot be given the role [{$adminRole}].");
         }
         $metadata = $this->metadata($tenantData);
         // SaaS.9: a tenant starts in use; closed and deleted are reached only through offboarding.
@@ -68,7 +93,7 @@ final class ProvisionTenantAction
         $tenantData['status'] = $status;
         $invitee = null;
 
-        $tenant = DB::transaction(function () use ($tenantData, $adminData, $reason, $actor, $metadata, &$invitee) {
+        $tenant = DB::transaction(function () use ($tenantData, $adminData, $reason, $actor, $metadata, $adminRole, $auditMetadata, &$invitee) {
             $tenant = $this->tenants->bypass(fn () => Tenant::create([
                 'name' => $tenantData['name'],
                 'slug' => $tenantData['slug'] ?? Str::slug($tenantData['name']),
@@ -79,7 +104,7 @@ final class ProvisionTenantAction
                 'currency' => $tenantData['currency'] ?? 'INR',
             ] + $metadata));
 
-            return $this->tenants->runAs($tenant, function () use ($tenant, $adminData, $reason, $actor, &$invitee) {
+            return $this->tenants->runAs($tenant, function () use ($tenant, $adminData, $reason, $actor, $adminRole, $auditMetadata, &$invitee) {
                 $roles = $this->seedSystemRoles();
                 $this->seedFeatures();
                 $this->seedSettings();
@@ -100,7 +125,7 @@ final class ProvisionTenantAction
                         $invitee = $admin;
                     }
 
-                    $admin->roles()->attach($roles['tenant-super-admin']);
+                    $admin->roles()->attach($roles[$adminRole]);
                 }
 
                 $this->audit->record(
@@ -109,7 +134,8 @@ final class ProvisionTenantAction
                     entity: $tenant,
                     reason: $reason,
                     actor: $actor,
-                    metadata: ['admin_email' => $adminData['email'] ?? null, 'tier' => $tenant->tier, 'region' => $tenant->region, 'trial_ends_at' => $tenant->trial_ends_at?->toIso8601String()],
+                    metadata: ['admin_email' => $adminData['email'] ?? null, 'tier' => $tenant->tier, 'region' => $tenant->region, 'trial_ends_at' => $tenant->trial_ends_at?->toIso8601String(),
+                        'first_administrator_role' => $adminData !== null ? $adminRole : null] + $auditMetadata,
                 );
                 // SaaS.8: provisioning is an operator action, so it is on the platform chain too (no personal data there).
                 $this->audit->record(
@@ -118,7 +144,8 @@ final class ProvisionTenantAction
                     reason: $reason,
                     entityLabel: "Tenant {$tenant->name}",
                     actor: $actor,
-                    metadata: ['subject_tenant_id' => $tenant->id, 'subject_tenant' => $tenant->slug, 'status' => $tenant->status->value, 'tier' => $tenant->tier, 'region' => $tenant->region, 'first_administrator' => $adminData !== null],
+                    metadata: ['subject_tenant_id' => $tenant->id, 'subject_tenant' => $tenant->slug, 'status' => $tenant->status->value, 'tier' => $tenant->tier, 'region' => $tenant->region, 'first_administrator' => $adminData !== null,
+                        'first_administrator_role' => $adminData !== null ? $adminRole : null] + $auditMetadata,
                     platform: true,
                 );
 
@@ -126,13 +153,7 @@ final class ProvisionTenantAction
             });
         });
 
-        // SaaS.8: the e-mail is sent after the commit; a failure no longer escapes a tenant that exists. It is recorded, and
-        // the operator sends the invitation again from the Tenants list (TenantFirstAdministrator).
-        if ($invitee !== null) {
-            app(TenantFirstAdministrator::class)->inviteAfterProvisioning($tenant, $invitee, $actor);
-        }
-
-        return $tenant;
+        return [$tenant, $invitee];
     }
 
     /**
