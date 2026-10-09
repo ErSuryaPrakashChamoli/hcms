@@ -42,6 +42,8 @@ Schedule::command('peopleos:audit:verify --scheduled')->dailyAt('02:30')->withou
 Schedule::command('peopleos:operations:prune')->dailyAt('03:45')->withoutOverlapping()->onOneServer();
 // SaaS.9: export recovery and expiry, due tenant deletions (deletions only when PEOPLEOS_TENANT_DELETION_ENABLED).
 Schedule::command('peopleos:offboarding:tick')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
+// SaaS.10: self-service signup applications (expiry, provisioning, retries, activation).
+Schedule::command('peopleos:signups:tick')->everyMinute()->withoutOverlapping()->onOneServer();
 // SaaS.6: commercial expiries the dates already decided (idempotent; effective the day after each end, however late).
 Schedule::command('peopleos:subscriptions:settle')->dailyAt('00:15')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:billing:provider-events')->everyFiveMinutes()->withoutOverlapping()->onOneServer();

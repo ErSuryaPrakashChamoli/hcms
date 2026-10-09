@@ -670,6 +670,36 @@ return [
         // A deletion whose worker has not reported for this long can be resumed by an operator.
         'deletion_lease_minutes' => max(5, (int) env('PEOPLEOS_DELETION_LEASE_MINUTES', 30)),
     ],
+    // SaaS.10: self-service signup. Operational and security parameters only; what is offered (plans, trial days,
+    // countries), the review policy and the terms are approved commercial configuration (Commercial policies page).
+    'signup' => [
+        // D10-1: public registration is off until the owner authorises it after a security review. Off: every signup page
+        // shows a short notice and every signup action is refused; existing tenants and the operator page are unaffected.
+        'enabled' => (bool) env('PEOPLEOS_PUBLIC_SIGNUP_ENABLED', false),
+        // How long an e-mail confirmation link works (the link is single-use; a new one replaces it).
+        'link_hours' => max(1, (int) env('PEOPLEOS_SIGNUP_LINK_HOURS', 24)),
+        // A confirmed application whose details are not submitted within this many days expires (kept, never deleted).
+        'completion_days' => max(1, (int) env('PEOPLEOS_SIGNUP_COMPLETION_DAYS', 14)),
+        // Abuse limits (per hour unless stated). Answers stay the same whether or not a limit applies.
+        'limits' => [
+            'start_per_ip' => max(1, (int) env('PEOPLEOS_SIGNUP_START_PER_IP', 10)),
+            'start_per_address' => max(1, (int) env('PEOPLEOS_SIGNUP_START_PER_ADDRESS', 3)),
+            'confirm_per_ip_per_minute' => max(1, (int) env('PEOPLEOS_SIGNUP_CONFIRM_PER_IP', 10)),
+            'activation_resend_seconds' => max(60, (int) env('PEOPLEOS_SIGNUP_ACTIVATION_RESEND_SECONDS', 300)),
+        ],
+        // Provisioning retries (minutes before attempt 2, 3, …); after max_attempts the application needs a person.
+        'provisioning' => [
+            'max_attempts' => max(1, (int) env('PEOPLEOS_SIGNUP_PROVISIONING_ATTEMPTS', 5)),
+            'backoff_minutes' => [1, 5, 15, 60],
+            // A run that has not committed after this long is treated as interrupted (its transaction is gone).
+            'lease_minutes' => max(5, (int) env('PEOPLEOS_SIGNUP_LEASE_MINUTES', 15)),
+            // The owner's invitation e-mail is retried by the tick this many times when the mail transport refused it.
+            'invitation_attempts' => 5,
+        ],
+        // Tenant addresses a company name may never take.
+        'reserved_slugs' => ['admin', 'api', 'app', 'www', 'mail', 'help', 'support', 'status', 'login', 'signup', 'platform', 'system', 'root', 'billing', 'security', 'markedge', 'peopleos', 'sso', 'webhooks', 'docs'],
+        'max_intended_employees' => 1_000_000,
+    ],
     'identity' => [
         // How long an invitation link stays valid.
         'invitation_hours' => max(1, (int) env('PEOPLEOS_INVITATION_HOURS', 72)),
@@ -743,7 +773,10 @@ return [
             'billing.b2b_only' => true,                  // B-5: business customers only at launch
             'billing.price_increase_notice_days' => 30,  // B-15: written notice before an increase for an existing subscriber
             'billing.prices_include_tax' => false,       // B-5: prices are tax-exclusive
-            'billing.proration_rounding' => 'half_up',   // B-3: a prorated line is rounded once, half up
+            'billing.proration_rounding' => 'half_up',
+            // SaaS.10 (D10-3 open; D-9 "sales-led first"): every signup application is reviewed by an operator until an
+            // approved version says otherwise. Offers, terms and the privacy notice have no default (not offered).
+            'signup.review' => 'all',   // B-3: a prorated line is rounded once, half up
             'settlement.tds_jurisdictions' => [['country' => 'IN', 'currency' => 'INR']], // B-11: customer TDS (India)
         ],
         'statutory_dataset' => [

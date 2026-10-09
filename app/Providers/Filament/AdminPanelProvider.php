@@ -19,6 +19,9 @@ use App\Filament\Pages\MyHr;
 use App\Filament\Pages\MyLearning;
 use App\Filament\Pages\Preferences;
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Filament\Signup\SignupApplicationPage;
+use App\Filament\Signup\SignupConfirm;
+use App\Filament\Signup\SignupStart;
 use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\PeopleOsText;
@@ -75,12 +78,20 @@ class AdminPanelProvider extends PanelProvider
             ->passwordReset(RequestPasswordReset::class, ResetPassword::class)
             ->emailVerification(isRequired: false)
             ->profile(EditProfile::class, isSimple: false)
-            ->routes(fn () => Route::get('invitation/{token}', AcceptInvitation::class)->middleware('throttle:30,1')->name('auth.invitation.accept'))
+            ->routes(function (): void {
+                Route::get('invitation/{token}', AcceptInvitation::class)->middleware('throttle:30,1')->name('auth.invitation.accept');
+                // SaaS.10: self-service signup (guest). Off unless PEOPLEOS_PUBLIC_SIGNUP_ENABLED: then each page shows a notice
+                // and every action is refused.
+                Route::get('signup', SignupStart::class)->middleware('throttle:60,1')->name('signup.start');
+                Route::get('signup/confirm/{token}', SignupConfirm::class)->middleware('throttle:30,1')->where('token', '[A-Za-z0-9]{64}')->name('signup.confirm');
+                Route::get('signup/application', SignupApplicationPage::class)->middleware('throttle:60,1')->name('signup.application');
+            })
             ->authenticatedRoutes(fn () => Route::prefix('multi-factor-authentication')->name('auth.multi-factor-authentication.')->group(function (): void {
                 Route::get('set-up', SetUpRequiredMultiFactorAuthentication::class)->name('set-up-required');
                 Route::get('verify', ConfirmMultiFactorAuthentication::class)->name('challenge');
             }))
-            ->livewireComponents([SetUpRequiredMultiFactorAuthentication::class, ConfirmMultiFactorAuthentication::class, AcceptInvitation::class])
+            ->livewireComponents([SetUpRequiredMultiFactorAuthentication::class, ConfirmMultiFactorAuthentication::class, AcceptInvitation::class,
+                SignupStart::class, SignupConfirm::class, SignupApplicationPage::class])
             ->brandName('PeopleOS')
             ->brandLogo(fn () => view('filament.shell.brand'))
             ->brandLogoHeight('1.75rem')

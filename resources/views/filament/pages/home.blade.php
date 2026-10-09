@@ -33,6 +33,13 @@
         </div>
     @else
         <div class="pos-ws pos-home">
+            {{-- SaaS.10: a tenant registered through signup, while its set-up is incomplete (other tenants' Home is unchanged). --}}
+            @if ($setup = \App\Filament\Pages\GettingStarted::banner())
+                <div class="pos-panel pos-panel-pad flex flex-wrap items-center justify-between gap-3" role="status">
+                    <p class="pos-body"><strong>Finish setting up your organisation:</strong> {{ $setup['done'] }} of {{ $setup['total'] }} steps done.</p>
+                    <a href="{{ $setup['url'] }}" wire:navigate class="pos-btn pos-btn-primary pos-btn-sm">Getting started</a>
+                </div>
+            @endif
             {{-- Where am I, what matters, what can I do: the brief of the day comes from real counts only. --}}
             <header class="pos-ws-head">
                 <div class="pos-ws-head-text">

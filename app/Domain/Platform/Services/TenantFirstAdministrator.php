@@ -54,10 +54,10 @@ final class TenantFirstAdministrator
     }
 
     /** Provisioning's step: never throws for a mail failure; records it instead. Returns whether the e-mail went out. */
-    public function inviteAfterProvisioning(Tenant $tenant, User $invitee, ?User $actor): bool
+    public function inviteAfterProvisioning(Tenant $tenant, User $invitee, ?User $actor, string $reason = 'First administrator of a new tenant'): bool
     {
         try {
-            DB::transaction(fn () => $this->invitations->issue($invitee, $actor, 'First administrator of a new tenant'));
+            DB::transaction(fn () => $this->invitations->issue($invitee, $actor, $reason));
 
             return true;
         } catch (Throwable $e) {

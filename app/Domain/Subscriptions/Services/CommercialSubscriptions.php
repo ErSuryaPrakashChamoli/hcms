@@ -12,6 +12,7 @@ use App\Domain\Entitlements\Services\TenantCommercialLock;
 use App\Domain\Identity\Models\User;
 use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Platform\Support\PlatformOperator;
 use App\Domain\Subscriptions\Enums\CommercialStatus as S;
 use App\Domain\Subscriptions\Events\CommercialStatusChanged;
 use App\Domain\Subscriptions\Models\SubscriptionPeriod;
@@ -61,6 +62,24 @@ final class CommercialSubscriptions
 
             return [$from, [[S::Trial, $version->id, $from, $until]], AuditAction::TrialStarted];
         });
+    }
+
+    /**
+     * SaaS.10: the trial a self-service signup starts: the plan version and trial days of the approved offer the
+     * applicant accepted, trigger `signup`. Called by signup provisioning only (architecture test), as the operator
+     * who approved or retried it, or with no operator from the console (the signup tick; PlatformOperator). Never a
+     * paid subscription, and refused when the tenant already has one (one live subscription per tenant).
+     */
+    public function startSignupTrial(Tenant $tenant, PlanVersion $version, string $from, string $until, string $reference, ?User $actor): TenantSubscription
+    {
+        PlatformOperator::assert($actor, 'start a signup trial');
+        [$from, $until] = [$this->startDay($from), $this->endDay($until, $from)];
+
+        return $this->apply($tenant, null, "Self-service signup {$reference}", $actor, $reference, function () use ($version, $from, $until) {
+            $this->assertOnSale($version, $from);
+
+            return [$from, [[S::Trial, $version->id, $from, $until]], AuditAction::TrialStarted];
+        }, trigger: 'signup');
     }
 
     /** A new subscription, active on $version from $from, open-ended or until $until. */

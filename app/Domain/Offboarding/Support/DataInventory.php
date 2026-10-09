@@ -140,6 +140,10 @@ final class DataInventory
         'plans', 'plan_versions', 'plan_entitlements', 'plan_prices', 'plan_price_versions', 'billing_markets', 'billing_supplier_profiles', 'invoice_number_series', 'tax_rules', 'configuration_versions',
         'financial_approvals', 'payment_provider_events', // Markedge's records (subject_tenant_id / resolved_tenant_id)
         'audit_verification_runs', 'audit_chain_locks', 'retention_policies',
+        // SaaS.10: Markedge's record of a signup (provisioned_tenant_id): what was applied for and accepted. The contact's
+        // name and address are removed from it at activation (the tenant's user account holds them, under the deletion
+        // controls); applications that never became a tenant keep them until a retention decision (D10-6).
+        'signup_applications',
     ];
 
     /**

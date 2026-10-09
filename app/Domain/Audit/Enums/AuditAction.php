@@ -334,6 +334,22 @@ enum AuditAction: string
     case DeletionRetried = 'DELETION_RETRIED';
     case DeletionCertified = 'DELETION_CERTIFIED';
     case ExternalDeletionConfirmed = 'EXTERNAL_DELETION_CONFIRMED';
+    // SaaS.10: self-service signup (platform chain; the application reference, never the applicant's e-mail or name).
+    case SignupStarted = 'SIGNUP_STARTED';
+    case SignupEmailVerified = 'SIGNUP_EMAIL_VERIFIED';
+    case SignupSubmitted = 'SIGNUP_SUBMITTED';
+    case SignupApproved = 'SIGNUP_APPROVED';
+    case SignupRejected = 'SIGNUP_REJECTED';
+    case SignupCancelled = 'SIGNUP_CANCELLED';
+    case SignupExpired = 'SIGNUP_EXPIRED';
+    case SignupProvisioningStarted = 'SIGNUP_PROVISIONING_STARTED';
+    case SignupProvisioned = 'SIGNUP_PROVISIONED';
+    case SignupProvisioningFailed = 'SIGNUP_PROVISIONING_FAILED';
+    case SignupManualReview = 'SIGNUP_MANUAL_REVIEW';
+    case SignupActivated = 'SIGNUP_ACTIVATED';
+    case SignupEmailSent = 'SIGNUP_EMAIL_SENT';
+    case SignupEmailFailed = 'SIGNUP_EMAIL_FAILED';
+    case SignupActivationResent = 'SIGNUP_ACTIVATION_RESENT';
 
     public function label(): string
     {

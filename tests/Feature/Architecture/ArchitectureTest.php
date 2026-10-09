@@ -36,6 +36,7 @@ use App\Domain\Offboarding\Support\DataInventory;
 use App\Domain\Payments\Models\PaymentProviderEvent;
 use App\Domain\People\Models\Person;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Signup\Models\SignupApplication;
 use App\Domain\Tax\Models\TaxRule;
 use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\Pages\PeopleEditRecord;
@@ -111,6 +112,8 @@ it('scopes every domain model to a tenant except the documented platform-level m
         AuditVerificationRun::class,
         // SaaS.9: retention policies are platform configuration (per category and jurisdiction; no tenant).
         RetentionPolicy::class,
+        // SaaS.10: a signup application exists before its tenant; provisioned_tenant_id names the tenant it became.
+        SignupApplication::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -230,6 +233,9 @@ it('audits every domain model except the documented append-only or derived table
         'Offboarding\Models\TenantDeletion', 'Offboarding\Models\TenantDeletionStep',
         // SaaS.9 closure: contractual retention terms, audited by TenantRetentionTerms on both chains.
         'Offboarding\Models\TenantRetentionTerm',
+        // SaaS.10: signup applications are audited explicitly by SignupAudit on the platform chain (reference, states,
+        // codes; never the applicant's address, name or link), and on the tenant chain once it exists.
+        'Signup\Models\SignupApplication',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -276,6 +282,8 @@ it('bypasses tenant scoping only in the documented platform services', function 
         'app/Domain/Offboarding/Services/TenantOffboardings.php', 'app/Domain/Offboarding/Support/OffboardingAudit.php',
         // SaaS.9 closure: a customer's contractual retention terms, read for the tenant concerned by the planner and operators.
         'app/Domain/Offboarding/Services/TenantRetentionTerms.php',
+        // SaaS.10: an application's audit trail on the platform chain (tenant_id null, filtered by its reference).
+        'app/Domain/Signup/Support/SignupAudit.php',
         'app/Support/Tenancy/TenantContext.php',
         // Phase 14: readiness counts platform-wide dead letters (counts only, no tenant data leaves).
         'app/Support/Observability/HealthChecks.php',
@@ -298,6 +306,9 @@ it('keeps commercial plans out of HCM code and writes them only through the two 
         'app/Domain/Subscriptions/Services/SubscriptionDirectory.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php',
         // SaaS.7: a price belongs to a published plan version (read only; prices never feed the entitlement engine).
         'app/Domain/Billing/Models/PlanPrice.php', 'app/Domain/Billing/Services/BillingCatalog.php', 'app/Filament/Pages/PlatformBillingCatalogPage.php',
+        // SaaS.10: signup reads the plan version on sale and its employee limit, and pins the version accepted (read only);
+        // the getting-started page shows a tenant its own plan's employee limit (read only).
+        'app/Domain/Signup/Models/SignupApplication.php', 'app/Domain/Signup/Services/SignupCatalogue.php', 'app/Domain/Signup/Services/TenantSetupProgress.php',
     ];
     expect(array_values(array_diff(appFilesMatching('/Entitlements.Models.(Plan|PlanVersion|PlanEntitlement|TenantPlanAssignment)\b/'), $readers)))->toBe([]);
 
@@ -325,7 +336,10 @@ it('keeps commercial entitlement out of authorisation: HCM only observes, nothin
         'app/Domain/Billing/Models/PlanPrice.php', 'app/Domain/Billing/Services/BillingCatalog.php', 'app/Domain/Billing/Services/BillingTerms.php',
         'app/Filament/Pages/PlatformBillingCatalogPage.php',
         // SaaS.9: closing a tenant re-checks its subscriptions under the tenant's commercial lock; it never evaluates entitlements.
-        'app/Domain/Offboarding/Services/TenantOffboardings.php'];
+        'app/Domain/Offboarding/Services/TenantOffboardings.php',
+        // SaaS.10: signup reads the plan version on sale and its employee limit (catalogue data), and the getting-started
+        // page shows a tenant its own plan's limit; neither evaluates entitlements.
+        'app/Domain/Signup/Models/SignupApplication.php', 'app/Domain/Signup/Services/SignupCatalogue.php', 'app/Domain/Signup/Services/TenantSetupProgress.php'];
     $users = array_values(array_filter(appFilesMatching('/App.Domain.Entitlements/'), fn (string $f) => ! str_starts_with($f, 'app/Domain/Entitlements/')));
     sort($users);
     $allowed = array_merge($observers, $platform);
@@ -380,6 +394,9 @@ it('keeps the entitlement engine independent of subscriptions: subscriptions fee
             'app/Domain/Billing/Services/NegotiatedPrices.php', 'app/Domain/Billing/Services/PriceNotices.php',
             // SaaS.9: closing a tenant refuses while a subscription continues (SubscriptionDirectory::continuing, read only).
             'app/Domain/Offboarding/Services/TenantOffboardings.php',
+            // SaaS.10: signup provisioning starts the accepted offer's trial (CommercialSubscriptions::startSignupTrial only), and
+            // the getting-started page shows a tenant its own period in force (read only).
+            'app/Domain/Signup/Services/SignupProvisioning.php', 'app/Domain/Signup/Services/TenantSetupProgress.php',
             'app/Filament/Pages/PlatformBillingAccountsPage.php', 'app/Filament/Pages/PlatformSubscriptionsPage.php'])
         // One writer: only the guarded subscription service projects a subscription onto plan assignments.
         ->and(appFilesMatching('/->projectSubscription\(/'))->toBe(['app/Domain/Subscriptions/Services/CommercialSubscriptions.php']);
@@ -391,6 +408,8 @@ it('keeps billing, tax and payments out of authorisation, entitlements, HCM, pay
     expect($users)->toBe(['app/Console/Commands/ProcessBillingProviderEvents.php', 'app/Console/Commands/RunBilling.php',
         // SaaS.9: a deletion waits while financial items are open (Payments\Services\FinancialStanding, read only).
         'app/Domain/Offboarding/Services/DeletionPlanner.php',
+        // SaaS.10: signup reads approved policy, markets and prices on sale (read only), and the market's currency.
+        'app/Domain/Signup/Services/SignupCatalogue.php', 'app/Domain/Signup/Services/SignupProvisioning.php',
         'app/Filament/Pages/PlatformApprovalsPage.php', 'app/Filament/Pages/PlatformBillingAccountsPage.php',
         'app/Filament/Pages/PlatformBillingCatalogPage.php', 'app/Filament/Pages/PlatformCommercialPoliciesPage.php', 'app/Filament/Pages/PlatformInvoicesPage.php',
         'app/Filament/Pages/PlatformPaymentsPage.php', 'app/Filament/Pages/PlatformTaxSetupPage.php', 'app/Http/Controllers/Billing/ProviderWebhookController.php']);
@@ -651,4 +670,25 @@ it('keeps prices, tax rates, tax identifiers and Markedge policy out of commerci
         // One source for Markedge policy: only CommercialConfiguration reads the shipped defaults; no setting duplicates them.
         ->and(appFilesMatching("/config\\(\\s*'peopleos\\.commercial\\.policy_defaults/"))->toBe(['app/Domain/Billing/Services/CommercialConfiguration.php'])
         ->and(appFilesMatching('/peopleos\.billing\.(b2b_only|payment_terms_days|price_increase_notice_days|proration_rounding)/'))->toBe([]);
+});
+
+it('keeps self-service signup inside its boundary: one trial entry point, no operator accounts, one status writer (SaaS.10)', function () {
+    // Only signup provisioning starts a signup trial (a trial of the accepted offer, never a paid subscription).
+    expect(appFilesMatching('/->startSignupTrial\(/'))->toBe(['app/Domain/Signup/Services/SignupProvisioning.php']);
+
+    // Signup never creates or names a platform operator: the operator flag appears nowhere in its code or pages.
+    $signup = array_merge(glob(app_path('Domain/Signup/*/*.php')), glob(app_path('Filament/Signup/*.php')), [app_path('Filament/Pages/PlatformSignupsPage.php')]);
+    expect($signup)->not->toBeEmpty();
+    foreach ($signup as $file) {
+        expect(file_get_contents($file))->not->toContain('is_platform_admin', basename($file));
+    }
+
+    // An application's state changes only through SignupTransitions (conditional, along SignupStatus::TRANSITIONS); the
+    // first insert (SignupApplications::start) is the one other place a status is written.
+    $writers = array_values(array_filter(appFilesMatching('/SignupApplication\b/'), fn (string $f) => preg_match("/'status'\\s*=>\\s*(SignupStatus::[A-Z]|\\\$to->value)/", file_get_contents(base_path($f))) === 1));
+    expect($writers)->toBe(['app/Domain/Signup/Services/SignupApplications.php', 'app/Domain/Signup/Support/SignupTransitions.php']);
+
+    // The first administrator is the Account Owner, an explicit role: never the `*` template.
+    expect(config('peopleos.roles.account-owner.permissions'))->not->toContain('*')
+        ->and(file_get_contents(app_path('Domain/Signup/Services/SignupProvisioning.php')))->toContain("'account-owner'")->not->toContain('tenant-super-admin');
 });
