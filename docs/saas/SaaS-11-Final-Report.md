@@ -17,7 +17,7 @@ Date: 10 October 2026. Branch `feature/oct_1_phase_1`.
 |---|---|
 | Start | `e9914b8` (SaaS.10's ending commit; verified at the start, clean tree) |
 | Code changes | `a5afc65`, `cf70e5d`, `62f2603` |
-| Documents | the documents commit that follows `62f2603` (see `git log`) |
+| Documents | `a84d229`; this report's final results in the commit that follows it (the ending commit) |
 
 Nothing was pushed, merged or deployed. The branch is ahead of `origin/feature/oct_1_phase_1`.
 
@@ -67,7 +67,7 @@ Detail and the history-cleanup plan: `SaaS-11-Security-Findings.md`.
 
 | Category | Result |
 |---|---|
-| **SQLite** (`php artisan test --parallel --processes=2`, at `cf70e5d`) | **1,450 passed, 0 failed**; 1,585 tests, 19,893 assertions, 20.8 min. **135 skipped**: exactly the MySQL-gated tests, not counted as passed. `62f2603` adds one test, run with its file and the other changed files: 29/29 (§5.1) |
+| **SQLite** (`php artisan test --parallel --processes=2`) | **Final code `62f2603`: 1,451 passed, 0 failed**; 1,586 tests, 19,902 assertions, 19.2 min. Earlier run at `cf70e5d`: 1,450 passed, 0 failed (1,585 tests). In both, **135 skipped** are exactly the MySQL-gated tests, run in the MySQL suite and not counted as passed here |
 | **MySQL** (`PEOPLEOS_MYSQL_CONCURRENCY_DB=hcm_saas6_concurrency php artisan test tests/MySql`, at `62f2603`, MySQL 8.4) | **135/135 passed**, 820 assertions, 20.7 min. None skipped |
 | **Concurrency** | Within the MySQL run: **132 tests in 18 concurrency files**, all passed. They use real processes against MySQL, among them SaaS.10's 7 signup races (duplicate starts, double link use, double provisioning, competing decisions, same-name slugs, lease expiry while committing, four provisionings at once with InnoDB's deadlock counter unchanged) and SaaS.9's 12 offboarding races |
 | **Mutation** | **44/44 killed** against today's code. SaaS.11: R1–R12, 12/12. SaaS.10: S01–S32 re-run, 32/32. The copy was compared file by file afterwards: identical |
