@@ -224,3 +224,26 @@ it('keeps the console unrestricted (provisioning, seeders, permission sync) and 
         (fn () => $this->isRunningInConsole = true)->call($app);
     }
 });
+
+it('audits a change of a role\'s permissions in the role editor and in a blueprint import (SaaS.11)', function () {
+    $super = userWithSystemRole($this->tenant, 'tenant-super-admin');
+    $this->actingAs($super);
+    $role = Role::factory()->create(['slug' => 'payroll-reviewers']);
+    $role->permissions()->sync(app(PermissionRegistry::class)->idsMatching(['company.view']));
+    $ids = Permission::query()->whereIn('key', ['payroll.view', 'payroll.finalize'])->pluck('id')->all();
+
+    Livewire::test(EditRole::class, ['record' => $role->id])
+        ->fillForm(['permissions' => $ids, 'audit_reason' => 'Reviewers finalise payroll'])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $event = AuditEvent::query()->where('action', 'ROLE_CHANGED')->where('metadata->role', 'payroll-reviewers')->sole();
+    expect($event->metadata['permissions_granted'])->toBe(['payroll.finalize', 'payroll.view'])
+        ->and($event->metadata['permissions_removed'])->toBe(['company.view'])
+        ->and($event->actor_id)->toBe($super->id)
+        ->and($event->reason)->toBe('Reviewers finalise payroll');
+
+    app(Blueprints::class)->import(['format' => Blueprints::FORMAT, 'roles' => [['slug' => 'payroll-reviewers', 'name' => 'Payroll reviewers', 'permissions' => ['payroll.view']]]], 'Imported from Acme');
+    $import = AuditEvent::query()->where('action', 'ROLE_CHANGED')->where('metadata->role', 'payroll-reviewers')->where('reason', 'Imported from Acme')->sole();
+    expect($import->metadata['permissions_removed'])->toBe(['payroll.finalize'])->and($import->metadata['permissions_granted'])->toBe([]);
+});

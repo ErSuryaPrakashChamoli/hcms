@@ -131,9 +131,11 @@ final class Blueprints
                 // into full control.
                 app(RoleGrants::class)->assertCanDefine(auth()->user(), $this->permissions->keysMatching($row['permissions'] ?? []), "import the role \"{$row['slug']}\"");
                 $role = Role::query()->firstOrNew(['slug' => $row['slug']]);
+                $permissionsBefore = $role->exists ? app(RoleGrants::class)->permissionKeysOf($role) : [];
                 $role->fill(['name' => $row['name'], 'description' => $row['description'] ?? null, 'is_system' => $role->exists ? $role->is_system : (bool) ($row['is_system'] ?? false)]);
                 $role->withAuditReason($reason)->save();
                 $role->permissions()->sync($this->permissions->idsMatching($row['permissions'] ?? []));
+                app(RoleGrants::class)->recordPermissionChange($role, $permissionsBefore, auth()->user(), $reason); // SaaS.11
                 $counts['roles'] = ($counts['roles'] ?? 0) + 1;
             }
 

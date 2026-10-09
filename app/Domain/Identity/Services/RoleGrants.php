@@ -133,6 +133,31 @@ final class RoleGrants
         ]);
     }
 
+    /** @return list<string> the permission keys a role grants now (for recordPermissionChange) */
+    public function permissionKeysOf(Role $role): array
+    {
+        return $role->permissions()->pluck('key')->sort()->values()->all();
+    }
+
+    /**
+     * SaaS.11: records a change of a role's permissions (ROLE_CHANGED on the tenant chain, with the role and the keys
+     * granted and removed) when one happened. Editing a role's permissions (role editor, blueprint import) was not audited:
+     * a role could be given payroll.finalize without a trace.
+     *
+     * @param  list<string>  $before  the role's permission keys before the change
+     */
+    public function recordPermissionChange(Role $role, array $before, ?User $actor, ?string $reason = null): void
+    {
+        $after = $this->permissionKeysOf($role);
+        [$granted, $removed] = [array_values(array_diff($after, $before)), array_values(array_diff($before, $after))];
+        if ($granted === [] && $removed === []) {
+            return;
+        }
+        app(AuditRecorder::class)->record(AuditAction::RoleChanged, 'identity', $role, [], $reason, actor: $actor, metadata: [
+            'role' => $role->slug, 'system_role' => (bool) $role->is_system, 'permissions_granted' => $granted, 'permissions_removed' => $removed,
+        ]);
+    }
+
     public function refusal(Role $role): string
     {
         return $role->slug === self::SUPER_ADMIN
