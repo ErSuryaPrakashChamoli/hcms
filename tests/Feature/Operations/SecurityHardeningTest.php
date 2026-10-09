@@ -19,6 +19,7 @@ it('sends the security headers on panel, API and health responses, and HSTS only
     foreach (['/admin/login', '/api/v1/employees', '/health/live'] as $path) {
         $response = $this->get($path);
         $response->assertHeader('X-Frame-Options', 'SAMEORIGIN')
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
             ->assertHeader('Content-Security-Policy', "frame-ancestors 'self'")
             ->assertHeader('X-Content-Type-Options', 'nosniff')
             ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
@@ -87,4 +88,10 @@ it('refuses a platform operator who prepared a payroll run the approval of that 
     expect(fn () => $runs->approve($run, $operator))->toThrow(RuntimeException::class, 'cannot approve')
         ->and($run->fresh()->status)->toBe('validated');
     expect($runs->approve($run->fresh(), platformAdmin(), 'Second operator')->status)->toBe('approved');
+});
+
+it('keeps the whole platform out of search engines: robots.txt disallows everything (SaaS.11)', function () {
+    expect(file_get_contents(public_path('robots.txt')))->toContain("User-agent: *\nDisallow: /");
+    $this->get('/admin/login')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+    $this->get('/admin/signup')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 });

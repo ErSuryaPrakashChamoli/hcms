@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
  *   Filament / Livewire nonces and is not attempted here.
  * - X-Content-Type-Options nosniff; Referrer-Policy strict-origin-when-cross-origin (no paths or tokens in referrers);
  *   Permissions-Policy turns off camera, microphone and geolocation, which PeopleOS does not use.
+ * - X-Robots-Tag noindex, nofollow (SaaS.11; peopleos.security.robots_tag), with robots.txt disallowing everything;
  * - Strict-Transport-Security only on HTTPS requests, for peopleos.security.hsts_max_age seconds (0 turns it off);
  *   subdomains are not included (that commitment is the operator's).
  * A header a route already set is kept.
@@ -36,6 +37,12 @@ class SecurityHeaders
         $set('X-Content-Type-Options', 'nosniff');
         $set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        // SaaS.11: a private HR platform is never indexed. robots.txt asks crawlers not to visit; this header also keeps
+        // out of search results a page reached through a shared link (invitation and signup links carry their token
+        // in the path). Empty turns it off.
+        if (($robots = (string) config('peopleos.security.robots_tag', 'noindex, nofollow')) !== '') {
+            $set('X-Robots-Tag', $robots);
+        }
 
         $maxAge = (int) config('peopleos.security.hsts_max_age', 0);
         if ($request->isSecure() && $maxAge > 0) {

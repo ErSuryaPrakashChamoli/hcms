@@ -48,6 +48,7 @@ final class ProductionConfigValidator
         $this->http();
         $this->logging();
         $this->operations();
+        $this->releaseGates();
 
         return $this->findings;
     }
@@ -199,6 +200,23 @@ final class ProductionConfigValidator
         if (config('peopleos.ai.provider', 'none') === 'anthropic') {
             $this->require(filled(config('peopleos.ai.anthropic.key')), 'ANTHROPIC_API_KEY', 'missing', 'The configured AI provider needs its key.');
         }
+    }
+
+    /**
+     * SaaS.11: the switches that open a release gate. Each is off by default; turning one on in production needs the
+     * owner's recorded authorisation reference (never inferred from the switch itself), and some are never allowed.
+     */
+    private function releaseGates(): void
+    {
+        $this->require(! config('peopleos.signup.enabled') || filled(config('peopleos.signup.authorisation')), 'PEOPLEOS_PUBLIC_SIGNUP_ENABLED', 'insecure',
+            'Public registration is on without a recorded owner authorisation (D10-1, after an independent security review): set PEOPLEOS_PUBLIC_SIGNUP_AUTHORISATION to its reference, or turn registration off.');
+        $this->require(! config('peopleos.offboarding.deletion_enabled') || filled(config('peopleos.offboarding.deletion_authorisation')), 'PEOPLEOS_TENANT_DELETION_ENABLED', 'insecure',
+            'Tenant deletion is on without a recorded owner authorisation (approved retention policies, the production-copy rehearsal): set PEOPLEOS_TENANT_DELETION_AUTHORISATION to its reference, or turn deletion off.');
+        $this->require(! config('peopleos.billing.razorpay.enabled'), 'PEOPLEOS_RAZORPAY_ENABLED', 'insecure', 'Razorpay is integrated in test mode only; live payments are not activated for production.');
+        $this->require(! str_starts_with((string) config('peopleos.billing.razorpay.key_id'), 'rzp_live_'), 'PEOPLEOS_RAZORPAY_KEY_ID', 'insecure', 'A live payment-provider key is configured; live payments are not activated.');
+        $this->require(blank(config('peopleos.seed.password')), 'PEOPLEOS_SEED_PASSWORD', 'insecure', 'A demo-seed password must not exist in production (seeders never run there).');
+        $this->require((int) config('peopleos.security.hsts_max_age', 0) >= 31_536_000, 'PEOPLEOS_HSTS_MAX_AGE', 'insecure', 'HTTPS responses must send Strict-Transport-Security for at least a year.');
+        $this->advise(filled(config('peopleos.security.robots_tag')), 'PEOPLEOS_ROBOTS_TAG', 'Pages should carry X-Robots-Tag noindex: a private platform is never indexed.');
     }
 
     private function require(bool $ok, string $key, string $category, string $message): void

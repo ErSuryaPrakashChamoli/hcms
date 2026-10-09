@@ -643,6 +643,8 @@ return [
         'platform_mfa_required' => (bool) env('PEOPLEOS_PLATFORM_MFA_REQUIRED', true),
         // SaaS.8: Strict-Transport-Security on HTTPS responses (seconds; 0 = off). Subdomains are not included.
         'hsts_max_age' => max(0, (int) env('PEOPLEOS_HSTS_MAX_AGE', 31536000)),
+        // SaaS.11: X-Robots-Tag on every response (a private platform is never indexed); empty turns it off.
+        'robots_tag' => (string) env('PEOPLEOS_ROBOTS_TAG', 'noindex, nofollow'),
     ],
     /*
     | SaaS.9 data export, offboarding, retention and deletion. Retention PERIODS are not here: they are versioned policies
@@ -652,6 +654,9 @@ return [
         // The destructive switch. Off, no deletion is planned, approved or executed (the eligibility preview still shows). It is turned
         // on per environment only after the SaaS.9 validation gate, never for the showcase or a development copy.
         'deletion_enabled' => (bool) env('PEOPLEOS_TENANT_DELETION_ENABLED', false),
+        // SaaS.11: the reference of the owner's authorisation to enable deletion (approved policies, rehearsal). The production
+        // configuration gate refuses deletion switched on without it.
+        'deletion_authorisation' => env('PEOPLEOS_TENANT_DELETION_AUTHORISATION'),
         // Days between the second operator's approval and the start of a deletion (SaaS.1 Target Architecture §9 proposal).
         'cooling_off_days' => max(0, (int) env('PEOPLEOS_DELETION_COOLING_OFF_DAYS', 14)),
         // A deletion needs an export that was delivered (downloaded, or delivered out of band) or explicitly waived.
@@ -676,6 +681,9 @@ return [
         // D10-1: public registration is off until the owner authorises it after a security review. Off: every signup page
         // shows a short notice and every signup action is refused; existing tenants and the operator page are unaffected.
         'enabled' => (bool) env('PEOPLEOS_PUBLIC_SIGNUP_ENABLED', false),
+        // SaaS.11: the reference of the owner's written authorisation (D10-1). The production configuration gate refuses
+        // registration switched on without it; it is recorded, never inferred.
+        'authorisation' => env('PEOPLEOS_PUBLIC_SIGNUP_AUTHORISATION'),
         // How long an e-mail confirmation link works (the link is single-use; a new one replaces it).
         'link_hours' => max(1, (int) env('PEOPLEOS_SIGNUP_LINK_HOURS', 24)),
         // A confirmed application whose details are not submitted within this many days expires (kept, never deleted).

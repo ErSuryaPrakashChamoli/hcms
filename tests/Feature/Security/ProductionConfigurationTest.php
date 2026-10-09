@@ -44,6 +44,8 @@ function productionLikeConfig(): void
         'peopleos.http.trusted_proxies' => '10.0.0.0/8', 'peopleos.health.token' => str_repeat('h', 40),
         'logging.default' => 'stack', 'logging.channels.stack.channels' => ['daily'], 'logging.channels.daily.level' => 'info',
         'peopleos.security.platform_mfa_required' => true,
+        // SaaS.11: no demo-seed password exists in production.
+        'peopleos.seed.password' => null,
     ]);
 }
 
@@ -148,4 +150,33 @@ it('keeps tenants apart on a real queue round-trip and in the shared cache', fun
     app(TenantContext::class)->runAs($alpha, fn () => app(SettingsRepository::class)->set('employee.code.prefix', 'ALP'));
     expect(app(TenantContext::class)->runAs($beta, fn () => app(SettingsRepository::class)->get('employee.code.prefix')))->toBe('EMP')
         ->and(app(TenantContext::class)->runAs($alpha, fn () => app(SettingsRepository::class)->get('employee.code.prefix')))->toBe('ALP');
+});
+
+it('refuses the release-gate switches in production without the owner\'s recorded authorisation (SaaS.11)', function () {
+    productionLikeConfig();
+    app()->detectEnvironment(fn () => 'production');
+    $errors = fn () => collect(validateOnMysql())->where('severity', 'error')->pluck('key')->all();
+    try {
+        expect($errors())->toBe([]);
+
+        config(['peopleos.signup.enabled' => true]);
+        expect($errors())->toContain('PEOPLEOS_PUBLIC_SIGNUP_ENABLED');
+        config(['peopleos.signup.authorisation' => 'D10-1 written authorisation (fictional reference)']);
+        expect($errors())->not->toContain('PEOPLEOS_PUBLIC_SIGNUP_ENABLED');
+
+        config(['peopleos.offboarding.deletion_enabled' => true]);
+        expect($errors())->toContain('PEOPLEOS_TENANT_DELETION_ENABLED');
+        config(['peopleos.offboarding.deletion_authorisation' => 'Deletion authorisation (fictional reference)']);
+        expect($errors())->not->toContain('PEOPLEOS_TENANT_DELETION_ENABLED');
+
+        config(['peopleos.billing.razorpay.enabled' => true, 'peopleos.billing.razorpay.key_id' => 'rzp_live_FICTIONAL']);
+        expect($errors())->toContain('PEOPLEOS_RAZORPAY_ENABLED', 'PEOPLEOS_RAZORPAY_KEY_ID');
+        config(['peopleos.billing.razorpay.enabled' => false, 'peopleos.billing.razorpay.key_id' => null, 'peopleos.seed.password' => 'a-demo-seed-password']);
+        expect($errors())->toContain('PEOPLEOS_SEED_PASSWORD');
+        config(['peopleos.seed.password' => null, 'peopleos.security.hsts_max_age' => 0]);
+        expect($errors())->toContain('PEOPLEOS_HSTS_MAX_AGE')
+            ->and(json_encode(validateOnMysql()))->not->toContain('a-demo-seed-password')->not->toContain('rzp_live_FICTIONAL');
+    } finally {
+        app()->detectEnvironment(fn () => 'testing');
+    }
 });
