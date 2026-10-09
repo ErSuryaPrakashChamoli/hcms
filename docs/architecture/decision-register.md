@@ -272,3 +272,14 @@ D10-11: `docs/saas/SaaS-10-Discovery-and-Architecture.md`; threats: `docs/saas/S
 | 0108 | Public registration is off by default | Accepted | `PEOPLEOS_PUBLIC_SIGNUP_ENABLED` (default false). Off: notices only, every action refused; the tick still finishes or expires submitted applications; operators unaffected. Switching it on needs the owner's authorisation after a security review (D10-1) | `SignupPagesTest` |
 | 0109 | No enumeration: one answer for every address; one login per address kept | Accepted | `start()` behaves the same for new, open and existing-account addresses (Timebox, silent per-address limit); only the mailbox learns that an account exists. D-17 unchanged | `SignupApplicationsTest`, `SignupPagesTest` |
 | 0110 | Applicant data is minimised at activation and never purged by an invented period | Accepted | The contact's name and address are removed from the application once the owner activates; acceptance evidence stays. Applications that never became tenants are kept until a retention decision (D10-6). Applicant steps are audited anonymously; the platform chain carries references, states and codes only | `SignupProvisioningTest` |
+
+## SaaS.11 decisions (production assurance)
+
+Recorded on 10 October 2026. Gates and owner decisions: `docs/saas/SaaS-11-Release-Gate-Register.md`.
+
+| ADR | Title | Status | Decision (one line) | Enforced by |
+|---|---|---|---|---|
+| 0111 | A release switch needs the owner's recorded authorisation beside it in production | Accepted | Registration and tenant deletion are refused in production unless `PEOPLEOS_PUBLIC_SIGNUP_AUTHORISATION` / `PEOPLEOS_TENANT_DELETION_AUTHORISATION` hold a decision reference (not a secret; presence checked by software, authenticity by the deployment's reviewers). Live payments, a live key, a seed password and HSTS under a year are refused outright | `ProductionConfigurationTest`; mutants R4–R9 |
+| 0112 | PeopleOS is never indexed | Accepted | `X-Robots-Tag: noindex, nofollow` on every response (`PEOPLEOS_ROBOTS_TAG`; empty is a validator warning) and a disallow-all `robots.txt`; tokens travel in link paths | `SecurityHardeningTest`; mutant R10 |
+| 0113 | Role permission changes are audit events | Accepted | `ROLE_CHANGED` with the permission keys granted and removed, from the role editor, role creation and blueprint import; nothing is recorded when nothing changed | `RoleGrantsTest`; mutants R1–R3 |
+| 0114 | Operator MFA enrolment is a production readiness gate | Accepted | Readiness FAILs in production while a platform operator who can sign in has no authenticator (counts only); enrolment at creation is not built | `PlatformReadinessTest`; mutants R11–R12 |

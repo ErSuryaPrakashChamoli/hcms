@@ -98,6 +98,21 @@ the audit hash chains survive dump and restore.
 - cross-host or cross-region restore;
 - the RTO / RPO targets.
 
+**SaaS.11 rehearsal (10 October 2026).** A wider local, isolated rehearsal on fictional fixture data passed 14 of 14
+steps:
+- encrypted backup with checksums before and after encryption;
+- a wrong passphrase refused;
+- database and file restore into new locations;
+- content hashes of 13 key tables identical;
+- 5 audit chains valid;
+- tenant isolation;
+- `APP_KEY` dependency;
+- the heartbeat read back after restore, ticks idempotent, restored jobs drained;
+- the latest migration rolled back and re-applied.
+
+It is still local evidence only, with the same limits as above. Report, the target-environment execution plan, and the
+deletion re-apply procedure: `docs/saas/SaaS-11-Backup-and-DR-Test-Report.md`.
+
 ## 9. Verification still required (deployment blocker)
 
 Before go-live, in the target environment, operations must:

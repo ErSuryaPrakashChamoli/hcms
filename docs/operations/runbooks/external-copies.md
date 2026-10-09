@@ -64,3 +64,8 @@ The page shows the same, live.
   and restore were rehearsed locally only (`docs/production/disaster-recovery.md`).
 - **No re-apply procedure.** There is no automated "re-apply deletions after restore" job. Today it is an operator step
   in the production-copy rehearsal (`production-copy-rehearsal.md`).
+- **No deletion register outside the database (SaaS.11, S11-5).** The certificate lives in the database, so a restore
+  to a point before a deletion loses the deletion **and** its proof. Step 2 above therefore depends on a copy of each
+  certificate kept outside the database. Until that register exists, download every certificate when its deletion
+  completes and file it in a separately backed-up store. The procedure is in `docs/saas/SaaS-11-Backup-and-DR-Test-Report.md` §5.
+  Deletion stays off until both gaps are closed.

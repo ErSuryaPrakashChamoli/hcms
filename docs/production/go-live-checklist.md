@@ -79,6 +79,12 @@ with evidence from the environment named in the item.
 | Egress filtering from application nodes (no route to metadata / private ranges) | NOT VERIFIED | Network policy | Operations | |
 | Penetration test by an independent party | NOT VERIFIED | Report | Security | |
 | BGV provider-specific signature scheme | NOT APPLICABLE until a provider contract exists (providers sign with the PeopleOS scheme) | Security boundaries doc §1 | Engineering | 2026-10-03 |
+| Leaked credential (F1) rotated everywhere; repository visibility and history decided; value removed from `feature/sep_28_phase_1` | NOT VERIFIED | Owner's confirmation (`docs/saas/SaaS-11-Security-Findings.md` §2) | Owner | |
+| Independent security review signed, no open critical or high finding | NOT VERIFIED | `docs/saas/SaaS-11-External-Security-Review-Checklist.md` §6 | Security | |
+| Every platform operator has MFA enrolled (readiness check) | NOT VERIFIED | `peopleos:readiness` in the target | Operations | |
+| Release switches off, or on only with the owner's recorded authorisation (registration, deletion); live payments off | PASS (rule enforced by the validator) / NOT VERIFIED (target) | ProductionConfigurationTest; `docs/saas/SaaS-11-Release-Gate-Register.md` §5 | Engineering / Operations | 2026-10-10 |
+| Not indexed: `X-Robots-Tag: noindex, nofollow` and `robots.txt` disallow all | PASS (local) / NOT VERIFIED (target) | SecurityHardeningTest; live header check on the build workstation | Engineering / Operations | 2026-10-10 |
+| Role permission changes audited | PASS | RoleGrantsTest (SaaS.11) | Engineering | 2026-10-10 |
 
 ## I. APIs
 

@@ -366,6 +366,17 @@ SaaS.10 additions (self-service signup):
      regenerates the session id.
 115. **Signup never starts a paid subscription**: only the accepted offer's trial, through `startSignupTrial`.
 
+SaaS.11 additions (production assurance):
+
+116. **Every change of a role's permissions is audited** (`ROLE_CHANGED`, with the keys granted and removed), whether it
+     comes from the role editor, role creation or a blueprint import (`RoleGrants::recordPermissionChange`).
+117. **A release switch is never on in production without the owner's recorded authorisation**: registration and tenant
+     deletion need their authorisation reference. Live payments, a demo seed password and HSTS under a year are refused
+     outright (`ProductionConfigValidator::releaseGates`).
+118. **PeopleOS is never indexed**: every response carries `X-Robots-Tag` (`noindex, nofollow` by default), and
+     `robots.txt` disallows everything.
+119. **Production readiness fails while any platform operator who can sign in has no MFA enrolled.**
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |

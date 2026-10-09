@@ -107,6 +107,24 @@ server or extension exists on the build workstation.
 | Tenant security policy | MFA, IP allow-list and idle timeout per tenant (Security policy page) | — |
 | API keys | issued per integration with the minimum scopes; expiry dates set | — |
 | Secrets | `APP_KEY`, DB / Redis / mail / AWS credentials, `ANTHROPIC_API_KEY` and integration secrets live in the secret store; **never committed** | the repository holds only `.env.example` |
+| `PEOPLEOS_HSTS_MAX_AGE` (SaaS.11) | at least 31536000 (one year) | yes (error below a year) |
+| `PEOPLEOS_ROBOTS_TAG` (SaaS.11) | leave the default `noindex, nofollow`: every response carries it, and `robots.txt` disallows everything. PeopleOS is a private platform, and invitation and signup links carry their token in the path | warning when empty |
+| `PEOPLEOS_SEED_PASSWORD` (SaaS.11) | **unset**. It exists only for local demo seeding | yes (error when set) |
+| Platform operators' MFA (SaaS.11) | every operator who can sign in has an authenticator enrolled **before** production. An operator without one is asked to enrol at the next sign-in, so a leaked password alone would let someone else enrol theirs | readiness (FAIL in production) |
+
+### 6a. Release switches (SaaS.11)
+
+Each switch that releases a gated capability is refused in production unless the owner's written authorisation is
+recorded beside it. The reference is an identifier of that decision (for example a ticket or minute number), **not a
+secret and not a credential**. The validator checks only that it is present. Whether the authorisation is genuine is
+checked by the people who review the deployment.
+
+| Switch | Authorisation reference | Rule in production |
+|---|---|---|
+| `PEOPLEOS_PUBLIC_SIGNUP_ENABLED` | `PEOPLEOS_PUBLIC_SIGNUP_AUTHORISATION` | error when on without a reference (D10-1) |
+| `PEOPLEOS_TENANT_DELETION_ENABLED` | `PEOPLEOS_TENANT_DELETION_AUTHORISATION` | error when on without a reference (D-8, F11) |
+| `PEOPLEOS_RAZORPAY_ENABLED` | none: live payments are not released | error when on |
+| `PEOPLEOS_RAZORPAY_KEY_ID` | none | error for a live key (`rzp_live_…`) |
 
 ## 7. AI
 
