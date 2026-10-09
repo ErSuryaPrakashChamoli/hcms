@@ -21,6 +21,7 @@ use App\Domain\Platform\Support\LifecycleRefused;
 use App\Domain\Platform\Support\PlatformOperator;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -186,12 +187,15 @@ final class TenantDeletions
     }
 
     /** An operator records what happened outside PeopleOS for an external dependency (requested, confirmed or unsupported). */
-    public function recordExternal(TenantDeletionStep $step, string $status, ?User $actor, string $reason): TenantDeletionStep
+    public function recordExternal(TenantDeletionStep $step, string $status, ?User $actor, string $reason, ?string $retainedUntil = null): TenantDeletionStep
     {
         $actor = PlatformOperator::assert($actor, 'record an external deletion');
         $reason = PlatformOperator::reason($reason);
-        if ($step->kind !== 'external' || ! in_array($status, [TenantDeletionStep::EXTERNAL_REQUESTED, TenantDeletionStep::EXTERNAL_CONFIRMED, TenantDeletionStep::EXTERNAL_UNSUPPORTED], true)) {
+        if ($step->kind !== 'external' || ! in_array($status, TenantDeletionStep::EXTERNAL_RECORDABLE, true)) {
             throw new LifecycleRefused('Not an external dependency, or not a valid status.');
+        }
+        if ($status === TenantDeletionStep::EXTERNAL_RETENTION_REQUIRED && ($retainedUntil === null || Carbon::parse($retainedUntil)->lt(today()))) {
+            throw new LifecycleRefused('A copy that must be kept is recorded with the date until which it is kept (today or later).');
         }
         $deletion = $this->find($step->tenant_deletion_id);
         if (! in_array($deletion->status, [DeletionStatus::Approved, DeletionStatus::InProgress, DeletionStatus::Failed, DeletionStatus::Completed], true)) {
@@ -200,7 +204,7 @@ final class TenantDeletions
         // Conditional on the status read: two operators recording at once make one change; a confirmation is final.
         $before = $this->tenants->bypass(fn () => TenantDeletionStep::query()->findOrFail($step->getKey()));
         $detail = array_merge($before->detail ?? [], ['recorded_by' => $actor?->getKey(), 'recorded_at' => now()->toIso8601String(), 'recorded_note' => $reason,
-            'previous_status' => $before->status]);
+            'previous_status' => $before->status, 'retained_until' => $status === TenantDeletionStep::EXTERNAL_RETENTION_REQUIRED ? Carbon::parse($retainedUntil)->toDateString() : null]);
         $changed = $this->tenants->bypass(fn () => TenantDeletionStep::query()->whereKey($step->getKey())->where('kind', 'external')
             ->where('status', $before->status)->where('status', '!=', TenantDeletionStep::EXTERNAL_CONFIRMED)
             ->update(['status' => $status, 'detail' => json_encode($detail), 'updated_at' => now()]));
@@ -302,8 +306,12 @@ final class TenantDeletions
      */
     private function externals(Tenant $tenant): array
     {
-        $out = [['target' => 'backups', 'status' => TenantDeletionStep::EXTERNAL_REQUIRED,
-            'note' => 'Backups taken before the deletion still contain the data until they age out under the backup schedule; a restore must re-apply this deletion (tenant id and deletion reference).']];
+        $out = [
+            ['target' => 'database backups', 'status' => TenantDeletionStep::EXTERNAL_REQUIRED,
+                'note' => 'Database backups and provider snapshots taken before the deletion still contain the data until they age out under the backup schedule; a restore must re-apply this deletion (tenant id and deletion reference).'],
+            ['target' => 'file storage backups and replicas', 'status' => TenantDeletionStep::EXTERNAL_REQUIRED,
+                'note' => 'Copies of the tenant\'s files in storage backups, object versions or replicas outlive the deletion of the files themselves until they expire or are purged.'],
+        ];
         $systems = DB::table('integration_systems')->where('tenant_id', $tenant->getKey())->pluck('name')->all();
         foreach ($systems as $name) {
             $out[] = ['target' => 'integration: '.$name, 'status' => TenantDeletionStep::EXTERNAL_REQUIRED,

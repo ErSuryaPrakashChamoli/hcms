@@ -11,12 +11,14 @@ use App\Domain\Offboarding\Models\TenantDeletion;
 use App\Domain\Offboarding\Models\TenantDeletionStep;
 use App\Domain\Offboarding\Models\TenantExport;
 use App\Domain\Offboarding\Models\TenantOffboarding;
+use App\Domain\Offboarding\Models\TenantRetentionTerm;
 use App\Domain\Offboarding\Services\DeletionPlanner;
 use App\Domain\Offboarding\Services\LegalHolds;
 use App\Domain\Offboarding\Services\OffboardingDirectory;
 use App\Domain\Offboarding\Services\TenantDeletions;
 use App\Domain\Offboarding\Services\TenantExports;
 use App\Domain\Offboarding\Services\TenantOffboardings;
+use App\Domain\Offboarding\Services\TenantRetentionTerms;
 use App\Domain\Offboarding\Support\DataInventory;
 use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
@@ -31,6 +33,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Url;
 use RuntimeException;
 use UnitEnum;
@@ -176,7 +179,51 @@ class PlatformOffboardingPage extends Page
                     : 'Tenant deletion is switched off in this environment (PEOPLEOS_TENANT_DELETION_ENABLED): plans can be reviewed but not recorded.')
                 ->schema([$this->reason()])
                 ->action(fn (array $data) => $this->attempt(fn () => app(TenantDeletions::class)->request($case(), auth()->user(), $data['reason']), 'Deletion planned: a second operator approves it')),
+            Action::make('proposeRetentionTerm')->label('Contract retention')->color('gray')->icon(Heroicon::OutlinedDocumentText)
+                ->visible(fn () => $tenant() !== null && $tenant()->status !== TenantStatus::Deleted)
+                ->modalDescription('C: what this customer\'s contract requires, kept apart from the legal minimum and Markedge\'s policy. A minimum keeps the data at least that long after closure; a deletion deadline never deletes anything by itself (a retention running past it is shown as a conflict to resolve). Another operator approves it.')
+                ->schema([
+                    Select::make('category')->label('Category')->required()->default(TenantRetentionTerm::ALL_CATEGORIES)
+                        ->options([TenantRetentionTerm::ALL_CATEGORIES => 'Every category'] + collect(DataInventory::CATEGORIES)->map(fn (array $c) => $c['label'])->all()),
+                    TextInput::make('minimum_months')->label('Keep at least (months after closure)')->numeric()->minValue(1)->maxValue(1200),
+                    TextInput::make('maximum_days')->label('Delete within (days after closure)')->numeric()->minValue(1)->maxValue(36500),
+                    TextInput::make('contract_reference')->label('Contract reference (agreement and clause)')->required()->maxLength(200),
+                    DatePicker::make('effective_from')->label('Effective from')->native(false)->required()->default(now()),
+                    $this->reason(),
+                ])
+                ->action(fn (array $data) => $this->attempt(fn () => app(TenantRetentionTerms::class)->propose($tenant(), (string) $data['category'],
+                    filled($data['minimum_months'] ?? null) ? (int) $data['minimum_months'] : null, filled($data['maximum_days'] ?? null) ? (int) $data['maximum_days'] : null,
+                    (string) $data['contract_reference'], (string) $data['effective_from'], $data['reason'], auth()->user()), 'Contract term proposed: another operator approves it')),
         ];
+    }
+
+    /** @return Collection<int, TenantRetentionTerm> */
+    public function retentionTerms(): Collection
+    {
+        return $this->tenant === null ? collect() : app(TenantRetentionTerms::class)->forTenant($this->tenant);
+    }
+
+    public function termApproveAction(): Action
+    {
+        return Action::make('termApprove')->label('Approve')->color('success')->schema([$this->reason()])
+            ->action(fn (array $data, array $arguments) => $this->attempt(fn () => app(TenantRetentionTerms::class)->approve(app(TenantRetentionTerms::class)->find((int) ($arguments['term'] ?? 0)), auth()->user(), $data['reason']), 'Contract term approved'));
+    }
+
+    public function termRejectAction(): Action
+    {
+        return Action::make('termReject')->label('Reject')->color('gray')->schema([$this->reason()])
+            ->action(fn (array $data, array $arguments) => $this->attempt(fn () => app(TenantRetentionTerms::class)->reject(app(TenantRetentionTerms::class)->find((int) ($arguments['term'] ?? 0)), auth()->user(), $data['reason']), 'Contract term rejected'));
+    }
+
+    public function termWithdrawAction(): Action
+    {
+        return Action::make('termWithdraw')->label('Withdraw')->color('gray')->schema([$this->reason()])
+            ->action(fn (array $data, array $arguments) => $this->attempt(fn () => app(TenantRetentionTerms::class)->withdraw(app(TenantRetentionTerms::class)->find((int) ($arguments['term'] ?? 0)), auth()->user(), $data['reason']), 'Contract term withdrawn'));
+    }
+
+    public function termIsMine(TenantRetentionTerm $term): bool
+    {
+        return (int) $term->proposed_by === (int) auth()->id();
     }
 
     // Per-item actions, mounted from the page with the item id as an argument.
@@ -261,10 +308,16 @@ class PlatformOffboardingPage extends Page
     public function externalRecordAction(): Action
     {
         return Action::make('externalRecord')->label('Record')->schema([
-            Select::make('status')->options([TenantDeletionStep::EXTERNAL_REQUESTED => 'Deletion requested from the external party', TenantDeletionStep::EXTERNAL_CONFIRMED => 'Deletion confirmed by the external party',
-                TenantDeletionStep::EXTERNAL_UNSUPPORTED => 'Not supported by the external party'])->required(),
+            Select::make('status')->options([TenantDeletionStep::EXTERNAL_REQUESTED => 'REQUESTED: deletion requested from the external party',
+                TenantDeletionStep::EXTERNAL_CONFIRMED => 'CONFIRMED: deletion confirmed by the external party (final)',
+                TenantDeletionStep::EXTERNAL_FAILED => 'FAILED: the request failed or was refused',
+                TenantDeletionStep::EXTERNAL_UNSUPPORTED => 'UNSUPPORTED: the external party cannot delete on request',
+                TenantDeletionStep::EXTERNAL_RETENTION_REQUIRED => 'RETENTION_REQUIRED: the copy must be kept until a date'])->required()->live(),
+            DatePicker::make('retained_until')->label('Kept until')->visible(fn ($get) => $get('status') === TenantDeletionStep::EXTERNAL_RETENTION_REQUIRED)
+                ->required(fn ($get) => $get('status') === TenantDeletionStep::EXTERNAL_RETENTION_REQUIRED),
             $this->reason('Reference and note'),
-        ])->action(fn (array $data, array $arguments) => $this->attempt(fn () => app(TenantDeletions::class)->recordExternal($this->directory()->step((int) ($arguments['step'] ?? 0)), $data['status'], auth()->user(), $data['reason']), 'Recorded'));
+        ])->action(fn (array $data, array $arguments) => $this->attempt(fn () => app(TenantDeletions::class)->recordExternal($this->directory()->step((int) ($arguments['step'] ?? 0)), $data['status'], auth()->user(), $data['reason'],
+            $data['retained_until'] ?? null), 'Recorded'));
     }
 
     public function certificateDownloadAction(): Action

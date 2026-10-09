@@ -332,12 +332,13 @@ final class DeletionExecutor
 
     private function finish(TenantDeletion $deletion, Tenant $tenant, TenantOffboarding $case): void
     {
+        $packages = $this->removeExportPackages($tenant);
         $after = $this->planner->plan($tenant, $case, $deletion);
         $remaining = array_keys(array_filter($after['categories'], fn (array $c) => $c['owner'] === 'tenant' && $c['action'] !== 'none'
             && ! ($c['action'] === DataInventory::ANONYMISE && $this->onlyAnonymisedLeft($c))));
         $final = $remaining === [];
         $steps = $this->tenants->bypass(fn () => TenantDeletionStep::query()->where('tenant_deletion_id', $deletion->getKey())->orderBy('position')->get());
-        $certificate = $this->certificate($deletion, $tenant, $case, $steps->all(), $after, $final);
+        $certificate = $this->certificate($deletion, $tenant, $case, $steps->all(), $after, $final, $packages);
         $signature = Signatures::sign('deletion-certificate', $certificate);
 
         DB::transaction(function () use ($deletion, $tenant, $case, $final, $certificate, $signature) {
@@ -375,8 +376,34 @@ final class DeletionExecutor
         return true;
     }
 
-    /** @param  list<TenantDeletionStep>  $steps */
-    private function certificate(TenantDeletion $deletion, Tenant $tenant, TenantOffboarding $case, array $steps, array $after, bool $final): array
+    /**
+     * Export packages still stored for the tenant copy data this deletion just removed: their files are deleted (the
+     * export's record, checksums and manifest stay, as the exit's evidence). A file storage refuses is a failure (retry).
+     *
+     * @return list<string> the references of the packages removed
+     */
+    private function removeExportPackages(Tenant $tenant): array
+    {
+        $removed = [];
+        $exports = $this->tenants->bypass(fn () => TenantExport::query()->select(['id', 'reference', 'disk', 'path'])->where('tenant_id', $tenant->getKey())->whereNotNull('path')->get());
+        foreach ($exports as $export) {
+            $disk = Storage::disk($export->disk);
+            if ($disk->exists($export->path) && ! $disk->delete($export->path)) {
+                throw new RuntimeException("The export package {$export->reference} could not be deleted.");
+            }
+            $this->tenants->bypass(fn () => TenantExport::query()->whereKey($export->getKey())->update(['status' => ExportStatus::Expired->value, 'path' => null,
+                'expired_at' => now(), 'updated_at' => now()]));
+            $removed[] = $export->reference;
+        }
+
+        return $removed;
+    }
+
+    /**
+     * @param  list<TenantDeletionStep>  $steps
+     * @param  list<string>  $packages
+     */
+    private function certificate(TenantDeletion $deletion, Tenant $tenant, TenantOffboarding $case, array $steps, array $after, bool $final, array $packages = []): array
     {
         $byCategory = [];
         $audit = null;
@@ -384,7 +411,8 @@ final class DeletionExecutor
         $external = [];
         foreach ($steps as $step) {
             if ($step->kind === 'external') {
-                $external[] = ['target' => $step->target, 'status' => $step->status, 'note' => $step->detail['note'] ?? null];
+                $external[] = ['target' => $step->target, 'status' => $step->status, 'label' => TenantDeletionStep::EXTERNAL_LABELS[$step->status] ?? $step->status,
+                    'retained_until' => $step->detail['retained_until'] ?? null, 'note' => $step->detail['note'] ?? null];
 
                 continue;
             }
@@ -431,7 +459,12 @@ final class DeletionExecutor
                 : ['reference' => $export?->reference, 'sha256' => $export?->sha256, 'manifest_sha256' => $export?->manifest_sha256, 'delivered_at' => $export?->delivered_at?->toIso8601String()],
             'audit_chain' => $audit ?? ['deleted' => false, 'note' => 'The tenant\'s audit chain is retained (see retained categories).'],
             'verification' => $verification,
+            'deletion_scope' => 'Data stored by PeopleOS: its database and its file storage. Copies outside PeopleOS are listed under external_dependencies and are not claimed deleted until confirmed.',
             'external_dependencies' => $external,
+            'external_copies_outstanding' => array_values(array_map(fn (array $e) => $e['target'].' ('.$e['label'].')',
+                array_filter($external, fn (array $e) => $e['status'] !== TenantDeletionStep::EXTERNAL_CONFIRMED))),
+            'complete_including_external_copies' => $final && collect($external)->every(fn (array $e) => $e['status'] === TenantDeletionStep::EXTERNAL_CONFIRMED),
+            'export_packages_removed' => $packages,
             'external_dependencies_note' => 'Statuses when this certificate was issued. Later confirmations are recorded in the platform audit trail (EXTERNAL_DELETION_CONFIRMED); copies outside PeopleOS are not claimed deleted until confirmed.',
             'final' => $final,
             'status' => 'completed',

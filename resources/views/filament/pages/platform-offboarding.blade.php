@@ -54,6 +54,11 @@
 
         @if ($plan)
             <x-filament::section heading="Retention and deletion eligibility" :description="'Evaluated '.$plan['evaluated_on'].($plan['closed_at'] ? ', retention counted from the closure on '.\Illuminate\Support\Carbon::parse($plan['closed_at'])->toDateString() : '')">
+                @if (($plan['conflicts'] ?? []) !== [])
+                    <div class="mb-3 text-sm text-danger-700 dark:text-danger-400" role="note"><strong>Contract conflicts (decide; nothing is deleted automatically):</strong>
+                        <ul class="ms-5 list-disc">@foreach ($plan['conflicts'] as $c)<li><code>{{ $c['code'] }}</code> {{ $c['category'] }}: {{ $c['detail'] }}</li>@endforeach</ul>
+                    </div>
+                @endif
                 @if ($plan['gates'] !== [])
                     <div class="mb-3 text-sm" role="note"><strong>Not deletable:</strong>
                         <ul class="ms-5 list-disc">@foreach ($plan['gates'] as $g)<li><code>{{ $g['code'] }}</code> {{ $g['detail'] }}</li>@endforeach</ul>
@@ -117,6 +122,36 @@
             @endif
         </x-filament::section>
 
+        <x-filament::section heading="Customer contract retention" description="C: what this customer's contract requires, kept apart from the legal minimum (A) and Markedge's policy (B). Approved by a second operator; a deletion deadline never deletes anything by itself.">
+            @php($terms = $this->retentionTerms())
+            @if ($terms->isEmpty())
+                <p class="text-sm text-gray-600 dark:text-gray-300">No contractual retention term recorded.</p>
+            @else
+                <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Contractual retention terms">
+                    <table class="w-full text-sm">
+                        <caption class="sr-only">Contractual retention terms</caption>
+                        <thead><tr class="text-left text-gray-500"><th scope="col" class="py-1 pe-3">Category</th><th scope="col" class="pe-3">Keep at least</th><th scope="col" class="pe-3">Delete within</th><th scope="col" class="pe-3">Contract</th><th scope="col" class="pe-3">From</th><th scope="col" class="pe-3">Status</th><th scope="col">Actions</th></tr></thead>
+                        <tbody>
+                            @foreach ($terms as $term)
+                                <tr class="border-t border-gray-100 align-top dark:border-gray-800">
+                                    <td class="py-1 pe-3">{{ $term->category === '*' ? 'Every category' : $term->category }}<br><span class="text-xs text-gray-500">{{ $term->reason }}</span></td>
+                                    <td class="pe-3">{{ $term->minimum_months ? $term->minimum_months.' months' : '—' }}</td>
+                                    <td class="pe-3">{{ $term->maximum_days ? $term->maximum_days.' days' : '—' }}</td>
+                                    <td class="pe-3">{{ $term->contract_reference }}</td>
+                                    <td class="whitespace-nowrap pe-3">{{ $term->effective_from->toDateString() }}</td>
+                                    <td class="pe-3">{{ ucfirst($term->status->value) }}</td>
+                                    <td class="space-x-1 whitespace-nowrap">
+                                        @if ($term->status->value === 'pending' && ! $this->termIsMine($term)){{ ($this->termApproveAction)(['term' => $term->id]) }} {{ ($this->termRejectAction)(['term' => $term->id]) }}@endif
+                                        @if ($term->status->value === 'pending' && $this->termIsMine($term)){{ ($this->termWithdrawAction)(['term' => $term->id]) }}<span class="text-xs text-gray-500">another operator approves</span>@endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </x-filament::section>
+
         <x-filament::section heading="Legal holds">
             @php($holds = $this->directory()->holds($tenant->id))
             @if ($holds->isEmpty())
@@ -163,6 +198,12 @@
                     </div>
                     <div class="mt-1 text-gray-600 dark:text-gray-300">Planned by #{{ $deletion->requested_by }} {{ $deletion->requested_at?->format('Y-m-d H:i') }}: {{ $deletion->request_reason }}@if ($deletion->approved_by) · approved by #{{ $deletion->approved_by }} {{ $deletion->approved_at?->format('Y-m-d H:i') }}@endif @if ($deletion->failure)<br><span class="text-danger-600 dark:text-danger-400">{{ $deletion->failure }}</span>@endif</div>
                     @php($steps = $this->directory()->steps($deletion->id))
+                    @if ($deletion->status->value === 'completed')
+                        @php($outstanding = $steps->where('kind', 'external')->where('status', '!=', \App\Domain\Offboarding\Models\TenantDeletionStep::EXTERNAL_CONFIRMED))
+                        <div class="mt-1 text-sm" role="status">{{ ($deletion->certificate['final'] ?? false) ? 'No customer data remains in PeopleOS.' : 'Partly deleted: some categories are retained (see the certificate).' }}
+                            @if ($outstanding->isNotEmpty())<strong>Not complete outside PeopleOS:</strong> {{ $outstanding->count() }} external {{ $outstanding->count() === 1 ? 'copy is' : 'copies are' }} not confirmed deleted ({{ $outstanding->map(fn ($s) => $s->target.': '.(\App\Domain\Offboarding\Models\TenantDeletionStep::EXTERNAL_LABELS[$s->status] ?? $s->status))->implode('; ') }}).@else All external copies are confirmed deleted.@endif
+                        </div>
+                    @endif
                     @if ($steps->isNotEmpty())
                         <details class="mt-2"><summary class="cursor-pointer">Steps ({{ $steps->where('status', 'done')->count() }} of {{ $steps->where('kind', '!=', 'external')->count() }} done) and external dependencies</summary>
                             <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Deletion steps">
@@ -173,7 +214,7 @@
                                         @foreach ($steps as $step)
                                             <tr class="border-t border-gray-100 align-top dark:border-gray-800">
                                                 <td class="pe-2">{{ $step->position }}</td><td class="pe-2">{{ $step->category }}</td><td class="pe-2">{{ $step->kind }}</td><td class="pe-2 font-mono">{{ $step->target }}</td>
-                                                <td class="pe-2">{{ str_replace('_', ' ', $step->status) }}</td><td class="pe-2">{{ $step->processed_count }}{{ $step->planned_count !== null ? ' / '.$step->planned_count : '' }}</td>
+                                                <td class="pe-2">{{ \App\Domain\Offboarding\Models\TenantDeletionStep::EXTERNAL_LABELS[$step->status] ?? str_replace('_', ' ', $step->status) }}@if ($step->detail['retained_until'] ?? null)<br><span class="text-xs">until {{ $step->detail['retained_until'] }}</span>@endif</td><td class="pe-2">{{ $step->processed_count }}{{ $step->planned_count !== null ? ' / '.$step->planned_count : '' }}</td>
                                                 <td>{{ $step->detail['note'] ?? ($step->detail['reason'] ?? '') }}@if ($step->kind === 'external' && $deletion->status->value !== 'cancelled') {{ ($this->externalRecordAction)(['step' => $step->id]) }}@endif</td>
                                             </tr>
                                         @endforeach
