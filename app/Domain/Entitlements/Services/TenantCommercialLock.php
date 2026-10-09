@@ -29,8 +29,13 @@ final class TenantCommercialLock
     public function run(Tenant $tenant, Closure $work): mixed
     {
         return $this->tenants->runAs($tenant, function () use ($tenant, $work) {
-            TenantEntitlementProfile::query()->insertOrIgnore(['tenant_id' => $tenant->id, 'state' => TenantEntitlementProfile::UNCONFIGURED, 'version' => 0,
-                'created_at' => now(), 'updated_at' => now()]);
+            // SaaS.9: only when missing. An INSERT IGNORE on an existing row still share-locks the tenants row (its foreign
+            // key) and then waits for the profile row: against a closing tenant (profile row, then tenants row) that was a
+            // deadlock. A plain read takes no lock.
+            if (! TenantEntitlementProfile::query()->exists()) {
+                TenantEntitlementProfile::query()->insertOrIgnore(['tenant_id' => $tenant->id, 'state' => TenantEntitlementProfile::UNCONFIGURED, 'version' => 0,
+                    'created_at' => now(), 'updated_at' => now()]);
+            }
 
             return DB::transaction(function () use ($tenant, $work) {
                 $profile = TenantEntitlementProfile::query()->lockForUpdate()->firstOrFail();
