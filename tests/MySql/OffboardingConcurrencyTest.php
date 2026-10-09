@@ -106,7 +106,7 @@ function employeesOf(Tenant $tenant): int
 }
 
 /** Waits (in a race child) until $condition holds, up to $seconds. */
-function waitUntil(Closure $condition, float $seconds = 30): bool
+function waitUntil(Closure $condition, float $seconds = 120): bool
 {
     $until = microtime(true) + $seconds;
     while (microtime(true) < $until) {
@@ -257,8 +257,9 @@ it('4. stops a running deletion at the next batch when a hold arrives, and delet
         app(DeletionExecutor::class)->execute($deletion->id);
     };
     $hold = function () use ($deletion, $snapshot) {
-        // Mid-run: once the worker has finished a few steps.
-        waitUntil(fn () => TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('status', 'done')->count() >= 10)
+        // Mid-run: once the worker has finished a few steps (in a database the whole suite has filled, its two-row batches
+        // over large child tables take a while).
+        waitUntil(fn () => TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('status', 'done')->count() >= 3, 180)
             ?: throw new RuntimeException('the deletion never got going');
         app(LegalHolds::class)->place(Tenant::query()->findOrFail($this->tenant->id), [], 'Litigation notice (race)', 'MATTER-R4', null, User::query()->findOrFail($this->checker->id));
         $tenant = Tenant::query()->findOrFail($this->tenant->id);
