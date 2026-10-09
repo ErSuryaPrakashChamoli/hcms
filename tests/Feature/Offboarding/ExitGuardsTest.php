@@ -169,3 +169,22 @@ it('never deletes a category without an approved retention policy, and plans not
     noRetentionPolicies();
     expect(fn () => $this->deletions->request($case->fresh(), $this->maker, 'Delete'))->toThrow(RuntimeException::class, 'No category is eligible');
 });
+
+it('waits for the cooling-off after approval: nothing runs before it ends', function () {
+    $case = offboardAndClose($this->tenant, $this->maker);
+    app(TenantOffboardings::class)->waiveExport($case, $this->maker, 'Customer took a copy');
+    $deletion = approvedDeletion($case->fresh(), $this->maker, $this->checker);
+    expect($deletion->scheduled_for->toDateString())->toBe(now()->addDays(14)->toDateString());
+
+    $this->deletions->dispatchDue();
+    app(DeletionExecutor::class)->execute($deletion->id);
+    $this->travel(13)->days();
+    $this->deletions->dispatchDue();
+    app(DeletionExecutor::class)->execute($deletion->id);
+    expect($this->deletions->find($deletion->id)->status)->toBe(DeletionStatus::Approved)
+        ->and($case->fresh()->deletion_started_at)->toBeNull();
+
+    $this->travel(2)->days();
+    $this->deletions->dispatchDue();
+    expect($this->deletions->find($deletion->id)->status)->toBe(DeletionStatus::Completed);
+});
