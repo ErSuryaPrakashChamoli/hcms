@@ -46,7 +46,9 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    expect(app(AuditIntegrityVerifier::class)->verify(null)['valid'])->toBeTrue();
+    if (isset($this->catalogue)) { // skipped tests (no MySQL database) have nothing to verify
+        expect(app(AuditIntegrityVerifier::class)->verify(null)['valid'])->toBeTrue();
+    }
 });
 
 function submittedFor(string $email, string $display = 'Acme Signup'): SignupApplication
