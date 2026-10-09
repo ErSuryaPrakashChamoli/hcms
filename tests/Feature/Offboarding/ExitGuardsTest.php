@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Offboarding\Enums\DeletionStatus;
+use App\Domain\Offboarding\Models\TenantDeletion;
 use App\Domain\Offboarding\Models\TenantDeletionStep;
 use App\Domain\Offboarding\Models\TenantExport;
 use App\Domain\Offboarding\Services\DeletionExecutor;
@@ -10,6 +11,7 @@ use App\Domain\Offboarding\Services\TenantDeletions;
 use App\Domain\Offboarding\Services\TenantExports;
 use App\Domain\Offboarding\Services\TenantOffboardings;
 use App\Domain\Subscriptions\Services\CommercialSubscriptions;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
@@ -187,4 +189,23 @@ it('waits for the cooling-off after approval: nothing runs before it ends', func
     $this->travel(2)->days();
     $this->deletions->dispatchDue();
     expect($this->deletions->find($deletion->id)->status)->toBe(DeletionStatus::Completed);
+});
+
+it('lets no tenant user plan, approve, cancel or retry a deletion, or record an external copy', function () {
+    $case = offboardAndClose($this->tenant, $this->maker);
+    app(TenantOffboardings::class)->waiveExport($case, $this->maker, 'Customer took a copy');
+    $admin = app(TenantContext::class)->runAs($this->tenant, fn () => tenantUser($this->tenant, ['*']));
+
+    expect(fn () => $this->deletions->request($case->fresh(), $admin, 'Delete our data'))->toThrow(RuntimeException::class, 'Only platform operators')
+        ->and(TenantDeletion::query()->withoutTenancy()->where('tenant_id', $this->tenant->id)->count())->toBe(0);
+    $deletion = $this->deletions->request($case->fresh(), $this->maker, 'Delete');
+    expect(fn () => $this->deletions->approve($deletion, $admin, 'Approve it'))->toThrow(RuntimeException::class, 'Only platform operators')
+        ->and(fn () => $this->deletions->cancel($deletion, $admin, 'Cancel it'))->toThrow(RuntimeException::class, 'Only platform operators')
+        ->and(fn () => $this->deletions->reject($deletion, $admin, 'Reject it'))->toThrow(RuntimeException::class, 'Only platform operators');
+
+    $deletion = $this->deletions->approve($deletion, $this->checker, 'Plan reviewed');
+    $backup = TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('target', 'backups')->firstOrFail();
+    expect(fn () => $this->deletions->recordExternal($backup, TenantDeletionStep::EXTERNAL_CONFIRMED, $admin, 'Our backups are gone'))->toThrow(RuntimeException::class, 'Only platform operators')
+        ->and(fn () => $this->deletions->retry($deletion, $admin, 'Run it again'))->toThrow(RuntimeException::class, 'Only platform operators')
+        ->and($backup->fresh()->status)->toBe(TenantDeletionStep::EXTERNAL_REQUIRED);
 });
