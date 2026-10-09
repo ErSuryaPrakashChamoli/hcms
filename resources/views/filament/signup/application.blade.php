@@ -2,7 +2,7 @@
 @php($app = $application ?? null)
 @if ($app)
     <div @if ($polling ?? false) wire:poll.10s @endif class="space-y-4 text-sm">
-        <dl class="grid gap-x-4 gap-y-1 sm:grid-cols-[11rem_1fr]">
+        <dl class="grid gap-x-4 gap-y-1 sm:grid-cols-[14rem_1fr]">
             <dt class="text-gray-500 dark:text-gray-400">Reference</dt><dd class="font-mono">{{ $app->reference }}</dd>
             <dt class="text-gray-500 dark:text-gray-400">Status</dt>
             <dd><x-filament::badge size="sm" :color="$app->status->getColor()">{{ $app->status->getLabel() }}</x-filament::badge></dd>

@@ -1,11 +1,10 @@
 <x-filament-panels::page>
     @php($p = $this->progress())
     <x-filament::section heading="Where things stand" description="These are separate: an active account and a provisioned organisation do not mean set-up is complete, and a subscription does not switch on payroll.">
-        <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[14rem_9rem_1fr]">
+        <dl class="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[14rem_1fr]">
             @foreach ($p['states'] as $s)
                 <dt class="font-medium">{{ $s['label'] }}</dt>
-                <dd><x-filament::badge size="sm" :color="$s['tone']">{{ $s['state'] }}</x-filament::badge></dd>
-                <dd class="text-gray-600 dark:text-gray-300">{{ $s['detail'] }}</dd>
+                <dd class="flex flex-wrap items-start gap-2"><x-filament::badge size="sm" :color="$s['tone']">{{ $s['state'] }}</x-filament::badge><span class="text-gray-600 dark:text-gray-300">{{ $s['detail'] }}</span></dd>
             @endforeach
         </dl>
     </x-filament::section>

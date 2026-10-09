@@ -60,6 +60,7 @@ it('links the steps the owner can do, names the role for the others, and shows t
         ->and($items['company']['done'])->toBeFalse();
 
     Livewire::test(Home::class)->assertSee('Finish setting up your organisation');
+    expect(GettingStarted::shouldRegisterNavigation())->toBeTrue();
 
     Company::factory()->create();
     expect(collect(app(TenantSetupProgress::class)->for($this->owner)['items'])->firstWhere('key', 'company')['done'])->toBeTrue();
@@ -73,6 +74,7 @@ it('is for the organisation\'s administrators only; existing tenants\' Home show
     $other = provisionTenant('Operator Provisioned Co');
     actAsTenant($other);
     $this->actingAs(tenantUser($other, ['*']));
-    expect(GettingStarted::canAccess())->toBeTrue()->and(GettingStarted::banner())->toBeNull();
+    expect(GettingStarted::canAccess())->toBeTrue()->and(GettingStarted::banner())->toBeNull()
+        ->and(GettingStarted::shouldRegisterNavigation())->toBeFalse(); // existing tenants' navigation is unchanged
     Livewire::test(Home::class)->assertDontSee('Finish setting up your organisation');
 });

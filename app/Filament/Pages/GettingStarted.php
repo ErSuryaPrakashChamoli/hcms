@@ -43,6 +43,15 @@ class GettingStarted extends Page
             && ($user->hasPermission('user.assign_roles') || $user->hasPermission('settings.update'));
     }
 
+    /**
+     * Listed (navigation, Admin centre) only in tenants registered through signup, so existing tenants' navigation is
+     * unchanged; any tenant administrator can still open it by its address.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return TenantSetupProgress::fromSignup(app(TenantContext::class)->id());
+    }
+
     public function mount(): void
     {
         abort_unless(static::canAccess(), 403);
