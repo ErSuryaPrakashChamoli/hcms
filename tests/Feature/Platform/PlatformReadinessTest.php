@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Identity\Enums\UserStatus;
 use App\Filament\Pages\PlatformReadinessPage;
 use App\Support\Observability\PlatformReadiness;
 use Illuminate\Support\Facades\Artisan;
@@ -43,6 +44,22 @@ it('fails unsafe production configuration and exits non-zero', function () {
         ->and($report['summary']['production_ready'])->toBeFalse();
     expect(Artisan::call('peopleos:readiness', ['--skip-audit' => true]))->toBe(1);
     expect(Artisan::output())->toContain('Statutory production gate: BLOCKED')->toContain('NOT DECLARED');
+    app()->detectEnvironment(fn () => 'testing');
+});
+
+it('fails production readiness while a platform operator who can sign in has no MFA enrolled (SaaS.11)', function () {
+    $check = fn () => collect(app(PlatformReadiness::class)->report(false)['checks'])->firstWhere('check', 'Every platform operator has MFA enrolled');
+    $enrolled = platformAdmin();
+    $enrolled->forceFill(['app_authentication_secret' => 'JBSWY3DPEHPK3PXP'])->save();
+    $unenrolled = platformAdmin();
+    platformAdmin()->forceFill(['status' => UserStatus::Suspended])->save(); // cannot sign in: not counted
+
+    expect($check())->toMatchArray(['status' => PlatformReadiness::WARN, 'detail' => '1 of 2 not enrolled']);
+    app()->detectEnvironment(fn () => 'production');
+    expect($check()['status'])->toBe(PlatformReadiness::FAIL);
+
+    $unenrolled->forceFill(['app_authentication_secret' => 'JBSWY3DPEHPK3PXP'])->save();
+    expect($check())->toMatchArray(['status' => PlatformReadiness::PASS, 'detail' => 'all enrolled']);
     app()->detectEnvironment(fn () => 'testing');
 });
 

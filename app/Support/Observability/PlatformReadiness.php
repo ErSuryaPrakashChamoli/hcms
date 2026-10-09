@@ -5,6 +5,8 @@ namespace App\Support\Observability;
 use App\Domain\Audit\Services\AuditVerifications;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\ComplianceRuleNotice;
+use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\User;
 use Illuminate\Support\Facades\Schema;
 use League\Flysystem\AwsS3V3\AwsS3V3Adapter;
 
@@ -83,6 +85,11 @@ final class PlatformReadiness
         $add('mail', 'Mailer is a real transport', in_array($mailer, ['log', 'array'], true) ? ($production ? self::FAIL : self::WARN) : self::PASS, $mailer);
         $add('mail', 'From address is configured', str_contains((string) config('mail.from.address'), 'example.com') ? self::WARN : self::PASS, str_contains((string) config('mail.from.address'), 'example.com') ? 'default example address' : 'set');
         $add('security', 'Health token is set', filled(config('peopleos.health.token')) ? self::PASS : self::WARN, filled(config('peopleos.health.token')) ? 'set' : 'not set');
+        // SaaS.11 (F8): an operator with no authenticator is asked to enrol one at the next sign-in, so a leaked password alone
+        // would let someone else enrol theirs. Every operator who can sign in enrols before production. Counts only.
+        $operators = User::query()->where('is_platform_admin', true)->where('status', '!=', UserStatus::Suspended->value);
+        $unenrolled = (clone $operators)->whereNull('app_authentication_secret')->count();
+        $add('security', 'Every platform operator has MFA enrolled', $level($unenrolled === 0), $unenrolled === 0 ? 'all enrolled' : "{$unenrolled} of {$operators->count()} not enrolled");
         $provider = (string) config('peopleos.ai.provider', 'none');
         $add('ai', 'AI provider and data boundary', $provider === 'none' || filled(config('peopleos.ai.anthropic.key')) ? self::PASS : self::WARN, $provider === 'none' ? 'deterministic only (no external provider)' : "provider {$provider}; tenant data policy applies");
 
