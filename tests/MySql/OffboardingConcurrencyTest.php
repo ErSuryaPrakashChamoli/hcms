@@ -21,6 +21,7 @@ use App\Domain\Subscriptions\Services\SubscriptionDirectory;
 use App\Support\Tenancy\TenantContext;
 use Filament\Facades\Filament;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -177,27 +178,72 @@ it('2. runs a deletion once when two workers pick it up at once', function () {
         ->and($this->tenant->fresh()->status)->toBe(TenantStatus::Deleted);
 });
 
-it('3. never queues an export and approves a deletion together: exactly one of the two goes through', function () {
+it('3. never queues an export and approves a deletion together: an export committed between the approval\'s checks and its write refuses it', function () {
     $case = closedWithExportWaived($this->tenant, $this->maker);
     $deletion = app(TenantDeletions::class)->request($case, $this->maker, 'Retention ended (race)');
     Queue::fake(); // the export stays queued (in flight): that is the state that must never meet an approved deletion
+    $flag = tempnam(sys_get_temp_dir(), 'approve');
+    unlink($flag);
 
-    $export = function () use ($case) {
-        usleep(300_000); // lands while the approval is still evaluating the plan
+    // The approval has evaluated the plan (no export in flight) and opened its transaction, but not yet taken the exit lock:
+    // it pauses there, and the export request runs in exactly that window.
+    $approve = function () use ($deletion, $flag) {
+        $paused = false;
+        Event::listen(TransactionBeginning::class, function () use (&$paused, $flag) {
+            if (! $paused) {
+                $paused = true;
+                touch($flag);
+                usleep(1_200_000);
+            }
+        });
+        app(TenantDeletions::class)->approve(app(TenantDeletions::class)->find($deletion->id), User::query()->findOrFail($this->checker->id), 'Plan reviewed (race)');
+    };
+    $export = function () use ($case, $flag) {
+        waitUntil(fn () => file_exists($flag)) ?: throw new RuntimeException('the approval never reached its write');
         app(TenantExports::class)->request(Tenant::query()->findOrFail($this->tenant->id), User::query()->findOrFail($this->maker->id), 'One last copy (race)',
             TenantOffboarding::query()->withoutTenancy()->findOrFail($case->id));
     };
-    $approve = function () use ($deletion) {
-        slowEvaluation();
-        app(TenantDeletions::class)->approve(app(TenantDeletions::class)->find($deletion->id), User::query()->findOrFail($this->checker->id), 'Plan reviewed (race)');
-    };
-    $results = race([$export, $approve]);
+    [$exported, $approval] = race([$export, $approve]);
+    @unlink($flag);
 
     $inFlight = TenantExport::query()->withoutTenancy()->where('tenant_id', $this->tenant->id)->whereIn('status', ['queued', 'generating'])->count();
-    $approved = app(TenantDeletions::class)->find($deletion->id)->status === DeletionStatus::Approved;
-    expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
-        ->and($inFlight === 1 xor $approved)->toBeTrue()
-        ->and(collect($results)->reject(fn ($r) => $r === 'ok')->first())->toMatch('/no new export|export (of this tenant )?is being generated/i');
+    expect($exported)->toBe('ok')
+        ->and($inFlight)->toBe(1)
+        ->and($approval)->toContain('export of this tenant is being generated')
+        ->and(app(TenantDeletions::class)->find($deletion->id)->status)->toBe(DeletionStatus::Planned);
+
+    // The mirror: the export request has opened its transaction but not yet taken the lock, and the approval commits in
+    // that window. The export must then be refused (no package is read while a deletion is approved).
+    $tenant = exitRaceTenant();
+    $case = closedWithExportWaived($tenant, $this->maker);
+    $deletion = app(TenantDeletions::class)->request($case, $this->maker, 'Retention ended (race)');
+    $flag = tempnam(sys_get_temp_dir(), 'export');
+    unlink($flag);
+    $export = function () use ($tenant, $case, $flag) {
+        $paused = false;
+        Event::listen(TransactionBeginning::class, function () use (&$paused, $flag) {
+            if (! $paused) {
+                $paused = true;
+                touch($flag);
+                // A file, not a query: a read here would fix this transaction's snapshot before its lock.
+                waitUntil(fn () => file_exists($flag.'.approved'), 20);
+            }
+        });
+        app(TenantExports::class)->request(Tenant::query()->findOrFail($tenant->id), User::query()->findOrFail($this->maker->id), 'One last copy (race)',
+            TenantOffboarding::query()->withoutTenancy()->findOrFail($case->id));
+    };
+    $approve = function () use ($deletion, $flag) {
+        waitUntil(fn () => file_exists($flag)) ?: throw new RuntimeException('the export never reached its write');
+        app(TenantDeletions::class)->approve(app(TenantDeletions::class)->find($deletion->id), User::query()->findOrFail($this->checker->id), 'Plan reviewed (race)');
+        touch($flag.'.approved');
+    };
+    $this->tenant = $tenant;
+    [$exported, $approval] = race([$export, $approve]);
+    @unlink($flag);
+    @unlink($flag.'.approved');
+    expect($approval)->toBe('ok')
+        ->and($exported)->toContain('no new export')
+        ->and(TenantExport::query()->withoutTenancy()->where('tenant_id', $tenant->id)->count())->toBe(0);
 });
 
 it('4. stops a running deletion at the next batch when a hold arrives, and deletes nothing after it', function () {
@@ -285,16 +331,44 @@ it('5. stops the retention purge, and refuses an approval, when a hold arrives w
 });
 
 it('6. never leaves a reopened tenant with a deletion: reopen against planning, and against the worker', function () {
-    // (a) Reopen and plan at once.
+    // (a) Reopen and plan at once. The reopen has checked that no deletion is in flight and pauses before it writes; the
+    // planning (its evaluation done) opens its write transaction in that window. Only the exit lock, taken by both,
+    // keeps a deletion from being planned for a tenant that is being reopened.
     $case = closedWithExportWaived($this->tenant, $this->maker);
-    $reopen = fn () => app(TenantOffboardings::class)->reopen(TenantOffboarding::query()->withoutTenancy()->findOrFail($case->id), User::query()->findOrFail($this->maker->id), 'Customer renewed (race)');
-    $plan = fn () => app(TenantDeletions::class)->request(TenantOffboarding::query()->withoutTenancy()->findOrFail($case->id), User::query()->findOrFail($this->checker->id), 'Retention ended (race)');
-    $results = race([$reopen, $plan]);
+    $flag = tempnam(sys_get_temp_dir(), 'plan');
+    unlink($flag);
+    $reopen = function () use ($case, $flag) {
+        $paused = false;
+        Event::listen(QueryExecuted::class, function (QueryExecuted $q) use (&$paused, $flag) {
+            if (! $paused && str_contains($q->sql, '`tenant_deletions`') && str_starts_with(strtolower($q->sql), 'select exists')) {
+                $paused = true;
+                touch($flag.'.paused');
+                waitUntil(fn () => file_exists($flag), 30); // a file, not a query: nothing more is read in this transaction
+                usleep(700_000);
+            }
+        });
+        app(TenantOffboardings::class)->reopen(TenantOffboarding::query()->withoutTenancy()->findOrFail($case->id), User::query()->findOrFail($this->maker->id), 'Customer renewed (race)');
+    };
+    $plan = function () use ($case, $flag) {
+        $signalled = false;
+        Event::listen(TransactionBeginning::class, function () use (&$signalled, $flag) {
+            if (! $signalled) {
+                $signalled = true;
+                touch($flag);
+            }
+        });
+        app(TenantDeletions::class)->request(TenantOffboarding::query()->withoutTenancy()->findOrFail($case->id), User::query()->findOrFail($this->checker->id), 'Retention ended (race)');
+    };
+    [$reopened, $planned] = race([$reopen, $plan]);
+    $pausedInWindow = file_exists($flag.'.paused');
+    @unlink($flag);
+    @unlink($flag.'.paused');
 
-    $planned = TenantDeletion::query()->withoutTenancy()->where('tenant_id', $this->tenant->id)->whereIn('status', ['planned', 'approved'])->count();
-    $active = $this->tenant->fresh()->status === TenantStatus::Active;
-    expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
-        ->and($active xor $planned === 1)->toBeTrue();
+    expect($pausedInWindow)->toBeTrue()
+        ->and($reopened)->toBe('ok')
+        ->and($planned)->toContain('reopened or changed meanwhile')
+        ->and($this->tenant->fresh()->status)->toBe(TenantStatus::Active)
+        ->and(TenantDeletion::query()->withoutTenancy()->where('tenant_id', $this->tenant->id)->count())->toBe(0);
 
     // (b) Cancel-and-reopen against the worker claiming the due deletion.
     $tenant = exitRaceTenant();
@@ -336,14 +410,33 @@ it('7. never closes a tenant with a continuing subscription: closing against a c
         expect($directory->continuing($this->tenant->fresh()))->toBe([]);
     }
 
-    // (b) A subscription is started while the tenant is closed.
+    // (b) A subscription is started while the tenant is being closed: the closing holds the commercial lock (and has found
+    // no continuing subscription) when the start arrives. The start waits for the lock, then must see the closed tenant.
     $tenant = exitRaceTenant(1);
     $case = app(TenantOffboardings::class)->request($tenant, 'Customer gave notice (race)', null, null, $this->maker);
-    $start = fn () => app(CommercialSubscriptions::class)->start(Tenant::query()->findOrFail($tenant->id), $plan, today()->toDateString(), null, 'New contract (race)', User::query()->findOrFail($this->checker->id));
-    $close = fn () => app(TenantOffboardings::class)->close(TenantOffboarding::query()->withoutTenancy()->findOrFail($case->id), User::query()->findOrFail($this->maker->id), 'Service ended (race)');
-    $results = race([$start, $close]);
-    expect(collect($results)->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
-        ->and($tenant->fresh()->status === TenantStatus::Closed xor $directory->continuing($tenant->fresh()) !== [])->toBeTrue();
+    $flag = tempnam(sys_get_temp_dir(), 'close');
+    unlink($flag);
+    $close = function () use ($case, $flag) {
+        $held = false;
+        Event::listen(QueryExecuted::class, function (QueryExecuted $q) use (&$held, $flag) {
+            if (! $held && str_contains($q->sql, '`tenant_entitlement_profiles`') && str_contains(strtolower($q->sql), 'for update')) {
+                $held = true;
+                touch($flag);
+                usleep(800_000);
+            }
+        });
+        app(TenantOffboardings::class)->close(TenantOffboarding::query()->withoutTenancy()->findOrFail($case->id), User::query()->findOrFail($this->maker->id), 'Service ended (race)');
+    };
+    $start = function () use ($tenant, $plan, $flag) {
+        waitUntil(fn () => file_exists($flag)) ?: throw new RuntimeException('the closing never took the commercial lock');
+        app(CommercialSubscriptions::class)->start(Tenant::query()->findOrFail($tenant->id), $plan, today()->toDateString(), null, 'New contract (race)', User::query()->findOrFail($this->checker->id));
+    };
+    [$started, $closed] = race([$start, $close]);
+    @unlink($flag);
+    expect($closed)->toBe('ok')
+        ->and($started)->toContain('reopen it before it is entitled again')
+        ->and($tenant->fresh()->status)->toBe(TenantStatus::Closed)
+        ->and($directory->continuing($tenant->fresh()))->toBe([]);
     $this->tenant = $tenant;
 });
 
@@ -407,7 +500,7 @@ it('10. keeps external records consistent while the deletion runs: a confirmatio
         usleep((int) ($after * 1_000_000));
         app(TenantDeletions::class)->recordExternal(TenantDeletionStep::query()->withoutTenancy()->findOrFail($backup->id), $status, User::query()->findOrFail($by->id), "Recorded {$status} (race)");
     };
-    $results = race([$run, $record($this->checker, TenantDeletionStep::EXTERNAL_CONFIRMED, 0.5), $record($this->maker, TenantDeletionStep::EXTERNAL_REQUESTED, 0.5)]);
+    $results = race([$run, $record($this->checker, TenantDeletionStep::EXTERNAL_CONFIRMED, 0.5), $record($this->maker, TenantDeletionStep::EXTERNAL_REQUESTED, 1.0)]);
 
     $deletion = app(TenantDeletions::class)->find($deletion->id);
     [$ran, $confirmed, $requested] = $results;
@@ -416,7 +509,8 @@ it('10. keeps external records consistent while the deletion runs: a confirmatio
     expect($ran)->toBe('ok')
         ->and($deletion->status)->toBe(DeletionStatus::Completed, (string) $deletion->failure)
         ->and($recorded)->toBeGreaterThanOrEqual(1)
-        // A confirmation that went through is never overwritten; a refused one was told to reload.
+        // The confirmation (at 0.5 s) went through; the later "requested" record (at 1.0 s, while the deletion still runs)
+        // must not overwrite it: a confirmation is final.
         ->and($confirmed !== 'ok' || $final === TenantDeletionStep::EXTERNAL_CONFIRMED)->toBeTrue($final)
         ->and($final)->toBeIn([TenantDeletionStep::EXTERNAL_REQUESTED, TenantDeletionStep::EXTERNAL_CONFIRMED])
         ->and(($this->platformEvents)('EXTERNAL_DELETION_CONFIRMED', $this->tenant))->toBe($recorded)
@@ -442,12 +536,17 @@ it('11. resumes a partial deletion once when two operators retry and the schedul
     expect($deletion->status)->toBe(DeletionStatus::Failed)->and(employeesOf($this->tenant))->toBeGreaterThan(0)
         ->and(TenantDeletionStep::query()->withoutTenancy()->where('tenant_deletion_id', $deletion->id)->where('status', 'done')->count())->toBeGreaterThan(0);
 
-    $retry = fn (User $by) => fn () => app(TenantDeletions::class)->retry(app(TenantDeletions::class)->find($deletion->id), User::query()->findOrFail($by->id), 'Database is back (race)');
+    // The second operator retries 1.3 s later, while the first retry's run is going: MySQL reports changed (not matched)
+    // rows, so a second retry writing the same values in the same second would hide a missing status condition.
+    $retry = fn (User $by, float $after = 0) => function () use ($by, $after, $deletion) {
+        usleep((int) ($after * 1_000_000));
+        app(TenantDeletions::class)->retry(app(TenantDeletions::class)->find($deletion->id), User::query()->findOrFail($by->id), 'Database is back (race)');
+    };
     $tick = function () {
         usleep(50_000);
         app(TenantDeletions::class)->dispatchDue();
     };
-    $results = race([$retry($this->maker), $retry($this->checker), $tick]);
+    $results = race([$retry($this->maker), $retry($this->checker, 1.3), $tick]);
 
     $deletion = app(TenantDeletions::class)->find($deletion->id);
     expect(collect(array_slice($results, 0, 2))->filter(fn ($r) => $r === 'ok'))->toHaveCount(1)
