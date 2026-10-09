@@ -15,7 +15,7 @@ Date: 9 October 2026. Branch `feature/oct_1_phase_1`. Not pushed, merged or depl
 | | Commit |
 |---|---|
 | Start | `8e2b8c5` (SaaS.9 closure report ending commit), clean tree, 47 commits ahead of origin |
-| End | ⟨ENDING⟩ |
+| End | `baf1fb0` (docs), followed only by the commit that records this hash in this table |
 
 Commits of this phase, in order:
 - `8e2d518` docs: discovery and architecture: signup state machine, provisioning, boundaries, owner decisions
@@ -28,7 +28,8 @@ Commits of this phase, in order:
 - `208efde` fix: signup provisioning runs one at a time (concurrent new tenants deadlocked in the audit chain)
 - `9b91f13` test: signup races verify the audit chain only when they ran (skipped under SQLite)
 - `fd012f6` test: visual baseline: the audit page's count includes the new Account Owner role's creation
-- ⟨LATER⟩
+- `baf1fb0` docs: architecture, threat model, runbooks, configuration, decisions and final report
+- a final docs commit recording the ending commit above
 
 ## 2. Branch and working tree
 
