@@ -303,13 +303,45 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
 86. **The platform audit trail shows the platform chain only**, and the operations page shows counts and states only.
 87. **Audit integrity has recorded, recent evidence**: a broken chain fails readiness; no result within 48 hours is STALE.
 
+SaaS.9 additions (tenant data exit: `docs/architecture/saas-9-offboarding.md`):
+
+88. **Every table is classified exactly once** in the data inventory (category, child or platform). A new table fails
+    the architecture test until it is classified. Owning a `tenant_id` never makes a table deletable by itself.
+89. **No tenant data is deleted unless every gate holds.** The tenant is closed. An export was delivered or waived, and
+    none is generating. No open financial item exists. The category's approved retention has ended, no legal hold covers
+    it, and nothing kept depends on it.
+90. **Deletion takes two operators, an unchanged plan and the switch.** The maker never approves. The checker approves
+    the fingerprinted plan only if nothing changed. Nothing is planned, approved or executed while
+    `PEOPLEOS_TENANT_DELETION_ENABLED` is false (the default).
+91. **Nothing a legal hold covers is deleted after the hold commits.** Every deletion batch and every retention purge
+    batch re-reads the holds under the exit lock, immediately before it deletes.
+92. **Markedge's billing, invoice, payment and subscription records are never deleted with a tenant**, and offboarding
+    never cancels, settles or clears a financial obligation.
+93. **A closed tenant has no continuing subscription**, and no new entitled period can start while it is closed or
+    deleted.
+94. **An export and a deletion never overlap.** No export is requested once a deletion is approved or has started. A
+    deletion never starts while an export is queued or generating.
+95. **An export contains this tenant's rows only, never a secret column.** Packages are encrypted on a private disk and
+    reachable only through a signed link of minutes, bound to the person, inside a valid session. Every download and
+    passphrase reveal is audited.
+96. **No retention period and no legal minimum is invented.** A policy is never shorter than a configured legal minimum.
+    A category without an approved policy is never deleted, and an absent minimum shows as `LEGAL_MINIMUM_NOT_CONFIGURED`.
+97. **The audit chain is deleted only whole, newest first, by the deletion executor**, after its head hash is recorded.
+    What remains is always a valid chain prefix.
+98. **A tenant whose deletion has started can never be reopened**, even after the run stopped.
+99. **No copy outside PeopleOS is reported deleted without an operator's recorded confirmation**, and a confirmation is
+    final.
+100. **No tenant user and no API key can close, hold, change retention, plan, approve or execute a deletion.** The
+     services refuse anyone but platform operators, and no API route reaches the exit.
+101. **Storage prefixes used for deletion are exact**: never a wildcard that could reach platform or another tenant's files.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
 |---|---|---|
-| `TenantContext::bypass()` / `withoutTenancy()` | 18 files (SaaS.8: +3, `DeferredTenantJobs` (a suspended tenant's deferred jobs, always filtered by that tenant), `PlatformOperationsOverview` (operators' grouped per-tenant counts) and `PlatformAuditTrail` (`tenant_id IS NULL` only); `PlatformReadiness` no longer bypasses; SaaS.2: +1, SaaS.3: +1; SaaS.7: +3, `BillingDirectory` and `PaymentDirectory` (operators' cross-tenant invoice and payment headers) and `ProviderEvents` (resolving a payment from a verified provider reference); SaaS.7 configuration: +0 files, one more read in the allow-listed `BillingDirectory`: the platform-chain trail of configuration changes; SaaS.6: +1, `SubscriptionDirectory`: the operators' cross-tenant overview of names and commercial states, and the platform audit chain; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
+| `TenantContext::bypass()` / `withoutTenancy()` | 26 files (SaaS.9: +8, the exit services `TenantOffboardings`, `TenantExports`, `LegalHolds`, `TenantDeletions`, `DeletionPlanner`, `DeletionExecutor`, `OffboardingDirectory` and `OffboardingAudit`: operators' work on one named tenant, every query filtered by that tenant's id, on the architecture allow-list; SaaS.8: +3, `DeferredTenantJobs` (a suspended tenant's deferred jobs, always filtered by that tenant), `PlatformOperationsOverview` (operators' grouped per-tenant counts) and `PlatformAuditTrail` (`tenant_id IS NULL` only); `PlatformReadiness` no longer bypasses; SaaS.2: +1, SaaS.3: +1; SaaS.7: +3, `BillingDirectory` and `PaymentDirectory` (operators' cross-tenant invoice and payment headers) and `ProviderEvents` (resolving a payment from a verified provider reference); SaaS.7 configuration: +0 files, one more read in the allow-listed `BillingDirectory`: the platform-chain trail of configuration changes; SaaS.6: +1, `SubscriptionDirectory`: the operators' cross-tenant overview of names and commercial states, and the platform audit chain; SaaS.4: +0 files, two more reads in the allow-listed `EntitlementDiagnostics`: tenants per plan version, counts only, and Markedge's platform audit chain) | Platform services only, each on the architecture allow-list: audit recorder / verifier (cross-tenant chains), API key resolution (before a tenant exists), SSO connection lookup by slug, tenant provisioning, access-scope rows, job tenant binding, health and readiness (counts only), invitation token lookup (before the invitee is signed in), the operators' cross-tenant entitlement shadow summary (counts only) |
 | `withoutGlobalScope(AccessScope::class)` (345 call sites in 110 files) and `AccessScope::withoutScoping()` (32) | Mechanically each removes only the **organisation** scope; the fail-closed tenant scope stays. Reviewed by category (not line by line): domain services checking a target by id after an explicit `AccessScopes::allows` check, background sweeps, aggregate analytics with small-group suppression, and identity checks (Phase 14: tenant-wide on purpose) |
 | `withoutGlobalScopes()` (all) | 1 | `NumberSequences::highest`. Phase 14 narrowed it to the access scope with an explicit `tenant_id` filter |
-| `DB::table()` | 13 | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only) |
+| `DB::table()` | 17 (SaaS.9: +4) | Each carries an explicit tenant id or a key of a tenant-scoped row: employee-code sequences, scheduler claims, audit-chain locks (platform), engagement answer aggregates (Phase 14 added explicit `tenant_id` filters), EPF revision rows by return id, health counts (platform, counts only). SaaS.9: `ExportPackager::rowsOf` (the one tenant filter for every inventory table: `tenant_id`, or a child's parent rows), `DeletionPlanner` (counts and dependency `EXISTS` through `rowsOf`), `DeletionExecutor` (batched deletes by ids read through `rowsOf`; the audit chain by `tenant_id`) and `TenantDeletions` (which external systems the tenant used, by `tenant_id`) |
 | Interpolated SQL fragments (`selectRaw` / `whereRaw` with `{$…}`) | 5 | Interpolated values come from code constants or allow-listed dimension names (workforce dimension columns, movement-type CASE built from config keys, PersonMatcher column names); user input is always bound |
 | `DB::select` / `statement` / `unprepared` | 1 | Health `select 1` |

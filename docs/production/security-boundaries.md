@@ -97,3 +97,14 @@ The `api` limiter resolves the presented key once per request (`ApiKeys::resolve
 - **Missing, invalid or unverified key:** the caller's IP bucket.
 
 Before SaaS.8 the bucket came from the presented prefix before any check. Anyone who knew a key's prefix could exhaust that tenant's limit with garbage secrets, and every fresh random token had its own bucket (unlimited failed attempts per caller).
+
+## 6. Tenant data export and deletion (SaaS.9)
+
+| Boundary | Control |
+|---|---|
+| Who may export | A platform operator, or a tenant user holding `data.export` while the tenant is accessible and the user is active (`TenantExports::authorize`, in the service) |
+| What leaves | Only this tenant's rows. No credential or secret column (passwords, remember tokens, TOTP secrets and recovery codes, key and token hashes, client, inbound and webhook secrets), no lookup hashes, no inbound payloads, no platform tables |
+| Package at rest | A private disk (`PEOPLEOS_EXPORT_DISK`), never public. A ZIP with each entry encrypted (AES-256); the passphrase is random and stored encrypted with the application key. The manifest is signed (HMAC-SHA256, key derived per purpose from the application key) |
+| Access | A signed link of 5 minutes, naming the person (`u`). It needs a signed-in session with every SaaS.2 session check, and is limited to 30 per minute. Streamed with `Cache-Control: no-store, private`. Every download and passphrase reveal is audited |
+| Lifetime | The package is deleted after 7 days; its record, checksums and manifest stay |
+| Destructive controls | Closing, holds, retention policies, deletion plans, approvals and execution: platform operators only (in the services); deletion needs two operators, an unchanged plan, a cooling-off and `PEOPLEOS_TENANT_DELETION_ENABLED`. No API route reaches any of it |
