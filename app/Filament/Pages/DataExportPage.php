@@ -54,7 +54,7 @@ class DataExportPage extends Page
     /** @return Collection<int, TenantExport> this organisation's exports only (tenant scope) */
     public function exports(): Collection
     {
-        return TenantExport::query()->orderByDesc('id')->limit(20)->get();
+        return TenantExport::query()->select(TenantExport::SUMMARY_COLUMNS)->orderByDesc('id')->limit(20)->get();
     }
 
     protected function getHeaderActions(): array

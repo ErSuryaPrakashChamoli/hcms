@@ -26,11 +26,16 @@ final class OffboardingDirectory
     /** @return list<array{tenant: Tenant, case: ?TenantOffboarding, export: ?TenantExport, holds: int, deletion: ?TenantDeletion}> */
     public function overview(): array
     {
-        $cases = $this->tenants->bypass(fn () => TenantOffboarding::query()->orderByDesc('id')->get()->unique('tenant_id')->keyBy('tenant_id'));
-        $exports = $this->tenants->bypass(fn () => TenantExport::query()->orderByDesc('id')->get()->unique('tenant_id')->keyBy('tenant_id'));
+        // The latest of each per tenant, and of exports and deletions only their summary columns (their manifests and plans
+        // can be megabytes, which MySQL will not sort and the overview does not need).
+        $cases = $this->tenants->bypass(fn () => TenantOffboarding::query()->whereIn('id', TenantOffboarding::query()->selectRaw('max(id)')->groupBy('tenant_id'))
+            ->get()->keyBy('tenant_id'));
+        $exports = $this->tenants->bypass(fn () => TenantExport::query()->select(TenantExport::SUMMARY_COLUMNS)
+            ->whereIn('id', TenantExport::query()->selectRaw('max(id)')->groupBy('tenant_id'))->get()->keyBy('tenant_id'));
         $holds = $this->tenants->bypass(fn () => LegalHold::query()->whereIn('status', [LegalHoldStatus::Active->value, LegalHoldStatus::ReleaseRequested->value])
             ->select('tenant_id', DB::raw('count(*) as aggregate'))->groupBy('tenant_id')->pluck('aggregate', 'tenant_id'));
-        $deletions = $this->tenants->bypass(fn () => TenantDeletion::query()->orderByDesc('id')->get()->unique('tenant_id')->keyBy('tenant_id'));
+        $deletions = $this->tenants->bypass(fn () => TenantDeletion::query()->select(TenantDeletion::SUMMARY_COLUMNS)
+            ->whereIn('id', TenantDeletion::query()->selectRaw('max(id)')->groupBy('tenant_id'))->get()->keyBy('tenant_id'));
 
         return Tenant::query()->orderBy('name')->get()->map(fn (Tenant $tenant) => [
             'tenant' => $tenant, 'case' => $cases->get($tenant->id), 'export' => $exports->get($tenant->id),
@@ -41,7 +46,7 @@ final class OffboardingDirectory
     /** @return Collection<int, TenantExport> */
     public function exports(int $tenantId): Collection
     {
-        return $this->tenants->bypass(fn () => TenantExport::query()->where('tenant_id', $tenantId)->orderByDesc('id')->limit(20)->get());
+        return $this->tenants->bypass(fn () => TenantExport::query()->select(TenantExport::SUMMARY_COLUMNS)->where('tenant_id', $tenantId)->orderByDesc('id')->limit(20)->get());
     }
 
     /** @return Collection<int, LegalHold> */
@@ -53,7 +58,8 @@ final class OffboardingDirectory
     /** @return Collection<int, TenantDeletion> */
     public function deletions(int $tenantId): Collection
     {
-        return $this->tenants->bypass(fn () => TenantDeletion::query()->where('tenant_id', $tenantId)->orderByDesc('id')->get());
+        // With their plans and certificates (shown on the page): a tenant has a handful, sorted here rather than by MySQL.
+        return $this->tenants->bypass(fn () => TenantDeletion::query()->where('tenant_id', $tenantId)->get()->sortByDesc('id')->values());
     }
 
     /** @return Collection<int, TenantDeletionStep> */

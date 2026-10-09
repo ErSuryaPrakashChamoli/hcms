@@ -412,7 +412,8 @@ final class DeletionExecutor
                     'legal_minimum' => $c['retention']['legal_minimum'] ?? null, 'holds' => $c['holds'], 'protected_by' => $c['protected_by']];
             }
         }
-        $export = app(TenantContext::class)->bypass(fn () => TenantExport::query()->where('tenant_id', $tenant->getKey())->whereNotNull('delivered_at')->orderByDesc('id')->first());
+        $export = app(TenantContext::class)->bypass(fn () => TenantExport::query()->select(['id', 'reference', 'sha256', 'manifest_sha256', 'delivered_at'])
+            ->where('tenant_id', $tenant->getKey())->whereNotNull('delivered_at')->orderByDesc('id')->first());
 
         return [
             'certificate' => 'PeopleOS tenant deletion certificate',

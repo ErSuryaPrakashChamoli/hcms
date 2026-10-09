@@ -25,6 +25,15 @@ class TenantExport extends Model
 
     public const PURPOSE_CUSTOMER = 'customer';
 
+    /**
+     * Every column but the large ones (manifest and checkpoint: one entry per file, megabytes for a large tenant) and the
+     * passphrase. Lists select these: MySQL refuses to sort a row larger than its sort buffer ("Out of sort memory").
+     */
+    public const SUMMARY_COLUMNS = ['id', 'tenant_id', 'offboarding_id', 'reference', 'purpose', 'status', 'in_flight_key', 'requested_by', 'reason',
+        'attempts', 'heartbeat_at', 'started_at', 'completed_at', 'failed_at', 'failure', 'disk', 'path', 'size_bytes', 'sha256', 'manifest_sha256',
+        'record_count', 'file_count', 'expires_at', 'expired_at', 'download_count', 'last_downloaded_at', 'delivered_by', 'delivered_at', 'delivery_note',
+        'created_at', 'updated_at'];
+
     protected function casts(): array
     {
         return ['status' => ExportStatus::class, 'checkpoint' => 'array', 'manifest' => 'array', 'passphrase' => 'encrypted',
