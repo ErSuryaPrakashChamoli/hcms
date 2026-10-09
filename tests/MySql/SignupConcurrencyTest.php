@@ -141,7 +141,8 @@ it('6. never undoes a run that is still committing when its lease expires meanwh
         // Hold the run inside its transaction, after it locked the application row, until the tick has tried.
         $paused = false;
         Event::listen(QueryExecuted::class, function (QueryExecuted $q) use (&$paused, $flag) {
-            if (! $paused && str_contains($q->sql, 'from `signup_applications`') && str_contains($q->sql, 'for update')) {
+            // The run's first read of the application inside its transaction (with or without the row lock).
+            if (! $paused && str_contains($q->sql, 'from `signup_applications`') && DB::transactionLevel() > 0) {
                 $paused = true;
                 touch($flag.'.locked');
                 $deadline = microtime(true) + 60;
@@ -168,10 +169,12 @@ it('6. never undoes a run that is still committing when its lease expires meanwh
     };
 
     $results = race([$provision, $tick]);
+    $paused = file_exists($flag.'.locked');
     @unlink($flag.'.locked');
     @unlink($flag.'.tried');
 
-    expect($results)->toBe(['ok', 'ok'])
+    expect($paused)->toBeTrue() // the dangerous order really happened
+        ->and($results)->toBe(['ok', 'ok'])
         ->and($application->fresh()->status)->toBe(SignupStatus::ActivationPending)
         ->and(Tenant::query()->count())->toBe(1)
         ->and(AuditEvent::query()->withoutTenancy()->where('action', 'SIGNUP_PROVISIONING_FAILED')->count())->toBe(0);
