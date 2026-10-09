@@ -693,6 +693,9 @@ return [
             'backoff_minutes' => [1, 5, 15, 60],
             // A run that has not committed after this long is treated as interrupted (its transaction is gone).
             'lease_minutes' => max(5, (int) env('PEOPLEOS_SIGNUP_LEASE_MINUTES', 15)),
+            // Provisioning runs one at a time (a lock in the application cache, shared by every server); a run waits this
+            // long for the one before it, then leaves the application for the next tick.
+            'wait_seconds' => max(1, (int) env('PEOPLEOS_SIGNUP_PROVISIONING_WAIT_SECONDS', 30)),
             // The owner's invitation e-mail is retried by the tick this many times when the mail transport refused it.
             'invitation_attempts' => 5,
         ],

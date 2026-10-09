@@ -179,3 +179,24 @@ it('6. never undoes a run that is still committing when its lease expires meanwh
         ->and(Tenant::query()->count())->toBe(1)
         ->and(AuditEvent::query()->withoutTenancy()->where('action', 'SIGNUP_PROVISIONING_FAILED')->count())->toBe(0);
 });
+
+it('7. provisions several organisations at once without a deadlock, and every chain stays valid', function () {
+    $applications = collect(range(1, 4))->map(function (int $i) {
+        $this->travel(1)->seconds();
+
+        return submittedFor("many{$i}@many-{$i}.test", "Many Co {$i}");
+    });
+    $deadlocks = fn () => (int) DB::selectOne("select count from information_schema.INNODB_METRICS where name = 'lock_deadlocks'")->count;
+    $before = $deadlocks();
+
+    // Four runs at once, each on its own application: the first events of four new tenant chains are written together.
+    $results = race($applications->map(fn (SignupApplication $a) => fn () => app(SignupProvisioning::class)->provision(SignupApplication::query()->findOrFail($a->id)))->all());
+
+    expect($results)->toBe(['ok', 'ok', 'ok', 'ok'])
+        ->and($deadlocks() - $before)->toBe(0) // not hidden by a retry: none happened
+        ->and($applications->map(fn (SignupApplication $a) => $a->fresh()->status)->unique()->values()->all())->toBe([SignupStatus::ActivationPending])
+        ->and($applications->every(fn (SignupApplication $a) => $a->fresh()->attempts === 1))->toBeTrue();
+    foreach ($applications as $application) {
+        expect(app(AuditIntegrityVerifier::class)->verify((int) $application->fresh()->provisioned_tenant_id)['valid'])->toBeTrue();
+    }
+});

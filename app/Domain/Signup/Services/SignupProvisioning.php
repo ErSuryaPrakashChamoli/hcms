@@ -20,6 +20,8 @@ use App\Domain\Signup\Support\SignupTransitions;
 use App\Domain\Signup\Support\StaleClaim;
 use App\Domain\Subscriptions\Services\CommercialSubscriptions;
 use App\Support\Money\Currency;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -46,6 +48,10 @@ use Throwable;
  */
 final class SignupProvisioning
 {
+    public const LOCK = 'signup:provisioning';
+
+    private const LOCK_SECONDS = 600;
+
     public function __construct(
         private readonly SignupEligibility $eligibility,
         private readonly SignupTransitions $transitions,
@@ -57,20 +63,33 @@ final class SignupProvisioning
     public function provision(SignupApplication $application, ?User $operator = null, ?string $reason = null): ?Tenant
     {
         PlatformOperator::assert($operator, 'provision a signup application');
-        $application = $application->fresh();
-        $token = $this->claim($application, $operator, $reason);
-        if ($token === null) {
+        // One provisioning at a time, across servers (the application cache's atomic lock). Two new tenants provisioned at
+        // once deadlocked in the audit chain's head index (gap locks between new chains, MySQL performance probe). Busy:
+        // nothing is claimed; the tick (or the operator again) provisions it shortly.
+        $serial = Cache::lock(self::LOCK, self::LOCK_SECONDS);
+        try {
+            $serial->block((int) config('peopleos.signup.provisioning.wait_seconds', 30));
+        } catch (LockTimeoutException) {
             return null;
         }
-
         try {
-            [$tenant, $owner] = DB::transaction(fn () => $this->core((int) $application->id, $token, $operator));
-        } catch (StaleClaim) {
-            return null;
-        } catch (Throwable $e) {
-            $this->fail($application, $token, $e, $operator);
+            $application = $application->fresh();
+            $token = $this->claim($application, $operator, $reason);
+            if ($token === null) {
+                return null;
+            }
+            try {
+                // A deadlock rolls the whole core back; it is safe to run it again under the same claim (the token is still ours).
+                [$tenant, $owner] = DB::transaction(fn () => $this->core((int) $application->id, $token, $operator), 3);
+            } catch (StaleClaim) {
+                return null;
+            } catch (Throwable $e) {
+                $this->fail($application, $token, $e, $operator);
 
-            return null;
+                return null;
+            }
+        } finally {
+            $serial->release();
         }
 
         $application = $application->fresh();

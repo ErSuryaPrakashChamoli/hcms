@@ -28,6 +28,7 @@ use App\Filament\Pages\PlatformSignupsPage;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Notifications\ChannelManager;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
@@ -340,4 +341,18 @@ it('stops inside the transaction when the claim token is no longer current (a ne
     expect(fn () => DB::transaction(fn () => $core($application->id, 'A'.str_repeat('0', 25))))->toThrow(StaleClaim::class);
     // It stops before doing any provisioning work, not only before committing it.
     expect($created)->toBe(0)->and(Tenant::query()->count())->toBe(0)->and($application->fresh()->status)->toBe(SignupStatus::Provisioning);
+});
+
+it('runs one provisioning at a time: a run that cannot get the lock claims nothing and leaves it for the tick', function () {
+    config(['peopleos.signup.provisioning.wait_seconds' => 1]);
+    $application = signupSubmitted();
+    $held = Cache::lock(SignupProvisioning::LOCK, 60);
+    expect($held->get())->toBeTrue();
+
+    expect(app(SignupProvisioning::class)->provision($application))->toBeNull();
+    expect($application->fresh()->status)->toBe(SignupStatus::Approved)->and($application->fresh()->attempts)->toBe(0)
+        ->and(Tenant::query()->count())->toBe(0);
+
+    $held->release();
+    expect(app(SignupProvisioning::class)->provision($application))->not->toBeNull();
 });
