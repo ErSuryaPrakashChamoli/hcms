@@ -74,7 +74,11 @@ it('flags payroll on or after a notice date, blocking under enforcement', functi
 
     config(['peopleos.payroll.enforce_verified_rules' => true]);
     app(ComplianceRules::class)->forget();
-    expect($calc(9)->blocking())->toBeTrue();
+    // SaaS.12: the notice itself blocks (not only the unverified rules beside it).
+    $pending = collect($calc(9)->exceptions)->where('type', 'statutory_change_pending');
+    expect($calc(9)->blocking())->toBeTrue()
+        ->and($pending)->not->toBeEmpty()
+        ->and($pending->every(fn (array $e) => ($e['blocking'] ?? false) === true))->toBeTrue();
 });
 
 it('resolves a notice only with a new, effective version published as a correction', function () {

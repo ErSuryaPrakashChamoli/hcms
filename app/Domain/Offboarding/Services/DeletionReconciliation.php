@@ -24,7 +24,8 @@ use App\Support\Tenancy\TenantContext;
  *   re-applied. Nothing is deleted automatically.
  * - IDENTITY_MISMATCH: a tenant with the id but another slug. It may not be the same customer, so nothing is done; an
  *   operator investigates.
- * - INVALID: the entry fails its hash or signature. It is never acted on.
+ * - INVALID: the entry fails its hash or signature, or the database holds the deletion with another certificate. It is
+ *   never acted on.
  *
  * Re-application is the ordinary deletion workflow. It honours legal holds, retention (legal minimums, policy and
  * contract), financial and statutory protection, maker-checker approval and the cooling-off; the plan records the
@@ -134,8 +135,10 @@ final class DeletionReconciliation
             'approved_by' => $certificate['deletion']['approved_by'] ?? null, 'approved_at' => $certificate['deletion']['approved_at'] ?? null,
             'completed_at' => $certificate['deletion']['completed_at'] ?? null];
         $deletion = $this->tenants->bypass(fn () => TenantDeletion::query()->where('reference', $entry['reference'])->first());
-        if ($deletion?->status === DeletionStatus::Completed && hash_equals((string) $deletion->certificate_sha256, (string) $entry['certificate_sha256'])) {
-            return $base + ['outcome' => self::CONSISTENT, 'detail' => 'the database holds this completed deletion'];
+        if ($deletion?->status === DeletionStatus::Completed) {
+            return hash_equals((string) $deletion->certificate_sha256, (string) $entry['certificate_sha256'])
+                ? $base + ['outcome' => self::CONSISTENT, 'detail' => 'the database holds this completed deletion']
+                : $base + ['outcome' => self::INVALID, 'detail' => 'the database holds this deletion with a different certificate: not acted on'];
         }
         $tenant = Tenant::query()->find($base['tenant_id']);
         if ($tenant === null) {

@@ -195,6 +195,14 @@ it('never acts on an entry whose tenant identity or signature is in doubt, and a
     expect($this->tenant->fresh()->status)->toBe(TenantStatus::Active)
         ->and(reconciliationCheck()['status'])->toBe(PlatformReadiness::WARN);
 
+    // A recorded SHA-256 that does not match the (validly signed) certificate: invalid, not "restored past a deletion".
+    $altered = json_decode($written, true);
+    $altered['certificate_sha256'] = str_repeat('a', 64);
+    Storage::disk('local')->put($path, json_encode($altered));
+    expect($outcome())->toBe(DeletionReconciliation::INVALID);
+    app(DeletionReconciliation::class)->contain(null);
+    expect($this->tenant->fresh()->status)->toBe(TenantStatus::Active);
+
     // After an application key rotation the entry stays evidence through APP_PREVIOUS_KEYS, and only through it.
     Storage::disk('local')->put($path, $written);
     $old = config('app.key');
@@ -202,6 +210,15 @@ it('never acts on an entry whose tenant identity or signature is in doubt, and a
     expect($outcome())->toBe(DeletionReconciliation::RESURRECTED);
     config(['app.previous_keys' => []]);
     expect($outcome())->toBe(DeletionReconciliation::INVALID);
+});
+
+it('never acts when the database holds the deletion with another certificate than the register', function () {
+    $deletion = completedDeletion($this, $this->tenant);
+    TenantDeletion::query()->withoutTenancy()->whereKey($deletion->id)->update(['certificate_sha256' => str_repeat('b', 64)]);
+
+    $entry = app(DeletionReconciliation::class)->check()['entries'][0];
+    expect($entry['outcome'])->toBe(DeletionReconciliation::INVALID)->and($entry['detail'])->toContain('different certificate');
+    expect(app(DeletionReconciliation::class)->contain(null))->toBe(['suspended' => 0, 'recorded' => 0]);
 });
 
 it('needs nothing when the restore predates the tenant itself', function () {
