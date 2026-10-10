@@ -18,7 +18,7 @@ Programme SaaS.12: release-gate remediation through final production release. Da
 | | Commit |
 |---|---|
 | Initial | `960adeb` (verified HEAD; clean tree; 64 commits ahead of `origin/feature/oct_1_phase_1` at `36a9292`) |
-| Final code | `1907743` |
+| Final code | `fa42fac` (application code identical to `1907743`; `fa42fac` adds an architecture-test allow-list entry) |
 | Final | The documents commit that closes the programme (see `git log`) |
 
 SaaS.12 commits:
@@ -30,7 +30,9 @@ SaaS.12 commits:
 - `db55ba1` deletion register and reconciliation;
 - `470dd25` file-permission rules;
 - `1907743` mutation-driven fixes;
-- the documents.
+- `30aa659` documents;
+- `fa42fac` architecture allow-list (found by the CI-equivalent run);
+- the final documents commit.
 
 ## 2. Branch and repository state
 
@@ -167,19 +169,56 @@ was simulated as a substitute.
 
 ## 17. Complete test results
 
-PENDING: filled in from the final runs on `1907743`.
+All runs are on this workstation and are reported separately. Skipped tests are not counted as passed.
+
+| Suite | Commit | Result |
+|---|---|---|
+| **SQLite, CI-equivalent** (a copy prepared as CI does: `.env` from `.env.example`, key generated, whole-repo Pint, then the suite; in parallel here, serial in CI) | `fa42fac` | Pint passed. **1,467 passed, 0 failed**; 1,602 tests, 20,038 assertions, 22.9 min. **135 skipped**: exactly the MySQL-gated tests (next table) |
+| First CI-equivalent run | `1907743` | 1,466 passed, **1 failed**: the architecture test found that the two new services were not on the documented tenant-scope bypass allow-list. Investigated and fixed (`fa42fac`); the repeat run above is clean |
+| Isolation and authorisation group | SaaS.11 baseline | 189/189. The SaaS.12 additions (role top-up, reconciliation, seeders, configuration) are inside the full run |
+| Targeted runs during the phase | various | Identity, platform, signup, configuration and tenancy 179/179; offboarding 59/59; reconciliation 7/7; production configuration 10/10; billing 81/81 after the style fix |
+
+**Mutation testing** (private copies, one mutant at a time, against the tests that should catch it):
+
+| Set | Result |
+|---|---|
+| SaaS.12 G1–G5: the statutory verified-rules gate | 5/5 killed. G5 needed a strengthened assertion |
+| T1–T3 role top-up, H1–H2 seeders, R1–R5 register, C1–C10 reconciliation, V1–V3 validator | 23/23 killed. R4 and C2 needed a new test, and C2 a code refinement (`1907743`) |
+| **Total** | **28/28 killed** (25 on the first pass; the 3 survivors were real gaps, fixed, then re-run) |
+
+`STORAGE_PERMISSIONS` has no failing-case test: an unwritable storage directory cannot be produced safely in the suite.
 
 ## 18. MySQL and concurrency evidence
 
-PENDING.
+| Run | Result |
+|---|---|
+| **MySQL suite** (`PEOPLEOS_MYSQL_CONCURRENCY_DB=hcm_saas6_concurrency php artisan test tests/MySql`, MySQL 8.4, clean tree) | `fa42fac`: **135/135 passed**, 821 assertions, 33.2 min. None skipped |
+| Concurrency | 132 tests in 18 concurrency files, with real processes; among them the SaaS.10 signup races and the SaaS.9 offboarding races |
+| Restore-reconciliation drill (MySQL, fictional data) | Backup (3.6 MB), deletion, restore into a new schema, detection, containment (exit 1), re-application, clean reconciliation (exit 0). Other tenants untouched (5 operating throughout) |
+| Migration behaviour (disposable schemas) | Interrupted run not re-runnable; `--isolated` serialises concurrent runs; first install with the database cache store cannot use `--isolated`; instant column add verified |
 
 ## 19. Accessibility and browser results
 
-PENDING.
+| Run | Result |
+|---|---|
+| Signup flow (Chromium; disposable fixture on 8096 with registration on for that process only, local SMTP sink; the 8090 showcase off) | **34/34 checks**, 0 console errors |
+| Accessibility (axe-core, WCAG 2.0 and 2.1 A and AA) | **12 states, 0 violations** |
+| Visual regression (UX.18 suite) | **120/120 passed**; 198 skipped by the designed viewport and engine matrix (same as before); no baseline change |
+| Browser suite | **74/74 passed**; 6 skipped by design (phone-only tests on the desktop project) |
+
+Engines and devices are those of the suites (Chromium, WebKit, desktop and phone viewports). No other browser or device
+was tested.
 
 ## 20. Performance results
 
-PENDING.
+| Measure | Result |
+|---|---|
+| Fresh install, 126 migrations (MySQL 8.4) | 74 s |
+| Scale probe in the MySQL run | Query counts constant across 15 to 10,000 employees (Employee 360: 28, people analytics: 64, API page: 15). Times at 10,000: people analytics 134 ms, API page 125 ms. That is slower than the SaaS.11 run (119 and 53 ms) with identical query counts, on a loaded workstation: treat it as noise until it is repeated |
+| Gate commands | Validator about 0.5 s; readiness about 0.6 s, including boot (SaaS.11) |
+| Reconciliation | Reads one small file per completed deletion; not load-tested (deletion volume is low by nature) |
+
+No production-volume performance test exists: no environment.
 
 ## 21. Staging release candidate
 

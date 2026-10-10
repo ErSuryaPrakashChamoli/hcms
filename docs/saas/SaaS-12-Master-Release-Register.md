@@ -1,7 +1,7 @@
 # SaaS.12 — Master release register
 
 **The durable record of the release programme.** Update it whenever a dependency arrives, and resume from the first task
-that is not VERIFIED. Last verified: 10 October 2026, at code commit `1907743`.
+that is not VERIFIED. Last verified: 10 October 2026, at code commit `fa42fac`.
 
 ## Status values
 
@@ -41,7 +41,7 @@ that is not VERIFIED. Last verified: 10 October 2026, at code commit `1907743`.
 | 8 | Seeders safe; deploy does not reset access | VERIFIED | `812f2c9`, `90ef326`; real-data check (790 pairs identical) | Engineering | — | — | — |
 | 8 | Migration safety (fresh, rollback, interrupted, concurrent, locks) | READY FOR VERIFICATION | `SaaS-12-Deployment-and-Migration-Plan.md` | Owner review | — | Owner approves the plan | Approval reference |
 | 9 | Real recovery exercise | BLOCKED — ENVIRONMENT | Plan; local evidence only | Infrastructure | O-6, O-7 | Run in the isolated target | Signed, RTO and RPO within approved objectives |
-| 10 | Complete validation on the candidate | See final report | Final report §17–§20 | Engineering | — | Repeat in staging | All pass, skips explained |
+| 10 | Complete validation on the candidate (workstation) | VERIFIED | SQLite 1,467/1,467 run (135 MySQL-gated skipped), MySQL 135/135, mutants 28/28, browser 34/34, axe 0, visual 120/120, browser suite 74/74 | Engineering | — | Repeat in staging | All pass, skips explained |
 | 11 | Public registration | BLOCKED — OWNER DECISION | Off; fails closed | Owner | D10, gate 3, staging | — | Separate approval |
 | 12 | Billing | BLOCKED — OWNER DECISION | Off; production refuses Razorpay | Owner | B-4, B-7, B-8, B-9 | — | Separate approval and a release enabling live mode |
 | 13 | Tenant deletion activation | BLOCKED — OWNER DECISION | Off; refused without authorisation and register disk | Owner | D8, G16, review | — | Separate approval |

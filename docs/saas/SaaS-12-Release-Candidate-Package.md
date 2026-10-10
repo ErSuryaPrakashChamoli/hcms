@@ -13,7 +13,7 @@
 |---|---|
 | Repository | `github.com/ErSuryaPrakashChamoli/hcms` (public; see O-2) |
 | Branch | `feature/oct_1_phase_1` (not merged; PR #1 to `main` is open on an older head) |
-| Candidate code commit | `1907743`. The documents commit that follows changes no code |
+| Candidate code commit | `fa42fac` (application code as at `1907743`; `fa42fac` adds a test allow-list entry). Later documents commits change no code |
 | `composer.lock` SHA-256 | `7677279e9fe646b9…` (436 packages) |
 | `package-lock.json` SHA-256 | `88a5ca54bd519642…` (after the SaaS.12 audit fix) |
 | Runtime | PHP 8.5, Laravel 13.33, Filament 5, MySQL 8.4, Node 22 (build only) |
