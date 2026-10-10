@@ -45,7 +45,20 @@ verified only after the §9 exercise succeeds in the target environment and its 
 3. Verify the dump's SHA-256, then restore: `gunzip -c dump.sql.gz | mysql <schema>`, and replay binary logs up to the chosen point in time.
 4. Restore files / objects to the same point in time.
 5. Restore secrets (`APP_KEY` from the time of the dump, database / mail / storage credentials).
+   - **Keep the restored copy inert until step 8 (SaaS.12):**
+     - `MAIL_MAILER=array` (or `log`);
+     - `PEOPLEOS_RAZORPAY_ENABLED=false`;
+     - `PEOPLEOS_TENANT_DELETION_ENABLED=false`;
+     - integrations and webhooks pointed at sinks or left without workers;
+     - no worker or scheduler running.
+   - A restore into a non-production target also gets its own `APP_KEY` only if no encrypted data must be read. Otherwise it gets the dump's key, held in the secret store.
 6. `php artisan migrate --force` (only if the code is newer than the dump; migrations are additive), then `php artisan peopleos:sync-permissions`.
+   - The sync gives system roles only permissions a release introduced; tenants' removals stay removed (SaaS.12).
+6a. **Deletion reconciliation (SaaS.12), before anything serves traffic:** `php artisan peopleos:deletions:reconcile --contain`.
+   - It compares the deletion register (its own disk, **not** restored with the database) with the restored data.
+   - Every tenant the restore brought back past a certified deletion is suspended, and the re-application is recorded. Nothing is deleted automatically.
+   - Re-apply each one through the ordinary deletion workflow: `docs/operations/runbooks/recovery.md` (restore from backup).
+   - An identity mismatch or an invalid entry is never acted on; investigate it before go-live.
 7. Verify:
    - `php artisan peopleos:audit:verify` passes for every chain;
    - `php artisan peopleos:readiness` shows no FAIL;

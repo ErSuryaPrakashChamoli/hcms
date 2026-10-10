@@ -62,10 +62,10 @@ The page shows the same, live.
 
 - **No production backups.** No production backup system, object storage or replica exists in this workspace. Backup
   and restore were rehearsed locally only (`docs/production/disaster-recovery.md`).
-- **No re-apply procedure.** There is no automated "re-apply deletions after restore" job. Today it is an operator step
-  in the production-copy rehearsal (`production-copy-rehearsal.md`).
-- **No deletion register outside the database (SaaS.11, S11-5).** The certificate lives in the database, so a restore
-  to a point before a deletion loses the deletion **and** its proof. Step 2 above therefore depends on a copy of each
-  certificate kept outside the database. Until that register exists, download every certificate when its deletion
-  completes and file it in a separately backed-up store. The procedure is in `docs/saas/SaaS-11-Backup-and-DR-Test-Report.md` §5.
-  Deletion stays off until both gaps are closed.
+- **Re-application is deliberate, not automatic.** A restored tenant is detected and contained automatically, and its
+  deletion is re-applied through the ordinary workflow (holds, retention, maker-checker, cooling-off). See `recovery.md`.
+- **Deletion register (SaaS.12, closes S11-5).** Each completed deletion's signed certificate is written to the
+  deletion register (`PEOPLEOS_DELETION_REGISTER_DISK`), outside the database, and `peopleos:deletions:reconcile` finds
+  and contains a tenant a restore brought back. See `recovery.md` (restore from backup). Production refuses deletion
+  until the register disk is configured; that disk must be private, versioned and backed up separately from the
+  database.

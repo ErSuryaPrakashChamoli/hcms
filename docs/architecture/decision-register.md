@@ -283,3 +283,16 @@ Recorded on 10 October 2026. Gates and owner decisions: `docs/saas/SaaS-11-Relea
 | 0112 | PeopleOS is never indexed | Accepted | `X-Robots-Tag: noindex, nofollow` on every response (`PEOPLEOS_ROBOTS_TAG`; empty is a validator warning) and a disallow-all `robots.txt`; tokens travel in link paths | `SecurityHardeningTest`; mutant R10 |
 | 0113 | Role permission changes are audit events | Accepted | `ROLE_CHANGED` with the permission keys granted and removed, from the role editor, role creation and blueprint import; nothing is recorded when nothing changed | `RoleGrantsTest`; mutants R1–R3 |
 | 0114 | Operator MFA enrolment is a production readiness gate | Accepted | Readiness FAILs in production while a platform operator who can sign in has no authenticator (counts only); enrolment at creation is not built | `PlatformReadinessTest`; mutants R11–R12 |
+
+## SaaS.12 decisions (release programme)
+
+Recorded on 10 October 2026. Architecture: `docs/architecture/saas-12-release-programme.md`; programme registers:
+`docs/saas/SaaS-12-*.md`.
+
+| ADR | Title | Status | Decision (one line) | Enforced by |
+|---|---|---|---|---|
+| 0115 | The deletion register lives outside the database and is written once | Accepted | Signed certificate per completed deletion on `PEOPLEOS_DELETION_REGISTER_DISK`; previous application keys accepted; a different entry under the same reference is refused | `DeletionReconciliationTest`; mutants R1–R5 |
+| 0116 | Restore reconciliation contains, it does not delete | Accepted | A tenant restored past a deletion is suspended and the re-application recorded; doubtful entries are never acted on; re-application is the ordinary workflow, linked by `plan.reapplies` | `DeletionReconciliationTest`; mutants C1–C10 |
+| 0117 | Deploys top up system roles only with permissions a release introduces | Accepted | `roles.template_keys` records what each system role was given; removals by tenants persist; introductions are audited | `SystemRoleTopUpTest`; mutants T1–T3 |
+| 0118 | Migrations run with `--isolated` on upgrades; an interrupted migration is recovered from the pre-deploy backup | Accepted | Tested on disposable MySQL schemas (concurrent runs serialised; interrupted run not re-runnable) | Deployment plan |
+

@@ -377,6 +377,17 @@ SaaS.11 additions (production assurance):
      `robots.txt` disallows everything.
 119. **Production readiness fails while any platform operator who can sign in has no MFA enrolled.**
 
+SaaS.12 additions (release programme):
+
+120. **A restore never silently brings back a deleted tenant.** Every certified deletion is in the deletion register
+     outside the database, and reconciliation contains a tenant restored past its deletion (suspension, recorded
+     re-application) before it serves traffic.
+121. **Restore reconciliation never deletes, and never acts on a doubtful entry** (identity mismatch, failed hash or
+     signature). Re-application is the ordinary deletion workflow, with holds, retention, maker-checker and cooling-off.
+122. **A deploy never gives back a permission a tenant removed from a system role**; permissions a release introduces
+     are audited (`ROLE_CHANGED`, no actor).
+123. **No seeder runs in production**, whatever the database is called.
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |

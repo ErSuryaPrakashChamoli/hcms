@@ -32,3 +32,34 @@ No. Once a deletion has started, the tenant cannot be reopened. Retry instead, o
 A deleted tenant is not restored into production. Backups expire on their own schedule (see
 `docs/operations/backup-and-disaster-recovery.md`). The deletion's external dependency "backups" records when the last
 backup containing the tenant expired.
+
+### After any restore: deletion reconciliation (SaaS.12)
+
+Every completed deletion's signed certificate is also kept in the **deletion register**. The register lives on its own disk
+(`PEOPLEOS_DELETION_REGISTER_DISK`), outside the database, and is backed up and versioned separately. A restored database
+can predate deletions; the register cannot.
+
+1. Before the restored copy serves traffic and before workers and the scheduler start, run
+   `php artisan peopleos:deletions:reconcile --contain`. It exits non-zero while anything needs a person. The offboarding
+   tick repeats the containment every 15 minutes once the scheduler runs.
+2. Read each outcome:
+
+   | Outcome | Meaning | Action |
+   |---|---|---|
+   | CONSISTENT | The database holds this completed deletion | None |
+   | RE-APPLIED | A later deletion re-applied it | None |
+   | NOT PRESENT | The restore predates the tenant itself | None |
+   | RESTORED PAST A DELETION | The tenant is back with data its deletion removed | Contained automatically (the tenant is suspended; `DELETION_REAPPLICATION_REQUIRED` on both chains). Re-apply it (step 3) |
+   | IDENTITY MISMATCH | A tenant with the same id but another address | **Never acted on.** Establish whether it is the same customer before anything else |
+   | INVALID | The entry fails its hash or signature (tampering, or a key the installation does not hold) | **Never acted on.** Investigate; after a key rotation set `APP_PREVIOUS_KEYS` |
+   | UNREGISTERED (reported separately) | A completed deletion without a register entry | The tick writes it; check the register disk |
+3. **Re-apply through the ordinary workflow.** Nothing replays automatically, because the restored data may differ from the
+   original (a legal hold, a retention term or an open financial item may be back):
+   - start the offboarding, close it, deliver or waive the export;
+   - plan the deletion (one operator). The plan lists the deletions it re-applies (`reapplies`), with the original
+     approval;
+   - approve (a **second** operator, against the original certificate). The cooling-off applies;
+   - when it completes, its certificate also lists what it re-applied, and reconciliation shows RE-APPLIED.
+
+   If a legal hold or a retention requirement in the restored data stops the re-application, the tenant stays suspended
+   and readiness shows a warning until people resolve it. It is never deleted around the hold.

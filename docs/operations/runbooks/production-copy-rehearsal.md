@@ -34,6 +34,10 @@ Roles:
    - the restore start and end (measured RTO);
    - the data-loss window (RPO).
 3. Run `php artisan peopleos:audit:verify` and `php artisan peopleos:readiness --json`, and keep both outputs.
+4. **SaaS.12:**
+   - Point `PEOPLEOS_DELETION_REGISTER_DISK` at a **rehearsal** register, never the production one: a production register
+     on a copy that shares its `APP_KEY` would contain the copy's tenants.
+   - Run `php artisan peopleos:deletions:reconcile` and keep the output.
 
 ## 2. Credentials and secrets
 
@@ -108,8 +112,14 @@ If it fails, retry, and record the resumption.
 
 ## 16. Certificate
 
-1. Download it. Verify its signature.
-2. Check that it lists:
+1. Download it. Verify its signature. Confirm that the rehearsal register holds the same entry
+   (`deletion-register/<reference>.json`, the same SHA-256).
+2. **Restore drill (SaaS.12):**
+   - restore the step 1 backup again into a second isolated schema;
+   - run `peopleos:deletions:reconcile --contain`;
+   - confirm that the rehearsed tenant is reported as restored past its deletion and is suspended, and that nothing was deleted;
+   - re-apply it through the ordinary workflow and confirm RE-APPLIED.
+3. Check that the certificate lists:
    - categories deleted, retained (with reasons) and anonymised;
    - holds;
    - the export reference and checksum;

@@ -125,6 +125,14 @@ checked by the people who review the deployment.
 | `PEOPLEOS_TENANT_DELETION_ENABLED` | `PEOPLEOS_TENANT_DELETION_AUTHORISATION` | error when on without a reference (D-8, F11) |
 | `PEOPLEOS_RAZORPAY_ENABLED` | none: live payments are not released | error when on |
 | `PEOPLEOS_RAZORPAY_KEY_ID` | none | error for a live key (`rzp_live_…`) |
+| `PEOPLEOS_TENANT_DELETION_ENABLED` also needs `PEOPLEOS_DELETION_REGISTER_DISK` (SaaS.12) | a configured filesystem disk, private, versioned and backed up separately from the database | error when deletion is on without it, or when the disk does not exist |
+
+### 6b. Files (SaaS.12)
+
+| Check | Rule in production |
+|---|---|
+| `.env` permissions (`ENV_FILE_PERMISSIONS`) | error when other system accounts can read or write it (use 640 or 600, owned by the deploy user). Nothing is checked when secrets arrive as environment variables with no file |
+| `storage/` and `bootstrap/cache` (`STORAGE_PERMISSIONS`) | error when the application user cannot write them |
 
 ## 7. AI
 
@@ -151,8 +159,17 @@ checked by the people who review the deployment.
 1. `php artisan down` (or blue/green).
 2. Back up the database (see the backup runbook). **Do not proceed without a fresh backup.**
 3. `composer install --no-dev --optimize-autoloader`
-4. `php artisan migrate --force` (migrations are additive. Each Phase 14 `down()` was replayed twice on a disposable database; see the Phase 14 report).
+4. `php artisan migrate --force --isolated` (migrations are additive. Each Phase 14 `down()` was replayed twice on a disposable database; see the Phase 14 report).
+   - `--isolated` takes a cache lock, so a second server running the same step waits and does nothing (SaaS.12, tested).
+   - It needs the cache store to exist: on a **first install** with the database cache store, run without `--isolated`, from one server only.
+   - **An interrupted migration does not recover by re-running.** MySQL DDL is not transactional: a run killed part-way
+     leaves a half-applied migration, and the re-run fails with "table already exists" (SaaS.12, tested). Recover by
+     restoring the step 2 backup (or by a reviewed manual repair), never by editing the `migrations` table blindly.
 5. `php artisan peopleos:sync-permissions`
+   - Adds new permission keys to the catalogue.
+   - Gives each tenant's system roles only the permissions this release introduced to their templates, recorded as `ROLE_CHANGED` with no actor.
+   - A permission a tenant removed from a system role stays removed (SaaS.12). It never touches custom roles, role assignments or passwords.
+   - Never run `db:seed` in production: every seeder refuses production.
 6. `php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache`
 7. `php artisan queue:restart`
 8. `php artisan peopleos:readiness`: no FAIL lines.
