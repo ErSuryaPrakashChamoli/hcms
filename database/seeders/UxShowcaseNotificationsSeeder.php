@@ -34,7 +34,8 @@ class UxShowcaseNotificationsSeeder extends Seeder
     public function run(TenantContext $tenants): void
     {
         $database = (string) config('database.connections.'.config('database.default').'.database');
-        if (! app()->environment('testing') && ! str_ends_with($database, '_showcase')) {
+        // SaaS.12: production is refused outright, whatever the database is called (demo personas share one password).
+        if (app()->isProduction() || (! app()->environment('testing') && ! str_ends_with($database, '_showcase'))) {
             throw new RuntimeException("UxShowcaseNotificationsSeeder only runs on a disposable *_showcase database (current: {$database}).");
         }
 

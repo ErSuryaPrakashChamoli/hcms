@@ -5,6 +5,9 @@ use App\Domain\Organisation\Models\OrganisationNode;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\UxScaleShowcaseSeeder;
+use Database\Seeders\UxShowcaseNotificationsSeeder;
+use Database\Seeders\UxShowcaseSeeder;
 use Illuminate\Support\Facades\Hash;
 
 it('seeds the demo tenant and is safe to run twice', function () {
@@ -51,4 +54,21 @@ it('generates a fresh password when none is configured', function () {
     $this->seed();
 
     expect(Hash::check('password', User::query()->where('email', 'platform@markedge.local')->sole()->password))->toBeFalse();
+});
+
+it('refuses every showcase seeder in production, even on a database named like a showcase (SaaS.12)', function () {
+    $connection = config('database.default');
+    $name = config("database.connections.{$connection}.database");
+    config(["database.connections.{$connection}.database" => 'peopleos_showcase']);
+    $this->app['env'] = 'production';
+    try {
+        foreach ([UxShowcaseSeeder::class, UxShowcaseNotificationsSeeder::class, UxScaleShowcaseSeeder::class] as $seeder) {
+            expect(fn () => app($seeder)->setContainer(app())->__invoke())->toThrow(RuntimeException::class, 'only runs on a disposable');
+        }
+    } finally {
+        $this->app['env'] = 'testing';
+        config(["database.connections.{$connection}.database" => $name]);
+    }
+
+    expect(User::query()->count())->toBe(0)->and(Tenant::query()->count())->toBe(0);
 });
