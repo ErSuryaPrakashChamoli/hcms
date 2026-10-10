@@ -24,6 +24,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * SaaS.9: a deletion of a closed tenant's eligible data, under maker-checker.
@@ -64,7 +65,12 @@ final class TenantDeletions
         }
         // SaaS.12: the certified deletions this tenant's restored data predates; this deletion re-applies them (not part of
         // the plan's fingerprint: the approval compares what is deleted, not the history).
-        $plan['reapplies'] = app(DeletionReconciliation::class)->reappliesFor($tenant);
+        // SaaS.13: an unreachable register fails closed: without it this deletion cannot be checked against earlier ones.
+        try {
+            $plan['reapplies'] = app(DeletionReconciliation::class)->reappliesFor($tenant);
+        } catch (Throwable) {
+            throw new LifecycleRefused('The deletion register cannot be read, so this deletion cannot be checked against earlier certified deletions. Restore access to the register first.');
+        }
         try {
             $deletion = DB::transaction(function () use ($tenant, $case, $plan, $actor, $reason) {
                 // Under the exit lock: the tenant was not reopened and no hold changed since the plan was made.

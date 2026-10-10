@@ -248,3 +248,17 @@ it('reports a certified deletion missing from the register, and the offboarding 
     expect(Storage::disk('local')->exists(DeletionRegister::pathOf($deletion->reference)))->toBeTrue()
         ->and(DeletionReconciliation::clean(app(DeletionReconciliation::class)->check()['summary']))->toBeTrue();
 });
+
+it('fails closed when the register cannot be reached: no plan, readiness fails in production, the tick reports it (SaaS.13)', function () {
+    $case = offboardAndClose($this->tenant, $this->maker);
+    app(TenantOffboardings::class)->waiveExport($case, $this->maker, 'Customer kept their own copy (test)');
+    config(['filesystems.disks.unreachable' => ['driver' => 'local', 'root' => '/proc/1/peopleos-register'], 'peopleos.offboarding.register_disk' => 'unreachable']);
+
+    expect(fn () => app(TenantDeletions::class)->request($case->fresh(), $this->maker, 'Delete (test)'))->toThrow(RuntimeException::class, 'deletion register cannot be read')
+        ->and(TenantDeletion::query()->withoutTenancy()->count())->toBe(0)
+        ->and(reconciliationCheck()['detail'])->toContain('register unreadable');
+    app()->detectEnvironment(fn () => 'production');
+    expect(reconciliationCheck()['status'])->toBe(PlatformReadiness::FAIL);
+    app()->detectEnvironment(fn () => 'testing');
+    $this->artisan('peopleos:offboarding:tick')->expectsOutputToContain('Deletion register unreadable')->assertExitCode(1);
+});
