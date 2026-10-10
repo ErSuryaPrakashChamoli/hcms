@@ -22,12 +22,19 @@ class Role extends Model
     {
         return [
             'is_system' => 'boolean',
+            'template_keys' => 'array',
         ];
     }
 
     public function auditModule(): string
     {
         return 'identity';
+    }
+
+    /** SaaS.12: the template bookkeeping is not an access change; changes of the permissions themselves are audited. */
+    public function auditExcludedAttributes(): array
+    {
+        return [...config('peopleos.audit.ignored_attributes', []), 'template_keys'];
     }
 
     public function permissions(): BelongsToMany

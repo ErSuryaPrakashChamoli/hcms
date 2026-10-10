@@ -9,9 +9,11 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Services\CompensationDefaults;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\PermissionRegistry;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Letters\Services\LetterDefaults;
 use App\Domain\Organisation\Models\EmployeeCategory;
@@ -178,6 +180,14 @@ final class ProvisionTenantAction
     }
 
     /** @return array<string, Role> */
+    /**
+     * Creates the system roles of the current tenant, or tops them up (`peopleos:sync-permissions`, on every deploy).
+     *
+     * SaaS.12: a top-up gives a role only the template keys it has never been given (`template_keys`), so a
+     * permission the tenant removed stays removed. Keys a release introduces are given and audited
+     * (`ROLE_CHANGED`, no actor). A role recorded before this tracking takes its current template as the baseline,
+     * granting nothing: every earlier deploy had already given it the whole template.
+     */
     public function seedSystemRoles(): array
     {
         $roles = [];
@@ -187,10 +197,22 @@ final class ProvisionTenantAction
                 ['slug' => $slug],
                 ['name' => $template['name'], 'description' => $template['description'] ?? null, 'is_system' => true],
             );
+            $templateKeys = collect($this->permissions->keysMatching($template['permissions'] ?? []))->sort()->values()->all();
+            $given = $role->wasRecentlyCreated ? [] : ($role->template_keys ?? $templateKeys);
+            $introduced = array_values(array_diff($templateKeys, $given));
 
-            $role->permissions()->syncWithoutDetaching(
-                $this->permissions->idsMatching($template['permissions'] ?? []),
-            );
+            if ($introduced !== []) {
+                $before = $role->wasRecentlyCreated ? null : app(RoleGrants::class)->permissionKeysOf($role);
+                $role->permissions()->syncWithoutDetaching(Permission::query()->whereIn('key', $introduced)->pluck('id'));
+
+                if ($before !== null) {
+                    app(RoleGrants::class)->recordPermissionChange($role, $before, null, 'Permissions introduced by a release into this system role\'s template');
+                }
+            }
+
+            if ($role->template_keys !== $templateKeys) {
+                $role->forceFill(['template_keys' => $templateKeys])->save();
+            }
 
             $roles[$slug] = $role;
         }
