@@ -31,6 +31,12 @@ function validateOnMysql(bool $asProduction = false): array
 
 function productionLikeConfig(): void
 {
+    // SaaS.12: the validator reads the .env file's permissions; a production-like one is private (0600).
+    $dir = sys_get_temp_dir().'/peopleos-env-'.getmypid();
+    is_dir($dir) || mkdir($dir, 0700, true);
+    file_put_contents($dir.'/.env', "APP_ENV=production\n");
+    chmod($dir.'/.env', 0600);
+    app()->useEnvironmentPath($dir);
     config([
         'app.debug' => false, 'app.url' => 'https://people.acme-hr.com', 'app.key' => 'base64:'.base64_encode(str_repeat('k', 32)), 'app.cipher' => 'AES-256-CBC',
         'database.connections.mysql.host' => 'db.internal', 'database.connections.mysql.database' => 'peopleos',
@@ -195,5 +201,23 @@ it('refuses tenant deletion in production without the deletion register on a con
         expect($errors())->toBe([]);
     } finally {
         app()->detectEnvironment(fn () => 'testing');
+    }
+});
+
+it('refuses an .env file other system accounts can read, and unwritable storage (SaaS.12)', function () {
+    productionLikeConfig();
+    app()->detectEnvironment(fn () => 'production');
+    $errors = fn () => collect(validateOnMysql())->where('severity', 'error')->pluck('key')->all();
+    try {
+        expect($errors())->not->toContain('ENV_FILE_PERMISSIONS', 'STORAGE_PERMISSIONS');
+        chmod(app()->environmentFilePath(), 0644);
+        expect($errors())->toContain('ENV_FILE_PERMISSIONS');
+        chmod(app()->environmentFilePath(), 0640);
+        expect($errors())->not->toContain('ENV_FILE_PERMISSIONS');
+        unlink(app()->environmentFilePath()); // secrets injected as environment variables: no file, nothing to check
+        expect($errors())->not->toContain('ENV_FILE_PERMISSIONS');
+    } finally {
+        app()->detectEnvironment(fn () => 'testing');
+        app()->useEnvironmentPath(base_path());
     }
 });

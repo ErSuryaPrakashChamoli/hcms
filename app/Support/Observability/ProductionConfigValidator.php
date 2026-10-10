@@ -197,6 +197,13 @@ final class ProductionConfigValidator
         $this->require((int) config('peopleos.health.heartbeat_max_age', 180) > 60, 'PEOPLEOS_HEARTBEAT_MAX_AGE', 'invalid', 'The heartbeat age limit must exceed the one-minute schedule.');
         // SaaS.2: platform operators can reach every tenant, so production never runs without operator MFA.
         $this->require((bool) config('peopleos.security.platform_mfa_required', true), 'PEOPLEOS_PLATFORM_MFA_REQUIRED', 'insecure', 'Platform operators must use multi-factor authentication in production.');
+        // SaaS.12: an .env other system accounts can read or write exposes (or replaces) every secret. Secrets injected as
+        // environment variables have no file, and nothing is checked.
+        $envFile = app()->environmentFilePath();
+        if (is_file($envFile)) {
+            $this->require((fileperms($envFile) & 0o007) === 0, 'ENV_FILE_PERMISSIONS', 'insecure', 'The .env file must not be readable or writable by other system accounts (for example chmod 640, owned by the deploy user).');
+        }
+        $this->require(is_writable(storage_path()) && is_writable(app()->bootstrapPath('cache')), 'STORAGE_PERMISSIONS', 'invalid', 'storage/ and bootstrap/cache must be writable by the application user.');
         if (config('peopleos.ai.provider', 'none') === 'anthropic') {
             $this->require(filled(config('peopleos.ai.anthropic.key')), 'ANTHROPIC_API_KEY', 'missing', 'The configured AI provider needs its key.');
         }
