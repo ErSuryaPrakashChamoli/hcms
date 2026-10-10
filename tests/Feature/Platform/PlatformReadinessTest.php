@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\User;
 use App\Filament\Pages\PlatformReadinessPage;
 use App\Support\Observability\PlatformReadiness;
 use Illuminate\Support\Facades\Artisan;
@@ -60,6 +61,21 @@ it('fails production readiness while a platform operator who can sign in has no 
 
     $unenrolled->forceFill(['app_authentication_secret' => 'JBSWY3DPEHPK3PXP'])->save();
     expect($check())->toMatchArray(['status' => PlatformReadiness::PASS, 'detail' => 'all enrolled']);
+    app()->detectEnvironment(fn () => 'testing');
+});
+
+it('fails production readiness while a demo or test account can sign in (SaaS.13)', function () {
+    $check = fn () => collect(app(PlatformReadiness::class)->report(false)['checks'])->firstWhere('check', 'No demo or test sign-in accounts (reserved e-mail domains)');
+    User::query()->pluck('id')->each(fn (int $id) => User::query()->whereKey($id)->update(['email' => "person{$id}@acme-hr.com"])); // factories use example.* addresses
+    expect($check())->toMatchArray(['status' => PlatformReadiness::PASS, 'detail' => 'none']);
+
+    $demo = User::factory()->create(['email' => 'admin@demo.local']);
+    User::factory()->create(['email' => 'old.persona@demo.local', 'status' => UserStatus::Suspended]); // cannot sign in: not counted
+    app()->detectEnvironment(fn () => 'production');
+    expect($check())->toMatchArray(['status' => PlatformReadiness::FAIL, 'detail' => '1 account(s) on reserved domains (.local, .test, example.*)'])
+        ->and(json_encode($check()))->not->toContain('demo.local');
+    $demo->forceFill(['email' => 'admin@acme-hr.com'])->save();
+    expect($check()['status'])->toBe(PlatformReadiness::PASS);
     app()->detectEnvironment(fn () => 'testing');
 });
 

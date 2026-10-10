@@ -92,6 +92,14 @@ final class PlatformReadiness
         $operators = User::query()->where('is_platform_admin', true)->where('status', '!=', UserStatus::Suspended->value);
         $unenrolled = (clone $operators)->whereNull('app_authentication_secret')->count();
         $add('security', 'Every platform operator has MFA enrolled', $level($unenrolled === 0), $unenrolled === 0 ? 'all enrolled' : "{$unenrolled} of {$operators->count()} not enrolled");
+        // SaaS.13: demo and test accounts use reserved, undeliverable domains (seeders, showcase, factories). One that can
+        // sign in on production means demo data, and known fixture passwords, reached it. Counts only, never addresses.
+        $demo = User::query()->where('status', '!=', UserStatus::Suspended->value)->where(function ($q) {
+            foreach (['%.local', '%.test', '%.example', '%.invalid', '%.localhost', '%@example.com', '%@example.org', '%@example.net'] as $pattern) {
+                $q->orWhere('email', 'like', $pattern);
+            }
+        })->count();
+        $add('security', 'No demo or test sign-in accounts (reserved e-mail domains)', $level($demo === 0), $demo === 0 ? 'none' : "{$demo} account(s) on reserved domains (.local, .test, example.*)");
         $provider = (string) config('peopleos.ai.provider', 'none');
         $add('ai', 'AI provider and data boundary', $provider === 'none' || filled(config('peopleos.ai.anthropic.key')) ? self::PASS : self::WARN, $provider === 'none' ? 'deterministic only (no external provider)' : "provider {$provider}; tenant data policy applies");
 
