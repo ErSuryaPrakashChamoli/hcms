@@ -49,6 +49,12 @@ final class ComplianceRules
             ->first();
     }
 
+    /** Whether PeopleOS holds any statutory rule for this jurisdiction (verified or not). */
+    public function covers(string $jurisdiction): bool
+    {
+        return $this->cache["covers|{$jurisdiction}"] ??= ComplianceRule::query()->where('jurisdiction', $jurisdiction)->exists();
+    }
+
     public function forget(): void
     {
         $this->cache = [];

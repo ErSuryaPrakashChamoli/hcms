@@ -62,6 +62,30 @@ it('converts currencies with dated and inverse rates and formats per country pac
         ->and($packs->get('GB')['labour']['minimum_leave_days'])->toBe(28);
 });
 
+it('blocks payroll in a jurisdiction PeopleOS holds no statutory rules for, whatever the company switches say (release programme)', function () {
+    $company = payrollCompany(['jurisdiction' => 'US', 'pf_applicable' => false, 'esi_applicable' => false, 'pt_applicable' => false, 'tds_applicable' => false]);
+    $company->update(['country_code' => 'US', 'currency' => 'USD']);
+    $employee = salariedEmployee(240000);
+    $unsupported = fn ($c) => collect($c->exceptions)->firstWhere('type', 'statutory_jurisdiction_unsupported');
+
+    config(['peopleos.payroll.enforce_verified_rules' => true]);
+    $c = app(PayrollCalculator::class)->calculate($employee, PayrollPeriod::for($company, 2026, 9));
+    expect($unsupported($c))->toMatchArray(['blocking' => true])->and($unsupported($c)['message'])->toContain('US')
+        ->and($c->blocking())->toBeTrue()
+        ->and(collect($c->lines)->where('type', 'deduction')->isEmpty())->toBeTrue(); // nothing invented
+
+    config(['peopleos.payroll.enforce_verified_rules' => false]); // development override: flagged, not blocking
+    expect($unsupported(app(PayrollCalculator::class)->calculate($employee, PayrollPeriod::for($company, 2026, 9))))->not->toHaveKey('blocking');
+    app()->detectEnvironment(fn () => 'production'); // production enforces whatever the override says
+    expect(app(PayrollCalculator::class)->calculate($employee, PayrollPeriod::for($company, 2026, 9))->blocking())->toBeTrue();
+    app()->detectEnvironment(fn () => 'testing');
+
+    // A jurisdiction with rules (UAE) is not flagged.
+    CompanyStatutoryProfile::query()->where('company_id', $company->id)->update(['jurisdiction' => 'AE']);
+    $company->update(['country_code' => 'AE', 'currency' => 'AED']);
+    expect($unsupported(app(PayrollCalculator::class)->calculate($employee->fresh(), PayrollPeriod::for($company->fresh(), 2026, 9))))->toBeNull();
+});
+
 it('runs the generic statutory engine for a non-India company', function () {
     $company = payrollCompany(['jurisdiction' => 'AE', 'pf_applicable' => true, 'tds_applicable' => false]);
     $company->update(['country_code' => 'AE', 'currency' => 'AED']);
