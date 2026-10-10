@@ -1,5 +1,7 @@
 # SaaS.12 — Statutory verification register
 
+> **Superseded on 11 October 2026 by `SaaS-Final-Statutory-Verification-Register.md`** (kept as history).
+
 Date: 10 October 2026. **For:** the qualified statutory specialist engaged by Markedge (Indian payroll compliance; UAE
 pension for the one AE rule), and the owner.
 

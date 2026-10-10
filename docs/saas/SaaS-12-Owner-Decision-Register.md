@@ -1,5 +1,7 @@
 # SaaS.12 — Consolidated owner decision register
 
+> **Superseded on 11 October 2026 by `SaaS-Final-Owner-Action-Register.md`** (same IDs; this file is kept as history).
+
 Date: 10 October 2026. **For:** the owner of Markedge PeopleOS (and, where named, counsel, finance and tax advisers).
 
 **None of these decisions has been made.** Nothing below is approved by being written here. A recommendation is

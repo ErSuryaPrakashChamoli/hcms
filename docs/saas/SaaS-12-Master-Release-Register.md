@@ -3,8 +3,8 @@
 **The single durable record of the release programme.** Update it whenever a dependency arrives, and resume from the
 first row that is not VERIFIED.
 
-Last revalidated: **10 October 2026 (SaaS.13)**, at code commit `408f2ed`. Every row was re-checked in SaaS.13, not
-carried forward.
+Last revalidated: **11 October 2026 (final programme)**, at code commit `064c262`. Every row was re-checked, not carried
+forward. The final documents are `SaaS-Final-*.md`; the go/no-go assessment is `SaaS-Final-Release-Gate.md`.
 
 **Status values:**
 - NOT STARTED;
@@ -49,6 +49,8 @@ The "Can work continue?" column says whether independent engineering can proceed
 | Verified-rules gate cannot be bypassed | VERIFIED | — | — | Engineering | Mutants G1–G5 killed (SaaS.12); gate tests in the SaaS.13 run | — | — | Yes | — |
 | 24 rules verified or not applicable | BLOCKED — EXTERNAL REVIEW | No specialist engaged; 0 of 24 verified, 5 open notices | Engage a specialist | Owner → specialist | `SaaS-12-Statutory-Verification-Register.md` | Second-operator verification with official evidence per rule | O-5 | Yes | — |
 | Gratuity | BLOCKED — OWNER DECISION | Not calculated; whether launch needs it is undecided | Decide scope with the specialist | Owner, specialist | **SaaS.13:** discovery confirms no implementation (stored rule only; manual settlement lines only) | Decision; if required, an approved specification before any code | O-12, O-5 | Yes | Action pack §5 |
+| Payroll in jurisdictions without rules | VERIFIED (control) | — | — | Engineering | **11 Oct:** payroll in a jurisdiction with no statutory rule (USA, UK, EU) is blocked in production (`064c262`; tested; mutants J1–J3) | — | — | Yes | — |
+| Payroll scope for the USA, UK and EU (O-18) | BLOCKED — OWNER DECISION | No rules exist; nothing may be invented | Exclude from launch, or commission specialist rules | Owner, specialist | `SaaS-Final-Statutory-Verification-Register.md` §1 | Decision per market | O-18, O-5 | Yes | — |
 
 ## Retention, deletion and recovery
 
@@ -71,7 +73,7 @@ The "Can work continue?" column says whether independent engineering can proceed
 | Production configuration | BLOCKED — ENVIRONMENT | No target | — | Infrastructure | Checker extended (SaaS.11, SaaS.12, SaaS.13) | Validator exit 0, readiness without FAIL, in the target | O-7 | Yes | — |
 | Monitoring, on-call, incident contacts | BLOCKED — OWNER DECISION | No provider, no names, no window | Decide | Owner | — | Alert received by on-call | O-10, O-11 | Yes | — |
 | Migration plan | READY FOR VERIFICATION | Owner approval | Review and approve | Owner | `SaaS-12-Deployment-and-Migration-Plan.md` | Approval reference | — | Yes | — |
-| Complete validation (workstation) | VERIFIED (workstation) | — | — | Engineering | SaaS.13 on `408f2ed`: SQLite 1,469 passed, 0 failed (135 MySQL-gated skipped); MySQL 135/135; mutants 5/5; visual 120/120; browser 74/74; audits 0. Signup flow not re-run (last: SaaS.12) | All pass, skips explained | — | Yes | Repeat in staging |
+| Complete validation (workstation) | VERIFIED (workstation) | — | — | Engineering | Final programme on `064c262`: see `SaaS-Final-Master-Completion-Report.md` §6 (signup flow re-run 35/35, 0 axe violations) | All pass, skips explained | — | Yes | Repeat in staging |
 | Staging release candidate | BLOCKED — ENVIRONMENT | No staging; no authorisation | — | Engineering, owner | Draft release-candidate package | Staging validation evidence | O-7, O-8 | Yes | — |
 | Public registration, billing, deletion activation | BLOCKED — OWNER DECISION | D10, B and D8 decisions; review; staging | — | Owner | All off; production refuses each without authorisation | Separate approvals | — | Yes | — |
 | Production deployment, post-release, handover | NOT STARTED | No authorisation (O-9), no environment | — | Owner, operations | — | Deployment and monitoring evidence | All gates | — | — |

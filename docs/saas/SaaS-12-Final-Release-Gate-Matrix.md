@@ -1,5 +1,7 @@
 # Release-gate matrix (the single matrix; revalidated in SaaS.13)
 
+> **Superseded on 11 October 2026 by `SaaS-Final-Release-Gate.md`**, the single go/no-go assessment (kept as history).
+
 Date: 10 October 2026, at code commit `408f2ed`. Branch `feature/oct_1_phase_1`.
 
 ## Classification: **BLOCKED — RELEASE GATES OUTSTANDING**

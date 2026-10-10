@@ -1,5 +1,7 @@
 # SaaS.12 — Deployment and migration plan
 
+> **Superseded on 11 October 2026 by `SaaS-Final-Deployment-and-Rollback-Runbook.md`** (kept as history; its tested facts are carried over).
+
 Date: 10 October 2026. **For:** whoever performs the staging and production deployments.
 
 **Status: prepared, not executed.**

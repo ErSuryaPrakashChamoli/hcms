@@ -1,5 +1,8 @@
 # Backup and disaster recovery
 
+> **The authoritative recovery procedure is `docs/saas/SaaS-Final-Production-Recovery-Runbook.md` (11 October 2026).**
+> This document keeps the backup policy background, targets awaiting approval (O-6) and the local test history.
+
 > **Superseded** by `docs/production/disaster-recovery.md` (production readiness closure), which adds a full local rehearsal of the runbook. This file remains the Phase 14 record. The Phase 14 restore schema `hcm_p14_restore` and its dump were deleted in the closure, because they held copies of development data.
 
 Phase 14 (3 October 2026). **Status: documented, locally restore-tested, NOT production-verified.**
