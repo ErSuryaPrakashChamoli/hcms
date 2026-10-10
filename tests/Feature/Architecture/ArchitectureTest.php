@@ -284,6 +284,10 @@ it('bypasses tenant scoping only in the documented platform services', function 
         'app/Domain/Offboarding/Services/TenantRetentionTerms.php',
         // SaaS.10: an application's audit trail on the platform chain (tenant_id null, filtered by its reference).
         'app/Domain/Signup/Support/SignupAudit.php',
+        // SaaS.12: the deletion register and restore reconciliation run on the platform, with no bound tenant: completed
+        // deletions (reference, status, certificate hash, plan) compared with the register, filtered by reference or the
+        // tenant concerned. No tenant record beyond the deletion's own is read.
+        'app/Domain/Offboarding/Services/DeletionRegister.php', 'app/Domain/Offboarding/Services/DeletionReconciliation.php',
         'app/Support/Tenancy/TenantContext.php',
         // Phase 14: readiness counts platform-wide dead letters (counts only, no tenant data leaves).
         'app/Support/Observability/HealthChecks.php',
