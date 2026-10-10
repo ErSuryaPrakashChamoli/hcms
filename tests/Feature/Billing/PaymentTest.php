@@ -16,8 +16,10 @@ use App\Domain\Payments\Services\Payments;
 use App\Domain\Payments\Services\ProviderEvents;
 use App\Domain\Payments\Services\ProviderRegistry;
 use App\Domain\Platform\Services\TenantSuspensions;
+use App\Domain\Subscriptions\Models\TenantSubscription;
 use App\Support\Money\Money;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -48,7 +50,7 @@ function sandboxEvent(string $id, string $type, string $reference, int $amountMi
     return json_encode(['id' => $id, 'type' => $type, 'data' => ['reference' => $reference, 'amount_minor' => $amountMinor, 'currency' => $currency, 'method' => 'card']]);
 }
 
-function paymentsOf($tenant): \Illuminate\Support\Collection
+function paymentsOf($tenant): Collection
 {
     return app(TenantContext::class)->runAs($tenant, fn () => Payment::query()->orderBy('id')->get());
 }
@@ -185,7 +187,7 @@ it('never lets a payment failure or an unpaid invoice touch HR access, entitleme
     expect($this->invoice->fresh()->isOverdue())->toBeTrue()
         ->and($decisions())->toBe($before)
         ->and($hr->fresh()->hasPermission('payroll.calculate'))->toBeTrue()
-        ->and(\App\Domain\Subscriptions\Models\TenantSubscription::query()->count())->toBe(0)
+        ->and(TenantSubscription::query()->count())->toBe(0)
         ->and($this->tenant->fresh()->status->value)->toBe('active');
 });
 

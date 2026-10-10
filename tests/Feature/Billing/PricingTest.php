@@ -1,11 +1,15 @@
 <?php
 
+use App\Domain\Billing\Models\PlanPrice;
 use App\Domain\Billing\Models\PlanPriceVersion;
 use App\Domain\Billing\Services\BillingCatalog;
 use App\Domain\Billing\Services\BillingTerms;
-use App\Domain\Entitlements\Services\Entitlements;
-use App\Domain\Subscriptions\Services\CommercialSubscriptions;
+use App\Domain\Billing\Services\PriceNotices;
 use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
+use App\Domain\Entitlements\Services\EntitlementStateStore;
+use App\Domain\Subscriptions\Models\TenantSubscription;
+use App\Domain\Subscriptions\Services\CommercialSubscriptions;
 
 require_once __DIR__.'/BillingTestHelpers.php';
 require_once __DIR__.'/../Entitlements/PlanTestHelpers.php';
@@ -30,7 +34,7 @@ beforeEach(function () {
 
 function publishPrice($catalog, $planVersion, $market, string $amount, string $from, $operator, string $interval = 'month', string $basis = 'per_active_employee'): PlanPriceVersion
 {
-    $price = \App\Domain\Billing\Models\PlanPrice::query()->where(['plan_version_id' => $planVersion->id, 'market_id' => $market->id, 'interval' => $interval])->first()
+    $price = PlanPrice::query()->where(['plan_version_id' => $planVersion->id, 'market_id' => $market->id, 'interval' => $interval])->first()
         ?? $catalog->createPrice($planVersion, $market, $interval, $basis, 'Fictional price', $operator);
 
     return publishVersion($catalog->draftPriceVersion($price, $amount, 'Fictional amount', $operator), $from, $operator);
@@ -43,7 +47,7 @@ it('prices each market in its own currency and precision, independently versione
     $jpy = publishPrice($this->catalog, $this->growth, $this->jp, '500', '2027-04-01', $this->operator);
     expect([$inr->currency->value, $inr->unit_amount_minor, $usd->currency->value, $usd->unit_amount_minor, $eur->unit_amount_minor, $jpy->unit_amount_minor])
         ->toBe(['INR', 19900, 'USD', 450, 400, 500])
-        ->and(fn () => $this->catalog->draftPriceVersion(\App\Domain\Billing\Models\PlanPrice::query()->findOrFail($jpy->plan_price_id), '500.5', 'Yen has no decimals', $this->operator))
+        ->and(fn () => $this->catalog->draftPriceVersion(PlanPrice::query()->findOrFail($jpy->plan_price_id), '500.5', 'Yen has no decimals', $this->operator))
         ->toThrow(RuntimeException::class, 'decimal places');
 
     // A new INR price from May: the USD and EUR prices and the April INR price do not move.
@@ -96,7 +100,7 @@ it('pins a price version to a subscription and answers what applied on a day; la
         ->and(fn () => $terms->set($sub, $april, '2027-05-01', 'Old price after the new one starts', $this->operator))->toThrow(RuntimeException::class, 'not the version of this price on sale')
         // B-15: an increase for an existing subscriber needs a written notice at least 30 days ahead.
         ->and(fn () => $terms->set($sub, $may, '2027-07-01', 'Increase without notice', $this->operator))->toThrow(RuntimeException::class, 'record a written notice');
-    app(\App\Domain\Billing\Services\PriceNotices::class)->record($sub, $may, '2027-04-15', '2027-07-01', 'Price increase letter sent', $this->operator, 'LETTER-1');
+    app(PriceNotices::class)->record($sub, $may, '2027-04-15', '2027-07-01', 'Price increase letter sent', $this->operator, 'LETTER-1');
     $terms->set($sub, $may, '2027-07-01', 'Renewal at the May price', $this->operator);
     expect($applies('2027-06-30'))->toBe(['199.00', 'INR', true])->and($applies('2027-07-01'))->toBe(['249.00', 'INR', true]);
 
@@ -114,8 +118,8 @@ it('never lets price reach entitlement: the same decisions with and without pric
     $before = collect(Capability::cases())->map(fn (Capability $c) => app(Entitlements::class)->evaluate($c)->toArray())->all();
     $price = publishPrice($this->catalog, $this->growth, $this->in, '0.00', '2027-04-01', $this->operator, 'month', 'flat');   // even a zero price
     billingProfile($tenant, $this->in, $this->operator);
-    app(BillingTerms::class)->set(\App\Domain\Subscriptions\Models\TenantSubscription::query()->sole(), $price, '2027-04-01', 'Free terms', $this->operator);
-    app(\App\Domain\Entitlements\Services\EntitlementStateStore::class)->forget($tenant->id);
+    app(BillingTerms::class)->set(TenantSubscription::query()->sole(), $price, '2027-04-01', 'Free terms', $this->operator);
+    app(EntitlementStateStore::class)->forget($tenant->id);
     actAsTenant($tenant);
     expect(collect(Capability::cases())->map(fn (Capability $c) => app(Entitlements::class)->evaluate($c)->toArray())->all())->toBe($before);
 });

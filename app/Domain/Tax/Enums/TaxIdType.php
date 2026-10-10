@@ -2,6 +2,8 @@
 
 namespace App\Domain\Tax\Enums;
 
+use App\Domain\Tax\Services\JurisdictionCatalogue;
+
 /**
  * SaaS.7: generic tax-registration identifiers. A format check exists only where a jurisdiction module provides a
  * validator (India GSTIN); every other identifier is stored as given and marked "not validated". No identifier is
@@ -39,7 +41,7 @@ enum TaxIdType: string
     {
         return match ($this) {
             self::InGstin => ['IN'],
-            self::EuVatId => \App\Domain\Tax\Services\JurisdictionCatalogue::EU_MEMBERS,
+            self::EuVatId => JurisdictionCatalogue::EU_MEMBERS,
             self::GbVat => ['GB'],
             self::AeTrn => ['AE'],
             self::AuAbn => ['AU'],

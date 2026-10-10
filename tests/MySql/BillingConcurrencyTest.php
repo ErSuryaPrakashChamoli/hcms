@@ -3,6 +3,7 @@
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Audit\Services\AuditIntegrityVerifier;
 use App\Domain\Billing\Enums\InvoiceStatus;
+use App\Domain\Billing\Models\BillingMarket;
 use App\Domain\Billing\Models\Invoice;
 use App\Domain\Billing\Models\InvoiceNumberSeries;
 use App\Domain\Billing\Models\InvoiceTaxLine;
@@ -18,7 +19,7 @@ use App\Domain\Payments\Providers\SandboxProvider;
 use App\Domain\Payments\Services\Payments;
 use App\Domain\Payments\Services\ProviderEvents;
 use App\Domain\Platform\Models\Tenant;
-use App\Support\Tenancy\TenantContext;
+use App\Domain\Tax\Models\TaxRule;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
@@ -51,7 +52,7 @@ beforeEach(function () {
     indiaSupplier($this->op, $this->entity);
     $this->market = billingMarket($this->op, "R{$suffix}", 'INR', $this->entity);
     invoiceSeries($this->op, $this->entity, "R{$suffix}/");
-    if (! \App\Domain\Tax\Models\TaxRule::query()->where('status', 'verified')->exists()) {
+    if (! TaxRule::query()->where('status', 'verified')->exists()) {
         verifiedIndiaRule($this->op, $this->checker);
     }
     $this->tenant = provisionTenant('Billing race '.$suffix);
@@ -150,7 +151,7 @@ it('5. keeps one draft when two operators draft the same price at once', functio
 });
 
 it('6. never gives two billing profile versions the same number', function () {
-    $record = fn (string $name) => billingCall($this, fn ($t, $op) => billingProfile($t, \App\Domain\Billing\Models\BillingMarket::query()->findOrFail($this->market->id), $op, ['legal_name' => $name]));
+    $record = fn (string $name) => billingCall($this, fn ($t, $op) => billingProfile($t, BillingMarket::query()->findOrFail($this->market->id), $op, ['legal_name' => $name]));
     $results = race([$record('Version A Ltd'), $record('Version B Ltd')], slow: ['eloquent.creating: '.TenantBillingProfile::class]);
 
     actAsTenant($this->tenant);

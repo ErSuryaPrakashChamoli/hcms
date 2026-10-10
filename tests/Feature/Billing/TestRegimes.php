@@ -7,7 +7,9 @@ use App\Domain\Tax\Enums\TaxRegime;
 use App\Domain\Tax\Enums\TaxTreatment;
 use App\Domain\Tax\Exceptions\TaxUnavailableException;
 use App\Domain\Tax\Services\JurisdictionCatalogue;
+use App\Domain\Tax\Services\TaxEngine;
 use App\Domain\Tax\Services\TaxRegistry;
+use App\Domain\Tax\Services\TaxRules;
 use App\Domain\Tax\Support\TaxContext;
 use App\Domain\Tax\Support\TaxDetermination;
 use App\Domain\Tax\Support\TaxJurisdiction;
@@ -98,7 +100,7 @@ final class TestTaxRegistry extends TaxRegistry
 function useTestRegimes(): void
 {
     app()->instance(TaxRegistry::class, new TestTaxRegistry);
-    foreach ([\App\Domain\Tax\Services\TaxRules::class, \App\Domain\Tax\Services\TaxEngine::class] as $service) {
+    foreach ([TaxRules::class, TaxEngine::class] as $service) {
         app()->forgetInstance($service);
     }
 }
