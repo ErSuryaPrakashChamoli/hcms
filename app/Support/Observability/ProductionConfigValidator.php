@@ -217,6 +217,11 @@ final class ProductionConfigValidator
         $this->require(blank(config('peopleos.seed.password')), 'PEOPLEOS_SEED_PASSWORD', 'insecure', 'A demo-seed password must not exist in production (seeders never run there).');
         $this->require((int) config('peopleos.security.hsts_max_age', 0) >= 31_536_000, 'PEOPLEOS_HSTS_MAX_AGE', 'insecure', 'HTTPS responses must send Strict-Transport-Security for at least a year.');
         $this->advise(filled(config('peopleos.security.robots_tag')), 'PEOPLEOS_ROBOTS_TAG', 'Pages should carry X-Robots-Tag noindex: a private platform is never indexed.');
+        // SaaS.12: a restore must never bring back a deleted tenant unnoticed; the register lives outside the database.
+        $register = config('peopleos.offboarding.register_disk');
+        $this->require(! config('peopleos.offboarding.deletion_enabled') || filled($register), 'PEOPLEOS_DELETION_REGISTER_DISK', 'missing',
+            'Tenant deletion needs the deletion register on its own private, separately backed-up disk (restore reconciliation).');
+        $this->require(blank($register) || is_array(config("filesystems.disks.{$register}")), 'PEOPLEOS_DELETION_REGISTER_DISK', 'invalid', 'The deletion register disk is not a configured filesystem disk.');
     }
 
     private function require(bool $ok, string $key, string $category, string $message): void

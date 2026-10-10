@@ -657,6 +657,11 @@ return [
         // SaaS.11: the reference of the owner's authorisation to enable deletion (approved policies, rehearsal). The production
         // configuration gate refuses deletion switched on without it.
         'deletion_authorisation' => env('PEOPLEOS_TENANT_DELETION_AUTHORISATION'),
+        // SaaS.12: the deletion register, outside the database: one signed certificate per completed deletion, written once.
+        // After a restore it tells which deletions the restored data predates (peopleos:deletions:reconcile). Production
+        // keeps it on its own private disk (separately backed up, versioned); unset, the local private disk is used, and
+        // the production configuration gate refuses deletion switched on.
+        'register_disk' => env('PEOPLEOS_DELETION_REGISTER_DISK'),
         // Days between the second operator's approval and the start of a deletion (SaaS.1 Target Architecture §9 proposal).
         'cooling_off_days' => max(0, (int) env('PEOPLEOS_DELETION_COOLING_OFF_DAYS', 14)),
         // A deletion needs an export that was delivered (downloaded, or delivered out of band) or explicitly waived.

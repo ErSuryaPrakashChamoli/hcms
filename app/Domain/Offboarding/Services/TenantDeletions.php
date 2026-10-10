@@ -62,6 +62,9 @@ final class TenantDeletions
         if ($plan['eligible'] === []) {
             throw new LifecycleRefused('No category is eligible for deletion today.');
         }
+        // SaaS.12: the certified deletions this tenant's restored data predates; this deletion re-applies them (not part of
+        // the plan's fingerprint: the approval compares what is deleted, not the history).
+        $plan['reapplies'] = app(DeletionReconciliation::class)->reappliesFor($tenant);
         try {
             $deletion = DB::transaction(function () use ($tenant, $case, $plan, $actor, $reason) {
                 // Under the exit lock: the tenant was not reopened and no hold changed since the plan was made.
@@ -77,7 +80,7 @@ final class TenantDeletions
             throw new LifecycleRefused('A deletion of this tenant is already planned, approved, running or failed.');
         }
         $this->audit->record(AuditAction::DeletionPlanned, $tenant, $deletion, $reason, $actor, ['deletion' => $deletion->reference, 'plan_sha256' => $deletion->plan_sha256,
-            'eligible' => $plan['eligible'], 'final' => $plan['final']]);
+            'eligible' => $plan['eligible'], 'final' => $plan['final'], 'reapplies' => array_column($plan['reapplies'], 'reference')]);
 
         return $deletion;
     }

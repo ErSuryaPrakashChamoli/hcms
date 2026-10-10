@@ -363,6 +363,8 @@ final class DeletionExecutor
         if ($final) {
             $this->audit->record(AuditAction::OffboardingCompleted, $tenant, $case, 'Offboarding completed: no customer data remains', null, ['offboarding' => $case->reference], tenantChain: false);
         }
+        // SaaS.12: the certificate also goes to the deletion register, outside the database (retried by the tick on failure).
+        app(DeletionRegister::class)->recordQuietly($deletion);
     }
 
     private function onlyAnonymisedLeft(array $category): bool
@@ -467,6 +469,8 @@ final class DeletionExecutor
             'export_packages_removed' => $packages,
             'external_dependencies_note' => 'Statuses when this certificate was issued. Later confirmations are recorded in the platform audit trail (EXTERNAL_DELETION_CONFIRMED); copies outside PeopleOS are not claimed deleted until confirmed.',
             'final' => $final,
+            // SaaS.12: certified deletions this one re-applies (the restored data predated them); empty for an ordinary deletion.
+            'reapplies' => $deletion->plan['reapplies'] ?? [],
             'status' => 'completed',
         ];
     }

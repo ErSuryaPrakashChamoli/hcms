@@ -334,6 +334,8 @@ enum AuditAction: string
     case DeletionRetried = 'DELETION_RETRIED';
     case DeletionCertified = 'DELETION_CERTIFIED';
     case ExternalDeletionConfirmed = 'EXTERNAL_DELETION_CONFIRMED';
+    // SaaS.12: a restored database predates a certified deletion (deletion register): contained, to be re-applied.
+    case DeletionReapplicationRequired = 'DELETION_REAPPLICATION_REQUIRED';
     // SaaS.10: self-service signup (platform chain; the application reference, never the applicant's e-mail or name).
     case SignupStarted = 'SIGNUP_STARTED';
     case SignupEmailVerified = 'SIGNUP_EMAIL_VERIFIED';

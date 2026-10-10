@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Offboarding\Services\DeletionReconciliation;
+use App\Domain\Offboarding\Services\DeletionRegister;
 use App\Domain\Offboarding\Services\TenantDeletions;
 use App\Domain\Offboarding\Services\TenantExports;
 use Illuminate\Console\Command;
@@ -11,6 +13,7 @@ use Illuminate\Console\Command;
  * after the maximum attempts; ready packages past their expiry are deleted. Deletions (only when deletion is enabled):
  * approved deletions whose cooling-off ended are dispatched; a stalled run is marked failed for an operator to retry.
  * Platform-level: it iterates exports and deletions, each bound to its own tenant in its job.
+ * SaaS.12: it writes missing deletion register entries and contains any tenant a restore brought back past a deletion.
  */
 class OffboardingTick extends Command
 {
@@ -18,12 +21,18 @@ class OffboardingTick extends Command
 
     protected $description = 'Resume or fail stalled exports, expire export packages, dispatch due tenant deletions';
 
-    public function handle(TenantExports $exports, TenantDeletions $deletions): int
+    public function handle(TenantExports $exports, TenantDeletions $deletions, DeletionRegister $register, DeletionReconciliation $reconciliation): int
     {
         $e = $exports->sweep();
         $d = $deletions->dispatchDue();
         if (array_sum($e) + array_sum($d) > 0) {
             $this->info(sprintf('exports: %d resumed, %d failed, %d expired; deletions: %d dispatched, %d stalled', $e['resumed'], $e['failed'], $e['expired'], $d['dispatched'], $d['stalled']));
+        }
+        // SaaS.12: every certified deletion has its register entry; a tenant a restore brought back is contained (never deleted).
+        $r = $register->syncMissing();
+        $c = $reconciliation->contain(null);
+        if ($r['written'] + $r['failed'] + $c['suspended'] + $c['recorded'] > 0) {
+            $this->warn(sprintf('deletion register: %d written, %d failed; restored past a deletion: %d tenant(s) suspended, %d re-application(s) recorded', $r['written'], $r['failed'], $c['suspended'], $c['recorded']));
         }
 
         return self::SUCCESS;

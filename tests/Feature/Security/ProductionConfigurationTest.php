@@ -180,3 +180,20 @@ it('refuses the release-gate switches in production without the owner\'s recorde
         app()->detectEnvironment(fn () => 'testing');
     }
 });
+
+it('refuses tenant deletion in production without the deletion register on a configured disk (SaaS.12)', function () {
+    productionLikeConfig();
+    app()->detectEnvironment(fn () => 'production');
+    $errors = fn () => collect(validateOnMysql())->where('severity', 'error')->where('key', 'PEOPLEOS_DELETION_REGISTER_DISK')->pluck('category')->all();
+    try {
+        expect($errors())->toBe([]); // deletion off: nothing required yet
+        config(['peopleos.offboarding.deletion_enabled' => true, 'peopleos.offboarding.deletion_authorisation' => 'Deletion authorisation (fictional reference)']);
+        expect($errors())->toBe(['missing']);
+        config(['peopleos.offboarding.register_disk' => 'no-such-disk']);
+        expect($errors())->toBe(['invalid']);
+        config(['filesystems.disks.deletion-register' => ['driver' => 'local', 'root' => storage_path('app/private/register-test')], 'peopleos.offboarding.register_disk' => 'deletion-register']);
+        expect($errors())->toBe([]);
+    } finally {
+        app()->detectEnvironment(fn () => 'testing');
+    }
+});

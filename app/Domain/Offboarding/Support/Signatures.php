@@ -24,9 +24,21 @@ final class Signatures
         return hash_equals(self::sign($purpose, $document), $signature);
     }
 
-    private static function key(string $purpose): string
+    /** SaaS.12: also accepts a signature made before an application key rotation (`APP_PREVIOUS_KEYS`). */
+    public static function verifyWithAnyKey(string $purpose, array $document, string $signature): bool
     {
-        $appKey = (string) config('app.key');
+        foreach ([(string) config('app.key'), ...array_map('strval', (array) config('app.previous_keys', []))] as $appKey) {
+            if ($appKey !== '' && hash_equals(hash_hmac('sha256', self::canonical($document), self::key($purpose, $appKey)), $signature)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function key(string $purpose, ?string $appKey = null): string
+    {
+        $appKey ??= (string) config('app.key');
         if (str_starts_with($appKey, 'base64:')) {
             $appKey = (string) base64_decode(substr($appKey, 7));
         }

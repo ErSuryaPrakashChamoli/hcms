@@ -7,8 +7,10 @@ use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Models\ComplianceRuleNotice;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\User;
+use App\Domain\Offboarding\Services\DeletionReconciliation;
 use Illuminate\Support\Facades\Schema;
 use League\Flysystem\AwsS3V3\AwsS3V3Adapter;
+use Throwable;
 
 /**
  * Phase 14 production readiness: one report combining configuration, runtime health, audit integrity,
@@ -120,6 +122,19 @@ final class PlatformReadiness
             default => trim(($audit['never'] !== [] ? 'never verified: '.implode(', ', array_slice($audit['never'], 0, 10)).(count($audit['never']) > 10 ? ' …' : '').'. ' : '')
                 .($audit['stale'] !== [] ? 'result too old: '.implode(', ', array_slice($audit['stale'], 0, 10)).'. ' : '').'Run peopleos:audit:verify (scheduled daily at 02:30).'),
         });
+
+        // SaaS.12: no tenant a restore brought back past a certified deletion is in use; the register agrees with the database.
+        try {
+            $r = app(DeletionReconciliation::class)->check()['summary'];
+            $add('offboarding', 'Deletion register reconciled (no deleted tenant restored and in use)', match (true) {
+                $r['resurrected_operating'] > 0 || $r['identity_mismatch'] > 0 || $r['invalid'] > 0 => $production ? self::FAIL : self::WARN,
+                $r['resurrected'] > 0 || $r['unregistered'] > 0 => self::WARN,
+                default => self::PASS,
+            }, sprintf('%d consistent, %d re-applied, %d restored past a deletion (%d in use), %d identity mismatch, %d invalid, %d unregistered. Run peopleos:deletions:reconcile.',
+                $r['consistent'], $r['reapplied'], $r['resurrected'], $r['resurrected_operating'], $r['identity_mismatch'], $r['invalid'], $r['unregistered']));
+        } catch (Throwable $e) {
+            $add('offboarding', 'Deletion register reconciled (no deleted tenant restored and in use)', $production ? self::FAIL : self::WARN, 'register unreadable: '.$e::class);
+        }
 
         // Statutory production gate
         $statutory = $this->statutory();
