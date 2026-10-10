@@ -5,6 +5,7 @@ use App\Domain\Payroll\Services\PayrollRuns;
 use App\Domain\Workflow\Jobs\SendWebhook;
 use App\Domain\Workflow\Services\WorkflowEngine;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
@@ -94,4 +95,20 @@ it('keeps the whole platform out of search engines: robots.txt disallows everyth
     expect(file_get_contents(public_path('robots.txt')))->toContain("User-agent: *\nDisallow: /");
     $this->get('/admin/login')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
     $this->get('/admin/signup')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+});
+
+it('shows no exception detail in production error responses, on the panel or the API (SaaS.12)', function () {
+    app()->detectEnvironment(fn () => 'production');
+    config(['app.debug' => false]);
+    $detail = 'token=s12-not-a-real-secret in '.base_path('app/Secret.php');
+    Route::get('/__s12/boom', fn () => throw new RuntimeException($detail));
+    Route::get('/api/__s12/boom', fn () => throw new RuntimeException($detail));
+
+    $web = $this->get('/__s12/boom')->assertStatus(500);
+    $api = $this->getJson('/api/__s12/boom')->assertStatus(500)->assertExactJson(['message' => 'Server Error']);
+    foreach ([$web, $api] as $response) {
+        expect($response->getContent())->not->toContain('s12-not-a-real-secret')->not->toContain(base_path())
+            ->not->toContain('RuntimeException')->not->toContain('vendor/laravel');
+    }
+    app()->detectEnvironment(fn () => 'testing');
 });
