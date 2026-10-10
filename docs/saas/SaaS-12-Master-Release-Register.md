@@ -1,10 +1,12 @@
-# SaaS.12 — Master release register
+# Master release register (SaaS.12, maintained through SaaS.13)
 
-**The durable record of the release programme.** Update it whenever a dependency arrives, and resume from the first task
-that is not VERIFIED. Last verified: 10 October 2026, at code commit `fa42fac`.
+**The single durable record of the release programme.** Update it whenever a dependency arrives, and resume from the
+first row that is not VERIFIED.
 
-## Status values
+Last revalidated: **10 October 2026 (SaaS.13)**, at code commit `408f2ed`. Every row was re-checked in SaaS.13, not
+carried forward.
 
+**Status values:**
 - NOT STARTED;
 - IN PROGRESS;
 - BLOCKED — OWNER DECISION;
@@ -15,38 +17,61 @@ that is not VERIFIED. Last verified: 10 October 2026, at code commit `fa42fac`.
 - VERIFIED;
 - NOT APPLICABLE — EVIDENCE REQUIRED.
 
-## The register
+The "Can work continue?" column says whether independent engineering can proceed while the row is blocked.
 
-| Stage | Task | Status | Evidence | Owner | Dependency | Next action | Acceptance criterion |
-|---|---|---|---|---|---|---|---|
-| 0 | Establish the truth | VERIFIED | `SaaS-12-Baseline.md` | Engineering | — | — | Baseline recorded |
-| 1 | Local credential reuse (PeopleOS, MySQL, `.env`) | VERIFIED | yes/no checks: 0 accepted | Engineering | — | — | 0 |
-| 1 | Credential reuse elsewhere; rotation | BLOCKED — OWNER DECISION | — | Owner | O-1 | Owner rotates and confirms | Written confirmation per system |
-| 1 | Repository visibility, branch, history | BLOCKED — OWNER DECISION | Plan: `SaaS-11-Security-Findings.md` §2.3 | Owner | O-2, O-3 | Owner chooses; engineering executes only the authorised operation | 0 occurrences on public refs |
-| 1 | Collaborators, deploy keys, Actions secrets | BLOCKED — OWNER DECISION | CI uses no secrets | Owner | GitHub access | Owner reviews settings | Review recorded |
-| 1 | Secrets in logs, repository, error responses | VERIFIED | Scans: 0; error-response test | Engineering | — | — | — |
-| 1 | Escalation fixes, role audit, isolation, field security | VERIFIED (internal) | Tests; mutants; isolation group | Engineering | Gate 3 for external | — | External review |
-| 1 | Dependencies | VERIFIED | composer 0, npm 0 (after fix) | Engineering | — | Re-run at release time | 0 |
-| 1 | Operator MFA | BLOCKED — ENVIRONMENT | 0 of 1 locally; readiness gate | Operators | O-14 | Enrol in the target | Readiness PASS |
-| 2 | Consolidated owner decisions | BLOCKED — OWNER DECISION | `SaaS-12-Owner-Decision-Register.md` | Owner | — | Record decisions with references | Each decision referenced |
-| 3 | Statutory engine and gate validated | VERIFIED | Mutants G1–G5 killed; gate tests | Engineering | — | — | — |
-| 3 | 24 rules verified or not applicable | BLOCKED — EXTERNAL REVIEW | `SaaS-12-Statutory-Verification-Register.md` | Specialist | O-5 | Engage specialist | Second-operator verification with evidence |
-| 4 | Deletion register and restore reconciliation | VERIFIED | `db55ba1`, `1907743`; SQLite faithful restore tests; MySQL drill; mutants R1–R5, C1–C10 | Engineering | — | — | Restore never silently resurrects |
-| 4 | SaaS.9 controls (holds, maker-checker, cooling-off, financial protection, certificates, external copies) | VERIFIED (local) | Offboarding suite 59 + 7 tests | Engineering | — | — | — |
-| 4 | Backup-expiry evidence | BLOCKED — ENVIRONMENT | — | Infrastructure | D8-5 | — | Expiry records from the backup system |
-| 5 | Independent security review | BLOCKED — EXTERNAL REVIEW | Pack and checklist | Reviewer | O-4, O-7, O-8 | Engage | Signed; no open critical or high |
-| 6 | Production infrastructure | BLOCKED — ENVIRONMENT | `SaaS-12-Production-Infrastructure-Requirements.md` | Owner, infrastructure | O-7 | Choose provider, region, mail, storage, secret store | Inventory written |
-| 7 | Checker coverage | VERIFIED | Permissions and register-disk rules added and tested | Engineering | — | — | — |
-| 7 | Production configuration in the target | BLOCKED — ENVIRONMENT | — | Infrastructure | Stage 6 | Run the validator in the target | Exit 0 |
-| 8 | Seeders safe; deploy does not reset access | VERIFIED | `812f2c9`, `90ef326`; real-data check (790 pairs identical) | Engineering | — | — | — |
-| 8 | Migration safety (fresh, rollback, interrupted, concurrent, locks) | READY FOR VERIFICATION | `SaaS-12-Deployment-and-Migration-Plan.md` | Owner review | — | Owner approves the plan | Approval reference |
-| 9 | Real recovery exercise | BLOCKED — ENVIRONMENT | Plan; local evidence only | Infrastructure | O-6, O-7 | Run in the isolated target | Signed, RTO and RPO within approved objectives |
-| 10 | Complete validation on the candidate (workstation) | VERIFIED | SQLite 1,467/1,467 run (135 MySQL-gated skipped), MySQL 135/135, mutants 28/28, browser 34/34, axe 0, visual 120/120, browser suite 74/74 | Engineering | — | Repeat in staging | All pass, skips explained |
-| 11 | Public registration | BLOCKED — OWNER DECISION | Off; fails closed | Owner | D10, gate 3, staging | — | Separate approval |
-| 12 | Billing | BLOCKED — OWNER DECISION | Off; production refuses Razorpay | Owner | B-4, B-7, B-8, B-9 | — | Separate approval and a release enabling live mode |
-| 13 | Tenant deletion activation | BLOCKED — OWNER DECISION | Off; refused without authorisation and register disk | Owner | D8, G16, review | — | Separate approval |
-| 14 | Staging release candidate | BLOCKED — ENVIRONMENT | Draft `SaaS-12-Release-Candidate-Package.md` | Engineering, owner | O-7, O-8 | Deploy to staging when authorised | Staging validation evidence |
-| 15 | Final release gate | BLOCKED | `SaaS-12-Final-Release-Gate-Matrix.md` | Owner | All gates | — | Classification READY or APPROVED |
-| 16 | Production deployment | NOT STARTED | — | Operations | O-9 | — | Deployment evidence |
-| 17 | Post-release validation | NOT STARTED | — | Operations | Stage 16, O-10 | — | Checks pass during the window |
-| 18 | Handover | NOT STARTED (index prepared) | RC package §9 | Engineering | Stage 17 | — | Handover package |
+## Security and repository
+
+| Task | Status | Exact blocker | Required action | Responsible | Current evidence | Evidence required (acceptance) | Dependency | Can work continue? | Next action |
+|---|---|---|---|---|---|---|---|---|---|
+| Local credential reuse | VERIFIED | — | — | Engineering | SaaS.13 yes/no: 0 of 19 PeopleOS databases, 0 MySQL accounts, 0 `.env` values accept the value | — | — | Yes | Re-check after any restore or new database |
+| External credential reuse and rotation | BLOCKED — OWNER DECISION | Engineering has no authorised access to GitHub, e-mail, hosting or other applications | Rotate everywhere it was used; end sessions; revoke tokens; check security logs since 28 Sep | Owner | — | Written confirmation per system | O-1 | Yes | Owner follows `SaaS-13-Owner-Action-Pack.md` §1 |
+| Public branch still holds the value | BLOCKED — OWNER DECISION | `feature/sep_28_phase_1` tip `9bf682f` holds it in 2 files (SaaS.13 scan) | Authorise option A, B or C | Owner | Remote unchanged since 8 Oct | 0 occurrences on every public ref | O-2, O-3 | Yes | Engineering runs only the authorised option, then re-scans |
+| Repository visibility | BLOCKED — OWNER DECISION | Public (API, 10 Oct) | Decide | Owner | — | Setting matches the decision | O-2 | Yes | — |
+| Collaborators, deploy keys, Actions secrets | BLOCKED — OWNER DECISION | Not observable without GitHub access | Review in GitHub settings | Owner | CI uses no secrets | Review recorded | GitHub access | Yes | — |
+| Development `.env` exposure | VERIFIED | — | — | Engineering | **SaaS.13:** 664 → 600; app verified; never committed; exposure assessed (action pack §7) | — | — | Yes | Owner may rotate development secrets if others had machine access |
+| Secrets in logs, repository, errors | VERIFIED | — | — | Engineering | SaaS.12 scans 0; error-response test | — | — | Yes | Re-scan at release |
+| Escalation fixes, role audit, isolation, field security | VERIFIED (internal) | External confirmation pending | — | Engineering | Tests, mutants; SaaS.13 full runs | Independent review | Review | Yes | — |
+| Dependencies | VERIFIED | — | — | Engineering | composer 0, npm 0 (SaaS.12) | 0 at release time | — | Yes | Re-run at the release-candidate freeze |
+
+## Identity and operators
+
+| Task | Status | Exact blocker | Required action | Responsible | Current evidence | Evidence required | Dependency | Can work continue? | Next action |
+|---|---|---|---|---|---|---|---|---|---|
+| MFA enforcement on every sign-in path | VERIFIED | — | — | Engineering | Per-request check; remember-me and SSO challenged; downloads covered; recovery codes single-use and audited; resets audited; readiness gate | — | — | Yes | — |
+| Operator MFA enrolment | BLOCKED — ENVIRONMENT | 0 of 1 enrolled (development, showcase); no production operators exist | Each operator enrols | Operators, owner | SaaS.13 counts | Readiness "Every platform operator has MFA enrolled" PASS in the target | O-14, O-7 | Yes | Action pack §3 |
+| Demo or test accounts in production | VERIFIED (gate) | — | — | Engineering | **SaaS.13:** readiness FAILs in production on reserved-domain accounts (9 on development: WARN) | PASS in the target | — | Yes | — |
+| Deploy-time permission sync | VERIFIED | — | — | Engineering | SaaS.13 real-data re-check on `hcm`: 790 pairs identical, 0 audit events | — | — | Yes | — |
+
+## Statutory
+
+| Task | Status | Exact blocker | Required action | Responsible | Current evidence | Evidence required | Dependency | Can work continue? | Next action |
+|---|---|---|---|---|---|---|---|---|---|
+| Verified-rules gate cannot be bypassed | VERIFIED | — | — | Engineering | Mutants G1–G5 killed (SaaS.12); gate tests in the SaaS.13 run | — | — | Yes | — |
+| 24 rules verified or not applicable | BLOCKED — EXTERNAL REVIEW | No specialist engaged; 0 of 24 verified, 5 open notices | Engage a specialist | Owner → specialist | `SaaS-12-Statutory-Verification-Register.md` | Second-operator verification with official evidence per rule | O-5 | Yes | — |
+| Gratuity | BLOCKED — OWNER DECISION | Not calculated; whether launch needs it is undecided | Decide scope with the specialist | Owner, specialist | **SaaS.13:** discovery confirms no implementation (stored rule only; manual settlement lines only) | Decision; if required, an approved specification before any code | O-12, O-5 | Yes | Action pack §5 |
+
+## Retention, deletion and recovery
+
+| Task | Status | Exact blocker | Required action | Responsible | Current evidence | Evidence required | Dependency | Can work continue? | Next action |
+|---|---|---|---|---|---|---|---|---|---|
+| Restore reconciliation | VERIFIED | — | — | Engineering | SaaS.12 build, drill, mutants; **SaaS.13:** an unreachable register fails closed (tested) | — | — | Yes | — |
+| SaaS.9 controls | VERIFIED (local) | — | — | Engineering | Offboarding suite in the SaaS.13 run | — | — | Yes | — |
+| D8-1…D8-8 | BLOCKED — OWNER DECISION | Undecided | Decide with counsel | Owner, counsel | 0 policies | Approved policy versions (two operators) | — | Yes | — |
+| Backup-expiry evidence | BLOCKED — ENVIRONMENT | No backup system | — | Infrastructure | — | Expiry records | D8-5, O-7 | Yes | — |
+| Recovery objectives | BLOCKED — OWNER DECISION | RPO and RTO not approved | Choose | Owner | Options: action pack §4 | Written choice | O-6 | Yes | — |
+| Real recovery exercise | BLOCKED — ENVIRONMENT | No isolated target | Provide one | Infrastructure | Local evidence only (SaaS.11, SaaS.12) | Signed exercise within approved objectives | O-6, O-7 | Yes | — |
+| Production-copy offboarding rehearsal | BLOCKED — ENVIRONMENT | No approved copy | — | Infrastructure, owner | Runbook ready | Signed rehearsal | O-7 | Yes | — |
+
+## Environment, deployment and release
+
+| Task | Status | Exact blocker | Required action | Responsible | Current evidence | Evidence required | Dependency | Can work continue? | Next action |
+|---|---|---|---|---|---|---|---|---|---|
+| Independent security review | BLOCKED — EXTERNAL REVIEW | Not engaged; no review environment | Engage | Owner → reviewer | Pack and checklist | Signed; no open critical or high | O-4, O-7, O-8 | Yes | — |
+| Infrastructure | BLOCKED — OWNER DECISION | No provider chosen; nothing provisioned; no `gh` or `cloud` access | Choose and delegate access | Owner | Requirements written | Environment inventory | O-7 | Yes | Action pack §6 |
+| Production configuration | BLOCKED — ENVIRONMENT | No target | — | Infrastructure | Checker extended (SaaS.11, SaaS.12, SaaS.13) | Validator exit 0, readiness without FAIL, in the target | O-7 | Yes | — |
+| Monitoring, on-call, incident contacts | BLOCKED — OWNER DECISION | No provider, no names, no window | Decide | Owner | — | Alert received by on-call | O-10, O-11 | Yes | — |
+| Migration plan | READY FOR VERIFICATION | Owner approval | Review and approve | Owner | `SaaS-12-Deployment-and-Migration-Plan.md` | Approval reference | — | Yes | — |
+| Complete validation (workstation) | VERIFIED (workstation) | — | — | Engineering | SaaS.13 on `408f2ed`: SQLite 1,469 passed, 0 failed (135 MySQL-gated skipped); MySQL 135/135; mutants 5/5; visual 120/120; browser 74/74; audits 0. Signup flow not re-run (last: SaaS.12) | All pass, skips explained | — | Yes | Repeat in staging |
+| Staging release candidate | BLOCKED — ENVIRONMENT | No staging; no authorisation | — | Engineering, owner | Draft release-candidate package | Staging validation evidence | O-7, O-8 | Yes | — |
+| Public registration, billing, deletion activation | BLOCKED — OWNER DECISION | D10, B and D8 decisions; review; staging | — | Owner | All off; production refuses each without authorisation | Separate approvals | — | Yes | — |
+| Production deployment, post-release, handover | NOT STARTED | No authorisation (O-9), no environment | — | Owner, operations | — | Deployment and monitoring evidence | All gates | — | — |

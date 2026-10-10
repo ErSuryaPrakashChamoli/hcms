@@ -296,3 +296,12 @@ Recorded on 10 October 2026. Architecture: `docs/architecture/saas-12-release-pr
 | 0117 | Deploys top up system roles only with permissions a release introduces | Accepted | `roles.template_keys` records what each system role was given; removals by tenants persist; introductions are audited | `SystemRoleTopUpTest`; mutants T1–T3 |
 | 0118 | Migrations run with `--isolated` on upgrades; an interrupted migration is recovered from the pre-deploy backup | Accepted | Tested on disposable MySQL schemas (concurrent runs serialised; interrupted run not re-runnable) | Deployment plan |
 
+## SaaS.13 decisions (release blocker resolution)
+
+Recorded on 10 October 2026. Owner actions: `docs/saas/SaaS-13-Owner-Action-Pack.md`.
+
+| ADR | Title | Status | Decision (one line) | Enforced by |
+|---|---|---|---|---|
+| 0119 | The deletion register fails closed when unreachable | Accepted | Planning a deletion is refused with a reason; the offboarding tick logs critical and exits non-zero; readiness FAILs in production | `DeletionReconciliationTest` |
+| 0120 | Demo and test accounts are found by their reserved domains | Accepted | Readiness counts active accounts on `.local`, `.test`, `.example`, `.invalid`, `.localhost` and `example.com/org/net`; FAIL in production; counts only | `PlatformReadinessTest` |
+

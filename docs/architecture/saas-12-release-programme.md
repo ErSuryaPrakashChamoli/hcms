@@ -85,3 +85,14 @@ audit trail shows each grant per tenant.
 | An interrupted `migrate` leaves a half-applied migration (MySQL DDL is not transactional); a re-run fails with "table already exists" | Recovery is the pre-deploy backup. The deploy sequence keeps "backup before migrate" mandatory |
 | `migrate --isolated` serialises concurrent runs (one runs, the other exits "already running") but fails on a first install with the database cache store (no `cache_locks` yet) | Use `--isolated` for upgrades; run the first install from one server without it |
 | Production error responses carry no exception detail (panel and API) | Regression test in `SecurityHardeningTest` |
+
+## 5. SaaS.13 additions
+
+- **Unreachable register:**
+  - `TenantDeletions::request` refuses with a reason when `reappliesFor()` cannot read the register;
+  - `OffboardingTick` catches a register failure, logs critical and exits non-zero (its other duties have already run);
+  - readiness already reported it.
+- **Demo accounts:** `PlatformReadiness` reports "No demo or test sign-in accounts", FAIL in production. Seeded,
+  showcase, fixture and factory accounts all use reserved domains, so the check needs no list of known accounts or
+  passwords.
+

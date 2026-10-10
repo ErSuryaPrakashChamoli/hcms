@@ -63,3 +63,12 @@ can predate deletions; the register cannot.
 
    If a legal hold or a retention requirement in the restored data stops the re-application, the tenant stays suspended
    and readiness shows a warning until people resolve it. It is never deleted around the hold.
+
+**If the register cannot be read (SaaS.13):** reconciliation fails closed.
+- No deletion can be planned (it cannot be checked against earlier certified deletions).
+- Readiness fails in production.
+- The offboarding tick logs a critical error and exits non-zero.
+
+Restore access to the register disk before anything else. A register that is reachable but **empty or lost** cannot
+reveal deletions the restored database predates. That is why it must be versioned, ideally object-locked, and backed up
+separately from the database.

@@ -111,6 +111,7 @@ server or extension exists on the build workstation.
 | `PEOPLEOS_ROBOTS_TAG` (SaaS.11) | leave the default `noindex, nofollow`: every response carries it, and `robots.txt` disallows everything. PeopleOS is a private platform, and invitation and signup links carry their token in the path | warning when empty |
 | `PEOPLEOS_SEED_PASSWORD` (SaaS.11) | **unset**. It exists only for local demo seeding | yes (error when set) |
 | Platform operators' MFA (SaaS.11) | every operator who can sign in has an authenticator enrolled **before** production. An operator without one is asked to enrol at the next sign-in, so a leaked password alone would let someone else enrol theirs | readiness (FAIL in production) |
+| No demo or test accounts (SaaS.13) | no account that can sign in uses a reserved, undeliverable domain (`.local`, `.test`, `example.*`); every seeded, showcase and factory account does | readiness (FAIL in production) |
 
 ### 6a. Release switches (SaaS.11)
 

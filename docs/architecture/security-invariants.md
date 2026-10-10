@@ -388,6 +388,13 @@ SaaS.12 additions (release programme):
      are audited (`ROLE_CHANGED`, no actor).
 123. **No seeder runs in production**, whatever the database is called.
 
+SaaS.13 additions:
+
+124. **An unreachable deletion register fails closed**: no deletion is planned, readiness fails in production, and the
+     offboarding tick reports it.
+125. **Production readiness fails while a demo or test account can sign in** (an account on a reserved domain: `.local`,
+     `.test`, `example.*`).
+
 ### Phase 14 review of raw queries and scope bypasses
 
 | Pattern | Count | Review result |
