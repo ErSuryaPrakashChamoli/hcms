@@ -1,13 +1,13 @@
 # Final owner action register
 
-Date: 11 October 2026. **For:** the owner of Markedge PeopleOS.
+Date: 11 October 2026; **re-verified 13 October 2026**. **For:** the owner of Markedge PeopleOS.
 
 **This is the authoritative register of decisions, access and approvals still needed.** It supersedes
 `SaaS-12-Owner-Decision-Register.md`; the IDs are unchanged and that file is kept as history. Step-by-step instructions
 stay in `SaaS-13-Owner-Action-Pack.md` (referenced by § below).
 
-**Received so far: none.** No decision, approval, credential confirmation or external review has been recorded since
-SaaS.10. Nothing here is decided by being written down.
+**Received so far: none** (re-checked 13 October 2026). No decision, approval, credential confirmation, external review,
+specialist engagement or infrastructure access has been recorded since SaaS.10. Nothing here is decided by being written down.
 
 ## Classes
 
@@ -44,6 +44,21 @@ SaaS.10. Nothing here is decided by being written down.
 | D8-1…D8-8 | Retention and deletion policy | OWNER DECISION (with counsel) | See `SaaS-9-Retention-Decision-Register.md` §3 | Approved policy versions | Deletion activation |
 | D10-1…D10-11 | Public registration | OWNER DECISION | See `SaaS-12-Owner-Decision-Register.md` Group B (Terms and Privacy are both D10-4) | Recorded decisions | Signup activation |
 | B-4, B-7, B-8, B-9 | Prices, selling entity and registrations, India SAC, foreign registrations | OWNER DECISION (finance, tax) | Per market (India, USA, UK, EU, UAE); entered as governed data, never code | Approved values | Billing activation |
+
+## Status at 13 October 2026
+
+Every item above is **open**. Re-verified today:
+- The O-1 exposure persists (the value is still in the public `feature/sep_28_phase_1`; accepted nowhere locally).
+- O-2: still public.
+- O-14: 0 of 1 operators enrolled.
+- O-5, O-12, O-18: 0 of 24 rules verified; USA, UK and EU payroll blocked.
+
+| Responsible | Items waiting on them |
+|---|---|
+| Owner | O-1, O-2, O-3, O-6, O-7, O-10, O-11, O-12, O-14, O-15, O-16, O-17, O-18; D8, D10, B for their scopes; O-8, O-9 |
+| Independent security reviewer (once engaged) | O-4 |
+| Statutory specialist (once engaged) | O-5; advice on O-12 and O-18 |
+| Infrastructure provider (once chosen) | Everything environment-dependent |
 
 ## The single most effective next action
 

@@ -3,7 +3,8 @@
 **The single durable record of the release programme.** Update it whenever a dependency arrives, and resume from the
 first row that is not VERIFIED.
 
-Last revalidated: **11 October 2026 (final programme)**, at code commit `064c262`. Every row was re-checked, not carried
+Last revalidated: **13 October 2026**, at commit `7314f7d` (no code change since `064c262`; no blocker changed; log in
+`SaaS-Final-Release-Gate.md`). Every row was re-checked, not carried
 forward. The final documents are `SaaS-Final-*.md`; the go/no-go assessment is `SaaS-Final-Release-Gate.md`.
 
 **Status values:**
