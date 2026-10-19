@@ -1,0 +1,3075 @@
+{
+  "config": {
+    "argv": [
+      "/usr/bin/node",
+      "/home/administrator/Documents/hrms/hcms/node_modules/.bin/playwright",
+      "test",
+      "-c",
+      "tests/browser"
+    ],
+    "configFile": "/home/administrator/Documents/hrms/hcms/tests/browser/playwright.config.mjs",
+    "rootDir": "/home/administrator/Documents/hrms/hcms/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": "/home/administrator/Documents/hrms/hcms/tests/visual/global-setup.mjs",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/administrator/Documents/hrms/hcms/tests/browser/results/artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-phone",
+        "name": "chromium-phone",
+        "testDir": "/home/administrator/Documents/hrms/hcms/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.browser\\.mjs/"
+        ],
+        "timeout": 90000
+      },
+      {
+        "outputDir": "/home/administrator/Documents/hrms/hcms/tests/browser/results/artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-desktop",
+        "name": "chromium-desktop",
+        "testDir": "/home/administrator/Documents/hrms/hcms/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.browser\\.mjs/"
+        ],
+        "timeout": 90000
+      },
+      {
+        "outputDir": "/home/administrator/Documents/hrms/hcms/tests/browser/results/artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox-phone",
+        "name": "firefox-phone",
+        "testDir": "/home/administrator/Documents/hrms/hcms/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.browser\\.mjs/"
+        ],
+        "timeout": 90000
+      },
+      {
+        "outputDir": "/home/administrator/Documents/hrms/hcms/tests/browser/results/artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit-phone",
+        "name": "webkit-phone",
+        "testDir": "/home/administrator/Documents/hrms/hcms/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.browser\\.mjs/"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "results/browser-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "aborted-calls.browser.mjs",
+      "file": "aborted-calls.browser.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "manager",
+          "file": "aborted-calls.browser.mjs",
+          "line": 7,
+          "column": 6,
+          "specs": [
+            {
+              "title": "leaving during the page load raises no page error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 8731,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:21.909Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4007aa0a9ffa479bf808-b7622d1ac190c953fc16",
+              "file": "aborted-calls.browser.mjs",
+              "line": 10,
+              "column": 5
+            },
+            {
+              "title": "leaving while the command center is answering raises no page error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3262,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:30.839Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4007aa0a9ffa479bf808-c67658218e6e022ad554",
+              "file": "aborted-calls.browser.mjs",
+              "line": 23,
+              "column": 5
+            },
+            {
+              "title": "leaving during the page load raises no page error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 8354,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:09.802Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4007aa0a9ffa479bf808-dcc0a1812e7ee87214ab",
+              "file": "aborted-calls.browser.mjs",
+              "line": 10,
+              "column": 5
+            },
+            {
+              "title": "leaving while the command center is answering raises no page error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3248,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:18.317Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4007aa0a9ffa479bf808-b67f5b699be42e923a1c",
+              "file": "aborted-calls.browser.mjs",
+              "line": 23,
+              "column": 5
+            },
+            {
+              "title": "leaving during the page load raises no page error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11069,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:47.789Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4007aa0a9ffa479bf808-2c3ae5489a19aac98ee8",
+              "file": "aborted-calls.browser.mjs",
+              "line": 10,
+              "column": 5
+            },
+            {
+              "title": "leaving while the command center is answering raises no page error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4207,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:59.552Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4007aa0a9ffa479bf808-04c776fbd4de45bb98d8",
+              "file": "aborted-calls.browser.mjs",
+              "line": 23,
+              "column": 5
+            },
+            {
+              "title": "leaving during the page load raises no page error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10758,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:55.812Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4007aa0a9ffa479bf808-71b101c6cde27e320cae",
+              "file": "aborted-calls.browser.mjs",
+              "line": 10,
+              "column": 5
+            },
+            {
+              "title": "leaving while the command center is answering raises no page error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5327,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:06.735Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "4007aa0a9ffa479bf808-f296a4f4774f6a9e4593",
+              "file": "aborted-calls.browser.mjs",
+              "line": 23,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "back.browser.mjs",
+      "file": "back.browser.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "manager",
+          "file": "back.browser.mjs",
+          "line": 32,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Back closes the command center, then leaves the page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2157,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:34.148Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-ed64897450b68dd4c883",
+              "file": "back.browser.mjs",
+              "line": 35,
+              "column": 5
+            },
+            {
+              "title": "Escape closes the command center and takes its step out: one Back then leaves",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2416,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:36.324Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-452a1c39c140cd355ae6",
+              "file": "back.browser.mjs",
+              "line": 45,
+              "column": 5
+            },
+            {
+              "title": "Back closes a decision sheet, focus returns, and the queue stays",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1202,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:38.764Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-acea5cb03585a9d4fb22",
+              "file": "back.browser.mjs",
+              "line": 55,
+              "column": 5
+            },
+            {
+              "title": "nested overlays close one Back at a time: the command center over a sheet",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2372,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:39.987Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-08ea945627248ba1aa46",
+              "file": "back.browser.mjs",
+              "line": 67,
+              "column": 5
+            },
+            {
+              "title": "a link followed from the command center leaves no stale step behind",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3154,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:42.386Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-80cd9fce0ebb74182d2c",
+              "file": "back.browser.mjs",
+              "line": 83,
+              "column": 5
+            },
+            {
+              "title": "Back closes the command center, then leaves the page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2310,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:21.608Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-36fc94d27293ea49971f",
+              "file": "back.browser.mjs",
+              "line": 35,
+              "column": 5
+            },
+            {
+              "title": "Escape closes the command center and takes its step out: one Back then leaves",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2647,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:23.955Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-a3269d33f03fb8312da6",
+              "file": "back.browser.mjs",
+              "line": 45,
+              "column": 5
+            },
+            {
+              "title": "Back closes a decision sheet, focus returns, and the queue stays",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "the desktop decides in the side pane, not a sheet",
+                      "location": {
+                        "file": "/home/administrator/Documents/hrms/hcms/tests/browser/back.browser.mjs",
+                        "line": 56,
+                        "column": 14
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 111,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:26.625Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "the desktop decides in the side pane, not a sheet",
+                          "location": {
+                            "file": "/home/administrator/Documents/hrms/hcms/tests/browser/back.browser.mjs",
+                            "line": 56,
+                            "column": 14
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-7f53397a8933747a4035",
+              "file": "back.browser.mjs",
+              "line": 55,
+              "column": 5
+            },
+            {
+              "title": "nested overlays close one Back at a time: the command center over a sheet",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2289,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:26.760Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-80bec4cb364a9c2f6953",
+              "file": "back.browser.mjs",
+              "line": 67,
+              "column": 5
+            },
+            {
+              "title": "a link followed from the command center leaves no stale step behind",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2901,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:29.069Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-5203d3f50b717acbe9ea",
+              "file": "back.browser.mjs",
+              "line": 83,
+              "column": 5
+            },
+            {
+              "title": "Back closes the command center, then leaves the page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2876,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:03.809Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-1014235378f8a991643b",
+              "file": "back.browser.mjs",
+              "line": 35,
+              "column": 5
+            },
+            {
+              "title": "Escape closes the command center and takes its step out: one Back then leaves",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3181,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:06.705Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-0cb2bdd4d10639c795d3",
+              "file": "back.browser.mjs",
+              "line": 45,
+              "column": 5
+            },
+            {
+              "title": "Back closes a decision sheet, focus returns, and the queue stays",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1885,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:09.914Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-a181c21a540629f8740c",
+              "file": "back.browser.mjs",
+              "line": 55,
+              "column": 5
+            },
+            {
+              "title": "nested overlays close one Back at a time: the command center over a sheet",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3249,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:11.833Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-141d7a62eb01104c6057",
+              "file": "back.browser.mjs",
+              "line": 67,
+              "column": 5
+            },
+            {
+              "title": "a link followed from the command center leaves no stale step behind",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3617,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:15.113Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-06990c9e3733ef4f7b70",
+              "file": "back.browser.mjs",
+              "line": 83,
+              "column": 5
+            },
+            {
+              "title": "Back closes the command center, then leaves the page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4103,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:12.132Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-4e60f8779139c3e43ec0",
+              "file": "back.browser.mjs",
+              "line": 35,
+              "column": 5
+            },
+            {
+              "title": "Escape closes the command center and takes its step out: one Back then leaves",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4498,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:16.277Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-c09b5d3ffe3205360d15",
+              "file": "back.browser.mjs",
+              "line": 45,
+              "column": 5
+            },
+            {
+              "title": "Back closes a decision sheet, focus returns, and the queue stays",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2724,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:20.819Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-637068415418099d677f",
+              "file": "back.browser.mjs",
+              "line": 55,
+              "column": 5
+            },
+            {
+              "title": "nested overlays close one Back at a time: the command center over a sheet",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3980,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:23.575Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-9a496691e20be1928d6d",
+              "file": "back.browser.mjs",
+              "line": 67,
+              "column": 5
+            },
+            {
+              "title": "a link followed from the command center leaves no stale step behind",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4819,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:27.590Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-4aa542e440ba997c1bb4",
+              "file": "back.browser.mjs",
+              "line": 83,
+              "column": 5
+            }
+          ]
+        },
+        {
+          "title": "employee",
+          "file": "back.browser.mjs",
+          "line": 98,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Back closes a modal form without leaving the page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1646,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:45.565Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-93ae994d1570180377d6",
+              "file": "back.browser.mjs",
+              "line": 101,
+              "column": 5
+            },
+            {
+              "title": "Back closes a modal form without leaving the page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1613,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:31.992Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-6561cbce9eda8fd24336",
+              "file": "back.browser.mjs",
+              "line": 101,
+              "column": 5
+            },
+            {
+              "title": "Back closes a modal form without leaving the page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2225,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:18.762Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-4cf4568206017619383c",
+              "file": "back.browser.mjs",
+              "line": 101,
+              "column": 5
+            },
+            {
+              "title": "Back closes a modal form without leaving the page",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2997,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:32.435Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-60ad1d1c58cbff83fef8",
+              "file": "back.browser.mjs",
+              "line": 101,
+              "column": 5
+            }
+          ]
+        },
+        {
+          "title": "hr",
+          "file": "back.browser.mjs",
+          "line": 112,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Back closes the assistant, then the page stays",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1763,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:47.236Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-ebe7983cc691a3b65924",
+              "file": "back.browser.mjs",
+              "line": 115,
+              "column": 5
+            },
+            {
+              "title": "Back closes the phone menu",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1585,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:49.017Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-8c84b217595704d12e8b",
+              "file": "back.browser.mjs",
+              "line": 124,
+              "column": 5
+            },
+            {
+              "title": "the directory filters are part of the page: Back leaves it as usual",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2458,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:50.617Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-993b56d4bf9c4261dadd",
+              "file": "back.browser.mjs",
+              "line": 134,
+              "column": 5
+            },
+            {
+              "title": "Back closes the assistant, then the page stays",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1744,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:33.626Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-2da8b87f53120cc93caf",
+              "file": "back.browser.mjs",
+              "line": 115,
+              "column": 5
+            },
+            {
+              "title": "Back closes the phone menu",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "the rail is not an overlay on desktop",
+                      "location": {
+                        "file": "/home/administrator/Documents/hrms/hcms/tests/browser/back.browser.mjs",
+                        "line": 125,
+                        "column": 14
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 124,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:35.392Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "the rail is not an overlay on desktop",
+                          "location": {
+                            "file": "/home/administrator/Documents/hrms/hcms/tests/browser/back.browser.mjs",
+                            "line": 125,
+                            "column": 14
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-73e45c321b3940c3ab59",
+              "file": "back.browser.mjs",
+              "line": 124,
+              "column": 5
+            },
+            {
+              "title": "the directory filters are part of the page: Back leaves it as usual",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "filters are always shown on desktop",
+                      "location": {
+                        "file": "/home/administrator/Documents/hrms/hcms/tests/browser/back.browser.mjs",
+                        "line": 135,
+                        "column": 14
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 121,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:35.537Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "filters are always shown on desktop",
+                          "location": {
+                            "file": "/home/administrator/Documents/hrms/hcms/tests/browser/back.browser.mjs",
+                            "line": 135,
+                            "column": 14
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-8537cbb21209891384c1",
+              "file": "back.browser.mjs",
+              "line": 134,
+              "column": 5
+            },
+            {
+              "title": "Back closes the assistant, then the page stays",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2284,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:21.018Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-162037cce024114f754d",
+              "file": "back.browser.mjs",
+              "line": 115,
+              "column": 5
+            },
+            {
+              "title": "Back closes the phone menu",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4235,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:23.332Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-bce1de8128672af6041e",
+              "file": "back.browser.mjs",
+              "line": 124,
+              "column": 5
+            },
+            {
+              "title": "the directory filters are part of the page: Back leaves it as usual",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3182,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:27.586Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-6adfcc18cd8e455bcea4",
+              "file": "back.browser.mjs",
+              "line": 134,
+              "column": 5
+            },
+            {
+              "title": "Back closes the assistant, then the page stays",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3153,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:35.461Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-f945cb49fa296fcbd723",
+              "file": "back.browser.mjs",
+              "line": 115,
+              "column": 5
+            },
+            {
+              "title": "Back closes the phone menu",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3069,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:38.645Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-5f6871b66546d464657f",
+              "file": "back.browser.mjs",
+              "line": 124,
+              "column": 5
+            },
+            {
+              "title": "the directory filters are part of the page: Back leaves it as usual",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3859,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:41.743Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "db1f3330839cf7739a47-fed5303304045b038f46",
+              "file": "back.browser.mjs",
+              "line": 134,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "focus-order.browser.mjs",
+      "file": "focus-order.browser.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "admin",
+          "file": "focus-order.browser.mjs",
+          "line": 8,
+          "column": 10,
+          "specs": [
+            {
+              "title": "the first Tab on Home is the skip link, and it lands in main",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1241,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:53.109Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-7a3e19c5d9e642017e80",
+              "file": "focus-order.browser.mjs",
+              "line": 11,
+              "column": 9
+            },
+            {
+              "title": "the chosen view chip is in sight on a phone",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1208,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:54.370Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-9ffaea26b66489e575b6",
+              "file": "focus-order.browser.mjs",
+              "line": 22,
+              "column": 9
+            },
+            {
+              "title": "the first Tab on Home is the skip link, and it lands in main",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1248,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:35.684Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-e1cebd22d0ff82cfc20b",
+              "file": "focus-order.browser.mjs",
+              "line": 11,
+              "column": 9
+            },
+            {
+              "title": "the chosen view chip is in sight on a phone",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "the chip row only scrolls on phones",
+                      "location": {
+                        "file": "/home/administrator/Documents/hrms/hcms/tests/browser/focus-order.browser.mjs",
+                        "line": 23,
+                        "column": 18
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 107,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:36.949Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "the chip row only scrolls on phones",
+                          "location": {
+                            "file": "/home/administrator/Documents/hrms/hcms/tests/browser/focus-order.browser.mjs",
+                            "line": 23,
+                            "column": 18
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-08a32abe35b8992f571d",
+              "file": "focus-order.browser.mjs",
+              "line": 22,
+              "column": 9
+            },
+            {
+              "title": "the first Tab on Home is the skip link, and it lands in main",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1770,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:30.801Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-4f9c0fef9721e8eadaf3",
+              "file": "focus-order.browser.mjs",
+              "line": 11,
+              "column": 9
+            },
+            {
+              "title": "the chosen view chip is in sight on a phone",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1676,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:32.600Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-306648e54af7733e0a37",
+              "file": "focus-order.browser.mjs",
+              "line": 22,
+              "column": 9
+            },
+            {
+              "title": "the first Tab on Home is the skip link, and it lands in main",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2833,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:45.650Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-ce82f99223ef01fd281d",
+              "file": "focus-order.browser.mjs",
+              "line": 11,
+              "column": 9
+            },
+            {
+              "title": "the chosen view chip is in sight on a phone",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2819,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:48.510Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-d378035496cc473ae276",
+              "file": "focus-order.browser.mjs",
+              "line": 22,
+              "column": 9
+            }
+          ]
+        },
+        {
+          "title": "manager",
+          "file": "focus-order.browser.mjs",
+          "line": 8,
+          "column": 10,
+          "specs": [
+            {
+              "title": "the first Tab on Home is the skip link, and it lands in main",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1394,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:55.593Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-6489df3881168cfa8e00",
+              "file": "focus-order.browser.mjs",
+              "line": 11,
+              "column": 9
+            },
+            {
+              "title": "the chosen view chip is in sight on a phone",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1428,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:57.004Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-9eb6c4de8eef414d8393",
+              "file": "focus-order.browser.mjs",
+              "line": 22,
+              "column": 9
+            },
+            {
+              "title": "the first Tab on Home is the skip link, and it lands in main",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1416,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:37.073Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-6529dfdf21062dd1cda0",
+              "file": "focus-order.browser.mjs",
+              "line": 11,
+              "column": 9
+            },
+            {
+              "title": "the chosen view chip is in sight on a phone",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "the chip row only scrolls on phones",
+                      "location": {
+                        "file": "/home/administrator/Documents/hrms/hcms/tests/browser/focus-order.browser.mjs",
+                        "line": 23,
+                        "column": 18
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 100,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:38.504Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "the chip row only scrolls on phones",
+                          "location": {
+                            "file": "/home/administrator/Documents/hrms/hcms/tests/browser/focus-order.browser.mjs",
+                            "line": 23,
+                            "column": 18
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-ee95cc9f424c10736eaf",
+              "file": "focus-order.browser.mjs",
+              "line": 22,
+              "column": 9
+            },
+            {
+              "title": "the first Tab on Home is the skip link, and it lands in main",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2065,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:34.293Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-f2f7e2423dd8bf8093f5",
+              "file": "focus-order.browser.mjs",
+              "line": 11,
+              "column": 9
+            },
+            {
+              "title": "the chosen view chip is in sight on a phone",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1826,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:36.383Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-ccd2da983c669441246b",
+              "file": "focus-order.browser.mjs",
+              "line": 22,
+              "column": 9
+            },
+            {
+              "title": "the first Tab on Home is the skip link, and it lands in main",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2812,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:51.351Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-0e10fa62fb146350488f",
+              "file": "focus-order.browser.mjs",
+              "line": 11,
+              "column": 9
+            },
+            {
+              "title": "the chosen view chip is in sight on a phone",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3124,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:54.184Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8acd064f0da87fcbf91e-44f86692cc57daec2972",
+              "file": "focus-order.browser.mjs",
+              "line": 22,
+              "column": 9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "ux19.browser.mjs",
+      "file": "ux19.browser.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "employee",
+          "file": "ux19.browser.mjs",
+          "line": 16,
+          "column": 6,
+          "specs": [
+            {
+              "title": "My HR sections move with the arrow keys, Home and End, without selecting",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1133,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:58.457Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-2545a4af6db994fe75c1",
+              "file": "ux19.browser.mjs",
+              "line": 19,
+              "column": 5
+            },
+            {
+              "title": "opens their own Employee 360 from My HR, read-only",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1923,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:39:59.607Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-6be49174032d5a495579",
+              "file": "ux19.browser.mjs",
+              "line": 37,
+              "column": 5
+            },
+            {
+              "title": "My HR sections move with the arrow keys, Home and End, without selecting",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1123,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:38.625Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-6b3fdfd8b6b67e8f9631",
+              "file": "ux19.browser.mjs",
+              "line": 19,
+              "column": 5
+            },
+            {
+              "title": "opens their own Employee 360 from My HR, read-only",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2010,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:39.763Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-850552c7dc6bb11e66c9",
+              "file": "ux19.browser.mjs",
+              "line": 37,
+              "column": 5
+            },
+            {
+              "title": "My HR sections move with the arrow keys, Home and End, without selecting",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1704,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:38.239Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-2b0436c472f3e4bce58e",
+              "file": "ux19.browser.mjs",
+              "line": 19,
+              "column": 5
+            },
+            {
+              "title": "opens their own Employee 360 from My HR, read-only",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2302,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:39.965Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-1874f224aa916b7c9821",
+              "file": "ux19.browser.mjs",
+              "line": 37,
+              "column": 5
+            },
+            {
+              "title": "My HR sections move with the arrow keys, Home and End, without selecting",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2321,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:57.343Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-8ea42178ecbdeb40786a",
+              "file": "ux19.browser.mjs",
+              "line": 19,
+              "column": 5
+            },
+            {
+              "title": "opens their own Employee 360 from My HR, read-only",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3288,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:42:59.685Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-ee3d46f978d2531217ab",
+              "file": "ux19.browser.mjs",
+              "line": 37,
+              "column": 5
+            }
+          ]
+        },
+        {
+          "title": "manager",
+          "file": "ux19.browser.mjs",
+          "line": 47,
+          "column": 6,
+          "specs": [
+            {
+              "title": "\"View as\" is a group of toggle buttons that Enter switches",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3230,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:01.558Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-fcc115209683e5db6163",
+              "file": "ux19.browser.mjs",
+              "line": 50,
+              "column": 5
+            },
+            {
+              "title": "the command palette shows focus on its input bar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1858,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:04.811Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-38f1bd483642fb9636f9",
+              "file": "ux19.browser.mjs",
+              "line": 69,
+              "column": 5
+            },
+            {
+              "title": "\"View as\" is a group of toggle buttons that Enter switches",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3073,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:41.791Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-7610fe7d224dc26e6d35",
+              "file": "ux19.browser.mjs",
+              "line": 50,
+              "column": 5
+            },
+            {
+              "title": "the command palette shows focus on its input bar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1553,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:44.884Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-72e3087785d9669a1494",
+              "file": "ux19.browser.mjs",
+              "line": 69,
+              "column": 5
+            },
+            {
+              "title": "\"View as\" is a group of toggle buttons that Enter switches",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3887,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:42.290Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-7c827b865327a160df56",
+              "file": "ux19.browser.mjs",
+              "line": 50,
+              "column": 5
+            },
+            {
+              "title": "the command palette shows focus on its input bar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2077,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:46.196Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-8468bc3efeb58e021677",
+              "file": "ux19.browser.mjs",
+              "line": 69,
+              "column": 5
+            },
+            {
+              "title": "\"View as\" is a group of toggle buttons that Enter switches",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5408,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:43:03.000Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-0426a500b23e22db5104",
+              "file": "ux19.browser.mjs",
+              "line": 50,
+              "column": 5
+            },
+            {
+              "title": "the command palette shows focus on its input bar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3046,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:43:08.437Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-e608ac1a609f2bfabde4",
+              "file": "ux19.browser.mjs",
+              "line": 69,
+              "column": 5
+            }
+          ]
+        },
+        {
+          "title": "hr",
+          "file": "ux19.browser.mjs",
+          "line": 79,
+          "column": 6,
+          "specs": [
+            {
+              "title": "on a phone the Employee 360 header keeps its actions in two rows and \"Reports to\" with the person",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-phone",
+                  "projectName": "chromium-phone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1802,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:06.694Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-59dcb82f465ae101325d",
+              "file": "ux19.browser.mjs",
+              "line": 82,
+              "column": 5
+            },
+            {
+              "title": "on a phone the Employee 360 header keeps its actions in two rows and \"Reports to\" with the person",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "the compact header is the phone layout",
+                      "location": {
+                        "file": "/home/administrator/Documents/hrms/hcms/tests/browser/ux19.browser.mjs",
+                        "line": 83,
+                        "column": 14
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 120,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:40:46.461Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "the compact header is the phone layout",
+                          "location": {
+                            "file": "/home/administrator/Documents/hrms/hcms/tests/browser/ux19.browser.mjs",
+                            "line": 83,
+                            "column": 14
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "cec4281b058da86126b8-dfb07acb062ce9faa259",
+              "file": "ux19.browser.mjs",
+              "line": 82,
+              "column": 5
+            },
+            {
+              "title": "on a phone the Employee 360 header keeps its actions in two rows and \"Reports to\" with the person",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-phone",
+                  "projectName": "firefox-phone",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5792,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:41:48.297Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-fc148018b80f26c79141",
+              "file": "ux19.browser.mjs",
+              "line": 82,
+              "column": 5
+            },
+            {
+              "title": "on a phone the Employee 360 header keeps its actions in two rows and \"Reports to\" with the person",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-phone",
+                  "projectName": "webkit-phone",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3276,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-10T22:43:11.511Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "cec4281b058da86126b8-f792d83f94c874cb125d",
+              "file": "ux19.browser.mjs",
+              "line": 82,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-10T22:39:08.099Z",
+    "duration": 246786.749,
+    "expected": 74,
+    "skipped": 6,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

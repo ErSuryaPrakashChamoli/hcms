@@ -1,0 +1,47 @@
+{
+  "cookies": [
+    {
+      "name": "XSRF-TOKEN",
+      "value": "eyJpdiI6Ik5Eem9Wa284L1h6UTltZnM1ZVFOVWc9PSIsInZhbHVlIjoieWJyUyt2djRaMGRQLzR3T0c2YURKQVVoKzhiUzM2cFlRWFdRcjVSdjdmRDVaRFgrRHJEWS8rSHlkYi9ISUtBVitVUWcvNnFYeUgzMUJFVUlwUldQKzJ4VU11Zk96WkxkQWVwR0dmSEJiczhwMExJR1ViUks0MkFBOUtJTW84dzIiLCJtYWMiOiIxMjNmNTRjODU4NWZiOWUzOTM0YzZmZGM1NTFiYzJhNjRkYzQ3YmYyZjZjNmZiMzUwY2RiNjM1MDQwNTQxODljIiwidGFnIjoiIn0%3D",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": 1826951025.759065,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "peopleos_docs_session",
+      "value": "eyJpdiI6IlQ2VmJqZkVmYS93VVhIS0tLVmxmdHc9PSIsInZhbHVlIjoid0dlaTFpUzEwQzJzMi9hTHgrckUxZDI3VzJVcGxPRURQc2RoeXY1QWF6QTVkNlIyekx0d05NeGV2Q2VTaVZwZ2ZIZGlrdmR4MTlNQ0pBcldibkhNVmNJVDIxTHBlODdhajdRTEtBVXBBZzJ3bmRWTlg2NmxBZFU4Ui94cUtMM08iLCJtYWMiOiIzZGM1N2Q0YjYwNDQwMTA2N2JmZDU5YTEwZjAyY2E0YjlmMjgzMmQzMGMxZDZkODJiM2E2MmE3MjY1ODg1ZmJkIiwidGFnIjoiIn0%3D",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://127.0.0.1:8097",
+      "localStorage": [
+        {
+          "name": "theme",
+          "value": "system"
+        },
+        {
+          "name": "isOpenDesktop",
+          "value": "true"
+        },
+        {
+          "name": "isOpen",
+          "value": "true"
+        },
+        {
+          "name": "collapsedGroups",
+          "value": "[]"
+        }
+      ]
+    }
+  ]
+}
