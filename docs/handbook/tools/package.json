@@ -1,0 +1,15 @@
+{
+  "name": "peopleos-handbook-tools",
+  "private": true,
+  "type": "module",
+  "description": "Builds the PeopleOS Customer Handbook (HTML + PDF) from docs/customer-guide and captures documentation screenshots.",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:html": "node build.mjs --no-pdf"
+  },
+  "dependencies": {
+    "marked": "15.0.4",
+    "mermaid": "11.4.1",
+    "pdfjs-dist": "4.10.38"
+  }
+}

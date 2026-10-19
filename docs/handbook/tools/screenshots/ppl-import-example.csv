@@ -1,0 +1,4 @@
+First name,Last name,Personal email,Joining date,Company code,Department code,Location code
+Docs,Example,docs.example@example.test,2026-11-02,DEMO-TECH,ENG,DEL
+Sample,Joiner,priya.nair@example.test,2026-11-09,DEMO-TECH,DSN,BLR
+Test,Applicant,test.applicant@example.test,not-a-date,XYZ,ENG,DEL
