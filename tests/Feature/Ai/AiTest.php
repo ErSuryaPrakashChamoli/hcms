@@ -3,7 +3,6 @@
 use App\Domain\Ai\Models\AiInteraction;
 use App\Domain\Ai\Providers\AiProvider;
 use App\Domain\Ai\Services\AiGateway;
-use App\Domain\Ai\Services\AttritionRisk;
 use App\Domain\Ai\Services\ConfigurationSearch;
 use App\Domain\Ai\Services\PayrollAnomalyDetector;
 use App\Domain\Ai\Services\PeopleQuery;
@@ -11,12 +10,9 @@ use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Grievance\Models\GrievanceCategory;
 use App\Domain\Knowledge\Models\Article;
-use App\Domain\Knowledge\Services\KnowledgeBase;
 use App\Domain\Leave\Services\LeaveAccrual;
 use App\Domain\Organisation\Models\Location;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\Payroll\Services\PayrollRuns;
-use App\Domain\Payroll\Services\Salaries;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Services\FeatureFlags;
 use Illuminate\Support\Facades\Http;
@@ -25,6 +21,7 @@ require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/../Performance/PerformanceTestHelpers.php';
 require_once __DIR__.'/../Payroll/PayrollTestHelpers.php';
 require_once __DIR__.'/../Leave/LeaveTestHelpers.php';
+require_once __DIR__.'/../ServiceDesk/ServiceDeskTestHelpers.php';
 
 beforeEach(function () {
     $this->travelTo('2026-09-21 09:00:00');
@@ -69,16 +66,18 @@ it('answers employee, policy, manager and HR questions from live data only', fun
     expect($ask($this->employee->user, 'employee', 'tell me about rockets'))->toContain('I can help with');
 
     $article = Article::create(['title' => 'Work from home guidelines', 'category' => 'wfh', 'body' => "# WFH\n\nAgree remote days with your manager and mark them in attendance."]);
-    app(KnowledgeBase::class)->publish($article, $this->hr);
+    kbPublishForTests($article);
     $policy = $this->gateway->ask($this->employee->user, 'policy', 'How does work from home work?');
     expect($policy->intent)->toBe('kb_match')->and($policy->answer)->toContain('Agree remote days')->and(collect($policy->sources)->pluck('label')->all())->toContain('Work from home guidelines');
     expect($ask($this->employee->user, 'policy', 'What is the notice period?'))->toContain('30 days');
     expect($ask($this->employee->user, 'employee', 'how do I apply for work from home'))->toContain('Agree remote days'); // employee assistant delegates policy questions
 
     expect($ask($this->manager->user, 'manager', 'who is on leave today?'))->toContain('1 in your team');
-    expect($ask($this->manager->user, 'manager', 'who in my team is at risk?'))->toContain('inference');
+    // Phase 14: no scoring or prediction; the assistant says so and points to facts the manager can act on.
     $risky = $this->gateway->ask($this->manager->user, 'manager', 'who in my team is at risk?');
-    expect($risky->is_inference)->toBeTrue();
+    expect($risky->intent)->toBe('no_prediction')->and($risky->is_inference)->toBeFalse()->and($risky->answer)->toContain('does not score')
+        ->and($risky->answer)->not->toContain($this->employee->person->full_name);
+    expect($ask($this->manager->user, 'manager', 'who has had no one on one?'))->toContain($this->employee->person->full_name);
 
     $delhi = Location::factory()->create(['name' => 'Delhi', 'code' => 'DEL']);
     $this->employee->currentPosition()->update(['location_id' => $delhi->id]);
@@ -95,7 +94,7 @@ it('flags payroll anomalies with evidence and never changes the run', function (
     EmployeeBankAccount::create(['employee_id' => $this->employee->id, 'account_holder_name' => 'A', 'bank_name' => 'HDFC', 'account_number' => '999', 'ifsc' => 'HDFC0000001', 'is_primary' => true]);
     $twin = salariedEmployee(1200000, ['task.view']);
     EmployeeBankAccount::create(['employee_id' => $twin->id, 'account_holder_name' => 'B', 'bank_name' => 'HDFC', 'account_number' => '999', 'ifsc' => 'HDFC0000001', 'is_primary' => true]);
-    app(Salaries::class)->assign($twin, SalaryStructure::query()->where('code', 'STANDARD')->first(), 2400000, '2026-09-10', ['CONV' => 1600], 'revision', 'Retention');
+    compensate($twin, 2400000, '2026-09-10', ['CONV' => 1600], 'revision', 'Retention');
 
     $runs = app(PayrollRuns::class);
     $run = $runs->calculate($runs->open($this->company, 2026, 9));
@@ -113,20 +112,16 @@ it('flags payroll anomalies with evidence and never changes the run', function (
     expect($this->gateway->ask($this->hr, 'payroll_auditor', 'Any duplicate bank accounts?')->answer)->not->toContain('Salary revised');
 });
 
-it('scores attrition risk transparently and searches the configuration map', function () {
-    $risk = app(AttritionRisk::class);
-    $baseline = $risk->score($this->employee);
-    expect($baseline['signals'])->toContain('No one-on-one in 90 days')->and($baseline['band'])->toBe('low');
-
-    $this->employee->update(['joining_date' => now()->subMonths(3)]);
+it('never scores attrition risk, answers attrition as an aggregate fact, and searches the configuration map', function () {
+    // Phase 14: the per-employee attrition-risk score is retired.
+    expect(class_exists('App\\Domain\\Ai\\Services\\AttritionRisk'))->toBeFalse()->and(config('peopleos.ai.attrition_risk'))->toBeNull();
     Grievance::create(['number' => 'GRV-1', 'grievance_category_id' => GrievanceCategory::query()->value('id'), 'employee_id' => $this->employee->id, 'subject' => 'x', 'details' => 'y', 'status' => 'under_review']);
-    $scored = $risk->score($this->employee->refresh());
-    expect($scored['score'])->toBe(4)->and($scored['band'])->toBe('medium')->and($scored['signals'])->toContain('Less than 12 months of tenure', 'Has an open grievance');
-    expect($risk->rank(1)->first()['employee_id'])->toBe($this->employee->id);
+    $leaving = $this->gateway->ask($this->hr, 'workforce', 'who is at risk of leaving?');
+    expect($leaving->intent)->toBe('attrition')->and($leaving->is_inference)->toBeFalse()->and($leaving->answer)->toContain('does not score or predict')
+        ->and($leaving->answer)->not->toContain($this->employee->person->full_name)->not->toContain($this->employee->employee_code);
 
     $workforce = $this->gateway->ask($this->hr, 'workforce', 'Give me a workforce summary');
     expect($workforce->answer)->toContain('Headcount is 2');
-    expect($this->gateway->ask($this->hr, 'workforce', 'who is at risk of leaving?')->is_inference)->toBeTrue();
 
     $results = app(ConfigurationSearch::class)->search('working hours');
     expect(collect($results)->pluck('label')->take(3)->all())->toContain('Shifts', 'Work schedules')

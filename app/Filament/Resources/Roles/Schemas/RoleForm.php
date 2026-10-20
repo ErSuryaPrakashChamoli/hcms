@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\Roles\Schemas;
 
 use App\Domain\Identity\Models\Permission;
+use App\Domain\Identity\Models\Role;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Filament\Support\AuditReasonField;
+use Closure;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -38,6 +41,14 @@ class RoleForm
                     ->schema([
                         CheckboxList::make('permissions')
                             ->relationship('permissions', 'key')
+                            // SaaS.10 (E1): a permission added to a role must be one the editor holds (RoleGrants).
+                            ->rule(fn (?Role $record) => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                $added = array_diff(array_map('intval', (array) $value), $record?->permissions()->pluck('permissions.id')->map(fn ($id) => (int) $id)->all() ?? []);
+                                $beyond = app(RoleGrants::class)->keysBeyond(auth()->user(), $added);
+                                if ($beyond !== []) {
+                                    $fail('You cannot add permissions you do not hold yourself: '.implode(', ', array_slice($beyond, 0, 5)).(count($beyond) > 5 ? ' …' : '').'.');
+                                }
+                            })
                             ->descriptions(fn () => Permission::query()->pluck('description', 'id')->all())
                             ->searchable()
                             ->bulkToggleable()

@@ -5,10 +5,10 @@ namespace App\Filament\Resources\StatutoryRegistrations\Pages;
 use App\Domain\Compliance\Models\StatutoryRegistration;
 use App\Domain\Compliance\Services\StatutoryRegistrations;
 use App\Filament\Resources\StatutoryRegistrations\StatutoryRegistrationResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\Action;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageStatutoryRegistrations extends ManageRecords
+class ManageStatutoryRegistrations extends PeopleManageRecords
 {
     protected static string $resource = StatutoryRegistrationResource::class;
 

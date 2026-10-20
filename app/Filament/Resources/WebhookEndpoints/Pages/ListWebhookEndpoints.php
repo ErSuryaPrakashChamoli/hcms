@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\WebhookEndpoints\Pages;
 
 use App\Filament\Resources\WebhookEndpoints\WebhookEndpointResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListWebhookEndpoints extends ListRecords
+class ListWebhookEndpoints extends PeopleListRecords
 {
     protected static string $resource = WebhookEndpointResource::class;
 

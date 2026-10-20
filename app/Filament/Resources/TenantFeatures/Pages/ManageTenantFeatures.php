@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\TenantFeatures\Pages;
 
 use App\Filament\Resources\TenantFeatures\TenantFeatureResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageTenantFeatures extends ManageRecords
+class ManageTenantFeatures extends PeopleManageRecords
 {
     protected static string $resource = TenantFeatureResource::class;
 }

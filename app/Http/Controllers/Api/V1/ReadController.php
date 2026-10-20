@@ -23,6 +23,8 @@ use Illuminate\Http\Request;
 /** Read API (§87): paginated, tenant-scoped by the API key, filtered with simple query parameters. */
 class ReadController extends Controller
 {
+    use PaginatesApi;
+
     public function payrollRuns(Request $request): JsonResponse
     {
         $query = PayrollRun::query()->with(['period', 'company'])->whereIn('status', ['finalized', 'paid'])->orderByDesc('id');
@@ -113,16 +115,5 @@ class ReadController extends Controller
         $result = $runner->run($report, null, min((int) $request->query('limit', 1000), 5000));
 
         return response()->json(['data' => ['report' => $report->name, 'dataset' => $report->dataset, 'columns' => $result->columns, 'rows' => $result->rows, 'total' => $result->total, 'grouped' => $result->grouped]]);
-    }
-
-    private function page(Builder $query, Request $request, callable $map): JsonResponse
-    {
-        $perPage = min(max((int) $request->query('per_page', 50), 1), 200);
-        $paginator = $query->paginate($perPage)->appends($request->query());
-
-        return response()->json([
-            'data' => collect($paginator->items())->map($map)->values()->all(),
-            'meta' => ['page' => $paginator->currentPage(), 'per_page' => $paginator->perPage(), 'total' => $paginator->total(), 'last_page' => $paginator->lastPage()],
-        ]);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LearningEnrolments;
 
 use App\Domain\Learning\Models\LearningEnrolment;
+use App\Domain\Performance\Services\PerformanceRelationships;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\LearningEnrolments\Pages\ListLearningEnrolments;
 use App\Filament\Resources\LearningEnrolments\Pages\ViewLearningEnrolment;
@@ -56,11 +57,13 @@ class LearningEnrolmentResource extends Resource
     {
         $query = parent::getEloquentQuery()->with(['employee.person', 'course', 'path']);
         $user = auth()->user();
-        if ($user->can('learning.view') || $user->can('learning.assign')) {
+        // Phase 8: everyone only with learning.view / learning.manage; managers see the employees they
+        // manage through configured relationship types (not every reporting line).
+        if ($user->can('learning.view') || $user->can('learning.manage')) {
             return $query;
         }
         $me = LearningActions::me();
-        $reports = $me ? $me->directReports()->currentlyEffective()->pluck('employee_id') : collect();
+        $reports = ($user->can('learning.team') || $user->can('learning.assign')) ? app(PerformanceRelationships::class)->reportIds($me) : collect();
 
         return $query->where(fn (Builder $q) => $q->where('employee_id', $me?->id ?? 0)->orWhereIn('employee_id', $reports));
     }
@@ -68,7 +71,7 @@ class LearningEnrolmentResource extends Resource
     public static function statusColor(string $status): string
     {
         return match ($status) {
-            'completed' => 'success', 'in_progress' => 'info', 'overdue', 'failed' => 'danger', 'expired' => 'warning', 'withdrawn' => 'gray', default => 'gray'
+            'completed' => 'success', 'in_progress', 'approved' => 'info', 'overdue', 'failed', 'rejected' => 'danger', 'expired', 'requested', 'pending_approval', 'waitlisted' => 'warning', default => 'gray'
         };
     }
 

@@ -4,9 +4,9 @@ namespace App\Filament\Resources\SalaryComponents\Pages;
 
 use App\Filament\Resources\SalaryComponents\SalaryComponentResource;
 use App\Filament\Support\GovernedEdit;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Support\Pages\PeopleEditRecord;
 
-class EditSalaryComponent extends EditRecord
+class EditSalaryComponent extends PeopleEditRecord
 {
     use GovernedEdit;
 

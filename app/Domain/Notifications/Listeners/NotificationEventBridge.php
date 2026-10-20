@@ -4,13 +4,19 @@ namespace App\Domain\Notifications\Listeners;
 
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
+use App\Domain\Career\Events\CareerEvent;
+use App\Domain\Communication\Events\CommunicationEvent;
+use App\Domain\Compensation\Events\CompensationEvent;
 use App\Domain\Configuration\Events\ConfigurationChangeProposed;
 use App\Domain\Configuration\Events\FormSubmitted;
+use App\Domain\Development\Events\DevelopmentEvent;
 use App\Domain\Documents\Events\DocumentExpiring;
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Engagement\Events\EngagementEvent;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Learning\Events\LearningEvent;
 use App\Domain\Leave\Events\LeaveEvent;
 use App\Domain\Lifecycle\Events\EmployeeLifecycleChanged;
@@ -24,8 +30,12 @@ use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
+use App\Domain\Skills\Events\SkillEvent;
+use App\Domain\Succession\Events\SuccessionEvent;
+use App\Domain\Talent\Events\TalentEvent;
 use App\Domain\Workflow\Events\WorkflowCompleted;
 use App\Domain\Workflow\Events\WorkflowTaskAssigned;
+use App\Domain\Workforce\Events\WorkforceEvent;
 use Illuminate\Events\Dispatcher;
 
 /**
@@ -58,9 +68,18 @@ final class NotificationEventBridge
             PayrollEvent::class => 'onPayroll',
             PerformanceEvent::class => 'onPerformance',
             LearningEvent::class => 'onLearning',
+            SkillEvent::class => 'onSkillsOrDevelopment',
+            DevelopmentEvent::class => 'onSkillsOrDevelopment',
             ServiceDeskEvent::class => 'onServiceDesk',
             ExitEvent::class => 'onExit',
             AssetEvent::class => 'onAsset',
+            CareerEvent::class => 'onTalent',
+            TalentEvent::class => 'onTalent',
+            SuccessionEvent::class => 'onTalent',
+            WorkforceEvent::class => 'onWorkforce',
+            CompensationEvent::class => 'onCompensation',
+            EngagementEvent::class => 'onEngagement',
+            CommunicationEvent::class => 'onCommunication',
         ];
     }
 
@@ -73,7 +92,7 @@ final class NotificationEventBridge
             return;
         }
 
-        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive());
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive());
         if ($users->isEmpty()) {
             return;
         }
@@ -111,27 +130,40 @@ final class NotificationEventBridge
             return;
         }
 
-        $users = User::query()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive());
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive());
         if ($users->isEmpty()) {
             return;
         }
 
         $c = $event->context;
+        // Phase 12: references only (number, service, status). Never the free-text subject, form data,
+        // comments, resolutions or grievance details.
+        $ref = fn () => ($c['number'] ?? '').(isset($c['service']) ? ' ('.$c['service'].')' : '');
         $title = match ($event->name) {
-            'servicedesk.ticket.created' => 'New request '.$c['number'].': '.$c['subject'],
-            'servicedesk.ticket.assigned' => 'Ticket assigned to you: '.$c['number'].' '.$c['subject'],
-            'servicedesk.ticket.commented' => ($c['internal'] ? 'Internal note on ' : 'Reply on ').$c['number'].' from '.$c['by'],
-            'servicedesk.ticket.resolved' => 'Resolved: '.$c['number'].' '.$c['subject'],
-            'servicedesk.ticket.closed' => 'Closed: '.$c['number'],
-            'servicedesk.ticket.reopened' => 'Reopened: '.$c['number'].' '.$c['subject'],
-            'servicedesk.ticket.escalated' => 'SLA breached: '.$c['number'].' '.$c['subject'],
+            'servicedesk.ticket.created' => 'New HR request '.$ref(),
+            'servicedesk.ticket.assigned' => 'HR request assigned to you: '.$ref(),
+            'servicedesk.ticket.reassigned' => 'HR request reassigned: '.$ref(),
+            'servicedesk.ticket.acknowledged' => 'HR has acknowledged your request '.$ref(),
+            'servicedesk.ticket.commented' => (($c['internal'] ?? false) ? 'Internal note on ' : 'New message on ').$ref().(isset($c['by']) ? ' from '.$c['by'] : ''),
+            'servicedesk.ticket.waiting_for_employee' => 'HR needs your input on request '.$ref(),
+            'servicedesk.ticket.approval_required' => 'HR request '.$ref().' is waiting for approval',
+            'servicedesk.ticket.ready_to_execute' => 'Approved — HR request '.$ref().' is ready to execute',
+            'servicedesk.ticket.resolved' => 'Resolved: HR request '.$ref(),
+            'servicedesk.ticket.closed' => 'Closed: HR request '.$ref(),
+            'servicedesk.ticket.cancelled' => 'Cancelled: HR request '.$ref(),
+            'servicedesk.ticket.reopened' => 'Reopened: HR request '.$ref(),
+            'servicedesk.ticket.sla_warning' => 'SLA approaching: HR request '.$ref(),
+            'servicedesk.ticket.escalated' => 'SLA breached: HR request '.$ref().(isset($c['level']) ? ' (level '.$c['level'].')' : ''),
+            'servicedesk.reminder.waiting_for_employee' => 'Reminder: HR is waiting for your input on request '.$ref(),
+            'servicedesk.reminder.waiting_for_hr' => 'Reminder: HR request '.$ref().' is waiting for HR',
             'grievance.raised' => 'New grievance case '.$c['number'].' ('.$c['severity'].')',
             'grievance.assigned' => 'Grievance case assigned to you: '.$c['number'],
             'grievance.updated' => 'Update on grievance case '.$c['number'],
             'grievance.resolved' => 'Your grievance case '.$c['number'].' has been resolved',
             'grievance.escalated' => 'Grievance case overdue: '.$c['number'],
             'kb.article.published' => ($c['mandatory'] ? 'Mandatory reading: ' : 'Please acknowledge: ').$c['title'],
-            'communication.published' => $c['type'].': '.$c['title'],
+            'kb.article.review_requested' => 'Knowledge article to review: '.$c['title'],
+            'kb.reminder.acknowledgement' => 'Reminder: please acknowledge '.$c['title'],
             default => str_replace('.', ' ', $event->name),
         };
 
@@ -140,6 +172,9 @@ final class NotificationEventBridge
 
     public function onLearning(LearningEvent $event): void
     {
+        if ($event->employee === null) {
+            return; // catalogue events notify nobody directly
+        }
         $sent = $this->engine->fire($event->name, $this->context->build($event->employee, ['learning' => $event->context]), $event->subject);
 
         $user = $event->employee->user()->first();
@@ -155,6 +190,14 @@ final class NotificationEventBridge
             'learning.completed' => 'Completed: '.$c['course'],
             'learning.failed' => 'Not passed: '.$c['course'],
             'learning.certificate_expiring' => 'Certificate expiring on '.$c['expires_on'].': '.$c['course'],
+            'learning.certificate_expired' => 'Certificate expired: '.$c['course'],
+            'learning.certificate.issued' => 'Certificate issued: '.$c['course'],
+            'learning.enrolment.approved' => 'Learning request approved: '.$c['course'],
+            'learning.enrolment.rejected' => 'Learning request not approved: '.$c['course'],
+            'learning.session.waitlisted' => 'Waitlisted: '.$c['session'].' on '.$c['starts_at'],
+            'learning.program.completed' => 'Program completed: '.($c['program'] ?? ''),
+            'learning.reminder.due' => 'Reminder: '.$c['course'].' is due on '.$c['due_on'],
+            'learning.reminder.overdue_mandatory' => 'Mandatory learning overdue: '.$c['course'],
             'learning.session.registered' => 'Registered: '.$c['session'].' on '.$c['starts_at'],
             default => str_replace('.', ' ', $event->name),
         };
@@ -181,6 +224,172 @@ final class NotificationEventBridge
         };
 
         $this->notifier->send([$user], ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /** Phase 8 skill and development events: rules first, otherwise an in-app note to the named recipients. */
+    public function onSkillsOrDevelopment(object $event): void
+    {
+        $sent = $event->employee ? $this->engine->fire($event->name, $this->context->build($event->employee, ['learning' => $event->context]), $event->subject) : collect();
+        if ($sent->isNotEmpty() || $event->recipientEmployeeIds === []) {
+            return;
+        }
+        $users = Employee::query()->with('user')->whereIn('id', $event->recipientEmployeeIds)->get()->pluck('user')->filter(fn ($u) => $u?->isActive());
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $title = match ($event->name) {
+            'skill.assessed' => 'A skill assessment was finalized'.(isset($c['type']) ? ' ('.$c['type'].')' : ''),
+            'skill.reminder.assessment_due' => 'Reminder: finish the '.($c['skill'] ?? 'skill').' assessment for '.($c['employee'] ?? 'your report'),
+            'development.plan.created' => 'Development plan created: '.($c['title'] ?? ''),
+            'development.plan.completed' => 'Development plan completed: '.($c['title'] ?? ''),
+            'development.reminder.milestone_due' => 'Development milestone due '.($c['due_on'] ?? '').': '.($c['title'] ?? ''),
+            'learning.reminder.team_overdue' => ($c['employee'] ?? 'A team member').' is overdue on mandatory learning: '.($c['course'] ?? ''),
+            default => str_replace('.', ' ', $event->name),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 9 career, talent and succession events. Talent and succession are confidential: no tenant
+     * rule fires with the employee's context, and the employee concerned is never a recipient — only
+     * the users and employees the event names (plan owner, assessor, review participants).
+     */
+    public function onTalent(CareerEvent|TalentEvent|SuccessionEvent $event): void
+    {
+        $subjectUserId = $event->employee?->user_id;
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()
+            ->merge(Employee::query()->withoutGlobalScope(AccessScope::class)->with('user')->whereIn('id', $event->recipientEmployeeIds)->get()->pluck('user'))
+            ->filter(fn ($u) => $u?->isActive())
+            ->reject(fn (User $u) => ! $event instanceof CareerEvent && $subjectUserId !== null && (int) $u->id === (int) $subjectUserId)
+            ->unique('id')->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $title = match ($event->name) {
+            'succession.reminder.position_review' => 'Critical position review due '.($c['due_on'] ?? '').': '.($c['title'] ?? ''),
+            'succession.reminder.plan_review' => 'Succession plan review due '.($c['due_on'] ?? '').': '.($c['title'] ?? ''),
+            'succession.reminder.readiness_expiring' => 'A readiness assessment you recorded expires on '.($c['expires_on'] ?? '').($c['title'] ?? null ? ' ('.$c['title'].')' : ''),
+            'talent.reminder.review_scheduled' => 'Talent review '.($c['name'] ?? '').' is scheduled for '.($c['scheduled_for'] ?? ''),
+            'talent.review.completed' => 'Talent review completed: '.($c['name'] ?? ''),
+            'succession.successor.added' => 'A successor was added to a succession plan you own',
+            'succession.successor.removed' => 'A successor was removed from a succession plan you own',
+            'succession.plan.created' => 'Succession plan created: '.($c['position'] ?? ''),
+            'talent.pool.membership_changed' => 'Talent pool membership changed'.(isset($c['pool']) ? ': '.$c['pool'] : ''),
+            default => str_replace(['.', '_'], ' ', $event->name),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 10 workforce events: in-app to the users the event names only (position owner, plan owner,
+     * submitter). No tenant rule fires with an employee's context; planning details are not sent to
+     * employees.
+     */
+    public function onWorkforce(WorkforceEvent $event): void
+    {
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $title = match ($event->name) {
+            'workforce.position.occupied' => 'Position '.($c['code'] ?? '').' is now occupied',
+            'workforce.position.vacated' => 'Position '.($c['code'] ?? '').' is vacant from '.($c['effective_date'] ?? ''),
+            'workforce.reminder.vacancy' => 'Position '.($c['code'] ?? '').' has been vacant for a while',
+            'workforce.reminder.pending_approval' => 'Workforce plan '.($c['plan'] ?? '').' v'.($c['version'] ?? '').' is waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
+            'workforce.reminder.plan_expiry' => 'Workforce plan '.($c['plan'] ?? '').' ends on '.($c['period_end'] ?? ''),
+            'workforce.plan.published' => 'Workforce plan '.($c['plan'] ?? '').' v'.($c['version'] ?? '').' is now active',
+            default => ucfirst(str_replace(['workforce.', '.', '_'], ['', ' ', ' '], $event->name)).(isset($c['code']) ? ': '.$c['code'] : (isset($c['plan']) ? ': '.$c['plan'] : '')),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 11 compensation events: in-app to the users the event names only (the next person in the
+     * approval chain, the proposer, the approver). Titles carry references and dates, never amounts,
+     * reasons or notes; nothing is sent to the employee concerned.
+     */
+    public function onCompensation(CompensationEvent $event): void
+    {
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive() && ($event->employee === null || (int) $event->employee->user_id !== (int) $u->id))->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $who = isset($c['employee_code']) ? ' for '.$c['employee_code'] : '';
+        $title = match ($event->name) {
+            'compensation.change.submitted' => 'Compensation change'.$who.' is waiting for review',
+            'compensation.change.reviewed' => 'Compensation change'.$who.' is waiting for approval',
+            'compensation.change.approved' => 'Compensation change'.$who.' was approved and is ready to execute',
+            'compensation.change.rejected' => 'Compensation change'.$who.' was rejected',
+            'compensation.change.returned' => 'Compensation change'.$who.' was returned to you',
+            'compensation.change.cancelled' => 'Compensation change'.$who.' was cancelled',
+            'compensation.change.scheduled', 'compensation.change.corrected' => 'Compensation change'.$who.' is scheduled from '.($c['effective_date'] ?? ''),
+            'compensation.change.effective' => 'Compensation change'.$who.' is effective from '.($c['effective_date'] ?? ''),
+            'compensation.reminder.pending_change' => 'Compensation change'.$who.' is still waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
+            'compensation.reminder.pending_cycle' => 'Compensation cycle '.($c['cycle'] ?? '').' is still waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
+            default => ucfirst(str_replace(['compensation.', '.', '_'], ['', ' ', ' '], $event->name)).(isset($c['cycle']) ? ': '.$c['cycle'] : (isset($c['structure']) ? ': '.$c['structure'] : '')),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 13 engagement events: in-app to the users the event names (approvers, the preparer,
+     * feedback handlers). Tenant rules are not fired. Titles carry survey / campaign references only,
+     * never answers, respondents, feedback text or authors. Survey invitations and reminders are sent
+     * by SurveyNotices, and response submissions are never bridged.
+     */
+    public function onEngagement(EngagementEvent $event): void
+    {
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $survey = ($c['survey'] ?? '').(isset($c['version']) ? ' v'.$c['version'] : '');
+        $title = match ($event->name) {
+            'survey.review_requested' => 'Survey to review: '.$survey,
+            'survey.approved' => 'Survey approved: '.$survey,
+            'survey.returned' => 'Survey returned to you: '.$survey,
+            'survey.published' => 'Survey scheduled: '.$survey,
+            'survey.opened' => 'Survey is open: '.$survey,
+            'survey.closed' => 'Survey closed: '.$survey,
+            'campaign.review_requested' => 'Campaign to review: '.($c['campaign'] ?? ''),
+            'campaign.launched' => 'Campaign launched: '.($c['campaign'] ?? '').(($c['partial'] ?? false) ? ' (some items were not ready)' : ''),
+            'feedback.submitted' => 'New employee feedback: '.($c['category'] ?? ''),
+            default => ucfirst(str_replace(['.', '_'], ' ', $event->name)).(isset($c['survey']) ? ': '.$survey : (isset($c['campaign']) ? ': '.$c['campaign'] : '')),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
+    }
+
+    /**
+     * Phase 13 communication lifecycle events: in-app to the approvers / preparer they name. The
+     * announcement itself reaches its audience through CommunicationDelivery (preferences, tracking),
+     * never through this bridge, so tenant rules are not fired here.
+     */
+    public function onCommunication(CommunicationEvent $event): void
+    {
+        $users = User::forCurrentTenant()->whereIn('id', $event->recipientUserIds)->get()->filter(fn (User $u) => $u->isActive())->values();
+        if ($users->isEmpty()) {
+            return;
+        }
+        $c = $event->context;
+        $title = match ($event->name) {
+            'communication.review_requested' => 'Announcement to review: '.($c['title'] ?? ''),
+            'communication.approved' => 'Announcement approved: '.($c['title'] ?? ''),
+            'communication.returned' => 'Announcement returned to you: '.($c['title'] ?? ''),
+            'communication.published' => 'Announcement published: '.($c['title'] ?? ''),
+            default => ucfirst(str_replace(['communication.', '.', '_'], ['', ' ', ' '], $event->name)).': '.($c['title'] ?? ''),
+        };
+
+        $this->notifier->send($users, ['in_app'], $title, $title.'.', $event->name, $event->subject);
     }
 
     public function onPerformance(PerformanceEvent $event): void

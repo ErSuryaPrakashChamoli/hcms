@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Domain\Ai\Services\AttritionRisk;
 use App\Domain\Analytics\Services\WorkforceMetrics;
 use App\Domain\Platform\Services\FeatureFlags;
 use BackedEnum;
@@ -10,7 +9,11 @@ use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use UnitEnum;
 
-/** Workforce Intelligence (§94): attrition-risk signals and critical skills, clearly labelled as inference (§95). */
+/**
+ * Workforce Intelligence (§94): aggregate attrition and capacity facts, and critical-skill coverage.
+ * Phase 14: the per-employee attrition-risk score was retired. PeopleOS does not score, rank or predict
+ * individuals (flight risk, promotion, termination).
+ */
 class WorkforceIntelligence extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLightBulb;
@@ -30,9 +33,10 @@ class WorkforceIntelligence extends Page
         return (auth()->user()?->can('ai.workforce') ?? false) && app(FeatureFlags::class)->enabled('ai.workforce_intelligence');
     }
 
-    public function getRisk()
+    /** @return array<string, array{key: string, label: string, value: mixed, format: string, hint: ?string}> */
+    public function getFacts(): array
     {
-        return app(AttritionRisk::class)->rank();
+        return app(WorkforceMetrics::class)->all(['headcount', 'attrition_rate', 'exits_30d', 'exits_in_progress', 'joiners_30d', 'avg_tenure_months'], auth()->user());
     }
 
     public function getSkills(): array

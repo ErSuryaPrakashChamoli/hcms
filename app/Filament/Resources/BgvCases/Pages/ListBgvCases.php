@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\BgvCases\Pages;
 
 use App\Filament\Resources\BgvCases\BgvCaseResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListBgvCases extends ListRecords
+class ListBgvCases extends PeopleListRecords
 {
     protected static string $resource = BgvCaseResource::class;
 }

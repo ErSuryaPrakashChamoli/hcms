@@ -6,11 +6,14 @@ use App\Domain\Analytics\Services\AnalyticsDefaults;
 use App\Domain\Assets\Services\AssetDefaults;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compensation\Services\CompensationDefaults;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\PermissionRegistry;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Letters\Services\LetterDefaults;
 use App\Domain\Organisation\Models\EmployeeCategory;
@@ -23,10 +26,14 @@ use App\Domain\Platform\Enums\TenantStatus;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
+use App\Domain\Platform\Services\TenantFirstAdministrator;
+use App\Domain\Platform\Support\PlatformOperator;
 use App\Domain\ServiceDesk\Services\ServiceDeskDefaults;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 /**
  * Creates a tenant with its system roles, default features, default settings and first admin.
@@ -40,12 +47,55 @@ final class ProvisionTenantAction
     ) {}
 
     /**
-     * @param  array{name: string, slug?: string, status?: TenantStatus|string, country_code?: string, timezone?: string, locale?: string, currency?: string}  $tenantData
-     * @param  array{name: string, email: string, password: string}|null  $adminData
+     * @param  array{name: string, slug?: string, status?: TenantStatus|string, country_code?: string, timezone?: string, locale?: string, currency?: string, tier?: string, region?: string|null, trial_ends_at?: \DateTimeInterface|string|null}  $tenantData
+     * @param  array{name: string, email: string, password?: string}|null  $adminData  SaaS.2: without a password (the
+     *                                                                                 operator's form) the first administrator is invited by e-mail and chooses
+     *                                                                                 their own; a password is accepted only from the seeder and tests
+     * @param  User|null  $actor  SaaS.8: the platform operator provisioning (required on the web; a reason too). Without one,
+     *                            only the console may provision (seeders, runbook commands).
      */
-    public function handle(array $tenantData, ?array $adminData = null, ?string $reason = null): Tenant
+    public function handle(array $tenantData, ?array $adminData = null, ?string $reason = null, ?User $actor = null): Tenant
     {
-        return DB::transaction(function () use ($tenantData, $adminData, $reason) {
+        [$tenant, $invitee] = $this->provisionCore($tenantData, $adminData, $reason, $actor);
+
+        // SaaS.8: the e-mail is sent after the commit; a failure no longer escapes a tenant that exists. It is recorded, and
+        // the operator sends the invitation again from the Tenants list (TenantFirstAdministrator).
+        if ($invitee !== null) {
+            app(TenantFirstAdministrator::class)->inviteAfterProvisioning($tenant, $invitee, $actor);
+        }
+
+        return $tenant;
+    }
+
+    /**
+     * SaaS.10: the transactional core of provisioning, without the invitation e-mail. A caller that runs it inside its
+     * own transaction (self-service signup: tenant, owner and trial commit together) sends the invitation after its
+     * own commit, never from inside a transaction that may still roll back.
+     *
+     * @param  string  $adminRole  the first administrator's role: Tenant Super Admin (operators) or Account Owner (signup)
+     * @param  array<string, mixed>  $auditMetadata  added to both TENANT_PROVISIONED events (no personal data)
+     * @return array{0: Tenant, 1: ?User} the tenant, and the invited first administrator (null when a password was set)
+     */
+    public function provisionCore(array $tenantData, ?array $adminData, ?string $reason, ?User $actor, string $adminRole = 'tenant-super-admin', array $auditMetadata = []): array
+    {
+        PlatformOperator::assert($actor, 'provision a tenant');
+        if ($actor !== null) {
+            $reason = PlatformOperator::reason($reason);
+        }
+        if (! in_array($adminRole, (array) config('peopleos.identity.first_administrator_roles', []), true)) {
+            throw new InvalidArgumentException("A first administrator cannot be given the role [{$adminRole}].");
+        }
+        $metadata = $this->metadata($tenantData);
+        // SaaS.9: a tenant starts in use; closed and deleted are reached only through offboarding.
+        $status = $tenantData['status'] ?? TenantStatus::Active;
+        $status = $status instanceof TenantStatus ? $status : TenantStatus::tryFrom((string) $status);
+        if ($status === null || ! $status->operating()) {
+            throw new InvalidArgumentException('A tenant is provisioned as trial or active.');
+        }
+        $tenantData['status'] = $status;
+        $invitee = null;
+
+        $tenant = DB::transaction(function () use ($tenantData, $adminData, $reason, $actor, $metadata, $adminRole, $auditMetadata, &$invitee) {
             $tenant = $this->tenants->bypass(fn () => Tenant::create([
                 'name' => $tenantData['name'],
                 'slug' => $tenantData['slug'] ?? Str::slug($tenantData['name']),
@@ -54,24 +104,30 @@ final class ProvisionTenantAction
                 'timezone' => $tenantData['timezone'] ?? 'Asia/Kolkata',
                 'locale' => $tenantData['locale'] ?? 'en',
                 'currency' => $tenantData['currency'] ?? 'INR',
-            ]));
+            ] + $metadata));
 
-            return $this->tenants->runAs($tenant, function () use ($tenant, $adminData, $reason) {
+            return $this->tenants->runAs($tenant, function () use ($tenant, $adminData, $reason, $actor, $adminRole, $auditMetadata, &$invitee) {
                 $roles = $this->seedSystemRoles();
                 $this->seedFeatures();
                 $this->seedSettings();
                 $this->seedOrganisationDefaults();
 
                 if ($adminData !== null) {
+                    $chosen = filled($adminData['password'] ?? null);
                     $admin = User::create([
                         'tenant_id' => $tenant->id,
                         'name' => $adminData['name'],
                         'email' => $adminData['email'],
-                        'password' => $adminData['password'],
-                        'status' => UserStatus::Active,
+                        'password' => $chosen ? $adminData['password'] : Str::random(64),
+                        'status' => $chosen ? UserStatus::Active : UserStatus::Invited,
                     ]);
+                    if ($chosen) {
+                        $admin->forceFill(['email_verified_at' => now()])->save();
+                    } else {
+                        $invitee = $admin;
+                    }
 
-                    $admin->roles()->attach($roles['tenant-super-admin']);
+                    $admin->roles()->attach($roles[$adminRole]);
                 }
 
                 $this->audit->record(
@@ -79,15 +135,59 @@ final class ProvisionTenantAction
                     module: 'platform',
                     entity: $tenant,
                     reason: $reason,
-                    metadata: ['admin_email' => $adminData['email'] ?? null],
+                    actor: $actor,
+                    metadata: ['admin_email' => $adminData['email'] ?? null, 'tier' => $tenant->tier, 'region' => $tenant->region, 'trial_ends_at' => $tenant->trial_ends_at?->toIso8601String(),
+                        'first_administrator_role' => $adminData !== null ? $adminRole : null] + $auditMetadata,
+                );
+                // SaaS.8: provisioning is an operator action, so it is on the platform chain too (no personal data there).
+                $this->audit->record(
+                    action: AuditAction::TenantProvisioned,
+                    module: 'platform',
+                    reason: $reason,
+                    entityLabel: "Tenant {$tenant->name}",
+                    actor: $actor,
+                    metadata: ['subject_tenant_id' => $tenant->id, 'subject_tenant' => $tenant->slug, 'status' => $tenant->status->value, 'tier' => $tenant->tier, 'region' => $tenant->region, 'first_administrator' => $adminData !== null,
+                        'first_administrator_role' => $adminData !== null ? $adminRole : null] + $auditMetadata,
+                    platform: true,
                 );
 
                 return $tenant;
             });
         });
+
+        return [$tenant, $invitee];
+    }
+
+    /**
+     * SaaS.2: the tier, data region and trial end entered at creation are kept (they were silently dropped).
+     * They are tenant metadata only; nothing enforces them yet. Unknown values are refused, not stored.
+     *
+     * @return array{tier: string, region: ?string, trial_ends_at: ?Carbon}
+     */
+    private function metadata(array $tenantData): array
+    {
+        $tier = (string) ($tenantData['tier'] ?? 'shared');
+        if (! array_key_exists($tier, config('peopleos.enterprise.tiers', []))) {
+            throw new InvalidArgumentException("Unknown tenant tier [{$tier}].");
+        }
+        $region = filled($tenantData['region'] ?? null) ? (string) $tenantData['region'] : null;
+        if ($region !== null && ! array_key_exists($region, config('peopleos.enterprise.regions', []))) {
+            throw new InvalidArgumentException("Unknown data region [{$region}].");
+        }
+        $trialEnds = filled($tenantData['trial_ends_at'] ?? null) ? Carbon::parse($tenantData['trial_ends_at']) : null;
+
+        return ['tier' => $tier, 'region' => $region, 'trial_ends_at' => $trialEnds];
     }
 
     /** @return array<string, Role> */
+    /**
+     * Creates the system roles of the current tenant, or tops them up (`peopleos:sync-permissions`, on every deploy).
+     *
+     * SaaS.12: a top-up gives a role only the template keys it has never been given (`template_keys`), so a
+     * permission the tenant removed stays removed. Keys a release introduces are given and audited
+     * (`ROLE_CHANGED`, no actor). A role recorded before this tracking takes its current template as the baseline,
+     * granting nothing: every earlier deploy had already given it the whole template.
+     */
     public function seedSystemRoles(): array
     {
         $roles = [];
@@ -97,10 +197,22 @@ final class ProvisionTenantAction
                 ['slug' => $slug],
                 ['name' => $template['name'], 'description' => $template['description'] ?? null, 'is_system' => true],
             );
+            $templateKeys = collect($this->permissions->keysMatching($template['permissions'] ?? []))->sort()->values()->all();
+            $given = $role->wasRecentlyCreated ? [] : ($role->template_keys ?? $templateKeys);
+            $introduced = array_values(array_diff($templateKeys, $given));
 
-            $role->permissions()->syncWithoutDetaching(
-                $this->permissions->idsMatching($template['permissions'] ?? []),
-            );
+            if ($introduced !== []) {
+                $before = $role->wasRecentlyCreated ? null : app(RoleGrants::class)->permissionKeysOf($role);
+                $role->permissions()->syncWithoutDetaching(Permission::query()->whereIn('key', $introduced)->pluck('id'));
+
+                if ($before !== null) {
+                    app(RoleGrants::class)->recordPermissionChange($role, $before, null, 'Permissions introduced by a release into this system role\'s template');
+                }
+            }
+
+            if ($role->template_keys !== $templateKeys) {
+                $role->forceFill(['template_keys' => $templateKeys])->save();
+            }
 
             $roles[$slug] = $role;
         }
@@ -140,6 +252,7 @@ final class ProvisionTenantAction
         }
 
         app(PayrollDefaults::class)->seed();
+        app(CompensationDefaults::class)->seed();
         app(PerformanceDefaults::class)->seed();
         app(AssetDefaults::class)->seed();
         app(ServiceDeskDefaults::class)->seed();

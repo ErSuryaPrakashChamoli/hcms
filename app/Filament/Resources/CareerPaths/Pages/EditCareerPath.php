@@ -4,9 +4,9 @@ namespace App\Filament\Resources\CareerPaths\Pages;
 
 use App\Filament\Resources\CareerPaths\CareerPathResource;
 use App\Filament\Support\GovernedEdit;
-use Filament\Resources\Pages\EditRecord;
+use App\Filament\Support\Pages\PeopleEditRecord;
 
-class EditCareerPath extends EditRecord
+class EditCareerPath extends PeopleEditRecord
 {
     use GovernedEdit;
 

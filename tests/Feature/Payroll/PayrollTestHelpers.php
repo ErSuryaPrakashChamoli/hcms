@@ -5,8 +5,6 @@ use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Organisation\Models\Company;
-use App\Domain\Payroll\Models\SalaryStructure;
-use App\Domain\Payroll\Services\Salaries;
 use App\Support\Tenancy\TenantContext;
 
 /** Loads the India pack (platform data, tenant-independent). */
@@ -29,8 +27,7 @@ function salariedEmployee(float $ctcAnnual, array $userPermissions = ['task.view
 {
     $employee = employeeWithUser($manager, $userPermissions);
     forceLifecycle($employee, LifecycleState::Active, ['joining_date' => '2025-01-01']);
-    $structure = SalaryStructure::query()->where('code', 'STANDARD')->firstOrFail();
-    app(Salaries::class)->assign($employee, $structure, $ctcAnnual, $from, $componentValues, 'hire', 'test');
+    compensate($employee, $ctcAnnual, $from, $componentValues, 'hire', 'test');
 
     return $employee->refresh();
 }

@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Appraisals\Pages;
 
 use App\Filament\Resources\Appraisals\AppraisalResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListAppraisals extends ListRecords
+class ListAppraisals extends PeopleListRecords
 {
     protected static string $resource = AppraisalResource::class;
 }

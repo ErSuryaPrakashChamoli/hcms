@@ -9,14 +9,14 @@ use App\Filament\Resources\Forms\FormResource;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\FormFieldsSchema;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Validation\ValidationException;
 
-class EditForm extends EditRecord
+class EditForm extends PeopleEditRecord
 {
     use GovernedEdit;
 

@@ -109,7 +109,7 @@ final class ExportLayouts
 
         $sha = hash('sha256', $evidence);
         $path = "compliance-evidence/layouts/{$layout->getKey()}/{$sha}-".(preg_replace('/[^A-Za-z0-9._-]+/', '_', basename($filename)) ?: 'specification');
-        Storage::disk('local')->put($path, $evidence);
+        Storage::disk(config('peopleos.storage.compliance_disk', 'local'))->put($path, $evidence);
 
         $layout->update(['status' => 'review', 'source_url' => $sourceUrl, 'source_title' => $sourceTitle, 'retrieved_at' => Carbon::parse($retrievedAt)->toDateString(), 'evidence_path' => $path, 'evidence_sha256' => $sha, 'submitted_by' => $actor->getKey(), 'submitted_at' => now(), 'submission_notes' => $notes]);
         $this->auditLayout($layout, AuditAction::ExportLayoutSubmitted, $notes ?? "Specification {$sourceTitle}", $actor);

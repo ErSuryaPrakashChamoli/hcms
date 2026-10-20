@@ -4,14 +4,14 @@ namespace App\Filament\Resources\LearningEnrolments\Pages;
 
 use App\Filament\Resources\LearningEnrolments\LearningEnrolmentResource;
 use App\Filament\Support\LearningActions;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListLearningEnrolments extends ListRecords
+class ListLearningEnrolments extends PeopleListRecords
 {
     protected static string $resource = LearningEnrolmentResource::class;
 
     protected function getHeaderActions(): array
     {
-        return [LearningActions::enrol()];
+        return [LearningActions::requestLearning(), LearningActions::enrol()];
     }
 }

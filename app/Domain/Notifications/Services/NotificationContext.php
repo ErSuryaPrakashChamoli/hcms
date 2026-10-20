@@ -2,6 +2,7 @@
 
 namespace App\Domain\Notifications\Services;
 
+use App\Domain\Audit\Services\ChangeIntelligence;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\TenantContext;
@@ -62,13 +63,22 @@ final class NotificationContext
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Phase 14: a classified subject (financial, statutory, highly sensitive or confidential record)
+     * exposes only its identity, label and status to templates, and highly sensitive attributes are
+     * never exposed. A template can no longer print an account number, an amount or a confidential note.
+     *
+     * @return array<string, mixed>
+     */
     private function subjectVars(Model $subject): array
     {
         $vars = ['type' => class_basename($subject), 'id' => $subject->getKey()];
+        $classified = app(ChangeIntelligence::class)->classified($subject::class);
+        $sensitive = (array) (config('peopleos.data_classification.highly_sensitive')[$subject::class] ?? []);
 
         foreach ($subject->getAttributes() as $key => $value) {
-            if (in_array($key, $subject->getHidden(), true)) {
+            if (in_array($key, $subject->getHidden(), true) || in_array($key, $sensitive, true)
+                || ($classified && ! in_array($key, ['status', 'number', 'code', 'type', 'effective_from', 'effective_to'], true))) {
                 continue;
             }
 

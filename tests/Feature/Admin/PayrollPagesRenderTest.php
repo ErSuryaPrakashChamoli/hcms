@@ -8,7 +8,7 @@ use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Resources\ComplianceRules\ComplianceRuleResource;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\Pages\ViewEmployee;
-use App\Filament\Resources\Employees\RelationManagers\SalaryRelationManager;
+use App\Filament\Resources\Employees\RelationManagers\CompensationRelationManager;
 use App\Filament\Resources\PayrollAdjustments\PayrollAdjustmentResource;
 use App\Filament\Resources\PayrollRuns\Pages\ViewPayrollRun;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
@@ -50,8 +50,9 @@ it('renders the payroll pages and the salary tab', function () {
     $this->get(TaxDeclarationResource::getUrl('index'))->assertOk();
     $this->get(EmployeeResource::getUrl('view', ['record' => $this->employee]))->assertOk();
 
-    Livewire::test(SalaryRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])
-        ->assertOk()->assertSee('600,000.00')->assertSee('Assign / revise salary');
+    // Phase 11: the tab is Compensation; it proposes changes and never writes salary directly.
+    Livewire::test(CompensationRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])
+        ->assertOk()->assertSee('600,000.00')->assertSee('Propose compensation change')->assertDontSee('Assign / revise salary');
 });
 
 it('drives the pipeline from the run page and shows the employee only their own payslip', function () {

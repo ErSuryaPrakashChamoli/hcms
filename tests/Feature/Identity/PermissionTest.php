@@ -49,7 +49,10 @@ it('gives platform admins everything', function () {
 it('never lets tenant users touch tenants, whatever their roles say', function () {
     $superAdmin = tenantUser($this->tenant, ['*']);
 
-    expect($superAdmin->hasPermission('tenant.view'))->toBeTrue()
+    // SaaS.2: a platform key held through a role (`*`) is never effective for a tenant user.
+    expect($superAdmin->hasPermission('tenant.view'))->toBeFalse()
+        ->and($superAdmin->hasPermission('tenant.suspend'))->toBeFalse()
+        ->and(Gate::forUser($superAdmin)->allows('tenant.update'))->toBeFalse()
         ->and(Gate::forUser($superAdmin)->allows('viewAny', Tenant::class))->toBeFalse()
         ->and(Gate::forUser($superAdmin)->allows('update', $this->tenant))->toBeFalse();
 });

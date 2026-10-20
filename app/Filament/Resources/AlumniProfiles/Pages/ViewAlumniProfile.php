@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\AlumniProfiles\Pages;
 
 use App\Filament\Resources\AlumniProfiles\AlumniProfileResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use Filament\Actions\EditAction;
-use Filament\Resources\Pages\ViewRecord;
 
-class ViewAlumniProfile extends ViewRecord
+class ViewAlumniProfile extends PeopleViewRecord
 {
     protected static string $resource = AlumniProfileResource::class;
 

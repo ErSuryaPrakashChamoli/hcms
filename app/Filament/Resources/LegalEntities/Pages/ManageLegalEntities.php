@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\LegalEntities\Pages;
 
 use App\Filament\Resources\LegalEntities\LegalEntityResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageLegalEntities extends ManageRecords
+class ManageLegalEntities extends PeopleManageRecords
 {
     protected static string $resource = LegalEntityResource::class;
 

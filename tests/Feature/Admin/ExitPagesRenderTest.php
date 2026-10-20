@@ -28,7 +28,8 @@ beforeEach(function () {
     $this->employee = activeEmployee($this->manager, ['exit.resign', 'letter.view', 'alumni.portal', 'leave.apply', 'attendance.regularise', 'servicedesk.request', 'task.view']);
     $this->leaver = activeEmployee($this->manager, ['exit.resign', 'task.view']);
     $this->case = app(Exits::class)->initiate($this->leaver, 'resignation', 'Moving on', '2026-09-21', '2026-09-25', 30, $this->admin);
-    $this->letter = app(Letters::class)->generate('experience', $this->leaver, [], $this->admin, $this->case);
+    // Phase 12: the requester never approves their own letter, so another HR user asks for it.
+    $this->letter = app(Letters::class)->generate('experience', $this->leaver, [], tenantUser($this->tenant, ['letter.issue']), $this->case);
     actAsTenant(null);
 });
 

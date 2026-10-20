@@ -1,0 +1,212 @@
+{
+ "phase": "SaaS.10",
+ "date": "2026-10-09",
+ "environment": "disposable hcm_saas10_ui_showcase on 127.0.0.1:8096 with PEOPLEOS_PUBLIC_SIGNUP_ENABLED=true for that process only; the 8090 showcase with it off; mail captured by a local SMTP sink (links never in the application log); fictional data; Chromium",
+ "summary": {
+  "checks_passed": 34,
+  "checks_total": 34,
+  "axe_states": 12,
+  "axe_violations": 0,
+  "console_errors": 0
+ },
+ "checks": [
+  {
+   "name": "off: signup page shows only a notice",
+   "ok": true
+  },
+  {
+   "name": "axe: signup off (notice)",
+   "ok": true
+  },
+  {
+   "name": "on: start page offers the approved plan with its trial and price",
+   "ok": true
+  },
+  {
+   "name": "axe: signup start (desktop)",
+   "ok": true
+  },
+  {
+   "name": "start page has no horizontal scroll on a phone",
+   "ok": true
+  },
+  {
+   "name": "axe: signup start (phone)",
+   "ok": true
+  },
+  {
+   "name": "start answers \"check your inbox\"",
+   "ok": true
+  },
+  {
+   "name": "axe: signup sent",
+   "ok": true
+  },
+  {
+   "name": "the confirmation e-mail carries a link (read from the local sink, never logged)",
+   "ok": true
+  },
+  {
+   "name": "opening the link only offers Continue",
+   "ok": true
+  },
+  {
+   "name": "axe: signup confirm",
+   "ok": true
+  },
+  {
+   "name": "details step: terms and privacy versions shown",
+   "ok": true
+  },
+  {
+   "name": "axe: signup details (desktop)",
+   "ok": true
+  },
+  {
+   "name": "a used link reads as invalid",
+   "ok": true
+  },
+  {
+   "name": "submitted: in review (signup.review = all)",
+   "ok": true
+  },
+  {
+   "name": "axe: signup status (in review)",
+   "ok": true
+  },
+  {
+   "name": "operator page: readiness shows the switch on and core available in IN",
+   "ok": true
+  },
+  {
+   "name": "axe: operator signups (list)",
+   "ok": true
+  },
+  {
+   "name": "operator page: review reason and live eligibility shown, no IP address",
+   "ok": true
+  },
+  {
+   "name": "axe: operator signups (application)",
+   "ok": true
+  },
+  {
+   "name": "approved and provisioned: waiting for activation",
+   "ok": true
+  },
+  {
+   "name": "the activation e-mail carries the one-time invitation link",
+   "ok": true
+  },
+  {
+   "name": "owner chose a password through the invitation",
+   "ok": true
+  },
+  {
+   "name": "tick marks the application active",
+   "ok": true
+  },
+  {
+   "name": "applicant page: active, sign in offered",
+   "ok": true
+  },
+  {
+   "name": "Home shows the set-up banner for a signup tenant",
+   "ok": true
+  },
+  {
+   "name": "axe: owner home with banner",
+   "ok": true
+  },
+  {
+   "name": "Getting started keeps the five states apart",
+   "ok": true
+  },
+  {
+   "name": "axe: getting started (desktop)",
+   "ok": true
+  },
+  {
+   "name": "owner cannot open /admin/platform-signups",
+   "ok": true
+  },
+  {
+   "name": "owner cannot open /admin/tenants",
+   "ok": true
+  },
+  {
+   "name": "getting started has no horizontal scroll on a phone",
+   "ok": true
+  },
+  {
+   "name": "axe: getting started (phone)",
+   "ok": true
+  },
+  {
+   "name": "no application without the confirmed session",
+   "ok": true
+  }
+ ],
+ "axe": [
+  {
+   "state": "signup off (notice)",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "signup start (desktop)",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "signup start (phone)",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "signup sent",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "signup confirm",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "signup details (desktop)",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "signup status (in review)",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "operator signups (list)",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "operator signups (application)",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "owner home with banner",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "getting started (desktop)",
+   "violations": 0,
+   "ids": []
+  },
+  {
+   "state": "getting started (phone)",
+   "violations": 0,
+   "ids": []
+  }
+ ]
+}

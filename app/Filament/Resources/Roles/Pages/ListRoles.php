@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Roles\Pages;
 
 use App\Filament\Resources\Roles\RoleResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListRoles extends ListRecords
+class ListRoles extends PeopleListRecords
 {
     protected static string $resource = RoleResource::class;
 

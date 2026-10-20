@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Articles\Pages;
 
 use App\Filament\Resources\Articles\ArticleResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateArticle extends CreateRecord
+class CreateArticle extends PeopleCreateRecord
 {
     protected static string $resource = ArticleResource::class;
 

@@ -4,13 +4,13 @@ namespace App\Filament\Resources\Goals\Pages;
 
 use App\Domain\Performance\Services\Goals;
 use App\Filament\Resources\Goals\GoalResource;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\PerformanceActions;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class EditGoal extends EditRecord
+class EditGoal extends PeopleEditRecord
 {
     protected static string $resource = GoalResource::class;
 

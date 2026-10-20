@@ -5,6 +5,8 @@ namespace App\Domain\Performance\Services;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Performance\Events\PerformanceEvent;
@@ -23,6 +25,8 @@ final class Goals
     /** @param  array<int, array<string, mixed>>  $keyResults */
     public function create(array $attributes, array $keyResults = [], ?User $actor = null): Goal
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Performance, 'performance.goal.create');
         $attributes['level'] ??= isset($attributes['employee_id']) ? 'employee' : 'company';
         $attributes['status'] ??= 'active';
         $attributes['source'] ??= 'manual';

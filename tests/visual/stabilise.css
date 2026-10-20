@@ -1,0 +1,3 @@
+/* UX.18 visual regression: hide what is legitimately in motion while a screenshot is taken (never content). */
+.pos-spinner, [wire\:loading], .fi-loading-indicator { visibility: hidden !important; }
+*, *::before, *::after { caret-color: transparent !important; }

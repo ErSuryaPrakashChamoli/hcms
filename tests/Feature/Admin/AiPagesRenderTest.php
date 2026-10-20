@@ -24,7 +24,7 @@ beforeEach(function () {
 it('renders the AI pages with the right access', function () {
     $this->get(AssistantPage::getUrl())->assertOk()->assertSee('Employee Assistant')->assertSee('HR Copilot');
     $this->get(PayrollAuditor::getUrl())->assertOk()->assertSee('No calculated payroll run');
-    $this->get(WorkforceIntelligence::getUrl())->assertOk()->assertSee('Attrition-risk signals');
+    $this->get(WorkforceIntelligence::getUrl())->assertOk()->assertSee('Attrition and capacity')->assertDontSee('Attrition-risk signals');
     $this->get(ConfigurationFinder::getUrl(['term' => 'working hours']))->assertOk()->assertSee('Shifts');
     $this->get(AiInteractionResource::getUrl('index'))->assertOk();
 

@@ -17,7 +17,8 @@ class RoleFactory extends Factory
 
         return [
             'name' => $name,
-            'slug' => Str::slug($name).'-'.Str::lower(Str::random(4)),
+            // roles.slug is varchar(64); long Faker job titles overflowed it on MySQL.
+            'slug' => Str::limit(Str::slug($name), 55, '').'-'.Str::lower(Str::random(4)),
             'description' => fake()->sentence(),
             'is_system' => false,
         ];

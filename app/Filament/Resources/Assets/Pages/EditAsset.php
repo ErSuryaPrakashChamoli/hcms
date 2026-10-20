@@ -4,11 +4,11 @@ namespace App\Filament\Resources\Assets\Pages;
 
 use App\Filament\Resources\Assets\AssetResource;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\SavesCustomFields;
-use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
-class EditAsset extends EditRecord
+class EditAsset extends PeopleEditRecord
 {
     use SavesCustomFields;
 

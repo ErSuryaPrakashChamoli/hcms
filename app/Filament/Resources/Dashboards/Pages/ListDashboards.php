@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Dashboards\Pages;
 
 use App\Filament\Resources\Dashboards\DashboardResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListDashboards extends ListRecords
+class ListDashboards extends PeopleListRecords
 {
     protected static string $resource = DashboardResource::class;
 

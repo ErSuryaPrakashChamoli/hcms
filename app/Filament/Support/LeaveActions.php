@@ -41,12 +41,14 @@ final class LeaveActions
                 ->required()
                 ->live(),
             Grid::make(2)->schema([
-                DatePicker::make('from_date')->native(false)->required()->default(now()),
-                DatePicker::make('to_date')->native(false)->required()->default(now())->afterOrEqual('from_date'),
-                Select::make('from_session')->label('Start')->options(LeaveRequest::SESSIONS)->default('full'),
-                Select::make('to_session')->label('End')->options(LeaveRequest::SESSIONS)->default('full')
+                DatePicker::make('from_date')->native(false)->required()->default(now())->live(),
+                DatePicker::make('to_date')->native(false)->required()->default(now())->afterOrEqual('from_date')->live(),
+                Select::make('from_session')->label('Start')->options(LeaveRequest::SESSIONS)->default('full')->live(),
+                Select::make('to_session')->label('End')->options(LeaveRequest::SESSIONS)->default('full')->live()
                     ->visible(fn (Get $get) => $get('from_date') !== $get('to_date')),
             ]),
+            // Experience Transformation §21: days and balance before → after, before submitting.
+            BeforeAfterPreview::leave($employee),
             Textarea::make('reason')->required()->maxLength(255),
             Select::make('document_id')->label('Supporting document')->options(fn () => $employee()->documents()->pluck('title', 'id')->all())->placeholder('Optional'),
         ];

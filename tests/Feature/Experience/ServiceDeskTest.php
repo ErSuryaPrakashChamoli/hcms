@@ -18,7 +18,7 @@ beforeEach(function () {
     $this->tenant = provisionTenant();
     actAsTenant($this->tenant);
     $this->hr = tenantUser($this->tenant, ['*']);
-    $this->agent = tenantUser($this->tenant, ['servicedesk.view', 'employee.view']);
+    $this->agent = tenantUser($this->tenant, ['servicedesk.view', 'servicedesk.agent', 'employee.view']);
     $this->actingAs($this->hr);
     $this->employee = activeEmployee(null, ['servicedesk.request', 'grievance.raise', 'task.view']);
     $this->desk = app(ServiceDesk::class);
@@ -27,24 +27,24 @@ beforeEach(function () {
 it('runs a ticket through open, reply, wait, resolve, rate, close, reopen with SLA and escalation', function () {
     $letters = TicketCategory::query()->where('code', 'LETTER')->first();
     $role = Role::factory()->create();
-    $role->permissions()->sync(app(PermissionRegistry::class)->idsMatching(['servicedesk.view']));
+    $role->permissions()->sync(app(PermissionRegistry::class)->idsMatching(['servicedesk.view', 'servicedesk.agent']));
     $this->agent->roles()->attach($role);
     $letters->update(['assignee_role_id' => $role->id, 'escalation_role_id' => $role->id]);
 
     $ticket = $this->desk->open($this->employee, $letters, 'Experience letter', 'For a visa application', 'high', $this->employee->user);
     expect($ticket->number)->toBe('TKT-2026-00001')
-        ->and($ticket->status)->toBe('open')
+        ->and($ticket->status)->toBe('assigned') // Phase 12 lifecycle: auto-assigned on submission
         ->and($ticket->assignee_id)->toBe($this->agent->id)
         ->and($ticket->due_at->toDateTimeString())->toBe('2026-09-22 21:00:00') // high: 72h / 2
         ->and($this->agent->notifications()->count())->toBe(1);
     expect($this->desk->open($this->employee, $letters, 'Second', 'x')->number)->toBe('TKT-2026-00002');
 
     $this->desk->comment($ticket, $this->agent, 'Which dates should it cover?');
-    expect($ticket->refresh()->first_responded_at)->not->toBeNull();
+    expect($ticket->refresh()->first_responded_at)->not->toBeNull()->and($ticket->status)->toBe('in_progress');
     $this->desk->waitOnEmployee($ticket, $this->agent);
-    expect($ticket->refresh()->status)->toBe('pending');
+    expect($ticket->refresh()->status)->toBe('waiting_employee');
     $this->desk->comment($ticket, $this->employee->user, '2024 to date');
-    expect($ticket->refresh()->status)->toBe('open');
+    expect($ticket->refresh()->status)->toBe('in_progress');
     $internal = $this->desk->comment($ticket, $this->agent, 'Check with finance', true);
     expect($internal->is_internal)->toBeTrue();
 
@@ -55,13 +55,13 @@ it('runs a ticket through open, reply, wait, resolve, rate, close, reopen with S
     expect($ticket->refresh()->status)->toBe('closed')->and($ticket->satisfaction)->toBe(5);
     expect(fn () => $this->desk->comment($ticket, $this->agent, 'late'))->toThrow(RuntimeException::class, 'closed');
     $this->desk->reopen($ticket, 'Wrong dates', $this->employee->user);
-    expect($ticket->refresh()->status)->toBe('open')->and($ticket->closed_at)->toBeNull();
+    expect($ticket->refresh()->status)->toBe('in_progress')->and($ticket->closed_at)->toBeNull();
 
     // Reopening restarted the SLA (72 h → 24 Sep 09:00); the second ticket is due then too. Breaches escalate once.
     $this->travelTo('2026-09-25 09:00:00');
     $result = $this->desk->tick();
     expect($result['escalated'])->toBe(2)
-        ->and(AuditEvent::query()->where('module', 'servicedesk')->where('action', 'ESCALATED')->count())->toBe(2)
+        ->and(AuditEvent::query()->where('module', 'servicedesk')->where('action', 'REQUEST_ESCALATED')->count())->toBe(2)
         ->and($this->desk->tick()['escalated'])->toBe(0);
     $this->desk->resolve($ticket->refresh(), 'Fixed dates', $this->agent);
     $this->travelTo('2026-10-01 09:00:00');

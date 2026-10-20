@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Shifts\Pages;
 
 use App\Filament\Resources\Shifts\ShiftResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListShifts extends ListRecords
+class ListShifts extends PeopleListRecords
 {
     protected static string $resource = ShiftResource::class;
 

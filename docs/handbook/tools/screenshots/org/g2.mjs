@@ -1,0 +1,24 @@
+import { start, open, annotate, clearCallouts, shot, record, finish, settle } from '../lib.mjs';
+import { modal } from './wf-helpers.mjs';
+const s = await start('org');
+const log = (n, m) => { if (m.length) console.log('MISSING', n, m); else console.log('ok', n); };
+let page = await open(s, 'admin', '/admin/workforce-plans');
+await page.locator('main .fi-ta-row button:has-text("Forecast")').first().click();
+await page.locator('.fi-modal-window').first().waitFor({ state: 'visible' });
+await settle(page, 900);
+await modal(page).evaluate(e => e.scrollIntoView({ block: 'start' }));
+await page.waitForTimeout(400);
+let m = await annotate(page, [{ loc: modal(page).getByText('Attrition', { exact: true }), n: 1 }, { loc: modal(page).getByText('2027-07', { exact: true }), n: 2 }]);
+log('forecast', m);
+const b = await modal(page).boundingBox();
+console.log(b);
+await shot(page, 'org-wf-forecast', { clip: { x: b.x, y: Math.max(0, b.y), width: b.width, height: Math.min(900, b.y + b.height) - Math.max(0, b.y) } });
+await page.close();
+
+page = await open(s, 'admin', '/admin/positions/1');
+await page.locator('main .fi-tabs').last().evaluate(e => e.scrollIntoView({ block: 'start' }));
+await page.evaluate(() => window.scrollBy(0, -90));
+await settle(page, 1200);
+await shot(page, 'org-wf-position-history-tab');
+await page.close();
+await finish(s);

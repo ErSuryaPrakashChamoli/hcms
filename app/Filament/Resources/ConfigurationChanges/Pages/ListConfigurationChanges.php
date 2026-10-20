@@ -4,11 +4,11 @@ namespace App\Filament\Resources\ConfigurationChanges\Pages;
 
 use App\Domain\Configuration\Enums\ChangeStatus;
 use App\Filament\Resources\ConfigurationChanges\ConfigurationChangeResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
-class ListConfigurationChanges extends ListRecords
+class ListConfigurationChanges extends PeopleListRecords
 {
     protected static string $resource = ConfigurationChangeResource::class;
 

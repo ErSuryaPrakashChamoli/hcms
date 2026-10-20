@@ -1,0 +1,15 @@
+import { start, open, finish, settle } from './lib.mjs';
+const s = await start('ppl');
+const p = await open(s, 'admin', '/admin/employee-imports/1');
+await p.locator('main').getByRole('button', { name: 'More' }).first().click(); await p.waitForTimeout(700);
+console.log('more menu:', await p.locator('.fi-dropdown-panel:visible').innerText());
+await p.locator('.fi-dropdown-panel:visible').getByRole('button', { name: 'Discard' }).click({ force: true }); await p.waitForTimeout(1200);
+const m = p.locator('.fi-modal-window:visible').last();
+console.log('confirm modal:', (await m.innerText()).replace(/\n+/g, ' | '));
+await m.getByRole('button', { name: /Confirm|Discard/ }).last().click(); await settle(p, 2000);
+console.log((await p.locator('main').innerText()).match(/Status\n\w+/)?.[0]);
+const q = await open(s, 'manager', '/admin/employees');
+console.log('MANAGER EMPLOYEES:', (await q.locator('main').innerText()).slice(0, 600).replace(/\n+/g, ' | '));
+const r = await open(s, 'manager', '/admin/onboarding-plans');
+console.log('MANAGER ONBOARDING:', (await r.locator('main').innerText()).slice(0, 500).replace(/\n+/g, ' | '));
+await finish(s);

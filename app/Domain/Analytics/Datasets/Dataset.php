@@ -45,9 +45,12 @@ abstract class Dataset
     /** @return array<string, array<string, mixed>> fields the user may read */
     public function fieldsFor(?User $user): array
     {
-        $sensitiveOk = $user === null || $this->sensitivePermission() === null || $user->hasPermission($this->sensitivePermission()) || $user->is_platform_admin;
+        // Phase 14: fail closed — without a user (console, scheduler, feeds) no sensitive or permissioned field is available.
+        $sensitiveOk = $this->sensitivePermission() === null || ($user !== null && ($user->hasPermission($this->sensitivePermission()) || $user->is_platform_admin));
 
-        return array_filter($this->fields(), fn ($f) => $sensitiveOk || empty($f['sensitive']));
+        // A field may also name its own permission (Phase 11: compensation fields need compensation.view).
+        return array_filter($this->fields(), fn ($f) => ($sensitiveOk || empty($f['sensitive']))
+            && (empty($f['permission']) || ($user !== null && ($user->is_platform_admin || $user->hasPermission($f['permission'])))));
     }
 
     public function value(string $field, Model $row): mixed

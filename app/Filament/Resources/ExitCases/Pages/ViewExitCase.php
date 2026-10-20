@@ -4,9 +4,9 @@ namespace App\Filament\Resources\ExitCases\Pages;
 
 use App\Filament\Resources\ExitCases\ExitCaseResource;
 use App\Filament\Support\ExitActions;
-use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Support\Pages\PeopleViewRecord;
 
-class ViewExitCase extends ViewRecord
+class ViewExitCase extends PeopleViewRecord
 {
     protected static string $resource = ExitCaseResource::class;
 

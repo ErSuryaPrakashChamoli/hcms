@@ -24,6 +24,8 @@ use RuntimeException;
  */
 class AttendanceController extends Controller
 {
+    use PaginatesApi;
+
     /** GET attendance/records — records for a period, optionally one employee; quantities only. */
     public function records(Request $request): JsonResponse
     {
@@ -133,16 +135,5 @@ class AttendanceController extends Controller
         $query = WorkSchedule::query()->where('status', 'active')->orderBy('code');
 
         return $this->page($query, $request, fn (WorkSchedule $s) => ['code' => $s->code, 'name' => $s->name, 'weeks' => count($s->pattern ?? []), 'pattern' => $s->pattern, 'effective_from' => $s->effective_from?->toDateString()]);
-    }
-
-    private function page(Builder $query, Request $request, callable $map): JsonResponse
-    {
-        $perPage = min(max((int) $request->query('per_page', 50), 1), 200);
-        $paginator = $query->paginate($perPage)->appends($request->query());
-
-        return response()->json([
-            'data' => collect($paginator->items())->map($map)->values()->all(),
-            'meta' => ['page' => $paginator->currentPage(), 'per_page' => $paginator->perPage(), 'total' => $paginator->total(), 'last_page' => $paginator->lastPage()],
-        ]);
     }
 }

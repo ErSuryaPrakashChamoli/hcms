@@ -8,14 +8,14 @@ use App\Domain\Configuration\Services\Policies;
 use App\Filament\Resources\Policies\PolicyResource;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Icons\Heroicon;
 
-class EditPolicy extends EditRecord
+class EditPolicy extends PeopleEditRecord
 {
     use GovernedEdit;
 

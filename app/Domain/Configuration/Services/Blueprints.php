@@ -11,6 +11,7 @@ use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Models\PolicyAssignmentRule;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Services\PermissionRegistry;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Organisation\Models\EmployeeCategory;
 use App\Domain\Organisation\Models\EmploymentType;
 use App\Domain\Organisation\Models\Grade;
@@ -125,10 +126,16 @@ final class Blueprints
             $upsert('skills', Skill::class, $blueprint['skills'] ?? []);
 
             foreach ($blueprint['roles'] ?? [] as $row) {
+                // SaaS.10 (E2): an import writes into a role only permissions the importer holds (unless they are a Tenant
+                // Super Admin, an operator, or the console); it could otherwise turn any role, a system role included,
+                // into full control.
+                app(RoleGrants::class)->assertCanDefine(auth()->user(), $this->permissions->keysMatching($row['permissions'] ?? []), "import the role \"{$row['slug']}\"");
                 $role = Role::query()->firstOrNew(['slug' => $row['slug']]);
+                $permissionsBefore = $role->exists ? app(RoleGrants::class)->permissionKeysOf($role) : [];
                 $role->fill(['name' => $row['name'], 'description' => $row['description'] ?? null, 'is_system' => $role->exists ? $role->is_system : (bool) ($row['is_system'] ?? false)]);
                 $role->withAuditReason($reason)->save();
                 $role->permissions()->sync($this->permissions->idsMatching($row['permissions'] ?? []));
+                app(RoleGrants::class)->recordPermissionChange($role, $permissionsBefore, auth()->user(), $reason); // SaaS.11
                 $counts['roles'] = ($counts['roles'] ?? 0) + 1;
             }
 

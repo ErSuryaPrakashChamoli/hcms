@@ -4,9 +4,9 @@ namespace App\Filament\Resources\PunchImports\Pages;
 
 use App\Filament\Resources\PunchImports\PunchImportResource;
 use App\Filament\Support\ImportActions;
-use Filament\Resources\Pages\ViewRecord;
+use App\Filament\Support\Pages\PeopleViewRecord;
 
-class ViewPunchImport extends ViewRecord
+class ViewPunchImport extends PeopleViewRecord
 {
     protected static string $resource = PunchImportResource::class;
 

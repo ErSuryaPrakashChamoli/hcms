@@ -11,6 +11,10 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <!-- Phase 8: real MySQL concurrency (skipped unless PEOPLEOS_MYSQL_CONCURRENCY_DB names a disposable database). -->
+        <testsuite name="MySql">
+            <directory>tests/MySql</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
@@ -21,6 +25,9 @@
         <env name="APP_ENV" value="testing"/>
         <!-- Phase 5: the statutory packs are unverified; enforcement tests switch it on explicitly. -->
         <env name="PEOPLEOS_ENFORCE_VERIFIED_RULES" value="false"/>
+        <env name="PEOPLEOS_LEARNING_CERTIFICATE_DOCUMENTS" value="false"/>
+        <!-- SaaS.2: operator MFA is on by default; suites that sign operators in turn it off, the MFA tests turn it on. -->
+        <env name="PEOPLEOS_PLATFORM_MFA_REQUIRED" value="false"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

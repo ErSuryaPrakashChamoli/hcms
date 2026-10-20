@@ -4,10 +4,10 @@ namespace App\Filament\Resources\Dashboards\Pages;
 
 use App\Filament\Resources\Dashboards\DashboardResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditDashboard extends EditRecord
+class EditDashboard extends PeopleEditRecord
 {
     use GovernedEdit;
 

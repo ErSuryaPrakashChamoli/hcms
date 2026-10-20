@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Policies\Pages;
 
 use App\Filament\Resources\Policies\PolicyResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListPolicies extends ListRecords
+class ListPolicies extends PeopleListRecords
 {
     protected static string $resource = PolicyResource::class;
 

@@ -6,10 +6,10 @@ use App\Domain\Platform\Models\TenantSetting;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Resources\TenantSettings\TenantSettingResource;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageTenantSettings extends ManageRecords
+class ManageTenantSettings extends PeopleManageRecords
 {
     protected static string $resource = TenantSettingResource::class;
 

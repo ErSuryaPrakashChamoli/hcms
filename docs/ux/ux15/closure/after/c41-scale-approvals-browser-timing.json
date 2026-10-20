@@ -1,0 +1,65 @@
+{
+  "note": "Browser navigation timing on a developer workstation (php artisan serve), after warm-up, median of 3. Server-side medians are in evidence/approval-10785-*.json.",
+  "timings": [
+    {
+      "shot": "c41-scale-approvals-manager-desktop-light.png",
+      "heading": "202+ decisions need you",
+      "median_ttfb_ms": 857,
+      "median_load_ms": 1144,
+      "runs": [
+        {
+          "ttfb": 857,
+          "load": 1135
+        },
+        {
+          "ttfb": 771,
+          "load": 1144
+        },
+        {
+          "ttfb": 867,
+          "load": 1178
+        }
+      ]
+    },
+    {
+      "shot": "c41-scale-approvals-manager-desktop-dark.png",
+      "heading": "202+ decisions need you",
+      "median_ttfb_ms": 706,
+      "median_load_ms": 1045,
+      "runs": [
+        {
+          "ttfb": 695,
+          "load": 1023
+        },
+        {
+          "ttfb": 760,
+          "load": 1045
+        },
+        {
+          "ttfb": 706,
+          "load": 1089
+        }
+      ]
+    },
+    {
+      "shot": "c42-scale-approvals-manager-mobile-light.png",
+      "heading": "202+ decisions need you",
+      "median_ttfb_ms": 721,
+      "median_load_ms": 1023,
+      "runs": [
+        {
+          "ttfb": 721,
+          "load": 963
+        },
+        {
+          "ttfb": 691,
+          "load": 1023
+        },
+        {
+          "ttfb": 725,
+          "load": 1024
+        }
+      ]
+    }
+  ]
+}

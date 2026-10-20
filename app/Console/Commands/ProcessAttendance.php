@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Domain\Attendance\Services\AttendanceProcessor;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -16,13 +17,14 @@ class ProcessAttendance extends Command
 
     public function handle(AttendanceProcessor $processor, TenantContext $tenants): int
     {
+        $runner = TenantRunner::for($this);
         $from = Carbon::parse($this->option('date') ?? now()->subDay())->startOfDay();
         $to = Carbon::parse($this->option('to') ?? $from)->startOfDay();
 
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each(function (Tenant $tenant) use ($processor, $tenants, $from, $to) {
+            ->each($runner->isolate(function (Tenant $tenant) use ($processor, $tenants, $from, $to) {
                 $tenants->runAs($tenant, function () use ($processor, $tenant, $from, $to) {
                     $total = 0;
 
@@ -32,8 +34,8 @@ class ProcessAttendance extends Command
 
                     $this->info("{$tenant->slug}: {$total} employee-day(s) processed");
                 });
-            });
+            }));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

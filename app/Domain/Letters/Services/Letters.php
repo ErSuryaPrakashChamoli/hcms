@@ -4,6 +4,7 @@ namespace App\Domain\Letters\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Services\Documents;
 use App\Domain\Employment\Models\Employee;
@@ -12,7 +13,6 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Letters\Models\Letter;
 use App\Domain\Letters\Models\LetterTemplate;
 use App\Domain\Notifications\Services\TemplateRenderer;
-use App\Domain\Payroll\Services\Salaries;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -22,21 +22,21 @@ use RuntimeException;
 /** The letter factory (§40): render a template for an employee, approve if required, issue as a stored document. */
 final class Letters
 {
-    public function __construct(private readonly TemplateRenderer $renderer, private readonly Documents $documents, private readonly Salaries $salaries, private readonly AuditRecorder $audit) {}
+    public function __construct(private readonly TemplateRenderer $renderer, private readonly Documents $documents, private readonly CompensationOutput $compensation, private readonly AuditRecorder $audit) {}
 
     /** @return array<string, mixed> the variables a template may reference */
     public function context(Employee $employee, array $extra = []): array
     {
         $employee->loadMissing(['person', 'currentPosition.designation', 'currentPosition.department', 'currentPosition.company', 'currentPosition.location']);
         $position = $employee->currentPosition ?? $employee->positions()->orderByDesc('effective_from')->with(['designation', 'department', 'company', 'location'])->first();
-        $salary = $this->salaries->current($employee, $employee->exit_date ?? now());
+        $salary = $this->compensation->on($employee, $employee->exit_date ?? now());
 
         return array_replace_recursive([
             'employee' => [
                 'name' => $employee->person?->full_name, 'first_name' => $employee->person?->first_name, 'code' => $employee->employee_code,
                 'designation' => $position?->designation?->name, 'department' => $position?->department?->name, 'location' => $position?->location?->name,
                 'joining_date' => $employee->joining_date, 'exit_date' => $employee->exit_date, 'gender' => $employee->person?->gender,
-                'ctc_annual' => $salary ? number_format((float) $salary->ctc_annual, 2) : null, 'ctc_monthly' => $salary ? number_format($salary->monthlyCtc(), 2) : null,
+                'ctc_annual' => $salary ? number_format($salary->ctcAnnual, 2) : null, 'ctc_monthly' => $salary ? number_format($salary->monthlyCtc(), 2) : null,
                 'work_email' => $employee->work_email,
             ],
             'company' => ['name' => $position?->company?->legal_name ?: $position?->company?->name, 'short_name' => $position?->company?->name],
@@ -85,6 +85,10 @@ final class Letters
         if ($letter->status !== 'pending_approval') {
             throw new RuntimeException('The letter is not waiting for approval.');
         }
+        // Phase 12: separation of duties — whoever asked for a letter does not approve it.
+        if ($letter->requested_by !== null && (int) $letter->requested_by === (int) $approver->id) {
+            throw new RuntimeException('The person who requested a letter cannot approve it.');
+        }
         $letter->update(['status' => 'approved', 'approved_by' => $approver->id, 'approved_at' => now(), 'review_note' => $note]);
         $this->audit->record(AuditAction::Approved, 'letters', $letter, [], $note, actor: $approver);
         ExitEvent::dispatch('letter.approved', $letter->employee()->first(), $letter, ['number' => $letter->number], array_filter([$letter->requested_by]));
@@ -117,7 +121,7 @@ final class Letters
             file_put_contents($tmp, $html);
             $file = new UploadedFile($tmp, Str::slug($letter->number).'.html', 'text/html', null, true);
             $type = DocumentType::query()->firstOrCreate(['code' => 'LETTER_'.strtoupper($letter->type)], ['name' => config("peopleos.letters.types.{$letter->type}", ucfirst($letter->type)).' letter', 'category' => 'company', 'requires_expiry' => false, 'mandatory_for_onboarding' => false]);
-            $document = $this->documents->store($employee, $file, $type, $letter->subject, null, now()->toDateString(), 'Issued letter '.$letter->number);
+            $document = $this->documents->store($employee, $file, $type, $letter->subject, null, now()->toDateString(), 'Issued letter '.$letter->number, generatedBySystem: true);
             @unlink($tmp);
 
             $letter->update(['status' => 'issued', 'issued_by' => $issuer?->id ?? auth()->id(), 'issued_at' => now(), 'document_id' => $document->id]);
@@ -126,6 +130,17 @@ final class Letters
 
             return $letter->refresh();
         });
+    }
+
+    /** Phase 14: the issued letter as a download, audited (who downloaded which letter). */
+    public function download(Letter $letter, User $user): string
+    {
+        if ($letter->status !== 'issued') {
+            throw new RuntimeException('Only an issued letter can be downloaded.');
+        }
+        $this->audit->record(AuditAction::Download, 'letters', $letter, [], null, actor: $user, metadata: ['number' => $letter->number]);
+
+        return $this->html($letter);
     }
 
     public function html(Letter $letter): string

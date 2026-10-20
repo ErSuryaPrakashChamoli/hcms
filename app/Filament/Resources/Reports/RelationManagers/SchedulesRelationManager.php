@@ -47,7 +47,7 @@ class SchedulesRelationManager extends RelationManager
                 TextColumn::make('when')->label('When')->state(fn (ReportSchedule $record) => match ($record->frequency) {
                     'weekly' => ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][$record->day_of_week ?? 1].' '.$record->time, 'monthly' => 'Day '.$record->day_of_month.' at '.$record->time, default => 'Every day at '.$record->time
                 }),
-                TextColumn::make('recipients')->state(fn (ReportSchedule $record) => User::query()->whereIn('id', $record->recipient_user_ids ?? [])->pluck('name')->implode(', '))->wrap(),
+                TextColumn::make('recipients')->state(fn (ReportSchedule $record) => User::forCurrentTenant()->whereIn('id', $record->recipient_user_ids ?? [])->pluck('name')->implode(', '))->wrap(),
                 TextColumn::make('last_run_at')->dateTime()->placeholder('Never'),
                 TextColumn::make('next_run_at')->dateTime()->placeholder('—'),
                 TextColumn::make('status')->badge()->color(fn (string $state) => $state === 'active' ? 'success' : 'gray'),

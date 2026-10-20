@@ -4,10 +4,10 @@ namespace App\Filament\Resources\JobFamilies\Pages;
 
 use App\Filament\Resources\JobFamilies\JobFamilyResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditJobFamily extends EditRecord
+class EditJobFamily extends PeopleEditRecord
 {
     use GovernedEdit;
 

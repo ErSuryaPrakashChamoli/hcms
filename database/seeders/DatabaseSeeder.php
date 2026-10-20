@@ -17,6 +17,9 @@ use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Attendance\Models\WorkScheduleRule;
 use App\Domain\Communication\Models\Announcement;
 use App\Domain\Communication\Services\Communications;
+use App\Domain\Compensation\Contracts\CompensationOutput;
+use App\Domain\Compensation\Models\SalaryStructure;
+use App\Domain\Compensation\Services\CompensationChanges;
 use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Services\Blueprints;
@@ -48,11 +51,10 @@ use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\OrganisationNode;
+use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Services\OrganisationTree;
 use App\Domain\Payroll\Models\PayrollRun;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\Payroll\Services\PayrollRuns;
-use App\Domain\Payroll\Services\Salaries;
 use App\Domain\Performance\Models\CareerPath;
 use App\Domain\Performance\Models\Competency;
 use App\Domain\Performance\Models\PerformanceCycle;
@@ -72,26 +74,41 @@ use App\Support\Tenancy\TenantContext;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
+    private string $password = '';
+
+    /**
+     * SaaS.2: development and demo data only. It refuses to run in production, and it contains no
+     * password: every seeded account uses PEOPLEOS_SEED_PASSWORD, or a random password generated for this
+     * run and printed once to the console.
+     */
     public function run(PermissionRegistry $permissions, ProvisionTenantAction $provisioner, TenantContext $tenants): void
     {
+        if (app()->environment('production')) {
+            throw new RuntimeException('DatabaseSeeder creates demo accounts and refuses to run in production.');
+        }
+        $this->password = $this->seedPassword();
+
         $permissions->sync();
 
         User::query()->firstOrCreate(
             ['email' => 'platform@markedge.local'],
             [
                 'name' => 'Markedge Platform Admin',
-                'password' => 'password',
+                'password' => $this->password,
                 'is_platform_admin' => true,
+                'email_verified_at' => now(),
             ],
         );
 
         $tenant = $tenants->bypass(fn () => Tenant::query()->where('slug', 'demo')->first())
             ?? $provisioner->handle(
                 ['name' => 'Demo Group', 'slug' => 'demo'],
-                ['name' => 'Demo Admin', 'email' => 'admin@demo.local', 'password' => 'password'],
+                ['name' => 'Demo Admin', 'email' => 'admin@demo.local', 'password' => $this->password],
                 reason: 'Development seed',
             );
 
@@ -182,8 +199,12 @@ class DatabaseSeeder extends Seeder
         app(ExitInterviews::class)->submit($case, ['reason_for_leaving' => 'relocation', 'ratings' => ['manager_experience' => 4, 'compensation' => 3, 'culture' => 5, 'workload' => 3, 'career_opportunities' => 4, 'work_environment' => 4], 'would_recommend' => true, 'would_rejoin' => true, 'suggestions' => 'Offer more remote roles.'], $admin, false);
         $exits->complete($case->refresh(), $admin);
         $letters = app(Letters::class);
-        $letter = $letters->generate('experience', $vikram->refresh(), [], $admin, $case);
-        $letters->approve($letter, $admin, 'Development seed');
+        // Phase 12: whoever requests a letter never approves it — an HR executive asks, the admin approves.
+        $requester = $this->demoActor('hr.requester@demo.local', 'HR Requester (demo)', 'hr-executive');
+        $letter = $letters->generate('experience', $vikram->refresh(), [], $requester, $case);
+        if ($letter->status === 'pending_approval') {
+            $letters->approve($letter, $admin, 'Development seed');
+        }
         $letters->issue($letter->refresh(), $admin);
         $exits->createAlumni($case->refresh(), $admin, ['personal_email' => 'vikram.singh@example.test']);
     }
@@ -201,14 +222,25 @@ class DatabaseSeeder extends Seeder
                 ['title' => 'Work from home guidelines', 'category' => 'wfh', 'summary' => 'When and how to work remotely.', 'body' => "# Work from home\n\nAgree the days with your manager and mark them in attendance.", 'requires_acknowledgement' => false],
                 ['title' => 'Prevention of sexual harassment (PoSH)', 'category' => 'posh', 'summary' => 'Your rights, the Internal Committee and how to raise a complaint.', 'body' => "# PoSH\n\nComplaints go to the Internal Committee within three months of the incident. Raise a grievance under the PoSH category; it is confidential.", 'requires_acknowledgement' => true, 'is_mandatory_reading' => true],
             ] as $row) {
-                $kb->publish(Article::create($row + ['author_id' => $admin?->id]), $admin);
+                // Phase 12: an article is reviewed and approved by someone other than its author before it is published.
+                $article = Article::create($row + ['author_id' => $admin?->id]);
+                $kb->submitForReview($article, $admin);
+                $kb->review($article->refresh(), $this->demoActor('knowledge.reviewer@demo.local', 'Knowledge Reviewer (demo)', 'hr-manager'), true, 'Development seed');
+                $kb->publish($article->refresh(), $admin);
             }
         }
 
         if (Announcement::query()->doesntExist()) {
             $comms = app(Communications::class);
-            $comms->publish(Announcement::create(['title' => 'Welcome to MY PEOPLEOS', 'type' => 'announcement', 'body' => 'Your new employee portal is live. Check in, apply leave, read your payslip and ask HR from **My Day**.', 'is_pinned' => true, 'requires_acknowledgement' => true, 'author_id' => $admin?->id]), $admin);
-            $comms->publish(Announcement::create(['title' => 'Quarterly fire drill', 'type' => 'circular', 'body' => 'Register for the drill from Learning → Training sessions.', 'author_id' => $admin?->id]), $admin);
+            // Phase 13: an announcement is approved by someone other than its preparer before it is published.
+            $approver = $this->demoActor('communication.approver@demo.local', 'Communication Approver (demo)', 'hr-manager');
+            foreach ([
+                ['title' => 'Welcome to MY PEOPLEOS', 'type' => 'announcement', 'body' => 'Your new employee portal is live. Check in, apply leave, read your payslip and ask HR from **My Day**.', 'is_pinned' => true, 'requires_acknowledgement' => true],
+                ['title' => 'Quarterly fire drill', 'type' => 'circular', 'body' => 'Register for the drill from Learning → Training sessions.'],
+            ] as $row) {
+                $draft = $comms->create($row, $admin);
+                $comms->publish($comms->approve($comms->submit($draft, $admin), 'Development seed', $approver), $admin);
+            }
         }
 
         if (Ticket::query()->doesntExist()) {
@@ -318,15 +350,25 @@ class DatabaseSeeder extends Seeder
         // ADR-0001: every company gets an explicit legal entity and establishment (state from the profile).
         app(Kernel::class)->call('peopleos:legal-entities:backfill');
 
+        // Phase 11: compensation is written only through an approved change, by four different people.
         $structure = SalaryStructure::query()->where('code', 'STANDARD')->first();
-        $salaries = app(Salaries::class);
+        $actors = [];
+        foreach (['proposer' => 'tenant-hr-admin', 'reviewer' => 'hr-manager', 'approver' => 'tenant-hr-admin', 'executor' => 'payroll-admin'] as $duty => $role) {
+            $actors[$duty] = User::query()->firstOrCreate(['email' => "compensation.{$duty}@demo.local"], ['tenant_id' => app(TenantContext::class)->id(), 'name' => 'Compensation '.ucfirst($duty).' (demo)', 'password' => $this->password, 'status' => 'active', 'email_verified_at' => now()]);
+            $actors[$duty]->roles()->syncWithoutDetaching(Role::query()->where('slug', $role)->pluck('id'));
+        }
+        $changes = app(CompensationChanges::class);
         $ctc = ['anita.rao@demo.local' => 4800000, 'amit.verma@demo.local' => 2400000, 'rahul.sharma@demo.local' => 600000, 'priya.nair@demo.local' => 900000, 'vikram.singh@demo.local' => 480000];
 
         foreach ($ctc as $email => $annual) {
             $employee = Employee::query()->where('work_email', $email)->first();
 
-            if ($employee && $salaries->current($employee) === null) {
-                $salaries->assign($employee, $structure, $annual, $employee->joining_date ?? '2025-04-01', ['CONV' => 1600], 'hire', 'Development seed');
+            if ($employee && app(CompensationOutput::class)->history($employee)->isEmpty()) {
+                $change = $changes->propose($employee, ['change_type' => 'hire', 'effective_from' => ($employee->joining_date ?? '2025-04-01'), 'salary_structure_id' => $structure->id, 'ctc_annual' => $annual, 'currency' => 'INR', 'component_values' => ['CONV' => 1600], 'reason' => 'Development seed'], $actors['proposer']);
+                $changes->submit($change, $actors['proposer']);
+                $changes->review($change, $actors['reviewer']);
+                $changes->approve($change, $actors['approver']);
+                $changes->schedule($change, $actors['executor']);
             }
         }
 
@@ -455,20 +497,44 @@ class DatabaseSeeder extends Seeder
         $se = $designation('Software Engineer', 'SE', 'L2');
         $fa = $designation('Finance Analyst', 'FA', 'L2');
 
-        $hire = function (string $first, string $last, string $email, string $joined, Designation $designation, ?Department $department, ?Employee $manager) use ($tech, $delhi): Employee {
+        // UX.15 closure: a position's company is its department's company; teams place people in their line.
+        $hire = function (string $first, string $last, string $email, string $joined, Designation $designation, ?Department $department, ?Employee $manager, ?string $team = null) use ($tech, $delhi): Employee {
             return Employee::query()->where('work_email', $email)->first() ?? app(HireEmployeeAction::class)->handle(
                 ['first_name' => $first, 'last_name' => $last, 'personal_email' => strtolower("{$first}.{$last}@example.test")],
                 ['joining_date' => $joined, 'work_email' => $email],
-                ['company_id' => $tech->id, 'location_id' => $delhi?->id, 'department_id' => $department?->id, 'designation_id' => $designation->id, 'level_id' => $designation->level_id],
+                ['company_id' => $department?->company_id ?? $tech->id, 'location_id' => $delhi?->id, 'department_id' => $department?->id, 'designation_id' => $designation->id, 'level_id' => $designation->level_id,
+                    'team_id' => $team ? Team::query()->where('code', $team)->value('id') : null],
                 $manager?->id,
                 'Development seed',
             );
         };
 
         $anita = $hire('Anita', 'Rao', 'anita.rao@demo.local', '2022-01-10', $cto, $eng, null);
-        $amit = $hire('Amit', 'Verma', 'amit.verma@demo.local', '2023-04-03', $em, $eng, $anita);
-        $hire('Rahul', 'Sharma', 'rahul.sharma@demo.local', '2025-05-28', $se, $eng, $amit);
-        $hire('Priya', 'Nair', 'priya.nair@demo.local', '2024-08-19', $se, $eng, $amit);
+        $amit = $hire('Amit', 'Verma', 'amit.verma@demo.local', '2023-04-03', $em, $eng, $anita, 'PLAT');
+        $hire('Rahul', 'Sharma', 'rahul.sharma@demo.local', '2025-05-28', $se, $eng, $amit, 'PLAT');
+        $hire('Priya', 'Nair', 'priya.nair@demo.local', '2024-08-19', $se, $eng, $amit, 'PLAT');
         $hire('Vikram', 'Singh', 'vikram.singh@demo.local', '2024-11-04', $fa, $fin, $anita);
+    }
+
+    /** The password every seeded account gets this run (never a literal in the repository). */
+    private function seedPassword(): string
+    {
+        $configured = (string) config('peopleos.seed.password', '');
+        if ($configured !== '') {
+            return $configured;
+        }
+        $generated = Str::password(20);
+        $this->command?->warn("Seeded accounts use this generated password (shown once; set PEOPLEOS_SEED_PASSWORD to choose one): {$generated}");
+
+        return $generated;
+    }
+
+    /** A demo user holding one system role (separation-of-duties steps need a second person). */
+    private function demoActor(string $email, string $name, string $role): User
+    {
+        $user = User::query()->firstOrCreate(['email' => $email], ['tenant_id' => app(TenantContext::class)->id(), 'name' => $name, 'password' => $this->password, 'status' => 'active', 'email_verified_at' => now()]);
+        $user->roles()->syncWithoutDetaching(Role::query()->where('slug', $role)->pluck('id'));
+
+        return $user;
     }
 }

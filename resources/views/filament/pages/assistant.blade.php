@@ -5,7 +5,7 @@
             <x-filament::button size="sm" :color="$key === $this->assistant ? 'primary' : 'gray'" wire:click="switchTo('{{ $key }}')">{{ $label }}</x-filament::button>
         @endforeach
     </div>
-    <div class="text-sm text-gray-500">{{ $this->getDescription() }} · Answers come only from your own data and permissions; anything marked as an inference is a system-generated indicator, not a decision.</div>
+    <div class="text-sm text-gray-500">{{ $this->getDescription() }} · Answers come only from data you may already see. Text marked AI-generated was phrased by a language model from those facts — verify before acting. The assistant never changes records, scores people or predicts outcomes.</div>
 
     <x-filament::section>
         <div class="space-y-4">
@@ -15,13 +15,17 @@
                     <div class="text-sm">{{ $turn->question }}</div>
                 </div>
                 <div class="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
-                    <div class="text-sm font-medium text-primary-600">{{ $assistants[$turn->assistant] ?? $turn->assistant }} @if ($turn->is_inference)<x-filament::badge color="warning" size="sm">inference</x-filament::badge>@endif @if ($turn->provider !== 'deterministic')<x-filament::badge color="gray" size="sm">{{ $turn->model }}</x-filament::badge>@endif</div>
+                    <div class="text-sm font-medium text-primary-600">{{ $assistants[$turn->assistant] ?? $turn->assistant }} @if ($turn->is_inference)<x-filament::badge color="warning" size="sm">inference</x-filament::badge>@endif @if ($turn->ai_generated)<x-filament::badge color="info" size="sm">AI-generated · {{ $turn->model }}</x-filament::badge>@endif</div>
                     <div class="text-sm whitespace-pre-line mt-1">{{ $turn->answer }}</div>
                     @if (! empty($turn->sources))
                         <div class="text-xs text-gray-500 mt-2">Sources: {{ collect($turn->sources)->map(fn ($s) => $s['label'] . (isset($s['detail']) ? ' (' . $s['detail'] . ')' : ''))->implode(' · ') }}</div>
                     @endif
                     <div class="flex flex-wrap items-center gap-2 mt-2">
-                        @foreach ($turn->actions ?? [] as $action)
+                        @php($open = $turn->openActions())
+                        @if ($open !== [])
+                            <span class="text-xs text-gray-500">Suggested next steps (open, review and confirm there — the assistant changes nothing):</span>
+                        @endif
+                        @foreach ($open as $action)
                             <x-filament::link :href="$action['url']" size="sm">{{ $action['label'] }} →</x-filament::link>
                         @endforeach
                         <span class="flex-1"></span>

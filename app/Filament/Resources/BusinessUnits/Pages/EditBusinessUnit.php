@@ -4,10 +4,10 @@ namespace App\Filament\Resources\BusinessUnits\Pages;
 
 use App\Filament\Resources\BusinessUnits\BusinessUnitResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditBusinessUnit extends EditRecord
+class EditBusinessUnit extends PeopleEditRecord
 {
     use GovernedEdit;
 

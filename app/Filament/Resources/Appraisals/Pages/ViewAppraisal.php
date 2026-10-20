@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Appraisals\Pages;
 
 use App\Filament\Resources\Appraisals\AppraisalResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use App\Filament\Support\PerformanceActions;
-use Filament\Resources\Pages\ViewRecord;
 
-class ViewAppraisal extends ViewRecord
+class ViewAppraisal extends PeopleViewRecord
 {
     protected static string $resource = AppraisalResource::class;
 

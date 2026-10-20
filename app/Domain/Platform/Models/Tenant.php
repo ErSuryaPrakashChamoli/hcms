@@ -27,12 +27,26 @@ class Tenant extends Model
             'status' => TenantStatus::class,
             'trial_ends_at' => 'datetime',
             'metadata' => 'array',
+            // SaaS.8: written only by TenantSuspensions (not fillable).
+            'suspended_at' => 'datetime',
         ];
     }
 
     public function auditModule(): string
     {
         return 'platform';
+    }
+
+    /** SaaS.2: changes to a tenant's own record belong to that tenant's audit chain, never to the one bound. */
+    public function auditTenantId(): ?int
+    {
+        return $this->getKey();
+    }
+
+    /** @return list<string> */
+    public function auditExcludedAttributes(): array
+    {
+        return [...config('peopleos.audit.ignored_attributes', []), 'session_epoch'];
     }
 
     public function users(): HasMany

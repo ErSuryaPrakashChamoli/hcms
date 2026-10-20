@@ -1,0 +1,254 @@
+{
+ "pass": "SaaS.8 platform operations and tenant lifecycle",
+ "date": "2026-10-08",
+ "environment": "disposable MySQL database hcm_saas8_ui_showcase (UxShowcaseSeeder + fictional SaaS.8 fixture: a trial tenant suspended with one deferred e-mail job, a tenant whose first-administrator invitation e-mail failed, a delivery stuck in sending, a failed delivery, a failing fictional webhook endpoint, recorded audit verifications), php artisan serve on 127.0.0.1:8094, Chromium (Playwright 1.62), desktop 1440x900 and phone 390x844 (touch), axe-core 4.13 WCAG 2 A/AA + 2.1 A/AA; dropped afterwards",
+ "operators": "two platform operators with password + TOTP (credentials generated into a 0600 scratch file, never printed); tenant personas from the showcase fixture (disposable database only)",
+ "runs": [
+  {
+   "run": 1,
+   "result": "11 of 13 checks before the script stopped: the invitation notice was read without waiting (script defect; the invitation was issued, INVITATION_ISSUED on both chains) and the next navigation raced the Livewire update. One axe colour-contrast node on the Tenants Reactivate modal (taken while the modal was opening); not reproduced in runs 2 and 3"
+  },
+  {
+   "run": 2,
+   "result": "28 of 28 operator and administrator checks passed, 7 axe states, 0 violations; the persona block stopped at a sign-in (transient, re-run as run 3)"
+  },
+  {
+   "run": 3,
+   "result": "13 of 13 persona checks passed (6 personas x desktop and phone)"
+  },
+  {
+   "run": 4,
+   "result": "after the table polish (3d89b7b): axe 0 violations and no horizontal page scroll on Platform operations and Platform audit trail at desktop and phone width"
+  }
+ ],
+ "summary": {
+  "checks": 40,
+  "passed": 40,
+  "axe_states": 11,
+  "axe_violations": 0,
+  "console_errors": 0,
+  "console_note": "run 3 logged 36 'Failed to load resource: 403' entries: exactly the 6 personas x 2 viewports x 3 platform pages refused on purpose"
+ },
+ "checks": [
+  {
+   "name": "security headers on the sign-in page",
+   "ok": true,
+   "detail": "xfo=SAMEORIGIN; csp=frame-ancestors 'self'; hsts=absent (http)"
+  },
+  {
+   "name": "operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "Platform operations opens",
+   "ok": true
+  },
+  {
+   "name": "suspended trial tenant shows since/was trial and 1 deferred job",
+   "ok": true
+  },
+  {
+   "name": "failed-invitation tenant flagged \"Invitation not sent\"",
+   "ok": true
+  },
+  {
+   "name": "no message content, URL or secret on the operations page",
+   "ok": true
+  },
+  {
+   "name": "axe: Platform operations (desktop)",
+   "ok": true
+  },
+  {
+   "name": "axe: Tenants list, Reactivate modal",
+   "ok": true
+  },
+  {
+   "name": "reactivated tenant is back to Trial",
+   "ok": true
+  },
+  {
+   "name": "its deferred job was dispatched again (0 deferred)",
+   "ok": true
+  },
+  {
+   "name": "\"Send invitation\" offered for the tenant whose invitation failed",
+   "ok": true
+  },
+  {
+   "name": "invitation sent notice",
+   "ok": true
+  },
+  {
+   "name": "Platform audit trail opens filtered by action",
+   "ok": true
+  },
+  {
+   "name": "reactivation listed with its reason",
+   "ok": true
+  },
+  {
+   "name": "event detail shows status before suspended / after trial",
+   "ok": true
+  },
+  {
+   "name": "the audit trail never shows tenant-internal events",
+   "ok": true
+  },
+  {
+   "name": "axe: Platform audit trail with event detail (desktop)",
+   "ok": true
+  },
+  {
+   "name": "readiness reads the recorded audit verification",
+   "ok": true
+  },
+  {
+   "name": "Platform operations on a phone: no horizontal page scroll",
+   "ok": true
+  },
+  {
+   "name": "axe: Platform operations (phone)",
+   "ok": true
+  },
+  {
+   "name": "Platform audit trail on a phone: no horizontal page scroll",
+   "ok": true
+  },
+  {
+   "name": "axe: Platform audit trail (phone)",
+   "ok": true
+  },
+  {
+   "name": "\"Send again\" offered on a failed delivery",
+   "ok": true
+  },
+  {
+   "name": "no \"Send again\" on a delivery still sending",
+   "ok": true
+  },
+  {
+   "name": "axe: Delivery log, Send again modal",
+   "ok": true
+  },
+  {
+   "name": "\"Sent again\" notice",
+   "ok": true
+  },
+  {
+   "name": "Security & retention policy has the Data warehouse feed (off by default)",
+   "ok": true
+  },
+  {
+   "name": "axe: Security & retention policy (desktop)",
+   "ok": true
+  },
+  {
+   "name": "employee (desktop): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "employee (phone): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "manager (desktop): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "manager (phone): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "hr (desktop): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "hr (phone): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "executive (desktop): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "executive (phone): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "administrator (desktop): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "administrator (phone): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "payroll (desktop): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  },
+  {
+   "name": "payroll (phone): platform pages 403, no platform navigation",
+   "ok": true,
+   "detail": "403/403/403"
+  }
+ ],
+ "axe": [
+  {
+   "state": "Platform operations (desktop)",
+   "violations": []
+  },
+  {
+   "state": "Tenants list, Reactivate modal",
+   "violations": []
+  },
+  {
+   "state": "Platform audit trail with event detail (desktop)",
+   "violations": []
+  },
+  {
+   "state": "Platform operations (phone)",
+   "violations": []
+  },
+  {
+   "state": "Platform audit trail (phone)",
+   "violations": []
+  },
+  {
+   "state": "Delivery log, Send again modal",
+   "violations": []
+  },
+  {
+   "state": "Security & retention policy (desktop)",
+   "violations": []
+  },
+  {
+   "state": "Platform operations after polish (desktop)",
+   "violations": []
+  },
+  {
+   "state": "Platform operations after polish (phone)",
+   "violations": []
+  },
+  {
+   "state": "Platform audit trail after polish (desktop)",
+   "violations": []
+  },
+  {
+   "state": "Platform audit trail after polish (phone)",
+   "violations": []
+  }
+ ],
+ "screenshots": "ops-desktop.png, audit-desktop.png, platform-operations-phone.png, platform-audit-phone.png (scratch, not committed)"
+}

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sso;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Enterprise\Services\Sso;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnforceAccountSecurity;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,9 @@ class SsoController extends Controller
     public function redirect(string $connection, Request $request): RedirectResponse
     {
         $conn = $this->connection($connection);
+        if (! $this->tenantOpen($conn)) {
+            return $this->closed();
+        }
         $auth = $this->sso->authorizationRequest($conn, route('sso.callback', $conn->slug));
         $request->session()->put('sso.state', $auth['state']);
         $request->session()->put('sso.connection', $conn->id);
@@ -29,6 +33,11 @@ class SsoController extends Controller
     public function callback(string $connection, Request $request): RedirectResponse
     {
         $conn = $this->connection($connection);
+        // SaaS.2: a suspended tenant's SSO stops before the code is exchanged: no account is linked or created,
+        // and no login is recorded.
+        if (! $this->tenantOpen($conn)) {
+            return $this->closed();
+        }
 
         if ($request->query('error')) {
             return redirect('/admin/login')->withErrors(['email' => 'Sign-in was cancelled: '.$request->query('error_description', $request->query('error'))]);
@@ -46,8 +55,21 @@ class SsoController extends Controller
 
         Auth::login($user, remember: false);
         $request->session()->regenerate();
+        // SaaS.2: the identity provider vouched for this sign-in. MFA is still enforced (EnforceAccountSecurity);
+        // local e-mail verification is not asked for.
+        $request->session()->put(EnforceAccountSecurity::AUTH_METHOD_KEY, 'sso');
 
         return redirect()->intended('/admin');
+    }
+
+    private function tenantOpen(SsoConnection $connection): bool
+    {
+        return $connection->tenant !== null && $connection->tenant->isAccessible();
+    }
+
+    private function closed(): RedirectResponse
+    {
+        return redirect('/admin/login')->withErrors(['email' => 'Single sign-on is not available for this organisation.']);
     }
 
     private function connection(string $slug): SsoConnection

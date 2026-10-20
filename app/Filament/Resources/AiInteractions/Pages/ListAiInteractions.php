@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\AiInteractions\Pages;
 
 use App\Filament\Resources\AiInteractions\AiInteractionResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListAiInteractions extends ListRecords
+class ListAiInteractions extends PeopleListRecords
 {
     protected static string $resource = AiInteractionResource::class;
 }

@@ -7,6 +7,7 @@ use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Identity\Models\User;
 use App\Filament\Resources\ExportLayouts\Pages\ListExportLayouts;
 use App\Filament\Resources\StatutoryRegistrations\StatutoryRegistrationResource;
+use App\Support\Storage\StagedUpload;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -19,7 +20,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use UnitEnum;
 
@@ -76,12 +76,12 @@ class ExportLayoutResource extends Resource
                         TextInput::make('source_url')->label('Authority specification URL')->url()->required(),
                         TextInput::make('source_title')->required(),
                         DatePicker::make('retrieved_at')->required()->default(now())->maxDate(now()),
-                        FileUpload::make('file')->label('Stored copy of the specification')->disk('local')->directory('compliance-evidence/uploads')->required(),
+                        FileUpload::make('file')->label('Stored copy of the specification')->disk(StagedUpload::disk())->directory('compliance-evidence/uploads')->required(),
                         Textarea::make('notes')->rows(2),
                     ])
                     ->action(fn (StatutoryExportLayout $record, array $data) => StatutoryRegistrationResource::attempt(function () use ($record, $data, $user) {
-                        app(ExportLayouts::class)->submit($record, $user(), $data['source_url'], $data['source_title'], $data['retrieved_at'], (string) Storage::disk('local')->get($data['file']), basename($data['file']), $data['notes'] ?? null);
-                        Storage::disk('local')->delete($data['file']);
+                        app(ExportLayouts::class)->submit($record, $user(), $data['source_url'], $data['source_title'], $data['retrieved_at'], (string) StagedUpload::storage()->get($data['file']), basename($data['file']), $data['notes'] ?? null);
+                        StagedUpload::storage()->delete($data['file']);
                     }, 'Submitted for review')),
                 Action::make('verify')->icon('heroicon-m-check-badge')->color('success')->requiresConfirmation()
                     ->modalDescription('Confirm, against the stored specification, that every field, its order and format, the mandatory fields, allowed values, encoding and file structure match. You cannot verify a layout you submitted.')

@@ -3,6 +3,8 @@
 namespace App\Domain\Performance\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Career\Models\CareerPathVersion;
+use App\Domain\Career\Models\CareerTrack;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Models\JobFamily;
 use App\Support\Tenancy\BelongsToTenant;
@@ -12,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** A career ladder (§36): ordered designations with the skills each step needs. */
-#[Fillable(['tenant_id', 'name', 'code', 'job_family_id', 'description', 'status'])]
+#[Fillable(['tenant_id', 'name', 'code', 'job_family_id', 'career_track_id', 'business_unit_id', 'organisation_node_id', 'description', 'status', 'effective_from', 'effective_to', 'current_version_id'])]
 class CareerPath extends Model
 {
     use Auditable, BelongsToTenant;
@@ -26,7 +28,7 @@ class CareerPath extends Model
 
     protected function casts(): array
     {
-        return ['status' => ActiveStatus::class];
+        return ['status' => ActiveStatus::class, 'effective_from' => 'date', 'effective_to' => 'date'];
     }
 
     public function auditModule(): string
@@ -42,6 +44,17 @@ class CareerPath extends Model
     public function jobFamily(): BelongsTo
     {
         return $this->belongsTo(JobFamily::class);
+    }
+
+    /** Phase 9: published, immutable versions (career domain). */
+    public function versions(): HasMany
+    {
+        return $this->hasMany(CareerPathVersion::class)->orderBy('version');
+    }
+
+    public function track(): BelongsTo
+    {
+        return $this->belongsTo(CareerTrack::class, 'career_track_id');
     }
 
     public function steps(): HasMany

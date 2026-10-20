@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\WorkModes\Pages;
 
 use App\Filament\Resources\WorkModes\WorkModeResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateWorkMode extends CreateRecord
+class CreateWorkMode extends PeopleCreateRecord
 {
     protected static string $resource = WorkModeResource::class;
 }

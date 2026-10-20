@@ -1,0 +1,6 @@
+HR Home "What changed" now: WHAT CHANGED
+
+Nothing changed since your last visit.
+
+Joiners, moves, reporting changes, exits and announcements you can
+[{"theme":"light","width":1440,"state":"person drawer (cards)","violations":[]},{"theme":"light","width":1440,"state":"change drawer (Recently changed)","violations":[]},{"theme":"light","width":390,"state":"person drawer (cards)","violations":[]},{"theme":"light","width":390,"state":"change drawer (Recently changed)","violations":[]},{"theme":"dark","width":1440,"state":"person drawer (cards)","violations":[]},{"theme":"dark","width":1440,"state":"change drawer (Recently changed)","violations":[]},{"theme":"dark","width":390,"state":"person drawer (cards)","violations":[]},{"theme":"dark","width":390,"state":"change drawer (Recently changed)","violations":[]}]

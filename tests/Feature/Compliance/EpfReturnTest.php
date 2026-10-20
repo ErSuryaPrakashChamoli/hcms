@@ -15,9 +15,7 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Services\EstablishmentAssignments;
 use App\Domain\Payroll\Models\PayrollEntry;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\Payroll\Services\PayrollRuns;
-use App\Domain\Payroll\Services\Salaries;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -150,7 +148,7 @@ it('applies EPFO sequencing: supplementary for new members only and revised retu
     // Payroll is corrected: reopen, lower Ravi's salary, add a new joiner, re-finalize.
     $runs = app(PayrollRuns::class);
     $runs->reopen($this->run, 'Correction', $this->payrollApprover);
-    app(Salaries::class)->assign($this->ravi, SalaryStructure::query()->where('code', 'STANDARD')->firstOrFail(), 216000, '2026-09-01', ['CONV' => 1600], 'correction', 'Correction');
+    compensate($this->ravi, 216000, '2026-09-01', ['CONV' => 1600], 'correction', 'Correction');
     $newJoiner = statutoryEmployee(300000, $this->establishment, '100200300402');
     $this->run = finalizedPayroll($this->company, 2026, 9, $this->preparer, $this->payrollApprover);
 

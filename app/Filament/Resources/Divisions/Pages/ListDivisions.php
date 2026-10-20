@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Divisions\Pages;
 
 use App\Filament\Resources\Divisions\DivisionResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListDivisions extends ListRecords
+class ListDivisions extends PeopleListRecords
 {
     protected static string $resource = DivisionResource::class;
 

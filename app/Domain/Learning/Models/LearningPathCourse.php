@@ -8,14 +8,14 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'learning_path_id', 'course_id', 'sort_order', 'is_required'])]
+#[Fillable(['tenant_id', 'learning_path_id', 'course_id', 'sort_order', 'is_required', 'prerequisite_course_ids'])]
 class LearningPathCourse extends Model
 {
     use Auditable, BelongsToTenant;
 
     protected function casts(): array
     {
-        return ['sort_order' => 'integer', 'is_required' => 'boolean'];
+        return ['sort_order' => 'integer', 'is_required' => 'boolean', 'prerequisite_course_ids' => 'array'];
     }
 
     public function auditModule(): string

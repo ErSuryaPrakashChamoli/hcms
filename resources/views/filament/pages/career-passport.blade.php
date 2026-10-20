@@ -4,11 +4,11 @@
         <x-filament::section>No employee selected.</x-filament::section>
     @else
         <x-filament::section :heading="$p['employee']['name']" :description="($p['employee']['designation'] ?? 'No designation') . ' · ' . $p['employee']['code'] . ($p['employee']['joined'] ? ' · joined ' . $p['employee']['joined'] : '')">
-            <div class="grid gap-4 md:grid-cols-4 text-sm">
-                <div><div class="text-gray-500">Active goals</div><div class="text-2xl font-semibold">{{ $p['goals']['active'] }}</div></div>
-                <div><div class="text-gray-500">Goals completed</div><div class="text-2xl font-semibold">{{ $p['goals']['completed'] }}</div></div>
-                <div><div class="text-gray-500">Praise received</div><div class="text-2xl font-semibold">{{ $p['feedback']['praise'] }}</div></div>
-                <div><div class="text-gray-500">Latest rating</div><div class="text-2xl font-semibold">{{ $p['performance'][0]['label'] ?? '—' }}</div></div>
+            <div class="pos-figures">
+                <div class="pos-figure"><span class="pos-figure-value">{{ $p['goals']['active'] }}</span><span class="pos-figure-label">Active goals</span></div>
+                <div class="pos-figure"><span class="pos-figure-value">{{ $p['goals']['completed'] }}</span><span class="pos-figure-label">Goals completed</span></div>
+                <div class="pos-figure"><span class="pos-figure-value">{{ $p['feedback']['praise'] }}</span><span class="pos-figure-label">Praise received</span></div>
+                <div class="pos-figure"><span class="pos-figure-value">{{ $p['performance'][0]['label'] ?? '—' }}</span><span class="pos-figure-label">Latest rating</span></div>
             </div>
         </x-filament::section>
 

@@ -10,6 +10,7 @@ use App\Domain\Lifecycle\Events\EmployeeReminderDue;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 
 /**
@@ -18,18 +19,25 @@ use Illuminate\Console\Command;
  */
 class LifecycleReminders extends Command
 {
-    protected $signature = 'peopleos:lifecycle:reminders {--tenant=}';
+    protected $signature = 'peopleos:lifecycle:reminders {--tenant=} {--force : Run again even if today\'s sweep already ran for the tenant}';
 
     protected $description = 'Emit joining, probation and document-expiry reminder events for every tenant';
 
     public function handle(TenantContext $tenants, SettingsRepository $settings, Documents $documents): int
     {
+        $runner = TenantRunner::for($this);
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each(function (Tenant $tenant) use ($tenants, $settings, $documents) {
+            ->each($runner->isolate(function (Tenant $tenant) use ($tenants, $settings, $documents) {
                 $tenants->runAs($tenant, function () use ($tenant, $settings, $documents) {
                     $today = now()->startOfDay();
+                    // Phase 14: one sweep per tenant per day (a re-run or an overlapping server emits nothing twice).
+                    if (! $this->option('force') && ! TenantRunner::claim('lifecycle.reminders', $today->toDateString())) {
+                        $this->line("{$tenant->slug}: already swept today");
+
+                        return;
+                    }
                     $joiningWindow = (int) $settings->get('employee.joining.reminder_days', 3);
                     $probationWindow = (int) $settings->get('employee.probation.reminder_days', 14);
                     $documentWindow = (int) $settings->get('documents.expiry.reminder_days', 30);
@@ -64,8 +72,8 @@ class LifecycleReminders extends Command
 
                     $this->line(sprintf('%s: joining %d, probation ending %d, overdue %d, documents expiring %d', $tenant->slug, ...array_values($counts)));
                 });
-            });
+            }));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

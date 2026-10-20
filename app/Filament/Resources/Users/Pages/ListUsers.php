@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListUsers extends ListRecords
+class ListUsers extends PeopleListRecords
 {
     protected static string $resource = UserResource::class;
 

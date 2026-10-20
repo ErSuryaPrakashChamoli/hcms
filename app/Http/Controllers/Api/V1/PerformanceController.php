@@ -27,6 +27,8 @@ use RuntimeException;
  */
 class PerformanceController extends Controller
 {
+    use PaginatesApi;
+
     public function cycles(Request $request): JsonResponse
     {
         $query = PerformanceCycle::query()->with('templateVersion')->when($request->query('status'), fn (Builder $q, $s) => $q->where('status', $s))->orderByDesc('period_start');
@@ -152,16 +154,5 @@ class PerformanceController extends Controller
     private function progress(GoalCheckIn $c): array
     {
         return ['id' => $c->id, 'goal_id' => $c->goal_id, 'key_result_id' => $c->key_result_id, 'previous_value' => $c->previous_value === null ? null : (float) $c->previous_value, 'value' => (float) $c->value, 'previous_progress' => $c->previous_progress === null ? null : (float) $c->previous_progress, 'progress' => (float) $c->progress, 'confidence' => $c->confidence, 'source' => $c->source, 'measurement' => $c->measurement, 'recorded_at' => $c->created_at?->toIso8601String()];
-    }
-
-    private function page(Builder $query, Request $request, callable $map): JsonResponse
-    {
-        $perPage = min(max((int) $request->query('per_page', 50), 1), 200);
-        $paginator = $query->paginate($perPage)->appends($request->query());
-
-        return response()->json([
-            'data' => collect($paginator->items())->map($map)->values()->all(),
-            'meta' => ['page' => $paginator->currentPage(), 'per_page' => $paginator->perPage(), 'total' => $paginator->total(), 'last_page' => $paginator->lastPage()],
-        ]);
     }
 }

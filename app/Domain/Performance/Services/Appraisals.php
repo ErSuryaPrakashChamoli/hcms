@@ -7,6 +7,8 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Lifecycle\Services\Timeline;
@@ -62,6 +64,8 @@ final class Appraisals
 
     public function launch(PerformanceCycle $cycle, ?User $actor = null): PerformanceCycle
     {
+        // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
+        app(Entitlements::class)->observe(Capability::Performance, 'performance.cycle.launch');
         if (! in_array($cycle->status, ['draft', 'scheduled'], true)) {
             throw new RuntimeException('Only a draft or scheduled cycle can be launched.');
         }

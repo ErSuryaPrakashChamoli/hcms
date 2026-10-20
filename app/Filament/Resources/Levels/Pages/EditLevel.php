@@ -4,10 +4,10 @@ namespace App\Filament\Resources\Levels\Pages;
 
 use App\Filament\Resources\Levels\LevelResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditLevel extends EditRecord
+class EditLevel extends PeopleEditRecord
 {
     use GovernedEdit;
 

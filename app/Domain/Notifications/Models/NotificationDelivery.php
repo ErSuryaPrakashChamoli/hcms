@@ -10,18 +10,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /** One message to one person on one channel: the tracking record. Not audited (volume). */
-#[Fillable(['tenant_id', 'user_id', 'channel', 'event', 'subject', 'body', 'status', 'recipient', 'source_type', 'source_id', 'sent_at', 'read_at', 'error'])]
+#[Fillable(['tenant_id', 'user_id', 'channel', 'event', 'subject', 'body', 'status', 'recipient', 'source_type', 'source_id', 'sent_at', 'read_at', 'error', 'correlation_id', 'dedupe_key', 'resend_count'])]
 class NotificationDelivery extends Model
 {
     use BelongsToTenant;
 
-    public const STATUSES = ['queued' => 'Queued', 'sent' => 'Sent', 'failed' => 'Failed', 'read' => 'Read'];
+    public const STATUSES = ['queued' => 'Queued', 'sending' => 'Sending', 'sent' => 'Sent', 'failed' => 'Failed', 'read' => 'Read'];
 
     protected function casts(): array
     {
         return [
             'sent_at' => 'datetime',
             'read_at' => 'datetime',
+            'resend_count' => 'integer',
         ];
     }
 

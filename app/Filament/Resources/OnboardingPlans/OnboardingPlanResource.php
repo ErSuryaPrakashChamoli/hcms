@@ -58,7 +58,9 @@ class OnboardingPlanResource extends Resource
             ->filters([SelectFilter::make('status')->options(OnboardingPlan::STATUSES)->default('in_progress')])
             ->defaultSort('anchor_date', 'desc')
             ->recordActions([
-                Action::make('open')->label('Open')->icon('heroicon-m-arrow-top-right-on-square')->url(fn (OnboardingPlan $record) => EmployeeResource::getUrl('view', ['record' => $record->employee_id])),
+                // UX.19: offered only when the Employee 360 opens for this person (its own record check).
+                Action::make('open')->label('Open')->icon('heroicon-m-arrow-top-right-on-square')->url(fn (OnboardingPlan $record) => EmployeeResource::getUrl('view', ['record' => $record->employee_id]))
+                    ->visible(fn (OnboardingPlan $record) => $record->employee !== null && EmployeeResource::canView($record->employee)),
             ]);
     }
 

@@ -1,0 +1,278 @@
+{
+ "phase": "SaaS.5",
+ "target": "disposable hcm_saas5_ui_showcase (UxShowcaseSeeder + fictional plans), served on 127.0.0.1:8094, dropped afterwards; final assets",
+ "browser": "Chromium (Playwright), 1440x900 light and dark, 390x844",
+ "saas5_checks": [
+  {
+   "name": "dark mode: the draft warning is shown",
+   "ok": true
+  },
+  {
+   "name": "operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "limits shown in their unit",
+   "ok": true
+  },
+  {
+   "name": "\"not set\" and \"not included\" are distinct labels",
+   "ok": true
+  },
+  {
+   "name": "measurement is stated honestly per limit",
+   "ok": true
+  },
+  {
+   "name": "an inconsistent draft is explained before publishing",
+   "ok": true
+  },
+  {
+   "name": "no price anywhere on the page",
+   "ok": true
+  },
+  {
+   "name": "publishing an inconsistent package is refused with the reason",
+   "ok": true
+  },
+  {
+   "name": "the draft stays a draft",
+   "ok": true
+  },
+  {
+   "name": "limit options say \"Not set (no agreed limit)\", \"Unlimited\", \"Limited to\u2026\"",
+   "ok": true
+  },
+  {
+   "name": "limit help explains measurement and module dependence",
+   "ok": true
+  },
+  {
+   "name": "fixing the draft in the editor clears the warning",
+   "ok": true
+  },
+  {
+   "name": "the consistent package publishes",
+   "ok": true
+  },
+  {
+   "name": "entitlements page: limit values in units, \"not set\", \"not included\", unmeasured flagged",
+   "ok": true
+  },
+  {
+   "name": "phone: plans has no page-level horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "phone: entitlements has no page-level horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "tenant administrator: platform commercial pages refused (403)",
+   "ok": true
+  }
+ ],
+ "saas5_axe_wcag2a_2aa_21a_21aa": {
+  "plan detail with draft warning (dark)": [],
+  "plan detail with draft warning": [],
+  "edit draft modal": [],
+  "tenant entitlements": [],
+  "phone plans": [],
+  "phone entitlements": []
+ },
+ "saas4_regression_checks": [
+  {
+   "name": "operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "plans page opens",
+   "ok": true
+  },
+  {
+   "name": "plans list renders all plans with derived states",
+   "ok": true
+  },
+  {
+   "name": "plan detail renders versions, states and the capability matrix",
+   "ok": true
+  },
+  {
+   "name": "plan audit trail shows actor, action and reason",
+   "ok": true
+  },
+  {
+   "name": "draft behaviour: draft actions offered, no second draft",
+   "ok": true
+  },
+  {
+   "name": "capability form lists the commercial catalogue (30 capabilities)",
+   "ok": true,
+   "detail": 30
+  },
+  {
+   "name": "protected capability offers include / not in plan only",
+   "ok": true,
+   "detail": [
+    "Not in plan",
+    "Included"
+   ]
+  },
+  {
+   "name": "unprotected capability can also be excluded",
+   "ok": true,
+   "detail": [
+    "Not in plan",
+    "Included",
+    "Excluded"
+   ]
+  },
+  {
+   "name": "modal labels: every capability select has a label",
+   "ok": true
+  },
+  {
+   "name": "protected limit of zero: the browser refuses it (min 1)",
+   "ok": true
+  },
+  {
+   "name": "protected limit of zero: the server refuses it too, with a visible message",
+   "ok": true,
+   "detail": "max: employees field must be at least 1"
+  },
+  {
+   "name": "Escape closes the modal",
+   "ok": true
+  },
+  {
+   "name": "published version: no edit action, only a new draft",
+   "ok": true
+  },
+  {
+   "name": "retired version: shown as retired, cannot be retired again",
+   "ok": true
+  },
+  {
+   "name": "tenant without a plan stays UNKNOWN (TENANT_UNCONFIGURED), never DENY",
+   "ok": true
+  },
+  {
+   "name": "assignable versions are published only (no draft, no retired)",
+   "ok": true,
+   "detail": [
+    "\n                                                                    Select an option                                                            ",
+    "\n                                    starter v1 \u00b7 Starter (fictional) \u00b7 on sale 2026-10-06 to open                                ",
+    "\n                                    growth v1 \u00b7 Growth (fictional) \u00b7 on sale 2026-10-06 to open                                "
+   ]
+  },
+  {
+   "name": "reason is mandatory: the browser refuses an empty reason",
+   "ok": true
+  },
+  {
+   "name": "reason is mandatory: the server refuses it too, with a visible message",
+   "ok": true
+  },
+  {
+   "name": "reason shorter than 5 characters is refused by the server",
+   "ok": true
+  },
+  {
+   "name": "operator assigned a plan; effective date and history visible",
+   "ok": true
+  },
+  {
+   "name": "tenant on a plan resolves through the engine; NOT_IN_PLAN explained",
+   "ok": true
+  },
+  {
+   "name": "platform audit trail: PLAN_ASSIGNED with actor, reason, effective date",
+   "ok": true
+  },
+  {
+   "name": "NO_PLAN_IN_FORCE explained after a plan ends",
+   "ok": true
+  },
+  {
+   "name": "keyboard reaches the plan actions",
+   "ok": true,
+   "detail": [
+    "Security policy",
+    "Inbound events",
+    "API keys",
+    "Plans",
+    "All in Platform\n12",
+    "New plan",
+    "Edit details",
+    "Edit draft capabilities",
+    "Publish draft",
+    "Retire version"
+   ]
+  },
+  {
+   "name": "focused elements show a focus indicator",
+   "ok": true,
+   "detail": []
+  },
+  {
+   "name": "phone: plans page has no page-level horizontal scroll",
+   "ok": true,
+   "detail": 0
+  },
+  {
+   "name": "phone: entitlements page has no page-level horizontal scroll",
+   "ok": true,
+   "detail": 0
+  },
+  {
+   "name": "tenant administrator: signs in, HCM home works, platform commercial pages refused (403), no Platform menu",
+   "ok": true,
+   "detail": {
+    "signed": true,
+    "home": 200,
+    "plans": 403,
+    "ents": 403,
+    "at": "/admin/platform-entitlements?tenant=1"
+   }
+  },
+  {
+   "name": "tenant audit trail shows the plan assignment (tenant chain)",
+   "ok": true,
+   "detail": 200
+  },
+  {
+   "name": "manager: signs in, HCM home works, platform commercial pages refused (403), no Platform menu",
+   "ok": true,
+   "detail": {
+    "signed": true,
+    "home": 200,
+    "plans": 403,
+    "ents": 403,
+    "at": "/admin/platform-entitlements?tenant=1"
+   }
+  },
+  {
+   "name": "employee: signs in, HCM home works, platform commercial pages refused (403), no Platform menu",
+   "ok": true,
+   "detail": {
+    "signed": true,
+    "home": 200,
+    "plans": 403,
+    "ents": 403,
+    "at": "/admin/platform-entitlements?tenant=1"
+   }
+  }
+ ],
+ "saas4_regression_axe": {
+  "plans list": [],
+  "plan detail": [],
+  "edit draft modal": [],
+  "assign modal (with validation errors)": [
+   "color-contrast (serious, 1): .fi-fo-field-wrp-error-message"
+  ],
+  "tenant entitlements": [],
+  "phone plans": [],
+  "phone entitlements": []
+ },
+ "console_errors": []
+}

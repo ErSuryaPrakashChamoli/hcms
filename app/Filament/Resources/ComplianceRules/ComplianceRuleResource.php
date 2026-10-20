@@ -8,6 +8,7 @@ use App\Domain\Compliance\Services\RuleVerifications;
 use App\Domain\Identity\Models\User;
 use App\Filament\Resources\ComplianceRules\Pages\ListComplianceRules;
 use App\Filament\Resources\StatutoryRegistrations\StatutoryRegistrationResource;
+use App\Support\Storage\StagedUpload;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -23,7 +24,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use UnitEnum;
 
@@ -101,15 +101,15 @@ class ComplianceRuleResource extends Resource
                 Action::make('attachEvidence')->label('Attach evidence document')->icon('heroicon-m-paper-clip')
                     ->visible(fn (ComplianceRule $record) => in_array($record->verification_status, [ComplianceRule::DRAFT, ComplianceRule::REVIEW], true) && self::platformAdmin())
                     ->schema([
-                        FileUpload::make('file')->label('Official document (PDF / saved page)')->disk('local')->directory('compliance-evidence/uploads')->required()->maxSize(20480),
+                        FileUpload::make('file')->label('Official document (PDF / saved page)')->disk(StagedUpload::disk())->directory('compliance-evidence/uploads')->required()->maxSize(20480),
                         DatePicker::make('retrieved_at')->label('Retrieved on')->required()->default(now())->maxDate(now()),
                         TextInput::make('source_url')->label('Retrieved from (URL)')->url(),
                     ])
                     ->action(function (ComplianceRule $record, array $data) {
                         StatutoryRegistrationResource::attempt(function () use ($record, $data) {
-                            $contents = (string) Storage::disk('local')->get($data['file']);
+                            $contents = (string) StagedUpload::storage()->get($data['file']);
                             app(RuleVerifications::class)->attachEvidence($record, $contents, basename($data['file']), $data['retrieved_at'], $data['source_url'] ?? null, self::user());
-                            Storage::disk('local')->delete($data['file']);
+                            StagedUpload::storage()->delete($data['file']);
                         }, 'Evidence attached');
                     }),
                 Action::make('publishCorrection')->label('Publish corrected version')->icon('heroicon-m-document-duplicate')->requiresConfirmation()

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LearningPaths;
 
 use App\Domain\Learning\Models\LearningPath;
+use App\Domain\Learning\Services\LearningPaths;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\LearningPaths\Pages\CreateLearningPath;
@@ -10,8 +11,11 @@ use App\Filament\Resources\LearningPaths\Pages\EditLearningPath;
 use App\Filament\Resources\LearningPaths\Pages\ListLearningPaths;
 use App\Filament\Resources\LearningPaths\RelationManagers\CoursesRelationManager;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\LearningActions;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -46,6 +50,10 @@ class LearningPathResource extends Resource
             TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
             Textarea::make('description')->rows(2)->columnSpanFull(),
             Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            Repeater::make('milestones')->columnSpanFull()->columns(2)->default([])->schema([
+                TextInput::make('title')->required()->maxLength(255),
+                TextInput::make('after_position')->label('After item #')->numeric()->minValue(1),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }
@@ -57,9 +65,17 @@ class LearningPathResource extends Resource
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code'),
                 TextColumn::make('items_count')->counts('items')->label('Courses'),
+                TextColumn::make('currentVersion.version')->label('Version')->prefix('v')->placeholder('Unpublished'),
                 TextColumn::make('status')->badge(),
             ])
-            ->recordActions([EditAction::make()->visible(fn () => auth()->user()->can('learning.manage'))]);
+            ->recordActions([
+                EditAction::make()->visible(fn () => auth()->user()->can('learning.manage')),
+                Action::make('publish')->label('Publish version')->icon(Heroicon::OutlinedRocketLaunch)->color('success')
+                    ->visible(fn () => auth()->user()->can('learning.manage'))
+                    ->modalDescription('Snapshots the items (pinned to their current course versions), prerequisites and milestones. Learners keep the version they enrolled on.')
+                    ->requiresConfirmation()
+                    ->action(fn (LearningPath $record) => LearningActions::run(fn () => app(LearningPaths::class)->publish($record, auth()->user()), fn ($v) => "Version {$v->version} published")),
+            ]);
     }
 
     public static function getRelations(): array

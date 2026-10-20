@@ -5,10 +5,10 @@ namespace App\Filament\Resources\TrainingSessions\Pages;
 use App\Domain\Learning\Services\TrainingSessions;
 use App\Filament\Resources\TrainingSessions\TrainingSessionResource;
 use App\Filament\Support\LearningActions;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\Action;
-use Filament\Resources\Pages\EditRecord;
 
-class EditTrainingSession extends EditRecord
+class EditTrainingSession extends PeopleEditRecord
 {
     protected static string $resource = TrainingSessionResource::class;
 

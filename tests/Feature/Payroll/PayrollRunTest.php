@@ -2,20 +2,19 @@
 
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Audit\Models\AuditEvent;
+use App\Domain\Compensation\Contracts\CompensationOutput;
+use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Lifecycle\Enums\LifecycleState;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollAdjustment;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\Payslip;
-use App\Domain\Payroll\Models\SalaryStructure;
 use App\Domain\Payroll\Services\BankFile;
 use App\Domain\Payroll\Services\PayrollCalculator;
 use App\Domain\Payroll\Services\PayrollRuns;
 use App\Domain\Payroll\Services\Payslips;
-use App\Domain\Payroll\Services\Salaries;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/PayrollTestHelpers.php';
@@ -34,17 +33,15 @@ beforeEach(function () {
 
 it('keeps salary history effective-dated and audited as sensitive', function () {
     $employee = salariedEmployee(600000);
-    $structure = SalaryStructure::query()->where('code', 'STANDARD')->first();
-
-    $revised = app(Salaries::class)->assign($employee, $structure, 720000, '2026-07-01', ['CONV' => 1600], 'revision', 'Annual increment');
+    $revised = compensate($employee, 720000, '2026-07-01', ['CONV' => 1600], 'revision', 'Annual increment');
 
     $history = EmployeeSalaryAssignment::query()->where('employee_id', $employee->id)->orderBy('effective_from')->get();
     expect($history)->toHaveCount(2)
         ->and($history[0]->effective_to->toDateString())->toBe('2026-06-30')
-        ->and(app(Salaries::class)->current($employee, '2026-06-15')->id)->toBe($history[0]->id)
-        ->and(app(Salaries::class)->current($employee, '2026-09-30')->id)->toBe($revised->id);
+        ->and(app(CompensationOutput::class)->on($employee, '2026-06-15')->assignmentId)->toBe($history[0]->id)
+        ->and(app(CompensationOutput::class)->on($employee, '2026-09-30')->assignmentId)->toBe($revised->id);
 
-    expect(fn () => app(Salaries::class)->assign($employee, $structure, 800000, '2026-07-01'))->toThrow(RuntimeException::class, 'already starts');
+    expect(fn () => compensate($employee, 800000, '2026-07-01'))->toThrow(RuntimeException::class, 'already starts');
 
     $event = AuditEvent::query()->where('action', 'SALARY_CHANGED')->where('entity_id', $revised->id)->with('fieldChanges')->first();
     expect($event)->not->toBeNull()->and($event->fieldChanges->firstWhere('field', 'ctc_annual')->is_sensitive)->toBeTrue();
@@ -151,7 +148,7 @@ it('blocks validation on missing salaries and formula errors while warnings pass
         ->and($run->exception_count)->toBe(2);
     expect(fn () => $this->runs->validate($run))->toThrow(RuntimeException::class, '1 employee(s) have blocking exceptions');
 
-    app(Salaries::class)->assign($noSalary, SalaryStructure::query()->where('code', 'STANDARD')->first(), 300000, '2026-01-01');
+    compensate($noSalary, 300000, '2026-01-01', []);
     $run = $this->runs->validate($this->runs->calculate($run->refresh()));
     expect($run->status)->toBe('validated');
 });

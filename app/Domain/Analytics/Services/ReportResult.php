@@ -17,5 +17,7 @@ final class ReportResult
         public readonly bool $grouped,
         public readonly array $chart = ['labels' => [], 'series' => []],
         public readonly ?float $kpi = null,
+        // Phase 14: true when more rows matched the filters than the per-run cap; never silent.
+        public readonly bool $truncated = false,
     ) {}
 }

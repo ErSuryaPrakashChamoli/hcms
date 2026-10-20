@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\Learning\Models\LearningCompletion;
 use App\Domain\Learning\Models\LearningEnrolment;
 use App\Filament\Resources\LearningEnrolments\LearningEnrolmentResource;
 use Filament\Actions\Action;
@@ -27,10 +28,16 @@ class LearningRelationManager extends RelationManager
         $employee = $this->getOwnerRecord();
 
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with('course'))
-            ->description('Certificates: '.$employee->learningCertificates()->where('status', '!=', 'expired')->count().' valid')
+            ->modifyQueryUsing(fn ($query) => $query->with(['course', 'courseVersion']))
+            ->description(sprintf('Completed %d · in progress %d · overdue %d · certificates valid %d · learning hours %.1f',
+                $employee->learningEnrolments()->where('status', 'completed')->count(),
+                $employee->learningEnrolments()->whereIn('status', ['assigned', 'enrolled', 'approved', 'in_progress'])->count(),
+                $employee->learningEnrolments()->where('status', 'overdue')->count(),
+                $employee->learningCertificates()->whereIn('status', ['valid', 'expiring'])->count(),
+                (float) LearningCompletion::query()->where('employee_id', $employee->id)->where('status', 'final')->sum('hours')))
             ->columns([
                 TextColumn::make('course.title')->label('Course'),
+                TextColumn::make('courseVersion.version')->label('Version')->prefix('v')->placeholder('—'),
                 TextColumn::make('course.category')->label('Category')->badge()->color('gray'),
                 TextColumn::make('status')->badge()->color(fn (string $state) => LearningEnrolmentResource::statusColor($state))->formatStateUsing(fn (string $state) => config("peopleos.learning.enrolment_statuses.{$state}", $state)),
                 TextColumn::make('progress')->suffix('%'),

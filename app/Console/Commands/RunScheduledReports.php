@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Domain\Analytics\Services\ReportSchedules;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 
 class RunScheduledReports extends Command
@@ -15,11 +16,12 @@ class RunScheduledReports extends Command
 
     public function handle(ReportSchedules $schedules, TenantContext $tenants): int
     {
+        $runner = TenantRunner::for($this);
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each(fn (Tenant $tenant) => $tenants->runAs($tenant, fn () => $this->info("{$tenant->slug}: ".$schedules->runDue().' schedule(s) run')));
+            ->each($runner->isolate(fn (Tenant $tenant) => $tenants->runAs($tenant, fn () => $this->info("{$tenant->slug}: ".$schedules->runDue().' schedule(s) run'))));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

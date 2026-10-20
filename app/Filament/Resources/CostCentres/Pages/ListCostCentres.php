@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\CostCentres\Pages;
 
 use App\Filament\Resources\CostCentres\CostCentreResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListCostCentres extends ListRecords
+class ListCostCentres extends PeopleListRecords
 {
     protected static string $resource = CostCentreResource::class;
 

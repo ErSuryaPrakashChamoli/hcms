@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Shifts\Pages;
 
 use App\Filament\Resources\Shifts\ShiftResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateShift extends CreateRecord
+class CreateShift extends PeopleCreateRecord
 {
     protected static string $resource = ShiftResource::class;
 }

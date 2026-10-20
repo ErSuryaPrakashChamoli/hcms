@@ -4,10 +4,10 @@ namespace App\Filament\Resources\WebhookEndpoints\Pages;
 
 use App\Filament\Resources\WebhookEndpoints\WebhookEndpointResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditWebhookEndpoint extends EditRecord
+class EditWebhookEndpoint extends PeopleEditRecord
 {
     use GovernedEdit;
 

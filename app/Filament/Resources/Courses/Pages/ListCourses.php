@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Courses\Pages;
 
 use App\Filament\Resources\Courses\CourseResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListCourses extends ListRecords
+class ListCourses extends PeopleListRecords
 {
     protected static string $resource = CourseResource::class;
 

@@ -4,6 +4,7 @@ namespace App\Domain\Enterprise\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Identity\Models\Role;
+use App\Support\Http\OutboundUrlGuard;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -20,7 +21,15 @@ class SsoConnection extends Model
 
     protected static function booted(): void
     {
-        static::saving(fn (self $c) => $c->slug = Str::slug($c->slug ?: $c->name));
+        static::saving(function (self $c) {
+            $c->slug = Str::slug($c->slug ?: $c->name);
+            // Production readiness closure: the server-side IdP endpoints must be allowed destinations.
+            foreach (['token_url', 'userinfo_url'] as $field) {
+                if ($c->isDirty($field) && filled($c->{$field})) {
+                    app(OutboundUrlGuard::class)->staticParts((string) $c->{$field});
+                }
+            }
+        });
     }
 
     protected function casts(): array

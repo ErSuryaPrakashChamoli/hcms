@@ -1,0 +1,133 @@
+{
+ "pass": "SaaS.7 configuration",
+ "date": "2026-10-08",
+ "environment": "disposable MySQL database hcm_saas7g_ui_showcase (UxShowcaseSeeder + fictional billing data; statutory dataset 2026.10 loaded by one operator and verified by another), php artisan serve on 127.0.0.1:8094, Chromium (Playwright), axe-core WCAG 2 A/AA + 2.1 A/AA; dropped afterwards",
+ "operators": "two platform operators with password + TOTP (credentials generated into a 0600 scratch file, never printed)",
+ "summary": {
+  "checks": 26,
+  "passed": 26,
+  "axe_states": 11,
+  "axe_violations": 0,
+  "console_errors": 0
+ },
+ "checks": [
+  {
+   "name": "maker operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "Commercial policies opens",
+   "ok": true
+  },
+  {
+   "name": "policy: value in force with its source, the pending change and the decision behind it",
+   "ok": true
+  },
+  {
+   "name": "statute, policy and contract kept apart; statutory parameter with source",
+   "ok": true
+  },
+  {
+   "name": "change history from the audit chain: dataset verified, rules verified, policy proposed (who, before → after, why)",
+   "ok": true
+  },
+  {
+   "name": "Tax & invoicing opens",
+   "ok": true
+  },
+  {
+   "name": "statutory dataset: 36 shipped, 36 loaded, 35 verified, 1 pending (Greece)",
+   "ok": true
+  },
+  {
+   "name": "India rule current with its rates, export conditions and the SAC still pending",
+   "ok": true
+  },
+  {
+   "name": "every rule shows its state: current, scheduled, superseded or pending verification",
+   "ok": true
+  },
+  {
+   "name": "official sources are https links opened safely",
+   "ok": true
+  },
+  {
+   "name": "US coverage per state (Florida pending, California current) and EU per member state",
+   "ok": true
+  },
+  {
+   "name": "the selling entity shows its dated LUT registration",
+   "ok": true
+  },
+  {
+   "name": "dataset load and verification, rule versioning and rejection are actions",
+   "ok": true
+  },
+  {
+   "name": "Billing catalogue opens",
+   "ok": true
+  },
+  {
+   "name": "price matrix: India monthly current, every unpriced combination NO PRICE CONFIGURED (never converted)",
+   "ok": true
+  },
+  {
+   "name": "Client A: deal with contract reference, minimum and discount, current",
+   "ok": true
+  },
+  {
+   "name": "Client A: today's price comes from the agreed price, and periods are billed at it",
+   "ok": true
+  },
+  {
+   "name": "Gamma (USD market, no USD price): NO PRICE CONFIGURED; its fixed annual deal pending approval",
+   "ok": true
+  },
+  {
+   "name": "India draft cannot be issued until the SAC is confirmed (reason code shown)",
+   "ok": true
+  },
+  {
+   "name": "pending: negotiated price publication and policy change",
+   "ok": true
+  },
+  {
+   "name": "maker: own deal request shows payload, no Approve",
+   "ok": true
+  },
+  {
+   "name": "checker operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "approved deal is scheduled from its date (not yet in force)",
+   "ok": true
+  },
+  {
+   "name": "approved policy change is scheduled; today stays 15 days",
+   "ok": true
+  },
+  {
+   "name": "phone: no page-level horizontal scroll (policies, tax, billing account)",
+   "ok": true
+  },
+  {
+   "name": "tenant administrator: commercial policies and billing pages refused (403), no platform link",
+   "ok": true
+  }
+ ],
+ "axe": {
+  "commercial policies": [],
+  "propose change modal": [],
+  "tax & invoicing": [],
+  "new rule version modal": [],
+  "billing catalogue": [],
+  "billing account (deal)": [],
+  "billing account (no price)": [],
+  "commercial policies (dark)": [],
+  "tax & invoicing (dark)": [],
+  "phone commercial policies": [],
+  "phone billing account": []
+ },
+ "console_errors": []
+}

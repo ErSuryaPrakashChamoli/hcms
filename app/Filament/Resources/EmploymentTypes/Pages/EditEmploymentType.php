@@ -4,10 +4,10 @@ namespace App\Filament\Resources\EmploymentTypes\Pages;
 
 use App\Filament\Resources\EmploymentTypes\EmploymentTypeResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditEmploymentType extends EditRecord
+class EditEmploymentType extends PeopleEditRecord
 {
     use GovernedEdit;
 

@@ -33,7 +33,9 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Phase 14: private files are served only through authorised, audited download routes,
+            // never through framework temporary URLs.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
@@ -56,7 +58,10 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
+            // Production readiness closure: objects are private (no public ACL, no public URLs: downloads stream
+            // through authorised, audited routes), and storage failures throw instead of silently returning false.
+            'visibility' => 'private',
+            'throw' => true,
             'report' => false,
         ],
 

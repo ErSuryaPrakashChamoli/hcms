@@ -10,19 +10,32 @@ use App\Domain\Grievance\Models\GrievanceCategory;
 use App\Domain\Grievance\Models\GrievanceNote;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
-use App\Domain\ServiceDesk\Services\ServiceDesk;
+use App\Support\Numbering\NumberSequences;
+use App\Support\Storage\FileSafety;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Grievance handling (§49). Confidential by design: access is the assignee, explicitly granted users,
- * holders of the category's handler roles, and (for non-anonymous cases) the employee who raised it.
- * Every read of a case is audited as sensitive access.
+ * Grievance handling (§49, extended in Phase 12). Confidential by design. A case is open to:
+ * - its assignee;
+ * - explicitly granted users;
+ * - holders of the category's handler roles;
+ * - for non-anonymous cases, the employee who raised it;
+ * - for non-confidential categories only, grievance managers within their organisation scope.
+ *
+ * There is no blanket access: not for HR roles, not for platform administrators, not for managers,
+ * mentors, buddies or project leads. Every read of a case is audited as sensitive access, and case
+ * numbers come from a locked sequence.
  */
 final class Grievances
 {
-    public function __construct(private readonly AuditRecorder $audit, private readonly ServiceDesk $numbers) {}
+    public function __construct(private readonly AuditRecorder $audit) {}
 
     public function raise(GrievanceCategory $category, ?Employee $employee, string $subject, string $details, string $severity = 'medium', bool $anonymous = false, ?User $raiser = null): Grievance
     {
@@ -32,10 +45,11 @@ final class Grievances
         if (! $anonymous && $employee === null) {
             throw new RuntimeException('A named grievance needs the employee.');
         }
+        app(NumberSequences::class)->ensure('GRV', NumberSequences::highest(Grievance::class));
 
         return DB::transaction(function () use ($category, $employee, $subject, $details, $severity, $anonymous, $raiser) {
             $grievance = Grievance::create([
-                'number' => $this->numbers->nextNumber('GRV'),
+                'number' => app(NumberSequences::class)->next('GRV', NumberSequences::highest(Grievance::class)),
                 'grievance_category_id' => $category->id,
                 'employee_id' => $anonymous ? null : $employee?->id,
                 'is_anonymous' => $anonymous,
@@ -72,9 +86,6 @@ final class Grievances
 
     public function canAccess(User $user, Grievance $grievance): bool
     {
-        if ($user->is_platform_admin) {
-            return true;
-        }
         if ($grievance->assignee_id === $user->id || in_array($user->id, $grievance->access_user_ids ?? [], true)) {
             return true;
         }
@@ -83,9 +94,9 @@ final class Grievances
         if ($handlerRoles !== [] && $user->roles()->whereIn('roles.id', $handlerRoles)->exists()) {
             return true;
         }
-        // Grievance managers see non-confidential cases, and confidential ones only where no handler
-        // roles are configured yet (otherwise nobody could work the case).
-        if ($category && (! $category->is_confidential || $handlerRoles === []) && $user->hasPermission('grievance.manage')) {
+        // Grievance managers see non-confidential cases in their organisation scope, and confidential
+        // ones only where no handler roles are configured yet (otherwise nobody could work the case).
+        if ($category && (! $category->is_confidential || $handlerRoles === []) && $user->hasPermission('grievance.manage') && $this->inScope($user, $grievance)) {
             return true;
         }
         if (! $grievance->is_anonymous && $grievance->employee_id && Employee::query()->where('user_id', $user->id)->where('id', $grievance->employee_id)->exists()) {
@@ -93,6 +104,53 @@ final class Grievances
         }
 
         return false;
+    }
+
+    /** Anonymous cases have no employee to scope by; named cases follow the employee's organisation scope. */
+    private function inScope(User $user, Grievance $grievance): bool
+    {
+        if ($grievance->employee_id === null) {
+            return true;
+        }
+        $employee = Employee::query()->withoutGlobalScope(AccessScope::class)->find($grievance->employee_id);
+
+        return $employee !== null && app(AccessScopes::class)->allows($user, $employee);
+    }
+
+    /**
+     * Phase 14: evidence moves from the upload area into the case's tenant folder
+     * (`tenants/{tenant}/grievances/{case}/{ulid}.{ext}`). The file type and size are checked against the
+     * document rules, and its SHA-256 is recorded and verified on every download. The case file never
+     * points at an arbitrary path.
+     *
+     * @return array{attachment_path: string, attachment_name: string, attachment_sha256: string}
+     */
+    private function storeEvidence(Grievance $grievance, string $upload, ?string $name): array
+    {
+        $disk = Storage::disk(config('peopleos.documents.disk', 'local'));
+        $source = ltrim(str_replace(['\\', '..'], ['/', ''], $upload), '/');
+        $directory = "tenants/{$grievance->tenant_id}/grievances/{$grievance->id}";
+        if (! (str_starts_with($source, 'grievances/') || str_starts_with($source, $directory.'/')) || ! $disk->exists($source)) {
+            throw new RuntimeException('The evidence upload was not found.');
+        }
+        $original = $name ?? basename($source);
+        try {
+            $extension = FileSafety::assertAllowed($original, (int) $disk->size($source), FileSafety::sniff((string) $disk->get($source)));
+        } catch (RuntimeException $e) {
+            $disk->delete($source);
+            throw $e;
+        }
+        $path = $directory.'/'.Str::ulid().'.'.$extension;
+        $disk->move($source, $path);
+
+        return ['attachment_path' => $path, 'attachment_name' => Str::limit($original, 250, ''), 'attachment_sha256' => hash('sha256', (string) $disk->get($path))];
+    }
+
+    /** Temporary signed link to a case-file attachment; the route re-authorises the case and the note's visibility. */
+    public function attachmentUrl(GrievanceNote $note, int $minutes = 15): ?string
+    {
+        return $note->attachment_path === null ? null
+            : URL::temporarySignedRoute('grievances.attachment', now()->addMinutes($minutes), ['grievance' => $note->grievance_id, 'note' => $note->id]);
     }
 
     public function recordAccess(Grievance $grievance, User $user): void
@@ -115,6 +173,14 @@ final class Grievances
 
     public function grantAccess(Grievance $grievance, User $user, string $reason, ?User $actor = null): Grievance
     {
+        // Phase 12: only someone working the case grants access, with a reason, to a grievance viewer.
+        $actor ??= auth()->user();
+        if ($actor === null || ! $this->canAccess($actor, $grievance) || ! ($actor->hasPermission('grievance.manage') || (int) $grievance->assignee_id === (int) $actor->id)) {
+            throw new RuntimeException('Only the case handler or a grievance manager with access can grant access.');
+        }
+        if (blank($reason) || ! $user->isActive() || ! ($user->hasPermission('grievance.view') || $user->hasPermission('grievance.manage'))) {
+            throw new RuntimeException('Access is granted, with a reason, only to an active grievance viewer.');
+        }
         $ids = collect($grievance->access_user_ids ?? [])->push($user->id)->unique()->values()->all();
         $grievance->withAuditReason($reason)->update(['access_user_ids' => $ids]);
         $this->audit->record(AuditAction::PermissionChanged, 'grievance', $grievance, [['field' => 'access_user_ids', 'before' => null, 'after' => $user->email]], $reason, actor: $actor);
@@ -128,7 +194,8 @@ final class Grievances
             throw new RuntimeException('The case is closed.');
         }
 
-        $note = GrievanceNote::create(['grievance_id' => $grievance->id, 'author_id' => $author->id, 'type' => $type, 'body' => $body, 'visible_to_employee' => $visibleToEmployee || $type === 'employee', 'attachment_path' => $attachmentPath, 'attachment_name' => $attachmentName]);
+        $evidence = $attachmentPath !== null ? $this->storeEvidence($grievance, $attachmentPath, $attachmentName) : ['attachment_path' => null, 'attachment_name' => null, 'attachment_sha256' => null];
+        $note = GrievanceNote::create(['grievance_id' => $grievance->id, 'author_id' => $author->id, 'type' => $type, 'body' => $body, 'visible_to_employee' => $visibleToEmployee || $type === 'employee', ...$evidence]);
 
         if ($type === 'action' && in_array($grievance->status, ['under_review', 'investigating'], true)) {
             $grievance->update(['status' => 'action_taken']);

@@ -4,10 +4,12 @@ namespace App\Domain\Payroll\Services;
 
 use App\Domain\Attendance\Services\AttendanceOutput;
 use App\Domain\Attendance\Support\AttendanceDay;
+use App\Domain\Compensation\Contracts\CompensationOutput;
+use App\Domain\Compensation\Support\CompensationSegment;
+use App\Domain\Compensation\Support\PayrollCompensation;
 use App\Domain\Compliance\Services\StatutoryEngine;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Leave\Services\LeaveOutput;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollAdjustment;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\SalaryComponent;
@@ -19,12 +21,13 @@ use RuntimeException;
 /**
  * Payroll calculation engine (Phase 4). Deterministic pipeline for one employee and one period:
  *
- *   eligibility window (joining / exit) → salary segments (every assignment effective in the
- *   period, so mid-month revisions are split) → loss of pay from AttendanceOutput (absent days)
+ *   eligibility window (joining / exit) → salary segments (every approved compensation in force in
+ *   the period, read through the Compensation contract, so mid-month revisions are split) → loss of pay from AttendanceOutput (absent days)
  *   and LeaveOutput (unpaid leave dates) + manual LOP → proration with an explicit divisor →
  *   earnings per segment → approved adjustments → statutory (compliance rules) → net → exceptions.
  *
- * It never recalculates attendance or leave; it consumes their output contracts. Every line keeps
+ * It never recalculates attendance or leave and never reads or writes compensation tables; it consumes
+ * the AttendanceOutput, LeaveOutput and CompensationOutput contracts. Every line keeps
  * its basis (segments, formula, divisor, rule), and the entry keeps the inputs used.
  */
 class PayrollCalculator
@@ -32,13 +35,17 @@ class PayrollCalculator
     /**
      * 2.1 = 2.0 + Phase 5 establishment-resolved statutory context recorded on each entry.
      * 2.2 = 2.1 + Phase 7 salary TDS resolved by the payment date (rule, tax year, year-to-date).
+     * 2.3 = 2.2 + Phase 11 compensation read through the CompensationOutput contract (approved
+     *       compensation only; the contract version and a fingerprint of the compensation used are
+     *       recorded, and finalisation refuses an entry whose compensation changed since). Amounts,
+     *       proration and statutory treatment are unchanged.
      */
-    public const VERSION = 'payroll-2.2';
+    public const VERSION = 'payroll-2.3';
 
     public const BLOCKING = ['no_salary', 'no_structure', 'negative_net', 'formula_error', 'invalid_component'];
 
     public function __construct(
-        private readonly Salaries $salaries,
+        private readonly CompensationOutput $compensation,
         private readonly FormulaEngine $formulas,
         private readonly StatutoryEngine $statutory,
         private readonly SettingsRepository $settings,
@@ -60,9 +67,10 @@ class PayrollCalculator
             $end = $employee->exit_date->copy()->startOfDay();
         }
 
-        // 2. Salary segments.
-        $segments = $end->lt($start) ? collect() : $this->segments($employee, $start, $end);
-        $last = $segments->last()['assignment'] ?? null;
+        // 2. Salary segments: approved compensation for the period, clipped to the eligibility window.
+        $compensation = $this->compensation->forPayroll($employee, $period->start_date, $period->end_date);
+        $segments = $end->lt($start) ? collect() : $this->segments($compensation, $start, $end);
+        $last = $segments->last();
         $c = new PayrollComputation($employee, $period, $last);
         $c->daysInPeriod = $period->daysInPeriod();
 
@@ -80,6 +88,7 @@ class PayrollCalculator
         $c->paidDays = round(max(0, $eligibleUnits - $lop), 2);
         $c->inputs = [
             'calculation_version' => self::VERSION,
+            'compensation' => ['contract' => $compensation->contractVersion, 'fingerprint' => $compensation->fingerprint],
             'eligible_from' => $start->toDateString(), 'eligible_to' => $end->toDateString(),
             'proration_basis' => $basis, 'divisor' => $divisor, 'eligible_units' => $eligibleUnits,
             'lop_by_date' => $lopByDate, 'manual_lop' => $manualLop,
@@ -101,43 +110,42 @@ class PayrollCalculator
         $segmentInputs = [];
 
         foreach ($segments as $i => $segment) {
-            /** @var EmployeeSalaryAssignment $assignment */
-            $assignment = $segment['assignment'];
-            $assignment->loadMissing('structure.items.component');
-            $items = $assignment->structure->items->filter(fn ($item) => $item->component && $item->component->status->value === 'active');
+            /** @var CompensationSegment $segment */
+            $pay = $segment->compensation;
+            $items = $segment->components->filter(fn ($line) => $line->component->status->value === 'active');
 
             if ($items->isEmpty()) {
-                $c->exception('no_structure', "Salary structure {$assignment->structure->code} has no active components.");
+                $c->exception('no_structure', "Salary structure {$pay->structureCode} has no active components.");
 
                 return $c;
             }
 
-            $segLop = array_sum(array_filter($lopByDate, fn ($date) => $date >= $segment['from']->toDateString() && $date <= $segment['to']->toDateString(), ARRAY_FILTER_USE_KEY));
+            $segLop = array_sum(array_filter($lopByDate, fn ($date) => $date >= $segment->from->toDateString() && $date <= $segment->to->toDateString(), ARRAY_FILTER_USE_KEY));
             if ($i === $segments->count() - 1) {
                 $segLop += $manualLop;
             }
-            $units = $this->units($basis, $days, $segment['from'], $segment['to']);
+            $units = $this->units($basis, $days, $segment->from, $segment->to);
             $segPaid = max(0, $units - $segLop);
             $proration = $divisor > 0 ? $segPaid / $divisor : 0.0;
-            $segmentInputs[] = ['assignment_id' => $assignment->id, 'structure' => $assignment->structure->code, 'ctc_annual' => (float) $assignment->ctc_annual, 'from' => $segment['from']->toDateString(), 'to' => $segment['to']->toDateString(), 'units' => $units, 'lop' => round($segLop, 2), 'paid_units' => round($segPaid, 2), 'proration' => round($proration, 6)];
+            $segmentInputs[] = ['assignment_id' => $pay->assignmentId, 'structure' => $pay->structureCode, 'ctc_annual' => $pay->ctcAnnual, 'from' => $segment->from->toDateString(), 'to' => $segment->to->toDateString(), 'units' => $units, 'lop' => round($segLop, 2), 'paid_units' => round($segPaid, 2), 'proration' => round($proration, 6)];
 
             $full = [];
-            $variables = function (string $name) use (&$full, $assignment, $c, $overtimeMinutes, &$overtimeUsed) {
+            $variables = function (string $name) use (&$full, $pay, $items, $c, $overtimeMinutes, &$overtimeUsed) {
                 if (str_starts_with($name, 'overtime_')) {
                     $overtimeUsed = true;
                 }
 
                 return match (true) {
                     isset($full[$name]) => $full[$name],
-                    $name === 'ctc_annual' => (float) $assignment->ctc_annual,
-                    $name === 'ctc_monthly' => $assignment->monthlyCtc(),
+                    $name === 'ctc_annual' => $pay->ctcAnnual,
+                    $name === 'ctc_monthly' => $pay->monthlyCtc(),
                     $name === 'paid_days' => $c->paidDays,
                     $name === 'lop_days' => $c->lopDays,
                     $name === 'days_in_period' => (float) $c->daysInPeriod,
                     $name === 'overtime_minutes' => (float) $overtimeMinutes,
                     $name === 'overtime_hours' => round($overtimeMinutes / 60, 4),
-                    $name === 'pf_employer' => $this->statutory->estimateEmployerPf($c, array_sum(array_intersect_key($full, array_flip($this->pfVariables($assignment->structure->items))))),
-                    default => $assignment->component_values !== null && array_key_exists(strtoupper($name), $assignment->component_values) ? (float) $assignment->component_values[strtoupper($name)] : null,
+                    $name === 'pf_employer' => $this->statutory->estimateEmployerPf($c, array_sum(array_intersect_key($full, array_flip($this->pfVariables($items))))),
+                    default => $pay->hasValueFor($name) ? $pay->valueFor($name) : null,
                 };
             };
 
@@ -153,9 +161,9 @@ class PayrollCalculator
                     continue;
                 }
 
-                $formula = $item->formula_override ?: $component->formula;
+                $formula = $item->formulaOverride ?: $component->formula;
                 try {
-                    $amount = $component->calculation_method === 'formula' && $formula ? $this->formulas->evaluate($formula, $variables) : $assignment->valueFor($component->code);
+                    $amount = $component->calculation_method === 'formula' && $formula ? $this->formulas->evaluate($formula, $variables) : $pay->valueFor($component->code);
                 } catch (RuntimeException $e) {
                     $c->exception('formula_error', "{$component->code}: {$e->getMessage()}");
                     $amount = 0;
@@ -172,7 +180,7 @@ class PayrollCalculator
                 $perComponent[$component->id] ??= ['component' => $component, 'paid' => 0.0, 'full' => 0.0, 'formula' => $formula, 'segments' => []];
                 $perComponent[$component->id]['paid'] += $paid;
                 $perComponent[$component->id]['full'] = $amount;
-                $perComponent[$component->id]['segments'][] = ['from' => $segment['from']->toDateString(), 'to' => $segment['to']->toDateString(), 'full_month' => $amount, 'paid' => round($paid, 2), 'proration' => round($proration, 6)];
+                $perComponent[$component->id]['segments'][] = ['from' => $segment->from->toDateString(), 'to' => $segment->to->toDateString(), 'full_month' => $amount, 'paid' => round($paid, 2), 'proration' => round($proration, 6)];
             }
         }
 
@@ -181,9 +189,9 @@ class PayrollCalculator
         }
 
         $c->inputs['segments'] = $segmentInputs;
-        $c->inputs['assignment_id'] = $last?->id;
-        $c->inputs['structure'] = $last?->structure?->code;
-        $c->inputs['ctc_annual'] = (float) $last?->ctc_annual;
+        $c->inputs['assignment_id'] = $last?->compensation->assignmentId;
+        $c->inputs['structure'] = $last?->compensation->structureCode;
+        $c->inputs['ctc_annual'] = (float) $last?->compensation->ctcAnnual;
 
         if ($overtimeMinutes > 0 && ! $overtimeUsed) {
             $c->exception('overtime_unpaid', "{$overtimeMinutes} approved overtime minute(s) but no salary component uses overtime_minutes / overtime_hours; no rate was invented.");
@@ -203,21 +211,12 @@ class PayrollCalculator
         return $c;
     }
 
-    /** @return Collection<int, array{assignment: EmployeeSalaryAssignment, from: Carbon, to: Carbon}> */
-    private function segments(Employee $employee, Carbon $start, Carbon $end): Collection
+    /** @return Collection<int, CompensationSegment> the contract's segments clipped to the eligibility window */
+    private function segments(PayrollCompensation $compensation, Carbon $start, Carbon $end): Collection
     {
-        return EmployeeSalaryAssignment::query()
-            ->where('employee_id', $employee->id)
-            ->whereDate('effective_from', '<=', $end->toDateString())
-            ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $start->toDateString()))
-            ->orderBy('effective_from')->orderBy('id')
-            ->get()
-            ->map(fn (EmployeeSalaryAssignment $a) => [
-                'assignment' => $a,
-                'from' => $a->effective_from->copy()->startOfDay()->max($start),
-                'to' => ($a->effective_to ? $a->effective_to->copy()->startOfDay() : $end->copy())->min($end),
-            ])
-            ->filter(fn ($s) => $s['from']->lte($s['to']))
+        return $compensation->segments
+            ->map(fn (CompensationSegment $s) => new CompensationSegment($s->compensation, $s->from->copy()->max($start)->copy(), $s->to->copy()->min($end)->copy(), $s->components))
+            ->filter(fn (CompensationSegment $s) => $s->from->lte($s->to))
             ->values();
     }
 

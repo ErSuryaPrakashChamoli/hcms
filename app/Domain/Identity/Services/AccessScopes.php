@@ -172,6 +172,13 @@ final class AccessScopes
             return $this->constrainOrganisation(Company::query()->whereKey($model->getKey()), $user, 'company')->exists();
         }
 
+        if (method_exists($model, 'applyAccessScope')) {
+            $query = $model->newQueryWithoutScope(AccessScope::class)->whereKey($model->getKey());
+            $model->applyAccessScope($query, $user, $this);
+
+            return $query->exists();
+        }
+
         $dimension = property_exists($model, 'accessScopeDimension') ? $model->accessScopeDimension : null;
         // Units without a dimension of their own (legal entities, establishments, statutory
         // records) are constrained through their denormalised company_id.
@@ -179,6 +186,11 @@ final class AccessScopes
             return $this->constrainOrganisation($model->newQueryWithoutScope(AccessScope::class)->whereKey($model->getKey()), $user, $dimension)->exists();
         }
 
+        // Phase 14: a model with no employee link (e.g. an audit event, scoped by its own query) is not
+        // employee-constrained here; reading a missing attribute would throw under strict models.
+        if (! array_key_exists('employee_id', $model->getAttributes()) && ! in_array('employee_id', $model->getFillable(), true)) {
+            return true;
+        }
         $employeeId = $model->getAttribute('employee_id');
 
         return $employeeId === null || $this->allowsEmployeeId($user, (int) $employeeId);
@@ -186,7 +198,44 @@ final class AccessScopes
 
     public function allowsEmployeeId(User $user, int $employeeId): bool
     {
+        // Inside an authorisation pass, an answer primed for this employee by primeEmployeeIds() (same constraint).
+        $context = app(AuthorizationContext::class);
+        $key = $this->primedKey($user, $employeeId);
+        if ($context->has($key)) {
+            return (bool) $context->get($key);
+        }
+
         return $this->employeeKeys($user)->where('employees.id', $employeeId)->exists();
+    }
+
+    /**
+     * UX.15 closure P1-02: decide reachability for many employees with one set query, for the current
+     * authorisation pass only (nothing is kept outside AuthorizationContext::run()). The constraint is exactly
+     * employeeKeys(), so each primed answer equals what allowsEmployeeId() would have queried.
+     *
+     * @param  iterable<int|string|null>  $employeeIds
+     */
+    public function primeEmployeeIds(User $user, iterable $employeeIds): void
+    {
+        $context = app(AuthorizationContext::class);
+        if (! $context->active() || ! $this->isScoped($user)) {
+            return;
+        }
+        $ids = collect($employeeIds)->filter(fn ($id) => $id !== null && $id !== '')->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $reachable = [];
+        foreach (array_chunk($ids, 1000) as $chunk) {
+            foreach ($this->employeeKeys($user)->whereIn('employees.id', $chunk)->pluck('id') as $id) {
+                $reachable[(int) $id] = true;
+            }
+        }
+        foreach ($ids as $id) {
+            $context->put($this->primedKey($user, $id), isset($reachable[$id]));
+        }
+    }
+
+    private function primedKey(User $user, int $employeeId): string
+    {
+        return 'scope:'.$this->tenants->id().':'.$user->getKey().':'.$employeeId;
     }
 
     /**

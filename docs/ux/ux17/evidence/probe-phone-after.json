@@ -1,0 +1,2622 @@
+[
+  {
+    "vp": "phone",
+    "role": "employee",
+    "path": "/admin",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.7,
+    "firstScreen": [
+      "Good evening, Priya.",
+      "Welcome to PeopleOS. Your work comes to you here.",
+      "For you2",
+      "Need attention3"
+    ],
+    "heads": [
+      {
+        "t": "Good evening, Priya.",
+        "y": 128
+      },
+      {
+        "t": "Welcome to PeopleOS. Your work comes to you here.",
+        "y": 317
+      },
+      {
+        "t": "For you2",
+        "y": 497
+      },
+      {
+        "t": "Need attention3",
+        "y": 718
+      },
+      {
+        "t": "Your day",
+        "y": 1166
+      },
+      {
+        "t": "My requests1",
+        "y": 1640
+      },
+      {
+        "t": "What changed2",
+        "y": 1781
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 1994
+      },
+      {
+        "t": "Your people",
+        "y": 2231
+      },
+      {
+        "t": "Your momentum",
+        "y": 2350
+      },
+      {
+        "t": "Start something",
+        "y": 2645
+      }
+    ],
+    "leadY": 497,
+    "viewerY": null,
+    "leadRowY": 525,
+    "experience": "employee",
+    "targets": 45,
+    "small24": 0,
+    "small40": 9,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Request leave",
+      "Open: Your Passport expires in 18 days",
+      "My work →",
+      "View all →",
+      "All requests →",
+      "AV Amit Verma",
+      "Career →",
+      "All actions"
+    ],
+    "scrollers": [],
+    "nav": [
+      "*Home",
+      "Work",
+      "Actions",
+      "Services",
+      "People"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "employee",
+    "path": "/admin/my-work",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.9,
+    "firstScreen": [
+      "My work",
+      "Policies to acknowledge",
+      "About you2",
+      "Follow-ups7"
+    ],
+    "heads": [
+      {
+        "t": "My work",
+        "y": 104
+      },
+      {
+        "t": "Policies to acknowledge",
+        "y": 314
+      },
+      {
+        "t": "About you2",
+        "y": 454
+      },
+      {
+        "t": "Follow-ups7",
+        "y": 686
+      },
+      {
+        "t": "My requests1",
+        "y": 1332
+      },
+      {
+        "t": "Coming up3",
+        "y": 1503
+      },
+      {
+        "t": "At a glance",
+        "y": 1802
+      },
+      {
+        "t": "Elsewhere",
+        "y": 1998
+      }
+    ],
+    "leadY": 686,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "employee",
+    "targets": 43,
+    "small24": 0,
+    "small40": 8,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Notifications",
+      "Later",
+      "Open",
+      "Open: Your Passport expires in 18 days"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-lens.pos-lens-scroll",
+        "hidden": 217
+      }
+    ],
+    "nav": [
+      "Home",
+      "*Work",
+      "Actions",
+      "Services",
+      "People"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "employee",
+    "path": "/admin/people",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1,
+    "firstScreen": [
+      "People"
+    ],
+    "heads": [
+      {
+        "t": "People",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "employee",
+    "targets": 26,
+    "small24": 1,
+    "small40": 9,
+    "small24Samples": [
+      "Name, employee ID or work email"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "Directory",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "Name, employee ID or work email",
+      "Cards",
+      "Table",
+      "Recently changed"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "Work",
+      "Actions",
+      "Services",
+      "*People"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "employee",
+    "path": "/admin/my-hr",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1.5,
+    "firstScreen": [
+      "How can HR help?",
+      "Start a request0",
+      "My requests0",
+      "Needs you3"
+    ],
+    "heads": [
+      {
+        "t": "How can HR help?",
+        "y": 104
+      },
+      {
+        "t": "Start a request0",
+        "y": 336
+      },
+      {
+        "t": "My requests0",
+        "y": 511
+      },
+      {
+        "t": "Needs you3",
+        "y": 668
+      },
+      {
+        "t": "Policies to acknowledge2",
+        "y": 1042
+      }
+    ],
+    "leadY": 336,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "employee",
+    "targets": 34,
+    "small24": 0,
+    "small40": 3,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Ask HR",
+      "Give feedback"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-sectnav",
+        "hidden": 777
+      }
+    ],
+    "nav": [
+      "Home",
+      "Work",
+      "Actions",
+      "*Services",
+      "People"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "employee",
+    "path": "/admin/notifications",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1,
+    "firstScreen": [
+      "Notifications"
+    ],
+    "heads": [
+      {
+        "t": "Notifications",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "employee",
+    "targets": 35,
+    "small24": 0,
+    "small40": 16,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Notifications",
+      "All 2",
+      "Needs attention 1",
+      "Mentions",
+      "Announcements 1",
+      "Updates",
+      "System",
+      "Mark read"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-tabs",
+        "hidden": 408
+      }
+    ],
+    "nav": [
+      "Home",
+      "*Work",
+      "Actions",
+      "Services",
+      "People"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "manager",
+    "path": "/admin",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 4.1,
+    "firstScreen": [
+      "Good evening, Amit.",
+      "Welcome to PeopleOS. Your work comes to you here.",
+      "Decisions waiting for you6"
+    ],
+    "heads": [
+      {
+        "t": "Good evening, Amit.",
+        "y": 128
+      },
+      {
+        "t": "Welcome to PeopleOS. Your work comes to you here.",
+        "y": 365
+      },
+      {
+        "t": "Decisions waiting for you6",
+        "y": 556
+      },
+      {
+        "t": "Your team2",
+        "y": 970
+      },
+      {
+        "t": "Your day",
+        "y": 1201
+      },
+      {
+        "t": "What changed5",
+        "y": 1690
+      },
+      {
+        "t": "For you2",
+        "y": 2041
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 2232
+      },
+      {
+        "t": "Team pulse",
+        "y": 2500
+      },
+      {
+        "t": "Start something",
+        "y": 2880
+      }
+    ],
+    "leadY": 545,
+    "viewerY": null,
+    "leadRowY": 594,
+    "experience": "manager",
+    "targets": 64,
+    "small24": 0,
+    "small40": 19,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Review 6 decisions",
+      "Approval Center →",
+      "RS Rahul Sharma",
+      "LC Leela Chandran",
+      "My team →",
+      "Open: decisions need you",
+      "Open: probation decisions are due",
+      "View all →",
+      "My work →",
+      "Open →",
+      "Your team →"
+    ],
+    "scrollers": [],
+    "nav": [
+      "*Home",
+      "6 Approvals,",
+      "Actions",
+      "Team",
+      "Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 3 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "manager",
+    "path": "/admin/my-work",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.8,
+    "firstScreen": [
+      "My work",
+      "Casual leave · 1 day",
+      "Your team1",
+      "Decisions6"
+    ],
+    "heads": [
+      {
+        "t": "My work",
+        "y": 104
+      },
+      {
+        "t": "Casual leave · 1 day",
+        "y": 314
+      },
+      {
+        "t": "Your team1",
+        "y": 523
+      },
+      {
+        "t": "Decisions6",
+        "y": 697
+      },
+      {
+        "t": "Follow-ups7",
+        "y": 1597
+      },
+      {
+        "t": "Coming up3",
+        "y": 2243
+      },
+      {
+        "t": "At a glance",
+        "y": 2542
+      },
+      {
+        "t": "Elsewhere",
+        "y": 2738
+      }
+    ],
+    "leadY": 686,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "manager",
+    "targets": 60,
+    "small24": 0,
+    "small40": 18,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Team HR requests",
+      "Notifications",
+      "RS Rahul Sharma",
+      "Later",
+      "Review",
+      "My team →",
+      "Open: probation decisions are due",
+      "Approval Center →"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-lens.pos-lens-scroll",
+        "hidden": 217
+      }
+    ],
+    "nav": [
+      "Home",
+      "6 Approvals,",
+      "Actions",
+      "Team",
+      "*Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 3 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "manager",
+    "path": "/admin/approvals",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1.4,
+    "firstScreen": [
+      "6 decisions need you",
+      "PeopleOS Intelligence",
+      "Urgent1",
+      "This week2"
+    ],
+    "heads": [
+      {
+        "t": "6 decisions need you",
+        "y": 104
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 295
+      },
+      {
+        "t": "Urgent1",
+        "y": 513
+      },
+      {
+        "t": "This week2",
+        "y": 628
+      },
+      {
+        "t": "Later3",
+        "y": 825
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "manager",
+    "targets": 31,
+    "small24": 0,
+    "small40": 6,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Team HR requests",
+      "Notifications"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "*6 Approvals,",
+      "Actions",
+      "Team",
+      "Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 3 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "manager",
+    "path": "/admin/my-team",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.4,
+    "firstScreen": [
+      "My team",
+      "Needs attention"
+    ],
+    "heads": [
+      {
+        "t": "My team",
+        "y": 160
+      },
+      {
+        "t": "Needs attention",
+        "y": 594
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "manager",
+    "targets": 36,
+    "small24": 2,
+    "small40": 16,
+    "small24Samples": [
+      "Go"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "My team",
+      "Directory",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "Lifecycle",
+      "Go",
+      "Search",
+      "Open",
+      "5 10 25 50"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "6 Approvals,",
+      "Actions",
+      "*Team",
+      "Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 3 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "manager",
+    "path": "/admin/people",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1.3,
+    "firstScreen": [
+      "People"
+    ],
+    "heads": [
+      {
+        "t": "People",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "manager",
+    "targets": 35,
+    "small24": 1,
+    "small40": 11,
+    "small24Samples": [
+      "Name, employee ID or work email"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "My team",
+      "Directory",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "Lifecycle",
+      "Name, employee ID or work email",
+      "Cards",
+      "Table",
+      "Recently changed"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "6 Approvals,",
+      "Actions",
+      "*Team",
+      "Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 3 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "manager",
+    "path": "/admin/employees/3",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.6,
+    "firstScreen": [
+      "Rahul Sharma",
+      "Now"
+    ],
+    "heads": [
+      {
+        "t": "Rahul Sharma",
+        "y": 128
+      },
+      {
+        "t": "Now",
+        "y": 504
+      },
+      {
+        "t": "Your team",
+        "y": 1012
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 1306
+      },
+      {
+        "t": "People snapshot",
+        "y": 1554
+      },
+      {
+        "t": "Recently6",
+        "y": 1774
+      }
+    ],
+    "leadY": 505,
+    "viewerY": 1040,
+    "leadRowY": null,
+    "experience": "manager",
+    "targets": 39,
+    "small24": 0,
+    "small40": 12,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "My team",
+      "Directory",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "Lifecycle",
+      "AV Amit Verma",
+      "Message",
+      "Work and relationships →",
+      "rahul.sharma@demo.local",
+      "Full journey →"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-sectnav.pos-360-nav",
+        "hidden": 183
+      }
+    ],
+    "nav": [
+      "Home",
+      "6 Approvals,",
+      "Actions",
+      "*Team",
+      "Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 3 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "manager",
+    "path": "/admin/notifications",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1.3,
+    "firstScreen": [
+      "Notifications"
+    ],
+    "heads": [
+      {
+        "t": "Notifications",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "manager",
+    "targets": 45,
+    "small24": 0,
+    "small40": 21,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Team HR requests",
+      "Notifications",
+      "All 3",
+      "Needs attention",
+      "Approvals 2",
+      "Mentions",
+      "Announcements 1",
+      "Updates"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-tabs",
+        "hidden": 408
+      }
+    ],
+    "nav": [
+      "Home",
+      "6 Approvals,",
+      "Actions",
+      "Team",
+      "*Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 3 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "hr",
+    "path": "/admin",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.3,
+    "firstScreen": [
+      "Good evening, Neha.",
+      "Welcome to PeopleOS. Your work comes to you here.",
+      "People operations4"
+    ],
+    "heads": [
+      {
+        "t": "Good evening, Neha.",
+        "y": 128
+      },
+      {
+        "t": "Welcome to PeopleOS. Your work comes to you here.",
+        "y": 365
+      },
+      {
+        "t": "People operations4",
+        "y": 545
+      },
+      {
+        "t": "Decisions waiting for you6",
+        "y": 974
+      },
+      {
+        "t": "What changed19",
+        "y": 1377
+      },
+      {
+        "t": "For you1",
+        "y": 1770
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 1905
+      },
+      {
+        "t": "Start something",
+        "y": 2183
+      }
+    ],
+    "leadY": 545,
+    "viewerY": null,
+    "leadRowY": 676,
+    "experience": "hr",
+    "targets": 55,
+    "small24": 0,
+    "small40": 17,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Review 6 decisions",
+      "4 Need your attention",
+      "0 Joining in 14 days",
+      "0 On leave today",
+      "6 Approvals pending",
+      "1 Open HR requests",
+      "Open: Probation decisions overdue",
+      "Open: Probation ends within 14 days",
+      "Open: Onboarding tasks overdue",
+      "Approval Center →",
+      "RS Rahul Sharma"
+    ],
+    "scrollers": [],
+    "nav": [
+      "*Home",
+      "6 Work,",
+      "Actions",
+      "People",
+      "Requests"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "hr",
+    "path": "/admin/my-work",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.6,
+    "firstScreen": [
+      "My work",
+      "People operations4",
+      "Casual leave · 1 day"
+    ],
+    "heads": [
+      {
+        "t": "My work",
+        "y": 104
+      },
+      {
+        "t": "People operations4",
+        "y": 299
+      },
+      {
+        "t": "Casual leave · 1 day",
+        "y": 690
+      },
+      {
+        "t": "Decisions6",
+        "y": 899
+      },
+      {
+        "t": "Follow-ups4",
+        "y": 1799
+      },
+      {
+        "t": "Coming up2",
+        "y": 2208
+      },
+      {
+        "t": "At a glance",
+        "y": 2425
+      },
+      {
+        "t": "Elsewhere",
+        "y": 2621
+      }
+    ],
+    "leadY": 888,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "hr",
+    "targets": 59,
+    "small24": 0,
+    "small40": 19,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Team HR requests",
+      "Notifications",
+      "Open: Probation decisions overdue",
+      "Open: Probation ends within 14 days",
+      "Open: Onboarding tasks overdue",
+      "RS Rahul Sharma",
+      "Later",
+      "Review"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-lens.pos-lens-scroll",
+        "hidden": 217
+      }
+    ],
+    "nav": [
+      "Home",
+      "*6 Work,",
+      "Actions",
+      "People",
+      "Requests"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "hr",
+    "path": "/admin/people",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.1,
+    "firstScreen": [
+      "People"
+    ],
+    "heads": [
+      {
+        "t": "People",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "hr",
+    "targets": 49,
+    "small24": 1,
+    "small40": 29,
+    "small24Samples": [
+      "Name, employee ID or work email"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "Directory",
+      "Lifecycle",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "Name, employee ID or work email",
+      "Cards",
+      "Table",
+      "Recently changed",
+      "AV Amit Verma",
+      "AD Ananya Das"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "6 Work,",
+      "Actions",
+      "*People",
+      "Requests"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "hr",
+    "path": "/admin/employees",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.6,
+    "firstScreen": [
+      "Employees"
+    ],
+    "heads": [
+      {
+        "t": "Employees",
+        "y": 160
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "hr",
+    "targets": 147,
+    "small24": 4,
+    "small40": 55,
+    "small24Samples": [
+      "—"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "Directory",
+      "Lifecycle",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "All in Lifecycle 9",
+      "Hire employee",
+      "Filter",
+      "Search employees",
+      "Column manager",
+      "Delhi"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-spacebar-scroll",
+        "hidden": 401
+      }
+    ],
+    "nav": [
+      "Home",
+      "6 Work,",
+      "Actions",
+      "*People",
+      "Requests"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "hr",
+    "path": "/admin/tickets",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1,
+    "firstScreen": [
+      "Requests"
+    ],
+    "heads": [
+      {
+        "t": "Requests",
+        "y": 160
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "hr",
+    "targets": 46,
+    "small24": 3,
+    "small40": 17,
+    "small24Samples": [
+      "Remove all filters",
+      "Select/deselect item 1 for bulk actions.",
+      "—"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "My HR",
+      "Knowledge",
+      "Grievances",
+      "Service Desk",
+      "Ask HR",
+      "Search requests",
+      "Filter",
+      "Column manager",
+      "Remove filter",
+      "Remove all filters",
+      "Select/deselect item 1 for bulk actions."
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-spacebar-scroll",
+        "hidden": 259
+      }
+    ],
+    "nav": [
+      "Home",
+      "6 Work,",
+      "Actions",
+      "People",
+      "*Requests"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "hr",
+    "path": "/admin/employees/3",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.7,
+    "firstScreen": [
+      "Rahul Sharma",
+      "Now"
+    ],
+    "heads": [
+      {
+        "t": "Rahul Sharma",
+        "y": 128
+      },
+      {
+        "t": "Now",
+        "y": 600
+      },
+      {
+        "t": "People operations",
+        "y": 1043
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 1355
+      },
+      {
+        "t": "People snapshot",
+        "y": 1643
+      },
+      {
+        "t": "Recently6",
+        "y": 1863
+      }
+    ],
+    "leadY": 601,
+    "viewerY": 1071,
+    "leadRowY": null,
+    "experience": "hr",
+    "targets": 43,
+    "small24": 0,
+    "small40": 15,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Directory",
+      "Lifecycle",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "AV Amit Verma",
+      "Message",
+      "Request",
+      "Action",
+      "More",
+      "Review confirmation →"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-sectnav.pos-360-nav",
+        "hidden": 183
+      }
+    ],
+    "nav": [
+      "Home",
+      "6 Work,",
+      "Actions",
+      "*People",
+      "Requests"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "hr",
+    "path": "/admin/notifications",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1.3,
+    "firstScreen": [
+      "Notifications"
+    ],
+    "heads": [
+      {
+        "t": "Notifications",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "hr",
+    "targets": 46,
+    "small24": 0,
+    "small40": 21,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Team HR requests",
+      "Notifications",
+      "All 2",
+      "Needs attention 2",
+      "Mentions",
+      "Announcements",
+      "Updates",
+      "System"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-tabs",
+        "hidden": 379
+      }
+    ],
+    "nav": [
+      "Home",
+      "*6 Work,",
+      "Actions",
+      "People",
+      "Requests"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 2 unread notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "executive",
+    "path": "/admin",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.8,
+    "firstScreen": [
+      "Good evening, Meera.",
+      "Welcome to PeopleOS. Your work comes to you here.",
+      "Workforce pulse"
+    ],
+    "heads": [
+      {
+        "t": "Good evening, Meera.",
+        "y": 128
+      },
+      {
+        "t": "Welcome to PeopleOS. Your work comes to you here.",
+        "y": 344
+      },
+      {
+        "t": "Workforce pulse",
+        "y": 535
+      },
+      {
+        "t": "What changed1",
+        "y": 1071
+      },
+      {
+        "t": "For you3",
+        "y": 1238
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 1485
+      },
+      {
+        "t": "Start something",
+        "y": 1800
+      }
+    ],
+    "leadY": 524,
+    "viewerY": null,
+    "leadRowY": 589,
+    "experience": "executive",
+    "targets": 38,
+    "small24": 0,
+    "small40": 6,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Open Workforce pulse",
+      "Explore →",
+      "My work →",
+      "All actions"
+    ],
+    "scrollers": [],
+    "nav": [
+      "*Home",
+      "Pulse",
+      "Actions",
+      "Org map",
+      "Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "executive",
+    "path": "/admin/my-work",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.3,
+    "firstScreen": [
+      "My work",
+      "Workforce1",
+      "Policies to acknowledge",
+      "Follow-ups4"
+    ],
+    "heads": [
+      {
+        "t": "My work",
+        "y": 104
+      },
+      {
+        "t": "Workforce1",
+        "y": 289
+      },
+      {
+        "t": "Policies to acknowledge",
+        "y": 551
+      },
+      {
+        "t": "Follow-ups4",
+        "y": 691
+      },
+      {
+        "t": "Coming up2",
+        "y": 1100
+      },
+      {
+        "t": "At a glance",
+        "y": 1317
+      },
+      {
+        "t": "Elsewhere",
+        "y": 1513
+      }
+    ],
+    "leadY": 691,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "executive",
+    "targets": 41,
+    "small24": 0,
+    "small40": 9,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Notifications",
+      "Workforce pulse →",
+      "Open: Workforce movement is 9.5% of head",
+      "Later",
+      "Open"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-lens.pos-lens-scroll",
+        "hidden": 191
+      }
+    ],
+    "nav": [
+      "Home",
+      "Pulse",
+      "Actions",
+      "Org map",
+      "*Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "executive",
+    "path": "/admin/workforce-command-centre",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.3,
+    "firstScreen": [
+      "Workforce pulse",
+      "Movement",
+      "Size"
+    ],
+    "heads": [
+      {
+        "t": "Workforce pulse",
+        "y": 104
+      },
+      {
+        "t": "Movement",
+        "y": 220
+      },
+      {
+        "t": "Size",
+        "y": 634
+      },
+      {
+        "t": "Attendance",
+        "y": 947
+      },
+      {
+        "t": "Performance and capability",
+        "y": 1079
+      },
+      {
+        "t": "Critical skills",
+        "y": 1263
+      },
+      {
+        "t": "Exceptions",
+        "y": 1393
+      },
+      {
+        "t": "Requires a decision",
+        "y": 1546
+      },
+      {
+        "t": "Go deeper",
+        "y": 1650
+      }
+    ],
+    "leadY": 220,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "executive",
+    "targets": 26,
+    "small24": 0,
+    "small40": 1,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "*Pulse",
+      "Actions",
+      "Org map",
+      "Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "executive",
+    "path": "/admin/people",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1.3,
+    "firstScreen": [
+      "People"
+    ],
+    "heads": [
+      {
+        "t": "People",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "executive",
+    "targets": 33,
+    "small24": 1,
+    "small40": 10,
+    "small24Samples": [
+      "Name, employee ID or work email"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "My team",
+      "Directory",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "Name, employee ID or work email",
+      "Cards",
+      "Table",
+      "Recently changed"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "Pulse",
+      "Actions",
+      "Org map",
+      "Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "executive",
+    "path": "/admin/notifications",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1,
+    "firstScreen": [
+      "Notifications"
+    ],
+    "heads": [
+      {
+        "t": "Notifications",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "executive",
+    "targets": 38,
+    "small24": 0,
+    "small40": 16,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Notifications",
+      "All 1",
+      "Needs attention",
+      "Mentions",
+      "Announcements",
+      "Updates 1",
+      "System",
+      "Mark read"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-tabs",
+        "hidden": 379
+      }
+    ],
+    "nav": [
+      "Home",
+      "Pulse",
+      "Actions",
+      "Org map",
+      "*Work"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "admin",
+    "path": "/admin",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3,
+    "firstScreen": [
+      "Good evening, Kavya.",
+      "Welcome to PeopleOS. Your work comes to you here.",
+      "Governance2"
+    ],
+    "heads": [
+      {
+        "t": "Good evening, Kavya.",
+        "y": 128
+      },
+      {
+        "t": "Welcome to PeopleOS. Your work comes to you here.",
+        "y": 344
+      },
+      {
+        "t": "Governance2",
+        "y": 535
+      },
+      {
+        "t": "At a glance",
+        "y": 830
+      },
+      {
+        "t": "Decisions waiting for you6",
+        "y": 1101
+      },
+      {
+        "t": "For you1",
+        "y": 1515
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 1650
+      },
+      {
+        "t": "Start something",
+        "y": 1949
+      }
+    ],
+    "leadY": 524,
+    "viewerY": null,
+    "leadRowY": 573,
+    "experience": "admin",
+    "targets": 54,
+    "small24": 0,
+    "small40": 12,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Open Admin Centre",
+      "Admin Centre →",
+      "Review: Multi-factor sign-in is not requ",
+      "Review: people approve or edit employees",
+      "Approval Center →",
+      "RS Rahul Sharma",
+      "LC Leela Chandran",
+      "My work →",
+      "Review →",
+      "All actions"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-lens.pos-lens-scroll",
+        "hidden": 292
+      }
+    ],
+    "nav": [
+      "*Home",
+      "Admin",
+      "Actions",
+      "Users",
+      "6 Work,"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "admin",
+    "path": "/admin/my-work",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.6,
+    "firstScreen": [
+      "My work",
+      "Governance2",
+      "Casual leave · 1 day"
+    ],
+    "heads": [
+      {
+        "t": "My work",
+        "y": 104
+      },
+      {
+        "t": "Governance2",
+        "y": 289
+      },
+      {
+        "t": "Casual leave · 1 day",
+        "y": 660
+      },
+      {
+        "t": "Decisions6",
+        "y": 869
+      },
+      {
+        "t": "Follow-ups4",
+        "y": 1769
+      },
+      {
+        "t": "Coming up2",
+        "y": 2178
+      },
+      {
+        "t": "At a glance",
+        "y": 2395
+      },
+      {
+        "t": "Elsewhere",
+        "y": 2591
+      }
+    ],
+    "leadY": 858,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "admin",
+    "targets": 58,
+    "small24": 0,
+    "small40": 19,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Team HR requests",
+      "Notifications",
+      "Admin Centre →",
+      "Open: Multi-factor sign-in is not requir",
+      "Open: people approve or edit employees a",
+      "RS Rahul Sharma",
+      "Later",
+      "Review"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-lens.pos-lens-scroll",
+        "hidden": 217
+      }
+    ],
+    "nav": [
+      "Home",
+      "Admin",
+      "Actions",
+      "Users",
+      "*6 Work,"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "admin",
+    "path": "/admin/admin-centre",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 4.5,
+    "firstScreen": [
+      "What do you want to manage?",
+      "Find a setting",
+      "Manage",
+      "Organisation and positions",
+      "People data and forms"
+    ],
+    "heads": [
+      {
+        "t": "What do you want to manage?",
+        "y": 104
+      },
+      {
+        "t": "Find a setting",
+        "y": 220
+      },
+      {
+        "t": "Manage",
+        "y": 320
+      },
+      {
+        "t": "Organisation and positions",
+        "y": 404
+      },
+      {
+        "t": "People data and forms",
+        "y": 708
+      },
+      {
+        "t": "Joining, letters and exit",
+        "y": 1012
+      },
+      {
+        "t": "Time and leave rules",
+        "y": 1316
+      },
+      {
+        "t": "Pay, compensation and compliance",
+        "y": 1620
+      },
+      {
+        "t": "Growth programmes",
+        "y": 1924
+      },
+      {
+        "t": "Workflows and policies",
+        "y": 2228
+      },
+      {
+        "t": "Service and communication",
+        "y": 2532
+      },
+      {
+        "t": "Access and security",
+        "y": 2836
+      },
+      {
+        "t": "Integrations, data and audit",
+        "y": 3140
+      },
+      {
+        "t": "Awaiting approval0",
+        "y": 3447
+      },
+      {
+        "t": "Platform health",
+        "y": 3565
+      }
+    ],
+    "leadY": 220,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "admin",
+    "targets": 75,
+    "small24": 1,
+    "small40": 56,
+    "small24Samples": [
+      "For example “leave policy”, “probation p"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "All modules",
+      "Platform",
+      "Setup",
+      "For example “leave policy”, “probation p",
+      "Business Units",
+      "Companies",
+      "Cost Centres",
+      "Departments",
+      "All 22",
+      "Designations",
+      "Document types"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "*Admin",
+      "Actions",
+      "Users",
+      "6 Work,"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "admin",
+    "path": "/admin/users",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.1,
+    "firstScreen": [
+      "Users"
+    ],
+    "heads": [
+      {
+        "t": "Users",
+        "y": 160
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "admin",
+    "targets": 94,
+    "small24": 0,
+    "small40": 45,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "All modules",
+      "Platform",
+      "Setup",
+      "All in Setup 17",
+      "New user",
+      "Search users",
+      "Filter",
+      "Column manager",
+      "Active",
+      "Edit",
+      "HR Manager"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-spacebar-scroll",
+        "hidden": 354
+      }
+    ],
+    "nav": [
+      "Home",
+      "Admin",
+      "Actions",
+      "*Users",
+      "6 Work,"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "admin",
+    "path": "/admin/audit-events",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3,
+    "firstScreen": [
+      "Audit events"
+    ],
+    "heads": [
+      {
+        "t": "Audit events",
+        "y": 160
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "admin",
+    "targets": 109,
+    "small24": 10,
+    "small40": 58,
+    "small24Samples": [
+      "—"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "Audit",
+      "Analytics",
+      "Search audit events",
+      "Filter",
+      "Column manager",
+      "Login",
+      "identity",
+      "User",
+      "—",
+      "View",
+      "10 25 50 100"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-spacebar-scroll",
+        "hidden": 48
+      }
+    ],
+    "nav": [
+      "Home",
+      "Admin",
+      "Actions",
+      "Users",
+      "6 Work,"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "admin",
+    "path": "/admin/people",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.3,
+    "firstScreen": [
+      "People"
+    ],
+    "heads": [
+      {
+        "t": "People",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "admin",
+    "targets": 52,
+    "small24": 1,
+    "small40": 32,
+    "small24Samples": [
+      "Name, employee ID or work email"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "My team",
+      "Directory",
+      "Lifecycle",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "Name, employee ID or work email",
+      "Cards",
+      "Table",
+      "Recently changed",
+      "NK Neha Kapoor"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "Admin",
+      "Actions",
+      "Users",
+      "6 Work,"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "admin",
+    "path": "/admin/employees/3",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.9,
+    "firstScreen": [
+      "Rahul Sharma",
+      "Now"
+    ],
+    "heads": [
+      {
+        "t": "Rahul Sharma",
+        "y": 128
+      },
+      {
+        "t": "Now",
+        "y": 600
+      },
+      {
+        "t": "Identity and access",
+        "y": 1108
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 1486
+      },
+      {
+        "t": "People snapshot",
+        "y": 1774
+      },
+      {
+        "t": "Recently7",
+        "y": 1994
+      }
+    ],
+    "leadY": 601,
+    "viewerY": 1136,
+    "leadRowY": null,
+    "experience": "admin",
+    "targets": 45,
+    "small24": 0,
+    "small40": 16,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "My team",
+      "Directory",
+      "Lifecycle",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "AV Amit Verma",
+      "Message",
+      "Request",
+      "Action",
+      "More"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-sectnav.pos-360-nav",
+        "hidden": 183
+      }
+    ],
+    "nav": [
+      "Home",
+      "Admin",
+      "Actions",
+      "Users",
+      "6 Work,"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "admin",
+    "path": "/admin/notifications",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1,
+    "firstScreen": [
+      "Notifications"
+    ],
+    "heads": [
+      {
+        "t": "Notifications",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "admin",
+    "targets": 39,
+    "small24": 0,
+    "small40": 17,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Team HR requests",
+      "Notifications",
+      "All 1",
+      "Needs attention",
+      "Mentions",
+      "Announcements",
+      "Updates 1",
+      "System"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-tabs",
+        "hidden": 379
+      }
+    ],
+    "nav": [
+      "Home",
+      "Admin",
+      "Actions",
+      "Users",
+      "*6 Work,"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications, 1 unread notification",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "payroll",
+    "path": "/admin",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.4,
+    "firstScreen": [
+      "Good evening, Arjun.",
+      "Welcome to PeopleOS. Your work comes to you here.",
+      "Payroll"
+    ],
+    "heads": [
+      {
+        "t": "Good evening, Arjun.",
+        "y": 128
+      },
+      {
+        "t": "Welcome to PeopleOS. Your work comes to you here.",
+        "y": 329
+      },
+      {
+        "t": "Payroll",
+        "y": 520
+      },
+      {
+        "t": "What changed19",
+        "y": 784
+      },
+      {
+        "t": "For you3",
+        "y": 1177
+      },
+      {
+        "t": "PeopleOS Intelligence",
+        "y": 1424
+      },
+      {
+        "t": "Start something",
+        "y": 1617
+      }
+    ],
+    "leadY": 509,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "payroll",
+    "targets": 35,
+    "small24": 0,
+    "small40": 4,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Control room →",
+      "My work →",
+      "All actions"
+    ],
+    "scrollers": [],
+    "nav": [
+      "*Home",
+      "Work",
+      "Actions",
+      "Payroll",
+      "People"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "payroll",
+    "path": "/admin/my-work",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 2.3,
+    "firstScreen": [
+      "My work",
+      "Payroll2",
+      "Policies to acknowledge",
+      "Follow-ups4"
+    ],
+    "heads": [
+      {
+        "t": "My work",
+        "y": 104
+      },
+      {
+        "t": "Payroll2",
+        "y": 289
+      },
+      {
+        "t": "Policies to acknowledge",
+        "y": 588
+      },
+      {
+        "t": "Follow-ups4",
+        "y": 728
+      },
+      {
+        "t": "Coming up2",
+        "y": 1137
+      },
+      {
+        "t": "At a glance",
+        "y": 1354
+      },
+      {
+        "t": "Elsewhere",
+        "y": 1550
+      }
+    ],
+    "leadY": 728,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "payroll",
+    "targets": 41,
+    "small24": 0,
+    "small40": 10,
+    "small24Samples": [],
+    "small40Samples": [
+      "Skip to content",
+      "Inbox",
+      "Approvals",
+      "Task inbox",
+      "Notifications",
+      "Control room →",
+      "Open: payroll exceptions to resolve in O",
+      "Open: Payroll for Oct 2026 is calculated",
+      "Later",
+      "Open"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-lens.pos-lens-scroll",
+        "hidden": 191
+      }
+    ],
+    "nav": [
+      "Home",
+      "*Work",
+      "Actions",
+      "Payroll",
+      "People"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "payroll",
+    "path": "/admin/people",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 3.1,
+    "firstScreen": [
+      "People"
+    ],
+    "heads": [
+      {
+        "t": "People",
+        "y": 104
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "payroll",
+    "targets": 48,
+    "small24": 1,
+    "small40": 29,
+    "small24Samples": [
+      "Name, employee ID or work email"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "Directory",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "Lifecycle",
+      "Name, employee ID or work email",
+      "Cards",
+      "Table",
+      "Recently changed",
+      "AV Amit Verma",
+      "AD Ananya Das"
+    ],
+    "scrollers": [],
+    "nav": [
+      "Home",
+      "Work",
+      "Actions",
+      "Payroll",
+      "*People"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications",
+      "User menu"
+    ],
+    "errors": []
+  },
+  {
+    "vp": "phone",
+    "role": "payroll",
+    "path": "/admin/payroll-runs",
+    "status": 200,
+    "overflow": 0,
+    "fold": 766,
+    "screens": 1,
+    "firstScreen": [
+      "Payroll runs"
+    ],
+    "heads": [
+      {
+        "t": "Payroll runs",
+        "y": 160
+      }
+    ],
+    "leadY": null,
+    "viewerY": null,
+    "leadRowY": null,
+    "experience": "payroll",
+    "targets": 43,
+    "small24": 4,
+    "small40": 17,
+    "small24Samples": [
+      "5",
+      "—"
+    ],
+    "small40Samples": [
+      "Skip to content",
+      "Directory",
+      "Growth",
+      "Time &amp; leave",
+      "Pay",
+      "Lifecycle",
+      "All in Pay 19",
+      "Open payroll run",
+      "Filter",
+      "Column manager",
+      "Calculated",
+      "5"
+    ],
+    "scrollers": [
+      {
+        "cls": "pos-spacebar-scroll",
+        "hidden": 498
+      }
+    ],
+    "nav": [
+      "Home",
+      "Work",
+      "Actions",
+      "*Payroll",
+      "People"
+    ],
+    "topbar": [
+      "Expand sidebar",
+      "Search people, requests, actions… Ctrl K",
+      "Notifications",
+      "User menu"
+    ],
+    "errors": []
+  }
+]

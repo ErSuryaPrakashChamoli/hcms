@@ -22,6 +22,8 @@ use Illuminate\Http\Request;
  */
 class ComplianceController extends Controller
 {
+    use PaginatesApi;
+
     public function establishments(Request $request): JsonResponse
     {
         $query = Establishment::query()->with('legalEntity')
@@ -138,16 +140,5 @@ class ComplianceController extends Controller
             'approved_at' => $r->approved_at?->toIso8601String(), 'exported_at' => $r->exported_at?->toIso8601String(),
             'submitted_at' => $r->submitted_at?->toIso8601String(), 'external_reference' => $r->external_reference, 'acknowledged_at' => $r->acknowledged_at?->toIso8601String(),
         ];
-    }
-
-    private function page(Builder $query, Request $request, callable $map): JsonResponse
-    {
-        $perPage = min(max((int) $request->query('per_page', 50), 1), 200);
-        $paginator = $query->paginate($perPage)->appends($request->query());
-
-        return response()->json([
-            'data' => collect($paginator->items())->map($map)->values()->all(),
-            'meta' => ['page' => $paginator->currentPage(), 'per_page' => $paginator->perPage(), 'total' => $paginator->total(), 'last_page' => $paginator->lastPage()],
-        ]);
     }
 }

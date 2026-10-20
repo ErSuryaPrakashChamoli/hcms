@@ -1,0 +1,1042 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head id="Head1"><title>
+	Press Release Page | Press Information Bureau
+</title><link href="css/style.css" rel="stylesheet" type="text/css" /><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><link rel="alternate stylesheet" href="css/change.css" media="screen" title="change" /><link rel="alternate stylesheet" href="css/green.css" media="screen" title="green" /><link rel="alternate stylesheet" href="css/yellow.css" media="screen" title="yellow" /><link rel="stylesheet" type="text/css" href="css/prtint.css" media="print" /><link rel="stylesheet" href="css/style3.1.css" type="text/css" /><link id="pibA11yCss" rel="stylesheet" href="/css/accessibility.css?v=3" type="text/css" />
+      <script type="text/javascript">
+        /* Stamps the saved theme on <html> before the page paints. The
+           switcher in js/accessibility.js settles the rest, but on inner
+           pages it does not run until the end of the body and inside the
+           release frame it is a separate download - either way the reader
+           would otherwise watch a light page turn dark in front of them. */
+        (function (d) {
+            var t = "";
+            try {
+                t = window.localStorage.getItem("pibStyle") || "";
+            } catch (e) {
+                t = "";
+            }
+            if (t === "orange") {
+                t = "yellow";
+            }
+            var c = t === "change" ? " pib-hc"
+                : t === "green" ? " pib-theme-green"
+                : t === "yellow" ? " pib-theme-yellow" : "";
+            d.documentElement.className += c + " pib-a11y-content";
+        }(document));
+      </script>
+
+
+      <script src="js/jquery.min.js" type="text/javascript"></script>
+      <script type="text/javascript" src="/js/accessibility.js?v=7"></script>
+
+      <script type="text/javascript">
+            $(document).ready(function () {
+                  function getParameterByName(name) {
+                        var url = window.location.href;
+                        name = name.replace(/[\[\]]/g, '\\$&');
+                        var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                              results = regex.exec(url);
+                        if (!results) return null;
+                        if (!results[2]) return '';
+                        return decodeURIComponent(results[2].replace(/\+/g, ' '));
+                  }
+                  // Get the IDs from the current page's URL
+                  let prid = parseInt(getParameterByName('PRID'), 10);
+
+                  if (!isNaN(prid) && prid > 0) {
+                        $.ajax({
+                              type: "POST",
+                              url: "AjaxMethod.aspx/UpdatePRHitCount",
+                              async: false,
+                              data: JSON.stringify({ 'PermId': prid }),
+                              contentType: "application/json; charset=utf-8",
+                              dataType: "json",
+                              success: function (response) {
+                                    console.log(response);
+                              },
+                              error: function (error) {
+                                    console.log("Error in AJAX request", error);
+                              }
+                        });
+                  } else {
+                        console.log("Invalid parameters:", prid);
+                  }
+
+            });
+      </script>
+      <style type="text/css">
+            .table-responsive {
+                  width: 100%;
+                  overflow-x: auto;
+            }
+
+            .banner {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  background-color: #000;
+                  color: #fff;
+                  padding: 20px;
+            }
+
+            full-width {
+                  width: 100%;
+            }
+
+            .logo-left, .logo-center, .countdown {
+                  display: flex;
+                  align-items: center;
+            }
+
+                  .logo-left img, .logo-center img {
+                        height: 70px;
+                  }
+
+            .countdown {
+                  text-align: center;
+                  background-color: #444;
+                  border-radius: 10px;
+                  padding: 10px;
+                  border: 2px solid grey;
+            }
+
+            .firstnumber {
+                  color: #000000;
+                  position: absolute;
+                  top: 50px;
+                  right: 90px;
+                  font-size: 30px;
+            }
+
+            .secondnumber {
+                  position: absolute;
+                  color: #000000;
+                  right: 45px;
+                  top: 50px;
+                  font-size: 30px;
+            }
+
+            .countdown .days {
+                  font-size: 35px;
+                  color: gold;
+            }
+
+            .countdown p {
+                  margin: 0;
+            }
+
+            .countdown .text {
+                  font-size: 16px;
+            }
+
+            a {
+                  word-break: break-all;
+            }
+
+            iframe, img {
+                  max-width: 100%;
+            }
+
+            @media(max-width:1199px) {
+                  .firstnumber {
+                        top: 40px;
+                        right: 72px;
+                        font-size: 30px;
+                  }
+
+                  .secondnumber {
+                        right: 35px;
+                        top: 40px;
+                        font-size: 30px;
+                  }
+            }
+
+            @media(max-width:990px) {
+                  .firstnumber {
+                        top: 25px;
+                        right: 54px;
+                        font-size: 30px;
+                  }
+
+                  .secondnumber {
+                        right: 25px;
+                        top: 25px;
+                        font-size: 30px;
+                  }
+            }
+
+            @media(max-width:768px) {
+                  .countdown, .days {
+                        font-size: 12px !important;
+                  }
+
+
+                  .firstnumber {
+                        top: 25%;
+                        right: 8%;
+                        font-size: 30px;
+                  }
+
+                  .secondnumber {
+                        right: 4.5%;
+                        top: 25%;
+                        font-size: 30px;
+                  }
+            }
+
+            @media(max-width:475px) {
+                  .countdown, .days {
+                        font-size: 10px !important;
+                        top: 20%;
+                  }
+
+                  .bannerimgdiv {
+                        padding: 0 !important;
+                  }
+
+                  .bannerimg {
+                        width: 108% !important;
+                  }
+            }
+      </style>
+      <script type="text/javascript">
+            $(function () {
+                  $("[id*=printPDF]").click(function () {
+                        $("[id*=hfGridHtml]").val($("#PdfDiv").html());
+                  });
+            });
+            $(function () {
+                  $("[id*=printPDFEvent]").click(function () {
+                        $("[id*=hfGridHtml]").val($("#PdfDiv").html());
+                  });
+            });
+      </script>
+
+      
+
+      <link id="pibConsentCss" href="/css/consent.css?v=1" rel="stylesheet" type="text/css" /><meta property="og:title" content="EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH" /><meta property="og:url" content="www.pib.gov.in/Pressreleaseshare.aspx?PRID=2314111" /><meta property="og:description" content="A press meet was held at the Employees’ Provident Fund Organisation (EPFO), Special State Office, Im" /><meta property="og:image" content="https:/pib.gov.in/images/indian-emblem.png" />
+                                <script>!function(e){var n="https://s.go-mpulse.net/boomerang/";if("False"=="True")e.BOOMR_config=e.BOOMR_config||{},e.BOOMR_config.PageParams=e.BOOMR_config.PageParams||{},e.BOOMR_config.PageParams.pci=!0,n="https://s2.go-mpulse.net/boomerang/";if(window.BOOMR_API_key="C4E7H-KSCMC-422L4-W3EM5-U36MF",function(){function e(){if(!i){var e=document.createElement("script");e.id="boomr-scr-as",e.src=window.BOOMR.url,e.async=!0,o.parentNode.appendChild(e),i=!0}}function t(e){i=!0;var n,t,a,r,d=document,O=window;if(window.BOOMR.snippetMethod=e?"if":"i",t=function(e,n){var t=d.createElement("script");t.id=n||"boomr-if-as",t.src=window.BOOMR.url,BOOMR_lstart=(new Date).getTime(),e=e||d.body,e.appendChild(t)},!window.addEventListener&&window.attachEvent&&navigator.userAgent.match(/MSIE [67]\./))return window.BOOMR.snippetMethod="s",void t(o.parentNode,"boomr-async");a=document.createElement("IFRAME"),a.src="about:blank",a.title="",a.role="presentation",a.loading="eager",r=(a.frameElement||a).style,r.width=0,r.height=0,r.border=0,r.display="none",o.parentNode.appendChild(a);try{O=a.contentWindow,d=O.document.open()}catch(_){n=document.domain,a.src="javascript:var d=document.open();d.domain='"+n+"';void(0);",O=a.contentWindow,d=O.document.open()}if(n)d._boomrl=function(){this.domain=n,t()},d.write("<bo"+"dy onload='document._boomrl();'>");else if(O._boomrl=function(){t()},O.addEventListener)O.addEventListener("load",O._boomrl,!1);else if(O.attachEvent)O.attachEvent("onload",O._boomrl);d.close()}function a(e){window.BOOMR_onload=e&&e.timeStamp||(new Date).getTime()}if(!window.BOOMR||!window.BOOMR.version&&!window.BOOMR.snippetExecuted){window.BOOMR=window.BOOMR||{},window.BOOMR.snippetStart=(new Date).getTime(),window.BOOMR.snippetExecuted=!0,window.BOOMR.snippetVersion=12,window.BOOMR.url=n+"C4E7H-KSCMC-422L4-W3EM5-U36MF";var o=document.currentScript||document.getElementsByTagName("script")[0],i=!1,r=document.createElement("link");if(r.relList&&"function"==typeof r.relList.supports&&r.relList.supports("preload")&&"as"in r)window.BOOMR.snippetMethod="p",r.href=window.BOOMR.url,r.rel="preload",r.as="script",r.addEventListener("load",e),r.addEventListener("error",function(){t(!0)}),setTimeout(function(){if(!i)t(!0)},3e3),BOOMR_lstart=(new Date).getTime(),o.parentNode.appendChild(r);else t(!1);if(window.addEventListener)window.addEventListener("load",a,!1);else if(window.attachEvent)window.attachEvent("onload",a)}}(),"".length>0)if(e&&"performance"in e&&e.performance&&"function"==typeof e.performance.setResourceTimingBufferSize)e.performance.setResourceTimingBufferSize();!function(){if(BOOMR=e.BOOMR||{},BOOMR.plugins=BOOMR.plugins||{},!BOOMR.plugins.AK){var n=""=="true"?1:0,t="",a="bzrshfqxh5xts2v6ebya-f-326f7c149-clientnsv4-s.akamaihd.net",o="false"=="true"?2:1,i={"ak.v":"41","ak.cp":"1825201","ak.ai":parseInt("1215205",10),"ak.ol":"0","ak.cr":2,"ak.ipv":4,"ak.proto":"h2","ak.rid":"c5ad1b5","ak.r":41084,"ak.a2":n,"ak.m":"dscb","ak.n":"ff","ak.cport":48519,"ak.gh":"23.63.111.53","ak.quicv":"","ak.tlsv":"tls1.3","ak.0rtt":"","ak.0rtt.ed":"","ak.csrc":"-","ak.acc":"","ak.t":"1790845040","ak.ak":"hOBiQwZUYzCg5VSAfCLimQ==vrQwZVL/TNoCqUH4/CD5tfYOm2QnrsQEurkY3vKCc93kqeH+qTrMOUBDvqsPdeb8eP7AWirwIqrol226X2eJ6IrEkQu21c7GQFElvtkyxGwiJavakD0f0Lzn49ACdhecUdQnzYXvOtXZIpe9eOkVix75UuLil5g5Sv41NUJkL+I6xq6Qt86EonA2o6lAmxhyUQPtXTI9et5XU03zwYPSmA8WD+fosPEu6k3nLtJYG+hFpxG7BL+qHXo8HLNE86s4rRLKh3Hi0ZPWBNBT72J5H6YC21odv1MlHj0d3sE0v2+NaDS6xjQ0HmS8YlfZU+riYErTEqSsA2xiKMA7JULLF8TuH8YyndZJVrn8QuJTmkIu2ZXH2h6MbyEpuXslVdzZIuuqT86QJy551cv2rAE5KhFSTw9acbUPg3zRooWezjw=","ak.pv":"9","ak.dpoabenc":"","ak.tf":o};if(""!==t)i["ak.ruds"]=t;var r={i:!1,av:function(n){var t="http.initiator";if(n&&(!n[t]||"spa_hard"===n[t]))i["ak.feo"]=void 0!==e.aFeoApplied?1:0,BOOMR.addVar(i)},rv:function(){var e=["ak.cport","ak.cr","ak.csrc","ak.gh","ak.ipv","ak.m","ak.n","ak.ol","ak.proto","ak.quicv","ak.tlsv","ak.0rtt","ak.0rtt.ed","ak.r","ak.acc","ak.t","ak.tf"];BOOMR.removeVar(e)}};BOOMR.plugins.AK={akVars:i,akDNSPreFetchDomain:a,init:function(){if(!r.i){var e=BOOMR.subscribe;e("before_beacon",r.av,null,null),e("onbeacon",r.rv,null,null),r.i=!0}return this},is_complete:function(){return!0}}}}()}(window);</script></head>
+<body>
+      <form method="post" action="./PressReleasePage.aspx?PRID=2314111&amp;reg=48&amp;lang=2" id="form1">
+<div class="aspNetHidden">
+<input type="hidden" name="sc_HiddenField" id="sc_HiddenField" value="" />
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="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" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['form1'];
+if (!theForm) {
+    theForm = document.form1;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+
+
+<script src="/WebResource.axd?d=pynGkmcFUV13He1Qd6_TZPQet1wIx1Q48y3xJY2k25Y7qxH5RrQ9qQcN-OiTC9guZtri9w2&amp;t=639246310055090729" type="text/javascript"></script>
+
+
+<script src="/ScriptResource.axd?d=x6wALODbMJK5e0eRC_p1LdIxBJXt0U_WW5GWfJqHAqo6frgCmGRfEywglicTersO2OKrFhK1gAIp0Wk2al2YrpdR3uWqH6f4nfjBsCyRUfTUUVmb0&amp;t=ffffffffecf8d3f2" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=P5lTttoqSeZXoYRLQMIScH645UK3RD852IErF2548Wz9Ssv0rLjB4fhVKnHcMpqkaMHpNAGOeWY02Lf4aBYN9-dVBme_SNK5KJwmFQNpMixYDZ7M0&amp;t=ffffffffecf8d3f2" type="text/javascript"></script>
+<script src="/PressReleasePage.aspx?_TSM_HiddenField_=sc_HiddenField&amp;_TSM_CombinedScripts_=%3b%3bAjaxControlToolkit%2c+Version%3d3.5.7.123%2c+Culture%3dneutral%2c+PublicKeyToken%3d28f01b0e84b6d53e%3aen-US%3a5a4df314-b4a2-4da2-a207-9284f1b1e96c%3ade1feab2%3af2c8e708%3a8613aea7%3af9cec9bc%3a3202a5a2%3aab09e3fe%3a87104b7c%3a720a52bf%3a589eaa30%3aa67c2700%3abe6fb298" type="text/javascript"></script>
+<div class="aspNetHidden">
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="59B53027" />
+	<input type="hidden" name="__VIEWSTATEENCRYPTED" id="__VIEWSTATEENCRYPTED" value="" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="fQRhGY4ptE+5DH9wpRRlFDdO6A38vAOzTzKOCIF96dJRqhfQ+4nM2j8H55oDZrpsUjmnczlu8jPBH6bhWeR3wGPmNRkJK2DVe5HEEK2kv82edE/RqvqJa3GlcWu2DBcHfD7rEeLiHayVeHgRT5yDEDFudPQv52GB9vK4uYaPmAryn070S1liXuk1IOPCx/3to86Kl9NGgcXrBxoC5RWqKpx5Exm+rD9K6UxKye7DawB9ccWV/OvpDgBcc1Ws8cNUrYlW5aRCsNig/WZOLMtZyPpzivg=" />
+</div>
+                              
+            <div id="templateCss"></div>
+            <script type="text/javascript">
+//<![CDATA[
+Sys.WebForms.PageRequestManager._initialize('sc', 'form1', ['tupdate12','update12'], [], [], 90, '');
+//]]>
+</script>
+
+            <input type="hidden" name="hfGridHtml" id="hfGridHtml" />
+            <div class="container" style='margin-bottom: 50px;'>
+                  <div id="accessories">
+
+                        
+                        <div class="pull-right" style="display: flex">
+                              <div id="voll"></div>
+                              <div id="vollDT"></div>
+                              
+                              
+<div class="print-icons">
+<input type="image" name="Print1$print" id="Print1_print" aria-label="Print" src="images/printer_icon.png" alt="print page button" style="padding: 5px 10px 5px 10px;" />
+</div>
+                        </div>
+                  </div>
+                  <input type="hidden" name="hydpermid" id="hydpermid" value="2314111" />
+                  
+
+
+
+                  <div class="innner-page-main-about-us-content-right-part">
+
+                        <div id="MinistryName" class="MinistryNameSubhead text-center">
+                              Ministry of Labour & Employment
+                        </div>
+                        
+                        <div id="lg_g"><div class='log_oo'>  <img src='https://static.pib.gov.in/WriteReadData/specificdocs/photo/2026/sep/ph_9768_20260902_10000501.png' alt='azadi ka amrit mahotsav' /> </div></div>
+
+
+
+
+
+                        <div class="text-center event-heading-background">
+                              
+                              <h1 id="Titleh2">
+                                    EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH
+                              </h1>
+                              <h3 id="Subtitleh3">
+                                    <span id="ltrSubtitle"></span>
+                              </h3>
+                        </div>
+
+                        <div id="PrDateTime" class="ReleaseDateSubHeaddateTime text-center pt20">
+                              Posted On:
+                23 SEP 2026 6:35PM by PIB Imphal
+                        </div>
+                        
+                        <div class='pt20'>
+                        </div>
+                        <input type="hidden" name="hydphotoUrl" id="hydphotoUrl" />
+                        
+                        <p style="text-align:justify"><span style="font-size:20px">A press meet was held at the Employees&rsquo; Provident Fund Organisation (EPFO), Special State Office, Imphal, on Wednesday regarding the enhancement of the wage ceiling for mandatory coverage under EPFO from ₹15,000 to ₹25,000 per month.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">The press meet was addressed by Majangbou Newmei, Regional Provident Fund Commissioner-II, and Ch. Chitrasen Singh, Enforcement Officer, EPFO, Special State Office, Imphal, in the presence of representatives of various media houses.</span></p>
+
+<p style="text-align:center"><img alt="Image" src="https://pbs.twimg.com/media/HS55CHQbkAAffE-?format=jpg&amp;name=small" /></p>
+
+<p style="text-align:justify"><span style="font-size:20px">During the interaction, the provisions and consequential benefits arising from the Central Government&rsquo;s decision to enhance the wage ceiling were explained.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">The wage ceiling, which was last enhanced to ₹15,000 per month in September 2014, has now been revised to ₹25,000 per month, taking into account the sustained growth in wages, rising income levels and the expansion of formal employment. The enhancement has been notified vide Gazette Notification dated 17 September 2026.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">The enhancement will bring eligible employees drawing wages between ₹15,000 and ₹25,000 per month within the statutory social-security framework, subject to the applicable provisions. Such employees will have access to Provident Fund, pension benefits under the Employees&rsquo; Pension Scheme (EPS), and insurance protection under the Employees&rsquo; Deposit Linked Insurance Scheme (EDLI).</span></p>
+
+<p style="text-align:center"><img alt="Image" src="https://pbs.twimg.com/media/HS548IyaoAAmXDU?format=jpg&amp;name=small" /></p>
+
+<p style="text-align:justify"><span style="font-size:20px">KEY CHANGES EFFECTIVE FROM SEPTEMBER 2026</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">1. <strong>Enhancement of Wage Ceiling:</strong></span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">For employees whose EPF and allied contributions were hitherto restricted to the wage ceiling of ₹15,000 per month, the wage ceiling for monthly contributions shall be enhanced to ₹25,000 per month or the actual salary/wages, whichever is lower, subject to the applicable statutory provisions and scheme rules.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">2. <strong>Enrolment of Previously Excluded Employees:</strong></span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">Employees who were not enrolled in EPF and allied schemes solely because their wages exceeded ₹15,000 per month shall be eligible for enrolment where their monthly salary/wages does not exceed ₹25,000, provided they fulfil all other applicable eligibility conditions.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">3. <strong>Employees&rsquo; Pension Scheme (EPS) Contribution:</strong></span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">Where applicable, the maximum contribution towards EPS shall be calculated at 8.33% of ₹25,000, instead of 8.33% of ₹15,000, subject to the applicable statutory provisions and scheme rules.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">The enhancement is expected to extend statutory social-security coverage to a larger number of eligible employees and strengthen the social-security framework under the EPF and allied schemes.</span></p>
+
+<p style="text-align:center"><img alt="Image" src="https://pbs.twimg.com/media/HS55K61bcAAFS9F?format=jpg&amp;name=small" /></p>
+
+<p style="text-align:center"><span style="font-size:20px">*****</span></p>
+
+<p><span style="font-size:20px">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RCT</span></p>
+
+
+                        
+                        <div id="reel_pic">
+                        </div>
+
+
+
+                        
+                        <br />
+                        <span id="ReleaseId">(Release ID: 2314111)</span>
+                        <span id="lblViews">Visitor Counter : 1797</span>
+                        <div>
+                              
+                        </div>
+                        
+
+                        <span id="lblRefPhoto"></span>
+
+                        <div class="BackgroundRelease">
+                              
+                        </div>
+                        <div>
+                              
+                        </div>
+                        
+                        
+                        
+
+                        <div class="RelTag">
+                              <ul>
+                                    
+                              </ul>
+                        </div>
+                        <div class="clear">
+                        </div>
+                        <div id="RelLink" class="RelLink">
+                              <ul>
+                                    
+                                    
+                              </ul>
+                        </div>
+                        <center>
+                              
+                        </center>
+                  </div>
+
+                  <div id="update12">
+	
+                              
+                              <input type="hidden" name="Hidden" id="Hidden" />
+                              <div id="P_CategoryManagement" class="ModalWindow" style="border-width:0px;height:60%;width:60%;overflow:auto;display: none">
+		
+                                    <div>
+                                          <input type="image" name="btnClose" id="btnClose" src="images/close_flat_icon.png" />
+                                    </div>
+                                    <div id="description">
+                                    </div>
+                                    <div class="text-center">
+                                          <h2>
+                                                
+                                                <br>
+                                                
+                                          </h2>
+                                    </div>
+                                    <br />
+                                    <div class="clear">
+                                    </div>
+                                    
+                              
+	</div>
+                        
+</div>
+            </div>
+            
+            <div id="PdfDiv" style="display: none;">
+                  <table width="100%">
+                        <tr>
+                              <td style="font-weight: 200; text-align: center">
+                                    Ministry of Labour & Employment
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="font-weight: 200; text-align: center; font-size: 30px;">
+                                          EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="font-weight: 200; text-align: center; font-size: 30px;">
+                                          
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="text-align: center; font-size: 14px;">
+                                          Posted On:
+                        23 SEP 2026 6:35PM by PIB Imphal
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="font-weight: 200; text-align: left; font-size: 16px;">
+                                          <p style="text-align:justify"><span style="font-size:20px">A press meet was held at the Employees&rsquo; Provident Fund Organisation (EPFO), Special State Office, Imphal, on Wednesday regarding the enhancement of the wage ceiling for mandatory coverage under EPFO from ₹15,000 to ₹25,000 per month.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">The press meet was addressed by Majangbou Newmei, Regional Provident Fund Commissioner-II, and Ch. Chitrasen Singh, Enforcement Officer, EPFO, Special State Office, Imphal, in the presence of representatives of various media houses.</span></p>
+
+<p style="text-align:center"><img alt="Image" src="https://pbs.twimg.com/media/HS55CHQbkAAffE-?format=jpg&amp;name=small" /></p>
+
+<p style="text-align:justify"><span style="font-size:20px">During the interaction, the provisions and consequential benefits arising from the Central Government&rsquo;s decision to enhance the wage ceiling were explained.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">The wage ceiling, which was last enhanced to ₹15,000 per month in September 2014, has now been revised to ₹25,000 per month, taking into account the sustained growth in wages, rising income levels and the expansion of formal employment. The enhancement has been notified vide Gazette Notification dated 17 September 2026.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">The enhancement will bring eligible employees drawing wages between ₹15,000 and ₹25,000 per month within the statutory social-security framework, subject to the applicable provisions. Such employees will have access to Provident Fund, pension benefits under the Employees&rsquo; Pension Scheme (EPS), and insurance protection under the Employees&rsquo; Deposit Linked Insurance Scheme (EDLI).</span></p>
+
+<p style="text-align:center"><img alt="Image" src="https://pbs.twimg.com/media/HS548IyaoAAmXDU?format=jpg&amp;name=small" /></p>
+
+<p style="text-align:justify"><span style="font-size:20px">KEY CHANGES EFFECTIVE FROM SEPTEMBER 2026</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">1. <strong>Enhancement of Wage Ceiling:</strong></span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">For employees whose EPF and allied contributions were hitherto restricted to the wage ceiling of ₹15,000 per month, the wage ceiling for monthly contributions shall be enhanced to ₹25,000 per month or the actual salary/wages, whichever is lower, subject to the applicable statutory provisions and scheme rules.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">2. <strong>Enrolment of Previously Excluded Employees:</strong></span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">Employees who were not enrolled in EPF and allied schemes solely because their wages exceeded ₹15,000 per month shall be eligible for enrolment where their monthly salary/wages does not exceed ₹25,000, provided they fulfil all other applicable eligibility conditions.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">3. <strong>Employees&rsquo; Pension Scheme (EPS) Contribution:</strong></span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">Where applicable, the maximum contribution towards EPS shall be calculated at 8.33% of ₹25,000, instead of 8.33% of ₹15,000, subject to the applicable statutory provisions and scheme rules.</span></p>
+
+<p style="text-align:justify"><span style="font-size:20px">The enhancement is expected to extend statutory social-security coverage to a larger number of eligible employees and strengthen the social-security framework under the EPF and allied schemes.</span></p>
+
+<p style="text-align:center"><img alt="Image" src="https://pbs.twimg.com/media/HS55K61bcAAFS9F?format=jpg&amp;name=small" /></p>
+
+<p style="text-align:center"><span style="font-size:20px">*****</span></p>
+
+<p><span style="font-size:20px">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; RCT</span></p>
+
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                                    <div style="font-weight: 100; text-align: left; font-size: 16px;">
+                                          (Release ID: 2314111)
+                                    </div>
+                                    <div style="height: 30px; width: 100%;">
+                                    </div>
+                              </td>
+                        </tr>
+                        <tr>
+                              <td style="font-weight: 200; text-align: center; font-size: 24px;"></td>
+                        </tr>
+                  </table>
+            </div>
+            <div class="clearfix">
+            </div>
+
+            
+
+            <div class="section1">
+                  <div id="frst_t">
+                        <div id="arr_rm"><div class='sticky-social_mb'><ul class='social_mb'><a href='http://www.facebook.com/share.php?u=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111' target='_blank'><li class='fb_b'   ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/facebook.jpg' alt='Share on facebook'  width='40' /></li></a><a href='https://twitter.com/intent/tweet?url=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111&text=EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH' target='_blank'><li class='twitter_r'  ><img  src='https://static.pib.gov.in/WriteReadData/specificdocs/photo/2023/aug/ph2023818240601.jpg' alt='Share on twitter' width='40' /> </li></a><a href='https://api.whatsapp.com/send?text=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111' target='_blank'><li class='whatsapp_r'  ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/whatsapp1.png' alt='Share on whatsapp' width='40' /></li></a><a href='https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=&su=EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH&body=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111&ui=2&tf=1&pli=1' title='Share by Email' target='_blank'><li class='fa-envelope_r' ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/email1.png' alt='Share on email'  width='40' /></li></a><a href='https://www.linkedin.com/shareArticle?mini=true&url=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111&title=EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH&summary=My%20favorite%20developer%20program&source=LinkedIn' target='_blank'><li class='fa-linkedin_r'  ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/linkedin.png' alt='Share on linkedin' width='40' /></li></a></ul></div></div>
+                  </div>
+                  <div id="second_t">
+                        <div id="sndr_rm"><div class='sticky-social'><ul class='social'><a href='http://www.facebook.com/share.php?u=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111' target='_blank'><li class='fb_b'   ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/facebook.jpg' alt='Share on facebook'  width='35' /></li></a><a href='https://twitter.com/intent/tweet?url=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111&text=EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH' target='_blank'><li class='twitter_r'  ><img  src='https://static.pib.gov.in/WriteReadData/specificdocs/photo/2023/aug/ph2023818240601.jpg' alt='Share on twitter' width='35' /> </li></a><a href='https://api.whatsapp.com/send?text=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111' target='_blank'><li class='whatsapp_r'  ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/whatsapp1.png' alt='Share on whatsapp' width='35' /></li></a><a href='https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=&su=EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH&body=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111&ui=2&tf=1&pli=1' title='Share by Email' target='_blank'><li class='fa-envelope_r' ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/email1.png' alt='Share on email'  width='35' /></li></a><a href='https://www.linkedin.com/shareArticle?mini=true&url=https://pib.gov.in/PressReleasePage.aspx?PRID=2314111&title=EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH&summary=My%20favorite%20developer%20program&source=LinkedIn' target='_blank'><li class='fa-linkedin_r'  ><img  src='https://static.pib.gov.in/WriteReadData/userfiles/socialmedianew/linkedin.png' alt='Share on linkedin' width='35' /></li></a></ul></div></div>
+                  </div>
+            </div>
+            <input type="hidden" name="ltrTitlee" id="ltrTitlee" value="EPFO WAGE CEILING ENHANCED FROM ₹15,000 TO ₹25,000 PER MONTH" />
+            <input type="hidden" name="ltrSubtitlee" id="ltrSubtitlee" />
+            <input type="hidden" name="ltrDescriptionn" id="ltrDescriptionn" value="&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>A press meet was held at the Employees&amp;rsquo; Provident Fund Organisation (EPFO), Special State Office, Imphal, on Wednesday regarding the enhancement of the wage ceiling for mandatory coverage under EPFO from ₹15,000 to ₹25,000 per month.&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>The press meet was addressed by Majangbou Newmei, Regional Provident Fund Commissioner-II, and Ch. Chitrasen Singh, Enforcement Officer, EPFO, Special State Office, Imphal, in the presence of representatives of various media houses.&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;img alt=&quot;Image&quot; src=&quot;https://pbs.twimg.com/media/HS55CHQbkAAffE-?format=jpg&amp;amp;name=small&quot; />&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>During the interaction, the provisions and consequential benefits arising from the Central Government&amp;rsquo;s decision to enhance the wage ceiling were explained.&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>The wage ceiling, which was last enhanced to ₹15,000 per month in September 2014, has now been revised to ₹25,000 per month, taking into account the sustained growth in wages, rising income levels and the expansion of formal employment. The enhancement has been notified vide Gazette Notification dated 17 September 2026.&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>The enhancement will bring eligible employees drawing wages between ₹15,000 and ₹25,000 per month within the statutory social-security framework, subject to the applicable provisions. Such employees will have access to Provident Fund, pension benefits under the Employees&amp;rsquo; Pension Scheme (EPS), and insurance protection under the Employees&amp;rsquo; Deposit Linked Insurance Scheme (EDLI).&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;img alt=&quot;Image&quot; src=&quot;https://pbs.twimg.com/media/HS548IyaoAAmXDU?format=jpg&amp;amp;name=small&quot; />&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>KEY CHANGES EFFECTIVE FROM SEPTEMBER 2026&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>1. &lt;strong>Enhancement of Wage Ceiling:&lt;/strong>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>For employees whose EPF and allied contributions were hitherto restricted to the wage ceiling of ₹15,000 per month, the wage ceiling for monthly contributions shall be enhanced to ₹25,000 per month or the actual salary/wages, whichever is lower, subject to the applicable statutory provisions and scheme rules.&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>2. &lt;strong>Enrolment of Previously Excluded Employees:&lt;/strong>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>Employees who were not enrolled in EPF and allied schemes solely because their wages exceeded ₹15,000 per month shall be eligible for enrolment where their monthly salary/wages does not exceed ₹25,000, provided they fulfil all other applicable eligibility conditions.&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>3. &lt;strong>Employees&amp;rsquo; Pension Scheme (EPS) Contribution:&lt;/strong>&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>Where applicable, the maximum contribution towards EPS shall be calculated at 8.33% of ₹25,000, instead of 8.33% of ₹15,000, subject to the applicable statutory provisions and scheme rules.&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:justify&quot;>&lt;span style=&quot;font-size:20px&quot;>The enhancement is expected to extend statutory social-security coverage to a larger number of eligible employees and strengthen the social-security framework under the EPF and allied schemes.&lt;/span>&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;img alt=&quot;Image&quot; src=&quot;https://pbs.twimg.com/media/HS55K61bcAAFS9F?format=jpg&amp;amp;name=small&quot; />&lt;/p>
+
+&lt;p style=&quot;text-align:center&quot;>&lt;span style=&quot;font-size:20px&quot;>*****&lt;/span>&lt;/p>
+
+&lt;p>&lt;span style=&quot;font-size:20px&quot;>&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; RCT&lt;/span>&lt;/p>
+" />
+            <script type="text/javascript">
+                  var mPlayer = document.getElementById("background_music");
+                  var mPlayAction = document.getElementById("playbutton");
+
+                  var isPlaying = false;
+
+                  function playAudio() {
+                        mPlayer.play();
+                        isPlaying = true;
+                        document.getElementById('stopA').style.display = "block";
+                        document.getElementById('playA').style.display = "none";
+                  }
+
+                  function pauseAudio() {
+                        mPlayer.pause();
+                        isPlaying = false;
+                        document.getElementById('playA').style.display = "block";
+                        document.getElementById('stopA').style.display = "none";
+                  }
+                  //function HandleAudio() {
+                  //    if (isPlaying == true) {
+                  //        //Playing already Pause it
+                  //        pauseAudio();
+                  //    } else {
+                  //        //Play the music
+                  //        playAudio();
+                  //    }
+                  //}
+            </script>
+            <script type="text/javascript">
+                  var synth = window.speechSynthesis;
+
+            
+                  function CleanHtml(html) {
+
+                        html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+                        return html;
+                  }
+                  function stripHtml(html) {
+                        let tmp = document.createElement("DIV");
+                        tmp.innerHTML = CleanHtml(html);
+                        return tmp.textContent || tmp.innerText || "";
+                  }
+            </script>
+            <script type="text/javascript">
+                  $(document).ready(function () {
+                        //for responsive tables
+                        $("table").each(function () {
+                              if (!$(this).closest(".table-responsive").length) {
+                                    $(this).wrap("<div class='table-responsive'></div>");
+                              }
+                        });
+
+                        var width = $(window).width();
+                        if (width < 768) {
+
+                              // Extra Small Device
+                              document.getElementById('frst_t').style.display = "block";
+                              document.getElementById('second_t').style.display = "none";
+
+                        } else if (width < 991) {
+                              document.getElementById('frst_t').style.display = "block";
+                              document.getElementById('second_t').style.display = "none";
+                              // Small Device
+
+                        } else if (width < 1199) {
+                              document.getElementById('frst_t').style.display = "none";
+                              document.getElementById('second_t').style.display = "block";
+                              // Medium Device
+
+                        } else {
+                              document.getElementById('frst_t').style.display = "none";
+                              document.getElementById('second_t').style.display = "block";
+                              // Large Device
+
+                        }
+                  });
+            </script>
+            <script type="text/javascript">
+                  $(document).ready(function () {
+                        var width = $(window).width();
+                        if (width < 768) {
+
+                              // Extra Small Device
+                              document.getElementById('frst_t').style.display = "block";
+                              document.getElementById('second_t').style.display = "none";
+
+                        } else if (width < 991) {
+                              document.getElementById('frst_t').style.display = "block";
+                              document.getElementById('second_t').style.display = "none";
+                              // Small Device
+
+                        } else if (width < 1199) {
+                              document.getElementById('frst_t').style.display = "none";
+                              document.getElementById('second_t').style.display = "block";
+                              // Medium Device
+
+                        } else {
+                              document.getElementById('frst_t').style.display = "none";
+                              document.getElementById('second_t').style.display = "block";
+                              // Large Device
+
+                        }
+                  });
+            </script>
+            
+            <style type="text/css">
+                  @media print {
+                        .sticky-social, .sticky-social_mb, .pull-right, #printPDF {
+                              display: none !important;
+                        }
+                  }
+
+                  .f_vl {
+                        padding-right: 30px;
+                        font-size: 17px;
+                        cursor: pointer;
+                  }
+
+                  .log_oo {
+                        // width: 20%;
+                        display: flex;
+                        justify-content: space-between;
+                  }
+
+                        .log_oo img {
+                              width: 150px;
+                              /*width: 100%;
+                    height: auto;*/
+                        }
+
+                  .sticky-social_mb {
+                        position: fixed;
+                        bottom: 0px;
+                        padding: 0px;
+                        margin: 0px;
+                        width: 100%;
+                  }
+
+                  .social_mb {
+                        list-style: none;
+                        display: flex;
+                        width: 100%;
+                        margin-bottom: -8px;
+                  }
+
+                        .social_mb a {
+                              padding: 8px 0px;
+                              font-size: 30px;
+                              transition: all 0.8s ease-in-out;
+                              width: 20% !important;
+                              text-align: center;
+                        }
+            </style>
+            <style type="text/css">
+                  .section1 {
+                        position: relative;
+                        padding: 10px 0px;
+                        width: 100%;
+                  }
+
+
+
+                  .sticky-social {
+                        position: fixed;
+                        top: 20px;
+                        left: 0px;
+                        padding: 0px;
+                        margin: 0px;
+                  }
+
+                  .social {
+                        list-style: none;
+                  }
+
+                        .social a li {
+                              padding: 8px 12px;
+                              font-size: 25px;
+                              transition: all 0.8s ease-in-out;
+                        }
+
+                              .social a li:hover {
+                                    margin-right: -30px;
+                                    box-shadow: 2px 5px 10px grey;
+                              }
+
+                                    .social a li:hover .fa {
+                                          margin-left: 20px;
+                                    }
+
+                  .fb_b {
+                        /* background-color: rgb(59, 89, 152);*/
+                        background-color: rgba(65,103,178,255);
+                  }
+
+                  .twitter_r {
+                        /* background-color: rgb(29, 161, 242);*/
+                        background-color: #000000;
+                  }
+
+                  .whatsapp_r {
+                        /* background-color: rgb(77, 194, 71);*/
+                        background-color: rgba(13,191,67,255);
+                  }
+
+                  .fa-envelope_r {
+                        /* background-color: rgb(219, 68, 55);*/
+                        background-color: #e2123d;
+                  }
+
+                  .fa-linkedin_r {
+                        background-color: rgb(0, 119, 181);
+                  }
+            </style>
+            <style type="text/css">
+                  @media only screen and (max-device-width: 767px) {
+                        p span img {
+                              max-width: 90% !important;
+                              height: auto !important;
+                        }
+
+                        p img {
+                              max-width: 90% !important;
+                              height: auto !important;
+                        }
+
+                        h2 {
+                              font-size: 20px !important;
+                              font-weight: 600 !important;
+                        }
+
+                        h3 {
+                              font-size: 16px !important;
+                              font-weight: 600 !important;
+                        }
+                  }
+            </style>
+            <style type="text/css">
+                  /* === Film Roll Badge Styling(IFFI2025 countdown) === */
+                  .film-roll-badge {
+                        position: absolute;
+                        top:82%;
+                        right: 20px;
+                        width: 230px;
+                        height: 70px;
+                        background: repeating-linear-gradient( to right, #9a2375 0px, #9a2375 18px, #6e2b8b 18px, #6e2b8b 36px );
+                        border-top: 8px solid #9a2375;
+                        border-bottom: 8px solid #9a2375;
+                        border-radius: 8px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                        animation: moveFilm 8s linear infinite;
+                        z-index: 10;
+                  }
+
+                        /* film sprocket holes */
+                        .film-roll-badge::before,
+                        .film-roll-badge::after {
+                              content: "";
+                              position: absolute;
+                              width: 100%;
+                              height: 10px;
+                              background: repeating-linear-gradient( to right, #9a2375 0px, #9a2375 10px, #fff 10px, #fff 20px );
+                              left: 0;
+                              z-index: 2;
+                        }
+
+                        .film-roll-badge::before {
+                              top: -4px;
+                        }
+
+                        .film-roll-badge::after {
+                              bottom: -4px;
+                        }
+
+                  .film-roll-inner {
+                        position: relative;
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        animation: flicker 2s infinite ease-in-out;
+                  }
+
+                  .countdown-text {
+                        font-size: 1.3rem;
+                        font-weight: 700;
+                        color: #fff;
+                        text-shadow: 0 0 6px rgba(255, 255, 255, 0.4), 0 0 10px #000;
+                        white-space: nowrap;
+                  }
+
+                  /* === Animations === */
+                  @keyframes moveFilm {
+                        0% {
+                              background-position: 0 0;
+                        }
+
+                        100% {
+                              background-position: 120px 0;
+                        }
+                  }
+
+                  @keyframes flicker {
+                        0%, 100% {
+                              opacity: 1;
+                        }
+
+                        50% {
+                              opacity: 0.9;
+                        }
+
+                        25% {
+                              opacity: 0.95;
+                        }
+
+                        75% {
+                              opacity: 0.85;
+                        }
+                  }
+
+                  /* === Responsive Adjustments === */
+                  @media (max-width: 1500px) {
+                        .film-roll-badge {
+                              top: 68%;
+                              right: 18px;
+                              /* width: 220px; */
+                              height: 65px;
+                              font-size: 0.85rem;
+                        }
+
+                        .press-section {
+                              margin-top: 35px;
+                        }
+                  }
+
+                  @media (max-width: 992px) {
+                        .film-roll-badge {
+                              top: 52%;
+                              right: 10px;
+                               width: 200px; 
+                              height: 60px;
+                        }
+                  }
+
+                  @media (max-width: 768px) {
+                        .film-roll-badge {
+                              top: 56%;
+                              right: 10px;
+                               width: 124px; 
+                              height: 55px;
+                        }
+
+                        .countdown-text {
+                              font-size: 0.9rem;
+                        }
+                  }
+
+                  @media (max-width: 576px) {
+                        .film-roll-badge {
+                              top: 59%;
+                              right: 5px;
+                              /* width: 160px; */
+                              height: 50px;
+                        }
+
+                        .countdown-text {
+                              font-size: 0.85rem;
+                        }
+                  }
+            </style>
+          <script type="text/javascript">
+                const festivalStart = new Date("2025-11-20T00:00:00").getTime();
+                const festivalEnd = new Date("2025-11-28T23:59:59").getTime();
+
+                const countdownElement = document.getElementById("countdown");
+
+                const interval = setInterval(() => {
+                      const now = new Date().getTime();
+
+                      // BEFORE FESTIVAL — show days + hours left
+                      if (now < festivalStart) {
+                            const diff = festivalStart - now;
+                            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+                            countdownElement.innerHTML = `
+              ${days} Day${days !== 1 ? 's' : ''} 
+              ${hours} Hour${hours !== 1 ? 's' : ''} to go
+          `;
+
+                      }
+
+                      // DURING FESTIVAL — show 56th IFFI - Day X
+                      else if (now >= festivalStart && now <= festivalEnd) {
+                            const dayNumber = Math.floor((now - festivalStart) / (1000 * 60 * 60 * 24)) + 1;
+                            countdownElement.innerHTML = `56th IFFI - Day ${dayNumber}`;
+                      }
+
+                      // AFTER FESTIVAL — new message
+                      else {
+                            countdownElement.innerHTML = `✨ IFFI closes but never ends…`;
+
+                            // Width change logic
+                            const elements = document.querySelectorAll('.film-roll-badge');
+                            elements.forEach(el => el.style.width = "350px");
+
+                            clearInterval(interval);
+                      }
+
+                }, 1000);
+          </script>
+ <script type="text/javascript">
+
+               const miffStart = new Date("2026-06-15T00:00:00").getTime();
+               const miffEnd = new Date("2026-06-15T23:59:59").getTime();
+
+               const miffElement = document.getElementById("miff");
+
+               if (miffElement) {
+
+                   const miffInterval = setInterval(() => {
+
+                       const now = new Date().getTime();
+
+                       // Before MIFF
+                       if (now < miffStart) {
+
+                           const diff = miffStart - now;
+                           const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                           const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+        
+
+                   /*  miffElement.innerHTML = `${days} Day${days !== 1 ? 's' : ''} ${hours} Hour${hours !== 1 ? 's' : ''} to MIFF`;*/
+                           miffElement.innerHTML = `${days} Day${days === 1 ? '' : 's'} to MIFF ...`;
+
+
+                     }
+
+                       // During MIFF
+                       else if (now >= miffStart && now <= miffEnd) {
+
+                           const dayNumber =
+                               Math.floor((now - miffStart) / (1000 * 60 * 60 * 24)) + 1;
+
+                           miffElement.innerHTML = `19th MIFF - Day ${dayNumber}`;
+                       }
+
+                       // After MIFF
+                       else {
+
+                           miffElement.innerHTML = `✨ MIFF concludes, cinema lives on...`;
+
+                           document.querySelectorAll('.film-roll-badge')
+                               .forEach(el => el.style.width = "350px");
+
+                           clearInterval(miffInterval);
+                       }
+
+                   }, 1000);
+               }
+
+</script>
+
+      
+
+<script type="text/javascript">
+//<![CDATA[
+(function() {var fn = function() {$get("sc_HiddenField").value = '';Sys.Application.remove_init(fn);};Sys.Application.add_init(fn);})();Sys.Application.add_init(function() {
+    $create(Sys.Extended.UI.ModalPopupBehavior, {"BackgroundCssClass":"modalBackground","PopupControlID":"P_CategoryManagement","dynamicServicePath":"/PressReleasePage.aspx","id":"mpe"}, null, null, $get("Hidden"));
+});
+//]]>
+</script>
+<input type="hidden" name="__ncforminfo" value="VM1EmoUOeqzqacpMIRTQ3YRFO25oLSuZy6i49BT1dlLLRmMxi3iTRMk16ZA_wbpOSyBnv3hQT3IkT3-FpbcHv4Rlo2WmpTCQ_csttKB_41fq56YkCG1fDQ=="/></form>
+      
+      
+
+<script type="application/json" id="pibConsentConfig">{"ga4Id":"G-Q414Y0X6EE,G-QJJ6LZ8LHV","policyUrl":"/CookiePolicy.aspx","text":{"bannerLabel":"Cookie consent","title":"Cookies on this website","body":"We use essential cookies to make this website work. We also set analytics cookies when you arrive, so we can see how the site is used and improve it - you can switch these off below or at any time from the Cookie Policy page. Cookies from embedded social media content are set only if you allow them.","policyLink":"Read our Cookie Policy","accept":"Accept all","reject":"Reject optional","customize":"Customise","prefsTitle":"Cookie preferences","prefsIntro":"Choose which cookies this website may set. Essential cookies cannot be switched off because the site does not work without them. Analytics cookies are on unless you turn them off. Social media cookies stay off until you allow them. You can change these choices at any time from the Cookie Policy page.","essentialName":"Essential cookies","essentialDesc":"Needed for the site to function. These remember your session, your language and region, your text size and colour theme, and verify the security check on forms. They are always on.","analyticsName":"Analytics cookies","analyticsDesc":"Help us understand how visitors use the site - which pages are read and how long people stay - so it can be improved. The information is collected in a form that does not directly identify you. These are on when you arrive; switching them off here stops them and deletes the ones already set.","socialName":"Social media cookies","socialDesc":"Set by content embedded from X, Facebook and YouTube, such as timelines and videos. These platforms may use them to track you across websites. They stay off until you allow them.","save":"Save preferences","cancel":"Cancel"}}</script>
+<script type="text/javascript" src='/js/consent.js?v=9'></script>
+
+<script type="text/javascript" src='/js/consent-embeds.js?v=9'></script>
+
+</body>
+</html>
+

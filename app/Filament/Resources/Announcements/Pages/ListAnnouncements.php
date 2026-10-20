@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Announcements\Pages;
 
 use App\Filament\Resources\Announcements\AnnouncementResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListAnnouncements extends ListRecords
+class ListAnnouncements extends PeopleListRecords
 {
     protected static string $resource = AnnouncementResource::class;
 

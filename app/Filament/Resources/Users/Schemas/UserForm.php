@@ -3,12 +3,15 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\Location;
 use App\Filament\Support\AuditReasonField;
+use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -30,16 +33,16 @@ class UserForm
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
-                        TextInput::make('password')
-                            ->password()
-                            ->revealable()
-                            ->minLength(12)
-                            ->required(fn (string $operation) => $operation === 'create')
-                            ->dehydrated(fn ($state) => filled($state))
-                            ->helperText('Leave blank to keep the current password.'),
+                        // SaaS.2: administrators never choose or see a password. A new user is invited by e-mail and
+                        // chooses their own; a forgotten password is reset by its owner (or a reset link is sent).
                         Select::make('status')
-                            ->options(UserStatus::class)
-                            ->default(UserStatus::Active)
+                            ->options(fn (?User $record) => $record?->status === UserStatus::Invited
+                                ? [UserStatus::Invited->value => UserStatus::Invited->getLabel()]
+                                : [UserStatus::Active->value => UserStatus::Active->getLabel(), UserStatus::Suspended->value => UserStatus::Suspended->getLabel()])
+                            ->visibleOn('edit')
+                            ->disabled(fn (?User $record) => $record?->status === UserStatus::Invited)
+                            ->dehydrated(fn (?User $record) => $record?->status !== UserStatus::Invited)
+                            ->helperText(fn (?User $record) => $record?->status === UserStatus::Invited ? 'Activated when the person accepts their invitation.' : null)
                             ->required(),
                         TextInput::make('timezone')->placeholder('Asia/Kolkata')->maxLength(64),
                     ]),
@@ -51,7 +54,14 @@ class UserForm
                             ->preload()
                             ->searchable()
                             ->disabled(fn () => ! auth()->user()->can('user.assign_roles'))
-                            ->helperText('Tenant-wide role assignments. Organisational restrictions are set under Access scope below.'),
+                            // SaaS.10 (E1): a role newly given here must be one the editor may grant (RoleGrants).
+                            ->rule(fn (?User $record) => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                $refused = app(RoleGrants::class)->refused(auth()->user(), (array) $value, $record?->roles()->pluck('roles.id')->all() ?? []);
+                                if ($refused->isNotEmpty()) {
+                                    $fail(app(RoleGrants::class)->refusal($refused->first()));
+                                }
+                            })
+                            ->helperText('Tenant-wide role assignments. Organisational restrictions are set under Access scope below. You can give a custom role only if you hold all its permissions; only a Tenant Super Admin gives that role.'),
                     ]),
                 Section::make('Access scope')
                     ->description('Leave empty for tenant-wide access. Selections restrict the employees and organisation units this user can reach; dimensions combine with AND.')

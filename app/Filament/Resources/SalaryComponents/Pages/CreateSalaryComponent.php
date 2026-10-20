@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\SalaryComponents\Pages;
 
 use App\Filament\Resources\SalaryComponents\SalaryComponentResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateSalaryComponent extends CreateRecord
+class CreateSalaryComponent extends PeopleCreateRecord
 {
     protected static string $resource = SalaryComponentResource::class;
 }

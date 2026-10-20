@@ -7,8 +7,6 @@ use App\Domain\Compliance\Models\StatutorySnapshot;
 use App\Domain\Compliance\Services\Returns\EsiReturns;
 use App\Domain\Compliance\Services\Returns\StatutoryReturns;
 use App\Domain\Employment\Models\EmployeeStatutoryDetail;
-use App\Domain\Payroll\Models\SalaryStructure;
-use App\Domain\Payroll\Services\Salaries;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -75,7 +73,7 @@ it('warns when an employee covered earlier in the contribution period drops out 
     finalizedPayroll($this->company, 2026, 8, $this->preparer, $this->payrollApprover);
     $this->returns->approve($this->returns->validate($this->esi->generate($this->establishment, 2026, 8, $this->generator), $this->generator), $this->approver);
 
-    app(Salaries::class)->assign($this->low, SalaryStructure::query()->where('code', 'STANDARD')->firstOrFail(), 360000, '2026-09-01', ['CONV' => 1600], 'revision', 'Increment');
+    compensate($this->low, 360000, '2026-09-01', ['CONV' => 1600], 'revision', 'Increment');
     finalizedPayroll($this->company, 2026, 9, $this->preparer, $this->payrollApprover);
     $september = $this->returns->validate($this->esi->generate($this->establishment, 2026, 9, $this->generator), $this->generator);
 

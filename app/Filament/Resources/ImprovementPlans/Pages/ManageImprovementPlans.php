@@ -5,10 +5,10 @@ namespace App\Filament\Resources\ImprovementPlans\Pages;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Performance\Services\ImprovementPlans;
 use App\Filament\Resources\ImprovementPlans\ImprovementPlanResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageImprovementPlans extends ManageRecords
+class ManageImprovementPlans extends PeopleManageRecords
 {
     protected static string $resource = ImprovementPlanResource::class;
 

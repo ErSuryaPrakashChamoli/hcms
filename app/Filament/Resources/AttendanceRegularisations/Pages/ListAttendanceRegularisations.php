@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\AttendanceRegularisations\Pages;
 
 use App\Filament\Resources\AttendanceRegularisations\AttendanceRegularisationResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListAttendanceRegularisations extends ListRecords
+class ListAttendanceRegularisations extends PeopleListRecords
 {
     protected static string $resource = AttendanceRegularisationResource::class;
 }

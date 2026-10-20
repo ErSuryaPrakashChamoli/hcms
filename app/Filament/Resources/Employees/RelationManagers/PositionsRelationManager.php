@@ -28,6 +28,9 @@ class PositionsRelationManager extends RelationManager
                 TextColumn::make('change_type')->badge()->formatStateUsing(fn (string $state) => config("peopleos.people.position_change_types.{$state}", $state)),
                 TextColumn::make('company.name')->label('Company')->placeholder('—'),
                 TextColumn::make('designation.name')->label('Designation')->placeholder('—'),
+                // Phase 10: the position (seat) this assignment occupied, and its FTE.
+                TextColumn::make('position.code')->label('Position')->placeholder('—')->description(fn ($record) => $record->position?->versionOn($record->effective_from)?->title),
+                TextColumn::make('fte')->label('FTE')->placeholder('—')->toggleable(),
                 TextColumn::make('department.name')->label('Department')->placeholder('—'),
                 TextColumn::make('location.name')->label('Location')->placeholder('—')->toggleable(),
                 TextColumn::make('level.name')->label('Level')->placeholder('—')->toggleable(),

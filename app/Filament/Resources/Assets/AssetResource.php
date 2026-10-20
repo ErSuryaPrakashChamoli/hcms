@@ -18,7 +18,7 @@ use App\Filament\Resources\Assets\RelationManagers\MovementsRelationManager;
 use App\Filament\Resources\Assets\RelationManagers\RepairsRelationManager;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\CustomFieldsSchema;
-use App\Support\Tenancy\TenantContext;
+use App\Filament\Support\TenantUnique;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -85,7 +85,7 @@ class AssetResource extends Resource
             Section::make('Asset')->columns(3)->schema([
                 Select::make('asset_category_id')->label('Category')->required()->live()->options(fn () => AssetCategory::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all()),
                 Select::make('asset_model_id')->label('Model')->placeholder('—')->options(fn (Get $get) => AssetModel::query()->where('asset_category_id', $get('asset_category_id'))->get()->mapWithKeys(fn ($m) => [$m->id => $m->auditLabel()])->all()),
-                TextInput::make('asset_tag')->label('Asset tag')->required()->maxLength(64)->disabled(fn (string $operation) => $operation === 'edit')->dehydrated()->unique(ignoreRecord: true, modifyRuleUsing: fn ($rule) => $rule->where('tenant_id', app(TenantContext::class)->id())),
+                TextInput::make('asset_tag')->label('Asset tag')->required()->maxLength(64)->disabled(fn (string $operation) => $operation === 'edit')->dehydrated()->unique(ignoreRecord: true, modifyRuleUsing: TenantUnique::rule()),
                 TextInput::make('name')->required()->maxLength(255)->columnSpan(2),
                 TextInput::make('serial_number')->maxLength(128)->required(fn (Get $get) => (bool) AssetCategory::query()->whereKey($get('asset_category_id'))->value('requires_serial')),
                 Select::make('condition')->options(config('peopleos.assets.conditions'))->default('new')->required(),

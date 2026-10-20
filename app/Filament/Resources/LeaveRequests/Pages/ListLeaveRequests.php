@@ -6,12 +6,12 @@ use App\Domain\Employment\Models\Employee;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Support\LeaveActions;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
 
-class ListLeaveRequests extends ListRecords
+class ListLeaveRequests extends PeopleListRecords
 {
     protected static string $resource = LeaveRequestResource::class;
 

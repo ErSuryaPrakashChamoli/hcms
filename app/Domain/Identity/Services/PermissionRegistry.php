@@ -61,6 +61,17 @@ final class PermissionRegistry
     }
 
     /**
+     * SaaS.10: the concrete keys the patterns grant (what idsMatching() would attach), for the delegation ceiling.
+     *
+     * @param  list<string>  $patterns
+     * @return list<string>
+     */
+    public function keysMatching(array $patterns): array
+    {
+        return Permission::query()->whereIn('key', $this->expand($patterns))->pluck('key')->all();
+    }
+
+    /**
      * Upsert the catalogue into the permissions table. Removed keys are pruned.
      *
      * @return array{created: int, pruned: int}

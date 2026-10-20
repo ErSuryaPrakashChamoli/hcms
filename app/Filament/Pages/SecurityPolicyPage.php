@@ -37,7 +37,7 @@ class SecurityPolicyPage extends Page implements HasSchemas
     /** @var array<string, mixed> */
     public array $data = [];
 
-    private const KEYS = ['security.ip_allowlist', 'security.mfa_required', 'security.session_idle_minutes', 'security.password_min_length', 'security.password_expiry_days', 'retention.ai_interactions_days', 'retention.notification_deliveries_days', 'retention.report_runs_days'];
+    private const KEYS = ['security.ip_allowlist', 'security.mfa_required', 'security.session_idle_minutes', 'security.password_min_length', 'security.password_expiry_days', 'retention.ai_interactions_days', 'retention.notification_deliveries_days', 'retention.report_runs_days', 'warehouse.export_enabled', 'warehouse.retention_days'];
 
     public static function canAccess(): bool
     {
@@ -70,6 +70,12 @@ class SecurityPolicyPage extends Page implements HasSchemas
                 TextInput::make('retention__ai_interactions_days')->label('AI interactions')->numeric()->minValue(0),
                 TextInput::make('retention__notification_deliveries_days')->label('Notification deliveries')->numeric()->minValue(0),
                 TextInput::make('retention__report_runs_days')->label('Report runs & exports')->numeric()->minValue(0),
+            ]),
+            // SaaS.8: the daily data-warehouse feed is opt-in, and its snapshots are kept only for the window below.
+            Section::make('Data warehouse feed')->columns(2)->schema([
+                Toggle::make('warehouse__export_enabled')->label('Export datasets to the warehouse disk every day')
+                    ->helperText('Off: nothing is exported. Non-sensitive fields only.'),
+                TextInput::make('warehouse__retention_days')->label('Keep daily snapshots for (days)')->numeric()->minValue(0)->helperText('0 = keep'),
             ]),
         ]);
     }

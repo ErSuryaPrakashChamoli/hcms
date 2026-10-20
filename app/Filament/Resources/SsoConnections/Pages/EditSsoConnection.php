@@ -4,10 +4,10 @@ namespace App\Filament\Resources\SsoConnections\Pages;
 
 use App\Filament\Resources\SsoConnections\SsoConnectionResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditSsoConnection extends EditRecord
+class EditSsoConnection extends PeopleEditRecord
 {
     use GovernedEdit;
 

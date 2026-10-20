@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\SalaryStructures\Pages;
 
 use App\Filament\Resources\SalaryStructures\SalaryStructureResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListSalaryStructures extends ListRecords
+class ListSalaryStructures extends PeopleListRecords
 {
     protected static string $resource = SalaryStructureResource::class;
 

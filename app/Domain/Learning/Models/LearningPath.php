@@ -7,10 +7,11 @@ use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** An ordered set of courses (§37). */
-#[Fillable(['tenant_id', 'name', 'code', 'description', 'status'])]
+#[Fillable(['tenant_id', 'name', 'code', 'description', 'milestones', 'status', 'current_version_id'])]
 class LearningPath extends Model
 {
     use Auditable, BelongsToTenant;
@@ -24,7 +25,7 @@ class LearningPath extends Model
 
     protected function casts(): array
     {
-        return ['status' => ActiveStatus::class];
+        return ['status' => ActiveStatus::class, 'milestones' => 'array'];
     }
 
     public function auditModule(): string
@@ -35,6 +36,16 @@ class LearningPath extends Model
     public function auditLabel(): string
     {
         return "{$this->name} ({$this->code})";
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(LearningPathVersion::class)->orderBy('version');
+    }
+
+    public function currentVersion(): BelongsTo
+    {
+        return $this->belongsTo(LearningPathVersion::class, 'current_version_id');
     }
 
     public function items(): HasMany

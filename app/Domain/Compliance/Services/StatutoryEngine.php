@@ -145,6 +145,13 @@ final class StatutoryEngine
         $on = $c->period->end_date;
         $gross = $c->gross();
 
+        // Release programme: PeopleOS holds no statutory rule for this jurisdiction (no verified, or even draft, source),
+        // so its taxes and contributions cannot be computed. Under enforcement (always in production) the employee's pay is
+        // blocked instead of finalised with no deductions, whatever the company's applicability switches say.
+        if (! app(ComplianceRules::class)->covers($jurisdiction)) {
+            $c->exception('statutory_jurisdiction_unsupported', "PeopleOS holds no statutory rules for {$jurisdiction}: its taxes and contributions are not calculated.", ComplianceRules::enforced());
+        }
+
         if ($context->applies('EPF') && $gross > 0 && ($rule = $this->rule($c, 'SS', $on, null, $jurisdiction))) {
             $base = min(max($gross, (float) $rule->param('wage_floor', 0)), (float) ($rule->param('wage_ceiling') ?? $gross));
             $basis = [...$this->ruleRef($rule), 'jurisdiction' => $jurisdiction, 'base' => $base];

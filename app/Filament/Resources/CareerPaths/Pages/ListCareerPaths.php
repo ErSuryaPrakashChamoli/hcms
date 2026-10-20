@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\CareerPaths\Pages;
 
 use App\Filament\Resources\CareerPaths\CareerPathResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListCareerPaths extends ListRecords
+class ListCareerPaths extends PeopleListRecords
 {
     protected static string $resource = CareerPathResource::class;
 

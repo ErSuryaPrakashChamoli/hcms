@@ -62,6 +62,30 @@ it('converts currencies with dated and inverse rates and formats per country pac
         ->and($packs->get('GB')['labour']['minimum_leave_days'])->toBe(28);
 });
 
+it('blocks payroll in a jurisdiction PeopleOS holds no statutory rules for, whatever the company switches say (release programme)', function () {
+    $company = payrollCompany(['jurisdiction' => 'US', 'pf_applicable' => false, 'esi_applicable' => false, 'pt_applicable' => false, 'tds_applicable' => false]);
+    $company->update(['country_code' => 'US', 'currency' => 'USD']);
+    $employee = salariedEmployee(240000);
+    $unsupported = fn ($c) => collect($c->exceptions)->firstWhere('type', 'statutory_jurisdiction_unsupported');
+
+    config(['peopleos.payroll.enforce_verified_rules' => true]);
+    $c = app(PayrollCalculator::class)->calculate($employee, PayrollPeriod::for($company, 2026, 9));
+    expect($unsupported($c))->toMatchArray(['blocking' => true])->and($unsupported($c)['message'])->toContain('US')
+        ->and($c->blocking())->toBeTrue()
+        ->and(collect($c->lines)->where('type', 'deduction')->isEmpty())->toBeTrue(); // nothing invented
+
+    config(['peopleos.payroll.enforce_verified_rules' => false]); // development override: flagged, not blocking
+    expect($unsupported(app(PayrollCalculator::class)->calculate($employee, PayrollPeriod::for($company, 2026, 9))))->not->toHaveKey('blocking');
+    app()->detectEnvironment(fn () => 'production'); // production enforces whatever the override says
+    expect(app(PayrollCalculator::class)->calculate($employee, PayrollPeriod::for($company, 2026, 9))->blocking())->toBeTrue();
+    app()->detectEnvironment(fn () => 'testing');
+
+    // A jurisdiction with rules (UAE) is not flagged.
+    CompanyStatutoryProfile::query()->where('company_id', $company->id)->update(['jurisdiction' => 'AE']);
+    $company->update(['country_code' => 'AE', 'currency' => 'AED']);
+    expect($unsupported(app(PayrollCalculator::class)->calculate($employee->fresh(), PayrollPeriod::for($company->fresh(), 2026, 9))))->toBeNull();
+});
+
 it('runs the generic statutory engine for a non-India company', function () {
     $company = payrollCompany(['jurisdiction' => 'AE', 'pf_applicable' => true, 'tds_applicable' => false]);
     $company->update(['country_code' => 'AE', 'currency' => 'AED']);
@@ -97,6 +121,9 @@ it('enforces the tenant security policy', function () {
     actAsTenant(null);
     $this->actingAs($employee->user);
     $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])->get('/admin')->assertForbidden();
+    // SaaS.2: MFA is required above, and now enforced: from an allowed network the employee is sent to set up an authenticator first.
+    $this->withServerVariables(['REMOTE_ADDR' => '10.1.1.1'])->get('/admin/my-day')->assertRedirect(route('filament.admin.auth.multi-factor-authentication.set-up-required'));
+    proveMfa($employee->user);
     $this->withServerVariables(['REMOTE_ADDR' => '10.1.1.1'])->get('/admin/my-day')->assertOk();
     $this->actingAs(platformAdmin());
     $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])->get('/admin')->assertOk();
@@ -180,11 +207,11 @@ it('publishes signed webhooks for domain events, retries and records deliveries'
         ->and($delivery->payload['data']['employee_code'])->toBe($employee->employee_code);
 
     $webhooks = app(Webhooks::class);
-    expect($webhooks->deliverDue())->toBe(['delivered' => 0, 'failed' => 0, 'retrying' => 1]);
+    expect($webhooks->deliverDue())->toBe(['delivered' => 0, 'dead_letter' => 0, 'retrying' => 1, 'skipped' => 0]);
     expect($delivery->refresh()->attempts)->toBe(1)->and($delivery->response_code)->toBe(500)->and($delivery->next_attempt_at->isFuture())->toBeTrue();
-    expect($webhooks->deliverDue())->toBe(['delivered' => 0, 'failed' => 0, 'retrying' => 0]); // not due yet
+    expect($webhooks->deliverDue())->toBe(['delivered' => 0, 'dead_letter' => 0, 'retrying' => 0, 'skipped' => 0]); // not due yet
     $this->travelTo(now()->addMinutes(3));
-    expect($webhooks->deliverDue())->toBe(['delivered' => 1, 'failed' => 0, 'retrying' => 0]);
+    expect($webhooks->deliverDue())->toBe(['delivered' => 1, 'dead_letter' => 0, 'retrying' => 0, 'skipped' => 0]);
     expect($delivery->refresh()->status)->toBe('delivered')->and($endpoint->refresh()->last_delivered_at)->not->toBeNull();
 
     Http::assertSent(function ($request) {
@@ -196,7 +223,8 @@ it('publishes signed webhooks for domain events, retries and records deliveries'
 
     Http::fake(['https://erp.example.test/*' => Http::response('', 503)]);
     $dead = WebhookDelivery::create(['webhook_endpoint_id' => $endpoint->id, 'event' => 'leave.requested', 'event_id' => 'x', 'payload' => ['event' => 'leave.requested'], 'status' => 'pending', 'attempts' => 4, 'next_attempt_at' => now()]);
-    expect($webhooks->deliverDue()['failed'])->toBe(1)->and($dead->refresh()->status)->toBe('failed')->and($endpoint->refresh()->failure_count)->toBe(1);
+    // Phase 14: after the maximum attempts a delivery is dead-lettered (audited) and can be replayed.
+    expect($webhooks->deliverDue()['dead_letter'])->toBe(1)->and($dead->refresh()->status)->toBe('dead_letter')->and($endpoint->refresh()->failure_count)->toBe(1);
 });
 
 it('purges by retention windows and exports the warehouse feed', function () {
@@ -208,6 +236,7 @@ it('purges by retention windows and exports the warehouse feed', function () {
     $purged = app(Retention::class)->purge();
     expect($purged['ai_interactions'])->toBe(1)->and(AiInteraction::query()->count())->toBe(1);
 
+    app(SettingsRepository::class)->set('warehouse.export_enabled', true, 'Feed wanted'); // SaaS.8: opt-in
     $out = app(WarehouseExport::class)->run($this->hr, ['employees', 'assets']);
     expect($out)->toBe(['employees' => 1, 'assets' => 0]);
     $folder = 'warehouse/'.$this->tenant->slug.'/'.now()->format('Y-m-d');

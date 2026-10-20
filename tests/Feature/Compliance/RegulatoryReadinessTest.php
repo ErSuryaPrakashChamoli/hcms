@@ -37,14 +37,15 @@ beforeEach(function () {
 it('loads the EPF and TDS regulatory notices from official evidence and keeps them immutable', function () {
     $notices = ComplianceRuleNotice::query()->orderBy('code')->get();
 
-    expect($notices->pluck('code')->all())->toBe(['EPF', 'EPF', 'TDS'])
+    // Phase 6–7 notices plus the two Phase 8 reconciliation notices (EPF v2 contradictions, TDS v3 open questions).
+    expect($notices->pluck('code')->all())->toBe(['EPF', 'EPF', 'EPF', 'TDS', 'TDS'])
         ->and($notices->firstWhere('code', 'EPF')->effective_date->toDateString())->toBe('2026-09-17')
         ->and($notices->firstWhere('code', 'EPF')->references[0]['sha256'])->toBe('a31038ee4fbc5541515336ebb245ab94194d224c9807a4dc7bdd3968e46e0677')
         ->and($notices->every(fn ($n) => $n->status === 'open'))->toBeTrue();
     expect(fn () => $notices->first()->update(['summary' => 'edited']))->toThrow(RuntimeException::class, 'immutable');
 
     syncComplianceRules();
-    expect(ComplianceRuleNotice::query()->count())->toBe(3);
+    expect(ComplianceRuleNotice::query()->count())->toBe(5);
 });
 
 it('refuses to verify a version affected by an open notice, even with complete evidence', function () {
@@ -73,11 +74,15 @@ it('flags payroll on or after a notice date, blocking under enforcement', functi
 
     config(['peopleos.payroll.enforce_verified_rules' => true]);
     app(ComplianceRules::class)->forget();
-    expect($calc(9)->blocking())->toBeTrue();
+    // SaaS.12: the notice itself blocks (not only the unverified rules beside it).
+    $pending = collect($calc(9)->exceptions)->where('type', 'statutory_change_pending');
+    expect($calc(9)->blocking())->toBeTrue()
+        ->and($pending)->not->toBeEmpty()
+        ->and($pending->every(fn (array $e) => ($e['blocking'] ?? false) === true))->toBeTrue();
 });
 
 it('resolves a notice only with a new, effective version published as a correction', function () {
-    $notice = ComplianceRuleNotice::query()->where('code', 'EPF')->whereJsonLength('affects_versions', 1)->sole();
+    $notice = ComplianceRuleNotice::query()->where('code', 'EPF')->whereJsonContains('affects_versions', 1)->whereJsonLength('affects_versions', 1)->sole();
 
     expect(fn () => $this->workflow->publishCorrection($this->epf, $this->epf->payload(), '2026-09-17', null, '', $this->submitter))->toThrow(RuntimeException::class, 'reason');
     expect(fn () => $this->workflow->publishCorrection($this->epf, $this->epf->payload(), '2026-09-17', null, 'x', tenantUser(provisionTenant(), ['*'])))->toThrow(RuntimeException::class, 'platform administrators');
@@ -99,7 +104,7 @@ it('resolves a notice only with a new, effective version published as a correcti
     expect(fn () => $notice->update(['status' => 'open']))->toThrow(RuntimeException::class, 'only be resolved once');
 
     // The September 2026 treatment notice also affects v1 and must be resolved too (Phase 7).
-    $september = ComplianceRuleNotice::query()->where('code', 'EPF')->where('status', 'open')->sole();
+    $september = ComplianceRuleNotice::query()->where('code', 'EPF')->where('status', 'open')->whereJsonContains('affects_versions', 1)->sole();
     expect(fn () => $this->workflow->verify($this->epf->refresh(), $this->reviewer, 'x'))->toThrow(RuntimeException::class);
     $this->workflow->resolveNotice($september, $v2, $this->submitter, 'September treatment established from the gazette');
 

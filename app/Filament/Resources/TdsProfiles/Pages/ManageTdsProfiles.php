@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\TdsProfiles\Pages;
 
 use App\Filament\Resources\TdsProfiles\TdsProfileResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageTdsProfiles extends ManageRecords
+class ManageTdsProfiles extends PeopleManageRecords
 {
     protected static string $resource = TdsProfileResource::class;
 

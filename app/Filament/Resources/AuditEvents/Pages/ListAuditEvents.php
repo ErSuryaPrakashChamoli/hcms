@@ -4,12 +4,12 @@ namespace App\Filament\Resources\AuditEvents\Pages;
 
 use App\Domain\Audit\Services\AuditIntegrityVerifier;
 use App\Filament\Resources\AuditEvents\AuditEventResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use App\Support\Tenancy\TenantContext;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ListRecords;
 
-class ListAuditEvents extends ListRecords
+class ListAuditEvents extends PeopleListRecords
 {
     protected static string $resource = AuditEventResource::class;
 

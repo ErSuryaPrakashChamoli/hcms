@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\SsoConnections\Pages;
 
 use App\Filament\Resources\SsoConnections\SsoConnectionResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListSsoConnections extends ListRecords
+class ListSsoConnections extends PeopleListRecords
 {
     protected static string $resource = SsoConnectionResource::class;
 

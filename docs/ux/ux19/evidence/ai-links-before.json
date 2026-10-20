@@ -1,0 +1,3253 @@
+{
+    "database": "hcm_ux19_showcase",
+    "answers": [
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "hr",
+            "question": "Employees in Delhi who joined this year",
+            "intent": "people_search",
+            "links": []
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "hr",
+            "question": "Whose probation ends this month?",
+            "intent": "probation",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "hr",
+            "question": "What onboarding is pending?",
+            "intent": "onboarding",
+            "links": [
+                "http://localhost/admin/onboarding-plans"
+            ],
+            "status": {
+                "http://localhost/admin/onboarding-plans": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "hr",
+            "question": "Documents expiring soon",
+            "intent": "documents",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "intent": "metrics",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "hr",
+            "question": "Summarise EMP00001",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/employees/1"
+            ],
+            "status": {
+                "http://localhost/admin/employees/1": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "hr",
+            "question": "What changed this week?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "hr",
+            "question": "Which configurations changed recently?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Audit the latest payroll",
+            "intent": "audit",
+            "links": [
+                "http://localhost/admin/payroll-auditor",
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-auditor": 200,
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Any duplicate bank accounts?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Who has unusual deductions?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "intent": "trend",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "workforce",
+            "question": "Which skills are at risk?",
+            "intent": "skills",
+            "links": []
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our capacity risk?",
+            "intent": "capacity",
+            "links": [
+                "http://localhost/admin/exit-cases"
+            ],
+            "status": {
+                "http://localhost/admin/exit-cases": 200
+            }
+        },
+        {
+            "user": "compensation.proposer@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Employees in Delhi who joined this year",
+            "intent": "people_search",
+            "links": []
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Whose probation ends this month?",
+            "intent": "probation",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "What onboarding is pending?",
+            "intent": "onboarding",
+            "links": [
+                "http://localhost/admin/onboarding-plans"
+            ],
+            "status": {
+                "http://localhost/admin/onboarding-plans": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Documents expiring soon",
+            "intent": "documents",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "intent": "metrics",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Summarise EMP00001",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/employees/1"
+            ],
+            "status": {
+                "http://localhost/admin/employees/1": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "What changed this week?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Which configurations changed recently?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "intent": "trend",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "Which skills are at risk?",
+            "intent": "skills",
+            "links": []
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our capacity risk?",
+            "intent": "capacity",
+            "links": [
+                "http://localhost/admin/exit-cases"
+            ],
+            "status": {
+                "http://localhost/admin/exit-cases": 200
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "hr",
+            "question": "Employees in Delhi who joined this year",
+            "intent": "people_search",
+            "links": []
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "hr",
+            "question": "Whose probation ends this month?",
+            "intent": "probation",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "hr",
+            "question": "What onboarding is pending?",
+            "intent": "onboarding",
+            "links": [
+                "http://localhost/admin/onboarding-plans"
+            ],
+            "status": {
+                "http://localhost/admin/onboarding-plans": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "hr",
+            "question": "Documents expiring soon",
+            "intent": "documents",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "intent": "metrics",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "hr",
+            "question": "Summarise EMP00001",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/employees/1"
+            ],
+            "status": {
+                "http://localhost/admin/employees/1": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "hr",
+            "question": "What changed this week?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "hr",
+            "question": "Which configurations changed recently?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Audit the latest payroll",
+            "intent": "audit",
+            "links": [
+                "http://localhost/admin/payroll-auditor",
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-auditor": 200,
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Any duplicate bank accounts?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Who has unusual deductions?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "intent": "trend",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "workforce",
+            "question": "Which skills are at risk?",
+            "intent": "skills",
+            "links": []
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "workforce",
+            "question": "What is our capacity risk?",
+            "intent": "capacity",
+            "links": [
+                "http://localhost/admin/exit-cases"
+            ],
+            "status": {
+                "http://localhost/admin/exit-cases": 200
+            }
+        },
+        {
+            "user": "compensation.approver@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 403,
+                "http://localhost/admin/tickets": 403
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 403,
+                "http://localhost/admin/tickets": 403
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 403,
+                "http://localhost/admin/tickets": 403
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 403,
+                "http://localhost/admin/tickets": 403
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Audit the latest payroll",
+            "intent": "audit",
+            "links": [
+                "http://localhost/admin/payroll-auditor",
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-auditor": 200,
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Any duplicate bank accounts?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Who has unusual deductions?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Employees in Delhi who joined this year",
+            "intent": "people_search",
+            "links": []
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Whose probation ends this month?",
+            "intent": "probation",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "What onboarding is pending?",
+            "intent": "onboarding",
+            "links": [
+                "http://localhost/admin/onboarding-plans"
+            ],
+            "status": {
+                "http://localhost/admin/onboarding-plans": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Documents expiring soon",
+            "intent": "documents",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "intent": "metrics",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Summarise EMP00001",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/employees/1"
+            ],
+            "status": {
+                "http://localhost/admin/employees/1": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "What changed this week?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "Which configurations changed recently?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "intent": "trend",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "Which skills are at risk?",
+            "intent": "skills",
+            "links": []
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our capacity risk?",
+            "intent": "capacity",
+            "links": [
+                "http://localhost/admin/exit-cases"
+            ],
+            "status": {
+                "http://localhost/admin/exit-cases": 200
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "no_employee",
+            "links": []
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "hr",
+            "question": "Employees in Delhi who joined this year",
+            "intent": "people_search",
+            "links": []
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "hr",
+            "question": "Whose probation ends this month?",
+            "intent": "probation",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "hr",
+            "question": "What onboarding is pending?",
+            "intent": "onboarding",
+            "links": [
+                "http://localhost/admin/onboarding-plans"
+            ],
+            "status": {
+                "http://localhost/admin/onboarding-plans": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "hr",
+            "question": "Documents expiring soon",
+            "intent": "documents",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "intent": "metrics",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "hr",
+            "question": "Summarise EMP00001",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/employees/1"
+            ],
+            "status": {
+                "http://localhost/admin/employees/1": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "hr",
+            "question": "What changed this week?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "hr",
+            "question": "Which configurations changed recently?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "intent": "trend",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "Which skills are at risk?",
+            "intent": "skills",
+            "links": []
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "What is our capacity risk?",
+            "intent": "capacity",
+            "links": [
+                "http://localhost/admin/exit-cases"
+            ],
+            "status": {
+                "http://localhost/admin/exit-cases": 200
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "payslip",
+            "links": []
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "attendance",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "requests",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "holidays",
+            "links": []
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "attention",
+            "links": [
+                "http://localhost/admin/kb",
+                "http://localhost/admin/appraisals",
+                "http://localhost/admin/announcements",
+                "http://localhost/admin/assets"
+            ],
+            "status": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/appraisals": 200,
+                "http://localhost/admin/announcements": 403,
+                "http://localhost/admin/assets": 200
+            }
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_match",
+            "links": []
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1",
+                "http://localhost/admin/articles/2"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200,
+                "http://localhost/admin/articles/2": 200
+            }
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200
+            }
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "payslip",
+            "links": []
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "attendance",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "requests",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "holidays",
+            "links": []
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "attention",
+            "links": [
+                "http://localhost/admin/kb",
+                "http://localhost/admin/appraisals",
+                "http://localhost/admin/announcements",
+                "http://localhost/admin/assets"
+            ],
+            "status": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/appraisals": 200,
+                "http://localhost/admin/announcements": 403,
+                "http://localhost/admin/assets": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_match",
+            "links": []
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1",
+                "http://localhost/admin/articles/2"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200,
+                "http://localhost/admin/articles/2": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "manager",
+            "question": "Who is on leave today?",
+            "intent": "today",
+            "links": [
+                "http://localhost/admin/my-team"
+            ],
+            "status": {
+                "http://localhost/admin/my-team": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "manager",
+            "question": "What is pending for me?",
+            "intent": "pending",
+            "links": [
+                "http://localhost/admin/leave-requests",
+                "http://localhost/admin/attendance-regularisations"
+            ],
+            "status": {
+                "http://localhost/admin/leave-requests": 200,
+                "http://localhost/admin/attendance-regularisations": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "manager",
+            "question": "How are my team goals going?",
+            "intent": "goals",
+            "links": [
+                "http://localhost/admin/goals"
+            ],
+            "status": {
+                "http://localhost/admin/goals": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "manager",
+            "question": "Who in my team has no recent one-on-one?",
+            "intent": "one_on_one",
+            "links": [
+                "http://localhost/admin/one-on-ones"
+            ],
+            "status": {
+                "http://localhost/admin/one-on-ones": 200
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "manager",
+            "question": "Summarise changes in my team",
+            "intent": "changes",
+            "links": []
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "payslip",
+            "links": []
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "attendance",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "requests",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "holidays",
+            "links": []
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "attention",
+            "links": [
+                "http://localhost/admin/kb",
+                "http://localhost/admin/tax-declarations"
+            ],
+            "status": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/tax-declarations": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_match",
+            "links": []
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1",
+                "http://localhost/admin/articles/2"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200,
+                "http://localhost/admin/articles/2": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "hr",
+            "question": "Employees in Delhi who joined this year",
+            "intent": "people_search",
+            "links": []
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "hr",
+            "question": "Whose probation ends this month?",
+            "intent": "probation",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "hr",
+            "question": "What onboarding is pending?",
+            "intent": "onboarding",
+            "links": [
+                "http://localhost/admin/onboarding-plans"
+            ],
+            "status": {
+                "http://localhost/admin/onboarding-plans": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "hr",
+            "question": "Documents expiring soon",
+            "intent": "documents",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "intent": "metrics",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "hr",
+            "question": "Summarise EMP00001",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/employees/1"
+            ],
+            "status": {
+                "http://localhost/admin/employees/1": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "hr",
+            "question": "What changed this week?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "hr",
+            "question": "Which configurations changed recently?",
+            "intent": "changes",
+            "links": []
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "intent": "trend",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "Which skills are at risk?",
+            "intent": "skills",
+            "links": []
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "What is our capacity risk?",
+            "intent": "capacity",
+            "links": []
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "payslip",
+            "links": []
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "attendance",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "requests",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "holidays",
+            "links": []
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "attention",
+            "links": [
+                "http://localhost/admin/kb",
+                "http://localhost/admin/tax-declarations"
+            ],
+            "status": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/tax-declarations": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_match",
+            "links": []
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1",
+                "http://localhost/admin/articles/2"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200,
+                "http://localhost/admin/articles/2": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "manager",
+            "question": "Who is on leave today?",
+            "intent": "today",
+            "links": [
+                "http://localhost/admin/my-team"
+            ],
+            "status": {
+                "http://localhost/admin/my-team": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "manager",
+            "question": "What is pending for me?",
+            "intent": "pending",
+            "links": []
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "manager",
+            "question": "How are my team goals going?",
+            "intent": "goals",
+            "links": [
+                "http://localhost/admin/goals"
+            ],
+            "status": {
+                "http://localhost/admin/goals": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "manager",
+            "question": "Who in my team has no recent one-on-one?",
+            "intent": "one_on_one",
+            "links": [
+                "http://localhost/admin/one-on-ones"
+            ],
+            "status": {
+                "http://localhost/admin/one-on-ones": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "manager",
+            "question": "Summarise changes in my team",
+            "intent": "changes",
+            "links": []
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "hr",
+            "question": "Employees in Delhi who joined this year",
+            "intent": "people_search",
+            "links": []
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "hr",
+            "question": "Whose probation ends this month?",
+            "intent": "probation",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "hr",
+            "question": "What onboarding is pending?",
+            "intent": "onboarding",
+            "links": [
+                "http://localhost/admin/onboarding-plans"
+            ],
+            "status": {
+                "http://localhost/admin/onboarding-plans": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "hr",
+            "question": "Documents expiring soon",
+            "intent": "documents",
+            "links": [
+                "http://localhost/admin/employees"
+            ],
+            "status": {
+                "http://localhost/admin/employees": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "intent": "metrics",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "hr",
+            "question": "Summarise EMP00001",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/employees/1"
+            ],
+            "status": {
+                "http://localhost/admin/employees/1": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "hr",
+            "question": "What changed this week?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "hr",
+            "question": "Which configurations changed recently?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/change-intelligence"
+            ],
+            "status": {
+                "http://localhost/admin/change-intelligence": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Audit the latest payroll",
+            "intent": "audit",
+            "links": [
+                "http://localhost/admin/payroll-auditor",
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-auditor": 200,
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Any duplicate bank accounts?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Who has unusual deductions?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "intent": "trend",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "workforce",
+            "question": "Which skills are at risk?",
+            "intent": "skills",
+            "links": []
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "workforce",
+            "question": "What is our capacity risk?",
+            "intent": "capacity",
+            "links": [
+                "http://localhost/admin/exit-cases"
+            ],
+            "status": {
+                "http://localhost/admin/exit-cases": 200
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "payslip",
+            "links": []
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "attendance",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "requests",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "holidays",
+            "links": []
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "attention",
+            "links": [
+                "http://localhost/admin/kb",
+                "http://localhost/admin/tax-declarations"
+            ],
+            "status": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/tax-declarations": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_match",
+            "links": []
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1",
+                "http://localhost/admin/articles/2"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200,
+                "http://localhost/admin/articles/2": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Audit the latest payroll",
+            "intent": "audit",
+            "links": [
+                "http://localhost/admin/payroll-auditor",
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-auditor": 200,
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Any duplicate bank accounts?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "payroll_auditor",
+            "question": "Who has unusual deductions?",
+            "intent": "audit_clean",
+            "links": [
+                "http://localhost/admin/payroll-runs/1"
+            ],
+            "status": {
+                "http://localhost/admin/payroll-runs/1": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "payslip",
+            "links": []
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "attendance",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "requests",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "holidays",
+            "links": []
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "attention",
+            "links": [
+                "http://localhost/admin/kb",
+                "http://localhost/admin/tax-declarations"
+            ],
+            "status": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/tax-declarations": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_match",
+            "links": []
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1",
+                "http://localhost/admin/articles/2"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200,
+                "http://localhost/admin/articles/2": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "intent": "trend",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "workforce",
+            "question": "Which skills are at risk?",
+            "intent": "skills",
+            "links": []
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "intent": "summary",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our capacity risk?",
+            "intent": "capacity",
+            "links": [
+                "http://localhost/admin/exit-cases"
+            ],
+            "status": {
+                "http://localhost/admin/exit-cases": 200
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "intent": "changes",
+            "links": [
+                "http://localhost/admin/workforce-command-centre"
+            ],
+            "status": {
+                "http://localhost/admin/workforce-command-centre": 200
+            }
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "employee",
+            "question": "How many leaves do I have?",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "employee",
+            "question": "Show my latest payslip",
+            "intent": "payslip",
+            "links": []
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "employee",
+            "question": "Was I late this month?",
+            "intent": "attendance",
+            "links": [
+                "http://localhost/admin/my-day"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200
+            }
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "employee",
+            "question": "What is pending on my requests?",
+            "intent": "requests",
+            "links": [
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/tickets": 200
+            }
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "employee",
+            "question": "Upcoming holidays",
+            "intent": "holidays",
+            "links": []
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "intent": "attention",
+            "links": [
+                "http://localhost/admin/kb",
+                "http://localhost/admin/appraisals",
+                "http://localhost/admin/announcements",
+                "http://localhost/admin/assets"
+            ],
+            "status": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/appraisals": 200,
+                "http://localhost/admin/announcements": 403,
+                "http://localhost/admin/assets": 200
+            }
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "employee",
+            "question": "Explain my leave balance",
+            "intent": "leave_balance",
+            "links": [
+                "http://localhost/admin/my-day",
+                "http://localhost/admin/leave-balances"
+            ],
+            "status": {
+                "http://localhost/admin/my-day": 200,
+                "http://localhost/admin/leave-balances": 200
+            }
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "intent": "kb_match",
+            "links": []
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1",
+                "http://localhost/admin/articles/2"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200,
+                "http://localhost/admin/articles/2": 200
+            }
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "intent": "kb_match",
+            "links": [
+                "http://localhost/admin/articles/1"
+            ],
+            "status": {
+                "http://localhost/admin/articles/1": 200
+            }
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "intent": "kb_miss",
+            "links": [
+                "http://localhost/admin/articles",
+                "http://localhost/admin/tickets"
+            ],
+            "status": {
+                "http://localhost/admin/articles": 200,
+                "http://localhost/admin/tickets": 200
+            }
+        }
+    ],
+    "dead": [
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "policy",
+            "question": "What is the notice period?",
+            "dead": {
+                "http://localhost/admin/articles": 403,
+                "http://localhost/admin/tickets": 403
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "policy",
+            "question": "How does work from home work?",
+            "dead": {
+                "http://localhost/admin/articles": 403,
+                "http://localhost/admin/tickets": 403
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "policy",
+            "question": "What is the leave carry-forward rule?",
+            "dead": {
+                "http://localhost/admin/articles": 403,
+                "http://localhost/admin/tickets": 403
+            }
+        },
+        {
+            "user": "compensation.executor@demo.local",
+            "assistant": "policy",
+            "question": "Where do I report harassment?",
+            "dead": {
+                "http://localhost/admin/articles": 403,
+                "http://localhost/admin/tickets": 403
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "knowledge.reviewer@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "communication.approver@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "priya.nair@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "dead": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/announcements": 403
+            }
+        },
+        {
+            "user": "amit.verma@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "dead": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/announcements": 403
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "dead": {
+                "http://localhost/admin/kb": 404
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "hr",
+            "question": "What is our attrition?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "Give me a workforce summary",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "How is headcount trending?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "What is our attrition rate?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "neha.kapoor@demo.local",
+            "assistant": "workforce",
+            "question": "What changed in my workforce?",
+            "dead": {
+                "http://localhost/admin/workforce-command-centre": 403
+            }
+        },
+        {
+            "user": "kavya.menon@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "dead": {
+                "http://localhost/admin/kb": 404
+            }
+        },
+        {
+            "user": "arjun.bose@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "dead": {
+                "http://localhost/admin/kb": 404
+            }
+        },
+        {
+            "user": "meera.iyer@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "dead": {
+                "http://localhost/admin/kb": 404
+            }
+        },
+        {
+            "user": "rahul.sharma@demo.local",
+            "assistant": "employee",
+            "question": "What should I do next?",
+            "dead": {
+                "http://localhost/admin/kb": 404,
+                "http://localhost/admin/announcements": 403
+            }
+        }
+    ]
+}

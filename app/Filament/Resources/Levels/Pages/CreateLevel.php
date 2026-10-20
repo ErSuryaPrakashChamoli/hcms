@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Levels\Pages;
 
 use App\Filament\Resources\Levels\LevelResource;
-use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Support\Pages\PeopleCreateRecord;
 
-class CreateLevel extends CreateRecord
+class CreateLevel extends PeopleCreateRecord
 {
     protected static string $resource = LevelResource::class;
 }

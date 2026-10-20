@@ -25,6 +25,8 @@ use InvalidArgumentException;
  */
 class EmployeeController extends Controller
 {
+    use PaginatesApi;
+
     private const RELATIONS = ['person', 'currentPosition.company', 'currentPosition.location', 'currentPosition.businessUnit', 'currentPosition.division', 'currentPosition.department', 'currentPosition.team', 'currentPosition.designation', 'currentPosition.level', 'currentPosition.grade', 'currentPosition.employmentType', 'currentPosition.employeeCategory', 'currentPosition.workMode', 'currentManager.manager.person'];
 
     public function index(Request $request): JsonResponse
@@ -36,8 +38,8 @@ class EmployeeController extends Controller
             ->when($request->query('external_reference'), fn (Builder $q, $r) => $q->where('external_reference', $r))
             ->when($request->query('updated_since'), fn (Builder $q, $d) => $q->where('updated_at', '>=', $d))
             ->when($request->query('department_code'), fn (Builder $q, $c) => $q->whereHas('currentPosition.department', fn (Builder $d) => $d->where('code', $c)))
-            ->when($request->query('location_code'), fn (Builder $q, $c) => $q->whereHas('currentPosition.location', fn (Builder $d) => $d->where('code', $c)))
-            ->orderBy('employee_code');
+            ->when($request->query('location_code'), fn (Builder $q, $c) => $q->whereHas('currentPosition.location', fn (Builder $d) => $d->where('code', $c)));
+        $this->sorted($query, $request, ['employee_code' => 'employees.employee_code', 'joining_date' => 'employees.joining_date', 'updated_at' => 'employees.updated_at'], 'employee_code');
 
         $this->prepareSensitive($request, null);
         $perPage = min(max((int) $request->query('per_page', 50), 1), 200);

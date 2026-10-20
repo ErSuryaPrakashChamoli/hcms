@@ -1,0 +1,215 @@
+{
+ "base": "http://127.0.0.1:8095",
+ "ran_at": "2026-10-09T09:22:36.914Z",
+ "checks": [
+  {
+   "name": "operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "offboarding page: heading, switch-off notice, tenants listed",
+   "ok": true
+  },
+  {
+   "name": "Fabrikam: closed case, delivered export, hold, eligibility reasons",
+   "ok": true,
+   "detail": "{\"hold\":true,\"matter\":true,\"delivered\":true,\"plan\":true,\"contractSection\":true,\"conflict\":true,\"contract\":true}"
+  },
+  {
+   "name": "maker is not offered approval of their own plan",
+   "ok": true
+  },
+  {
+   "name": "offboarding page: no horizontal scroll (desktop)",
+   "ok": true
+  },
+  {
+   "name": "axe: offboarding: Fabrikam (desktop, operator)",
+   "ok": true
+  },
+  {
+   "name": "legal hold form opens with scope and reason",
+   "ok": true
+  },
+  {
+   "name": "axe: offboarding: legal hold form (desktop)",
+   "ok": true
+  },
+  {
+   "name": "Litware: completed deletion with steps, retained payroll, external dependencies, certificate",
+   "ok": true,
+   "detail": "{\"completed\":true,\"backups\":true,\"payroll\":true,\"certificate\":true,\"notCompleteOutside\":true,\"retentionRequired\":true}"
+  },
+  {
+   "name": "certificate downloads as signed JSON with deleted / retained / external",
+   "ok": true,
+   "detail": "certificate,sha256,signature"
+  },
+  {
+   "name": "certificate does not claim complete deletion while external copies are outstanding",
+   "ok": true
+  },
+  {
+   "name": "axe: offboarding: Litware deletion and certificate (desktop)",
+   "ok": true
+  },
+  {
+   "name": "retention page: LEGAL_MINIMUM_NOT_CONFIGURED shown, pending proposal not approvable by its proposer",
+   "ok": true
+  },
+  {
+   "name": "retention page: a verified minimum shows its reviewer, an unverified one stays explicit, start events shown",
+   "ok": true
+  },
+  {
+   "name": "retention page: no horizontal scroll (desktop)",
+   "ok": true
+  },
+  {
+   "name": "axe: retention policies (desktop, proposer)",
+   "ok": true
+  },
+  {
+   "name": "checker is offered approval",
+   "ok": true
+  },
+  {
+   "name": "checker may approve the pending contract term",
+   "ok": true
+  },
+  {
+   "name": "offboarding page: no horizontal scroll (phone)",
+   "ok": true
+  },
+  {
+   "name": "axe: offboarding: Fabrikam (phone, checker)",
+   "ok": true
+  },
+  {
+   "name": "approval refused while deletion is switched off",
+   "ok": true
+  },
+  {
+   "name": "the deletion is still planned",
+   "ok": true
+  },
+  {
+   "name": "retention page: the second operator may approve the proposal",
+   "ok": true
+  },
+  {
+   "name": "retention page: no horizontal scroll (phone)",
+   "ok": true
+  },
+  {
+   "name": "axe: retention policies (phone, checker)",
+   "ok": true
+  },
+  {
+   "name": "data export page (desktop): heading and the ready export",
+   "ok": true
+  },
+  {
+   "name": "data export page (desktop): no platform control",
+   "ok": true
+  },
+  {
+   "name": "data export page (desktop): no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "axe: data export (desktop, owner)",
+   "ok": true
+  },
+  {
+   "name": "the owner gets 403 on the operators' pages",
+   "ok": true
+  },
+  {
+   "name": "passphrase shown to the owner (32 characters; value not recorded)",
+   "ok": true
+  },
+  {
+   "name": "package downloads through a signed link (zip, private, short-lived)",
+   "ok": true
+  },
+  {
+   "name": "data export page (phone): heading and the ready export",
+   "ok": true
+  },
+  {
+   "name": "data export page (phone): no platform control",
+   "ok": true
+  },
+  {
+   "name": "data export page (phone): no horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "axe: data export (phone, owner)",
+   "ok": true
+  },
+  {
+   "name": "no data.export: 403 on the export page",
+   "ok": true
+  },
+  {
+   "name": "no data.export: 403 on the operators' pages",
+   "ok": true
+  },
+  {
+   "name": "no data.export: no \"Data export\" in the navigation",
+   "ok": true
+  },
+  {
+   "name": "the owner's signed link does not work for another person",
+   "ok": true
+  },
+  {
+   "name": "a tampered link is refused",
+   "ok": true
+  },
+  {
+   "name": "no console errors",
+   "ok": true
+  }
+ ],
+ "axe": [
+  {
+   "state": "offboarding: Fabrikam (desktop, operator)",
+   "violations": []
+  },
+  {
+   "state": "offboarding: legal hold form (desktop)",
+   "violations": []
+  },
+  {
+   "state": "offboarding: Litware deletion and certificate (desktop)",
+   "violations": []
+  },
+  {
+   "state": "retention policies (desktop, proposer)",
+   "violations": []
+  },
+  {
+   "state": "offboarding: Fabrikam (phone, checker)",
+   "violations": []
+  },
+  {
+   "state": "retention policies (phone, checker)",
+   "violations": []
+  },
+  {
+   "state": "data export (desktop, owner)",
+   "violations": []
+  },
+  {
+   "state": "data export (phone, owner)",
+   "violations": []
+  }
+ ],
+ "consoleErrors": [],
+ "note": "SaaS.9 closure browser validation on the closure tree: disposable database hcm_saas9_ui_showcase (fictional data), server with deletion switched off. Includes contract retention terms and conflicts, verified and unverified legal minimums, external-copy states and the certificate completeness fields. Accounts signed in with generated credentials (never recorded); the export passphrase was checked for shape only.",
+ "axe_states": 8,
+ "axe_violations": 0
+}

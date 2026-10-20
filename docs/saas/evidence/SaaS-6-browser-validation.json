@@ -1,0 +1,99 @@
+{
+ "phase": "SaaS.6",
+ "date": "2026-10-07",
+ "target": "disposable hcm_saas6_ui_showcase (UxShowcaseSeeder + fictional plans and subscriptions), served on 127.0.0.1:8094 with the array cache, dropped afterwards; final assets",
+ "browser": "Chromium (Playwright), 1440x900 light and dark, 390x844",
+ "operations_through_the_ui": [
+  "trial converted to active (reason, reference)",
+  "trial started with explicit dates on a tenant without a subscription",
+  "empty reason refused by browser and server",
+  "trial without an end date refused"
+ ],
+ "saas6_checks": [
+  {
+   "name": "operator signs in (password + TOTP)",
+   "ok": true
+  },
+  {
+   "name": "Subscriptions page opens",
+   "ok": true
+  },
+  {
+   "name": "overview lists every tenant with technical and commercial state",
+   "ok": true
+  },
+  {
+   "name": "tenant summary separates technical status from commercial state",
+   "ok": true
+  },
+  {
+   "name": "legacy tenant fields are labelled as metadata",
+   "ok": true
+  },
+  {
+   "name": "timeline and audit trail are shown",
+   "ok": true
+  },
+  {
+   "name": "only legal actions are offered for a trial",
+   "ok": true
+  },
+  {
+   "name": "the conversion modal shows before \u2192 after",
+   "ok": true
+  },
+  {
+   "name": "a reason is mandatory (the browser refuses)",
+   "ok": true
+  },
+  {
+   "name": "a reason is mandatory (the server refuses too)",
+   "ok": true
+  },
+  {
+   "name": "the conversion is recorded: active today, audited trial \u2192 active",
+   "ok": true
+  },
+  {
+   "name": "a tenant without a subscription is offered only to start one",
+   "ok": true
+  },
+  {
+   "name": "a trial without an end date is refused",
+   "ok": true
+  },
+  {
+   "name": "the trial starts with its explicit dates",
+   "ok": true
+  },
+  {
+   "name": "a lapsed trial is shown as expired by its dates, pending settlement",
+   "ok": true
+  },
+  {
+   "name": "a lapsed trial offers reactivation, never conversion",
+   "ok": true
+  },
+  {
+   "name": "the Entitlements page shows the commercial context of the plan in force",
+   "ok": true
+  },
+  {
+   "name": "phone: no page-level horizontal scroll",
+   "ok": true
+  },
+  {
+   "name": "tenant administrator: Subscriptions refused (403), no Platform menu",
+   "ok": true
+  }
+ ],
+ "saas6_axe_wcag2a_2aa_21a_21aa": {
+  "overview": [],
+  "tenant detail (trial)": [],
+  "convert modal": [],
+  "phone tenant detail": [],
+  "tenant detail (dark)": []
+ },
+ "console_errors": [],
+ "not_rerun": "The SaaS.4 and SaaS.5 walkthroughs need their own fixture data; their pages are covered by the feature tests and the visual and browser regression suites."
+}

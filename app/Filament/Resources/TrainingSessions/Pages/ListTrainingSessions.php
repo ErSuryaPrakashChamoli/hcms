@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\TrainingSessions\Pages;
 
 use App\Filament\Resources\TrainingSessions\TrainingSessionResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListTrainingSessions extends ListRecords
+class ListTrainingSessions extends PeopleListRecords
 {
     protected static string $resource = TrainingSessionResource::class;
 

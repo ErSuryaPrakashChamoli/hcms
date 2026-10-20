@@ -2,7 +2,7 @@
 
 namespace App\Domain\Ai\Services;
 
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollRun;
 
@@ -81,13 +81,15 @@ final class PayrollAnomalyDetector
                 $add($e, 'new_in_run', 'low', 'Employee was not in the previous finalized run although employed then.', ['joining_date' => $e->employee->joining_date->toDateString()]);
             }
 
-            $revisions = EmployeeSalaryAssignment::query()->where('employee_id', $e->employee_id)->whereDate('effective_from', '>=', $run->period->start_date)->whereDate('effective_from', '<=', $run->period->end_date)->orderBy('effective_from')->get();
+            // Phase 11: approved compensation history through the Compensation read contract.
+            $history = app(CompensationOutput::class)->history((int) $e->employee_id);
+            $revisions = $history->filter(fn ($s) => $s->effectiveFrom->betweenIncluded($run->period->start_date->copy()->startOfDay(), $run->period->end_date->copy()->startOfDay()));
             foreach ($revisions as $rev) {
-                $before = EmployeeSalaryAssignment::query()->where('employee_id', $e->employee_id)->where('effective_from', '<', $rev->effective_from)->orderByDesc('effective_from')->first();
-                if ($before && (float) $before->ctc_annual > 0) {
-                    $pct = ((float) $rev->ctc_annual - (float) $before->ctc_annual) / (float) $before->ctc_annual * 100;
+                $before = $history->filter(fn ($s) => $s->effectiveFrom->lt($rev->effectiveFrom))->last();
+                if ($before && $before->ctcAnnual > 0) {
+                    $pct = ($rev->ctcAnnual - $before->ctcAnnual) / $before->ctcAnnual * 100;
                     if (abs($pct) > $t['salary_revision_pct']) {
-                        $add($e, 'salary_revision', 'high', sprintf('Salary revised %+.0f%% effective %s (%s → %s).', $pct, $rev->effective_from->toDateString(), number_format((float) $before->ctc_annual), number_format((float) $rev->ctc_annual)), ['from' => (float) $before->ctc_annual, 'to' => (float) $rev->ctc_annual, 'reason' => $rev->reason]);
+                        $add($e, 'salary_revision', 'high', sprintf('Salary revised %+.0f%% effective %s (%s → %s).', $pct, $rev->effectiveFrom->toDateString(), number_format($before->ctcAnnual), number_format($rev->ctcAnnual)), ['from' => $before->ctcAnnual, 'to' => $rev->ctcAnnual, 'reason' => $rev->reason]);
                     }
                 }
             }

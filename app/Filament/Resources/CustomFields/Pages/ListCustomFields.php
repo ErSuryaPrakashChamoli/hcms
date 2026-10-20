@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\CustomFields\Pages;
 
 use App\Filament\Resources\CustomFields\CustomFieldResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListCustomFields extends ListRecords
+class ListCustomFields extends PeopleListRecords
 {
     protected static string $resource = CustomFieldResource::class;
 

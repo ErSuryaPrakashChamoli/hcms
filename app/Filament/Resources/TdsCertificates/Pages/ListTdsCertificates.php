@@ -7,12 +7,12 @@ use App\Domain\Compliance\Services\Tds\TdsCertificates;
 use App\Domain\Compliance\Services\Tds\TdsLedgers;
 use App\Domain\Organisation\Models\LegalEntity;
 use App\Filament\Resources\TdsCertificates\TdsCertificateResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\StatutoryReturnActions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
-use Filament\Resources\Pages\ListRecords;
 
-class ListTdsCertificates extends ListRecords
+class ListTdsCertificates extends PeopleListRecords
 {
     protected static string $resource = TdsCertificateResource::class;
 

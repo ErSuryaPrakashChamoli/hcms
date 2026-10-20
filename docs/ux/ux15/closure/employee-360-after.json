@@ -1,0 +1,30 @@
+{
+ "desktop": {
+  "panels": 3,
+  "panelsAboveFold": 3,
+  "scrollHeight": 1019,
+  "viewport": 900,
+  "screens": 1.1,
+  "headings": 4,
+  "headingList": [
+   "Now",
+   "Recently5",
+   "PeopleOS Intelligence",
+   "People snapshot"
+  ]
+ },
+ "mobile": {
+  "panels": 3,
+  "panelsAboveFold": 1,
+  "scrollHeight": 1959,
+  "viewport": 664,
+  "screens": 3,
+  "headings": 4,
+  "headingList": [
+   "Now",
+   "Recently5",
+   "PeopleOS Intelligence",
+   "People snapshot"
+  ]
+ }
+}

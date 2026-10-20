@@ -4,6 +4,9 @@ namespace App\Domain\Lifecycle\Services;
 
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Entitlements\Enums\Capability;
+use App\Domain\Entitlements\Services\BillableUnits;
+use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Events\EmployeeLifecycleChanged;
 use App\Domain\Lifecycle\Exceptions\InvalidLifecycleTransitionException;
@@ -52,6 +55,11 @@ final class LifecycleEngine
 
         if (! $from->canTransitionTo($to)) {
             throw InvalidLifecycleTransitionException::between($from, $to);
+        }
+        // SaaS.3: shadow observation of the active-employee limit whenever someone becomes employed. The count runs
+        // only for a tenant with a finite limit configured, and nothing here can refuse the transition.
+        if (! $from->isEmployed() && $to->isEmployed()) {
+            app(Entitlements::class)->observeLimit(Capability::ActiveEmployeesMax, 'employee.activate', fn () => app(BillableUnits::class)->activeEmployees() + 1);
         }
 
         return DB::transaction(function () use ($employee, $from, $to, $date, $reason, $metadata) {

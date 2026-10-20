@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\PayrollRuns\Pages;
 
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use App\Filament\Support\PayrollActions;
-use Filament\Resources\Pages\ViewRecord;
 
-class ViewPayrollRun extends ViewRecord
+class ViewPayrollRun extends PeopleViewRecord
 {
     protected static string $resource = PayrollRunResource::class;
 

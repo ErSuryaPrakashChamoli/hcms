@@ -4,10 +4,10 @@ namespace App\Filament\Resources\ProfitCentres\Pages;
 
 use App\Filament\Resources\ProfitCentres\ProfitCentreResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditProfitCentre extends EditRecord
+class EditProfitCentre extends PeopleEditRecord
 {
     use GovernedEdit;
 

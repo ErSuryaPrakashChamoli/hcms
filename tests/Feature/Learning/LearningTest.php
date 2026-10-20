@@ -121,7 +121,10 @@ it('registers for instructor-led sessions and completes the enrolment on attenda
     expect($attendee->status)->toBe('registered')
         ->and($attendee->enrolment->due_on->toDateString())->toBe('2026-10-02')
         ->and($session->seatsLeft())->toBe(0);
-    expect(fn () => $sessions->register($session, activeEmployee()))->toThrow(RuntimeException::class, 'full');
+    // Phase 8: a full session waitlists the next learner instead of refusing them.
+    $waiting = $sessions->register($session, activeEmployee());
+    expect($waiting->status)->toBe('waitlisted')->and($waiting->waitlist_position)->toBe(1)
+        ->and($waiting->enrolment->status)->toBe('waitlisted');
 
     $sessions->markAttendance($session, [$this->employee->id => 'attended']);
     expect($attendee->refresh()->status)->toBe('attended')

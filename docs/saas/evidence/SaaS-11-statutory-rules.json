@@ -1,0 +1,1922 @@
+{
+ "generated": "2026-10-09",
+ "database": "development (hcm); the rules are platform data, identical wherever the packs are loaded",
+ "note": "Parameters are the values AS STORED in PeopleOS, candidate and UNVERIFIED. They are not legal advice and must not be used in production until a qualified reviewer verifies each against an authoritative source.",
+ "rules": [
+  {
+   "id": 2,
+   "code": "EPF",
+   "name": "Employees Provident Fund",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": null,
+   "authority": "EPFO",
+   "version": 1,
+   "effective_from": "2014-09-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "EPF & MP Act 1952; EPFO circulars",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "round": "nearest",
+    "eps_rate": 0.0833,
+    "edli_rate": 0.005,
+    "admin_rate": 0.005,
+    "wage_ceiling": 15000,
+    "admin_minimum": 75,
+    "employee_rate": 0.12,
+    "employer_rate": 0.12,
+    "eps_wage_ceiling": 15000,
+    "edli_wage_ceiling": 15000
+   },
+   "checksum": "2e0740cb2ecbedb5134b8274b7be0aa68c28949ff45b76efa4eb6b63e98e6365",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:52:59"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [
+    1,
+    3
+   ],
+   "superseded_by": null,
+   "consumers": "Payroll statutory contributions (StatutoryEngine), EPF ECR return (EpfReturns), parallel payroll, compliance readiness"
+  },
+  {
+   "id": 3,
+   "code": "EPF",
+   "name": "Employees Provident Fund — wage ceiling ₹25,000",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": null,
+   "authority": "EPFO",
+   "version": 2,
+   "effective_from": "2026-09-17",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "review",
+   "source": "Gazette Notification S.O. 5109(E) (cited, not retrieved); Ministry of Labour & Employment / PIB releases of 16 and 23 Sep 2026",
+   "source_url": "https://egazette.gov.in/WriteReadData/2026/273957.pdf",
+   "source_title": "EPF Scheme, 2026 (G.S.R. 525(E), 29 Jun 2026, CG-DL-E-01072026-273957), with the EDLI Scheme and EPS, 2026 (G.S.R. 526-527(E)), S.O. 3580-3582(E), corrigenda G.S.R. 703-705(E) and S.O. 2702(E)",
+   "source_published_date": "2026-06-29",
+   "parameters_as_stored_unverified": {
+    "round": "nearest",
+    "eps_rate": 0.0833,
+    "edli_rate": 0.005,
+    "admin_rate": 0.005,
+    "wage_ceiling": 25000,
+    "admin_minimum": 75,
+    "employee_rate": 0.12,
+    "employer_rate": 0.12,
+    "eps_wage_ceiling": 25000,
+    "edli_wage_ceiling": 15000
+   },
+   "checksum": "dbe7526f6f3484152a79f7a1e52b1f25bbd839fdedc589033eac3e14ed5813cf",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:52:59"
+    },
+    {
+     "action": "submitted",
+     "from_status": "draft",
+     "to_status": "review",
+     "created_at": "2026-10-08 11:52:59"
+    },
+    {
+     "action": "submitted",
+     "from_status": "review",
+     "to_status": "review",
+     "created_at": "2026-10-08 11:52:59"
+    },
+    {
+     "action": "submitted",
+     "from_status": "review",
+     "to_status": "review",
+     "created_at": "2026-10-08 11:52:59"
+    }
+   ],
+   "evidence_documents": [
+    {
+     "filename": "pib-2026-09-16-epfo-wage-ceiling.pdf",
+     "sha256": "a31038ee4fbc5541515336ebb245ab94194d224c9807a4dc7bdd3968e46e0677",
+     "source_url": "https://www.labour.gov.in/static/uploads/2026/09/4f607a88c5342aeb980c6b999997caab.pdf",
+     "retrieved_at": "2026-09-28"
+    },
+    {
+     "filename": "pib-2313829-2026-09-23-epfo-ro-berhampore.html",
+     "sha256": "ba2bf8dc7e6dfb4e3673500fbef764269ae5acf04540bec9fd56fe7af8f1f7d6",
+     "source_url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2313829&reg=48&lang=2",
+     "retrieved_at": "2026-09-28"
+    },
+    {
+     "filename": "s-o-5109e-gazette-276299-2026-09-17.pdf",
+     "sha256": "970c2ea088c808a2427f630ba344ab8cfc7a26a10ba9babee2f150b0451c70df",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/276299.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "epfo-circular-e1345653-wage-ceiling-2026-09-25.pdf",
+     "sha256": "18799245629e0c4c382ccf2b031da62f55d0af872c2e7b28e4b9648d2b2d10fa",
+     "source_url": "https://pmvbry-cdn.epfindia.gov.in/wp-content/uploads/2026/09/Wage-Ceiling-Circular-28.09.2026.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "epfo-wage-ceiling-faqs-2026-09-24.pdf",
+     "sha256": "47c22e56faaf6735bb8bd0b70db502e2f86efd4adb654cc4593ff85be6eb1052",
+     "source_url": "https://pmvbry-cdn.epfindia.gov.in/wp-content/uploads/2026/09/EPFO_Wage_Ceiling_FAQs.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "pib-2314111-2026-09-23-imphal.html",
+     "sha256": "076c23a6f17d3ec220a60c245531bd7ad9210207f53a01e3472d6ce947fa8325",
+     "source_url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2314111&reg=48&lang=2",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "epf-scheme-2026-gsr-525e-gazette-273957.pdf",
+     "sha256": "4e062db5bf5d8b904ae1c0d4af10950dc01de7df8360398dfe197d6d06aef489",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/273957.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "edli-scheme-2026-gsr-526e-gazette-273942.pdf",
+     "sha256": "a4a61bcf182dcaab026ad49ab50044d088f91930b9967494ac559054daecc957",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/273942.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "eps-2026-gsr-527e-gazette-273951.pdf",
+     "sha256": "6bd9d6fb82a1e0e6efcc6dff3901485aaf101dd621a68b8592409585e18a6592",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/273951.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "s-o-3580e-eps-rate-gazette-274111.pdf",
+     "sha256": "893a07e9f802efee5809d9d3f6f6265808f6199dcbe360587f3b99584bbf4915",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/274111.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "s-o-3581e-edli-rate-gazette-274104.pdf",
+     "sha256": "17dd4c74680ec21fe1bdf03d662341e59c67556cf9f3d12464a2b00abd5cfa27",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/274104.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "s-o-3582e-epf-rate-gazette-274112.pdf",
+     "sha256": "9dfc45128ff76a5a08e599d7d17b3ff08b8d4f9da1c3fd0180e4e217d9050a79",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/274112.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "gsr-703e-epf-scheme-corrigenda-gazette-275186.pdf",
+     "sha256": "053c7ce5bf50809737dea4820ce7ad0cfcdf4ebf500e06b4b2c06dea691bc428",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/275186.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "gsr-704e-eps-corrigenda-gazette-275187.pdf",
+     "sha256": "642aded84463e48119fea7bf846dfe30d77233f0623bbe99f2239f32d066a7fc",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/275187.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "gsr-705e-edli-corrigenda-gazette-275188.pdf",
+     "sha256": "8e739f4b6aa49e5de351dbcd79c47df9e9ff84daab56cc4c524286ad9bf508b0",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/275188.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "s-o-2702e-gazette-273002-2026-05-29.pdf",
+     "sha256": "62dbc6c22949eed3ccd0cde11488312c4db4480623078254a558770d14cb3893",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/273002.pdf",
+     "retrieved_at": "2026-10-01"
+    }
+   ],
+   "parameter_reviews": [
+    {
+     "parameter": "employee_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "employer_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "eps_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "eps_wage_ceiling",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "wage_ceiling",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "edli_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "edli_wage_ceiling",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "admin_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "admin_minimum",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "round",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "round",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "eps_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "edli_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "admin_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "wage_ceiling",
+     "status": "covered"
+    },
+    {
+     "parameter": "admin_minimum",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "employee_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "employer_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "eps_wage_ceiling",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "edli_wage_ceiling",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "round",
+     "status": "covered"
+    },
+    {
+     "parameter": "eps_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "edli_rate",
+     "status": "covered"
+    },
+    {
+     "parameter": "admin_rate",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "wage_ceiling",
+     "status": "covered"
+    },
+    {
+     "parameter": "admin_minimum",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "employee_rate",
+     "status": "covered"
+    },
+    {
+     "parameter": "employer_rate",
+     "status": "covered"
+    },
+    {
+     "parameter": "eps_wage_ceiling",
+     "status": "covered"
+    },
+    {
+     "parameter": "edli_wage_ceiling",
+     "status": "not_confirmed"
+    }
+   ],
+   "open_notices": [
+    3,
+    4
+   ],
+   "superseded_by": null,
+   "consumers": "Payroll statutory contributions (StatutoryEngine), EPF ECR return (EpfReturns), parallel payroll, compliance readiness"
+  },
+  {
+   "id": 4,
+   "code": "ESI",
+   "name": "Employees State Insurance",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": null,
+   "authority": "ESIC",
+   "version": 1,
+   "effective_from": "2019-07-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "review",
+   "source": "ESI (Central) Amendment Rules 2019; wage ceiling notification 2017",
+   "source_url": "https://esic.gov.in/contribution",
+   "source_title": "ESIC — Contribution (with ESIC — Coverage, https://esic.gov.in/coverage)",
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "round": "ceil",
+    "wage_ceiling": 21000,
+    "employee_rate": 0.0075,
+    "employer_rate": 0.0325,
+    "contribution_periods": [
+     [
+      4,
+      9
+     ],
+     [
+      10,
+      3
+     ]
+    ]
+   },
+   "checksum": "03e42371aa876937845b1fe27116cb522a3c59613a4facbd3aa18cde8610b481",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:52:59"
+    },
+    {
+     "action": "submitted",
+     "from_status": "draft",
+     "to_status": "review",
+     "created_at": "2026-10-08 11:52:59"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [
+    {
+     "parameter": "employee_rate",
+     "status": "covered"
+    },
+    {
+     "parameter": "employer_rate",
+     "status": "covered"
+    },
+    {
+     "parameter": "wage_ceiling",
+     "status": "covered"
+    },
+    {
+     "parameter": "round",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "contribution_periods",
+     "status": "covered"
+    }
+   ],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll statutory contributions (StatutoryEngine), ESI return (EsiReturns), parallel payroll, compliance readiness"
+  },
+  {
+   "id": 24,
+   "code": "GRATUITY",
+   "name": "Gratuity",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": null,
+   "authority": null,
+   "version": 1,
+   "effective_from": "2018-03-29",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Payment of Gratuity Act 1972 (amended 2018)",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "rate": 0.04807692307692307,
+    "ceiling": 2000000,
+    "minimum_years": 5
+   },
+   "checksum": "cb298d476d1e906e837405a414225dededd6c01d8a90529db6d26ba82ec40fa3",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "No calculation consumes it today (stored rule only)"
+  },
+  {
+   "id": 17,
+   "code": "LWF",
+   "name": "Labour welfare fund – Delhi",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "DL",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2015-01-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Bombay Labour Welfare Fund Act 1953 (as applied to Delhi)",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "months": [
+     6,
+     12
+    ],
+    "wage_ceiling": null,
+    "employee_amount": 0.75,
+    "employer_amount": 2.25
+   },
+   "checksum": "b59b02c7b6b2ad49796bddedeb671449ce4d9dd8e4bd7c0fccc2f96f718b97ae",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll statutory deduction (StatutoryEngine), LWF return (LwfReturns)"
+  },
+  {
+   "id": 19,
+   "code": "LWF",
+   "name": "Labour welfare fund – Gujarat",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "GJ",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2015-01-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Gujarat Labour Welfare Fund Act 1953",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "months": [
+     6,
+     12
+    ],
+    "wage_ceiling": null,
+    "employee_amount": 6,
+    "employer_amount": 12
+   },
+   "checksum": "ea7fd630e41b73d3043350b53bf86ff11edbba3efb87a0185b8ce1689b8fbe9f",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll statutory deduction (StatutoryEngine), LWF return (LwfReturns)"
+  },
+  {
+   "id": 20,
+   "code": "LWF",
+   "name": "Labour welfare fund – Haryana",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "HR",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2020-01-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Punjab Labour Welfare Fund Act 1965 (Haryana)",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "months": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12
+    ],
+    "wage_ceiling": null,
+    "employee_amount": 31,
+    "employer_amount": 62
+   },
+   "checksum": "af809f7b5eea7e4157c53b9687b4099cc4349d2a1c416a68160e864a63d6c330",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll statutory deduction (StatutoryEngine), LWF return (LwfReturns)"
+  },
+  {
+   "id": 15,
+   "code": "LWF",
+   "name": "Labour welfare fund – Karnataka",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "KA",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2018-01-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Karnataka Labour Welfare Fund Act 1965",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "months": [
+     12
+    ],
+    "wage_ceiling": null,
+    "employee_amount": 20,
+    "employer_amount": 40
+   },
+   "checksum": "251fb18cb34f9d5b48b7e3442e73332b33238107789cfef091f53efc4731397d",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll statutory deduction (StatutoryEngine), LWF return (LwfReturns)"
+  },
+  {
+   "id": 14,
+   "code": "LWF",
+   "name": "Labour welfare fund – Maharashtra",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "MH",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2015-01-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Maharashtra Labour Welfare Fund Act 1953",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "months": [
+     6,
+     12
+    ],
+    "wage_ceiling": null,
+    "employee_amount": 25,
+    "employer_amount": 75
+   },
+   "checksum": "397cf9a0893f8a1a62b155d79f5263ca8f6a48fcb027c530b28b715157a5f8cc",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll statutory deduction (StatutoryEngine), LWF return (LwfReturns)"
+  },
+  {
+   "id": 16,
+   "code": "LWF",
+   "name": "Labour welfare fund – Telangana",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "TG",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2015-01-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Telangana Labour Welfare Fund Act 1987",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "months": [
+     12
+    ],
+    "wage_ceiling": null,
+    "employee_amount": 2,
+    "employer_amount": 5
+   },
+   "checksum": "79fba742d87142938d8fb2cac42aba0bcfd14608e33abbbf12564d7d283320e2",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll statutory deduction (StatutoryEngine), LWF return (LwfReturns)"
+  },
+  {
+   "id": 18,
+   "code": "LWF",
+   "name": "Labour welfare fund – Tamil Nadu",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "TN",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2015-01-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "TN Labour Welfare Fund Act 1972",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "months": [
+     12
+    ],
+    "wage_ceiling": null,
+    "employee_amount": 20,
+    "employer_amount": 40
+   },
+   "checksum": "a0888b33948ab2d7d499db89a74aa0e6dac1767685bc5680921d8c242bd47ddb",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll statutory deduction (StatutoryEngine), LWF return (LwfReturns)"
+  },
+  {
+   "id": 8,
+   "code": "PT",
+   "name": "Professional tax – Andhra Pradesh",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "AP",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2013-02-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "AP Tax on Professions Act 1987",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "slabs": [
+     [
+      15000,
+      0
+     ],
+     [
+      20000,
+      150
+     ],
+     [
+      null,
+      200
+     ]
+    ]
+   },
+   "checksum": "c9c28824c0dfae172820484709f50e4f7df4f12515443f2852161f750ccdeae2",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll deduction (StatutoryEngine, PayrollRuns), income-tax computation (TaxComputer: PT is deductible), PT return"
+  },
+  {
+   "id": 11,
+   "code": "PT",
+   "name": "Professional tax – Gujarat",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "GJ",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2022-04-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Gujarat Professions Tax Act 1976 (amended 2022)",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "slabs": [
+     [
+      12000,
+      0
+     ],
+     [
+      null,
+      200
+     ]
+    ]
+   },
+   "checksum": "da5b8b37725e9e9561e89ecf40a9cad2e948ad2212993d45cbb2900edc136a7d",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll deduction (StatutoryEngine, PayrollRuns), income-tax computation (TaxComputer: PT is deductible), PT return"
+  },
+  {
+   "id": 6,
+   "code": "PT",
+   "name": "Professional tax – Karnataka",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "KA",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2023-04-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Karnataka Tax on Professions Act 1976 (amended 2023)",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "slabs": [
+     [
+      24999,
+      0
+     ],
+     [
+      null,
+      200
+     ]
+    ],
+    "february_amount": 300
+   },
+   "checksum": "ca78fb6fec8b9b93d85fce840cea1ee2880354b90d1d078d61de00198356b2d0",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll deduction (StatutoryEngine, PayrollRuns), income-tax computation (TaxComputer: PT is deductible), PT return"
+  },
+  {
+   "id": 13,
+   "code": "PT",
+   "name": "Professional tax – Kerala",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "KL",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2016-04-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Kerala Municipality Act 1994 (half-yearly, monthly equivalent)",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "slabs": [
+     [
+      1999,
+      0
+     ],
+     [
+      2999,
+      20
+     ],
+     [
+      4999,
+      30
+     ],
+     [
+      7499,
+      50
+     ],
+     [
+      9999,
+      75
+     ],
+     [
+      12499,
+      100
+     ],
+     [
+      16666,
+      125
+     ],
+     [
+      20833,
+      166
+     ],
+     [
+      null,
+      208
+     ]
+    ]
+   },
+   "checksum": "e583340f4fd88f9b6fb526a2595147ef6e162b0825388a88427548053f6848d3",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll deduction (StatutoryEngine, PayrollRuns), income-tax computation (TaxComputer: PT is deductible), PT return"
+  },
+  {
+   "id": 5,
+   "code": "PT",
+   "name": "Professional tax – Maharashtra",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "MH",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2023-04-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Maharashtra State Tax on Professions Act 1975 (Sch. I, amended 2023)",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "slabs": [
+     [
+      7500,
+      0
+     ],
+     [
+      10000,
+      175
+     ],
+     [
+      null,
+      200
+     ]
+    ],
+    "february_amount": 300,
+    "female_exempt_upto": 25000
+   },
+   "checksum": "e98c3b178eabf51bb499938954ed6a099510ec23ce351d26cd3f97299c5dd743",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll deduction (StatutoryEngine, PayrollRuns), income-tax computation (TaxComputer: PT is deductible), PT return"
+  },
+  {
+   "id": 12,
+   "code": "PT",
+   "name": "Professional tax – Madhya Pradesh",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "MP",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2018-04-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "MP Vritti Kar Adhiniyam 1995",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "slabs": [
+     [
+      18750,
+      0
+     ],
+     [
+      25000,
+      125
+     ],
+     [
+      33333,
+      167
+     ],
+     [
+      null,
+      208
+     ]
+    ],
+    "march_amount": 212
+   },
+   "checksum": "9a4adf6ba62219eb836b37afd4248bffcda6dc0ac64afc6a76113a3be9c81cdf",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll deduction (StatutoryEngine, PayrollRuns), income-tax computation (TaxComputer: PT is deductible), PT return"
+  },
+  {
+   "id": 7,
+   "code": "PT",
+   "name": "Professional tax – Telangana",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "TG",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2014-06-02",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Telangana Tax on Professions Act 1987",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "slabs": [
+     [
+      15000,
+      0
+     ],
+     [
+      20000,
+      150
+     ],
+     [
+      null,
+      200
+     ]
+    ]
+   },
+   "checksum": "441066f32c85855185e6487fde79a026bf3e6e1737bac5aaac3607dfc63255a7",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll deduction (StatutoryEngine, PayrollRuns), income-tax computation (TaxComputer: PT is deductible), PT return"
+  },
+  {
+   "id": 10,
+   "code": "PT",
+   "name": "Professional tax – Tamil Nadu",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "TN",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2018-04-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "TN Municipal Laws (half-yearly, shown as monthly equivalent)",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "slabs": [
+     [
+      3500,
+      0
+     ],
+     [
+      5000,
+      22.5
+     ],
+     [
+      7500,
+      52.5
+     ],
+     [
+      10000,
+      115
+     ],
+     [
+      12500,
+      171
+     ],
+     [
+      null,
+      208
+     ]
+    ]
+   },
+   "checksum": "13ef0c05b0e8e6070b067d14af3b3897a61f3b497c6d253c8093106cdb844edd",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll deduction (StatutoryEngine, PayrollRuns), income-tax computation (TaxComputer: PT is deductible), PT return"
+  },
+  {
+   "id": 9,
+   "code": "PT",
+   "name": "Professional tax – West Bengal",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": "WB",
+   "authority": null,
+   "version": 1,
+   "effective_from": "2013-04-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "WB State Tax on Professions Act 1979",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "slabs": [
+     [
+      10000,
+      0
+     ],
+     [
+      15000,
+      110
+     ],
+     [
+      25000,
+      130
+     ],
+     [
+      40000,
+      150
+     ],
+     [
+      null,
+      200
+     ]
+    ]
+   },
+   "checksum": "00922081ccdd5fc1e481403a9ea87b2bb5e3cfea0ddc932a38394979445f7707",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Payroll deduction (StatutoryEngine, PayrollRuns), income-tax computation (TaxComputer: PT is deductible), PT return"
+  },
+  {
+   "id": 1,
+   "code": "SS",
+   "name": "GPSSA pension (UAE nationals, private sector)",
+   "jurisdiction": "AE",
+   "country": "AE",
+   "state": null,
+   "authority": null,
+   "version": 1,
+   "effective_from": "2023-10-31",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Federal Decree-Law No. 57 of 2023",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "round": "nearest",
+    "wage_floor": 3000,
+    "wage_ceiling": 70000,
+    "employee_rate": 0.11,
+    "employer_rate": 0.15
+   },
+   "checksum": "2f4144cc15af556a54b81a075fd94138ca2048082b481fa7b34b390263be0cb8",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:52:59"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Pension contributions for UAE (AE) tenants (StatutoryEngine, the pension branch)"
+  },
+  {
+   "id": 21,
+   "code": "TDS",
+   "name": "Income tax on salary – FY 2025-26",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": null,
+   "authority": "INCOME_TAX",
+   "version": 1,
+   "effective_from": "2025-04-01",
+   "effective_to": "2026-03-31",
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Finance Act 2025",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "new": {
+     "slabs": [
+      [
+       400000,
+       0
+      ],
+      [
+       800000,
+       0.05
+      ],
+      [
+       1200000,
+       0.1
+      ],
+      [
+       1600000,
+       0.15
+      ],
+      [
+       2000000,
+       0.2
+      ],
+      [
+       2400000,
+       0.25
+      ],
+      [
+       null,
+       0.3
+      ]
+     ],
+     "rebate_max": 60000,
+     "marginal_relief": true,
+     "allow_chapter_via": [
+      "80CCD2"
+     ],
+     "standard_deduction": 75000,
+     "rebate_income_limit": 1200000
+    },
+    "old": {
+     "slabs": [
+      [
+       250000,
+       0
+      ],
+      [
+       500000,
+       0.05
+      ],
+      [
+       1000000,
+       0.2
+      ],
+      [
+       null,
+       0.3
+      ]
+     ],
+     "limits": {
+      "80C": 150000,
+      "80D": 25000,
+      "80TTA": 10000,
+      "80CCD1B": 50000
+     },
+     "hra_exempt": true,
+     "rebate_max": 12500,
+     "marginal_relief": false,
+     "allow_chapter_via": [
+      "80C",
+      "80CCD1B",
+      "80D",
+      "80E",
+      "80G",
+      "80TTA",
+      "80CCD2"
+     ],
+     "standard_deduction": 50000,
+     "rebate_income_limit": 500000
+    },
+    "cess_rate": 0.04,
+    "surcharge": [
+     [
+      5000000,
+      0
+     ],
+     [
+      10000000,
+      0.1
+     ],
+     [
+      20000000,
+      0.15
+     ],
+     [
+      50000000,
+      0.25
+     ],
+     [
+      null,
+      0.37
+     ]
+    ],
+    "surcharge_new_regime_cap": 0.25
+   },
+   "checksum": "5000336c883a85b7f07867d4cff5364eecaac3c31d0e73e85f5c05a2eb290ef9",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [],
+   "superseded_by": null,
+   "consumers": "Salary income-tax withholding (TaxComputer / TDS engine, PayrollRuns), quarterly TDS return and Form 16 (TDS returns and certificates)"
+  },
+  {
+   "id": 22,
+   "code": "TDS",
+   "name": "Income tax on salary – FY 2026-27",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": null,
+   "authority": "INCOME_TAX",
+   "version": 2,
+   "effective_from": "2026-04-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "draft",
+   "source": "Finance Act 2025 rates carried forward pending Finance Act 2026 verification",
+   "source_url": null,
+   "source_title": null,
+   "source_published_date": null,
+   "parameters_as_stored_unverified": {
+    "new": {
+     "slabs": [
+      [
+       400000,
+       0
+      ],
+      [
+       800000,
+       0.05
+      ],
+      [
+       1200000,
+       0.1
+      ],
+      [
+       1600000,
+       0.15
+      ],
+      [
+       2000000,
+       0.2
+      ],
+      [
+       2400000,
+       0.25
+      ],
+      [
+       null,
+       0.3
+      ]
+     ],
+     "rebate_max": 60000,
+     "marginal_relief": true,
+     "allow_chapter_via": [
+      "80CCD2"
+     ],
+     "standard_deduction": 75000,
+     "rebate_income_limit": 1200000
+    },
+    "old": {
+     "slabs": [
+      [
+       250000,
+       0
+      ],
+      [
+       500000,
+       0.05
+      ],
+      [
+       1000000,
+       0.2
+      ],
+      [
+       null,
+       0.3
+      ]
+     ],
+     "limits": {
+      "80C": 150000,
+      "80D": 25000,
+      "80TTA": 10000,
+      "80CCD1B": 50000
+     },
+     "hra_exempt": true,
+     "rebate_max": 12500,
+     "marginal_relief": false,
+     "allow_chapter_via": [
+      "80C",
+      "80CCD1B",
+      "80D",
+      "80E",
+      "80G",
+      "80TTA",
+      "80CCD2"
+     ],
+     "standard_deduction": 50000,
+     "rebate_income_limit": 500000
+    },
+    "cess_rate": 0.04,
+    "surcharge": [
+     [
+      5000000,
+      0
+     ],
+     [
+      10000000,
+      0.1
+     ],
+     [
+      20000000,
+      0.15
+     ],
+     [
+      50000000,
+      0.25
+     ],
+     [
+      null,
+      0.37
+     ]
+    ],
+    "surcharge_new_regime_cap": 0.25
+   },
+   "checksum": "c192a59591e2c54515196107b5f8b557fdd2f35b7368dcb7370c42b197329311",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [],
+   "parameter_reviews": [],
+   "open_notices": [
+    2
+   ],
+   "superseded_by": null,
+   "consumers": "Salary income-tax withholding (TaxComputer / TDS engine, PayrollRuns), quarterly TDS return and Form 16 (TDS returns and certificates)"
+  },
+  {
+   "id": 23,
+   "code": "TDS",
+   "name": "Income tax on salary – Tax Year 2026-27 (Income-tax Act, 2025, s.392(1))",
+   "jurisdiction": "IN",
+   "country": "IN",
+   "state": null,
+   "authority": "INCOME_TAX",
+   "version": 3,
+   "effective_from": "2026-04-01",
+   "effective_to": null,
+   "status": "active",
+   "verification_status": "review",
+   "source": "Income-tax Act, 2025 s.392(1); Finance Act, 2026 (No. 4 of 2026) s.2(10), (16) and Part III of the First Schedule; Income Tax Department TDS Compliance FAQs",
+   "source_url": "https://www.incometaxindia.gov.in/documents/81799/11848482/En-Notified-IT-Rules-2026-20-03-2026.pdf/a332bf2a-da14-8b94-dde2-5a2ea1428318?t=1773990110473",
+   "source_title": "Income-tax Rules, 2026 (G.S.R. 198(E), Central Board of Direct Taxes, 20 Mar 2026; Income Tax Department copy of the gazette extract), read with the Income-tax Act, 2025 and the Finance Act, 2026 already attached",
+   "source_published_date": "2026-03-20",
+   "parameters_as_stored_unverified": {
+    "new": {
+     "slabs": [
+      [
+       400000,
+       0
+      ],
+      [
+       800000,
+       0.05
+      ],
+      [
+       1200000,
+       0.1
+      ],
+      [
+       1600000,
+       0.15
+      ],
+      [
+       2000000,
+       0.2
+      ],
+      [
+       2400000,
+       0.25
+      ],
+      [
+       null,
+       0.3
+      ]
+     ],
+     "rebate_max": 60000,
+     "marginal_relief": true,
+     "allow_chapter_via": [
+      "80CCD2"
+     ],
+     "standard_deduction": 75000,
+     "rebate_income_limit": 1200000
+    },
+    "old": {
+     "slabs": [
+      [
+       250000,
+       0
+      ],
+      [
+       500000,
+       0.05
+      ],
+      [
+       1000000,
+       0.2
+      ],
+      [
+       null,
+       0.3
+      ]
+     ],
+     "limits": {
+      "80C": 150000,
+      "80D": 25000,
+      "80TTA": 10000,
+      "80CCD1B": 50000
+     },
+     "hra_exempt": true,
+     "rebate_max": 12500,
+     "marginal_relief": false,
+     "allow_chapter_via": [
+      "80C",
+      "80CCD1B",
+      "80D",
+      "80E",
+      "80G",
+      "80TTA",
+      "80CCD2"
+     ],
+     "standard_deduction": 50000,
+     "rebate_income_limit": 500000
+    },
+    "cess_rate": 0.04,
+    "surcharge": [
+     [
+      5000000,
+      0
+     ],
+     [
+      10000000,
+      0.1
+     ],
+     [
+      20000000,
+      0.15
+     ],
+     [
+      50000000,
+      0.25
+     ],
+     [
+      null,
+      0.37
+     ]
+    ],
+    "legal_basis": {
+     "act": "Income-tax Act, 2025",
+     "rates": "Finance Act, 2026, Part III of the First Schedule",
+     "section": "392(1)",
+     "tax_year": "2026-27"
+    },
+    "deduction_trigger": "payment_date",
+    "surcharge_new_regime_cap": 0.25
+   },
+   "checksum": "5edae2d609e6d9baea06ef5fe99e0cf661c6bd2804af6f1f8266454d98782d96",
+   "verification_events": [
+    {
+     "action": "created",
+     "from_status": null,
+     "to_status": "draft",
+     "created_at": "2026-10-08 11:53:00"
+    },
+    {
+     "action": "submitted",
+     "from_status": "draft",
+     "to_status": "review",
+     "created_at": "2026-10-08 11:53:00"
+    },
+    {
+     "action": "submitted",
+     "from_status": "review",
+     "to_status": "review",
+     "created_at": "2026-10-08 11:53:00"
+    },
+    {
+     "action": "submitted",
+     "from_status": "review",
+     "to_status": "review",
+     "created_at": "2026-10-08 11:53:00"
+    }
+   ],
+   "evidence_documents": [
+    {
+     "filename": "itd-faqs-interplay-transition-2026.pdf",
+     "sha256": "0b21c7063d19a81c91b5e2a8911458c003589c2a023c262954dea7fb968917ce",
+     "source_url": "https://www.incometaxindia.gov.in/documents/81799/11848482/FAQs-on-Interplay-and-Transition.pdf/05f80c1a-073c-a5d7-fb6f-55509242be53?t=1774082865717",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "income-tax-act-2025-gazette-265620.pdf",
+     "sha256": "7acfb16fd7f3db8b4f85fc532b6d6924478ef86fa2e5b7683d282f8825f8017c",
+     "source_url": "https://egazette.gov.in/WriteReadData/2025/265620.pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "itd-tds-compliance-faqs-2026-09-28.html",
+     "sha256": "8296c75793f04971f52b3496611cbe08919fb4cee88104fced87079b81cc572b",
+     "source_url": "https://www.incometax.gov.in/iec/foportal/help/all-topics/e-filing-services/%20tds%20compliance-faq",
+     "retrieved_at": "2026-09-28"
+    },
+    {
+     "filename": "income-tax-act-2025-as-amended-fa-2026-itd.pdf",
+     "sha256": "d54a0ed6a91673d1a4fbcef9b5e472c3efe441139fae38f85a5a0c5b2cfc998b",
+     "source_url": "https://www.incometaxindia.gov.in/documents/d/guest/income_tax_act_2025_as_amended_by_fa_act_2026-pdf",
+     "retrieved_at": "2026-10-01"
+    },
+    {
+     "filename": "finance-act-2026-no-4-of-2026-gazette-271439.pdf",
+     "sha256": "f01136356e61b2534328153941a68f13afd06fe8587d347757c89101d9cc564f",
+     "source_url": "https://egazette.gov.in/WriteReadData/2026/271439.pdf",
+     "retrieved_at": "2026-09-28"
+    },
+    {
+     "filename": "income-tax-rules-2026-gsr-198e-itd.pdf",
+     "sha256": "f565e0f5ff3bf8f717daeb507f5e8569e720abc3309e6719f6f085889c9b802f",
+     "source_url": "https://www.incometaxindia.gov.in/documents/81799/11848482/En-Notified-IT-Rules-2026-20-03-2026.pdf/a332bf2a-da14-8b94-dde2-5a2ea1428318?t=1773990110473",
+     "retrieved_at": "2026-10-01"
+    }
+   ],
+   "parameter_reviews": [
+    {
+     "parameter": "legal_basis",
+     "status": "covered"
+    },
+    {
+     "parameter": "deduction_trigger",
+     "status": "covered"
+    },
+    {
+     "parameter": "new",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "old",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "cess_rate",
+     "status": "covered"
+    },
+    {
+     "parameter": "surcharge",
+     "status": "covered"
+    },
+    {
+     "parameter": "surcharge_new_regime_cap",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "new",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "old",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "cess_rate",
+     "status": "covered"
+    },
+    {
+     "parameter": "surcharge",
+     "status": "covered"
+    },
+    {
+     "parameter": "legal_basis",
+     "status": "covered"
+    },
+    {
+     "parameter": "deduction_trigger",
+     "status": "covered"
+    },
+    {
+     "parameter": "surcharge_new_regime_cap",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "new",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "old",
+     "status": "not_confirmed"
+    },
+    {
+     "parameter": "cess_rate",
+     "status": "covered"
+    },
+    {
+     "parameter": "surcharge",
+     "status": "covered"
+    },
+    {
+     "parameter": "legal_basis",
+     "status": "covered"
+    },
+    {
+     "parameter": "deduction_trigger",
+     "status": "covered"
+    },
+    {
+     "parameter": "surcharge_new_regime_cap",
+     "status": "not_confirmed"
+    }
+   ],
+   "open_notices": [
+    5
+   ],
+   "superseded_by": null,
+   "consumers": "Salary income-tax withholding (TaxComputer / TDS engine, PayrollRuns), quarterly TDS return and Form 16 (TDS returns and certificates)"
+  }
+ ],
+ "notices": [
+  {
+   "id": 1,
+   "jurisdiction": "IN",
+   "code": "EPF",
+   "state": null,
+   "affects_versions": "[1]",
+   "effective_date": "2026-09-17",
+   "title": "EPF wage ceiling raised from ₹15,000 to ₹25,000 per month (S.O. 5109(E))",
+   "summary": "The Ministry of Labour & Employment announced that the wage ceiling for mandatory EPFO coverage rises from ₹15,000 to ₹25,000 per month with effect from 17 September 2026 (Cabinet decision, 16 Sep 2026). An EPFO regional release (PIB, 23 Sep 2026) states the change follows Gazette Notification S.O. 5109(E) and that the pensionable wage ceiling is also ₹25,000 (maximum employer EPS contribution ₹2,083). EPF v1 applies a ₹15,000 ceiling. Not yet established from the gazette text: the EDLI wage ceiling and the treatment of the September 2026 wage month, in which the change takes effect mid-month. Author EPF v2 from the gazette text, then resolve this notice.",
+   "references": "[{\"url\": \"https://www.labour.gov.in/static/uploads/2026/09/4f607a88c5342aeb980c6b999997caab.pdf\", \"title\": \"Cabinet Approves Higher EPFO Wage Ceiling of Rs. 25,000, Expanding Mandatory Coverage (PIB Delhi, 16 Sep 2026)\", \"sha256\": \"a31038ee4fbc5541515336ebb245ab94194d224c9807a4dc7bdd3968e46e0677\"}, {\"url\": \"https://www.pib.gov.in/PressReleasePage.aspx?PRID=2313829&reg=48&lang=2\", \"title\": \"EPFO Raises Wage Ceiling from Rs. 15,000 to Rs. 25,000 (PIB Kolkata, 23 Sep 2026, release 2313829)\"}, {\"url\": null, \"title\": \"Gazette Notification S.O. 5109(E) — cited, text not retrieved\"}]",
+   "retrieved_at": "2026-09-28",
+   "checksum": "6f40e9274f0eeb25c7ea7c7282ccbf6c84cd3669f83be4d9e38bf14985b6b906",
+   "status": "open",
+   "resolved_by_rule_id": null,
+   "resolution_note": null,
+   "resolved_by": null,
+   "resolved_at": null,
+   "created_at": "2026-10-08 11:53:00",
+   "updated_at": "2026-10-08 11:53:00"
+  },
+  {
+   "id": 2,
+   "jurisdiction": "IN",
+   "code": "TDS",
+   "state": null,
+   "affects_versions": "[2]",
+   "effective_date": "2026-04-01",
+   "title": "Salary TDS for tax year 2026-27 is governed by the Income-tax Act, 2025, not the Finance Act 2025",
+   "summary": "TDS v2 (FY 2026-27) carries the Finance Act 2025 rates \"carried forward\". From 1 April 2026 tax on salaries is deducted under section 392 of the Income-tax Act, 2025 at the rates in Part III of the First Schedule of the Finance Act, 2026, with the new regime under section 202 of that Act (Finance Bill, 2026 as introduced, clauses 3 and 47; Income Tax Department Form No. 130 FAQ). The enacted Finance Act, 2026 text has not been retrieved. Author a corrected TDS version from the enacted text, then resolve this notice.",
+   "references": "[{\"url\": \"https://www.indiabudget.gov.in/doc/Finance_Bill.pdf\", \"title\": \"The Finance Bill, 2026 (Bill No. 3 of 2026, as introduced in Lok Sabha)\", \"sha256\": \"5c98701714c4c473bcd097e376124a4c075881836fe92a5fc4615613c09edabf\"}, {\"url\": \"https://www.incometaxindia.gov.in/documents/d/guest/form-130-faqs\", \"title\": \"Form No. 130 — Frequently Asked Questions (Income Tax Department)\"}, {\"url\": null, \"title\": \"Finance Act, 2026 (enacted) — not retrieved\"}]",
+   "retrieved_at": "2026-09-28",
+   "checksum": "3a705f9fe27ad5fa2ee7d03b49a6c2f3ca23caa07f7192b81010d735230292e2",
+   "status": "open",
+   "resolved_by_rule_id": null,
+   "resolution_note": null,
+   "resolved_by": null,
+   "resolved_at": null,
+   "created_at": "2026-10-08 11:53:00",
+   "updated_at": "2026-10-08 11:53:00"
+  },
+  {
+   "id": 3,
+   "jurisdiction": "IN",
+   "code": "EPF",
+   "state": null,
+   "affects_versions": "[1, 2]",
+   "effective_date": "2026-09-17",
+   "title": "EPFO wage ceiling changed effective 17-Sep-2026: September 2026 intra-month treatment not established",
+   "summary": "EPFO wage ceiling changed effective 17-Sep-2026. Exact intra-month September payroll treatment requires authoritative implementation evidence before verification. The official releases state the effective date but not whether the September 2026 wage month applies the ₹15,000 or ₹25,000 ceiling, a split by days, or another method. Until an authoritative EPFO / gazette instruction is recorded, neither EPF v1 nor EPF v2 can be verified and payroll on or after 17 Sep 2026 is flagged.",
+   "references": "[{\"url\": \"https://www.labour.gov.in/static/uploads/2026/09/4f607a88c5342aeb980c6b999997caab.pdf\", \"title\": \"PIB Delhi, 16 Sep 2026 (effective 17 Sep 2026)\", \"sha256\": \"a31038ee4fbc5541515336ebb245ab94194d224c9807a4dc7bdd3968e46e0677\"}, {\"url\": \"https://www.pib.gov.in/PressReleasePage.aspx?PRID=2313829&reg=48&lang=2\", \"title\": \"PIB release 2313829, 23 Sep 2026 (S.O. 5109(E))\", \"sha256\": \"ba2bf8dc7e6dfb4e3673500fbef764269ae5acf04540bec9fd56fe7af8f1f7d6\"}]",
+   "retrieved_at": "2026-09-28",
+   "checksum": "1542b28a461576f2b6b2e948a03229b199eb9af147d88beb01c7d4bb14f58bfa",
+   "status": "open",
+   "resolved_by_rule_id": null,
+   "resolution_note": null,
+   "resolved_by": null,
+   "resolved_at": null,
+   "created_at": "2026-10-08 11:53:00",
+   "updated_at": "2026-10-08 11:53:00"
+  },
+  {
+   "id": 4,
+   "jurisdiction": "IN",
+   "code": "EPF",
+   "state": null,
+   "affects_versions": "[2]",
+   "effective_date": "2026-09-17",
+   "title": "EPF v2: EDLI ceiling and minimum admin charge contradicted by EPFO guidance; September split-period treatment not implemented",
+   "summary": "Gazette S.O. 5109(E) (17 Sep 2026, Code on Social Security, 2020, Chapter III) confirms the ₹25,000 wage ceiling from its date of publication; it is silent on rates, EPS, EDLI, administrative charges and the September 2026 transition. EPFO's Wage Ceiling FAQs (explanatory, not notified law) state that the revised ceiling applies to EDLI (EPF v2 carries an EDLI wage ceiling of ₹15,000) and that the minimum administrative charge is ₹500 per month for an establishment with a contributing member (EPF v2 carries ₹75). The FAQs split September 2026 into 1–16 Sep at ₹15,000 and 17–30 Sep at ₹25,000 with day-proportionate wages (Q7, Q9), while the Q9 table shows unprorated figures; PeopleOS payroll applies the version effective on the period end to the whole wage month. EPFO states that ECR instructions \"are being issued\"; none were found, and the EPF / EPS / EDLI scheme texts and S.O. 2702(E) were not retrieved. Publish a corrected version from the scheme texts, implement split-period calculation once EPFO's instructions are authoritative, then resolve this notice.",
+   "references": "[{\"url\": \"https://egazette.gov.in/WriteReadData/2026/276299.pdf\", \"title\": \"Gazette of India S.O. 5109(E), 17 Sep 2026 (CG-DL-E-17092026-276299)\", \"sha256\": \"970c2ea088c808a2427f630ba344ab8cfc7a26a10ba9babee2f150b0451c70df\"}, {\"url\": \"https://pmvbry-cdn.epfindia.gov.in/wp-content/uploads/2026/09/Wage-Ceiling-Circular-28.09.2026.pdf\", \"title\": \"EPFO circular E-1345653, 25 Sep 2026 (forwards S.O. 5109(E))\", \"sha256\": \"18799245629e0c4c382ccf2b031da62f55d0af872c2e7b28e4b9648d2b2d10fa\"}, {\"url\": \"https://pmvbry-cdn.epfindia.gov.in/wp-content/uploads/2026/09/EPFO_Wage_Ceiling_FAQs.pdf\", \"title\": \"EPFO Wage Ceiling FAQs, 24 Sep 2026\", \"sha256\": \"47c22e56faaf6735bb8bd0b70db502e2f86efd4adb654cc4593ff85be6eb1052\"}, {\"url\": null, \"title\": \"EPF / EPS / EDLI scheme texts and EPFO ECR instructions — not retrieved / not yet issued\"}]",
+   "retrieved_at": "2026-10-01",
+   "checksum": "824b18f45e0bbcb45dc126f99b7f34b9a60ea04faa9aa30aeba38a80fe4ac1e0",
+   "status": "open",
+   "resolved_by_rule_id": null,
+   "resolution_note": null,
+   "resolved_by": null,
+   "resolved_at": null,
+   "created_at": "2026-10-08 11:53:00",
+   "updated_at": "2026-10-08 11:53:00"
+  },
+  {
+   "id": 5,
+   "jurisdiction": "IN",
+   "code": "TDS",
+   "state": null,
+   "affects_versions": "[3]",
+   "effective_date": "2026-04-01",
+   "title": "TDS v3: new-regime rates for salary TDS and 2025-Act deduction references not established",
+   "summary": "The Income-tax Act, 2025 confirms the new-regime slabs (s.202(1)), standard deductions (s.19(1)) and rebates (s.156), and salary TDS is deducted at the time of payment under s.392(1) at the \"rates in force\". Act s.2(90) takes those rates from the Finance Act, and Finance Act, 2026 s.3(10)(ii) applies Part III of the First Schedule, whose Paragraph A carries only the slabs from ₹2,50,000 and excludes s.202 income only for advance tax; the text applying the s.202(1) rates to salary TDS was not found. TDS v3 also names deductions by Income-tax Act, 1961 sections (80C, 80CCD, 80D, 80E, 80G, 80TTA) and the 1961 HRA exemption, and its new-regime 25% surcharge cap appears only in the advance-tax table. A qualified reviewer must settle these from the Act and the Income-tax Rules, 2026 (not retrieved) before v3 can be verified.",
+   "references": "[{\"url\": \"https://www.incometaxindia.gov.in/documents/d/guest/income_tax_act_2025_as_amended_by_fa_act_2026-pdf\", \"title\": \"Income-tax Act, 2025 as amended by the Finance Act, 2026 (Income Tax Department)\", \"sha256\": \"d54a0ed6a91673d1a4fbcef9b5e472c3efe441139fae38f85a5a0c5b2cfc998b\"}, {\"url\": \"https://egazette.gov.in/WriteReadData/2026/271439.pdf\", \"title\": \"The Finance Act, 2026 (No. 4 of 2026)\", \"sha256\": \"f01136356e61b2534328153941a68f13afd06fe8587d347757c89101d9cc564f\"}, {\"url\": \"https://www.incometaxindia.gov.in/documents/81799/11848482/FAQs-on-Interplay-and-Transition.pdf/05f80c1a-073c-a5d7-fb6f-55509242be53?t=1774082865717\", \"title\": \"ITD FAQs on Interplay and Transition (Q6.1, Q6.22–Q6.23)\", \"sha256\": \"0b21c7063d19a81c91b5e2a8911458c003589c2a023c262954dea7fb968917ce\"}, {\"url\": null, \"title\": \"Income-tax Rules, 2026 — not retrieved\"}]",
+   "retrieved_at": "2026-10-01",
+   "checksum": "c21402aeff651cf4cc5fbd32ba6f46153c28b8e0537fc25b4f02ca39a7c77e31",
+   "status": "open",
+   "resolved_by_rule_id": null,
+   "resolution_note": null,
+   "resolved_by": null,
+   "resolved_at": null,
+   "created_at": "2026-10-08 11:53:00",
+   "updated_at": "2026-10-08 11:53:00"
+  }
+ ]
+}

@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\LearningPaths\Pages;
 
 use App\Filament\Resources\LearningPaths\LearningPathResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListLearningPaths extends ListRecords
+class ListLearningPaths extends PeopleListRecords
 {
     protected static string $resource = LearningPathResource::class;
 

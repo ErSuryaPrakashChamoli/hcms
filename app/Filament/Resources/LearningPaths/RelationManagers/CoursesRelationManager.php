@@ -30,9 +30,11 @@ class CoursesRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema->columns(3)->components([
-            Select::make('course_id')->label('Course')->required()->searchable()->options(fn () => Course::query()->where('status', 'published')->orderBy('title')->pluck('title', 'id')->all())->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
+            Select::make('course_id')->label('Course')->required()->searchable()->options(fn () => Course::query()->whereIn('status', Course::ENROLLABLE)->orderBy('title')->pluck('title', 'id')->all())->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
             TextInput::make('sort_order')->numeric()->default(fn () => ($this->getOwnerRecord()->items()->max('sort_order') ?? 0) + 10),
             Toggle::make('is_required')->default(true)->inline(false),
+            Select::make('prerequisite_course_ids')->label('Prerequisites in this path')->multiple()->columnSpanFull()
+                ->options(fn () => $this->getOwnerRecord()->items()->with('course')->get()->mapWithKeys(fn ($i) => [$i->course_id => $i->course?->title])->all()),
         ]);
     }
 

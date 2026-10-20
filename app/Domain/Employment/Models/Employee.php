@@ -9,7 +9,13 @@ use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Attendance\Models\WorkScheduleAssignment;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Bgv\Models\BgvCase;
+use App\Domain\Career\Models\CareerAspirationEntry;
+use App\Domain\Career\Models\CareerGoal;
+use App\Domain\Communication\Models\CommunicationRecipient;
+use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Configuration\Concerns\HasCustomFields;
+use App\Domain\Development\Models\DevelopmentPlan;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
@@ -25,7 +31,6 @@ use App\Domain\Lifecycle\Models\EmployeeLifecycleTransition;
 use App\Domain\Lifecycle\Models\EmployeeTimelineEntry;
 use App\Domain\Lifecycle\Services\LifecycleEngine;
 use App\Domain\Onboarding\Models\OnboardingPlan;
-use App\Domain\Payroll\Models\EmployeeSalaryAssignment;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\People\Models\Person;
@@ -33,6 +38,9 @@ use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\FeedbackEntry;
 use App\Domain\Performance\Models\Goal;
 use App\Domain\ServiceDesk\Models\Ticket;
+use App\Domain\Skills\Models\EmployeeSkill;
+use App\Domain\Succession\Models\Successor;
+use App\Domain\Talent\Models\TalentPoolMembership;
 use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Support\Tenancy\BelongsToTenant;
 use Database\Factories\EmployeeFactory;
@@ -198,9 +206,16 @@ class Employee extends Model
         return $this->hasMany(LeaveRequest::class)->orderByDesc('from_date');
     }
 
+    /** Phase 11: the canonical compensation history (Compensation owns it; Employee 360 presentation only). */
     public function salaryAssignments(): HasMany
     {
         return $this->hasMany(EmployeeSalaryAssignment::class);
+    }
+
+    /** Phase 11: compensation proposals and their decisions (Employee 360 presentation only). */
+    public function compensationChanges(): HasMany
+    {
+        return $this->hasMany(CompensationChange::class);
     }
 
     public function payrollEntries(): HasMany
@@ -238,6 +253,41 @@ class Employee extends Model
         return $this->hasMany(LearningCertificate::class);
     }
 
+    /** Phase 8: skill history (one lifetime record; rehire keeps the same employee). */
+    public function employeeSkills(): HasMany
+    {
+        return $this->hasMany(EmployeeSkill::class);
+    }
+
+    public function developmentPlans(): HasMany
+    {
+        return $this->hasMany(DevelopmentPlan::class);
+    }
+
+    /** Phase 9: career goals (separate from performance goals). */
+    public function careerGoals(): HasMany
+    {
+        return $this->hasMany(CareerGoal::class);
+    }
+
+    /** Phase 9: effective-dated aspiration history. */
+    public function careerAspirationEntries(): HasMany
+    {
+        return $this->hasMany(CareerAspirationEntry::class);
+    }
+
+    /** Phase 9: talent pool memberships (confidential; talent.view). */
+    public function talentPoolMemberships(): HasMany
+    {
+        return $this->hasMany(TalentPoolMembership::class);
+    }
+
+    /** Phase 9: succession candidacy entries (confidential; succession.view / succession.team). */
+    public function successorEntries(): HasMany
+    {
+        return $this->hasMany(Successor::class);
+    }
+
     public function assetAssignments(): HasMany
     {
         return $this->hasMany(AssetAssignment::class);
@@ -261,6 +311,12 @@ class Employee extends Model
     public function alumniProfile(): HasOne
     {
         return $this->hasOne(AlumniProfile::class);
+    }
+
+    /** Phase 14: announcements addressed to this employee (the Communication domain's snapshot rows; read-only here). */
+    public function communicationRecipients(): HasMany
+    {
+        return $this->hasMany(CommunicationRecipient::class);
     }
 
     public function leaveBalances(): HasMany

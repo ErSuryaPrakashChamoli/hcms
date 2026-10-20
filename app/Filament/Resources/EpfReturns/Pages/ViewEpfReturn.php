@@ -7,14 +7,14 @@ use App\Domain\Compliance\Models\StatutoryReturn;
 use App\Domain\Compliance\Services\Returns\EpfReturns;
 use App\Domain\Compliance\Services\Returns\StatutoryReturns;
 use App\Filament\Resources\EpfReturns\EpfReturnResource;
+use App\Filament\Support\Pages\PeopleViewRecord;
 use App\Filament\Support\StatutoryReturnActions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
-use Filament\Resources\Pages\ViewRecord;
 
-class ViewEpfReturn extends ViewRecord
+class ViewEpfReturn extends PeopleViewRecord
 {
     protected static string $resource = EpfReturnResource::class;
 

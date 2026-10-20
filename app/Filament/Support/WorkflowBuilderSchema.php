@@ -4,6 +4,7 @@ namespace App\Filament\Support;
 
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Support\Validation\SafeOutboundUrl;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Radio;
@@ -149,7 +150,7 @@ final class WorkflowBuilderSchema
     {
         return [
             Fieldset::make('Webhook')->visible(fn (Get $get) => $get('type') === 'webhook')->columns(3)->columnSpanFull()->schema([
-                TextInput::make('config.url')->url()->required()->columnSpan(2),
+                TextInput::make('config.url')->url()->rule(new SafeOutboundUrl)->required()->columnSpan(2),
                 Select::make('config.method')->options(['POST' => 'POST', 'PUT' => 'PUT', 'PATCH' => 'PATCH'])->default('POST'),
                 KeyValue::make('config.headers')->keyLabel('Header')->valueLabel('Value')->columnSpanFull(),
             ]),

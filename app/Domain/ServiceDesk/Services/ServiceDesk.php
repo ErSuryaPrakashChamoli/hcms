@@ -6,223 +6,345 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Grievance\Models\Grievance;
-use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
+use App\Domain\ServiceDesk\Exceptions\ServiceDeskRuleViolation;
 use App\Domain\ServiceDesk\Models\Ticket;
+use App\Domain\ServiceDesk\Models\TicketAccessGrant;
 use App\Domain\ServiceDesk\Models\TicketCategory;
 use App\Domain\ServiceDesk\Models\TicketComment;
 use App\Domain\Workflow\Models\Workflow;
+use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Domain\Workflow\Services\WorkflowEngine;
+use App\Support\Numbering\NumberSequences;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\URL;
-use RuntimeException;
 
-/** The HR service desk (§48): tickets with SLA clocks, assignment, conversation, escalation, resolution, satisfaction. */
+/**
+ * The HR service desk (§48, Phase 12): the case operations on a request. Every operation:
+ * - is authorised by CaseAccess (and never on one's own case as HR);
+ * - moves the status only through RequestLifecycle (map, lock, audit, history, SLA);
+ * - notifies with references only (number, service, status).
+ *
+ * Intake is ServiceRequests, domain hand-off DomainActionExecutor, assignment CaseAssignment,
+ * scheduled SLA work ServiceDeskProcessor.
+ */
 final class ServiceDesk
 {
-    public function __construct(private readonly AuditRecorder $audit, private readonly WorkflowEngine $workflows) {}
+    public function __construct(
+        private readonly AuditRecorder $audit,
+        private readonly WorkflowEngine $workflows,
+        private readonly RequestLifecycle $lifecycle,
+        private readonly CaseAccess $access,
+        private readonly CaseAssignment $assignment,
+        private readonly CaseAttachments $attachments,
+        private readonly DomainActionExecutor $executor,
+        private readonly NumberSequences $numbers,
+    ) {}
 
-    public function open(Employee $employee, TicketCategory $category, string $subject, string $description, string $priority = 'normal', ?User $raiser = null): Ticket
+    /** Legacy "Ask HR" ticket in a request category (no catalogue service). */
+    public function open(Employee $employee, TicketCategory $category, string $subject, string $description, string $priority = 'normal', ?User $raiser = null, ?string $idempotencyKey = null): Ticket
     {
-        if ($category->status->value !== 'active') {
-            throw new RuntimeException('That request type is not available.');
-        }
+        return app(ServiceRequests::class)->openGeneric($employee, $category, $subject, $description, $priority, $raiser, $idempotencyKey);
+    }
 
-        return DB::transaction(function () use ($employee, $category, $subject, $description, $priority, $raiser) {
-            $ticket = Ticket::create([
-                'number' => $this->nextNumber('TKT'),
-                'ticket_category_id' => $category->id,
-                'employee_id' => $employee->id,
-                'raised_by' => $raiser?->id ?? auth()->id(),
-                'subject' => $subject,
-                'description' => $description,
-                'priority' => $priority,
-                'status' => 'new',
-                'assignee_id' => $this->pickAssignee($category),
-                'first_response_due_at' => now()->addHours($category->first_response_hours),
-                'due_at' => now()->addHours($this->slaHours($category, $priority)),
-            ]);
+    public function assign(Ticket $ticket, User $assignee, ?User $actor = null, ?string $reason = null, ?int $expectedVersion = null): Ticket
+    {
+        return $this->assignment->assign($ticket, $assignee, $actor ?? $this->actor(), $reason, $expectedVersion);
+    }
 
-            if ($ticket->assignee_id) {
-                $ticket->update(['status' => 'open']);
-            }
+    /** First acknowledgement by HR: records the first response; a submitted request becomes acknowledged. */
+    public function acknowledge(Ticket $ticket, User $actor, ?int $expectedVersion = null): Ticket
+    {
+        $this->assertWorker($actor, $ticket);
 
-            $this->audit->record(AuditAction::Create, 'servicedesk', $ticket, [], null, actor: $raiser, metadata: ['category' => $category->code, 'priority' => $priority]);
-            ServiceDeskEvent::dispatch('servicedesk.ticket.created', $ticket, ['number' => $ticket->number, 'subject' => $subject, 'category' => $category->name, 'employee_id' => $employee->id], array_filter([$ticket->assignee_id]));
-
-            if ($category->workflow_key) {
-                $workflow = Workflow::query()->where('key', $category->workflow_key)->where('status', 'active')->first();
-                if ($workflow && $workflow->published()->exists()) {
-                    $instance = $this->workflows->start($workflow, $ticket, ['ticket' => ['number' => $ticket->number, 'subject' => $subject, 'category' => $category->code, 'employee_id' => $employee->id]], $raiser);
-                    $ticket->update(['workflow_instance_id' => $instance->id]);
+        return $this->lifecycle->move($ticket, null, $actor, AuditAction::RequestStatusChanged, null, [], 'user', $expectedVersion,
+            guard: function (Ticket $fresh) {
+                if ($fresh->acknowledged_at !== null || ! $fresh->isOpen()) {
+                    throw new ServiceDeskRuleViolation('The request is already acknowledged.');
                 }
-            }
-
-            return $ticket->refresh();
-        });
-    }
-
-    /** Category default, else the least-loaded active holder of the category's role. */
-    private function pickAssignee(TicketCategory $category): ?int
-    {
-        if ($category->default_assignee_id) {
-            return $category->default_assignee_id;
-        }
-        if (! $category->assignee_role_id) {
-            return null;
-        }
-        $candidates = Role::query()->find($category->assignee_role_id)?->users()->get()->filter(fn (User $u) => $u->isActive()) ?? collect();
-        if ($candidates->isEmpty()) {
-            return null;
-        }
-
-        return $candidates->sortBy(fn (User $u) => Ticket::query()->where('assignee_id', $u->id)->whereIn('status', Ticket::OPEN)->count())->first()->id;
-    }
-
-    private function slaHours(TicketCategory $category, string $priority): int
-    {
-        return match ($priority) {
-            'urgent' => max(4, intdiv($category->sla_hours, 4)), 'high' => max(8, intdiv($category->sla_hours, 2)), 'low' => $category->sla_hours * 2, default => $category->sla_hours
-        };
-    }
-
-    public function assign(Ticket $ticket, User $assignee, ?User $actor = null): Ticket
-    {
-        if (! $ticket->isOpen()) {
-            throw new RuntimeException('The ticket is closed.');
-        }
-        $before = $ticket->assignee_id;
-        $ticket->update(['assignee_id' => $assignee->id, 'status' => $ticket->status === 'new' ? 'open' : $ticket->status]);
-        $this->audit->record(AuditAction::Delegated, 'servicedesk', $ticket, [['field' => 'assignee_id', 'before' => $before, 'after' => $assignee->id]], null, actor: $actor);
-        ServiceDeskEvent::dispatch('servicedesk.ticket.assigned', $ticket, ['number' => $ticket->number, 'subject' => $ticket->subject], [$assignee->id]);
-
-        return $ticket;
-    }
-
-    public function comment(Ticket $ticket, User $author, string $body, bool $internal = false, ?string $attachmentPath = null, ?string $attachmentName = null): TicketComment
-    {
-        if ($ticket->status === 'closed') {
-            throw new RuntimeException('The ticket is closed; reopen it to continue the conversation.');
-        }
-        $byEmployee = $ticket->employee()->value('user_id') === $author->id && ! $internal;
-
-        return DB::transaction(function () use ($ticket, $author, $body, $internal, $attachmentPath, $attachmentName, $byEmployee) {
-            $comment = TicketComment::create(['ticket_id' => $ticket->id, 'author_id' => $author->id, 'body' => $body, 'is_internal' => $internal, 'attachment_path' => $attachmentPath, 'attachment_name' => $attachmentName]);
-
-            $updates = [];
-            if ($byEmployee) {
-                if ($ticket->status === 'resolved') {
-                    $updates['status'] = 'open';
-                    $updates['resolved_at'] = null;
-                } elseif ($ticket->status === 'pending') {
-                    $updates['status'] = 'open';
+                $fresh->fill(['acknowledged_at' => now(), 'first_responded_at' => $fresh->first_responded_at ?? now()]);
+                if ($fresh->status === 'submitted') {
+                    $fresh->status = 'acknowledged';
                 }
-            } elseif (! $internal) {
-                $updates['first_responded_at'] = $ticket->first_responded_at ?? now();
-                if ($ticket->status === 'new') {
-                    $updates['status'] = 'open';
-                }
+            },
+            notify: ['event' => 'servicedesk.ticket.acknowledged', 'recipients' => [$this->employeeUserId($ticket)]],
+            metadata: ['event' => 'REQUEST_ACKNOWLEDGED'],
+            asWorker: true,
+        );
+    }
+
+    public function start(Ticket $ticket, User $actor, ?int $expectedVersion = null): Ticket
+    {
+        $this->assertWorker($actor, $ticket);
+
+        return $this->lifecycle->move($ticket, 'in_progress', $actor, AuditAction::RequestStatusChanged, null, [], 'user', $expectedVersion, asWorker: true);
+    }
+
+    public function comment(Ticket $ticket, User $author, string $body, string|bool $visibility = 'employee', UploadedFile|string|null $attachment = null, ?string $attachmentName = null): TicketComment
+    {
+        $visibility = is_bool($visibility) ? ($visibility ? 'internal' : 'employee') : $visibility;
+        if (! in_array($visibility, $this->access->commentWritable($author, $ticket), true)) {
+            throw new ServiceDeskRuleViolation('You cannot post '.($visibility === 'employee' ? 'a reply' : 'that kind of note').' on this case.');
+        }
+        if (trim($body) === '') {
+            throw new ServiceDeskRuleViolation('Write a message.');
+        }
+
+        return DB::transaction(function () use ($ticket, $author, $body, $visibility, $attachment, $attachmentName) {
+            // The request row first, the audit chain last (lock order).
+            $fresh = Ticket::query()->withoutGlobalScope(AccessScope::class)->whereKey($ticket->id)->lockForUpdate()->firstOrFail();
+            if (in_array($fresh->status, ['closed', 'cancelled'], true)) {
+                throw new ServiceDeskRuleViolation('The request is '.$fresh->status.'; reopen it to continue the conversation.');
             }
-            if ($updates) {
-                $ticket->update($updates);
+            $stored = filled($attachment) ? $this->attachments->store($fresh, $attachment, $attachmentName) : [];
+            $comment = TicketComment::query()->create(['ticket_id' => $fresh->id, 'author_id' => $author->id, 'body' => $body, 'visibility' => $visibility] + $stored);
+
+            $byRequester = ($this->access->isOwn($author, $fresh) || (int) $fresh->raised_by === (int) $author->id) && ! $this->access->canWork($author, $fresh);
+            if ($byRequester && $fresh->status === 'waiting_employee') {
+                $this->lifecycle->move($fresh, 'in_progress', $author, AuditAction::RequestStatusChanged, null, [], 'user', metadata: ['event' => 'EMPLOYEE_RESPONDED']);
+            } elseif ($byRequester && $fresh->status === 'resolved') {
+                $this->lifecycle->move($fresh, 'in_progress', $author, AuditAction::RequestStatusChanged, 'The employee replied after resolution', [], 'user', metadata: ['event' => 'REQUEST_REOPENED']);
+            } elseif (! $byRequester && $visibility === 'employee') {
+                $to = in_array($fresh->status, ['submitted', 'acknowledged', 'assigned'], true) ? 'in_progress' : null;
+                $this->lifecycle->move($fresh, $to, $author, AuditAction::RequestStatusChanged, null, $fresh->first_responded_at === null ? ['first_responded_at' => now()] : [], 'user');
+            }
+            $this->audit->record(AuditAction::CommentCreated, 'servicedesk', $fresh, [], null, actor: $author, metadata: ['comment_id' => $comment->id, 'visibility' => $visibility]);
+            if ($stored !== []) {
+                $this->audit->record(AuditAction::AttachmentUploaded, 'servicedesk', $fresh, [], null, actor: $author, metadata: ['comment_id' => $comment->id, 'file' => $comment->attachment_name, 'sha256' => $comment->attachment_sha256, 'visibility' => $visibility]);
             }
 
-            $recipients = $internal ? array_filter([$ticket->assignee_id !== $author->id ? $ticket->assignee_id : null]) : ($byEmployee ? array_filter([$ticket->assignee_id]) : array_filter([$ticket->employee()->value('user_id')]));
-            ServiceDeskEvent::dispatch('servicedesk.ticket.commented', $ticket, ['number' => $ticket->number, 'subject' => $ticket->subject, 'by' => $author->name, 'internal' => $internal], $recipients);
+            $employeeUser = $this->employeeUserId($fresh);
+            $recipients = match (true) {
+                $byRequester => [$fresh->assignee_id],
+                $visibility === 'employee' => $fresh->visible_to_employee ? [$employeeUser, $fresh->raised_by] : [],
+                default => [$fresh->assignee_id, $fresh->owner_id],
+            };
+            $recipients = array_values(array_diff(array_filter($recipients), [$author->id]));
+            ServiceDeskEvent::dispatch('servicedesk.ticket.commented', $fresh, $this->lifecycle->context($fresh) + ['by' => $author->name, 'internal' => $visibility !== 'employee'], $recipients);
+
+            $ticket->setRawAttributes($fresh->getAttributes(), true);
 
             return $comment;
         });
     }
 
-    public function waitOnEmployee(Ticket $ticket, ?User $actor = null): Ticket
+    public function waitOnEmployee(Ticket $ticket, ?User $actor = null, ?int $expectedVersion = null): Ticket
     {
-        if (! in_array($ticket->status, ['new', 'open'], true)) {
-            throw new RuntimeException('Only an open ticket can wait on the employee.');
-        }
-        $ticket->update(['status' => 'pending']);
+        $actor ??= $this->actor();
+        $this->assertWorker($actor, $ticket);
 
-        return $ticket;
+        return $this->lifecycle->move($ticket, 'waiting_employee', $actor, AuditAction::RequestStatusChanged, null, [], 'user', $expectedVersion,
+            notify: ['event' => 'servicedesk.ticket.waiting_for_employee', 'recipients' => $ticket->visible_to_employee ? [$this->employeeUserId($ticket)] : []], asWorker: true);
     }
 
-    public function resolve(Ticket $ticket, string $resolution, ?User $actor = null, ?int $articleId = null): Ticket
+    public function waitOnHr(Ticket $ticket, User $actor, ?string $reason = null, ?int $expectedVersion = null): Ticket
     {
-        if (! $ticket->isOpen()) {
-            throw new RuntimeException('The ticket is not open.');
-        }
-        $ticket->update(['status' => 'resolved', 'resolution' => $resolution, 'resolved_at' => now(), 'article_id' => $articleId ?? $ticket->article_id, 'first_responded_at' => $ticket->first_responded_at ?? now()]);
-        $this->audit->record(AuditAction::Update, 'servicedesk', $ticket, [['field' => 'status', 'before' => 'open', 'after' => 'resolved']], $resolution, actor: $actor);
-        ServiceDeskEvent::dispatch('servicedesk.ticket.resolved', $ticket, ['number' => $ticket->number, 'subject' => $ticket->subject, 'resolution' => $resolution], array_filter([$ticket->employee()->value('user_id')]));
+        $this->assertWorker($actor, $ticket);
 
-        return $ticket;
+        return $this->lifecycle->move($ticket, 'waiting_hr', $actor, AuditAction::RequestStatusChanged, $reason, [], 'user', $expectedVersion, asWorker: true);
     }
 
-    public function close(Ticket $ticket, ?User $actor = null, ?int $satisfaction = null, ?string $comment = null): Ticket
+    public function resolve(Ticket $ticket, string $resolution, ?User $actor = null, ?int $articleId = null, ?int $expectedVersion = null): Ticket
+    {
+        $actor ??= $this->actor();
+        $this->assertWorker($actor, $ticket);
+        $instance = null;
+        $resolved = $this->lifecycle->move($ticket, 'resolved', $actor, AuditAction::RequestResolved, $resolution, [], 'user', $expectedVersion,
+            guard: function (Ticket $fresh) use ($resolution, $articleId, &$instance) {
+                if (in_array($fresh->domain_action_status, ['ready', 'awaiting_approval'], true)) {
+                    // Resolved without executing the change: the pending change is withdrawn and its values purged.
+                    $fresh->fill(['domain_action_status' => 'cancelled'] + $this->executor->purge($fresh));
+                }
+                $instance = $fresh->workflow_instance_id;
+                $fresh->fill(['resolution' => $resolution, 'article_id' => $articleId ?? $fresh->article_id, 'first_responded_at' => $fresh->first_responded_at ?? now()]);
+            },
+            notify: ['event' => 'servicedesk.ticket.resolved', 'recipients' => $ticket->visible_to_employee ? [$this->employeeUserId($ticket), $ticket->raised_by] : [$ticket->raised_by]],
+            asWorker: true,
+        );
+        $this->cancelWorkflow($instance, 'The request was resolved');
+
+        return $resolved;
+    }
+
+    public function close(Ticket $ticket, ?User $actor = null, ?int $satisfaction = null, ?string $comment = null, ?int $expectedVersion = null): Ticket
     {
         if ($ticket->status === 'closed') {
             return $ticket;
         }
         if ($satisfaction !== null && ($satisfaction < 1 || $satisfaction > 5)) {
-            throw new RuntimeException('Satisfaction is rated 1 to 5.');
+            throw new ServiceDeskRuleViolation('Satisfaction is rated 1 to 5.');
         }
-        $ticket->update(['status' => 'closed', 'closed_at' => now(), 'resolved_at' => $ticket->resolved_at ?? now(), 'satisfaction' => $satisfaction ?? $ticket->satisfaction, 'satisfaction_comment' => $comment ?? $ticket->satisfaction_comment]);
-        ServiceDeskEvent::dispatch('servicedesk.ticket.closed', $ticket, ['number' => $ticket->number, 'subject' => $ticket->subject, 'satisfaction' => $satisfaction], array_filter([$ticket->assignee_id]));
+        $system = $actor === null;
+        if (! $system && ! $this->access->canWork($actor, $ticket) && ! $this->isRequester($actor, $ticket)) {
+            throw new ServiceDeskRuleViolation('You cannot close this request.');
+        }
+        $rating = ! $system && $this->isRequester($actor, $ticket) ? array_filter(['satisfaction' => $satisfaction, 'satisfaction_comment' => $comment], fn ($v) => $v !== null) : [];
 
-        return $ticket;
+        return $this->lifecycle->move($ticket, 'closed', $actor, AuditAction::RequestClosed, $system ? 'Closed automatically after resolution' : null, $rating, $system ? 'system' : 'user', $expectedVersion,
+            notify: ['event' => 'servicedesk.ticket.closed', 'recipients' => [$ticket->assignee_id]]);
     }
 
-    public function reopen(Ticket $ticket, string $reason, ?User $actor = null): Ticket
+    public function reopen(Ticket $ticket, string $reason, ?User $actor = null, ?int $expectedVersion = null): Ticket
     {
-        if (! in_array($ticket->status, ['resolved', 'closed'], true)) {
-            throw new RuntimeException('Only a resolved or closed ticket can be reopened.');
+        $actor ??= $this->actor();
+        if (! $this->access->canWork($actor, $ticket) && ! $this->isRequester($actor, $ticket)) {
+            throw new ServiceDeskRuleViolation('You cannot reopen this request.');
         }
-        $ticket->withAuditReason($reason)->update(['status' => 'open', 'resolved_at' => null, 'closed_at' => null, 'due_at' => now()->addHours($ticket->category()->value('sla_hours') ?? 48)]);
-        ServiceDeskEvent::dispatch('servicedesk.ticket.reopened', $ticket, ['number' => $ticket->number, 'subject' => $ticket->subject, 'reason' => $reason], array_filter([$ticket->assignee_id]));
+        if (! in_array($ticket->status, ['resolved', 'closed'], true)) {
+            throw new ServiceDeskRuleViolation('Only a resolved or closed ticket can be reopened.');
+        }
 
-        return $ticket;
+        return $this->lifecycle->move($ticket, 'in_progress', $actor, AuditAction::RequestStatusChanged, $reason, [], 'user', $expectedVersion,
+            notify: ['event' => 'servicedesk.ticket.reopened', 'recipients' => [$ticket->assignee_id]], metadata: ['event' => 'REQUEST_REOPENED']);
     }
 
-    /** Escalate breached tickets once; auto-close resolved tickets the employee did not reopen. */
+    /** Withdraw a request (requester before resolution, or HR); a pending change is withdrawn and purged. */
+    public function cancel(Ticket $ticket, User $actor, string $reason, ?int $expectedVersion = null): Ticket
+    {
+        if (! $this->access->canWork($actor, $ticket) && ! ($this->isRequester($actor, $ticket) || ((int) $ticket->raised_by === (int) $actor->id && $ticket->status === 'draft'))) {
+            throw new ServiceDeskRuleViolation('You cannot cancel this request.');
+        }
+        $instance = null;
+        $cancelled = $this->lifecycle->move($ticket, 'cancelled', $actor, AuditAction::RequestCancelled, $reason, [], 'user', $expectedVersion,
+            guard: function (Ticket $fresh) use (&$instance) {
+                if ($fresh->domain_action_status === 'executed' && $fresh->domain_action !== null && $this->executorTiming($fresh) !== 'on_submit') {
+                    throw new ServiceDeskRuleViolation('The change was already applied; it cannot be cancelled here.');
+                }
+                if (in_array($fresh->domain_action_status, ['ready', 'awaiting_approval', 'refused'], true)) {
+                    $fresh->fill(['domain_action_status' => 'cancelled']);
+                }
+                $fresh->fill($this->executor->purge($fresh));
+                $instance = $fresh->workflow_instance_id;
+            },
+            notify: ['event' => 'servicedesk.ticket.cancelled', 'recipients' => array_values(array_diff(array_filter([$ticket->assignee_id, $this->employeeUserId($ticket)]), [$actor->id]))],
+        );
+        $this->cancelWorkflow($instance, 'The request was cancelled');
+
+        return $cancelled;
+    }
+
+    /** Start the approval again after an approval was refused for separation of duties. */
+    public function restartApproval(Ticket $ticket, User $actor): Ticket
+    {
+        $this->assertWorker($actor, $ticket);
+        $version = $ticket->serviceVersion()->first();
+        $workflow = $version?->workflow_key ? Workflow::query()->where('key', $version->workflow_key)->where('status', 'active')->first() : null;
+        if ($workflow === null || ! $workflow->published()->exists()) {
+            throw new ServiceDeskRuleViolation('This service has no approval workflow available.');
+        }
+
+        return DB::transaction(function () use ($ticket, $actor, $workflow) {
+            $fresh = Ticket::query()->withoutGlobalScope(AccessScope::class)->whereKey($ticket->id)->lockForUpdate()->firstOrFail();
+            if ($fresh->domain_action_status !== 'refused' || ! $fresh->isOpen()) {
+                throw new ServiceDeskRuleViolation('Only a request whose approval was refused can restart approval.');
+            }
+            $instance = $this->workflows->start($workflow, $fresh, ['ticket' => ['number' => $fresh->number, 'employee_id' => $fresh->employee_id]], $actor);
+
+            return $this->lifecycle->move($fresh, 'awaiting_approval', $actor, AuditAction::RequestStatusChanged, 'Approval restarted', ['workflow_instance_id' => $instance->id, 'domain_action_status' => 'awaiting_approval'], 'user');
+        });
+    }
+
+    /** Explicit access to a restricted case (only someone with explicit access grants it, with a reason). */
+    public function grantAccess(Ticket $ticket, User $user, string $reason, User $actor): TicketAccessGrant
+    {
+        if (! $ticket->isRestricted()) {
+            throw new ServiceDeskRuleViolation('Only restricted cases use explicit access.');
+        }
+        if (! $this->access->hasExplicitAccess($actor, $ticket)) {
+            throw new ServiceDeskRuleViolation('You do not have access to this case.');
+        }
+        if (blank($reason)) {
+            throw new ServiceDeskRuleViolation('Granting access needs a reason.');
+        }
+        $employee = Employee::query()->withoutGlobalScope(AccessScope::class)->findOrFail($ticket->employee_id);
+        if (! $user->isActive() || ! $user->hasPermission('servicedesk.confidential') || ! app(AccessScopes::class)->allows($user, $employee) || (int) $employee->user_id === (int) $user->id) {
+            throw new ServiceDeskRuleViolation($user->name.' cannot be given access (servicedesk.confidential, organisation scope, not the case subject).');
+        }
+
+        return DB::transaction(function () use ($ticket, $user, $reason, $actor) {
+            Ticket::query()->withoutGlobalScope(AccessScope::class)->whereKey($ticket->id)->lockForUpdate()->firstOrFail();
+            $grant = TicketAccessGrant::query()->firstOrNew(['ticket_id' => $ticket->id, 'user_id' => $user->id]);
+            $grant->fill(['granted_by' => $actor->id, 'reason' => $reason, 'revoked_at' => null, 'revoked_by' => null])->withAuditReason($reason)->save();
+            $this->audit->record(AuditAction::PermissionChanged, 'servicedesk', $ticket, [['field' => 'access', 'before' => null, 'after' => 'user #'.$user->id]], $reason, actor: $actor, metadata: ['event' => 'CASE_ACCESS_GRANTED']);
+
+            return $grant;
+        });
+    }
+
+    public function revokeAccess(Ticket $ticket, User $user, string $reason, User $actor): void
+    {
+        if (! $this->access->hasExplicitAccess($actor, $ticket)) {
+            throw new ServiceDeskRuleViolation('You do not have access to this case.');
+        }
+        DB::transaction(function () use ($ticket, $user, $reason, $actor) {
+            // The request row first, as every other change to the case does (serialises with RequestLifecycle).
+            Ticket::query()->withoutGlobalScope(AccessScope::class)->whereKey($ticket->id)->lockForUpdate()->firstOrFail();
+            $grant = TicketAccessGrant::query()->where('ticket_id', $ticket->id)->where('user_id', $user->id)->whereNull('revoked_at')->lockForUpdate()->first()
+                ?? throw new ServiceDeskRuleViolation('That person has no explicit access.');
+            $grant->withAuditReason($reason)->update(['revoked_at' => now(), 'revoked_by' => $actor->id]);
+            $this->audit->record(AuditAction::PermissionChanged, 'servicedesk', $ticket, [['field' => 'access', 'before' => 'user #'.$user->id, 'after' => null]], $reason, actor: $actor, metadata: ['event' => 'CASE_ACCESS_REVOKED']);
+        });
+    }
+
+    /** Escalate breached requests, remind, auto-close (legacy entry point; the scheduler runs ServiceDeskProcessor). */
     public function tick(): array
     {
-        $result = ['escalated' => 0, 'auto_closed' => 0];
-
-        Ticket::query()->with('category.escalationRole')->whereIn('status', Ticket::OPEN)->whereNull('escalated_at')->where('due_at', '<', now())->get()
-            ->each(function (Ticket $ticket) use (&$result) {
-                $ticket->update(['escalated_at' => now()]);
-                $recipients = $ticket->category->escalationRole?->users()->get()->filter(fn (User $u) => $u->isActive())->pluck('id')->all() ?? [];
-                $this->audit->record(AuditAction::Escalated, 'servicedesk', $ticket, [], 'SLA breached', metadata: ['due_at' => $ticket->due_at->toDateTimeString()]);
-                ServiceDeskEvent::dispatch('servicedesk.ticket.escalated', $ticket, ['number' => $ticket->number, 'subject' => $ticket->subject, 'due_at' => $ticket->due_at->toDateTimeString()], array_values(array_unique(array_filter([...$recipients, $ticket->assignee_id]))));
-                $result['escalated']++;
-            });
-
-        $days = (int) config('peopleos.servicedesk.auto_close_days', 5);
-        Ticket::query()->where('status', 'resolved')->where('resolved_at', '<', now()->subDays($days))->get()
-            ->each(function (Ticket $ticket) use (&$result) {
-                $this->close($ticket);
-                $result['auto_closed']++;
-            });
-
-        return $result;
+        return app(ServiceDeskProcessor::class)->run();
     }
 
+    /** Collision-free numbers for service desk records (TKT, GRV) — a locked sequence per tenant and year. */
     public function nextNumber(string $prefix): string
     {
-        $year = now()->format('Y');
         $model = $prefix === 'TKT' ? Ticket::class : Grievance::class;
-        $last = $model::query()->where('number', 'like', "{$prefix}-{$year}-%")->orderByDesc('id')->value('number');
-        $seq = $last ? ((int) substr($last, -5)) + 1 : 1;
+        $seed = NumberSequences::highest($model);
+        $this->numbers->ensure($prefix, $seed);
 
-        return sprintf('%s-%s-%05d', $prefix, $year, $seq);
+        return $this->numbers->next($prefix, $seed);
     }
 
     /** Temporary signed link to a comment's attachment; the download route re-authorises the ticket. */
     public function attachmentUrl(TicketComment $comment, int $minutes = 15): ?string
     {
-        if ($comment->attachment_path === null) {
-            return null;
-        }
+        return $this->attachments->url($comment, $minutes);
+    }
 
-        return URL::temporarySignedRoute('tickets.attachment', now()->addMinutes($minutes), ['ticket' => $comment->ticket_id, 'comment' => $comment->id]);
+    private function assertWorker(User $actor, Ticket $ticket): void
+    {
+        if (! $this->access->canWork($actor, $ticket)) {
+            throw new ServiceDeskRuleViolation('You cannot work this case.');
+        }
+    }
+
+    private function isRequester(User $actor, Ticket $ticket): bool
+    {
+        return $this->access->isOwn($actor, $ticket) || (int) $ticket->raised_by === (int) $actor->id;
+    }
+
+    private function employeeUserId(Ticket $ticket): ?int
+    {
+        $id = Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($ticket->employee_id)->value('user_id');
+
+        return $id === null ? null : (int) $id;
+    }
+
+    private function executorTiming(Ticket $ticket): ?string
+    {
+        return app(DomainActions::class)->find($ticket->domain_action)?->timing();
+    }
+
+    private function cancelWorkflow(?int $instanceId, string $reason): void
+    {
+        $instance = $instanceId ? WorkflowInstance::query()->find($instanceId) : null;
+        if ($instance !== null && $instance->status->isOpen()) {
+            $this->workflows->cancel($instance, $reason);
+        }
+    }
+
+    private function actor(): User
+    {
+        return auth()->user() ?? throw new ServiceDeskRuleViolation('A person performs this step.');
     }
 }

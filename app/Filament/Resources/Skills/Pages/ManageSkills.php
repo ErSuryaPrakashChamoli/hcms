@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Skills\Pages;
 
 use App\Filament\Resources\Skills\SkillResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageSkills extends ManageRecords
+class ManageSkills extends PeopleManageRecords
 {
     protected static string $resource = SkillResource::class;
 

@@ -6,6 +6,7 @@ use App\Domain\Compliance\Services\FinancialYear;
 use App\Domain\Compliance\Services\Tds\TdsQuarterlyReturns;
 use App\Domain\Organisation\Models\LegalEntity;
 use App\Filament\Resources\TdsReturns\TdsReturnResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\StatutoryReturnActions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -13,9 +14,8 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Pages\ListRecords;
 
-class ListTdsReturns extends ListRecords
+class ListTdsReturns extends PeopleListRecords
 {
     protected static string $resource = TdsReturnResource::class;
 

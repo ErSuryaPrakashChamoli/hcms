@@ -3,18 +3,21 @@
 namespace App\Domain\Ai\Assistants;
 
 use App\Domain\Ai\Services\AiAnswer;
-use App\Domain\Ai\Services\AttritionRisk;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Experience\Services\NeedsAttention;
 use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Models\LeaveRequest;
+use App\Domain\Lifecycle\Enums\LifecycleState;
+use App\Domain\Lifecycle\Models\EmployeeLifecycleTransition;
 use App\Domain\Performance\Models\Goal;
+use App\Domain\Performance\Models\OneOnOne;
 
 /** Manager Assistant (§94): team attendance, leave, reviews, goals, pending actions — direct reports only. */
 final class ManagerAssistant implements Assistant
 {
-    public function __construct(private readonly NeedsAttention $attention, private readonly AttritionRisk $risk) {}
+    public function __construct(private readonly NeedsAttention $attention) {}
 
     public function key(): string
     {
@@ -23,7 +26,7 @@ final class ManagerAssistant implements Assistant
 
     public function examples(): array
     {
-        return ['Who is on leave today?', 'What is pending for me?', 'How are my team goals going?', 'Who in my team is at risk?'];
+        return ['Who is on leave today?', 'What is pending for me?', 'How are my team goals going?', 'Who in my team has no recent one-on-one?'];
     }
 
     public function answer(User $user, ?Employee $employee, string $question): AiAnswer
@@ -37,7 +40,10 @@ final class ManagerAssistant implements Assistant
             'today' => ['today', 'on leave', 'present', 'absent', 'who is in', 'attendance', 'late'],
             'pending' => ['pending', 'approve', 'approval', 'what do i need', 'waiting', 'actions', 'to do'],
             'goals' => ['goal', 'okr', 'progress', 'objective'],
-            'risk' => ['risk', 'attrition', 'leave the company', 'retention', 'flight'],
+            'risk' => ['risk', 'attrition', 'leave the company', 'retention', 'flight', 'likely to leave', 'promot', 'terminat', 'fire', 'underperform'],
+            'one_on_one' => ['one-on-one', 'one on one', '1:1', 'check-in', 'check in'],
+            // UX.16: what changed for the people who report to you (moves, promotions, lifecycle), last 30 days.
+            'changes' => ['changes in my team', 'what changed', 'changes', 'changed', 'moved'],
             'team' => ['team', 'who reports', 'my people', 'headcount'],
         ]);
 
@@ -45,9 +51,31 @@ final class ManagerAssistant implements Assistant
             'today' => $this->today($reports),
             'pending' => $this->pending($employee, $user),
             'goals' => $this->goals($reports),
-            'risk' => $this->risk($reports),
+            'risk' => $this->noPrediction(),
+            'one_on_one' => $this->oneOnOnes($reports),
+            'changes' => $this->changes($reports),
             default => $this->team($reports),
         };
+    }
+
+    /** UX.16: changes to your current reports in the last 30 days (positions and lifecycle), names only for your own team. */
+    private function changes($reports): AiAnswer
+    {
+        $ids = $reports->pluck('id');
+        $since = now()->subDays(30)->startOfDay();
+        $moves = EmployeePosition::query()->with('employee.person')->whereIn('employee_id', $ids)->where('change_type', '!=', 'hire')
+            ->whereDate('effective_from', '>=', $since)->whereDate('effective_from', '<=', now())->orderByDesc('effective_from')->get();
+        $states = EmployeeLifecycleTransition::query()->with('employee.person')->whereIn('employee_id', $ids)->whereDate('effective_date', '>=', $since)->orderByDesc('effective_date')->get();
+        $lines = [
+            ...$moves->map(fn ($m) => ($m->employee?->display_name ?? 'Someone').': '.ucfirst(str_replace('_', ' ', (string) $m->change_type)).' from '.$m->effective_from->format('j M'))->all(),
+            ...$states->map(fn ($t) => ($t->employee?->display_name ?? 'Someone').': '.($t->to_state instanceof LifecycleState ? $t->to_state->getLabel() : (string) $t->to_state).' from '.$t->effective_date->format('j M'))->all(),
+        ];
+        if ($lines === []) {
+            return AiAnswer::text("No changes to your team's positions or lifecycle in the last 30 days.", 'changes');
+        }
+
+        return new AiAnswer("In the last 30 days:\n- ".implode("\n- ", array_slice($lines, 0, 8)), [['label' => 'Position history and lifecycle transitions for your current reports']],
+            [['label' => 'My Team', 'url' => url('/admin/my-team')]], 'changes', false, ['changes' => $lines]);
     }
 
     private function today($reports): AiAnswer
@@ -94,22 +122,32 @@ final class ManagerAssistant implements Assistant
         return new AiAnswer($answer, [['label' => 'Goals of direct reports']], [['label' => 'Goals', 'url' => url('/admin/goals')]], 'goals', false, ['by_person' => $byPerson, 'at_risk' => $atRisk]);
     }
 
-    private function risk($reports): AiAnswer
+    /**
+     * Phase 14: PeopleOS does not score or predict whether anyone will leave, be promoted, or be let go,
+     * and the assistant does not guess. It points the manager to facts they can act on themselves.
+     */
+    private function noPrediction(): AiAnswer
     {
-        $scores = $reports->map(fn (Employee $e) => $this->risk->score($e))->sortByDesc('score')->values();
-        $flagged = $scores->filter(fn ($s) => $s['band'] !== 'low');
-        if ($flagged->isEmpty()) {
-            return new AiAnswer('No one in your team shows elevated attrition-risk signals right now. This is a system-generated inference from tenure, pay revisions, ratings, learning, one-on-ones, absences, feedback and grievances — not a prediction about any individual.', [['label' => 'Attrition-risk signals (inference)']], [], 'risk', true);
-        }
-        $lines = $flagged->map(fn ($s) => sprintf('%s — %s risk: %s', $s['name'], $s['band'], implode('; ', $s['signals'])))->all();
+        return AiAnswer::text('PeopleOS does not score, rank or predict whether someone will leave, be promoted or be let go, and I will not guess. I can tell you factual things you can act on: who has had no one-on-one recently, who is on leave today, what is pending for you, and how goals are going.',
+            'no_prediction', [['label' => 'PeopleOS AI policy', 'detail' => 'No employee scoring or prediction']], [['label' => 'One-on-ones', 'url' => url('/admin/one-on-ones')]]);
+    }
 
-        return new AiAnswer("Team members with elevated signals (system-generated inference, to prompt a conversation — not a decision):\n- ".implode("\n- ", $lines), [['label' => 'Attrition-risk signals (inference)', 'detail' => 'Heuristic points; see Workforce Intelligence']], [['label' => 'Schedule a one-on-one', 'url' => url('/admin/one-on-ones')]], 'risk', true, ['flagged' => $lines]);
+    private function oneOnOnes($reports): AiAnswer
+    {
+        $since = now()->subDays(90);
+        $held = OneOnOne::query()->whereIn('employee_id', $reports->pluck('id'))->whereNotNull('held_at')->where('held_at', '>=', $since)->pluck('employee_id')->unique();
+        $without = $reports->reject(fn (Employee $e) => $held->contains($e->id))->map(fn (Employee $e) => $e->person?->full_name)->values()->all();
+        if ($without === []) {
+            return AiAnswer::text('Everyone in your team has had a one-on-one in the last 90 days.', 'one_on_one', [['label' => 'One-on-ones (90 days)']]);
+        }
+
+        return new AiAnswer('No one-on-one recorded in the last 90 days with: '.implode(', ', $without).'.', [['label' => 'One-on-ones (90 days)']], [['label' => 'Schedule a one-on-one', 'url' => url('/admin/one-on-ones')]], 'one_on_one', false, ['without_one_on_one' => count($without)]);
     }
 
     private function team($reports): AiAnswer
     {
         $lines = $reports->map(fn (Employee $e) => $e->person?->full_name.' ('.$e->employee_code.')')->all();
 
-        return new AiAnswer("Your team ({$reports->count()}):\n- ".implode("\n- ", $lines)."\n\nAsk me who is on leave today, what is pending, how goals are going, or who might be at risk.", [['label' => 'Reporting relationships']], [['label' => 'My Team', 'url' => url('/admin/my-team')]], 'team', false, ['team' => $lines]);
+        return new AiAnswer("Your team ({$reports->count()}):\n- ".implode("\n- ", $lines)."\n\nAsk me who is on leave today, what is pending, how goals are going, or who has had no recent one-on-one.", [['label' => 'Reporting relationships']], [['label' => 'My Team', 'url' => url('/admin/my-team')]], 'team', false, ['team' => $lines]);
     }
 }

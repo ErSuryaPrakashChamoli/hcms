@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\Employment\Actions\ChangeBankAccountAction;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\ProfileChangeActions;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -68,12 +70,11 @@ class BankAccountsRelationManager extends RelationManager
                 TextColumn::make('verified_at')->dateTime()->placeholder('Unverified'),
             ])
             ->headerActions([
+                // Phase 12: every write goes through ChangeBankAccountAction (authorization, validation, audit).
                 CreateAction::make()->using(function (array $data, RelationManager $livewire) {
                     $reason = AuditReasonField::extract($data);
-                    $account = new EmployeeBankAccount($data + ['employee_id' => $livewire->getOwnerRecord()->id]);
-                    $account->withAuditReason($reason)->save();
 
-                    return $account;
+                    return ProfileChangeActions::run(fn () => app(ChangeBankAccountAction::class)->add($livewire->getOwnerRecord(), $data, auth()->user(), $reason));
                 }),
             ])
             ->recordActions([
@@ -91,11 +92,11 @@ class BankAccountsRelationManager extends RelationManager
                             ->send();
                     }),
                 EditAction::make()->using(function (EmployeeBankAccount $record, array $data) {
-                    $record->withAuditReason(AuditReasonField::extract($data))->update($data);
+                    $reason = AuditReasonField::extract($data);
 
-                    return $record;
+                    return ProfileChangeActions::run(fn () => app(ChangeBankAccountAction::class)->update($record, $data, auth()->user(), $reason));
                 }),
-                DeleteAction::make(),
+                DeleteAction::make()->using(fn (EmployeeBankAccount $record) => ProfileChangeActions::run(fn () => app(ChangeBankAccountAction::class)->remove($record, auth()->user()) ?? true)),
             ]);
     }
 }

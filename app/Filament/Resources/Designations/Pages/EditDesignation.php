@@ -4,10 +4,10 @@ namespace App\Filament\Resources\Designations\Pages;
 
 use App\Filament\Resources\Designations\DesignationResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Pages\PeopleEditRecord;
 use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 
-class EditDesignation extends EditRecord
+class EditDesignation extends PeopleEditRecord
 {
     use GovernedEdit;
 

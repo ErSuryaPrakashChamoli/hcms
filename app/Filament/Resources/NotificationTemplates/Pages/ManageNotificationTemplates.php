@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\NotificationTemplates\Pages;
 
 use App\Filament\Resources\NotificationTemplates\NotificationTemplateResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageNotificationTemplates extends ManageRecords
+class ManageNotificationTemplates extends PeopleManageRecords
 {
     protected static string $resource = NotificationTemplateResource::class;
 

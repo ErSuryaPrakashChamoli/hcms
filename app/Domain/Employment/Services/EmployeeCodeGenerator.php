@@ -3,6 +3,7 @@
 namespace App\Domain\Employment\Services;
 
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\DB;
  * Concurrency-safe: one locked counter row per tenant and prefix (employee_code_sequences), seeded
  * from the highest existing code the first time; the unique index on employees guarantees no
  * duplicate even under contention. Never depends on an external system.
+ * Phase 14: taken codes are checked across the whole tenant, not the caller's organisation scope.
  */
 final class EmployeeCodeGenerator
 {
@@ -33,7 +35,7 @@ final class EmployeeCodeGenerator
 
             $next = (int) $row->last_number + 1;
             // Skip numbers already taken by manually assigned codes.
-            while (Employee::query()->where('employee_code', $prefix.str_pad((string) $next, $padding, '0', STR_PAD_LEFT))->exists()) {
+            while (Employee::query()->withoutGlobalScope(AccessScope::class)->where('employee_code', $prefix.str_pad((string) $next, $padding, '0', STR_PAD_LEFT))->exists()) {
                 $next++;
             }
 
@@ -45,7 +47,7 @@ final class EmployeeCodeGenerator
 
     private function highestExisting(string $prefix): int
     {
-        return (int) (Employee::query()
+        return (int) (Employee::query()->withoutGlobalScope(AccessScope::class)
             ->where('employee_code', 'like', $prefix.'%')
             ->pluck('employee_code')
             ->map(fn (string $code) => ctype_digit($suffix = substr($code, strlen($prefix))) ? (int) $suffix : 0)

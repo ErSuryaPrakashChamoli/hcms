@@ -6,6 +6,7 @@ use App\Domain\Performance\Jobs\SendPerformanceReminders;
 use App\Domain\Performance\Services\PerformanceReminders;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 
 class PerformanceRemindersCommand extends Command
@@ -16,10 +17,11 @@ class PerformanceRemindersCommand extends Command
 
     public function handle(PerformanceReminders $reminders, TenantContext $tenants): int
     {
+        $runner = TenantRunner::for($this);
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each(function (Tenant $tenant) use ($reminders, $tenants) {
+            ->each($runner->isolate(function (Tenant $tenant) use ($reminders, $tenants) {
                 $tenants->runAs($tenant, function () use ($reminders, $tenant) {
                     if ($this->option('queue')) {
                         SendPerformanceReminders::dispatch();
@@ -30,8 +32,8 @@ class PerformanceRemindersCommand extends Command
                     $r = $reminders->tick();
                     $this->info("{$tenant->slug}: {$r['reviews']} review, {$r['check_ins']} check-in, {$r['checkpoints']} checkpoint reminder(s)");
                 });
-            });
+            }));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

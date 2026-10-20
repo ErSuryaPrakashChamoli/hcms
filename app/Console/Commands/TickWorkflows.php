@@ -6,6 +6,7 @@ use App\Domain\Platform\Models\Tenant;
 use App\Domain\Workflow\Services\EscalationEngine;
 use App\Domain\Workflow\Services\WorkflowEngine;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantRunner;
 use Illuminate\Console\Command;
 
 class TickWorkflows extends Command
@@ -16,14 +17,15 @@ class TickWorkflows extends Command
 
     public function handle(WorkflowEngine $engine, EscalationEngine $escalations, TenantContext $tenants): int
     {
-        Tenant::query()->orderBy('id')->each(function (Tenant $tenant) use ($engine, $escalations, $tenants) {
+        $runner = TenantRunner::for($this);
+        Tenant::query()->orderBy('id')->each($runner->isolate(function (Tenant $tenant) use ($engine, $escalations, $tenants) {
             [$resumed, $escalated] = $tenants->runAs($tenant, fn () => [$engine->tick(), $escalations->run()]);
 
             if ($resumed || $escalated) {
                 $this->info("{$tenant->slug}: resumed {$resumed}, escalation actions {$escalated}");
             }
-        });
+        }));
 
-        return self::SUCCESS;
+        return $runner->exitCode();
     }
 }

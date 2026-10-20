@@ -11,13 +11,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-/** A knowledge base article (§50): versioned on publish, audience by rule, optional acknowledgement. */
-#[Fillable(['tenant_id', 'title', 'slug', 'category', 'summary', 'body', 'tags', 'audience', 'requires_acknowledgement', 'is_mandatory_reading', 'version', 'effective_from', 'status', 'author_id', 'published_at'])]
+/**
+ * A knowledge base article (§50, Phase 12): the working copy and its lifecycle (draft → in_review →
+ * approved → published → archived), audience by rule, optional acknowledgement. Readers are served the
+ * immutable published version (`published_version`). The working copy is edited only as a draft: a
+ * change to a published article is a revision (a new draft) that goes through review again.
+ */
+#[Fillable(['tenant_id', 'title', 'slug', 'category', 'summary', 'body', 'tags', 'audience', 'requires_acknowledgement', 'is_mandatory_reading', 'version', 'published_version', 'effective_from', 'status', 'author_id', 'reviewer_id', 'submitted_for_review_at', 'reviewed_at', 'review_note', 'approved_by', 'approved_at', 'published_at'])]
 class Article extends Model
 {
     use Auditable, BelongsToTenant;
 
-    public const STATUSES = ['draft' => 'Draft', 'published' => 'Published', 'archived' => 'Archived'];
+    public const STATUSES = ['draft' => 'Draft', 'in_review' => 'In review', 'approved' => 'Approved', 'published' => 'Published', 'archived' => 'Archived'];
+
+    /** The content of the working copy: frozen outside draft (review sees what is published). */
+    public const CONTENT = ['title', 'summary', 'body', 'category', 'audience', 'requires_acknowledgement', 'is_mandatory_reading', 'effective_from'];
 
     protected $attributes = ['status' => 'draft', 'version' => 1];
 
@@ -29,11 +37,17 @@ class Article extends Model
                 $a->requires_acknowledgement = true;
             }
         });
+        static::updating(function (self $a): void {
+            $content = array_intersect(array_keys($a->getDirty()), self::CONTENT);
+            if ($content !== [] && $a->getRawOriginal('status') !== 'draft') {
+                throw new \RuntimeException('Only a draft article is edited; start a revision of a published article ('.implode(', ', $content).').');
+            }
+        });
     }
 
     protected function casts(): array
     {
-        return ['tags' => 'array', 'audience' => 'array', 'requires_acknowledgement' => 'boolean', 'is_mandatory_reading' => 'boolean', 'version' => 'integer', 'effective_from' => 'date', 'published_at' => 'datetime'];
+        return ['tags' => 'array', 'audience' => 'array', 'requires_acknowledgement' => 'boolean', 'is_mandatory_reading' => 'boolean', 'version' => 'integer', 'published_version' => 'integer', 'effective_from' => 'date', 'published_at' => 'datetime', 'submitted_for_review_at' => 'datetime', 'reviewed_at' => 'datetime', 'approved_at' => 'datetime'];
     }
 
     public function auditModule(): string
@@ -61,8 +75,19 @@ class Article extends Model
         return $this->hasMany(ArticleRead::class);
     }
 
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewer_id');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /** Readers can open it: a version is published and the article is not archived. */
     public function isPublished(): bool
     {
-        return $this->status === 'published';
+        return $this->published_version !== null && $this->status !== 'archived';
     }
 }

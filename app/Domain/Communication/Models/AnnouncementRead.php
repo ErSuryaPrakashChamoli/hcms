@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'announcement_id', 'employee_id', 'read_at', 'acknowledged_at'])]
+/** Read and acknowledgement of one announcement by one employee (unique per pair). Phase 13: acknowledgement is locked and recorded once. */
+#[Fillable(['tenant_id', 'announcement_id', 'employee_id', 'read_at', 'acknowledged_at', 'source'])]
 class AnnouncementRead extends Model
 {
     use BelongsToTenant;

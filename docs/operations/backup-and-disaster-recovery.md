@@ -1,0 +1,139 @@
+# Backup and disaster recovery
+
+> **The authoritative recovery procedure is `docs/saas/SaaS-Final-Production-Recovery-Runbook.md` (11 October 2026).**
+> This document keeps the backup policy background, targets awaiting approval (O-6) and the local test history.
+
+> **Superseded** by `docs/production/disaster-recovery.md` (production readiness closure), which adds a full local rehearsal of the runbook. This file remains the Phase 14 record. The Phase 14 restore schema `hcm_p14_restore` and its dump were deleted in the closure, because they held copies of development data.
+
+Phase 14 (3 October 2026). **Status: documented, locally restore-tested, NOT production-verified.**
+The strategy below has been exercised once, on the development machine (§8). It has not been run
+against a production database, object storage, or a second site. Disaster recovery may be called
+verified only after the §9 exercise succeeds in the target environment and its evidence is recorded.
+
+## 1. What must be recoverable
+
+| Asset | Where | Recovery source |
+|---|---|---|
+| Relational data (all tenants, audit hash chains, effective-dated history) | MySQL schema (one per environment) | Database backups (§2) |
+| Documents, letters, certificates, grievance evidence, announcement attachments, report exports, warehouse feed | `PEOPLEOS_DOCUMENTS_DISK` (local private disk today; S3-compatible object storage for multi-node, see the blocker in `production-configuration.md`) | File / object backups (§3) |
+| Encryption key (`APP_KEY`, plus `APP_PREVIOUS_KEYS` during a rotation) | Secret store | Secret-store backup (§4). **Without it, encrypted columns (bank accounts, statutory identifiers, integration secrets, idempotency responses, inbound payloads) cannot be read** |
+| Configuration (`.env` values, not the file) | Secret store / deployment configuration | Infrastructure as code / secret store |
+| Queue contents | Redis or `jobs` table | Not backed up: rebuildable (§6) |
+
+## 2. Database backups
+
+- **Method:** logical dump with `mysqldump --single-transaction --routines --triggers --hex-blob --set-gtid-purged=OFF` (consistent InnoDB snapshot without locking). At larger sizes, add physical backups (Percona XtraBackup or managed-database snapshots) plus binary-log retention for point-in-time recovery.
+- **Frequency (target):** a full dump daily; binary logs shipped continuously; a fresh dump before every deploy (step 2 of the deploy sequence).
+- **RPO (target):** 15 minutes with binary-log shipping; 24 hours with daily dumps only.
+- **Retention:** 35 daily, 12 monthly (aligned with audit retention policy; adjust per contract).
+- **Encryption:** dumps encrypted at rest (KMS / age / GPG), stored off-host, access limited to the operations role. A dump holds personal data and must be handled like production.
+- **Integrity:** record the SHA-256 of every dump; verify it before any restore.
+
+## 3. File and object backups
+
+- **Local disk (single node):** nightly `rsync` / snapshot of `storage/app/private` to encrypted off-host storage, taken at the same time as the database dump.
+- **S3-compatible storage (multi-node):** bucket versioning, object lock / retention for evidence-bearing prefixes (`tenants/*/grievances`, letters, certificates), cross-region replication. No public access. Server-side encryption.
+- **Fingerprints:** documents, certificates, announcement attachments and (Phase 14) grievance evidence carry SHA-256 values in the database. After a restore, a download whose fingerprint no longer matches is refused (409), so tampering or a partial restore cannot go unnoticed.
+
+## 4. Encryption keys
+
+- `APP_KEY` lives in the secret store with its own backup, separate from the data backups.
+- Rotating the key: set the new `APP_KEY`, move the old value to `APP_PREVIOUS_KEYS`, keep both until every encrypted column has been re-saved, then retire the old key. A backup taken before a rotation needs the key that was current when it was taken.
+- Losing every copy of `APP_KEY` loses the encrypted columns permanently. Treat it as a tier-0 secret.
+
+## 5. Restore procedure (whole environment)
+
+1. Declare the incident; stop writes (`php artisan down`, stop workers and cron).
+2. Provision the database server and an **empty** schema. Never restore over a live schema.
+3. Verify the dump's SHA-256, then restore: `gunzip -c dump.sql.gz | mysql <schema>`, and replay binary logs up to the chosen point in time.
+4. Restore files / objects to the same point in time.
+5. Restore secrets (`APP_KEY` from the time of the dump, database / mail / storage credentials).
+   - **Keep the restored copy inert until step 8 (SaaS.12):**
+     - `MAIL_MAILER=array` (or `log`);
+     - `PEOPLEOS_RAZORPAY_ENABLED=false`;
+     - `PEOPLEOS_TENANT_DELETION_ENABLED=false`;
+     - integrations and webhooks pointed at sinks or left without workers;
+     - no worker or scheduler running.
+   - A restore into a non-production target also gets its own `APP_KEY` only if no encrypted data must be read. Otherwise it gets the dump's key, held in the secret store.
+6. `php artisan migrate --force` (only if the code is newer than the dump; migrations are additive), then `php artisan peopleos:sync-permissions`.
+   - The sync gives system roles only permissions a release introduced; tenants' removals stay removed (SaaS.12).
+6a. **Deletion reconciliation (SaaS.12), before anything serves traffic:** `php artisan peopleos:deletions:reconcile --contain`.
+   - It compares the deletion register (its own disk, **not** restored with the database) with the restored data.
+   - Every tenant the restore brought back past a certified deletion is suspended, and the re-application is recorded. Nothing is deleted automatically.
+   - Re-apply each one through the ordinary deletion workflow: `docs/operations/runbooks/recovery.md` (restore from backup).
+   - An identity mismatch or an invalid entry is never acted on; investigate it before go-live.
+7. Verify:
+   - `php artisan peopleos:audit:verify` passes for every chain;
+   - `php artisan peopleos:readiness` shows no FAIL;
+   - row counts are consistent with the last known report;
+   - downloading a sample document passes its fingerprint check.
+8. Bring workers and cron back, then `php artisan up`.
+9. Replay external work (§6), then close the incident with the evidence recorded.
+
+**RTO (target):** 4 hours for a full environment from daily dumps on the current data volume. It must be measured in the §9 exercise. The local restore below took 12 seconds for the development data set, which says nothing about production volume.
+
+## 6. Queues, integrations and webhooks after a restore
+
+- **Queued jobs:** not restored. Scheduled sweeps are idempotent (claims, reminder logs, leased claims) and simply run again. Undelivered email deliveries stay `queued` / `failed` in `notification_deliveries` and can be retried.
+- **Inbound integration events:** events received after the restore point are lost from PeopleOS. Ask each source system to resend from that time. The idempotency key per system makes resending safe (same key ⇒ recorded once; same key with a different body ⇒ 409).
+- **Outbound webhooks:** deliveries created after the restore point are lost. Consumers dedupe on the delivery id; replay dead letters from the Integration Hub if needed.
+
+## 7. Tenant-level recovery
+
+PeopleOS keeps every tenant in one schema, keyed by `tenant_id`. Restoring one tenant without
+touching others goes like this:
+
+1. Restore the backup to a **separate, disposable** schema.
+2. Export that tenant's rows (all tables with `tenant_id`, in foreign-key order) and compare them with production.
+3. Repair through domain actions or a reviewed, audited data fix. Overwriting production rows in bulk would break the tenant's audit hash chain.
+
+A tenant-level restore tool is **not built** (deferred). Until it exists, any tenant-level recovery is
+an engineering-led operation with sign-off.
+
+## 8. Local restore test (executed 3 October 2026)
+
+| Step | Result |
+|---|---|
+| Source | Development database `hcm`, after the Phase 14.2 / 14.3 migrations and before the 14.5 / 14.6 migrations were applied |
+| Dump | `mysqldump --single-transaction --routines --triggers --no-tablespaces --hex-blob --set-gtid-purged=OFF`, gzip: 2 s, 220 KB |
+| Target | New disposable schema `hcm_p14_restore` (confirmed absent beforehand; never the development database) |
+| Restore | `gunzip -c … \| mysql hcm_p14_restore`: 12 s, exit 0 |
+| Schema comparison | Identical: 295 tables, columns, indexes, foreign keys, CHECK constraints |
+| Row counts | Identical in all 296 tables (5,301 rows) |
+| Audit chains on the restored copy | `peopleos:audit:verify`: platform 40 events, demo tenant 587 events, all verified |
+| Credentials | Passed through a temporary 0600 client file; never printed |
+
+**What this proves:** the dump format restores cleanly and completely on the same MySQL version, and
+the audit hash chains survive dump and restore.
+
+**What it does not prove:**
+- production data volume;
+- object-storage restore;
+- key recovery from the secret store;
+- binary-log point-in-time recovery;
+- cross-host or cross-region restore;
+- the RTO / RPO targets.
+
+**SaaS.11 rehearsal (10 October 2026).** A wider local, isolated rehearsal on fictional fixture data passed 14 of 14
+steps:
+- encrypted backup with checksums before and after encryption;
+- a wrong passphrase refused;
+- database and file restore into new locations;
+- content hashes of 13 key tables identical;
+- 5 audit chains valid;
+- tenant isolation;
+- `APP_KEY` dependency;
+- the heartbeat read back after restore, ticks idempotent, restored jobs drained;
+- the latest migration rolled back and re-applied.
+
+It is still local evidence only, with the same limits as above. Report, the target-environment execution plan, and the
+deletion re-apply procedure: `docs/saas/SaaS-11-Backup-and-DR-Test-Report.md`.
+
+## 9. Verification still required (deployment blocker)
+
+Before go-live, in the target environment, operations must:
+
+1. Restore the latest production-like backup into an isolated environment, using the §5 procedure end to end, including files and `APP_KEY` from the secret store.
+2. Record: backup timestamp, restore start / end (measured RTO), data loss window (measured RPO), audit verification output, readiness output, sample document fingerprint checks.
+3. Repeat at least quarterly, and after any change to storage, encryption or database topology.
+4. Record the evidence with the operations sign-off. Only then may the readiness item "Backup restored and verified in the target environment" be treated as satisfied.

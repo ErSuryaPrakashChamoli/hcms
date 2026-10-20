@@ -7,16 +7,16 @@ use App\Domain\Attendance\Services\PunchIngestion;
 use App\Domain\Employment\Models\Employee;
 use App\Filament\Resources\AttendanceRecords\AttendanceRecordResource;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
 
-class ListAttendanceRecords extends ListRecords
+class ListAttendanceRecords extends PeopleListRecords
 {
     protected static string $resource = AttendanceRecordResource::class;
 

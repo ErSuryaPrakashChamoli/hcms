@@ -1,0 +1,56 @@
+{
+ "desktop": {
+  "panels": 18,
+  "panelsAboveFold": 3,
+  "scrollHeight": 3688,
+  "viewport": 900,
+  "screens": 4.1,
+  "headings": 17,
+  "headingList": [
+   "Now",
+   "What’s next1",
+   "PeopleOS Intelligence",
+   "People snapshot",
+   "Journey",
+   "Probation Now",
+   "What changed5",
+   "Work",
+   "Position",
+   "Relationships",
+   "Growth",
+   "Rewards",
+   "Documents",
+   "Records",
+   "All details",
+   "Additional information",
+   "Applicable policies"
+  ]
+ },
+ "mobile": {
+  "panels": 18,
+  "panelsAboveFold": 1,
+  "scrollHeight": 5316,
+  "viewport": 664,
+  "screens": 8,
+  "headings": 17,
+  "headingList": [
+   "Now",
+   "What’s next1",
+   "PeopleOS Intelligence",
+   "People snapshot",
+   "Journey",
+   "Probation Now",
+   "What changed5",
+   "Work",
+   "Position",
+   "Relationships",
+   "Growth",
+   "Rewards",
+   "Documents",
+   "Records",
+   "All details",
+   "Additional information",
+   "Applicable policies"
+  ]
+ }
+}

@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\FeedbackEntries\Pages;
 
 use App\Filament\Resources\FeedbackEntries\FeedbackEntryResource;
-use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Support\Pages\PeopleManageRecords;
 
-class ManageFeedbackEntries extends ManageRecords
+class ManageFeedbackEntries extends PeopleManageRecords
 {
     protected static string $resource = FeedbackEntryResource::class;
 

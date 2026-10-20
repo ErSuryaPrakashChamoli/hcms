@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\LeaveTransactions\Pages;
 
 use App\Filament\Resources\LeaveTransactions\LeaveTransactionResource;
-use Filament\Resources\Pages\ListRecords;
+use App\Filament\Support\Pages\PeopleListRecords;
 
-class ListLeaveTransactions extends ListRecords
+class ListLeaveTransactions extends PeopleListRecords
 {
     protected static string $resource = LeaveTransactionResource::class;
 }

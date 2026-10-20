@@ -1,0 +1,271 @@
+[
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "priya",
+        "screen": "Home",
+        "status": 200,
+        "queries": 190,
+        "db_ms": 108,
+        "ms": 378,
+        "kb": 145,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "amit",
+        "screen": "Home",
+        "status": 200,
+        "queries": 672,
+        "db_ms": 747,
+        "ms": 1976,
+        "kb": 173,
+        "slow": [
+            "62ms select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date`"
+        ]
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "neha",
+        "screen": "Home",
+        "status": 200,
+        "queries": 604,
+        "db_ms": 463,
+        "ms": 1419,
+        "kb": 162,
+        "slow": [
+            "51ms select count(*) as `aggregate` from `employees` where `lifecycle_state` not in (?, ?) and (`joining_date` is null or date(`joining_date`) <= ?) and (`exit_date`"
+        ]
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "meera",
+        "screen": "Home",
+        "status": 200,
+        "queries": 201,
+        "db_ms": 444,
+        "ms": 677,
+        "kb": 140,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "amit",
+        "screen": "My Work",
+        "status": 200,
+        "queries": 566,
+        "db_ms": 529,
+        "ms": 1624,
+        "kb": 195,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "neha",
+        "screen": "My Work",
+        "status": 200,
+        "queries": 350,
+        "db_ms": 171,
+        "ms": 646,
+        "kb": 190,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "amit",
+        "screen": "Approvals",
+        "status": 200,
+        "queries": 594,
+        "db_ms": 516,
+        "ms": 1677,
+        "kb": 368,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "neha",
+        "screen": "Approvals",
+        "status": 200,
+        "queries": 378,
+        "db_ms": 182,
+        "ms": 756,
+        "kb": 370,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "neha",
+        "screen": "People",
+        "status": 200,
+        "queries": 100,
+        "db_ms": 235,
+        "ms": 471,
+        "kb": 171,
+        "slow": [
+            "52ms select distinct `department_id` from `employee_positions` where `employee_id` in (select `employees`.`id` from `employees` where `employees`.`tenant_id` = ?) an",
+            "57ms select distinct `location_id` from `employee_positions` where `employee_id` in (select `employees`.`id` from `employees` where `employees`.`tenant_id` = ?) and ",
+            "55ms select `employees`.* from `employees` inner join `people` on `people`.`id` = `employees`.`person_id` where `lifecycle_state` != ? and `employees`.`tenant_id` = "
+        ]
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "amit",
+        "screen": "People",
+        "status": 200,
+        "queries": 116,
+        "db_ms": 345,
+        "ms": 663,
+        "kb": 168,
+        "slow": [
+            "59ms select distinct `department_id` from `employee_positions` where `employee_id` in (select `employees`.`id` from `employees` where `employees`.`id` in (select `em",
+            "60ms select distinct `location_id` from `employee_positions` where `employee_id` in (select `employees`.`id` from `employees` where `employees`.`id` in (select `empl",
+            "50ms select count(*) as `aggregate` from `employees` where `employees`.`id` in (select `employees`.`id` from `employees` where (`employees`.`user_id` = ? or `employe"
+        ]
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "neha",
+        "screen": "Employee 360 (Priya)",
+        "status": 200,
+        "queries": 220,
+        "db_ms": 108,
+        "ms": 469,
+        "kb": 285,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "neha",
+        "screen": "Employee 360 (Amit)",
+        "status": 200,
+        "queries": 213,
+        "db_ms": 116,
+        "ms": 485,
+        "kb": 288,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "amit",
+        "screen": "Employee 360 (Priya)",
+        "status": 200,
+        "queries": 279,
+        "db_ms": 254,
+        "ms": 832,
+        "kb": 258,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "neha",
+        "screen": "Org map",
+        "status": 200,
+        "queries": 101,
+        "db_ms": 240,
+        "ms": 884,
+        "kb": 213,
+        "slow": [
+            "63ms select `manager_id`, `employee_id` from `reporting_relationships` where `employee_id` in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?",
+            "97ms select * from `reporting_relationships` where `is_primary` = ? and `type` in (?, ?, ?, ?, ?, ?, ?) and `employee_id` in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+        ]
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "amit",
+        "screen": "Org map",
+        "status": 200,
+        "queries": 118,
+        "db_ms": 187,
+        "ms": 519,
+        "kb": 158,
+        "slow": [
+            "57ms select `employees`.`id` from `employees` where `employees`.`id` in (select `employees`.`id` from `employees` where (`employees`.`user_id` = ? or `employees`.`id"
+        ]
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "meera",
+        "screen": "Workforce pulse",
+        "status": 200,
+        "queries": 116,
+        "db_ms": 515,
+        "ms": 1193,
+        "kb": 135,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "kavya",
+        "screen": "Workforce pulse",
+        "status": 200,
+        "queries": 139,
+        "db_ms": 665,
+        "ms": 1433,
+        "kb": 145,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "priya",
+        "screen": "My HR",
+        "status": 200,
+        "queries": 133,
+        "db_ms": 70,
+        "ms": 224,
+        "kb": 130,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "kavya",
+        "screen": "Admin centre",
+        "status": 200,
+        "queries": 99,
+        "db_ms": 49,
+        "ms": 254,
+        "kb": 186,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "amit",
+        "screen": "Notifications",
+        "status": 200,
+        "queries": 104,
+        "db_ms": 77,
+        "ms": 272,
+        "kb": 136,
+        "slow": []
+    },
+    {
+        "label": "n10k-after2",
+        "employees": 10785,
+        "viewer": "neha",
+        "screen": "Employee 360 (long name)",
+        "status": 200,
+        "queries": 220,
+        "db_ms": 146,
+        "ms": 563,
+        "kb": 277,
+        "slow": []
+    }
+]

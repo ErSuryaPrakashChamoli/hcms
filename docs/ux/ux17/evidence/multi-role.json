@@ -1,0 +1,238 @@
+{
+ "kavya.menon": {
+  "chips": [
+   "For you",
+   "Your team",
+   "People operations",
+   "Administration",
+   "Payroll",
+   "Company"
+  ],
+  "steps": [
+   {
+    "view": "start",
+    "chip": "Administration",
+    "bar": "admin",
+    "items": [
+     "Home",
+     "Admin",
+     "Actions",
+     "Users",
+     "Work(6)"
+    ],
+    "lead": "GOVERNANCE 2"
+   },
+   {
+    "view": "For you",
+    "chip": "For you",
+    "bar": "employee",
+    "items": [
+     "Home",
+     "Work(6)",
+     "Actions",
+     "Services",
+     "People"
+    ],
+    "lead": "DECISIONS WAITING FOR YOU 6"
+   },
+   {
+    "view": "Your team",
+    "chip": "Your team",
+    "bar": "manager",
+    "items": [
+     "Home",
+     "Approvals(6)",
+     "Actions",
+     "Team",
+     "Work"
+    ],
+    "lead": "DECISIONS WAITING FOR YOU 6"
+   },
+   {
+    "view": "People operations",
+    "chip": "People operations",
+    "bar": "hr",
+    "items": [
+     "Home",
+     "Work(6)",
+     "Actions",
+     "People",
+     "Requests"
+    ],
+    "lead": "PEOPLE OPERATIONS 4"
+   },
+   {
+    "view": "Administration",
+    "chip": "Administration",
+    "bar": "admin",
+    "items": [
+     "Home",
+     "Admin",
+     "Actions",
+     "Users",
+     "Work(6)"
+    ],
+    "lead": "GOVERNANCE 2"
+   },
+   {
+    "view": "Payroll",
+    "chip": "Payroll",
+    "bar": "payroll",
+    "items": [
+     "Home",
+     "Work(6)",
+     "Actions",
+     "Payroll",
+     "People"
+    ],
+    "lead": "PAYROLL"
+   },
+   {
+    "view": "Company",
+    "chip": "Company",
+    "bar": "executive",
+    "items": [
+     "Home",
+     "Pulse",
+     "Actions",
+     "Org map",
+     "Work(6)"
+    ],
+    "lead": "WORKFORCE PULSE"
+   },
+   {
+    "view": "after reload",
+    "chip": "Company",
+    "bar": "executive",
+    "items": [
+     "Home",
+     "Pulse",
+     "Actions",
+     "Org map",
+     "Work(6)"
+    ],
+    "lead": "WORKFORCE PULSE"
+   }
+  ]
+ },
+ "amit.verma": {
+  "chips": [
+   "For you",
+   "Your team"
+  ],
+  "steps": [
+   {
+    "view": "start",
+    "chip": "Your team",
+    "bar": "manager",
+    "items": [
+     "Home",
+     "Approvals(6)",
+     "Actions",
+     "Team",
+     "Work"
+    ],
+    "lead": "DECISIONS WAITING FOR YOU 6"
+   },
+   {
+    "view": "For you",
+    "chip": "For you",
+    "bar": "employee",
+    "items": [
+     "Home",
+     "Work(6)",
+     "Actions",
+     "Services",
+     "People"
+    ],
+    "lead": "DECISIONS WAITING FOR YOU 6"
+   },
+   {
+    "view": "Your team",
+    "chip": "Your team",
+    "bar": "manager",
+    "items": [
+     "Home",
+     "Approvals(6)",
+     "Actions",
+     "Team",
+     "Work"
+    ],
+    "lead": "DECISIONS WAITING FOR YOU 6"
+   },
+   {
+    "view": "after reload",
+    "chip": "Your team",
+    "bar": "manager",
+    "items": [
+     "Home",
+     "Approvals(6)",
+     "Actions",
+     "Team",
+     "Work"
+    ],
+    "lead": "DECISIONS WAITING FOR YOU 6"
+   }
+  ]
+ },
+ "neha.kapoor": {
+  "chips": [
+   "For you",
+   "People operations"
+  ],
+  "steps": [
+   {
+    "view": "start",
+    "chip": "People operations",
+    "bar": "hr",
+    "items": [
+     "Home",
+     "Work(6)",
+     "Actions",
+     "People",
+     "Requests"
+    ],
+    "lead": "PEOPLE OPERATIONS 4"
+   },
+   {
+    "view": "For you",
+    "chip": "For you",
+    "bar": "employee",
+    "items": [
+     "Home",
+     "Work(6)",
+     "Actions",
+     "Services",
+     "People"
+    ],
+    "lead": "DECISIONS WAITING FOR YOU 6"
+   },
+   {
+    "view": "People operations",
+    "chip": "People operations",
+    "bar": "hr",
+    "items": [
+     "Home",
+     "Work(6)",
+     "Actions",
+     "People",
+     "Requests"
+    ],
+    "lead": "PEOPLE OPERATIONS 4"
+   },
+   {
+    "view": "after reload",
+    "chip": "People operations",
+    "bar": "hr",
+    "items": [
+     "Home",
+     "Work(6)",
+     "Actions",
+     "People",
+     "Requests"
+    ],
+    "lead": "PEOPLE OPERATIONS 4"
+   }
+  ]
+ }
+}

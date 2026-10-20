@@ -51,6 +51,9 @@ class AiInteractionResource extends Resource
                 TextColumn::make('question')->limit(60)->searchable()->wrap(),
                 TextColumn::make('provider')->badge()->color(fn (string $state) => $state === 'deterministic' ? 'gray' : 'info'),
                 IconColumn::make('is_inference')->label('Inference')->boolean(),
+                IconColumn::make('ai_generated')->label('AI-generated')->boolean(),
+                TextColumn::make('data_policy')->label('Data boundary')->toggleable()->state(fn (AiInteraction $record) => $record->data_policy === null ? '—'
+                    : ($record->data_policy['sent'] ?? false ? 'Sent ('.($record->data_policy['policy'] ?? '?').'), '.($record->data_policy['redacted'] ?? 0).' redacted, '.($record->data_policy['removed'] ?? 0).' removed' : 'Not sent ('.($record->data_policy['policy'] ?? '?').')')),
                 TextColumn::make('feedback')->badge()->placeholder('—')->color(fn (?string $state) => $state === 'up' ? 'success' : 'danger'),
                 TextColumn::make('latency_ms')->label('ms')->toggleable(),
             ])
@@ -66,7 +69,7 @@ class AiInteractionResource extends Resource
                             TextEntry::make('question'),
                             TextEntry::make('answer')->prose(),
                             TextEntry::make('sources')->state(fn (AiInteraction $record) => collect($record->sources ?? [])->map(fn ($s) => $s['label'].(isset($s['detail']) ? " — {$s['detail']}" : ''))->all())->listWithLineBreaks()->placeholder('—'),
-                            TextEntry::make('actions')->state(fn (AiInteraction $record) => collect($record->actions ?? [])->map(fn ($a) => $a['label'].' → '.$a['url'])->all())->listWithLineBreaks()->placeholder('—'),
+                            TextEntry::make('actions')->label('Proposals (links only; confirmed on the domain screen)')->state(fn (AiInteraction $record) => collect($record->actions ?? [])->map(fn ($a) => $a['label'].' → '.$a['url'])->all())->listWithLineBreaks()->placeholder('—'),
                             TextEntry::make('feedback_note')->placeholder('—'),
                         ]),
                     ]),

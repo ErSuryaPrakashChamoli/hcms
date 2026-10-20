@@ -1,0 +1,68 @@
+[
+    {
+        "label": "after",
+        "viewer": "kavya.menon",
+        "screen": "Employees register",
+        "status": 200,
+        "queries": 118,
+        "authz_exists": 0,
+        "db_ms": 148,
+        "ms": 560,
+        "heading": "Employees"
+    },
+    {
+        "label": "after",
+        "viewer": "kavya.menon",
+        "screen": "Leave requests",
+        "status": 200,
+        "queries": 127,
+        "authz_exists": 20,
+        "db_ms": 68,
+        "ms": 345,
+        "heading": "Leave requests"
+    },
+    {
+        "label": "after",
+        "viewer": "amit.verma",
+        "screen": "Leave requests (scoped)",
+        "status": 200,
+        "queries": 164,
+        "authz_exists": 62,
+        "db_ms": 157,
+        "ms": 464,
+        "heading": "Leave requests"
+    },
+    {
+        "label": "after",
+        "viewer": "kavya.menon",
+        "screen": "Departments",
+        "status": 200,
+        "queries": 103,
+        "authz_exists": 0,
+        "db_ms": 57,
+        "ms": 278,
+        "heading": "Departments"
+    },
+    {
+        "label": "after",
+        "viewer": "kavya.menon",
+        "screen": "Audit events",
+        "status": 200,
+        "queries": 99,
+        "authz_exists": 0,
+        "db_ms": 52,
+        "ms": 337,
+        "heading": "Audit events"
+    },
+    {
+        "label": "after",
+        "viewer": "kavya.menon",
+        "screen": "Exit cases",
+        "status": 200,
+        "queries": 111,
+        "authz_exists": 0,
+        "db_ms": 59,
+        "ms": 327,
+        "heading": "Exit cases"
+    }
+]

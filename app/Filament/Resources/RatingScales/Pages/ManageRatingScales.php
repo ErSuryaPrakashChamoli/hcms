@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\RatingScales\Pages;
 
 use App\Filament\Resources\RatingScales\RatingScaleResource;
+use App\Filament\Support\Pages\PeopleManageRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ManageRecords;
 
-class ManageRatingScales extends ManageRecords
+class ManageRatingScales extends PeopleManageRecords
 {
     protected static string $resource = RatingScaleResource::class;
 

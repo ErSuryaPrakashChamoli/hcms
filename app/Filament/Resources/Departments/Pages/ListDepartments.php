@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Departments\Pages;
 
 use App\Filament\Resources\Departments\DepartmentResource;
+use App\Filament\Support\Pages\PeopleListRecords;
 use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListDepartments extends ListRecords
+class ListDepartments extends PeopleListRecords
 {
     protected static string $resource = DepartmentResource::class;
 

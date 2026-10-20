@@ -1,0 +1,191 @@
+{
+ "kind": "restore-reconciliation drill on MySQL, fictional data, disposable schemas (not a production restore)",
+ "steps": [
+  {
+   "step": "prepare: operators, fictional policies, a new tenant with an employee",
+   "seconds": 3.08,
+   "result": {
+    "maker": 23,
+    "checker": 24,
+    "tenant": 6,
+    "slug": "drill-leaving-co"
+   }
+  },
+  {
+   "step": "backup (mysqldump) taken before the deletion",
+   "seconds": 1.89,
+   "result": {
+    "bytes": 3587282
+   }
+  },
+  {
+   "step": "delete the tenant (ordinary workflow, maker-checker); register written",
+   "seconds": 8.24,
+   "result": {
+    "reference": "01M4J6WHADHGQCK6KQ8W33Z2K1",
+    "status": "completed",
+    "reapplies": [],
+    "certificate_reapplies": [],
+    "tenant_status": "deleted",
+    "employees_left": 0
+   }
+  },
+  {
+   "step": "live database after the deletion: consistent",
+   "seconds": 0.6,
+   "result": {
+    "tenant_status": "deleted",
+    "employees": 0,
+    "outcomes": [
+     [
+      "01M4J6WHADHGQCK6KQ8W33Z2K1",
+      "consistent",
+      null
+     ]
+    ],
+    "summary": {
+     "consistent": 1,
+     "reapplied": 0,
+     "not_present": 0,
+     "resurrected": 0,
+     "identity_mismatch": 0,
+     "invalid": 0,
+     "resurrected_operating": 0,
+     "unregistered": 0
+    },
+    "reapplication_events": 0,
+    "other_tenants_operating": 5,
+    "readiness": "PASS"
+   }
+  },
+  {
+   "step": "restore the backup into a new schema",
+   "seconds": 12.44,
+   "result": {
+    "restored": true
+   }
+  },
+  {
+   "step": "restored database: reconciliation before containment",
+   "seconds": 0.63,
+   "result": {
+    "tenant_status": "active",
+    "employees": 1,
+    "outcomes": [
+     [
+      "01M4J6WHADHGQCK6KQ8W33Z2K1",
+      "resurrected",
+      true
+     ]
+    ],
+    "summary": {
+     "consistent": 0,
+     "reapplied": 0,
+     "not_present": 0,
+     "resurrected": 1,
+     "identity_mismatch": 0,
+     "invalid": 0,
+     "resurrected_operating": 1,
+     "unregistered": 0
+    },
+    "reapplication_events": 0,
+    "other_tenants_operating": 5,
+    "readiness": "WARN"
+   }
+  },
+  {
+   "step": "restored database after --contain",
+   "seconds": 0.65,
+   "result": {
+    "tenant_status": "suspended",
+    "employees": 1,
+    "outcomes": [
+     [
+      "01M4J6WHADHGQCK6KQ8W33Z2K1",
+      "resurrected",
+      false
+     ]
+    ],
+    "summary": {
+     "consistent": 0,
+     "reapplied": 0,
+     "not_present": 0,
+     "resurrected": 1,
+     "identity_mismatch": 0,
+     "invalid": 0,
+     "resurrected_operating": 0,
+     "unregistered": 0
+    },
+    "reapplication_events": 1,
+    "other_tenants_operating": 5,
+    "readiness": "WARN"
+   }
+  },
+  {
+   "step": "re-apply through the ordinary workflow on the restored database",
+   "seconds": 9.92,
+   "result": {
+    "reference": "01M4J6X9DE32QZ79T2HHQR2F15",
+    "status": "completed",
+    "reapplies": [
+     "01M4J6WHADHGQCK6KQ8W33Z2K1"
+    ],
+    "certificate_reapplies": [
+     "01M4J6WHADHGQCK6KQ8W33Z2K1"
+    ],
+    "tenant_status": "deleted",
+    "employees_left": 0
+   }
+  },
+  {
+   "step": "restored database after re-application",
+   "seconds": 0.68,
+   "result": {
+    "tenant_status": "deleted",
+    "employees": 0,
+    "outcomes": [
+     [
+      "01M4J6WHADHGQCK6KQ8W33Z2K1",
+      "reapplied",
+      null
+     ],
+     [
+      "01M4J6X9DE32QZ79T2HHQR2F15",
+      "consistent",
+      null
+     ]
+    ],
+    "summary": {
+     "consistent": 1,
+     "reapplied": 1,
+     "not_present": 0,
+     "resurrected": 0,
+     "identity_mismatch": 0,
+     "invalid": 0,
+     "resurrected_operating": 0,
+     "unregistered": 0
+    },
+    "reapplication_events": 1,
+    "other_tenants_operating": 5,
+    "readiness": "PASS"
+   }
+  }
+ ],
+ "register_entry_written": true,
+ "reconcile_contain_exit": 1,
+ "reconcile_final_exit": 0,
+ "fresh_migrate_seconds_mysql": 74.0,
+ "fresh_migrate_migrations": 126,
+ "cleanup": {
+  "schemas_dropped": true,
+  "backup_removed": true,
+  "drill_env_removed": true
+ },
+ "date": "2026-10-10",
+ "what_this_is_not": [
+  "a production restore",
+  "production volume or infrastructure",
+  "the production-copy offboarding rehearsal (G16)",
+  "an operator-signed exercise"
+ ]
+}

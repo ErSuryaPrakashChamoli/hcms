@@ -38,9 +38,9 @@ class RunsRelationManager extends RelationManager
             ->defaultSort('started_at', 'desc')
             ->recordActions([
                 Action::make('download')->label('Download')->icon('heroicon-m-arrow-down-tray')
-                    ->visible(fn (ReportRun $record) => $record->hasFile() && (auth()->user()->can('analytics.export') || auth()->user()->can('analytics.manage')))
+                    ->visible(fn (ReportRun $record) => app(ReportExports::class)->canDownload($record, auth()->user()))
                     ->action(function (ReportRun $record) {
-                        $contents = app(ReportExports::class)->contents($record);
+                        $contents = app(ReportExports::class)->download($record, auth()->user());
 
                         return response()->streamDownload(fn () => print ($contents), basename($record->path), ['Content-Type' => 'text/csv']);
                     }),
