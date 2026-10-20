@@ -166,12 +166,52 @@ checked by the people who review the deployment.
    - **An interrupted migration does not recover by re-running.** MySQL DDL is not transactional: a run killed part-way
      leaves a half-applied migration, and the re-run fails with "table already exists" (SaaS.12, tested). Recover by
      restoring the step 2 backup (or by a reviewed manual repair), never by editing the `migrations` table blindly.
-5. `php artisan peopleos:sync-permissions`
-   - Adds new permission keys to the catalogue.
-   - Gives each tenant's system roles only the permissions this release introduced to their templates, recorded as `ROLE_CHANGED` with no actor.
-   - A permission a tenant removed from a system role stays removed (SaaS.12). It never touches custom roles, role assignments or passwords.
-   - Never run `db:seed` in production: every seeder refuses production.
+5. `php artisan db:seed --force` (the production baseline, `ProductionSeeder`; idempotent, run it on every deploy)
+   - Runs `peopleos:sync-permissions`:
+     - adds new permission keys to the catalogue;
+     - gives each tenant's system roles only the permissions this release introduced to their templates, recorded as
+       `ROLE_CHANGED` with no actor;
+     - a permission a tenant removed from a system role stays removed (SaaS.12); custom roles, role assignments and
+       passwords are never touched.
+   - Runs `peopleos:compliance:sync`: statutory rule packs, regulatory notices and export layouts (insert-only; never VERIFIED).
+   - Creates the first platform operator once, when `PEOPLEOS_BOOTSTRAP_OPERATOR_EMAIL` is set (§9a).
+   - Provisions the first tenant once, when `PEOPLEOS_BOOTSTRAP_TENANT_NAME` is set (§9a).
+   - In production it seeds nothing else: no demo data, no password. The showcase seeders still refuse production.
+   - `php artisan peopleos:sync-permissions` alone remains a valid step 5 on an upgrade.
 6. `php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache`
 7. `php artisan queue:restart`
 8. `php artisan peopleos:readiness`: no FAIL lines.
 9. `php artisan up`.
+
+### 9a. Production baseline seed (`ProductionSeeder`)
+
+`php artisan db:seed --force` runs `DatabaseSeeder`, which in production runs only `ProductionSeeder`. Each part can
+also run alone, for example `php artisan db:seed --class=Database\\Seeders\\Production\\PlatformOperatorSeeder --force`.
+Every part is idempotent: a second run changes nothing and sends nothing.
+
+| Seeder | What it creates | Configured by |
+|---|---|---|
+| `PermissionCatalogueSeeder` | Permission catalogue; system roles of every tenant topped up (`peopleos:sync-permissions`) | `config/peopleos.php` |
+| `StatutoryPackSeeder` | Statutory rule versions, notices, export layouts (`peopleos:compliance:sync`) | `database/data/compliance` |
+| `PlatformOperatorSeeder` | The first platform operator. It is created once, never changed, and **no password** is set or shown. The operator is e-mailed a password-reset link (or uses "Forgot password") and enrols MFA at the first sign-in | `PEOPLEOS_BOOTSTRAP_OPERATOR_EMAIL`, `PEOPLEOS_BOOTSTRAP_OPERATOR_NAME` |
+| `FirstTenantSeeder` | The first tenant, provisioned once like the Tenants page does it: system roles, defaults, and an invited Tenant Super Admin. No plan or price is assigned | `PEOPLEOS_BOOTSTRAP_TENANT_NAME`, `_SLUG`, `_COUNTRY`, `_TIMEZONE`, `_CURRENCY`, `_ADMIN_NAME`, `_ADMIN_EMAIL` |
+
+Leave a bootstrap variable empty to skip that part. The seeder stops with an error, and changes nothing, when:
+- an address uses a reserved, undeliverable domain (`.local`, `.test`, `example.*`; production only);
+- the operator address belongs to a tenant user (a tenant account is never promoted);
+- the tenant slug is reserved or malformed;
+- the tenant administrator's address is already in use.
+
+The values are not secrets. Once the operator and the tenant exist, they may stay set: a later run leaves both unchanged.
+
+**Deliberately not seeded.** Each of these is an owner decision, or needs a second operator's approval, and is entered
+on the platform pages:
+- plans and prices (D-1, B-4);
+- billing markets, the selling entity and invoice series (B-7);
+- commercial policies;
+- loading and verifying the billing statutory dataset;
+- verifying statutory rules;
+- retention policies (D-8);
+- demo data.
+
+The seeder prints these remaining steps at the end of its run.

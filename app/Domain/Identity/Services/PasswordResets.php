@@ -43,13 +43,28 @@ final class PasswordResets
             if (! $this->mayReset($user)) {
                 return;
             }
-            $notification = new PasswordResetLink(Filament::getResetPasswordUrl($token, $user), (int) config('auth.passwords.users.expire', 60));
+            $notification = $this->link($user, $token);
 
-            defer(function () use ($user, $notification): void {
-                $user->notify($notification);
-                $this->audit->record(AuditAction::PasswordResetRequested, 'identity', $user, [], null, tenantId: $user->tenant_id, metadata: ['channel' => 'email']);
-            });
+            defer(fn () => $this->deliver($user, $notification));
         });
+    }
+
+    /**
+     * The production seeder's first link for a new platform operator, sent at once: a console run has no response to
+     * answer first, and a mail failure must reach the operator running it (the seeder reports it), not a deferred
+     * callback after the command. Returns whether the link was e-mailed.
+     */
+    public function sendNow(User $user): bool
+    {
+        $sent = false;
+        Password::broker()->sendResetLink(['email' => $user->email], function (User $user, #[SensitiveParameter] string $token) use (&$sent): void {
+            if ($this->mayReset($user)) {
+                $this->deliver($user, $this->link($user, $token));
+                $sent = true;
+            }
+        });
+
+        return $sent;
     }
 
     /** @return bool true when the password was changed; false for any invalid link (never says which part was wrong) */
@@ -74,6 +89,17 @@ final class PasswordResets
 
             return $status === Password::PASSWORD_RESET;
         });
+    }
+
+    private function link(User $user, #[SensitiveParameter] string $token): PasswordResetLink
+    {
+        return new PasswordResetLink(Filament::getResetPasswordUrl($token, $user), (int) config('auth.passwords.users.expire', 60));
+    }
+
+    private function deliver(User $user, PasswordResetLink $notification): void
+    {
+        $user->notify($notification);
+        $this->audit->record(AuditAction::PasswordResetRequested, 'identity', $user, [], null, tenantId: $user->tenant_id, metadata: ['channel' => 'email']);
     }
 
     /** Only someone who could sign in may reset: an active account in an accessible tenant (or an operator). */

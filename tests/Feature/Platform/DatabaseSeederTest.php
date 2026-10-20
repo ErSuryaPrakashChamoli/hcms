@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Compliance\Models\ComplianceRule;
+use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\OrganisationNode;
 use App\Domain\Platform\Models\Tenant;
@@ -25,16 +27,19 @@ it('seeds the demo tenant and is safe to run twice', function () {
     expect(Tenant::query()->count())->toBe(1);
 });
 
-it('refuses to seed demo accounts in production', function () {
+it('seeds only the production baseline in production, never demo accounts', function () {
     $this->app['env'] = 'production';
     try {
         // Called directly: `db:seed` would first ask the console to confirm a production run.
-        expect(fn () => app(DatabaseSeeder::class)->setContainer(app())->__invoke())->toThrow(RuntimeException::class, 'refuses to run in production');
+        app(DatabaseSeeder::class)->setContainer(app())->__invoke();
     } finally {
         $this->app['env'] = 'testing';
     }
 
-    expect(User::query()->count())->toBe(0);
+    expect(User::query()->count())->toBe(0)
+        ->and(Tenant::query()->count())->toBe(0)
+        ->and(Permission::query()->count())->toBeGreaterThan(0)
+        ->and(ComplianceRule::query()->count())->toBeGreaterThan(0);
 });
 
 it('gives seeded accounts the configured password, never a fixed one', function () {

@@ -35,6 +35,17 @@ final class PlatformReadiness
 
     public const UNVERIFIED = 'UNVERIFIED';
 
+    /** SaaS.13: reserved, undeliverable e-mail domains (SQL LIKE patterns) that only demo and test accounts use. */
+    public const RESERVED_EMAIL_PATTERNS = ['%.local', '%.test', '%.example', '%.invalid', '%.localhost', '%@example.com', '%@example.org', '%@example.net'];
+
+    /** Whether an address is on one of the reserved domains (the bootstrap seeders refuse one in production). */
+    public static function isReservedEmail(string $email): bool
+    {
+        $email = strtolower(trim($email));
+
+        return collect(self::RESERVED_EMAIL_PATTERNS)->contains(fn (string $pattern) => str_ends_with($email, ltrim($pattern, '%')));
+    }
+
     public function __construct(private readonly HealthChecks $health, private readonly AuditVerifications $verifications) {}
 
     /** @return array{checks: list<array{area: string, check: string, status: string, detail: string}>, summary: array<string, mixed>} */
@@ -95,7 +106,7 @@ final class PlatformReadiness
         // SaaS.13: demo and test accounts use reserved, undeliverable domains (seeders, showcase, factories). One that can
         // sign in on production means demo data, and known fixture passwords, reached it. Counts only, never addresses.
         $demo = User::query()->where('status', '!=', UserStatus::Suspended->value)->where(function ($q) {
-            foreach (['%.local', '%.test', '%.example', '%.invalid', '%.localhost', '%@example.com', '%@example.org', '%@example.net'] as $pattern) {
+            foreach (self::RESERVED_EMAIL_PATTERNS as $pattern) {
                 $q->orWhere('email', 'like', $pattern);
             }
         })->count();

@@ -734,6 +734,26 @@ return [
         'password' => env('PEOPLEOS_SEED_PASSWORD'),
     ],
     /*
+    | ProductionSeeder (`php artisan db:seed --force`): the first platform operator and, optionally, the first tenant,
+    | each created once and never changed afterwards. No password exists here: the operator receives a password-reset
+    | link and enrols MFA at the first sign-in; the tenant's administrator receives an invitation. Leave empty to skip.
+    */
+    'bootstrap' => [
+        'operator' => [
+            'email' => env('PEOPLEOS_BOOTSTRAP_OPERATOR_EMAIL'),
+            'name' => env('PEOPLEOS_BOOTSTRAP_OPERATOR_NAME'),
+        ],
+        'tenant' => [
+            'name' => env('PEOPLEOS_BOOTSTRAP_TENANT_NAME'),
+            'slug' => env('PEOPLEOS_BOOTSTRAP_TENANT_SLUG'),
+            'country_code' => env('PEOPLEOS_BOOTSTRAP_TENANT_COUNTRY', 'IN'),
+            'timezone' => env('PEOPLEOS_BOOTSTRAP_TENANT_TIMEZONE', 'Asia/Kolkata'),
+            'currency' => env('PEOPLEOS_BOOTSTRAP_TENANT_CURRENCY', 'INR'),
+            'admin_name' => env('PEOPLEOS_BOOTSTRAP_TENANT_ADMIN_NAME'),
+            'admin_email' => env('PEOPLEOS_BOOTSTRAP_TENANT_ADMIN_EMAIL'),
+        ],
+    ],
+    /*
     | SaaS.3 commercial entitlements. SHADOW ONLY: decisions are evaluated and observed, never enforced (there is no
     | enforcing mode). `off` stops observation without touching anything else. The catalogue is the Capability enum.
     */

@@ -32,7 +32,6 @@ use App\Domain\Exit\Services\Exits;
 use App\Domain\Exit\Services\FinalSettlements;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
-use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Services\KnowledgeBase;
 use App\Domain\Learning\Models\Course;
@@ -75,25 +74,28 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
     private string $password = '';
 
     /**
-     * SaaS.2: development and demo data only. It refuses to run in production, and it contains no
-     * password: every seeded account uses PEOPLEOS_SEED_PASSWORD, or a random password generated for this
-     * run and printed once to the console.
+     * The production baseline (ProductionSeeder) first, in every environment. In production that is all it seeds:
+     * `php artisan db:seed --force` is the deploy step, and demo data never reaches production.
+     *
+     * SaaS.2: the rest is development and demo data only, and it contains no password: every seeded account
+     * uses PEOPLEOS_SEED_PASSWORD, or a random password generated for this run and printed once to the console.
      */
-    public function run(PermissionRegistry $permissions, ProvisionTenantAction $provisioner, TenantContext $tenants): void
+    public function run(ProvisionTenantAction $provisioner, TenantContext $tenants): void
     {
+        $this->call(ProductionSeeder::class);
+
         if (app()->environment('production')) {
-            throw new RuntimeException('DatabaseSeeder creates demo accounts and refuses to run in production.');
+            $this->command?->info('Production: demo data is never seeded.');
+
+            return;
         }
         $this->password = $this->seedPassword();
-
-        $permissions->sync();
 
         User::query()->firstOrCreate(
             ['email' => 'platform@markedge.local'],
@@ -340,8 +342,6 @@ class DatabaseSeeder extends Seeder
     /** Statutory profile, salaries for the demo workforce, a calculated run for the current month. */
     private function seedPayroll(): void
     {
-        app(Kernel::class)->call('peopleos:compliance:sync');
-
         $tech = Company::query()->where('code', 'DEMO-TECH')->first();
         CompanyStatutoryProfile::query()->firstOrCreate(
             ['company_id' => $tech->id],

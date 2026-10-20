@@ -221,7 +221,7 @@ final class ProductionConfigValidator
             'Tenant deletion is on without a recorded owner authorisation (approved retention policies, the production-copy rehearsal): set PEOPLEOS_TENANT_DELETION_AUTHORISATION to its reference, or turn deletion off.');
         $this->require(! config('peopleos.billing.razorpay.enabled'), 'PEOPLEOS_RAZORPAY_ENABLED', 'insecure', 'Razorpay is integrated in test mode only; live payments are not activated for production.');
         $this->require(! str_starts_with((string) config('peopleos.billing.razorpay.key_id'), 'rzp_live_'), 'PEOPLEOS_RAZORPAY_KEY_ID', 'insecure', 'A live payment-provider key is configured; live payments are not activated.');
-        $this->require(blank(config('peopleos.seed.password')), 'PEOPLEOS_SEED_PASSWORD', 'insecure', 'A demo-seed password must not exist in production (seeders never run there).');
+        $this->require(blank(config('peopleos.seed.password')), 'PEOPLEOS_SEED_PASSWORD', 'insecure', 'A demo-seed password must not exist in production (demo data is never seeded there).');
         $this->require((int) config('peopleos.security.hsts_max_age', 0) >= 31_536_000, 'PEOPLEOS_HSTS_MAX_AGE', 'insecure', 'HTTPS responses must send Strict-Transport-Security for at least a year.');
         $this->advise(filled(config('peopleos.security.robots_tag')), 'PEOPLEOS_ROBOTS_TAG', 'Pages should carry X-Robots-Tag noindex: a private platform is never indexed.');
         // SaaS.12: a restore must never bring back a deleted tenant unnoticed; the register lives outside the database.
