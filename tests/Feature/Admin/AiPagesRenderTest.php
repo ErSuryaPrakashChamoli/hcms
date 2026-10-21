@@ -35,6 +35,22 @@ it('renders the AI pages with the right access', function () {
     $this->get(AiInteractionResource::getUrl('index'))->assertForbidden();
 });
 
+it('shows every configuration module as a card, narrows it as you type, and lists only what the viewer may open', function () {
+    $this->get(ConfigurationFinder::getUrl())->assertOk()
+        ->assertSee('Time and leave rules')->assertSee('Shifts')->assertSee('Organisation structure')->assertSee('Departments')
+        ->assertSee('Employee · probation · default months');
+
+    actAsTenant($this->tenant);
+    $modules = collect(Livewire::test(ConfigurationFinder::class)->set('term', 'working hours')->instance()->modules);
+    expect($modules->pluck('label')->all())->toBe(['Time and leave rules'])
+        ->and(collect($modules->first()['items'])->pluck('label')->all())->toContain('Shifts', 'Work schedules')
+        ->and(Livewire::test(ConfigurationFinder::class)->set('term', 'zzz')->instance()->modules)->toBe([]);
+
+    $this->actingAs(tenantUser($this->tenant, ['people_setup.view']));
+    $labels = collect(Livewire::test(ConfigurationFinder::class)->instance()->modules)->flatMap(fn (array $m) => collect($m['items'])->pluck('label'));
+    expect($labels->all())->toContain('Designations')->not->toContain('Shifts')->not->toContain('Settings')->not->toContain('Employee · probation · default months');
+});
+
 it('asks and rates through the chat page', function () {
     actAsTenant($this->tenant);
     $this->actingAs($this->employee->user);

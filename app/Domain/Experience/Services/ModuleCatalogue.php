@@ -124,6 +124,24 @@ final class ModuleCatalogue
         return null;
     }
 
+    /**
+     * Whether the viewer may open a URL: it is one of their modules' own path or a path below it. The panel
+     * root (Home) never covers other screens.
+     */
+    public function opens(User $user, string $url): bool
+    {
+        $path = rtrim((string) parse_url($url, PHP_URL_PATH), '/');
+        $root = rtrim((string) parse_url(Filament::getPanel('admin')->getUrl(), PHP_URL_PATH), '/');
+        foreach ($this->for($user) as $module) {
+            $own = rtrim((string) parse_url($module['url'], PHP_URL_PATH), '/');
+            if ($path !== '' && $own !== '' && $own !== $root && ($path === $own || str_starts_with($path, $own.'/'))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function groupName(string|UnitEnum|null $group): string
     {
         return $group instanceof UnitEnum ? ($group instanceof BackedEnum ? (string) $group->value : $group->name) : (string) ($group ?? 'Other');
