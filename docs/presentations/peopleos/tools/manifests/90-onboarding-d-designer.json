@@ -1,0 +1,173 @@
+[
+  {
+    "name": "client-onboarding/90-onb-29-designer-add-root",
+    "file": "screenshots/client-onboarding/90-onb-29-designer-add-root.png",
+    "captured_at": "2026-10-21T07:19:31.556Z",
+    "url": "/admin/organisation-designer",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Organisation structure: Organisation Designer",
+    "screen": "Organisation Designer › Add root unit",
+    "action": "Add the company as the root: type Company, use an existing unit, reason for change",
+    "expected": "The tree starts from the company",
+    "prereq": "Company and units created; signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Unit type",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Use an existing unit",
+        "x": 266,
+        "y": 282,
+        "w": 36,
+        "h": 36
+      },
+      {
+        "n": "3",
+        "label": "Reason for change",
+        "x": 30,
+        "y": 522,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-30-designer-add-child",
+    "file": "screenshots/client-onboarding/90-onb-30-designer-add-child.png",
+    "captured_at": "2026-10-21T07:20:55.832Z",
+    "url": "/admin/organisation-designer",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Organisation structure: Organisation Designer",
+    "screen": "Organisation Designer › Add unit under Northwind Retail",
+    "action": "Add child under Northwind Retail: type Business Unit, use the existing unit \"Retail Operations\", reason for change",
+    "expected": "The unit is placed under its parent; the change is recorded in the audit trail",
+    "prereq": "Company and units created; signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Unit type",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Existing unit",
+        "x": 30,
+        "y": 390,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Reason for change",
+        "x": 30,
+        "y": 522,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-31-designer-tree",
+    "file": "screenshots/client-onboarding/90-onb-31-designer-tree.png",
+    "captured_at": "2026-10-21T07:21:39.287Z",
+    "url": "/admin/organisation-designer",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Organisation structure: Organisation Designer",
+    "screen": "Organisation Designer (tree)",
+    "action": "Review the tree",
+    "expected": "Company → business unit → department → team, plus a department and a location under the company; each node has Add child, Rename, Move, Deactivate, Remove from tree",
+    "prereq": "Company and units created; signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Add child",
+        "x": 1854,
+        "y": 488,
+        "w": 60,
+        "h": 60
+      },
+      {
+        "n": "2",
+        "label": "Move",
+        "x": 1920,
+        "y": 488,
+        "w": 60,
+        "h": 60
+      },
+      {
+        "n": "3",
+        "label": "Chart view",
+        "x": 1983,
+        "y": 365,
+        "w": 99,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-32-designer-chart",
+    "file": "screenshots/client-onboarding/90-onb-32-designer-chart.png",
+    "captured_at": "2026-10-21T07:21:40.994Z",
+    "url": "/admin/organisation-designer",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Organisation structure: Organisation Designer",
+    "screen": "Organisation Designer (chart)",
+    "action": "Switch to Chart",
+    "expected": "The same structure as a chart",
+    "prereq": "Company and units created; signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

@@ -1,0 +1,61 @@
+[
+  {
+    "name": "client-onboarding/90-onb-72-policy-published",
+    "file": "screenshots/client-onboarding/90-onb-72-policy-published.png",
+    "captured_at": "2026-10-21T09:15:57.974Z",
+    "url": "/admin/policies/5/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Leave policy",
+    "screen": "Workflows › Policies › Northwind leave policy (after publishing)",
+    "action": "Re-open the policy after Publish draft",
+    "expected": "Version 1 is Published, effective 21 Oct 2026; Assignment rules decide who it applies to",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Re-captured during QA: the first capture showed the table before it refreshed (Draft). Database: policy_versions v1 status published at 2026-10-21 07:48.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "v1 Published",
+        "x": 426,
+        "y": 1637,
+        "w": 1692,
+        "h": 205
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-29-compliance-rules",
+    "file": "screenshots/platform-admin/95-pl-29-compliance-rules.png",
+    "captured_at": "2026-10-21T09:16:00.619Z",
+    "url": "/admin/compliance-rules",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8,
+      3
+    ],
+    "workflow": "Statutory rule stewardship",
+    "screen": "People › Pay › Compliance rules (operator view)",
+    "action": "Open Compliance rules as a platform operator",
+    "expected": "Each rule version with jurisdiction, code, status and verification; operator actions Parameters, Verification history, Evidence & coverage, Attach evidence, Submit evidence. None verified",
+    "prereq": "",
+    "status": "IMPLEMENTED BUT NOT VERIFIED END-TO-END",
+    "note": "Re-captured during QA with the table scrolled fully left.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

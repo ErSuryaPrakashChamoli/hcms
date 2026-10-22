@@ -143,6 +143,7 @@
                             \App\Filament\Pages\ChangeIntelligencePage::canAccess() ? ['Change intelligence', 'Every recorded change, by person and date', \App\Filament\Pages\ChangeIntelligencePage::getUrl()] : null,
                             \App\Filament\Pages\WorkforceIntelligence::canAccess() ? ['Workforce intelligence', 'Signals and their reasons', \App\Filament\Pages\WorkforceIntelligence::getUrl()] : null,
                             \App\Filament\Pages\PeopleAnalyticsPage::canAccess() ? ['People analytics', 'Breakdowns with privacy thresholds', \App\Filament\Pages\PeopleAnalyticsPage::getUrl()] : null,
+                            \App\Filament\Resources\Reports\ReportResource::canAccess() ? ['Reports', 'Build, run, schedule and export reports (CSV)', \App\Filament\Resources\Reports\ReportResource::getUrl()] : null,
                         ]) as [$label, $hint, $url])
                             <a href="{{ $url }}" wire:navigate class="pos-stream-row"><span class="pos-stream-icon" aria-hidden="true"><x-filament::icon icon="heroicon-o-presentation-chart-line" class="size-4" /></span><span class="pos-stream-body"><span class="pos-stream-title">{{ $label }}</span><span class="pos-stream-meta">{{ $hint }}</span></span><span aria-hidden="true" class="pos-muted">→</span></a>
                         @endforeach

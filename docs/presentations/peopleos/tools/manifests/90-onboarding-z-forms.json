@@ -1,0 +1,508 @@
+[
+  {
+    "name": "client-onboarding/90-onb-16-new-company",
+    "file": "screenshots/client-onboarding/90-onb-16-new-company.png",
+    "captured_at": "2026-10-21T08:12:04.299Z",
+    "url": "/admin/companies/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Company set-up",
+    "screen": "Companies › New company",
+    "action": "Name, code, legal name, status, locale and the effective-from date",
+    "expected": "Company record effective from 1 Apr 2026",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Form re-opened and filled with the values used when the record was created, then cancelled (the record already exists).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Name",
+        "x": 462,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Code",
+        "x": 855,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Legal name",
+        "x": 462,
+        "y": 692,
+        "w": 762,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Effective from",
+        "x": 462,
+        "y": 1137,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "5",
+        "label": "Create company",
+        "x": 426,
+        "y": 1263,
+        "w": 215,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-18-new-legal-entity",
+    "file": "screenshots/client-onboarding/90-onb-18-new-legal-entity.png",
+    "captured_at": "2026-10-21T08:12:08.444Z",
+    "url": "/admin/legal-entities",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Legal entity set-up",
+    "screen": "Organisation › Legal entities › New legal entity",
+    "action": "Company, code, legal name, trade name, legal form, country, incorporation identifier, status and effective dates",
+    "expected": "The statutory employer behind the company; a review of the values appears before Create",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Form re-opened and filled with the values used when the record was created, then cancelled (the record already exists).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Company",
+        "x": 32,
+        "y": 170,
+        "w": 629,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Legal name",
+        "x": 32,
+        "y": 302,
+        "w": 629,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Legal form",
+        "x": 32,
+        "y": 434,
+        "w": 629,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Status",
+        "x": 685,
+        "y": 608,
+        "w": 629,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-20-new-establishment",
+    "file": "screenshots/client-onboarding/90-onb-20-new-establishment.png",
+    "captured_at": "2026-10-21T08:12:16.512Z",
+    "url": "/admin/establishments",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Establishment set-up",
+    "screen": "Organisation › Establishments › New establishment",
+    "action": "Legal entity, code, name, type, address, state, district, postal code, status and dates",
+    "expected": "A registered place of work; the state drives state-level statutory rules (professional tax, labour welfare fund)",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Form re-opened and filled with the values used when the record was created, then cancelled (the record already exists).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Legal entity",
+        "x": 32,
+        "y": 170,
+        "w": 629,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Type",
+        "x": 685,
+        "y": 302,
+        "w": 629,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "District",
+        "x": 32,
+        "y": 776,
+        "w": 629,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-22-new-location",
+    "file": "screenshots/client-onboarding/90-onb-22-new-location.png",
+    "captured_at": "2026-10-21T08:12:24.604Z",
+    "url": "/admin/locations/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Location set-up",
+    "screen": "Organisation › Locations › New location",
+    "action": "Company, name, code, type, address, state, postal code, country, time zone and dates",
+    "expected": "A physical site for people, assets and attendance",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Form re-opened and filled with the values used when the record was created, then cancelled (the record already exists). Locations cannot be linked to an establishment on this screen (F10).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Name",
+        "x": 855,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Type",
+        "x": 855,
+        "y": 650,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Address",
+        "x": 462,
+        "y": 956,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Time zone",
+        "x": 462,
+        "y": 1220,
+        "w": 369,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-24-new-business-unit",
+    "file": "screenshots/client-onboarding/90-onb-24-new-business-unit.png",
+    "captured_at": "2026-10-21T08:12:31.235Z",
+    "url": "/admin/business-units/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Organisation structure",
+    "screen": "Business units › New",
+    "action": "Company, name, code, description, status and effective date",
+    "expected": "An effective-dated unit of the company; where it sits in the hierarchy is arranged in the Organisation Designer",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Form re-opened and filled with the values used when the record was created, then cancelled (the record already exists).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Company",
+        "x": 462,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Name",
+        "x": 855,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Effective from",
+        "x": 1320,
+        "y": 554,
+        "w": 369,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-61-new-shift",
+    "file": "screenshots/client-onboarding/90-onb-61-new-shift.png",
+    "captured_at": "2026-10-21T08:12:36.314Z",
+    "url": "/admin/shifts/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Attendance configuration: shifts and schedules",
+    "screen": "Time & leave › Shifts › New shift",
+    "action": "Name, code, type, start and end, full/half-day minutes, breaks, grace and overtime thresholds, effective date",
+    "expected": "Attendance status, late marks and overtime are computed from these values",
+    "prereq": "Signed in as the tenant administrator (attendance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Form re-opened and filled with the values used when the record was created, then cancelled (the record already exists). Late-mark actions in the attendance policy are not applied (F40).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Start / end",
+        "x": 462,
+        "y": 650,
+        "w": 238,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Full / half day",
+        "x": 1320,
+        "y": 518,
+        "w": 238,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Grace",
+        "x": 1320,
+        "y": 650,
+        "w": 238,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Overtime",
+        "x": 1713,
+        "y": 1299,
+        "w": 369,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-62-new-work-schedule",
+    "file": "screenshots/client-onboarding/90-onb-62-new-work-schedule.png",
+    "captured_at": "2026-10-21T08:12:40.815Z",
+    "url": "/admin/work-schedules/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Attendance configuration: shifts and schedules",
+    "screen": "Time & leave › Work schedules › New work schedule",
+    "action": "A weekly pattern: the general shift Monday to Friday, weekly off at the weekend",
+    "expected": "Schedules can rotate over several weeks (Add to weeks); rules on the saved schedule decide who it applies to",
+    "prereq": "Signed in as the tenant administrator (attendance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Form re-opened and filled with the values used when the record was created, then cancelled (the record already exists).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Name",
+        "x": 462,
+        "y": 518,
+        "w": 238,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Monday",
+        "x": 1344,
+        "y": 717,
+        "w": 81,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Saturday",
+        "x": 1871,
+        "y": 717,
+        "w": 81,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Add a week (rotation)",
+        "x": 1613,
+        "y": 819,
+        "w": 177,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-63-work-schedule-saved",
+    "file": "screenshots/client-onboarding/90-onb-63-work-schedule-saved.png",
+    "captured_at": "2026-10-21T08:12:45.732Z",
+    "url": "/admin/work-schedules/2/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Attendance configuration: shifts and schedules",
+    "screen": "Work schedule (edit page)",
+    "action": "Open the saved schedule",
+    "expected": "Weekly pattern, \"Applies to\" rules (who follows the schedule) and History",
+    "prereq": "Signed in as the tenant administrator (attendance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-64-new-holiday-calendar",
+    "file": "screenshots/client-onboarding/90-onb-64-new-holiday-calendar.png",
+    "captured_at": "2026-10-21T08:12:48.500Z",
+    "url": "/admin/holiday-calendars/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Attendance configuration: holiday calendar",
+    "screen": "Time & leave › Holiday calendars › New holiday calendar",
+    "action": "Name, code, year, status",
+    "expected": "Holidays and the \"Applies to\" rules are added on the saved calendar",
+    "prereq": "Signed in as the tenant administrator (attendance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Form re-opened and filled with the values used when the record was created, then cancelled (the record already exists).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Name",
+        "x": 462,
+        "y": 591,
+        "w": 238,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Year",
+        "x": 986,
+        "y": 591,
+        "w": 238,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "internal-operations/96-int-01-provision-internal-tenant",
+    "file": "screenshots/internal-operations/96-int-01-provision-internal-tenant.png",
+    "captured_at": "2026-10-21T08:12:52.797Z",
+    "url": "/admin/tenants/create",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      6,
+      4
+    ],
+    "workflow": "Provision Markedge’s internal tenant (operator)",
+    "screen": "Tenants › New tenant",
+    "action": "The operator provisions the internal tenant exactly like a customer tenant, with Markedge HR’s administrator as first administrator (slug suggested from the name)",
+    "expected": "A separate tenant: Markedge employee data never sits in the operator console",
+    "prereq": "Platform operator with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Form re-opened and filled with the values used when the record was created, then cancelled (the record already exists).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Internal tenant name",
+        "x": 462,
+        "y": 650,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Markedge HR administrator",
+        "x": 855,
+        "y": 1155,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Reason for change",
+        "x": 426,
+        "y": 1323,
+        "w": 1692,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

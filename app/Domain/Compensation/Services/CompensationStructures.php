@@ -9,11 +9,13 @@ use App\Domain\Compensation\Exceptions\CompensationRuleViolation;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Models\SalaryStructureComponent;
 use App\Domain\Compensation\Models\SalaryStructureVersion;
+use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Payroll\Contracts\PayrollClosureReader;
 use App\Domain\Payroll\Models\SalaryComponent;
+use App\Domain\Payroll\Services\StructureFormulas;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -33,9 +35,9 @@ use Throwable;
  */
 final class CompensationStructures
 {
-    public function __construct(private readonly AuditRecorder $audit, private readonly PayrollClosureReader $closure) {}
+    public function __construct(private readonly AuditRecorder $audit, private readonly PayrollClosureReader $closure, private readonly StructureFormulas $formulas) {}
 
-    /** @param  array<string, mixed>  $data  name, code, description, effective_from, currency, pay_frequency, company_id, grade_ids, components */
+    /** @param  array<string, mixed>  $data  name, code, description, effective_from, currency, pay_frequency, company_id, grade_ids, applicability, parameters, components */
     public function create(array $data, User $actor): SalaryStructure
     {
         $this->authorise($actor, 'compensation.configure');
@@ -56,6 +58,7 @@ final class CompensationStructures
             ]);
             if (! empty($data['components'])) {
                 $this->writeComponents($version, $data['components']);
+                $this->assertFormulas($version);
             }
 
             return $structure;
@@ -78,7 +81,7 @@ final class CompensationStructures
             $version = SalaryStructureVersion::query()->create([
                 'salary_structure_id' => $structure->id, 'version' => $number, 'status' => 'draft', 'prepared_by' => $actor->id,
                 'effective_from' => $start->toDateString(), 'currency' => $latest?->currency ?? 'INR', 'pay_frequency' => $latest?->pay_frequency ?? 'monthly',
-                'company_id' => $latest?->company_id, 'grade_ids' => $latest?->grade_ids,
+                'company_id' => $latest?->company_id, 'grade_ids' => $latest?->grade_ids, 'applicability' => $latest?->applicability, 'parameters' => $latest?->parameters,
             ]);
             $this->writeComponents($version, ($latest?->components ?? collect())->map(fn (SalaryStructureComponent $c) => $c->only(['salary_component_id', 'formula_override', 'pay_nature', 'frequency', 'sort_order']))->all());
 
@@ -91,10 +94,13 @@ final class CompensationStructures
     {
         $this->authorise($actor, 'compensation.configure');
         $this->assertStatus($version, ['draft']);
-        $version->update($this->definition($data + $version->only(['effective_from', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'change_note'])));
-        if (array_key_exists('components', $data)) {
-            DB::transaction(fn () => $this->writeComponents($version, (array) $data['components']));
-        }
+        DB::transaction(function () use ($version, $data) {
+            $version->update($this->definition($data + $version->only(['effective_from', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'applicability', 'parameters', 'change_note'])));
+            if (array_key_exists('components', $data)) {
+                $this->writeComponents($version, (array) $data['components']);
+            }
+            $this->assertFormulas($version);
+        });
 
         return $version->refresh();
     }
@@ -107,6 +113,7 @@ final class CompensationStructures
             if ($version->components()->doesntExist()) {
                 throw new CompensationRuleViolation('A structure version needs at least one component.');
             }
+            $this->assertFormulas($version);
             $version->update(['status' => 'pending_approval', 'submitted_at' => now(), 'prepared_by' => $version->prepared_by ?? $actor->id]);
             $this->audit->record(AuditAction::Submitted, 'compensation', $version, [['field' => 'status', 'before' => 'draft', 'after' => 'pending_approval']], null, actor: $actor, effectiveDate: $version->effective_from);
         });
@@ -228,7 +235,70 @@ final class CompensationStructures
             throw new CompensationRuleViolation('A grade in the applicability list does not exist.');
         }
 
-        return ['effective_from' => $from, 'currency' => $currency, 'pay_frequency' => $frequency, 'company_id' => filled($data['company_id'] ?? null) ? (int) $data['company_id'] : null, 'grade_ids' => $grades ?: null, 'change_note' => $data['change_note'] ?? null];
+        return ['effective_from' => $from, 'currency' => $currency, 'pay_frequency' => $frequency, 'company_id' => filled($data['company_id'] ?? null) ? (int) $data['company_id'] : null, 'grade_ids' => $grades ?: null, 'applicability' => $this->applicability((array) ($data['applicability'] ?? [])), 'parameters' => $this->parameters((array) ($data['parameters'] ?? [])), 'change_note' => $data['change_note'] ?? null];
+    }
+
+    /**
+     * Narrowing by the other position dimensions (designation, level, department, division, …):
+     * {position column: [ids]}, empty lists dropped, every id checked against its own catalogue.
+     *
+     * @return array<string, list<int>>|null
+     */
+    private function applicability(array $narrowing): ?array
+    {
+        $dimensions = SalaryStructureVersion::dimensions();
+        $clean = [];
+        foreach ($narrowing as $column => $ids) {
+            $ids = array_values(array_unique(array_map('intval', array_filter((array) $ids))));
+            if ($ids === []) {
+                continue;
+            }
+            if ($column === 'grade_id' || ! array_key_exists($column, $dimensions)) {
+                throw new CompensationRuleViolation("A structure version cannot be narrowed by [{$column}].");
+            }
+            sort($ids);
+            $catalogue = (new EmployeePosition)->{EmployeePosition::DIMENSIONS[$column][0]}()->getRelated()->newQuery();
+            if ($catalogue->whereIn('id', $ids)->count() !== count($ids)) {
+                throw new CompensationRuleViolation('A '.strtolower($dimensions[$column]).' in the applicability list does not exist.');
+            }
+            $clean[$column] = $ids;
+        }
+        ksort($clean);
+
+        return $clean ?: null;
+    }
+
+    /**
+     * Structure parameters: named numbers the version's formulas use (basic_pct => 50). Names are
+     * lower-cased and blank rows dropped; names are checked against the components in assertFormulas.
+     *
+     * @return array<string, float>|null
+     */
+    private function parameters(array $rows): ?array
+    {
+        $clean = [];
+        foreach ($rows as $name => $value) {
+            $name = strtolower(trim((string) $name));
+            $value = is_string($value) ? trim($value) : $value;
+            if ($name === '' && blank($value)) {
+                continue;
+            }
+            if (! is_numeric($value)) {
+                throw new CompensationRuleViolation("Parameter “{$name}” needs a number.");
+            }
+            $clean[$name] = (float) $value;
+        }
+
+        return $clean ?: null;
+    }
+
+    /** Formula mistakes (unknown names, components used before they are calculated, …) stop a draft here, not at the payroll run. */
+    private function assertFormulas(SalaryStructureVersion $version): void
+    {
+        $errors = $this->formulas->check($version->formulaLines(), (array) ($version->parameters ?? []))['errors'];
+        if ($errors !== []) {
+            throw new CompensationRuleViolation(implode(' ', $errors));
+        }
     }
 
     /** @param  list<array<string, mixed>>  $rows */
@@ -263,8 +333,9 @@ final class CompensationStructures
     private function checksum(SalaryStructureVersion $version): string
     {
         return hash('sha256', json_encode([
-            $version->only(['salary_structure_id', 'version', 'currency', 'pay_frequency', 'company_id', 'grade_ids']), $version->effective_from->toDateString(),
+            $version->only(['salary_structure_id', 'version', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'applicability']), $version->effective_from->toDateString(),
             $version->components()->get()->map(fn ($c) => $c->only(['salary_component_id', 'formula_override', 'pay_nature', 'frequency', 'sort_order']))->all(),
+            ...($version->parameters ? [$version->parameters] : []),
         ]));
     }
 

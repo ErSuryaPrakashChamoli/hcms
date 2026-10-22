@@ -5,11 +5,13 @@ namespace App\Filament\Resources\SalaryComponents;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Services\FormulaEngine;
+use App\Domain\Payroll\Support\FormulaVariables;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\SalaryComponents\Pages\CreateSalaryComponent;
 use App\Filament\Resources\SalaryComponents\Pages\EditSalaryComponent;
 use App\Filament\Resources\SalaryComponents\Pages\ListSalaryComponents;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\SalaryFormulaUi;
 use BackedEnum;
 use Closure;
 use Filament\Actions\EditAction;
@@ -51,18 +53,27 @@ class SalaryComponentResource extends Resource
                 TextInput::make('name')->required()->maxLength(255),
                 TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated()
                     ->helperText('Referenced in formulas as its lowercase name, e.g. basic')
-                    ->rule(fn () => fn (string $attribute, $value, Closure $fail) => in_array(strtoupper($value), SalaryComponent::STATUTORY_CODES, true) ? $fail('This code is reserved for a statutory line.') : null),
+                    ->rule(fn () => fn (string $attribute, $value, Closure $fail) => match (true) {
+                        in_array(strtoupper($value), SalaryComponent::STATUTORY_CODES, true) => $fail('This code is reserved for a statutory line.'),
+                        in_array(strtolower($value), FormulaVariables::reserved(), true) => $fail('This code is a formula variable or function name; choose another.'),
+                        default => null,
+                    }),
                 Select::make('type')->options(config('peopleos.payroll.component_types'))->required()->disabled($locked)->dehydrated(),
                 Select::make('classification')->options(config('peopleos.payroll.classifications'))->required()->default('allowance')->disabled($locked)->dehydrated(),
                 Select::make('calculation_method')->label('Calculated')->options(collect(config('peopleos.payroll.calculation_methods'))->except('statutory')->all())->default('fixed')->required()->live()->disabled($locked)->dehydrated(),
-                TextInput::make('sort_order')->numeric()->default(0)->helperText('Formulas may only reference components sorted before them'),
+                TextInput::make('sort_order')->numeric()->default(0)->helperText('Default position in new structures; in a structure, a formula uses only the rows above it'),
                 Textarea::make('formula')->rows(2)->columnSpanFull()
                     ->visible(fn (Get $get) => $get('calculation_method') === 'formula')
                     ->required(fn (Get $get) => $get('calculation_method') === 'formula')
-                    ->helperText('Variables: ctc_annual, ctc_monthly, paid_days, lop_days, days_in_period, pf_employer, and any earlier component code in lowercase. Functions: min, max, round, floor, ceil, abs, if(cond, a, b).')
+                    ->hintAction(SalaryFormulaUi::guideAction())
+                    ->helperText('The default formula for every structure; a structure can override it. E.g. ctc_monthly * 0.50, basic * 0.40, lookup(grade, "G1", 1600, 2400). Each structure checks the names it uses when its draft is saved.')
                     ->rule(fn () => function (string $attribute, $value, Closure $fail) {
                         try {
                             app(FormulaEngine::class)->validate((string) $value);
+                            $statutory = array_intersect(app(FormulaEngine::class)->variablesIn((string) $value), FormulaVariables::statutory());
+                            if ($statutory !== []) {
+                                $fail('Statutory amounts ('.strtoupper(implode(', ', $statutory)).') are worked out by the compliance engine and cannot be used in formulas.');
+                            }
                         } catch (RuntimeException $e) {
                             $fail($e->getMessage());
                         }

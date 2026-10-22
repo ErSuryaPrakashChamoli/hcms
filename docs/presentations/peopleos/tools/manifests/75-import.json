@@ -1,0 +1,307 @@
+[
+  {
+    "name": "hr-admin/75-imp-01-imports",
+    "file": "screenshots/hr-admin/75-imp-01-imports.png",
+    "captured_at": "2026-10-21T08:34:30.968Z",
+    "url": "/admin/employee-imports",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Employee import (bulk load)",
+    "screen": "People \u203a Lifecycle \u203a All in Lifecycle \u203a Employee imports",
+    "action": "Open Employee imports",
+    "expected": "Import batches with their status; Upload CSV",
+    "prereq": "employee.import (Tenant HR Admin, Account Owner, Tenant Super Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Upload CSV",
+        "x": 1950,
+        "y": 244,
+        "w": 168,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/75-imp-02-upload",
+    "file": "screenshots/hr-admin/75-imp-02-upload.png",
+    "captured_at": "2026-10-21T08:34:35.801Z",
+    "url": "/admin/employee-imports",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Employee import (bulk load)",
+    "screen": "Employee imports \u203a Upload CSV",
+    "action": "Choose a CSV with one row per person",
+    "expected": "The file is uploaded; the batch is created for inspection",
+    "prereq": "employee.import (Tenant HR Admin, Account Owner, Tenant Super Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "CSV file",
+        "x": 32,
+        "y": 212,
+        "w": 1283,
+        "h": 113
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/75-imp-03-uploaded",
+    "file": "screenshots/hr-admin/75-imp-03-uploaded.png",
+    "captured_at": "2026-10-21T08:34:43.066Z",
+    "url": "/admin/employee-imports/2",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Employee import (bulk load)",
+    "screen": "Employee import (batch)",
+    "action": "Open the uploaded batch",
+    "expected": "Status Uploaded; next step Inspect file",
+    "prereq": "employee.import (Tenant HR Admin, Account Owner, Tenant Super Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Inspect file",
+        "x": 1775,
+        "y": 265,
+        "w": 200,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/75-imp-04-inspected",
+    "file": "screenshots/hr-admin/75-imp-04-inspected.png",
+    "captured_at": "2026-10-21T08:34:47.695Z",
+    "url": "/admin/employee-imports/2",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Employee import (bulk load)",
+    "screen": "Employee import (after Inspect file)",
+    "action": "Inspect file",
+    "expected": "Columns and row count detected; status Inspected; next step Map columns",
+    "prereq": "employee.import (Tenant HR Admin, Account Owner, Tenant Super Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Inspected",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 123
+      },
+      {
+        "n": "2",
+        "label": "Map columns",
+        "x": 1752,
+        "y": 191,
+        "w": 222,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/75-imp-05-map-columns",
+    "file": "screenshots/hr-admin/75-imp-05-map-columns.png",
+    "captured_at": "2026-10-21T08:35:05.820Z",
+    "url": "/admin/employee-imports/2",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Employee import (bulk load)",
+    "screen": "Employee import \u203a Map columns",
+    "action": "Choose the PeopleOS field for each CSV column; decide what happens when the person already exists",
+    "expected": "Columns mapped (fields marked * are required)",
+    "prereq": "employee.import (Tenant HR Admin, Account Owner, Tenant Super Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Column \u2192 field",
+        "x": 66,
+        "y": 290,
+        "w": 594,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "When the person exists",
+        "x": 30,
+        "y": 854,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Submit",
+        "x": 30,
+        "y": 944,
+        "w": 122,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/75-imp-06-map-columns-fails-f25",
+    "file": "screenshots/support/75-imp-06-map-columns-fails-f25.png",
+    "captured_at": "2026-10-21T08:35:09.021Z",
+    "url": "/admin/employee-imports/2",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      7,
+      11
+    ],
+    "workflow": "Employee import: Map columns fails (known defect F25)",
+    "screen": "Employee import (after Map columns \u203a Submit)",
+    "action": "Submit the column mapping",
+    "expected": "Mapping is not saved: Failed Undefined variable $svc (F25: the Map columns action uses $svc without capturing it). The batch stays Inspected; Validate, Approve and Run are unreachable from the screen.",
+    "prereq": "employee.import (Tenant HR Admin, Account Owner, Tenant Super Admin)",
+    "status": "INCOMPLETE",
+    "note": "app/Filament/Support/ImportActions.php map action; still present at 72c96a73. Punch imports share the same code.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Failure",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 129
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/75-imp-07-discarded",
+    "file": "screenshots/hr-admin/75-imp-07-discarded.png",
+    "captured_at": "2026-10-21T08:35:16.201Z",
+    "url": "/admin/employee-imports/2",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Employee import (bulk load)",
+    "screen": "Employee import (after Discard)",
+    "action": "More \u203a Discard",
+    "expected": "The batch is discarded; nothing was imported",
+    "prereq": "employee.import (Tenant HR Admin, Account Owner, Tenant Super Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Discarded",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/75-imp-08-hr-manager-not-available",
+    "file": "screenshots/security-compliance/75-imp-08-hr-manager-not-available.png",
+    "captured_at": "2026-10-21T08:35:17.844Z",
+    "url": "/admin/employee-imports",
+    "http_status": 403,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      7,
+      8
+    ],
+    "workflow": "Restricted access: imports",
+    "screen": "Employee imports (as HR Manager)",
+    "action": "An HR Manager opens Employee imports",
+    "expected": "403 \"This page is not available to you\": nothing shown, nothing changed (employee.import is not in the HR Manager role)",
+    "prereq": "employee.import (Tenant HR Admin, Account Owner, Tenant Super Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Not available",
+        "x": 702,
+        "y": 439,
+        "w": 756,
+        "h": 67
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

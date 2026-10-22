@@ -1,0 +1,1054 @@
+[
+  {
+    "name": "client-onboarding/85-cfg-01-admin-centre",
+    "file": "screenshots/client-onboarding/85-cfg-01-admin-centre.png",
+    "captured_at": "2026-10-21T07:45:31.573Z",
+    "url": "/admin/admin-centre",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Tenant configuration (Admin Centre)",
+    "screen": "Admin \u203a All modules (Admin Centre)",
+    "action": "Open the Admin Centre",
+    "expected": "Everything to manage, grouped: organisation, people data, joining/letters/exit, time and leave, pay and compliance, growth, workflows, service, access and security, integrations; Awaiting approval; Platform health",
+    "prereq": "Tenant HR Admin or Account Owner / Tenant Super Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Find a setting",
+        "x": 426,
+        "y": 213,
+        "w": 888,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Awaiting approval",
+        "x": 1578,
+        "y": 297,
+        "w": 246,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-cfg-03-packs-blueprints",
+    "file": "screenshots/client-onboarding/85-cfg-03-packs-blueprints.png",
+    "captured_at": "2026-10-21T07:46:05.045Z",
+    "url": "/admin/configuration-packs",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4
+    ],
+    "workflow": "Tenant configuration (Admin Centre)",
+    "screen": "Admin \u203a Setup \u203a Packs & Blueprints",
+    "action": "Open Packs & Blueprints (nothing applied)",
+    "expected": "Available configuration packs; Apply a pack, Export blueprint, Import blueprint (blueprints copy configuration between tenants)",
+    "prereq": "Tenant HR Admin or Account Owner / Tenant Super Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Apply a pack",
+        "x": 1385,
+        "y": 224,
+        "w": 218,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Export blueprint",
+        "x": 1608,
+        "y": 224,
+        "w": 252,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Import blueprint",
+        "x": 1866,
+        "y": 224,
+        "w": 252,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-acc-01-users",
+    "file": "screenshots/client-onboarding/85-acc-01-users.png",
+    "captured_at": "2026-10-21T07:46:06.915Z",
+    "url": "/admin/users",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Users, roles and access scope",
+    "screen": "Admin \u203a Setup \u203a Users",
+    "action": "Open Users",
+    "expected": "Every sign-in with roles, status and last sign-in; New user",
+    "prereq": "user.manage / role.view (role editing: Tenant Super Admin only, F5)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New user",
+        "x": 1980,
+        "y": 244,
+        "w": 138,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Last sign-in",
+        "x": 1720,
+        "y": 458,
+        "w": 275,
+        "h": 85
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-acc-02-new-user-form",
+    "file": "screenshots/client-onboarding/85-acc-02-new-user-form.png",
+    "captured_at": "2026-10-21T07:46:17.763Z",
+    "url": "/admin/users/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Users, roles and access scope",
+    "screen": "Admin \u203a Setup \u203a Users \u203a New user",
+    "action": "Name, e-mail, role Auditor; access scope left empty (tenant-wide)",
+    "expected": "Roles are tenant-wide; Access scope (companies, locations, departments, business units, establishments) restricts which people and units the user reaches",
+    "prereq": "user.manage / role.view (role editing: Tenant Super Admin only, F5)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Name",
+        "x": 462,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "E-mail",
+        "x": 855,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Access scope",
+        "x": 1320,
+        "y": 584,
+        "w": 762,
+        "h": 102
+      },
+      {
+        "n": "5",
+        "label": "Create user",
+        "x": 426,
+        "y": 1383,
+        "w": 162,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-acc-04-user-invited",
+    "file": "screenshots/client-onboarding/85-acc-04-user-invited.png",
+    "captured_at": "2026-10-21T07:47:50.985Z",
+    "url": "/admin/users/19/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Users, roles and access scope",
+    "screen": "User (after Create user)",
+    "action": "Create user (executed)",
+    "expected": "The account is created as Invited and an invitation e-mail is sent; the person sets a password from the link",
+    "prereq": "user.manage / role.view (role editing: Tenant Super Admin only, F5)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 123
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-acc-05-user-invited-status",
+    "file": "screenshots/client-onboarding/85-acc-05-user-invited-status.png",
+    "captured_at": "2026-10-21T07:47:54.430Z",
+    "url": "/admin/users?search=training.auditor",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Users, roles and access scope",
+    "screen": "Admin \u203a Setup \u203a Users (filtered)",
+    "action": "Find the new user",
+    "expected": "Status Invited until the person activates the account from the e-mail link",
+    "prereq": "user.manage / role.view (role editing: Tenant Super Admin only, F5)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Invited user",
+        "x": 426,
+        "y": 605,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-acc-06-user-roles-scope",
+    "file": "screenshots/security-compliance/85-acc-06-user-roles-scope.png",
+    "captured_at": "2026-10-21T07:47:59.906Z",
+    "url": "/admin/users/11/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      4,
+      2
+    ],
+    "workflow": "Users, roles and access scope",
+    "screen": "Admin \u203a Setup \u203a Users \u203a Edit (Amit Verma)",
+    "action": "Open a manager\u2019s account",
+    "expected": "Roles Employee + Manager (tenant-wide role assignments); the organisation Access scope fields (companies, locations, departments, business units, establishments) are empty. The manager\u2019s Platform-team scope is held as a team scope, which this form does not display",
+    "prereq": "user.manage / role.view (role editing: Tenant Super Admin only, F5)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-acc-07-roles",
+    "file": "screenshots/security-compliance/85-acc-07-roles.png",
+    "captured_at": "2026-10-21T07:48:01.685Z",
+    "url": "/admin/roles",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      4
+    ],
+    "workflow": "Users, roles and access scope",
+    "screen": "Admin \u203a Setup \u203a Roles",
+    "action": "Open Roles",
+    "expected": "14 system roles (and any custom roles) with permission and user counts",
+    "prereq": "user.manage / role.view (role editing: Tenant Super Admin only, F5)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Permissions",
+        "x": 1741,
+        "y": 458,
+        "w": 222,
+        "h": 85
+      },
+      {
+        "n": "2",
+        "label": "Users",
+        "x": 1951,
+        "y": 458,
+        "w": 167,
+        "h": 85
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-sec-01-security-policy",
+    "file": "screenshots/security-compliance/85-sec-01-security-policy.png",
+    "captured_at": "2026-10-21T07:48:13.245Z",
+    "url": "/admin/security-policy-page",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      4
+    ],
+    "workflow": "Security policy and integrations",
+    "screen": "Admin \u203a Platform \u203a Security policy",
+    "action": "Open the Security & retention policy (viewed, not saved)",
+    "expected": "Access (require MFA, idle timeout, sessions), passwords, retention days (audit events are never purged), data warehouse feed. Multi-factor is Optional in this tenant",
+    "prereq": "Tenant HR Admin / Account Owner (security policy); Tenant HR Admin (SSO, API keys, webhooks, integration hub)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "\"Expire after days\" is stored but not enforced (F2). Not saved, so no user was forced into MFA set-up.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-cfg-04-feature-flags",
+    "file": "screenshots/client-onboarding/85-cfg-04-feature-flags.png",
+    "captured_at": "2026-10-21T07:48:14.990Z",
+    "url": "/admin/tenant-features",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Tenant configuration (Admin Centre)",
+    "screen": "Admin \u203a Setup \u203a Feature flags",
+    "action": "Open Feature flags (viewed only)",
+    "expected": "Modules and capabilities switched on or off per tenant (e.g. ai.llm off)",
+    "prereq": "Tenant HR Admin or Account Owner / Tenant Super Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Description column shows \"\u2014\"; organisation.designer and security.mfa flags have no effect (F31).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-cfg-05-settings",
+    "file": "screenshots/client-onboarding/85-cfg-05-settings.png",
+    "captured_at": "2026-10-21T07:48:16.687Z",
+    "url": "/admin/tenant-settings",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4
+    ],
+    "workflow": "Tenant configuration (Admin Centre)",
+    "screen": "Admin \u203a Setup \u203a Settings",
+    "action": "Open Settings (viewed only)",
+    "expected": "Tenant setting keys and values (attendance windows, probation, documents reminders, compensation self-service\u2026)",
+    "prereq": "Tenant HR Admin or Account Owner / Tenant Super Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Several keys have no effect (F30).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-cfg-06-change-centre",
+    "file": "screenshots/client-onboarding/85-cfg-06-change-centre.png",
+    "captured_at": "2026-10-21T07:48:18.469Z",
+    "url": "/admin/configuration-changes",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Tenant configuration (Admin Centre)",
+    "screen": "Admin \u203a Setup \u203a Change Centre",
+    "action": "Open the Change Centre",
+    "expected": "Configuration changes pending approval, scheduled, published, rejected; empty while configuration approval is off",
+    "prereq": "Tenant HR Admin or Account Owner / Tenant Super Admin",
+    "status": "AVAILABLE ONLY AFTER CONFIGURATION",
+    "note": "Only the main edit form of certain records waits for approval; settings, flags, creates and deletes apply immediately; no self-approval guard (F29).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-cfg-07-custom-fields",
+    "file": "screenshots/client-onboarding/85-cfg-07-custom-fields.png",
+    "captured_at": "2026-10-21T07:48:20.327Z",
+    "url": "/admin/custom-fields",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4
+    ],
+    "workflow": "Tenant configuration (Admin Centre)",
+    "screen": "Admin \u203a Setup \u203a Custom fields",
+    "action": "Open Custom fields",
+    "expected": "Extra fields per record type (e.g. Employee \u203a Laptop asset tag)",
+    "prereq": "Tenant HR Admin or Account Owner / Tenant Super Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "The visible-to switches are saved but hide nothing (F32).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-cfg-08-forms",
+    "file": "screenshots/client-onboarding/85-cfg-08-forms.png",
+    "captured_at": "2026-10-21T07:48:21.977Z",
+    "url": "/admin/forms",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4
+    ],
+    "workflow": "Tenant configuration (Admin Centre)",
+    "screen": "Admin \u203a Setup \u203a Forms",
+    "action": "Open Forms",
+    "expected": "Configurable forms with versions (e.g. IT asset handover)",
+    "prereq": "Tenant HR Admin or Account Owner / Tenant Super Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-wf-01-workflows",
+    "file": "screenshots/client-onboarding/85-wf-01-workflows.png",
+    "captured_at": "2026-10-21T07:48:23.710Z",
+    "url": "/admin/workflows",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Workflows, policies and notifications",
+    "screen": "Workflows \u203a Workflows",
+    "action": "Open Workflows",
+    "expected": "Workflow definitions with trigger, subject, version and status; New workflow",
+    "prereq": "workflow.manage / policy.manage / notification.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Workflow",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 97
+      },
+      {
+        "n": "2",
+        "label": "New workflow",
+        "x": 1932,
+        "y": 244,
+        "w": 186,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-wf-02-workflow-edit",
+    "file": "screenshots/client-onboarding/85-wf-02-workflow-edit.png",
+    "captured_at": "2026-10-21T07:48:25.964Z",
+    "url": "/admin/workflows/1/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Workflows, policies and notifications",
+    "screen": "Workflow \u203a Edit (Probation confirmation)",
+    "action": "Open the workflow",
+    "expected": "Name, key, trigger event, subject, start conditions; New draft, Start a run; tabs Versions & builder, Runs, History",
+    "prereq": "workflow.manage / policy.manage / notification.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "The \"Webhook signing secret\" action was not opened (secret).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-wf-03-workflow-versions",
+    "file": "screenshots/client-onboarding/85-wf-03-workflow-versions.png",
+    "captured_at": "2026-10-21T07:48:28.913Z",
+    "url": "/admin/workflows/1/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      10
+    ],
+    "workflow": "Workflows, policies and notifications",
+    "screen": "Workflow \u203a Versions & builder",
+    "action": "Open Versions & builder",
+    "expected": "Versioned definitions: a published version is immutable; changes are made in a new draft and published; running instances keep their version",
+    "prereq": "workflow.manage / policy.manage / notification.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-wf-04-workflow-runs",
+    "file": "screenshots/client-onboarding/85-wf-04-workflow-runs.png",
+    "captured_at": "2026-10-21T07:48:30.696Z",
+    "url": "/admin/workflow-instances",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Workflows, policies and notifications",
+    "screen": "Workflows \u203a Runs",
+    "action": "Open Workflow runs",
+    "expected": "Running and completed workflow instances (none yet in this tenant)",
+    "prereq": "workflow.manage / policy.manage / notification.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-wf-07-notification-rules",
+    "file": "screenshots/client-onboarding/85-wf-07-notification-rules.png",
+    "captured_at": "2026-10-21T07:48:36.593Z",
+    "url": "/admin/notification-rules",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Workflows, policies and notifications",
+    "screen": "Communication \u203a Notification rules",
+    "action": "Open Notification rules",
+    "expected": "One rule: \"Welcome every joiner\" (employee.joined \u2192 employee and line manager, in-app + e-mail). No New rule button for any tenant role (F18), so leave and approval events send no e-mail unless rules exist",
+    "prereq": "workflow.manage / policy.manage / notification.manage",
+    "status": "INCOMPLETE",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Only rule",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-wf-08-notification-templates",
+    "file": "screenshots/client-onboarding/85-wf-08-notification-templates.png",
+    "captured_at": "2026-10-21T07:48:38.294Z",
+    "url": "/admin/notification-templates",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Workflows, policies and notifications",
+    "screen": "Communication \u203a Notification templates",
+    "action": "Open Notification templates",
+    "expected": "Template with placeholders ({{ tenant.name }}, {{ employee.first_name }}); edit only (F18)",
+    "prereq": "workflow.manage / policy.manage / notification.manage",
+    "status": "INCOMPLETE",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-wf-09-delivery-log",
+    "file": "screenshots/client-onboarding/85-wf-09-delivery-log.png",
+    "captured_at": "2026-10-21T07:48:40.132Z",
+    "url": "/admin/notification-deliveries",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Workflows, policies and notifications",
+    "screen": "Communication \u203a Delivery log",
+    "action": "Open the Delivery log",
+    "expected": "Every notification delivery with channel, event, status (sent / queued / failed) and View; failed deliveries can be sent again",
+    "prereq": "workflow.manage / policy.manage / notification.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "E-mail deliveries stay queued unless a queue worker runs (none runs in this environment).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Queued",
+        "x": 732,
+        "y": 354,
+        "w": 186,
+        "h": 57
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-sec-02-sso-form",
+    "file": "screenshots/security-compliance/85-sec-02-sso-form.png",
+    "captured_at": "2026-10-21T07:48:41.981Z",
+    "url": "/admin/sso-connections/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      4
+    ],
+    "workflow": "Security policy and integrations",
+    "screen": "Admin \u203a Platform \u203a Single sign-on \u203a New",
+    "action": "Open the New SSO connection form (not saved)",
+    "expected": "OpenID Connect provider details, default role, domains; SAML is not supported (OIDC only)",
+    "prereq": "Tenant HR Admin / Account Owner (security policy); Tenant HR Admin (SSO, API keys, webhooks, integration hub)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "\"Show SSO as the primary login\" has no visible effect (F34). Client secret field left empty.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-sec-03-api-key-form",
+    "file": "screenshots/security-compliance/85-sec-03-api-key-form.png",
+    "captured_at": "2026-10-21T07:48:45.221Z",
+    "url": "/admin/api-keys",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      10
+    ],
+    "workflow": "Security policy and integrations",
+    "screen": "Admin \u203a Platform \u203a API keys \u203a Issue key",
+    "action": "Open the Issue key dialog (cancelled; no key issued)",
+    "expected": "Name, scopes, expiry; the token is shown once after issuing",
+    "prereq": "Tenant HR Admin / Account Owner (security policy); Tenant HR Admin (SSO, API keys, webhooks, integration hub)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Scopes are not limited to the issuing administrator\u2019s own permissions (F37, security finding). Dialog cancelled.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-sec-04-webhook-form",
+    "file": "screenshots/security-compliance/85-sec-04-webhook-form.png",
+    "captured_at": "2026-10-21T07:48:48.103Z",
+    "url": "/admin/webhook-endpoints/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      10
+    ],
+    "workflow": "Security policy and integrations",
+    "screen": "Admin \u203a Platform \u203a Webhooks \u203a New",
+    "action": "Open the New webhook endpoint form (not saved)",
+    "expected": "URL, events and signing; deliveries are signed so the receiver can verify them",
+    "prereq": "Tenant HR Admin / Account Owner (security policy); Tenant HR Admin (SSO, API keys, webhooks, integration hub)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-sec-05-integration-hub-form",
+    "file": "screenshots/security-compliance/85-sec-05-integration-hub-form.png",
+    "captured_at": "2026-10-21T07:48:49.901Z",
+    "url": "/admin/integration-systems/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      10,
+      8
+    ],
+    "workflow": "Security policy and integrations",
+    "screen": "Admin \u203a Platform \u203a Integration hub \u203a New",
+    "action": "Open the New integration system form (not saved)",
+    "expected": "External systems are registered here with their identifiers and mappings; the Integration Hub is the only boundary to other products",
+    "prereq": "Tenant HR Admin / Account Owner (security policy); Tenant HR Admin (SSO, API keys, webhooks, integration hub)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-sec-06-inbound-events",
+    "file": "screenshots/security-compliance/85-sec-06-inbound-events.png",
+    "captured_at": "2026-10-21T07:48:51.542Z",
+    "url": "/admin/inbound-events",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      10
+    ],
+    "workflow": "Security policy and integrations",
+    "screen": "Admin \u203a Platform \u203a Inbound events",
+    "action": "Open Inbound events",
+    "expected": "Events received from external systems with processing status (none yet)",
+    "prereq": "Tenant HR Admin / Account Owner (security policy); Tenant HR Admin (SSO, API keys, webhooks, integration hub)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-cfg-09-country-packs",
+    "file": "screenshots/client-onboarding/85-cfg-09-country-packs.png",
+    "captured_at": "2026-10-21T07:48:53.325Z",
+    "url": "/admin/country-packs-page",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      10
+    ],
+    "workflow": "Tenant configuration (Admin Centre)",
+    "screen": "Admin \u203a Platform \u203a Country packs",
+    "action": "Open Country packs (read only)",
+    "expected": "IN, AE, GB, US, SG, AU, CA packs and what each contains; only India (23 rules) and UAE (1) have statutory rules \u2014 payroll is blocked in jurisdictions without rules",
+    "prereq": "Tenant HR Admin or Account Owner / Tenant Super Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-sec-07-data-export-request",
+    "file": "screenshots/security-compliance/85-sec-07-data-export-request.png",
+    "captured_at": "2026-10-21T07:48:56.557Z",
+    "url": "/admin/data-export",
+    "http_status": 200,
+    "persona": "superadmin",
+    "user": "Demo Admin",
+    "role": "Tenant Super Admin",
+    "deck": [
+      8,
+      5
+    ],
+    "workflow": "Tenant data export",
+    "screen": "Admin \u203a Platform \u203a Data export \u203a Request a full export",
+    "action": "Open the request dialog with a reason (cancelled, not submitted)",
+    "expected": "An encrypted package is prepared in the background, downloaded here and opened with a passphrase shown once; credentials and secrets are never included",
+    "prereq": "Account Owner / Tenant Super Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Not submitted: generation would display a one-time passphrase (secret).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-cfg-02-configuration-finder",
+    "file": "screenshots/client-onboarding/85-cfg-02-configuration-finder.png",
+    "captured_at": "2026-10-21T07:49:19.327Z",
+    "url": "/admin/configuration-finder?term=leave",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4
+    ],
+    "workflow": "Tenant configuration (Admin Centre)",
+    "screen": "Admin \u203a Setup \u203a What do you want to configure?",
+    "action": "Search the configuration finder for \"leave\"",
+    "expected": "Matching modules and individual settings, each linked to the screen where it is changed",
+    "prereq": "Tenant HR Admin or Account Owner / Tenant Super Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Search",
+        "x": 492,
+        "y": 313,
+        "w": 1602,
+        "h": 44
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-acc-09-role-permissions-edit",
+    "file": "screenshots/security-compliance/85-acc-09-role-permissions-edit.png",
+    "captured_at": "2026-10-21T07:49:55.882Z",
+    "url": "/admin/roles/4/edit",
+    "http_status": 200,
+    "persona": "superadmin",
+    "user": "Demo Admin",
+    "role": "Tenant Super Admin",
+    "deck": [
+      8,
+      4
+    ],
+    "workflow": "Users, roles and access scope",
+    "screen": "Roles \u203a HR Manager (as Tenant Super Admin)",
+    "action": "Open the role\u2019s permissions (not saved)",
+    "expected": "Permission catalogue grouped by module with checkboxes (the page continues for every module); changes are audited (ROLE_CHANGED with granted/removed keys); a custom role can be given only by someone holding all its permissions",
+    "prereq": "user.manage / role.view (role editing: Tenant Super Admin only, F5)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-acc-08-role-edit-denied-hr-admin",
+    "file": "screenshots/security-compliance/85-acc-08-role-edit-denied-hr-admin.png",
+    "captured_at": "2026-10-21T07:50:27.963Z",
+    "url": "/admin/roles/4/edit",
+    "http_status": 403,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      4,
+      7
+    ],
+    "workflow": "Users, roles and access scope",
+    "screen": "Roles \u203a HR Manager \u203a Edit (as Tenant HR Admin)",
+    "action": "Tenant HR Admin opens /admin/roles/4/edit (the HR Manager role)",
+    "expected": "HTTP 403 \"This page is not available to you\": the Tenant HR Admin holds role.view only and cannot change role permissions (finding F5); the Tenant Super Admin can",
+    "prereq": "role.manage (Tenant Super Admin only by default, F5)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Access refused",
+        "x": 702,
+        "y": 439,
+        "w": 756,
+        "h": 67
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/85-acc-06b-user-company-scope",
+    "file": "screenshots/security-compliance/85-acc-06b-user-company-scope.png",
+    "captured_at": "2026-10-21T07:50:45.135Z",
+    "url": "/admin/users/12/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      4
+    ],
+    "workflow": "Users, roles and access scope",
+    "screen": "Admin \u203a Setup \u203a Users \u203a Edit (Neha Kapoor)",
+    "action": "Open an HR Manager account that is limited to one company",
+    "expected": "Roles Employee + HR Manager; Access scope \u203a Companies = Demo Technologies: she reaches only that company\u2019s people and units (dimensions combine with AND)",
+    "prereq": "user.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Access scope",
+        "x": 1320,
+        "y": 657,
+        "w": 762,
+        "h": 102
+      },
+      {
+        "n": "2",
+        "label": "Company scope",
+        "x": 492,
+        "y": 1082,
+        "w": 179,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-wf-05-policies",
+    "file": "screenshots/client-onboarding/85-wf-05-policies.png",
+    "captured_at": "2026-10-21T07:51:03.611Z",
+    "url": "/admin/policies",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Workflows, policies and notifications",
+    "screen": "Workflows \u203a Policies",
+    "action": "Open Policies",
+    "expected": "Exit, attendance, working hours and leave policies with effective versions",
+    "prereq": "workflow.manage / policy.manage / notification.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Leave policy",
+        "x": 426,
+        "y": 787,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/85-wf-06-leave-policy",
+    "file": "screenshots/client-onboarding/85-wf-06-leave-policy.png",
+    "captured_at": "2026-10-21T07:51:09.887Z",
+    "url": "/admin/policies/1/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Workflows, policies and notifications",
+    "screen": "Policies \u203a Standard leave",
+    "action": "Open the leave policy (not saved)",
+    "expected": "Policy header (type Leave policy, name, code, status) and its effective-dated versions; a change is made as a new draft version (New draft) with a reason",
+    "prereq": "workflow.manage / policy.manage / notification.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

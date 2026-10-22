@@ -1,0 +1,98 @@
+{
+  "10": {
+    "file": "10-PeopleOS-HCM-System-Architecture-and-Workflows.pptx",
+    "title": "HCM System Architecture and Workflows",
+    "slides": 43,
+    "screenshots": 10,
+    "warnings": [],
+    "built_at": "2026-10-21T10:25:53.735Z"
+  },
+  "11": {
+    "file": "11-PeopleOS-Implementation-UAT-and-Go-Live-Checklist.pptx",
+    "title": "Implementation, UAT and Go-Live Checklist",
+    "slides": 46,
+    "screenshots": 20,
+    "warnings": [],
+    "built_at": "2026-10-21T10:25:55.432Z"
+  },
+  "12": {
+    "file": "12-PeopleOS-Reporting-and-Analytics-Training.pptx",
+    "title": "Reporting and Analytics Training",
+    "slides": 38,
+    "screenshots": 29,
+    "warnings": [],
+    "built_at": "2026-10-21T10:26:03.324Z"
+  },
+  "04": {
+    "file": "04-PeopleOS-Client-Onboarding-and-Implementation-Playbook.pptx",
+    "title": "Client Onboarding and Implementation Playbook",
+    "slides": 129,
+    "screenshots": 97,
+    "warnings": [],
+    "built_at": "2026-10-21T10:25:22.270Z"
+  },
+  "03": {
+    "file": "03-PeopleOS-HR-Administrator-Training.pptx",
+    "title": "HR Administrator Training",
+    "slides": 130,
+    "screenshots": 153,
+    "warnings": [],
+    "built_at": "2026-10-21T10:24:46.236Z"
+  },
+  "05": {
+    "file": "05-PeopleOS-Platform-Administrator-Training.pptx",
+    "title": "Platform Administrator Training",
+    "slides": 42,
+    "screenshots": 35,
+    "warnings": [],
+    "built_at": "2026-10-21T10:25:33.803Z"
+  },
+  "06": {
+    "file": "06-Markedge-Internal-PeopleOS-Operations.pptx",
+    "title": "Markedge Internal PeopleOS Operations",
+    "slides": 25,
+    "screenshots": 18,
+    "warnings": [],
+    "built_at": "2026-10-21T10:25:38.009Z"
+  },
+  "08": {
+    "file": "08-PeopleOS-Security-Governance-and-Compliance.pptx",
+    "title": "Security, Governance and Compliance",
+    "slides": 43,
+    "screenshots": 34,
+    "warnings": [],
+    "built_at": "2026-10-21T10:25:48.608Z"
+  },
+  "07": {
+    "file": "07-PeopleOS-Troubleshooting-and-Support-Playbook.pptx",
+    "title": "Troubleshooting and Support Playbook",
+    "slides": 51,
+    "screenshots": 29,
+    "warnings": [],
+    "built_at": "2026-10-21T10:25:41.794Z"
+  },
+  "01": {
+    "file": "01-PeopleOS-Employee-User-Training.pptx",
+    "title": "Employee User Training",
+    "slides": 68,
+    "screenshots": 70,
+    "warnings": [],
+    "built_at": "2026-10-21T10:23:39.958Z"
+  },
+  "02": {
+    "file": "02-PeopleOS-Manager-Self-Service-Training.pptx",
+    "title": "Manager Self-Service Training",
+    "slides": 38,
+    "screenshots": 34,
+    "warnings": [],
+    "built_at": "2026-10-21T10:23:52.531Z"
+  },
+  "09": {
+    "file": "09-PeopleOS-Executive-and-Client-Demo.pptx",
+    "title": "PeopleOS: Executive and Client Demo",
+    "slides": 31,
+    "screenshots": 25,
+    "warnings": [],
+    "built_at": "2026-10-21T10:25:52.284Z"
+  }
+}

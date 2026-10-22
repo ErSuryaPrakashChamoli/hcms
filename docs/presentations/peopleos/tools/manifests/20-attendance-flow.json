@@ -1,0 +1,647 @@
+[
+  {
+    "name": "employee/20-att-01-your-day-check-in",
+    "file": "screenshots/employee/20-att-01-your-day-check-in.png",
+    "captured_at": "2026-10-21T06:59:19.879Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      11
+    ],
+    "workflow": "Attendance: check in and correct a missed punch (employee)",
+    "screen": "Home › Your day",
+    "action": "Check in from Home (web punch)",
+    "expected": "Your day shows \"Not checked in yet\" and a Check in button",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Today’s status",
+        "x": 605,
+        "y": 1118,
+        "w": 774,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Check in",
+        "x": 1385,
+        "y": 1118,
+        "w": 128,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/20-att-02-checked-in",
+    "file": "screenshots/employee/20-att-02-checked-in.png",
+    "captured_at": "2026-10-21T06:59:21.585Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      11
+    ],
+    "workflow": "Attendance: check in and correct a missed punch (employee)",
+    "screen": "Home › Your day (after Check in)",
+    "action": "Check in",
+    "expected": "Confirmation; the day now shows the check-in time and offers Check out",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 129
+      },
+      {
+        "n": "2",
+        "label": "Check out",
+        "x": 1370,
+        "y": 1118,
+        "w": 143,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/20-att-03-fix-my-attendance",
+    "file": "screenshots/employee/20-att-03-fix-my-attendance.png",
+    "captured_at": "2026-10-21T07:00:27.975Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      11
+    ],
+    "workflow": "Attendance: check in and correct a missed punch (employee)",
+    "screen": "Fix my attendance (dialog)",
+    "action": "Home › Start something › Fix my attendance: date, type, actual in/out, reason",
+    "expected": "All fields filled; Submit sends it to the manager",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Date",
+        "x": 30,
+        "y": 186,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Type",
+        "x": 30,
+        "y": 318,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Actual in",
+        "x": 30,
+        "y": 450,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Actual out",
+        "x": 30,
+        "y": 582,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "5",
+        "label": "Reason",
+        "x": 30,
+        "y": 714,
+        "w": 1284,
+        "h": 102
+      },
+      {
+        "n": "6",
+        "label": "Submit",
+        "x": 30,
+        "y": 840,
+        "w": 122,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/20-att-04-correction-submitted",
+    "file": "screenshots/employee/20-att-04-correction-submitted.png",
+    "captured_at": "2026-10-21T07:00:29.776Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      11
+    ],
+    "workflow": "Attendance: check in and correct a missed punch (employee)",
+    "screen": "Home (after submitting)",
+    "action": "Submit",
+    "expected": "Confirmation; the correction waits for the manager",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/20-att-05-regularisation-pending",
+    "file": "screenshots/employee/20-att-05-regularisation-pending.png",
+    "captured_at": "2026-10-21T07:00:31.415Z",
+    "url": "/admin/attendance-regularisations",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      11
+    ],
+    "workflow": "Attendance: check in and correct a missed punch (employee)",
+    "screen": "Regularisations (own)",
+    "action": "People › Time & leave › Regularisations",
+    "expected": "The correction is listed as pending",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Pending correction",
+        "x": 426,
+        "y": 586,
+        "w": 1692,
+        "h": 133
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "manager/20-att-06-correction-card",
+    "file": "screenshots/manager/20-att-06-correction-card.png",
+    "captured_at": "2026-10-21T07:00:37.049Z",
+    "url": "/admin/approvals",
+    "http_status": 200,
+    "persona": "manager",
+    "user": "Amit Verma",
+    "role": "Manager + Employee",
+    "deck": [
+      2,
+      11
+    ],
+    "workflow": "Approve an attendance correction (manager)",
+    "screen": "Approval Center › attendance correction",
+    "action": "Select the correction",
+    "expected": "Date, requested in/out times and reason; Approve / Reject",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Reason",
+        "x": 1110,
+        "y": 590,
+        "w": 972,
+        "h": 68
+      },
+      {
+        "n": "2",
+        "label": "Approve",
+        "x": 1110,
+        "y": 902,
+        "w": 128,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "manager/20-att-07-correction-approved",
+    "file": "screenshots/manager/20-att-07-correction-approved.png",
+    "captured_at": "2026-10-21T07:00:39.581Z",
+    "url": "/admin/approvals",
+    "http_status": 200,
+    "persona": "manager",
+    "user": "Amit Verma",
+    "role": "Manager + Employee",
+    "deck": [
+      2,
+      11
+    ],
+    "workflow": "Approve an attendance correction (manager)",
+    "screen": "Approval Center (after the decision)",
+    "action": "Approve → Confirm",
+    "expected": "Decision recorded",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Decision recorded",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "manager/20-att-08-team-regularisations",
+    "file": "screenshots/manager/20-att-08-team-regularisations.png",
+    "captured_at": "2026-10-21T07:02:42.026Z",
+    "url": "/admin/attendance-regularisations",
+    "http_status": 200,
+    "persona": "manager",
+    "user": "Amit Verma",
+    "role": "Manager + Employee",
+    "deck": [
+      2,
+      11
+    ],
+    "workflow": "Approve an attendance correction (manager)",
+    "screen": "Regularisations (team)",
+    "action": "People › Time & leave › Regularisations",
+    "expected": "Team corrections with status and reviewer; pending ones can be decided here too",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Approval Center link",
+        "x": 1791,
+        "y": 366,
+        "w": 309,
+        "h": 40
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "manager/20-att-09-exception-centre",
+    "file": "screenshots/manager/20-att-09-exception-centre.png",
+    "captured_at": "2026-10-21T07:02:43.915Z",
+    "url": "/admin/attendance-exception-centre",
+    "http_status": 200,
+    "persona": "manager",
+    "user": "Amit Verma",
+    "role": "Manager + Employee",
+    "deck": [
+      2,
+      11
+    ],
+    "workflow": "Team attendance (manager)",
+    "screen": "Exception centre",
+    "action": "People › Time & leave › Exception centre",
+    "expected": "Missing punches, late, absent and overtime for the last 30 days",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Exception counts",
+        "x": 659,
+        "y": 398,
+        "w": 144,
+        "h": 39
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/20-att-10-records-before",
+    "file": "screenshots/hr-admin/20-att-10-records-before.png",
+    "captured_at": "2026-10-21T07:02:48.125Z",
+    "url": "/admin/attendance-records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Attendance administration (HR)",
+    "screen": "Attendance records",
+    "action": "People › Time & leave › Attendance records",
+    "expected": "Header actions Manual punch and Process day",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Manual punch",
+        "x": 1674,
+        "y": 244,
+        "w": 231,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Process day",
+        "x": 1911,
+        "y": 244,
+        "w": 207,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/20-att-11-manual-punch",
+    "file": "screenshots/hr-admin/20-att-11-manual-punch.png",
+    "captured_at": "2026-10-21T07:02:54.112Z",
+    "url": "/admin/attendance-records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Attendance administration (HR)",
+    "screen": "Manual punch (dialog)",
+    "action": "Record a punch for an employee whose device was offline",
+    "expected": "Employee, punched at, direction and a note",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Punched at",
+        "x": 30,
+        "y": 276,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Direction",
+        "x": 30,
+        "y": 408,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Note",
+        "x": 30,
+        "y": 540,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/20-att-12-process-day",
+    "file": "screenshots/hr-admin/20-att-12-process-day.png",
+    "captured_at": "2026-10-21T07:03:58.669Z",
+    "url": "/admin/attendance-records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Attendance administration (HR)",
+    "screen": "Process day (dialog)",
+    "action": "Process a date: punches and approved corrections become attendance records",
+    "expected": "Date chosen; Submit",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Date",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/20-att-13-day-processed",
+    "file": "screenshots/hr-admin/20-att-13-day-processed.png",
+    "captured_at": "2026-10-21T07:04:01.486Z",
+    "url": "/admin/attendance-records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Attendance administration (HR)",
+    "screen": "Attendance records (after Process day)",
+    "action": "Submit",
+    "expected": "Confirmation; records for 20 Oct with status, in/out, worked hours and exceptions",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Attendance record",
+        "x": 426,
+        "y": 550,
+        "w": 1794,
+        "h": 140
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/20-att-14-exception-centre",
+    "file": "screenshots/hr-admin/20-att-14-exception-centre.png",
+    "captured_at": "2026-10-21T07:05:04.107Z",
+    "url": "/admin/attendance-exception-centre",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      12
+    ],
+    "workflow": "Attendance administration (HR)",
+    "screen": "Exception centre",
+    "action": "People › Time & leave › Exception centre",
+    "expected": "Exception counts and the rows that need action",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Exception counts",
+        "x": 659,
+        "y": 398,
+        "w": 144,
+        "h": 39
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/20-att-15-punches",
+    "file": "screenshots/hr-admin/20-att-15-punches.png",
+    "captured_at": "2026-10-21T07:05:06.223Z",
+    "url": "/admin/attendance-punches",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Attendance administration (HR)",
+    "screen": "Punches",
+    "action": "All in Time & leave › Punches",
+    "expected": "Raw punches with source (web, manual, device) and processing status",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Punch",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 104
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/20-att-16-my-attendance",
+    "file": "screenshots/employee/20-att-16-my-attendance.png",
+    "captured_at": "2026-10-21T07:05:08.095Z",
+    "url": "/admin/attendance-records",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      11
+    ],
+    "workflow": "Attendance: check in and correct a missed punch (employee)",
+    "screen": "Attendance records (own)",
+    "action": "People › Time & leave › Attendance records",
+    "expected": "The corrected day appears with in/out and worked time",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Corrected day",
+        "x": 426,
+        "y": 530,
+        "w": 1757,
+        "h": 139
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "name": "peopleos-training-presentations",
+  "private": true,
+  "description": "Builds the PeopleOS training decks from genuine screenshots of a disposable showcase database. Separate from the application's own package.json.",
+  "type": "commonjs",
+  "scripts": {
+    "build": "node build/build-all.js"
+  },
+  "dependencies": {
+    "exceljs": "4.4.0",
+    "pptxgenjs": "4.0.1",
+    "sharp": "0.34.4"
+  }
+}

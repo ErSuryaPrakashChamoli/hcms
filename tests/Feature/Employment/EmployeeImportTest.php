@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Audit\Models\AuditEvent;
+use App\Domain\Configuration\Services\Blueprints;
 use App\Domain\Employment\Actions\HireEmployeeAction;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImports;
@@ -9,8 +10,15 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Location;
+use App\Domain\Platform\Models\TenantFeature;
+use App\Domain\Platform\Services\FeatureFlags;
 use App\Filament\Resources\EmployeeImports\EmployeeImportResource;
+use App\Filament\Resources\EmployeeImports\Pages\ListEmployeeImports;
+use App\Filament\Resources\EmployeeImports\Pages\ViewEmployeeImport;
+use App\Filament\Resources\Employees\Pages\ListEmployees;
+use App\Filament\Resources\Tenants\Pages\ListTenants;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 
 /* Phase 1 §38–§41, §62: staged imports never touch employees before approval; duplicates are matched deterministically; everything is audited. */
 
@@ -29,6 +37,7 @@ beforeEach(function () {
     $this->tenant = provisionTenant();
     $this->tenantB = provisionTenant('B');
     actAsTenant($this->tenant);
+    app(FeatureFlags::class)->setForTenant($this->tenant, EmployeeImports::FEATURE, true, platformAdmin(), 'Data migration agreed');
     $this->hr = tenantUser($this->tenant, ['*']);
     $this->actingAs($this->hr);
     $this->company = Company::factory()->create(['code' => 'ALPHA']);
@@ -127,6 +136,72 @@ it('matches existing people deterministically: definite matches update or skip, 
     $again = app(EmployeeImports::class)->map($again, $again->mapping + ['Email' => 'employee.work_email'], ['on_duplicate' => 'skip']);
     $again = app(EmployeeImports::class)->validate($again);
     expect($again->rows()->where('row_number', 1)->first()->action)->toBe('skip');
+});
+
+it('offers a template whose headers map every field automatically and whose example row validates with tenant codes', function () {
+    Livewire::test(ListEmployeeImports::class)->callAction('downloadTemplate')->assertFileDownloaded('employee-import-template.csv');
+
+    $import = app(EmployeeImports::class)->inspect(stageCsv(app(EmployeeImports::class)->template(), 'template.csv'));
+    expect($import->row_count)->toBe(1)->and(array_values($import->mapping))->toEqualCanonicalizing(array_keys(EmployeeImports::FIELDS));
+
+    $import = app(EmployeeImports::class)->validate(app(EmployeeImports::class)->map($import, $import->mapping));
+    $row = $import->rows()->first();
+    expect($row->action)->toBe('create')->and($row->errors)->toBeNull()
+        ->and($row->data)->toMatchArray(['Company code' => 'ALPHA', 'Location code' => 'DEL', 'Department code' => 'ENG', 'Designation code' => 'SE', 'Employee code' => '']);
+});
+
+it('exports the listed employees in the template format, and the edited file comes back as updates', function () {
+    Livewire::test(ListEmployees::class)->callAction('exportEmployees')->assertFileDownloaded('employees-2026-09-21.csv');
+
+    $csv = app(EmployeeImports::class)->export(Employee::query(), $this->hr);
+    expect(str_getcsv(strtok($csv, "\n"), escape: ''))->toBe(array_column(EmployeeImports::FIELDS, 0))
+        ->and($csv)->toContain('Bhavna,,Boss,')->toContain(',BOSS1,2024-01-01,')->toContain(',ALPHA,');
+
+    $import = app(EmployeeImports::class)->inspect(stageCsv(str_replace('Bhavna,', 'Bhavana,', $csv), 'employees.csv'));
+    $import = app(EmployeeImports::class)->validate(app(EmployeeImports::class)->map($import, $import->mapping));
+    expect($import->update_count)->toBe(1)->and($import->create_count)->toBe(0)->and($import->error_count)->toBe(0)->and($import->review_count)->toBe(0);
+
+    app(EmployeeImports::class)->run(app(EmployeeImports::class)->approve($import, $this->hr), $this->hr);
+    expect($this->boss->person->refresh()->first_name)->toBe('Bhavana')
+        ->and(AuditEvent::query()->where('action', 'EXPORT')->where('module', 'employment')->count())->toBe(2);
+});
+
+it('stays off until a platform operator switches it on, and the organisation cannot switch it itself', function () {
+    $operator = platformAdmin();
+    $flags = app(FeatureFlags::class);
+    $flags->setForTenant($this->tenant, EmployeeImports::FEATURE, false, $operator, 'Customer paused bulk loads');
+
+    $this->get(EmployeeImportResource::getUrl('index'))->assertForbidden();
+    Livewire::test(ListEmployees::class)->assertActionHidden('exportEmployees');
+    expect(fn () => stageCsv($this->csv))->toThrow(RuntimeException::class, 'not switched on')
+        ->and(fn () => app(EmployeeImports::class)->export(Employee::query(), $this->hr))->toThrow(RuntimeException::class, 'not switched on');
+
+    // Not the organisation's own administrators (even with every permission), not a blueprint.
+    $flag = TenantFeature::query()->where('feature', EmployeeImports::FEATURE)->firstOrFail();
+    expect($this->hr->can('update', $flag))->toBeFalse()
+        ->and(fn () => $flags->set(EmployeeImports::FEATURE, true))->toThrow(RuntimeException::class)
+        ->and(fn () => $flags->setForTenant($this->tenant, EmployeeImports::FEATURE, true, $this->hr, 'We want it'))->toThrow(RuntimeException::class, 'Only platform operators')
+        ->and(app(Blueprints::class)->export()['features'])->not->toHaveKey(EmployeeImports::FEATURE);
+    app(Blueprints::class)->import(['format' => Blueprints::FORMAT, 'features' => [EmployeeImports::FEATURE => true]]);
+    expect(EmployeeImports::enabled())->toBeFalse();
+
+    // The operator switches it on from the platform console, with a reason, on both chains.
+    actAsTenant(null);
+    Livewire::actingAs($operator)->test(ListTenants::class)
+        ->callTableAction('importExport', $this->tenant, data: ['enabled' => true, 'reason' => 'Signed data migration addendum'])->assertHasNoTableActionErrors();
+    $events = AuditEvent::query()->withoutTenancy()->where('action', 'FEATURE_CHANGED')->where('reason', 'Signed data migration addendum')->get();
+    expect($events->pluck('tenant_id')->all())->toEqualCanonicalizing([$this->tenant->id, null]);
+
+    actAsTenant($this->tenant);
+    $this->actingAs($this->hr)->get(EmployeeImportResource::getUrl('index'))->assertOk();
+});
+
+it('maps columns from the screen', function () {
+    $import = app(EmployeeImports::class)->inspect(stageCsv($this->csv));
+
+    Livewire::test(ViewEmployeeImport::class, ['record' => $import->id])->callAction('map')->assertHasNoActionErrors();
+
+    expect($import->refresh()->status)->toBe('mapped')->and($import->mapping['DOJ'])->toBe('employee.joining_date');
 });
 
 it('keeps imports inside the tenant and behind the employee.import permission', function () {

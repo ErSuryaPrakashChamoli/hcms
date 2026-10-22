@@ -175,11 +175,21 @@ final class StatutoryEngine
         $context = $this->context($c);
         $detail = $c->employee->statutoryDetail;
 
-        if (! $context->applies('EPF') || ! ($detail?->pf_applicable ?? true) || app(CountryPacks::class)->statutoryEngine($context->jurisdiction()) !== 'india' || ! ($rule = $this->rules->resolve('EPF', $c->period->end_date))) {
+        if (! $context->applies('EPF') || ! ($detail?->pf_applicable ?? true) || app(CountryPacks::class)->statutoryEngine($context->jurisdiction()) !== 'india') {
             return 0.0;
         }
 
-        $base = $context->restrictPfToCeiling() ? min($pfWagesFullMonth, (float) $rule->param('wage_ceiling')) : $pfWagesFullMonth;
+        return $this->employerPfOn($pfWagesFullMonth, $c->period->end_date, $context->restrictPfToCeiling());
+    }
+
+    /** Employer PF on a month's PF wages under the EPF rule in force on a date (0 without one); the structure preview's `pf_employer`. */
+    public function employerPfOn(float $pfWagesFullMonth, CarbonInterface|string $on, bool $restrictToCeiling): float
+    {
+        if (! ($rule = $this->rules->resolve('EPF', $on))) {
+            return 0.0;
+        }
+
+        $base = $restrictToCeiling ? min($pfWagesFullMonth, (float) $rule->param('wage_ceiling')) : $pfWagesFullMonth;
 
         return $this->round($base * $rule->param('employer_rate'), $rule);
     }

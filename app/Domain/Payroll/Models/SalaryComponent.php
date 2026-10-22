@@ -78,4 +78,17 @@ class SalaryComponent extends Model
     {
         return strtolower($this->code);
     }
+
+    /**
+     * The formula a structure line runs: the line's override (whatever the calculation method), else this
+     * component's formula when it is formula-calculated. Null = the fixed amount on the employee's compensation.
+     */
+    public function formulaFor(?string $override): ?string
+    {
+        if (filled($override)) {
+            return trim($override);
+        }
+
+        return $this->calculation_method === 'formula' && filled($this->formula) ? (string) $this->formula : null;
+    }
 }

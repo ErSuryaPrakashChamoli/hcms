@@ -1,0 +1,245 @@
+[
+  {
+    "name": "client-onboarding/90-onb-54-roles",
+    "file": "screenshots/client-onboarding/90-onb-54-roles.png",
+    "captured_at": "2026-10-21T07:38:21.876Z",
+    "url": "/admin/roles",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Roles, users and access scope",
+    "screen": "Admin \u203a Setup \u203a Roles",
+    "action": "Open Roles",
+    "expected": "14 system roles provisioned with the tenant (Account Owner \u2026 Tenant Super Admin), each with its permission count and users; New role",
+    "prereq": "Signed in as the tenant administrator (user.manage, role.view)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "System role",
+        "x": 426,
+        "y": 1237,
+        "w": 1692,
+        "h": 98
+      },
+      {
+        "n": "2",
+        "label": "New role",
+        "x": 1985,
+        "y": 244,
+        "w": 134,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-55-role-permissions",
+    "file": "screenshots/client-onboarding/90-onb-55-role-permissions.png",
+    "captured_at": "2026-10-21T07:38:24.125Z",
+    "url": "/admin/roles/19/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Roles, users and access scope",
+    "screen": "Roles \u203a HR Executive (edit)",
+    "action": "Open a role to see its permissions",
+    "expected": "Permission keys grouped by module; only a Tenant Super Admin edits role permissions",
+    "prereq": "Signed in as the tenant administrator (user.manage, role.view)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-56-new-user",
+    "file": "screenshots/client-onboarding/90-onb-56-new-user.png",
+    "captured_at": "2026-10-21T07:38:34.685Z",
+    "url": "/admin/users/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Roles, users and access scope",
+    "screen": "Admin \u203a Setup \u203a Users \u203a New user",
+    "action": "Name, e-mail, role HR Executive, access scope limited to the Northwind Retail company",
+    "expected": "The user is invited by e-mail; the scope restricts which employees and units they can reach (dimensions combine with AND)",
+    "prereq": "Signed in as the tenant administrator (user.manage, role.view)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Work e-mail",
+        "x": 855,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Roles",
+        "x": 1320,
+        "y": 518,
+        "w": 762,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Access scope: company",
+        "x": 462,
+        "y": 993,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Create user",
+        "x": 426,
+        "y": 1383,
+        "w": 162,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-57-user-created",
+    "file": "screenshots/client-onboarding/90-onb-57-user-created.png",
+    "captured_at": "2026-10-21T07:38:38.281Z",
+    "url": "/admin/users/18/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Roles, users and access scope",
+    "screen": "Users \u203a Edit user (opened after Create user)",
+    "action": "Create user",
+    "expected": "The invitation is sent (\"User invited. They will receive an e-mail to set their password.\"), but the Edit user page that opens next shows a development error from its History panel: LazyLoadingViolationException (known defect F26; strict mode is on outside production, so production behaviour is unverified)",
+    "prereq": "Signed in as the tenant administrator (user.manage, role.view)",
+    "status": "INCOMPLETE",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "client-onboarding/90-onb-58-users",
+    "file": "screenshots/client-onboarding/90-onb-58-users.png",
+    "captured_at": "2026-10-21T07:39:10.634Z",
+    "url": "/admin/users",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Roles, users and access scope",
+    "screen": "Admin \u203a Setup \u203a Users",
+    "action": "Back to the Users list",
+    "expected": "Farah Khan (Tenant Super Admin, Active) and Rohit Menon (HR Executive, Invited, never signed in)",
+    "prereq": "Signed in as the tenant administrator (user.manage, role.view)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Invited user",
+        "x": 426,
+        "y": 709,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "client-onboarding/90-onb-59-hr-executive-home",
+    "file": "screenshots/client-onboarding/90-onb-59-hr-executive-home.png",
+    "captured_at": "2026-10-21T07:39:23.712Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "nwhr",
+    "user": "Rohit Menon",
+    "role": "HR Executive (Northwind Retail)",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "User readiness: first sign-in with a limited role",
+    "screen": "Home (HR Executive, Northwind Retail)",
+    "action": "The invited HR Executive activates the account and signs in",
+    "expected": "A narrower menu than the administrator (no Admin role editing); Home shows people operations",
+    "prereq": "Signed in as the tenant administrator (user.manage, role.view)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [
+      "1:Menu for this role"
+    ],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-60-hr-executive-roles-denied",
+    "file": "screenshots/client-onboarding/90-onb-60-hr-executive-roles-denied.png",
+    "captured_at": "2026-10-21T07:39:25.149Z",
+    "url": "/admin/roles",
+    "http_status": 403,
+    "persona": "nwhr",
+    "user": "Rohit Menon",
+    "role": "HR Executive (Northwind Retail)",
+    "deck": [
+      4,
+      8,
+      7
+    ],
+    "workflow": "User readiness: first sign-in with a limited role",
+    "screen": "Roles (as HR Executive)",
+    "action": "The HR Executive opens the Roles screen directly",
+    "expected": "Refused: the role does not include role.view",
+    "prereq": "Signed in as the tenant administrator (user.manage, role.view)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

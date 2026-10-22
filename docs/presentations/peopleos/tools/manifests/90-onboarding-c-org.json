@@ -1,0 +1,436 @@
+[
+  {
+    "name": "client-onboarding/90-onb-12-empty-tenant-home",
+    "file": "screenshots/client-onboarding/90-onb-12-empty-tenant-home.png",
+    "captured_at": "2026-10-21T07:17:24.232Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "First sign-in to the new tenant",
+    "screen": "Home (new tenant, administration lens)",
+    "action": "First sign-in as the customer administrator",
+    "expected": "Open Admin Centre; Governance items (MFA not required, unscoped approvers); 1 active user, 14 roles",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Open Admin Centre",
+        "x": 1608,
+        "y": 243,
+        "w": 255,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Governance",
+        "x": 426,
+        "y": 261,
+        "w": 707,
+        "h": 48
+      },
+      {
+        "n": "3",
+        "label": "At a glance",
+        "x": 803,
+        "y": 839,
+        "w": 122,
+        "h": 39
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-13-admin-centre",
+    "file": "screenshots/client-onboarding/90-onb-13-admin-centre.png",
+    "captured_at": "2026-10-21T07:17:26.072Z",
+    "url": "/admin/admin-centre",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Find the set-up screens",
+    "screen": "Admin \u203a All modules (Admin Centre)",
+    "action": "Open Admin Centre",
+    "expected": "Every module grouped by area, with a search box and the Change Centre",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Organisation and positions",
+        "x": 522,
+        "y": 560,
+        "w": 426,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Access and security",
+        "x": 522,
+        "y": 2336,
+        "w": 426,
+        "h": 44
+      },
+      {
+        "n": "3",
+        "label": "Change Centre",
+        "x": 1928,
+        "y": 293,
+        "w": 191,
+        "h": 44
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-14-configuration-finder",
+    "file": "screenshots/client-onboarding/90-onb-14-configuration-finder.png",
+    "captured_at": "2026-10-21T07:17:27.854Z",
+    "url": "/admin/configuration-finder",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Find the set-up screens",
+    "screen": "Admin \u203a Setup \u203a What do you want to configure?",
+    "action": "Open the configuration finder",
+    "expected": "Set-up screens and individual settings grouped by topic (organisation, time and leave, pay, statutory, access \u2026)",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Organisation structure",
+        "x": 522,
+        "y": 558,
+        "w": 288,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Statutory compliance",
+        "x": 948,
+        "y": 1229,
+        "w": 288,
+        "h": 44
+      },
+      {
+        "n": "3",
+        "label": "Access and security",
+        "x": 948,
+        "y": 1863,
+        "w": 288,
+        "h": 44
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-17-company-saved",
+    "file": "screenshots/client-onboarding/90-onb-17-company-saved.png",
+    "captured_at": "2026-10-21T07:17:31.060Z",
+    "url": "/admin/companies",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Company set-up",
+    "screen": "Organisation \u203a Companies",
+    "action": "Back to the list",
+    "expected": "Northwind Retail (NWR) effective from 01 Apr 2026",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Creating a company also creates its primary legal entity and principal establishment (seen on the next screens): review and complete those rather than creating duplicates.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Company",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-19-legal-entity-saved",
+    "file": "screenshots/client-onboarding/90-onb-19-legal-entity-saved.png",
+    "captured_at": "2026-10-21T07:17:34.412Z",
+    "url": "/admin/legal-entities",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Legal entity set-up",
+    "screen": "Organisation \u203a Legal entities",
+    "action": "Back to the list",
+    "expected": "Two legal entities: the primary one created automatically with the company (Northwind Retail Pvt Ltd, NWR) and the one added here; each with Submit for verification",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Legal entity",
+        "x": 426,
+        "y": 530,
+        "w": 2218,
+        "h": 98
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-21-establishment-saved",
+    "file": "screenshots/client-onboarding/90-onb-21-establishment-saved.png",
+    "captured_at": "2026-10-21T07:17:38.073Z",
+    "url": "/admin/establishments",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Establishment set-up",
+    "screen": "Organisation \u203a Establishments",
+    "action": "Back to the list",
+    "expected": "Two establishments: the principal establishment created automatically for the primary legal entity and Bengaluru head office added here",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Establishment",
+        "x": 426,
+        "y": 530,
+        "w": 2406,
+        "h": 98
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-23-location-saved",
+    "file": "screenshots/client-onboarding/90-onb-23-location-saved.png",
+    "captured_at": "2026-10-21T07:17:41.347Z",
+    "url": "/admin/locations",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Location set-up",
+    "screen": "Organisation \u203a Locations",
+    "action": "Back to the list",
+    "expected": "Bengaluru HQ (BLR) for the company",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Location",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-25-new-department",
+    "file": "screenshots/client-onboarding/90-onb-25-new-department.png",
+    "captured_at": "2026-10-21T07:17:51.798Z",
+    "url": "/admin/departments/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Organisation structure",
+    "screen": "Departments \u203a New",
+    "action": "Company, name, code, description, status and effective date",
+    "expected": "An effective-dated unit of the company; where it sits in the hierarchy is arranged in the Organisation Designer",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Company",
+        "x": 462,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Name",
+        "x": 855,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Effective from",
+        "x": 1320,
+        "y": 554,
+        "w": 369,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-26-departments",
+    "file": "screenshots/client-onboarding/90-onb-26-departments.png",
+    "captured_at": "2026-10-21T07:18:19.362Z",
+    "url": "/admin/departments",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Organisation structure",
+    "screen": "Organisation \u203a Departments",
+    "action": "Open Departments",
+    "expected": "Store Operations and People & Culture with their parents and dates",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Department",
+        "x": 426,
+        "y": 616,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-27-organisation-designer",
+    "file": "screenshots/client-onboarding/90-onb-27-organisation-designer.png",
+    "captured_at": "2026-10-21T07:18:25.116Z",
+    "url": "/admin/organisation-designer",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Organisation structure",
+    "screen": "Organisation \u203a Organisation Designer",
+    "action": "Open the Organisation Designer after creating the units",
+    "expected": "\"No organisation units placed yet\": units created on their own screens are not in the tree until they are placed with Add root unit / Add child",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-28-org-map",
+    "file": "screenshots/client-onboarding/90-onb-28-org-map.png",
+    "captured_at": "2026-10-21T07:18:26.901Z",
+    "url": "/admin/organisation-map",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Organisation structure",
+    "screen": "Organisation \u203a Org map",
+    "action": "Open the Org map",
+    "expected": "\"No reporting lines to show\" until people are hired and linked to managers",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-15-companies-empty",
+    "file": "screenshots/client-onboarding/90-onb-15-companies-empty.png",
+    "captured_at": "2026-10-21T07:14:58.000Z",
+    "url": "/admin/companies",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Company set-up",
+    "screen": "Organisation \u203a Companies (empty)",
+    "action": "Open Organisation \u203a Companies in the new tenant",
+    "expected": "\"No companies yet\"; New company",
+    "prereq": "Signed in as the tenant administrator (Tenant Super Admin of Northwind Retail)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Manifest entry written from the capture script after the run that took the screenshot stopped before recording it.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

@@ -1,0 +1,815 @@
+[
+  {
+    "name": "platform-admin/95-pl-04-platform-home",
+    "file": "screenshots/platform-admin/95-pl-04-platform-home.png",
+    "captured_at": "2026-10-21T07:57:22.733Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Platform home",
+    "screen": "Platform home (operator)",
+    "action": "Sign in as an operator",
+    "expected": "Tenants with status; Platform health → readiness",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Manage tenants",
+        "x": 1338,
+        "y": 293,
+        "w": 204,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Open readiness",
+        "x": 1608,
+        "y": 450,
+        "w": 188,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-05-tenants",
+    "file": "screenshots/platform-admin/95-pl-05-tenants.png",
+    "captured_at": "2026-10-21T07:57:24.428Z",
+    "url": "/admin/tenants",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Tenant list",
+    "screen": "Admin › Platform › Tenants",
+    "action": "Open Tenants",
+    "expected": "Name, slug, status, country, users, companies; Enter, Suspend, Send invitation, Edit",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Suspend",
+        "x": 1866,
+        "y": 641,
+        "w": 129,
+        "h": 48
+      },
+      {
+        "n": "2",
+        "label": "Enter",
+        "x": 1766,
+        "y": 641,
+        "w": 95,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-06-suspend-dialog",
+    "file": "screenshots/platform-admin/95-pl-06-suspend-dialog.png",
+    "captured_at": "2026-10-21T07:57:25.837Z",
+    "url": "/admin/tenants",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Tenant lifecycle: suspend and reactivate",
+    "screen": "Tenants › Suspend",
+    "action": "Suspend with a reason",
+    "expected": "Confirm; the reason goes to the platform audit trail",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Reason",
+        "x": 30,
+        "y": 318,
+        "w": 612,
+        "h": 102
+      },
+      {
+        "n": "2",
+        "label": "Confirm",
+        "x": 339,
+        "y": 444,
+        "w": 303,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-07-suspended",
+    "file": "screenshots/platform-admin/95-pl-07-suspended.png",
+    "captured_at": "2026-10-21T07:57:32.610Z",
+    "url": "/admin/tenants",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Tenant lifecycle: suspend and reactivate",
+    "screen": "Tenants (after Suspend)",
+    "action": "Confirm",
+    "expected": "Northwind shows Suspended; Reactivate replaces Suspend",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "2",
+        "label": "Suspended tenant",
+        "x": 426,
+        "y": 635,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [
+      "1:.fi-no-notification"
+    ],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-08-suspended-sign-in",
+    "file": "screenshots/platform-admin/95-pl-08-suspended-sign-in.png",
+    "captured_at": "2026-10-21T07:57:37.389Z",
+    "url": "/admin/login",
+    "http_status": null,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      5,
+      7
+    ],
+    "workflow": "Tenant lifecycle: suspend and reactivate",
+    "screen": "Sign in (tenant suspended)",
+    "action": "The Northwind administrator signs in with the correct password while the tenant is suspended",
+    "expected": "Sign-in refused with the generic credentials message (by design, no hint that the tenant is suspended)",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Message",
+        "x": 762,
+        "y": 637,
+        "w": 636,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-09-reactivated",
+    "file": "screenshots/platform-admin/95-pl-09-reactivated.png",
+    "captured_at": "2026-10-21T07:57:45.366Z",
+    "url": "/admin/tenants",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Tenant lifecycle: suspend and reactivate",
+    "screen": "Tenants (after Reactivate)",
+    "action": "Reactivate with a reason",
+    "expected": "Northwind Active again; its users can sign in",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "2",
+        "label": "Active tenant",
+        "x": 426,
+        "y": 542,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [
+      "1:.fi-no-notification"
+    ],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-10-signups",
+    "file": "screenshots/platform-admin/95-pl-10-signups.png",
+    "captured_at": "2026-10-21T07:57:48.437Z",
+    "url": "/admin/platform-signups",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Self-service signup (switched off)",
+    "screen": "Admin › Platform › Signups",
+    "action": "Open Signups",
+    "expected": "\"Can signup work today?\" explains why public registration is off; no applications",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-11-plans",
+    "file": "screenshots/platform-admin/95-pl-11-plans.png",
+    "captured_at": "2026-10-21T07:57:50.914Z",
+    "url": "/admin/platform-plans",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Plans, subscriptions and entitlements (shadow mode)",
+    "screen": "Admin › Platform › Plans",
+    "action": "Open Plans",
+    "expected": "Commercial plans in shadow mode; no plan, price or default plan is shipped",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-12-subscriptions",
+    "file": "screenshots/platform-admin/95-pl-12-subscriptions.png",
+    "captured_at": "2026-10-21T07:57:53.388Z",
+    "url": "/admin/platform-subscriptions",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Plans, subscriptions and entitlements (shadow mode)",
+    "screen": "Admin › Platform › Subscriptions",
+    "action": "Open Subscriptions",
+    "expected": "All tenants today; shadow mode: nothing is enforced or billed",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-13-entitlements",
+    "file": "screenshots/platform-admin/95-pl-13-entitlements.png",
+    "captured_at": "2026-10-21T07:57:55.897Z",
+    "url": "/admin/platform-entitlements",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Plans, subscriptions and entitlements (shadow mode)",
+    "screen": "Admin › Platform › Entitlements",
+    "action": "Open Entitlements",
+    "expected": "Shadow observations: what would have been blocked if entitlements were enforced",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-14-billing-catalogue",
+    "file": "screenshots/platform-admin/95-pl-14-billing-catalogue.png",
+    "captured_at": "2026-10-21T07:57:58.414Z",
+    "url": "/admin/platform-billing-catalog",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Billing, tax and payments (switched off)",
+    "screen": "Admin › Platform › Billing catalogue",
+    "action": "Open Billing catalogue",
+    "expected": "Markets, price matrix and currencies; changes need a second operator’s approval",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-15-tax-invoicing",
+    "file": "screenshots/platform-admin/95-pl-15-tax-invoicing.png",
+    "captured_at": "2026-10-21T07:58:01.057Z",
+    "url": "/admin/platform-tax",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Billing, tax and payments (switched off)",
+    "screen": "Admin › Platform › Tax & invoicing",
+    "action": "Open Tax & invoicing",
+    "expected": "Jurisdiction support, selling entities, statutory dataset (load = maker, verify = second operator), tax rules, invoice series",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-16-commercial-policies",
+    "file": "screenshots/platform-admin/95-pl-16-commercial-policies.png",
+    "captured_at": "2026-10-21T07:58:03.630Z",
+    "url": "/admin/platform-commercial-policies",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Billing, tax and payments (switched off)",
+    "screen": "Admin › Platform › Commercial policies",
+    "action": "Open Commercial policies",
+    "expected": "Markedge policy values and statutory parameters with change history; Propose change (maker-checker)",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-17-billing-accounts",
+    "file": "screenshots/platform-admin/95-pl-17-billing-accounts.png",
+    "captured_at": "2026-10-21T07:58:06.044Z",
+    "url": "/admin/platform-billing-accounts",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Billing, tax and payments (switched off)",
+    "screen": "Admin › Platform › Billing accounts",
+    "action": "Open Billing accounts",
+    "expected": "One billing account view per tenant",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-18-invoices",
+    "file": "screenshots/platform-admin/95-pl-18-invoices.png",
+    "captured_at": "2026-10-21T07:58:08.496Z",
+    "url": "/admin/platform-invoices",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Billing, tax and payments (switched off)",
+    "screen": "Admin › Platform › Invoices",
+    "action": "Open Invoices",
+    "expected": "No invoices: real invoicing waits for owner inputs",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-19-payments",
+    "file": "screenshots/platform-admin/95-pl-19-payments.png",
+    "captured_at": "2026-10-21T07:58:10.960Z",
+    "url": "/admin/platform-payments",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Billing, tax and payments (switched off)",
+    "screen": "Admin › Platform › Payments",
+    "action": "Open Payments",
+    "expected": "Payments and provider events; live payments are refused in production",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-20-financial-approvals",
+    "file": "screenshots/platform-admin/95-pl-20-financial-approvals.png",
+    "captured_at": "2026-10-21T07:58:13.362Z",
+    "url": "/admin/platform-approvals",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5
+    ],
+    "workflow": "Billing, tax and payments (switched off)",
+    "screen": "Admin › Platform › Approvals (financial)",
+    "action": "Open Financial approvals",
+    "expected": "Maker-checker requests waiting for a second operator",
+    "prereq": "Owner decisions (signup D10, plans and prices B-4, payments B-7/B-8/B-9) before activation",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-21-operations",
+    "file": "screenshots/platform-admin/95-pl-21-operations.png",
+    "captured_at": "2026-10-21T07:58:15.838Z",
+    "url": "/admin/platform-operations",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      7
+    ],
+    "workflow": "Operations: queues, failed jobs and schedules",
+    "screen": "Admin › Platform › Operations",
+    "action": "Open Operations",
+    "expected": "Platform health, queue depth, failed jobs by job, scheduler heartbeat, per-tenant status",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "No queue worker or scheduler runs in this local environment; the page reports that state.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-22-platform-audit",
+    "file": "screenshots/platform-admin/95-pl-22-platform-audit.png",
+    "captured_at": "2026-10-21T07:58:18.559Z",
+    "url": "/admin/platform-audit",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Platform audit trail",
+    "screen": "Admin › Platform › Platform audit trail",
+    "action": "Open the platform audit trail",
+    "expected": "Operator actions across tenants (tenant provisioned, suspended, reactivated, MFA changed, statutory rule events) with filters",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-23-readiness",
+    "file": "screenshots/platform-admin/95-pl-23-readiness.png",
+    "captured_at": "2026-10-21T07:58:21.294Z",
+    "url": "/admin/platform-readiness",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      4,
+      11
+    ],
+    "workflow": "Release readiness checks",
+    "screen": "Admin › Platform › Platform readiness",
+    "action": "Open Platform readiness",
+    "expected": "Each check with PASS / WARN / FAIL / BLOCKED (statutory rules, MFA, demo accounts, backups, scheduler …)",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Readiness reflects this local development environment, not a production target.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-24-offboarding",
+    "file": "screenshots/platform-admin/95-pl-24-offboarding.png",
+    "captured_at": "2026-10-21T07:58:23.783Z",
+    "url": "/admin/platform-offboarding",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Offboarding, export, legal hold and deletion",
+    "screen": "Admin › Platform › Offboarding",
+    "action": "Open Offboarding",
+    "expected": "\"Tenant deletion is switched off in this environment (PEOPLEOS_TENANT_DELETION_ENABLED).\" Offboarding, exports, legal holds and retention work",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Deletion switched off",
+        "x": 617,
+        "y": 344,
+        "w": 137,
+        "h": 39
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-25-offboarding-tenant",
+    "file": "screenshots/platform-admin/95-pl-25-offboarding-tenant.png",
+    "captured_at": "2026-10-21T07:58:29.163Z",
+    "url": "/admin/platform-offboarding?tenant=2",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Offboarding, export, legal hold and deletion",
+    "screen": "Offboarding › Northwind Retail",
+    "action": "Open a tenant",
+    "expected": "Retention and deletion eligibility, exports, contract retention, legal holds, deletions; Start offboarding, Request export, Place legal hold, Contract retention — and no deletion action",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Place legal hold",
+        "x": 1590,
+        "y": 224,
+        "w": 246,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Request export",
+        "x": 1346,
+        "y": 224,
+        "w": 239,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Start offboarding",
+        "x": 1079,
+        "y": 224,
+        "w": 261,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-26-legal-hold-dialog",
+    "file": "screenshots/platform-admin/95-pl-26-legal-hold-dialog.png",
+    "captured_at": "2026-10-21T07:58:32.103Z",
+    "url": "/admin/platform-offboarding?tenant=2",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Offboarding, export, legal hold and deletion",
+    "screen": "Offboarding › Place legal hold",
+    "action": "Place a legal hold with its reference and reason",
+    "expected": "While a hold is active, nothing covered by it can be deleted",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-27-legal-hold-active",
+    "file": "screenshots/platform-admin/95-pl-27-legal-hold-active.png",
+    "captured_at": "2026-10-21T07:58:35.803Z",
+    "url": "/admin/platform-offboarding?tenant=2",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Offboarding, export, legal hold and deletion",
+    "screen": "Offboarding › Northwind Retail (hold active)",
+    "action": "Confirm",
+    "expected": "The hold is listed as active with who placed it and why",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-28-retention-policies",
+    "file": "screenshots/platform-admin/95-pl-28-retention-policies.png",
+    "captured_at": "2026-10-21T07:58:38.866Z",
+    "url": "/admin/platform-retention-policies",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Retention policies",
+    "screen": "Admin › Platform › Retention policies",
+    "action": "Open Retention policies",
+    "expected": "No policy in force (none is shipped; nothing is deletable until Markedge decides, D-8); Propose policy version (maker-checker)",
+    "prereq": "Platform operator (is_platform_admin) signed in with MFA",
+    "status": "AVAILABLE ONLY AFTER CONFIGURATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-29-compliance-rules",
+    "file": "screenshots/platform-admin/95-pl-29-compliance-rules.png",
+    "captured_at": "2026-10-21T07:58:41.412Z",
+    "url": "/admin/compliance-rules",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8,
+      3
+    ],
+    "workflow": "Statutory rule verification (platform)",
+    "screen": "People › Pay › Compliance rules (operator view)",
+    "action": "Open Compliance rules as an operator",
+    "expected": "Each rule version with Parameters, Verification history, Evidence & coverage; operator actions Attach evidence, Submit evidence, Verify, Reject, Publish corrected version",
+    "prereq": "Two platform administrators and official evidence for each rule version",
+    "status": "IMPLEMENTED BUT NOT VERIFIED END-TO-END",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-30-rule-notices",
+    "file": "screenshots/platform-admin/95-pl-30-rule-notices.png",
+    "captured_at": "2026-10-21T07:58:43.980Z",
+    "url": "/admin/rule-notices",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8,
+      3
+    ],
+    "workflow": "Statutory rule verification (platform)",
+    "screen": "People › Pay › Regulatory notices",
+    "action": "Open Rule notices",
+    "expected": "Open notices about statutory changes, each to be resolved",
+    "prereq": "Two platform administrators and official evidence for each rule version",
+    "status": "IMPLEMENTED BUT NOT VERIFIED END-TO-END",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-31-export-layouts",
+    "file": "screenshots/platform-admin/95-pl-31-export-layouts.png",
+    "captured_at": "2026-10-21T07:58:46.448Z",
+    "url": "/admin/export-layouts",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8,
+      3
+    ],
+    "workflow": "Statutory rule verification (platform)",
+    "screen": "People › Pay › Export layouts",
+    "action": "Open Statutory export layouts",
+    "expected": "Return file layouts with their specification and approval actions",
+    "prereq": "Two platform administrators and official evidence for each rule version",
+    "status": "IMPLEMENTED BUT NOT VERIFIED END-TO-END",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

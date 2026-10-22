@@ -1,0 +1,231 @@
+[
+  {
+    "name": "client-onboarding/90-onb-34-new-designation",
+    "file": "screenshots/client-onboarding/90-onb-34-new-designation.png",
+    "captured_at": "2026-10-21T07:24:21.390Z",
+    "url": "/admin/designations/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Job architecture and positions",
+    "screen": "Admin \u203a Setup \u203a Designations \u203a New designation",
+    "action": "Name, code, level and other job attributes, effective date",
+    "expected": "Designations are effective-dated and carry the job attributes used on hire",
+    "prereq": "Organisation set up; signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Name",
+        "x": 462,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Code",
+        "x": 855,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Level",
+        "x": 462,
+        "y": 692,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Effective from",
+        "x": 1320,
+        "y": 554,
+        "w": 369,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-33-seeded-employment-types",
+    "file": "screenshots/client-onboarding/90-onb-33-seeded-employment-types.png",
+    "captured_at": "2026-10-21T07:36:35.233Z",
+    "url": "/admin/employment-types",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Job architecture and positions",
+    "screen": "Admin \u203a Setup \u203a Employment types",
+    "action": "Review the starting values every new tenant receives",
+    "expected": "Employment types (Full-time, Part-time, Contract, Intern \u2026), employee categories, work modes and levels L1\u2013L6 are seeded; designations, grades and job families start empty",
+    "prereq": "Organisation set up; signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Seeded value",
+        "x": 426,
+        "y": 872,
+        "w": 1692,
+        "h": 98
+      },
+      {
+        "n": "2",
+        "label": "Add your own",
+        "x": 1842,
+        "y": 244,
+        "w": 276,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-35-designations",
+    "file": "screenshots/client-onboarding/90-onb-35-designations.png",
+    "captured_at": "2026-10-21T07:36:44.473Z",
+    "url": "/admin/designations",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Job architecture and positions",
+    "screen": "Admin \u203a Setup \u203a Designations",
+    "action": "Back to the list",
+    "expected": "Store Manager (L4), Retail Associate (L2), HR Executive (L3)",
+    "prereq": "Organisation set up; signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Designation",
+        "x": 426,
+        "y": 701,
+        "w": 2114,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-36-new-position",
+    "file": "screenshots/client-onboarding/90-onb-36-new-position.png",
+    "captured_at": "2026-10-21T07:36:50.555Z",
+    "url": "/admin/positions",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Job architecture and positions",
+    "screen": "Organisation \u203a Workforce \u203a Positions \u203a New position",
+    "action": "Code, effective date, title, company, employment type, worker type, grade, occupancy, headcount, reason",
+    "expected": "A draft position; it goes through propose \u2192 approve \u2192 open before it is filled",
+    "prereq": "Organisation set up; signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Captured on a re-run with code POS-SM-02 and cancelled; POS-SM-01 was created earlier with the same values. FTE fields left blank: the browser refuses whole numbers such as 1 because of the field step (documented defect F8).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Code",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Title",
+        "x": 30,
+        "y": 408,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Grade",
+        "x": 30,
+        "y": 1680,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Seats",
+        "x": 30,
+        "y": 2208,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "5",
+        "label": "FTE (leave blank, F8)",
+        "x": 30,
+        "y": 2340,
+        "w": 1284,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-37-positions",
+    "file": "screenshots/client-onboarding/90-onb-37-positions.png",
+    "captured_at": "2026-10-21T07:36:53.637Z",
+    "url": "/admin/positions",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Job architecture and positions",
+    "screen": "Organisation \u203a Workforce \u203a Positions",
+    "action": "Back to the list",
+    "expected": "POS-SM-01 in Draft",
+    "prereq": "Organisation set up; signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Draft position",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

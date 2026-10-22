@@ -578,9 +578,11 @@ return [
     ],
 
     /*
-    | Feature flags every tenant starts with. Tenants toggle these; platform adds new ones.
+    | Feature flags every tenant starts with. Tenants toggle these; platform adds new ones. A flag marked
+    | 'platform' => true is switched per tenant by a platform operator only (FeatureFlags::setForTenant).
     */
     'features' => [
+        'employee.import_export' => ['enabled' => false, 'platform' => true, 'description' => 'Bulk employee import and export (CSV in the import template format), switched per organisation by Markedge'],
         'organisation.designer' => ['enabled' => false, 'description' => 'Visual organisation designer'],
         'audit.sensitive_access' => ['enabled' => true, 'description' => 'Audit views of sensitive fields'],
         'configuration.approval' => ['enabled' => false, 'description' => 'Route medium/high-risk configuration changes through the Change Centre for approval'],
@@ -1301,6 +1303,12 @@ return [
         ],
         'run_statuses' => ['draft' => 'Draft', 'calculated' => 'Calculated', 'validated' => 'Validated', 'approved' => 'Approved', 'finalized' => 'Finalized', 'paid' => 'Paid'],
         'exception_types' => ['no_salary' => 'No salary assignment', 'no_bank' => 'No primary bank account', 'no_pan' => 'PAN missing (TDS applies)', 'negative_net' => 'Negative net pay', 'attendance_missing' => 'Attendance not processed', 'no_structure' => 'Salary structure has no components', 'formula_error' => 'Formula error'],
+        // Advisory structure checks shown in the breakup preview (never blocking). wage_share: Code on
+        // Wages, 2019 s.2(y): allowances above this share of total remuneration count as wages for PF,
+        // gratuity and bonus. Verify against current notifications; null switches the check off.
+        'guardrails' => [
+            'wage_share' => ['min_percent' => 50, 'classifications' => ['basic', 'da']],
+        ],
         'defaults' => [
             ['code' => 'BASIC', 'name' => 'Basic', 'type' => 'earning', 'classification' => 'basic', 'calculation_method' => 'formula', 'formula' => 'ctc_monthly * 0.40', 'taxable' => true, 'pf_applicable' => true, 'esi_applicable' => true, 'include_in_ctc' => true, 'include_in_gross' => true, 'is_proratable' => true, 'sort_order' => 10],
             ['code' => 'HRA', 'name' => 'House rent allowance', 'type' => 'earning', 'classification' => 'hra', 'calculation_method' => 'formula', 'formula' => 'basic * 0.50', 'taxable' => true, 'pf_applicable' => false, 'esi_applicable' => true, 'include_in_ctc' => true, 'include_in_gross' => true, 'is_proratable' => true, 'sort_order' => 20],
@@ -1915,7 +1923,9 @@ return [
             'role_grade_adjustment' => 'Role / grade adjustment', 'retention_adjustment' => 'Retention adjustment', 'transfer' => 'Transfer',
             'rehire' => 'Rehire', 'revision' => 'Revision', 'other' => 'Other',
         ],
-        'sources' => ['manual' => 'Proposed by a person', 'cycle' => 'Compensation cycle', 'position' => 'From a position', 'plan' => 'From a workforce plan'],
+        'sources' => ['manual' => 'Proposed by a person', 'cycle' => 'Compensation cycle', 'position' => 'From a position', 'plan' => 'From a workforce plan', 'import' => 'Salary upload'],
+        // Salary uploads (Compensation › Salary uploads): rows per file; each valid row becomes one cycle line.
+        'import_max_rows' => 5000,
         // Payroll calculates monthly; other frequencies are refused until Payroll supports them.
         'pay_frequencies' => ['monthly' => 'Monthly'],
         // ISO 4217 codes accepted for compensation amounts.
@@ -1943,6 +1953,8 @@ return [
             'annual_increment' => ['label' => 'Annual increment cycle', 'change_type' => 'annual_increment'],
             'promotion' => ['label' => 'Promotion cycle', 'change_type' => 'promotion'],
             'market_adjustment' => ['label' => 'Market adjustment cycle', 'change_type' => 'market_adjustment'],
+            // Prepared from a salary file, never populated or created by hand; each line carries its own change type.
+            'salary_upload' => ['label' => 'Salary upload', 'change_type' => 'revision', 'upload' => true],
         ],
         'analytics_min_group' => (int) env('PEOPLEOS_COMPENSATION_MIN_GROUP', 5),
         // Reminders: changes waiting for a decision longer than this (days); throttled per change.

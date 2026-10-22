@@ -1,0 +1,134 @@
+{
+  "01-PeopleOS-Employee-User-Training.pptx": {
+    "slides": 68,
+    "pictures": 71,
+    "screenshot_placements": 71,
+    "slides_with_notes": 68,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 3,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 6.2
+  },
+  "02-PeopleOS-Manager-Self-Service-Training.pptx": {
+    "slides": 38,
+    "pictures": 34,
+    "screenshot_placements": 34,
+    "slides_with_notes": 38,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 2,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 3.5
+  },
+  "03-PeopleOS-HR-Administrator-Training.pptx": {
+    "slides": 130,
+    "pictures": 154,
+    "screenshot_placements": 154,
+    "slides_with_notes": 130,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 4,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 14.9
+  },
+  "04-PeopleOS-Client-Onboarding-and-Implementation-Playbook.pptx": {
+    "slides": 129,
+    "pictures": 99,
+    "screenshot_placements": 99,
+    "slides_with_notes": 129,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 3,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 8.8
+  },
+  "05-PeopleOS-Platform-Administrator-Training.pptx": {
+    "slides": 42,
+    "pictures": 36,
+    "screenshot_placements": 36,
+    "slides_with_notes": 42,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 1,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 3.5
+  },
+  "06-Markedge-Internal-PeopleOS-Operations.pptx": {
+    "slides": 25,
+    "pictures": 19,
+    "screenshot_placements": 19,
+    "slides_with_notes": 25,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 1,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 2.1
+  },
+  "07-PeopleOS-Troubleshooting-and-Support-Playbook.pptx": {
+    "slides": 51,
+    "pictures": 30,
+    "screenshot_placements": 30,
+    "slides_with_notes": 51,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 1,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 3.1
+  },
+  "08-PeopleOS-Security-Governance-and-Compliance.pptx": {
+    "slides": 43,
+    "pictures": 35,
+    "screenshot_placements": 35,
+    "slides_with_notes": 43,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 2,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 3.5
+  },
+  "09-PeopleOS-Executive-and-Client-Demo.pptx": {
+    "slides": 31,
+    "pictures": 26,
+    "screenshot_placements": 26,
+    "slides_with_notes": 31,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 1,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 3.1
+  },
+  "10-PeopleOS-HCM-System-Architecture-and-Workflows.pptx": {
+    "slides": 43,
+    "pictures": 11,
+    "screenshot_placements": 11,
+    "slides_with_notes": 43,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 9,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 1.4
+  },
+  "11-PeopleOS-Implementation-UAT-and-Go-Live-Checklist.pptx": {
+    "slides": 46,
+    "pictures": 21,
+    "screenshot_placements": 21,
+    "slides_with_notes": 46,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 2,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 2.7
+  },
+  "12-PeopleOS-Reporting-and-Analytics-Training.pptx": {
+    "slides": 38,
+    "pictures": 30,
+    "screenshot_placements": 30,
+    "slides_with_notes": 38,
+    "slides_without_notes": 0,
+    "conceptual_diagram_slides": 1,
+    "distorted": [],
+    "empty": [],
+    "size_mb": 3.3
+  }
+}

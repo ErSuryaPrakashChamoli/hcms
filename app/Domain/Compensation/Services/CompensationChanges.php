@@ -66,21 +66,34 @@ final class CompensationChanges
     /** @param  array<string, mixed>  $data */
     public function propose(Employee $employee, array $data, User $actor, string $source = 'manual'): CompensationChange
     {
-        $this->authorise($actor, 'compensation.propose');
-        $employee = $this->reachable($actor, (int) $employee->getKey());
-        $this->assertNotOwn($actor, $employee);
         if (! array_key_exists($source, config('peopleos.compensation.sources', []))) {
             throw new CompensationRuleViolation("Unknown compensation change source [{$source}].");
         }
 
         return CompensationChange::query()->create([
-            ...$this->validated($employee, $data),
+            ...$this->check($employee, $data, $actor),
             'employee_id' => $employee->id,
             'source' => $source,
             'status' => 'draft',
             'internal_notes' => filled($data['internal_notes'] ?? null) ? (string) $data['internal_notes'] : null,
             'proposed_by' => $actor->id,
         ]);
+    }
+
+    /**
+     * Everything propose() checks, without writing: the normalised proposal content, or a
+     * CompensationRuleViolation. Salary uploads validate each row with it before any line exists.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function check(Employee $employee, array $data, User $actor): array
+    {
+        $this->authorise($actor, 'compensation.propose');
+        $employee = $this->reachable($actor, (int) $employee->getKey());
+        $this->assertNotOwn($actor, $employee);
+
+        return $this->validated($employee, $data);
     }
 
     /** @param  array<string, mixed>  $data */
@@ -344,14 +357,14 @@ final class CompensationChanges
             throw new CompensationRuleViolation('The salary structure is not active.');
         }
         // The structure's approved version in force on the effective date decides the components, and it
-        // must apply to the employee's company and grade on that date.
+        // must apply to the employee's company, grade and other narrowed dimensions on that date.
         $version = $structure->versionOn($from);
         if ($version === null) {
             throw new CompensationRuleViolation("Structure {$structure->code} has no approved version in force on {$from->toDateString()}.");
         }
-        $held = EmployeePosition::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->effectiveOn($from)->orderByDesc('effective_from')->first(['company_id', 'grade_id']);
-        if ($held && ! $version->appliesTo($held->company_id ? (int) $held->company_id : null, $held->grade_id ? (int) $held->grade_id : null)) {
-            throw new CompensationRuleViolation("Structure {$structure->code} v{$version->version} does not apply to this employee's company or grade.");
+        $held = EmployeePosition::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->effectiveOn($from)->orderByDesc('effective_from')->first(array_keys(EmployeePosition::DIMENSIONS));
+        if ($held && ($dimension = $version->mismatch($held->only(array_keys(EmployeePosition::DIMENSIONS)))) !== null) {
+            throw new CompensationRuleViolation("Structure {$structure->code} v{$version->version} does not apply to this employee's {$dimension}.");
         }
 
         $ctc = $data['ctc_annual'] ?? null;

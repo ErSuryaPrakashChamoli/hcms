@@ -1,0 +1,27 @@
+[
+  {
+    "name": "client-onboarding/90-onb-94-workflow-builder",
+    "file": "screenshots/client-onboarding/90-onb-94-workflow-builder.png",
+    "captured_at": "2026-10-21T07:54:58.617Z",
+    "url": "/admin/workflows/2/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      10
+    ],
+    "workflow": "Workflow and approval configuration",
+    "screen": "Workflow › Versions & builder › Open builder",
+    "action": "Open the builder of the draft version",
+    "expected": "Start → End nodes; steps (approval, task, notification, condition …) are added between them, then the version is checked and published",
+    "prereq": "Workflow created; workflow.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Opened only; no step added or published in this walkthrough. The \"Generate document\" step type is skipped at run time (F33).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

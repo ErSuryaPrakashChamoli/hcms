@@ -186,6 +186,6 @@ final class CompensationLedger implements CompensationOutput
             ->map(fn ($item) => new CompensationComponentLine($item->component, $item->formula_override, (int) $item->sort_order))
             ->values();
 
-        return new CompensationSegment(CompensationSnapshot::fromRow($row, $row->structure?->code, $version?->id), $from->copy(), $to->copy(), $components);
+        return new CompensationSegment(CompensationSnapshot::fromRow($row, $row->structure?->code, $version?->id), $from->copy(), $to->copy(), $components, array_map('floatval', (array) ($version?->parameters ?? [])));
     }
 }

@@ -54,6 +54,61 @@ final class CompensationCycles
     /** @param  array<string, mixed>  $data */
     public function create(array $data, User $actor): CompensationCycle
     {
+        if (($data['cycle_type'] ?? null) === CompensationCycle::UPLOAD) {
+            throw new CompensationRuleViolation('A salary upload cycle is prepared from a file (Compensation › Salary uploads).');
+        }
+
+        return $this->open($data, $actor);
+    }
+
+    /**
+     * A draft "salary upload" cycle whose lines are the proposals a salary file gave (SalaryImports), one
+     * per employee, source "import". Lines a rule refuses are reported, not added; a cycle that gets no
+     * line is cancelled. From here it is an ordinary cycle: submit, review, approve and execute by four
+     * different people, every line or none. It is never populated.
+     *
+     * @param  array<string, mixed>  $data  code, name, company_id, effective_from
+     * @param  array<int|string, array{0: Employee, 1: array<string, mixed>}>  $lines  key => [employee, proposal]
+     * @return array{cycle: CompensationCycle, lines: array<int|string, CompensationChange|string>} per key: the line, or why it was refused
+     */
+    public function fromUpload(array $data, array $lines, User $actor): array
+    {
+        $this->authorise($actor, 'compensation.propose');
+
+        return DB::transaction(function () use ($data, $lines, $actor) {
+            $cycle = $this->open(['cycle_type' => CompensationCycle::UPLOAD, 'default_increase_percent' => 0] + $data, $actor);
+            $results = [];
+            $snapshot = [];
+            foreach ($lines as $key => [$employee, $proposal]) {
+                try {
+                    $results[$key] = DB::transaction(function () use ($cycle, $employee, $proposal, $actor) {
+                        $change = $this->changes->propose($employee, $proposal, $actor, 'import');
+                        $change->update(['compensation_cycle_id' => $cycle->id]);
+
+                        return $change;
+                    });
+                    $snapshot[] = $employee->id.':'.$results[$key]->ctc_annual;
+                } catch (CompensationRuleViolation $e) {
+                    $results[$key] = $e->getMessage();
+                }
+            }
+
+            if ($snapshot === []) {
+                $this->cancel($cycle, $actor, 'No line of the salary upload could be proposed.');
+
+                return ['cycle' => $cycle->refresh(), 'lines' => $results];
+            }
+            sort($snapshot);
+            $cycle->update(['employee_count' => count($snapshot), 'snapshot_checksum' => hash('sha256', implode('|', $snapshot)), 'populated_at' => now(), 'lock_version' => $cycle->lock_version + 1]);
+            $this->audit->record(AuditAction::StatusChange, 'compensation', $cycle, [], null, actor: $actor, effectiveDate: $cycle->effective_from, metadata: ['event' => 'uploaded', 'lines' => count($snapshot), 'refused' => count($lines) - count($snapshot)]);
+
+            return ['cycle' => $cycle, 'lines' => $results];
+        });
+    }
+
+    /** @param  array<string, mixed>  $data */
+    private function open(array $data, User $actor): CompensationCycle
+    {
         $this->authorise($actor, 'compensation.cycles');
         foreach (['code', 'name', 'cycle_type', 'company_id', 'effective_from'] as $field) {
             if (blank($data[$field] ?? null)) {
@@ -105,6 +160,9 @@ final class CompensationCycles
 
         return DB::transaction(function () use ($cycle, $actor) {
             $current = $this->lock($cycle, ['draft']);
+            if ($current->isUpload()) {
+                throw new CompensationRuleViolation('A salary upload cycle takes its lines from its file; it is not populated.');
+            }
             $this->assertRecordInScope($actor, $current);
             $cycle->setRawAttributes($current->getAttributes(), true);
             CompensationChange::query()->withoutGlobalScope(AccessScope::class)->where('compensation_cycle_id', $cycle->id)->get()->each(fn (CompensationChange $c) => $c->delete());

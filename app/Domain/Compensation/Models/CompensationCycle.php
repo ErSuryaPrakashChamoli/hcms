@@ -25,6 +25,9 @@ class CompensationCycle extends Model
 
     public const STATUSES = ['draft' => 'Draft', 'submitted' => 'Submitted', 'under_review' => 'Under review', 'approved' => 'Approved', 'executed' => 'Executed', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled'];
 
+    /** The cycle type prepared from a salary file (SalaryImports): its lines come from the file, never from populate. */
+    public const UPLOAD = 'salary_upload';
+
     public const RULES = ['cycle_type', 'company_id', 'organisation_node_id', 'location_id', 'effective_from', 'compensation_budget_id', 'performance_cycle_id', 'default_increase_percent', 'rating_increase_percent'];
 
     protected $attributes = ['status' => 'draft', 'default_increase_percent' => 0, 'employee_count' => 0, 'lock_version' => 0];
@@ -56,6 +59,11 @@ class CompensationCycle extends Model
     public function auditLabel(): string
     {
         return "Compensation cycle {$this->code}";
+    }
+
+    public function isUpload(): bool
+    {
+        return $this->cycle_type === self::UPLOAD;
     }
 
     public function lines(): HasMany

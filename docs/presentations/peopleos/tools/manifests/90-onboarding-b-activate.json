@@ -1,0 +1,175 @@
+[
+  {
+    "name": "client-onboarding/90-onb-07-invitation-email",
+    "file": "screenshots/client-onboarding/90-onb-07-invitation-email.png",
+    "captured_at": "2026-10-21T07:12:19.807Z",
+    "url": "(e-mail rendered from the training server mail log; links removed)",
+    "http_status": null,
+    "persona": "nwadmin",
+    "user": "Farah Khan (invited)",
+    "role": "Invited first administrator",
+    "deck": [
+      4
+    ],
+    "workflow": "First administrator activation",
+    "screen": "Invitation e-mail (rendered from the outgoing message)",
+    "action": "The first administrator receives \"You have been invited to Northwind Retail Pvt Ltd on PeopleOS\"",
+    "expected": "Accept the invitation button; the link works once and expires after 72 hours",
+    "prereq": "Tenant provisioned by the operator; invitation e-mail delivered",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Rendered from the message the training server wrote to its mail log; links removed. In this development environment the sender and footer show the framework default name (\"Laravel\") because APP_NAME / MAIL_FROM_NAME are not set: a production configuration item.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Accept the invitation",
+        "x": 940,
+        "y": 533,
+        "w": 281,
+        "h": 70
+      },
+      {
+        "n": "2",
+        "label": "Expiry",
+        "x": 695,
+        "y": 635,
+        "w": 771,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-08-accept-invitation",
+    "file": "screenshots/client-onboarding/90-onb-08-accept-invitation.png",
+    "captured_at": "2026-10-21T07:12:21.553Z",
+    "url": "/admin/invitation/[token]",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Farah Khan (invited, not yet active)",
+    "role": "Invited first administrator",
+    "deck": [
+      4
+    ],
+    "workflow": "First administrator activation",
+    "screen": "Accept your invitation (/admin/invitation/\u2026)",
+    "action": "Open the link from the e-mail",
+    "expected": "Choose a password and confirm it; Activate my account",
+    "prereq": "Tenant provisioned by the operator; invitation e-mail delivered",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Password",
+        "x": 762,
+        "y": 648,
+        "w": 569,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Confirm password",
+        "x": 762,
+        "y": 780,
+        "w": 569,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Activate my account",
+        "x": 762,
+        "y": 870,
+        "w": 636,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-09-password-rules",
+    "file": "screenshots/client-onboarding/90-onb-09-password-rules.png",
+    "captured_at": "2026-10-21T07:12:23.218Z",
+    "url": "/admin/invitation/[token]",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Farah Khan (invited, not yet active)",
+    "role": "Invited first administrator",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "First administrator activation",
+    "screen": "Accept your invitation (validation)",
+    "action": "Submit a short password that does not match its confirmation",
+    "expected": "\"The password field must be at least 8 characters.\"; the account stays invited",
+    "prereq": "Tenant provisioned by the operator; invitation e-mail delivered",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Validation message",
+        "x": 762,
+        "y": 693,
+        "w": 636,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-10-account-ready-sign-in",
+    "file": "screenshots/client-onboarding/90-onb-10-account-ready-sign-in.png",
+    "captured_at": "2026-10-21T07:12:26.405Z",
+    "url": "/admin/login",
+    "http_status": null,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "First administrator activation",
+    "screen": "Sign in (after activation)",
+    "action": "Activate my account",
+    "expected": "\"Your account is ready. Sign in with your new password.\" The administrator then signs in with the e-mail address and the new password",
+    "prereq": "Tenant provisioned by the operator; invitation e-mail delivered",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-11-invitation-used",
+    "file": "screenshots/client-onboarding/90-onb-11-invitation-used.png",
+    "captured_at": "2026-10-21T07:12:28.351Z",
+    "url": "/admin/invitation/[token]",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "First administrator activation: link reuse",
+    "screen": "Accept your invitation (used link)",
+    "action": "Open the same invitation link again",
+    "expected": "\"This invitation link is invalid or has expired. Ask your administrator to send a new one.\" (one-time link)",
+    "prereq": "Tenant provisioned by the operator; invitation e-mail delivered",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

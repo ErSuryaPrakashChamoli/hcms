@@ -1,0 +1,342 @@
+[
+  {
+    "name": "client-onboarding/90-onb-78-new-establishment-statutory-profile",
+    "file": "screenshots/client-onboarding/90-onb-78-new-establishment-statutory-profile.png",
+    "captured_at": "2026-10-21T07:50:04.005Z",
+    "url": "/admin/establishment-statutory-profiles",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Statutory configuration",
+    "screen": "People \u203a Pay \u203a Statutory profiles \u203a New profile",
+    "action": "Establishment, statute (EPF, ESI, PT, LWF, TDS), the registration that covers it, effective dates, reason",
+    "expected": "Tells payroll which statutes apply where",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Recorded before the EPF registration existed, so no registration was offered and the profile was saved without one. Record the registration first, then the profile.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Establishment",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Statute",
+        "x": 30,
+        "y": 276,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Registration",
+        "x": 30,
+        "y": 474,
+        "w": 1284,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-73-salary-components",
+    "file": "screenshots/client-onboarding/90-onb-73-salary-components.png",
+    "captured_at": "2026-10-21T07:51:13.793Z",
+    "url": "/admin/salary-components",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Payroll components and salary structures",
+    "screen": "People \u203a Pay \u203a Salary components",
+    "action": "Review the starting components every new tenant receives",
+    "expected": "Basic (40 % of monthly CTC), HRA (50 % of basic), Conveyance, Special allowance (balancing), Bonus \u2026; each with a formula, order and flags; statutory lines are never configured here",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Formula-based component",
+        "x": 426,
+        "y": 530,
+        "w": 1973,
+        "h": 98
+      },
+      {
+        "n": "2",
+        "label": "New salary component",
+        "x": 1841,
+        "y": 244,
+        "w": 278,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-74-salary-component-edit",
+    "file": "screenshots/client-onboarding/90-onb-74-salary-component-edit.png",
+    "captured_at": "2026-10-21T07:51:16.106Z",
+    "url": "/admin/salary-components/7/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Payroll components and salary structures",
+    "screen": "Salary components \u203a Basic (edit)",
+    "action": "Open a component to review its formula",
+    "expected": "Formula validated on save; changes need a reason and may wait in the Change Centre when approval is on",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-75-salary-structures",
+    "file": "screenshots/client-onboarding/90-onb-75-salary-structures.png",
+    "captured_at": "2026-10-21T07:51:17.934Z",
+    "url": "/admin/salary-structures",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Payroll components and salary structures",
+    "screen": "People \u203a Pay \u203a Salary structures",
+    "action": "Review the salary structure",
+    "expected": "A Standard structure (v1) is seeded; new versions are drafted, submitted and approved",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Structure",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-76a-registration-needs-establishment",
+    "file": "screenshots/client-onboarding/90-onb-76a-registration-needs-establishment.png",
+    "captured_at": "2026-10-21T07:51:24.963Z",
+    "url": "/admin/statutory-registrations",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Statutory configuration: common error",
+    "screen": "Statutory registrations \u203a New registration (refused)",
+    "action": "Submit an EPF establishment code at entity level (no establishment chosen)",
+    "expected": "\"A EPF establishment code registration belongs to an establishment.\" Nothing is saved",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Rule message",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 123
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-76-new-statutory-registration",
+    "file": "screenshots/client-onboarding/90-onb-76-new-statutory-registration.png",
+    "captured_at": "2026-10-21T07:51:30.140Z",
+    "url": "/admin/statutory-registrations",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Statutory configuration",
+    "screen": "People \u203a Pay \u203a Statutory registrations \u203a New registration",
+    "action": "Legal entity, establishment, registration type, number, name, jurisdiction, state, effective date, reason",
+    "expected": "The employer\u2019s EPF / ESIC / PT / LWF / TAN registrations held as effective-dated records",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "The registration number is fictional.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Legal entity",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Establishment",
+        "x": 30,
+        "y": 276,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Registration type",
+        "x": 30,
+        "y": 408,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Number",
+        "x": 30,
+        "y": 540,
+        "w": 1284,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-77-statutory-registrations",
+    "file": "screenshots/client-onboarding/90-onb-77-statutory-registrations.png",
+    "captured_at": "2026-10-21T07:51:38.937Z",
+    "url": "/admin/statutory-registrations",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Statutory configuration",
+    "screen": "People \u203a Pay \u203a Statutory registrations",
+    "action": "Back to the list",
+    "expected": "EPF establishment code for the legal entity, with its state and effective date",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [
+      "1:Registration"
+    ],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-79-establishment-statutory-profiles",
+    "file": "screenshots/client-onboarding/90-onb-79-establishment-statutory-profiles.png",
+    "captured_at": "2026-10-21T07:51:42.114Z",
+    "url": "/admin/establishment-statutory-profiles",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Statutory configuration",
+    "screen": "People \u203a Pay \u203a Statutory profiles",
+    "action": "Back to the list",
+    "expected": "EPF profile for the principal establishment",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-80-compliance-control-room",
+    "file": "screenshots/client-onboarding/90-onb-80-compliance-control-room.png",
+    "captured_at": "2026-10-21T07:51:43.871Z",
+    "url": "/admin/compliance-control-room",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3,
+      8
+    ],
+    "workflow": "Statutory configuration",
+    "screen": "People \u203a Pay \u203a Control room (compliance)",
+    "action": "Open the Compliance control room",
+    "expected": "Rules this tenant needs per establishment and whether each is verified; returns; production gate. Rule verification is a platform (Markedge) responsibility",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "AVAILABLE ONLY AFTER CONFIGURATION",
+    "note": "Statutory rules are unverified (0 of 24 at the time of capture), so payroll cannot be finalised; see the release gate.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-81-compliance-rules",
+    "file": "screenshots/client-onboarding/90-onb-81-compliance-rules.png",
+    "captured_at": "2026-10-21T07:51:45.534Z",
+    "url": "/admin/compliance-rules",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      5,
+      8
+    ],
+    "workflow": "Statutory configuration",
+    "screen": "People \u203a Pay \u203a Compliance rules (read only for the tenant)",
+    "action": "Open Compliance rules",
+    "expected": "The statutory rule versions shipped by the platform with their verification status",
+    "prereq": "Signed in as the tenant administrator (payroll.manage, compliance.manage)",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "Verification needs two platform administrators with official evidence; until then payroll finalisation is blocked.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

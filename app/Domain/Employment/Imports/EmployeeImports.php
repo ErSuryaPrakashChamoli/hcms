@@ -2,6 +2,7 @@
 
 namespace App\Domain\Employment\Imports;
 
+use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Actions\HireEmployeeAction;
 use App\Domain\Employment\Models\Employee;
@@ -22,12 +23,16 @@ use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\Organisation\Services\OrganisationCodes;
 use App\Domain\People\Actions\UpdatePersonAction;
 use App\Domain\People\Services\PersonMatcher;
+use App\Domain\Platform\Services\FeatureFlags;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use League\Csv\Reader;
+use League\Csv\Writer;
 use RuntimeException;
 
 /**
@@ -37,6 +42,8 @@ use RuntimeException;
  */
 final class EmployeeImports
 {
+    public const FEATURE = 'employee.import_export';
+
     /** Canonical import fields: key => [label, required]. Organisation values are matched by code. */
     public const FIELDS = [
         'person.first_name' => ['First name', true], 'person.middle_name' => ['Middle name', false], 'person.last_name' => ['Last name', true],
@@ -79,9 +86,16 @@ final class EmployeeImports
         return 'tenants/'.app(TenantContext::class)->id().'/imports';
     }
 
+    /** Platform-controlled flag: Markedge switches bulk import and export on per organisation. */
+    public static function enabled(): bool
+    {
+        return app(FeatureFlags::class)->enabled(self::FEATURE);
+    }
+
     /** Register an uploaded CSV that already sits on the private disk (Filament upload) or store a raw file. */
     public function register(string $path, string $originalName, User $user, ?string $reason = null): EmployeeImport
     {
+        $this->assertEnabled();
         $disk = self::disk();
         if (! Storage::disk($disk)->exists($path)) {
             throw new RuntimeException('The uploaded file could not be found on the private disk.');
@@ -151,6 +165,65 @@ final class EmployeeImports
         }
 
         return $mapping;
+    }
+
+    /**
+     * Downloadable starting file: every field label as a header, so an upload maps automatically, and one
+     * example row built from this tenant's own active codes (earliest created first, usually the main
+     * entity). Employee code is left blank to be generated.
+     */
+    public function template(): string
+    {
+        $this->assertEnabled();
+        $active = fn (string $model) => $model::query()->where('status', 'active')->orderBy('id');
+        $company = $active(Company::class)->first();
+        $ofCompany = fn (string $model) => $company ? $active($model)->where('company_id', $company->getKey())->value('code') : null;
+
+        $example = [
+            'person.first_name' => 'Asha', 'person.last_name' => 'Rao', 'person.date_of_birth' => '1995-01-15', 'person.personal_email' => 'asha.personal@example.com',
+            'employee.joining_date' => now()->toDateString(), 'employee.work_email' => 'asha.rao@example.com',
+            'position.company_code' => $company?->code, 'position.location_code' => $ofCompany(Location::class), 'position.department_code' => $ofCompany(Department::class),
+            'position.designation_code' => $active(Designation::class)->value('code'), 'position.employment_type_code' => $active(EmploymentType::class)->value('code'),
+            'position.work_mode_code' => $active(WorkMode::class)->value('code'),
+        ];
+
+        $csv = Writer::fromString();
+        $csv->insertOne(array_column(self::FIELDS, 0));
+        $csv->insertOne(array_map(fn ($field) => $example[$field] ?? '', array_keys(self::FIELDS)));
+
+        return $csv->toString();
+    }
+
+    /**
+     * Employees in the template format, so the file can be edited and uploaded back: each row matches its employee
+     * by code and updates person and contact details (position and manager changes go through moves, not imports).
+     */
+    public function export(Builder $employees, User $user): string
+    {
+        $this->assertEnabled();
+        $codes = collect(self::ORGANISATION)->map(fn (array $dimension) => $dimension[1]::query()->pluck('code', 'id')->all())->all();
+        $value = fn (?Model $model, string $key) => ($v = $model?->getAttribute($key)) instanceof \DateTimeInterface ? $v->format('Y-m-d') : $v;
+
+        $csv = Writer::fromString();
+        $csv->insertOne(array_column(self::FIELDS, 0));
+        $count = 0;
+        foreach ($employees->with(['person', 'currentPosition', 'currentManager.manager'])->lazyById(500) as $employee) {
+            $csv->insertOne(array_map(function (string $field) use ($employee, $codes, $value) {
+                [$group, $key] = str_contains($field, '.') ? explode('.', $field, 2) : [$field, ''];
+
+                return match ($group) {
+                    'person' => $value($employee->person, $key),
+                    'employee' => $value($employee, $key),
+                    'position' => $codes[$key][$employee->currentPosition?->getAttribute(self::ORGANISATION[$key][0])] ?? null,
+                    default => $employee->currentManager?->manager?->employee_code,
+                };
+            }, array_keys(self::FIELDS)));
+            $count++;
+        }
+
+        $this->audit->record(AuditAction::Export, 'employment', null, [], null, actor: $user, metadata: ['export' => 'employees_import_format', 'rows' => $count]);
+
+        return $csv->toString();
     }
 
     /** @param  array<string, string|null>  $mapping  header => field */
@@ -282,6 +355,7 @@ final class EmployeeImports
     public function run(EmployeeImport $import, User $user): EmployeeImport
     {
         $this->assertStatus($import, ['approved']);
+        $this->assertEnabled();
         $import->update(['status' => 'importing']);
         $mapping = $import->mapping ?? [];
         $result = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'ids' => []];
@@ -431,6 +505,13 @@ final class EmployeeImports
         }
 
         return $employee->refresh();
+    }
+
+    private function assertEnabled(): void
+    {
+        if (! self::enabled()) {
+            throw new RuntimeException('Employee import and export is not switched on for this organisation; Markedge can switch it on.');
+        }
     }
 
     private function assertStatus(EmployeeImport $import, array $allowed): void

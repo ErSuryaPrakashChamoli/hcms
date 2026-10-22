@@ -1,0 +1,137 @@
+[
+  {
+    "name": "platform-admin/01-operator-sign-in",
+    "file": "screenshots/platform-admin/01-operator-sign-in.png",
+    "captured_at": "2026-10-21T06:49:18.491Z",
+    "url": "/admin/login",
+    "http_status": null,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Operator sign-in and MFA enrolment",
+    "screen": "Sign in (/admin/login)",
+    "action": "The platform operator signs in on the same sign-in page as tenant users",
+    "expected": "E-mail and password fields; Forgot password?",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Operator e-mail",
+        "x": 762,
+        "y": 592,
+        "w": 636,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Password",
+        "x": 762,
+        "y": 728,
+        "w": 569,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Sign in",
+        "x": 762,
+        "y": 884,
+        "w": 636,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/02-mfa-setup-required",
+    "file": "screenshots/platform-admin/02-mfa-setup-required.png",
+    "captured_at": "2026-10-21T06:49:21.053Z",
+    "url": "/admin/multi-factor-authentication/set-up",
+    "http_status": null,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8,
+      7
+    ],
+    "workflow": "Operator sign-in and MFA enrolment",
+    "screen": "Set up two-factor authentication (forced)",
+    "action": "An operator without an authenticator is held on the set-up page after the password step",
+    "expected": "Nothing else in the application opens until an authenticator app is set up",
+    "prereq": "Platform policy PEOPLEOS_PLATFORM_MFA_REQUIRED (default true)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Set up",
+        "x": 786,
+        "y": 753,
+        "w": 114,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/03-mfa-setup-modal-redacted",
+    "file": "screenshots/platform-admin/03-mfa-setup-modal-redacted.png",
+    "captured_at": "2026-10-21T06:49:22.730Z",
+    "url": "/admin/multi-factor-authentication/set-up",
+    "http_status": null,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Operator sign-in and MFA enrolment",
+    "screen": "Set up authenticator app (modal)",
+    "action": "Scan the QR code (or type the key) in an authenticator app, enter the 6-digit code and the current password, then Next",
+    "expected": "Set-up completes only with a valid code and the current password",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "QR code and manual key covered for the screenshot (secret). Nothing else altered.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "6-digit code",
+        "x": 798,
+        "y": 729,
+        "w": 72,
+        "h": 78
+      },
+      {
+        "n": "2",
+        "label": "Current password",
+        "x": 726,
+        "y": 945,
+        "w": 641,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Next",
+        "x": 1340,
+        "y": 1035,
+        "w": 95,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

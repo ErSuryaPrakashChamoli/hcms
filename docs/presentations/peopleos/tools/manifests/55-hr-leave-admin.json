@@ -1,0 +1,537 @@
+[
+  {
+    "name": "hr-admin/55-lv-01-balances",
+    "file": "screenshots/hr-admin/55-lv-01-balances.png",
+    "captured_at": "2026-10-21T07:54:11.445Z",
+    "url": "/admin/leave-balances",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      12
+    ],
+    "workflow": "Leave balances and adjustment (HR)",
+    "screen": "People \u203a Time & leave \u203a Balances",
+    "action": "Open Balances",
+    "expected": "Per person, type and year: opening, accrued, adjusted, used, pending, encashed, lapsed, closing, available; Run accrual now; Adjust / Encash per row",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Run accrual now",
+        "x": 1868,
+        "y": 244,
+        "w": 251,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Adjust",
+        "x": 1976,
+        "y": 632,
+        "w": 107,
+        "h": 48
+      },
+      {
+        "n": "3",
+        "label": "Encash",
+        "x": 1968,
+        "y": 887,
+        "w": 114,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/55-lv-err-02-balances-search",
+    "file": "screenshots/support/55-lv-err-02-balances-search.png",
+    "captured_at": "2026-10-21T07:54:41.500Z",
+    "url": "/admin/leave-balances?search=Zoya",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      7,
+      3
+    ],
+    "workflow": "Leave balances: search by name fails",
+    "screen": "People \u203a Time & leave \u203a Balances (search box)",
+    "action": "Type a name in the Balances search box",
+    "expected": "Internal Server Error: QueryException SQLSTATE[42S22] \"Unknown column 'people' in 'where clause'\" \u2014 the name search is built as a JSON path on the people table. Workaround: filters / paging, or the person\u2019s Employee 360 \u203a Records \u203a Time.",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "INCOMPLETE",
+    "note": "Not in documentation-gaps F1\u2013F46. Seen on MySQL.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-02-adjust-form",
+    "file": "screenshots/hr-admin/55-lv-02-adjust-form.png",
+    "captured_at": "2026-10-21T07:54:45.706Z",
+    "url": "/admin/leave-balances",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Leave balances and adjustment (HR)",
+    "screen": "Balances \u203a Adjust",
+    "action": "Adjust a balance: days (+ or \u2212) and a note",
+    "expected": "The adjustment is posted to the leave ledger with the note",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Days",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Note",
+        "x": 30,
+        "y": 318,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-04-ledger",
+    "file": "screenshots/hr-admin/55-lv-04-ledger.png",
+    "captured_at": "2026-10-21T07:56:20.685Z",
+    "url": "/admin/leave-transactions",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      10
+    ],
+    "workflow": "Leave balances and adjustment (HR)",
+    "screen": "People \u203a Time & leave \u203a Transactions (Leave ledger entries)",
+    "action": "Open the leave ledger",
+    "expected": "Append-only ledger: the adjustment appears as its own entry with the note",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Adjustment entry",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 134
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-05-leave-types",
+    "file": "screenshots/hr-admin/55-lv-05-leave-types.png",
+    "captured_at": "2026-10-21T07:56:22.743Z",
+    "url": "/admin/leave-types",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Leave types and leave policy (configuration)",
+    "screen": "People \u203a Time & leave \u203a All in Time & leave \u203a Leave types",
+    "action": "Open Leave types",
+    "expected": "Name, code, category, paid, half day, encashable, unit, approval, eligibility, status; New leave type",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New leave type",
+        "x": 1917,
+        "y": 244,
+        "w": 201,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Leave type",
+        "x": 426,
+        "y": 616,
+        "w": 1760,
+        "h": 98
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-06-leave-type-edit",
+    "file": "screenshots/hr-admin/55-lv-06-leave-type-edit.png",
+    "captured_at": "2026-10-21T07:56:24.658Z",
+    "url": "/admin/leave-types",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Leave types and leave policy (configuration)",
+    "screen": "Leave types \u203a Edit Casual leave",
+    "action": "Open a leave type (opened only, then cancelled)",
+    "expected": "Rules of the type; the code is locked on edit; a reason is required for changes",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-07-policies",
+    "file": "screenshots/hr-admin/55-lv-07-policies.png",
+    "captured_at": "2026-10-21T07:56:27.426Z",
+    "url": "/admin/policies",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      10
+    ],
+    "workflow": "Leave types and leave policy (configuration)",
+    "screen": "Workflows \u203a Policies",
+    "action": "Open Policies",
+    "expected": "Versioned policies (exit, attendance, working hours, leave) with effective dates",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Leave policy",
+        "x": 444,
+        "y": 788,
+        "w": 342,
+        "h": 96
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-08-leave-policy",
+    "file": "screenshots/hr-admin/55-lv-08-leave-policy.png",
+    "captured_at": "2026-10-21T07:56:29.620Z",
+    "url": "/admin/policies/1/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      10
+    ],
+    "workflow": "Leave types and leave policy (configuration)",
+    "screen": "Policies \u203a Standard leave",
+    "action": "Open the leave policy",
+    "expected": "Policy versions with effective dates; entitlements per leave type live in the version settings",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-09-requests-hr",
+    "file": "screenshots/hr-admin/55-lv-09-requests-hr.png",
+    "captured_at": "2026-10-21T07:56:31.903Z",
+    "url": "/admin/leave-requests",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      12
+    ],
+    "workflow": "Apply leave on behalf of an employee (HR)",
+    "screen": "People \u203a Time & leave \u203a Leave requests (HR view)",
+    "action": "Open Leave requests",
+    "expected": "Everyone\u2019s requests with status tabs; Apply on behalf; Approve / Reject / Cancel per row; link to the Approval Center",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Apply on behalf",
+        "x": 1872,
+        "y": 244,
+        "w": 246,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Status tabs",
+        "x": 543,
+        "y": 357,
+        "w": 311,
+        "h": 57
+      },
+      {
+        "n": "3",
+        "label": "Approval Center",
+        "x": 1791,
+        "y": 366,
+        "w": 309,
+        "h": 40
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/55-lv-err-01-apply-on-behalf",
+    "file": "screenshots/support/55-lv-err-01-apply-on-behalf.png",
+    "captured_at": "2026-10-21T07:57:01.628Z",
+    "url": "/admin/leave-requests",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      7
+    ],
+    "workflow": "Apply on behalf (known defect F38)",
+    "screen": "Leave requests \u203a Apply on behalf",
+    "action": "Open Apply on behalf",
+    "expected": "Internal Server Error when the dialog opens: \"Call to a member function getFormData() on array\" (F38). Use the Employee 360 instead (next steps).",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "INCOMPLETE",
+    "note": "ListLeaveRequests.php:27 \u2014 still present at 72c96a73.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-10-360-time-apply",
+    "file": "screenshots/hr-admin/55-lv-10-360-time-apply.png",
+    "captured_at": "2026-10-21T07:57:09.154Z",
+    "url": "/admin/employees/12?relation=2#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Apply leave on behalf (working route: Employee 360)",
+    "screen": "Employee 360 \u203a Records \u203a Time",
+    "action": "Open the person\u2019s Records \u203a Time",
+    "expected": "Attendance and leave for the person; the Leave section shows balances and Apply for leave",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Apply for leave",
+        "x": 1845,
+        "y": 1235,
+        "w": 237,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Balances",
+        "x": 462,
+        "y": 1244,
+        "w": 506,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-11-apply-form",
+    "file": "screenshots/hr-admin/55-lv-11-apply-form.png",
+    "captured_at": "2026-10-21T07:57:15.018Z",
+    "url": "/admin/employees/12?relation=2#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Apply leave on behalf (working route: Employee 360)",
+    "screen": "Employee 360 \u203a Records \u203a Time \u203a Apply for leave",
+    "action": "HR enters the request for the employee",
+    "expected": "Same form and preview as the employee\u2019s own request",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Leave type",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Reason",
+        "x": 30,
+        "y": 763,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-12-applied",
+    "file": "screenshots/hr-admin/55-lv-12-applied.png",
+    "captured_at": "2026-10-21T07:58:47.800Z",
+    "url": "/admin/employees/12?relation=2#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Apply leave on behalf (working route: Employee 360)",
+    "screen": "Employee 360 (after applying)",
+    "action": "Submit",
+    "expected": "Confirmation; the request goes to the employee\u2019s approver like any other",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-13-leave-calendar",
+    "file": "screenshots/hr-admin/55-lv-13-leave-calendar.png",
+    "captured_at": "2026-10-21T07:58:49.821Z",
+    "url": "/admin/leave-calendar",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      12
+    ],
+    "workflow": "Leave calendar (HR view)",
+    "screen": "People \u203a Time & leave \u203a Leave calendar",
+    "action": "Open the leave calendar",
+    "expected": "Approved and pending leave in the window (this month to the end of next); reasons are never shown",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Status",
+        "x": 1902,
+        "y": 414,
+        "w": 216,
+        "h": 85
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/55-lv-03-adjusted",
+    "file": "screenshots/hr-admin/55-lv-03-adjusted.png",
+    "captured_at": "2026-10-21T07:59:11.794Z",
+    "url": "/admin/leave-balances",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Leave balances and adjustment (HR)",
+    "screen": "Balances (after Adjust)",
+    "action": "Submit the adjustment (\"Balance adjusted\")",
+    "expected": "Adjusted and Available updated for the row (Casual leave: adjusted 1.0)",
+    "prereq": "leave.manage (Tenant HR Admin, HR Manager, Attendance Admin \u2026)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Updated balance",
+        "x": 426,
+        "y": 713,
+        "w": 1986,
+        "h": 140
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

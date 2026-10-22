@@ -1,0 +1,302 @@
+[
+  {
+    "name": "client-onboarding/90-onb-01-platform-home",
+    "file": "screenshots/client-onboarding/90-onb-01-platform-home.png",
+    "captured_at": "2026-10-21T07:10:47.566Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      4,
+      5
+    ],
+    "workflow": "Tenant provisioning (operator)",
+    "screen": "Platform home (operator)",
+    "action": "The operator signs in (password + authenticator code) and lands on the Platform home",
+    "expected": "Tenants and Platform health; operators work outside any tenant until they choose one",
+    "prereq": "Platform operator account with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Manage tenants",
+        "x": 1338,
+        "y": 293,
+        "w": 204,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Open readiness",
+        "x": 1608,
+        "y": 450,
+        "w": 188,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-02-tenants-list",
+    "file": "screenshots/client-onboarding/90-onb-02-tenants-list.png",
+    "captured_at": "2026-10-21T07:10:49.263Z",
+    "url": "/admin/tenants",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      4,
+      5
+    ],
+    "workflow": "Tenant provisioning (operator)",
+    "screen": "Admin › Platform › Tenants",
+    "action": "Open Admin › Platform › Tenants",
+    "expected": "Every tenant with slug, status, country, users; New tenant; row actions Enter, Suspend, Edit",
+    "prereq": "Platform operator account with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New tenant",
+        "x": 1953,
+        "y": 244,
+        "w": 165,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Enter (work in tenant)",
+        "x": 1766,
+        "y": 555,
+        "w": 95,
+        "h": 48
+      },
+      {
+        "n": "3",
+        "label": "Suspend",
+        "x": 1866,
+        "y": 555,
+        "w": 129,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-03-new-tenant-form",
+    "file": "screenshots/client-onboarding/90-onb-03-new-tenant-form.png",
+    "captured_at": "2026-10-21T07:10:53.555Z",
+    "url": "/admin/tenants/create",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      4,
+      5
+    ],
+    "workflow": "Tenant provisioning (operator)",
+    "screen": "Tenants › New tenant",
+    "action": "Fill tier, data region, name (the slug is suggested from it), status, locale defaults, the first administrator and a reason for change",
+    "expected": "The first administrator is provisioned as Tenant Super Admin and invited by e-mail; the operator never sets a password",
+    "prereq": "Platform operator account with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Tier",
+        "x": 462,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Data region",
+        "x": 855,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Slug",
+        "x": 855,
+        "y": 650,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Locale defaults",
+        "x": 1320,
+        "y": 518,
+        "w": 173,
+        "h": 66
+      },
+      {
+        "n": "5",
+        "label": "First administrator",
+        "x": 855,
+        "y": 1155,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "6",
+        "label": "Reason for change",
+        "x": 426,
+        "y": 1323,
+        "w": 1692,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-04-duplicate-tenant-refused",
+    "file": "screenshots/client-onboarding/90-onb-04-duplicate-tenant-refused.png",
+    "captured_at": "2026-10-21T07:10:56.366Z",
+    "url": "/admin/tenants/create",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Tenant provisioning (operator): duplicate checks",
+    "screen": "Tenants › New tenant (validation)",
+    "action": "Submit the same tenant again",
+    "expected": "\"The slug has already been taken.\" and \"The email has already been taken.\" — nothing is created",
+    "prereq": "Platform operator account with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Slug taken",
+        "x": 855,
+        "y": 716,
+        "w": 369,
+        "h": 42
+      },
+      {
+        "n": "2",
+        "label": "E-mail taken",
+        "x": 855,
+        "y": 1263,
+        "w": 369,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-05-tenants-with-northwind",
+    "file": "screenshots/client-onboarding/90-onb-05-tenants-with-northwind.png",
+    "captured_at": "2026-10-21T07:10:58.023Z",
+    "url": "/admin/tenants",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      4,
+      5
+    ],
+    "workflow": "Tenant provisioning (operator)",
+    "screen": "Admin › Platform › Tenants",
+    "action": "Back to the Tenants list",
+    "expected": "Northwind Retail is listed as Active with 1 user (the invited administrator) and a Send invitation action",
+    "prereq": "Platform operator account with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New tenant",
+        "x": 426,
+        "y": 616,
+        "w": 1692,
+        "h": 97
+      },
+      {
+        "n": "2",
+        "label": "Send invitation",
+        "x": 1806,
+        "y": 641,
+        "w": 189,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-06-tenant-edit",
+    "file": "screenshots/client-onboarding/90-onb-06-tenant-edit.png",
+    "captured_at": "2026-10-21T07:10:59.844Z",
+    "url": "/admin/tenants/2/edit",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      4,
+      5
+    ],
+    "workflow": "Tenant provisioning (operator)",
+    "screen": "Tenants › Edit tenant",
+    "action": "Open the tenant record",
+    "expected": "Operator-only settings: tier, data region, status, trial metadata, locale defaults",
+    "prereq": "Platform operator account with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Status (read-only here)",
+        "x": 462,
+        "y": 824,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Lifecycle via Suspend / Reactivate",
+        "x": 462,
+        "y": 890,
+        "w": 369,
+        "h": 72
+      },
+      {
+        "n": "3",
+        "label": "Tier",
+        "x": 462,
+        "y": 560,
+        "w": 369,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

@@ -2,11 +2,14 @@
 
 namespace App\Filament\Resources\EmployeeImports\Pages;
 
+use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImports;
 use App\Filament\Resources\EmployeeImports\EmployeeImportResource;
 use App\Filament\Support\Pages\PeopleListRecords;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Support\Icons\Heroicon;
 
 class ListEmployeeImports extends PeopleListRecords
 {
@@ -15,10 +18,20 @@ class ListEmployeeImports extends PeopleListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('downloadTemplate')
+                ->label('Download template')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('gray')
+                ->visible(fn () => auth()->user()->can('create', EmployeeImport::class))
+                ->action(function () {
+                    $csv = app(EmployeeImports::class)->template();
+
+                    return response()->streamDownload(fn () => print ($csv), 'employee-import-template.csv', ['Content-Type' => 'text/csv']);
+                }),
             CreateAction::make()
                 ->label('Upload CSV')
                 ->modalHeading('Upload an employee file')
-                ->modalDescription('CSV with a header row. Nothing is written to employees until the file is mapped, validated, approved and run.')
+                ->modalDescription('CSV with a header row; start from Download template and replace the example row with your people. Nothing is written to employees until the file is mapped, validated, approved and run.')
                 ->schema([
                     FileUpload::make('file')
                         ->label('CSV file')

@@ -48,7 +48,7 @@ class TenantFeatureResource extends Resource
             ->columns([
                 TextColumn::make('feature')->searchable()->sortable(),
                 TextColumn::make('description')
-                    ->state(fn (TenantFeature $record) => config("peopleos.features.{$record->feature}.description"))
+                    ->state(fn (TenantFeature $record) => (config('peopleos.features')[$record->feature]['description'] ?? '').(FeatureFlags::platformControlled($record->feature) ? ' (set by Markedge; ask your account manager to change it)' : ''))
                     ->placeholder('—'),
                 IconColumn::make('enabled')->boolean()->sortable(),
                 TextColumn::make('updated_at')->dateTime()->sortable(),

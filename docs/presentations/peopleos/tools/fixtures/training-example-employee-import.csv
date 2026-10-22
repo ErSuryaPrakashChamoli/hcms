@@ -1,0 +1,4 @@
+first_name,last_name,personal_email,work_email,joining_date,department,designation
+Ishita,Banerjee,ishita.banerjee@example.test,ishita.banerjee@demo.local,2026-11-02,Engineering,Software Engineer
+Kabir,Malik,kabir.malik@example.test,kabir.malik@demo.local,2026-11-02,Design,Product Designer
+Ritu,Saxena,ritu.saxena@example.test,ritu.saxena@demo.local,2026-11-09,Finance,Finance Analyst

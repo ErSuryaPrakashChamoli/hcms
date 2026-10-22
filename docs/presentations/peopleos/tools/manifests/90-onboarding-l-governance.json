@@ -1,0 +1,412 @@
+[
+  {
+    "name": "client-onboarding/90-onb-82-new-workflow",
+    "file": "screenshots/client-onboarding/90-onb-82-new-workflow.png",
+    "captured_at": "2026-10-21T07:53:36.900Z",
+    "url": "/admin/workflows/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Workflow and approval configuration",
+    "screen": "Workflows › Workflows › New workflow",
+    "action": "Name, key, trigger event, subject type, conditions, status",
+    "expected": "The workflow starts automatically on its trigger (here: probation ending soon); steps are added in the builder after saving",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Name",
+        "x": 462,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Trigger event",
+        "x": 462,
+        "y": 650,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Subject",
+        "x": 855,
+        "y": 650,
+        "w": 369,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-83-workflow-saved",
+    "file": "screenshots/client-onboarding/90-onb-83-workflow-saved.png",
+    "captured_at": "2026-10-21T07:53:42.364Z",
+    "url": "/admin/workflows/2/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Workflow and approval configuration",
+    "screen": "Workflow (after creating)",
+    "action": "Create workflow",
+    "expected": "Versions, the step builder and history; a draft version is edited, then published",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-84-notification-rules",
+    "file": "screenshots/client-onboarding/90-onb-84-notification-rules.png",
+    "captured_at": "2026-10-21T07:53:44.047Z",
+    "url": "/admin/notification-rules",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Notification configuration",
+    "screen": "Communication › Notification rules",
+    "action": "Open Notification rules in a new tenant",
+    "expected": "No rules and no \"New\" action: rules cannot be created or deleted from the screen (known limitation F18), so e-mail notices for leave and approvals are not sent unless a rule exists",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "INCOMPLETE",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-85-security-policy",
+    "file": "screenshots/client-onboarding/90-onb-85-security-policy.png",
+    "captured_at": "2026-10-21T07:53:54.739Z",
+    "url": "/admin/security-policy-page",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Security and tenant settings",
+    "screen": "Admin › Platform › Security policy",
+    "action": "Review access, password, retention and data-warehouse settings",
+    "expected": "Require MFA, session and idle timeouts, password rules, retention days; Save policy. Shown only, not changed in this walkthrough",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Known limitations: password expiry is stored but not enforced (F2).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "3",
+        "label": "Save policy",
+        "x": 1955,
+        "y": 224,
+        "w": 164,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [
+      "1:Access (MFA, sessions)",
+      "2:Passwords"
+    ],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-86-settings",
+    "file": "screenshots/client-onboarding/90-onb-86-settings.png",
+    "captured_at": "2026-10-21T07:53:56.534Z",
+    "url": "/admin/tenant-settings",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Security and tenant settings",
+    "screen": "Admin › Setup › Settings",
+    "action": "Review the tenant settings",
+    "expected": "Seeded keys (attendance windows, probation months, employee code padding …); each change needs a reason",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Several keys have no effect yet (F30), e.g. branding colour and locale.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-87-feature-flags",
+    "file": "screenshots/client-onboarding/90-onb-87-feature-flags.png",
+    "captured_at": "2026-10-21T07:53:58.370Z",
+    "url": "/admin/tenant-features",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Security and tenant settings",
+    "screen": "Admin › Setup › Feature flags",
+    "action": "Review feature flags",
+    "expected": "AI assistants on, external language model (ai.llm) off, configuration approval, sensitive-access audit …",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "External LLM off",
+        "x": 426,
+        "y": 616,
+        "w": 1692,
+        "h": 98
+      },
+      {
+        "n": "2",
+        "label": "Change approval",
+        "x": 426,
+        "y": 958,
+        "w": 1692,
+        "h": 98
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-88-change-centre",
+    "file": "screenshots/client-onboarding/90-onb-88-change-centre.png",
+    "captured_at": "2026-10-21T07:54:00.198Z",
+    "url": "/admin/configuration-changes",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Validation and audit of the set-up",
+    "screen": "Admin › Setup › Change Centre",
+    "action": "Open the Change Centre",
+    "expected": "Pending approval / Scheduled / Recently published / Rejected / History. Empty here: configuration approval is off, and creates apply immediately",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Only the main edit form of certain records waits for approval; settings, flags, creates and deletes apply immediately (F29).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-89-audit-trail",
+    "file": "screenshots/client-onboarding/90-onb-89-audit-trail.png",
+    "captured_at": "2026-10-21T07:54:02.188Z",
+    "url": "/admin/audit-events",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Validation and audit of the set-up",
+    "screen": "Insights › Audit › Change history (Audit events)",
+    "action": "Review what was set up, by whom, when and why",
+    "expected": "Every create, change, invitation, sign-in and role change of the implementation, newest first",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Verify integrity",
+        "x": 1880,
+        "y": 244,
+        "w": 239,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Latest event",
+        "x": 426,
+        "y": 530,
+        "w": 2331,
+        "h": 98
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-90-audit-verified",
+    "file": "screenshots/client-onboarding/90-onb-90-audit-verified.png",
+    "captured_at": "2026-10-21T07:54:06.419Z",
+    "url": "/admin/audit-events",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      8
+    ],
+    "workflow": "Validation and audit of the set-up",
+    "screen": "Change history › Verify integrity",
+    "action": "Verify integrity",
+    "expected": "The tenant’s audit hash chain is checked and the result shown",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-91-import-upload",
+    "file": "screenshots/client-onboarding/90-onb-91-import-upload.png",
+    "captured_at": "2026-10-21T07:54:13.260Z",
+    "url": "/admin/employee-imports",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Data migration: employee import",
+    "screen": "People › Lifecycle › Employee imports › Upload CSV",
+    "action": "Upload a CSV prepared from the customer’s data (fictional rows)",
+    "expected": "The file is stored; the import then goes Inspect → Map columns → Validate → Approve → Run",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-92a-import-inspected",
+    "file": "screenshots/client-onboarding/90-onb-92a-import-inspected.png",
+    "captured_at": "2026-10-21T07:54:22.786Z",
+    "url": "/admin/employee-imports/1",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Data migration: employee import",
+    "screen": "Employee import (after Inspect file)",
+    "action": "Inspect file",
+    "expected": "Headers and row count read from the file; status inspected",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-92-import-map-columns",
+    "file": "screenshots/client-onboarding/90-onb-92-import-map-columns.png",
+    "captured_at": "2026-10-21T07:54:25.479Z",
+    "url": "/admin/employee-imports/1",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Data migration: employee import",
+    "screen": "Employee import › Map columns",
+    "action": "Choose the PeopleOS field for each column of the file",
+    "expected": "Each CSV column mapped to a field; on duplicates: update or skip",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-93-import-map-fails",
+    "file": "screenshots/client-onboarding/90-onb-93-import-map-fails.png",
+    "captured_at": "2026-10-21T07:54:28.212Z",
+    "url": "/admin/employee-imports/1",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Data migration: employee import",
+    "screen": "Employee import (after Map columns)",
+    "action": "Submit the column mapping",
+    "expected": "Observed: \"Failed\nUndefined variable $svc\" — the mapping is not saved, so the import cannot pass \"inspected\" from the screen (known defect F25)",
+    "prereq": "Signed in as the tenant administrator",
+    "status": "INCOMPLETE",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Error",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 129
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

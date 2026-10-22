@@ -1,0 +1,281 @@
+[
+  {
+    "name": "support/99-sup-01-wrong-password",
+    "file": "screenshots/support/99-sup-01-wrong-password.png",
+    "captured_at": "2026-10-21T08:10:08.495Z",
+    "url": "/admin/login",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      7
+    ],
+    "workflow": "Login problems",
+    "screen": "Sign in (failed)",
+    "action": "Sign in with a wrong password",
+    "expected": "\"These credentials do not match our records.\" — the same message for a wrong password, an unknown e-mail, an invited (not activated) or a suspended account",
+    "prereq": "None (public pages)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Generic message",
+        "x": 762,
+        "y": 637,
+        "w": 636,
+        "h": 42
+      },
+      {
+        "n": "2",
+        "label": "Forgot password?",
+        "x": 1209,
+        "y": 704,
+        "w": 189,
+        "h": 45
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/99-sup-02-forgot-password",
+    "file": "screenshots/support/99-sup-02-forgot-password.png",
+    "captured_at": "2026-10-21T08:10:10.074Z",
+    "url": "/admin/password-reset/request",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      7
+    ],
+    "workflow": "Password reset",
+    "screen": "Forgot password?",
+    "action": "Enter the work e-mail address and Send email",
+    "expected": "The same answer whether or not the address exists",
+    "prereq": "None (public pages)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "E-mail address",
+        "x": 762,
+        "y": 716,
+        "w": 636,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Send email",
+        "x": 762,
+        "y": 806,
+        "w": 636,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/99-sup-03-reset-requested",
+    "file": "screenshots/support/99-sup-03-reset-requested.png",
+    "captured_at": "2026-10-21T08:10:12.708Z",
+    "url": "/admin/password-reset/request",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      7
+    ],
+    "workflow": "Password reset",
+    "screen": "Forgot password? (after Send email)",
+    "action": "Send email",
+    "expected": "\"If an account uses that address, we have sent it a link to choose a new password.\" The link expires in 60 minutes",
+    "prereq": "None (public pages)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Neutral answer",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 159
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/99-sup-04-reset-form",
+    "file": "screenshots/support/99-sup-04-reset-form.png",
+    "captured_at": "2026-10-21T08:10:14.327Z",
+    "url": "/admin/password-reset/reset/[token]",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      7
+    ],
+    "workflow": "Password reset",
+    "screen": "Reset your password (link from the e-mail)",
+    "action": "Open the link and choose a new password",
+    "expected": "E-mail address, new password and confirmation; Reset password",
+    "prereq": "None (public pages)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New password",
+        "x": 762,
+        "y": 693,
+        "w": 569,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Reset password",
+        "x": 762,
+        "y": 915,
+        "w": 636,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/99-sup-05-reset-done",
+    "file": "screenshots/support/99-sup-05-reset-done.png",
+    "captured_at": "2026-10-21T08:10:17.492Z",
+    "url": "/admin/login",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      7
+    ],
+    "workflow": "Password reset",
+    "screen": "Sign in (after the reset)",
+    "action": "Reset password",
+    "expected": "Back to Sign in with a confirmation; other sessions of the account are ended",
+    "prereq": "None (public pages)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 123
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/99-sup-06-reset-link-used",
+    "file": "screenshots/support/99-sup-06-reset-link-used.png",
+    "captured_at": "2026-10-21T08:10:21.643Z",
+    "url": "/admin/password-reset/reset/[token]",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      7
+    ],
+    "workflow": "Password reset",
+    "screen": "Reset your password (used link)",
+    "action": "Use the same reset link again",
+    "expected": "Refused with one message for any bad, used or expired link",
+    "prereq": "None (public pages)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/99-sup-07-user-invited",
+    "file": "screenshots/support/99-sup-07-user-invited.png",
+    "captured_at": "2026-10-21T08:10:31.611Z",
+    "url": "/admin/users",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      7
+    ],
+    "workflow": "Account activation problems",
+    "screen": "Admin › Setup › Users",
+    "action": "Find the user in Users",
+    "expected": "Status Invited and last login Never: the person has not yet used the invitation link (it expires after 72 hours)",
+    "prereq": "Tenant administrator (user.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Invited, never signed in",
+        "x": 426,
+        "y": 709,
+        "w": 1692,
+        "h": 98
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/99-sup-08-invited-cannot-sign-in",
+    "file": "screenshots/support/99-sup-08-invited-cannot-sign-in.png",
+    "captured_at": "2026-10-21T08:10:35.210Z",
+    "url": "/admin/login",
+    "http_status": null,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      7
+    ],
+    "workflow": "Account activation problems",
+    "screen": "Sign in (invited user)",
+    "action": "The invited person tries to sign in before activating",
+    "expected": "Generic \"These credentials do not match our records.\" — fix: resend the invitation (Tenants › Send invitation for a first administrator; Users for others)",
+    "prereq": "None (public pages)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Message",
+        "x": 762,
+        "y": 637,
+        "w": 636,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

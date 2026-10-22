@@ -1,0 +1,118 @@
+[
+  {
+    "name": "client-onboarding/90-onb-70-leave-entitlements",
+    "file": "screenshots/client-onboarding/90-onb-70-leave-entitlements.png",
+    "captured_at": "2026-10-21T07:48:06.622Z",
+    "url": "/admin/policies/5/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Leave configuration: leave policy entitlements and publishing",
+    "screen": "Policy › Versions & settings › Edit draft",
+    "action": "For each leave type: days per year, accrual, pro-ration, eligibility, carry-forward, encashment, notice and limits",
+    "expected": "The draft version holds the rules; nothing applies until it is published",
+    "prereq": "Leave policy created (draft v1); policy.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Leave type",
+        "x": 872,
+        "y": 457,
+        "w": 178,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Days per year",
+        "x": 1073,
+        "y": 457,
+        "w": 178,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Accrual",
+        "x": 1275,
+        "y": 457,
+        "w": 178,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Carry-forward",
+        "x": 1073,
+        "y": 805,
+        "w": 178,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-71-publish-policy",
+    "file": "screenshots/client-onboarding/90-onb-71-publish-policy.png",
+    "captured_at": "2026-10-21T07:48:11.929Z",
+    "url": "/admin/policies/5/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Leave configuration: leave policy entitlements and publishing",
+    "screen": "Policy › Publish draft",
+    "action": "Publish the draft version",
+    "expected": "The version becomes active from its effective date; earlier versions are kept",
+    "prereq": "Leave policy created (draft v1); policy.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-72-policy-published",
+    "file": "screenshots/client-onboarding/90-onb-72-policy-published.png",
+    "captured_at": "2026-10-21T07:48:18.781Z",
+    "url": "/admin/policies/5/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Leave configuration: leave policy entitlements and publishing",
+    "screen": "Policy (after publishing)",
+    "action": "Publish",
+    "expected": "v1 published; Assignment rules decide who the policy applies to",
+    "prereq": "Leave policy created (draft v1); policy.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [
+      "2:Assignment rules"
+    ],
+    "page_errors": []
+  }
+]

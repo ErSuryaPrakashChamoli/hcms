@@ -1,0 +1,1928 @@
+[
+  {
+    "name": "support/50-360-err-01-records-employment",
+    "file": "screenshots/support/50-360-err-01-records-employment.png",
+    "captured_at": "2026-10-21T07:23:41.768Z",
+    "url": "/admin/employees/4?relation=1#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      7,
+      3
+    ],
+    "workflow": "Employee 360: section fails to load",
+    "screen": "Employee 360 \u203a Records \u203a Employment",
+    "action": "Records \u203a Employment, then scroll down",
+    "expected": "A lower section loads lazily on scroll and fails: \"Internal Server Error\" \u2014 TypeError Filament\\Tables\\Table::getRelationshipQuery() must return an Eloquent Builder, Query Builder returned. Local debug mode shows the exception page.",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "INCOMPLETE",
+    "note": "Deterministic after scrolling the Employment tab. Likely OnboardingRelationManager::getRelationship() (declared Relation|Builder). Not in documentation-gaps F1\u2013F46.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "hr-admin/50-360-05-records-employment",
+    "file": "screenshots/hr-admin/50-360-05-records-employment.png",
+    "captured_at": "2026-10-21T07:24:00.741Z",
+    "url": "/admin/employees/4?relation=1#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a Records \u203a Employment",
+    "action": "Records \u203a Employment",
+    "expected": "Position assignments, reporting lines and onboarding, each with effective dates",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Employment",
+        "x": 555,
+        "y": 159,
+        "w": 179,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "hr-admin/50-360-01-header-now",
+    "file": "screenshots/hr-admin/50-360-01-header-now.png",
+    "captured_at": "2026-10-21T07:24:02.976Z",
+    "url": "/admin/employees/4",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      9
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a Now",
+    "action": "Open a person from the Directory or register",
+    "expected": "Header with status, tenure and manager; Summarise, Message, Request, Action, More; views Now \u2026 Records",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "One lifetime record",
+        "x": 705,
+        "y": 299,
+        "w": 227,
+        "h": 48
+      },
+      {
+        "n": "2",
+        "label": "Request",
+        "x": 789,
+        "y": 360,
+        "w": 170,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Action",
+        "x": 965,
+        "y": 360,
+        "w": 155,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "More",
+        "x": 1125,
+        "y": 360,
+        "w": 138,
+        "h": 66
+      },
+      {
+        "n": "5",
+        "label": "Records",
+        "x": 1121,
+        "y": 486,
+        "w": 129,
+        "h": 80
+      },
+      {
+        "n": "6",
+        "label": "Identity and access",
+        "x": 1578,
+        "y": 602,
+        "w": 238,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-360-02-action-menu",
+    "file": "screenshots/hr-admin/50-360-02-action-menu.png",
+    "captured_at": "2026-10-21T07:24:03.996Z",
+    "url": "/admin/employees/4",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a Action menu",
+    "action": "Open Action",
+    "expected": "Transfer / promote, Change manager, Change lifecycle state, Start onboarding, Initiate background check, Assign work schedule, Start workflow",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Guided changes",
+        "x": 771,
+        "y": 426,
+        "w": 348,
+        "h": 411
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-360-03-more-menu",
+    "file": "screenshots/hr-admin/50-360-03-more-menu.png",
+    "captured_at": "2026-10-21T07:24:05.416Z",
+    "url": "/admin/employees/4",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a More menu",
+    "action": "Open More",
+    "expected": "Edit profile, All changes, Statutory details, Edit statutory details",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "More",
+        "x": 915,
+        "y": 426,
+        "w": 348,
+        "h": 245
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-360-04-journey",
+    "file": "screenshots/hr-admin/50-360-04-journey.png",
+    "captured_at": "2026-10-21T07:24:07.511Z",
+    "url": "/admin/employees/4#journey",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a Journey",
+    "action": "Open the Journey view",
+    "expected": "Effective-dated history of the person: joining, changes, lifecycle",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Journey",
+        "x": 512,
+        "y": 486,
+        "w": 126,
+        "h": 80
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-360-06-records-time",
+    "file": "screenshots/hr-admin/50-360-06-records-time.png",
+    "captured_at": "2026-10-21T07:24:14.183Z",
+    "url": "/admin/employees/4?relation=2#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a Records \u203a Time",
+    "action": "Records \u203a Time",
+    "expected": "Attendance and leave for this person; Apply for leave on their behalf",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Time",
+        "x": 723,
+        "y": 705,
+        "w": 99,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-360-07-records-rewards",
+    "file": "screenshots/hr-admin/50-360-07-records-rewards.png",
+    "captured_at": "2026-10-21T07:24:19.744Z",
+    "url": "/admin/employees/4?relation=4#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a Records \u203a Rewards",
+    "action": "Records \u203a Rewards",
+    "expected": "Compensation and payroll information (visible only with the matching permission)",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Rewards",
+        "x": 930,
+        "y": 159,
+        "w": 134,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-360-08-records-operations",
+    "file": "screenshots/hr-admin/50-360-08-records-operations.png",
+    "captured_at": "2026-10-21T07:24:25.283Z",
+    "url": "/admin/employees/4?relation=5#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a Records \u203a Operations",
+    "action": "Records \u203a Operations",
+    "expected": "Documents, assets and other operational records",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Operations",
+        "x": 1058,
+        "y": 159,
+        "w": 161,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-360-09-records-bank-personal",
+    "file": "screenshots/hr-admin/50-360-09-records-bank-personal.png",
+    "captured_at": "2026-10-21T07:24:30.804Z",
+    "url": "/admin/employees/4?relation=6#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a Records \u203a Bank & personal",
+    "action": "Records \u203a Bank & personal",
+    "expected": "Bank accounts, identifiers and personal details (sensitive; permission-controlled)",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Bank & personal",
+        "x": 1209,
+        "y": 159,
+        "w": 212,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-360-10-records-history",
+    "file": "screenshots/hr-admin/50-360-10-records-history.png",
+    "captured_at": "2026-10-21T07:25:03.222Z",
+    "url": "/admin/employees/4?relation=7#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      7,
+      8
+    ],
+    "workflow": "Employee 360 (HR view)",
+    "screen": "Employee 360 \u203a Records \u203a History",
+    "action": "Records \u203a History",
+    "expected": "Error shown instead of the history (F26, non-production strict mode)",
+    "prereq": "employee.view; sensitive tabs need their own permissions",
+    "status": "INCOMPLETE",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "History",
+        "x": 1412,
+        "y": 1092,
+        "w": 120,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "hr-admin/50-hire-01-duplicate-refused",
+    "file": "screenshots/hr-admin/50-hire-01-duplicate-refused.png",
+    "captured_at": "2026-10-21T07:26:45.146Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      7,
+      8,
+      11
+    ],
+    "workflow": "Person matching and duplicate prevention",
+    "screen": "Hire employee \u203a Person",
+    "action": "Enter a person whose personal e-mail already exists and press Next",
+    "expected": "\"This person already exists \u2014 Priya Nair (EMP00004) \u2014 same personal email.\" The wizard does not move on",
+    "prereq": "employee.create (Tenant HR Admin, HR Manager, HR Executive, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Duplicate refused",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 189
+      },
+      {
+        "n": "2",
+        "label": "Matching field",
+        "x": 426,
+        "y": 1122,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Re-use existing person",
+        "x": 426,
+        "y": 366,
+        "w": 300,
+        "h": 120
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-hire-02-person-step",
+    "file": "screenshots/hr-admin/50-hire-02-person-step.png",
+    "captured_at": "2026-10-21T07:28:16.539Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Hire an employee (with duplicate check)",
+    "screen": "Hire employee \u203a 01 Person",
+    "action": "Enter the new joiner\u2019s personal details (fictional)",
+    "expected": "Name, personal e-mail and phone; no duplicate found",
+    "prereq": "employee.create (Tenant HR Admin, HR Manager, HR Executive, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "First name (required)",
+        "x": 426,
+        "y": 726,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Personal e-mail (matched)",
+        "x": 426,
+        "y": 1122,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Next",
+        "x": 2024,
+        "y": 1212,
+        "w": 95,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-hire-03-employment-step",
+    "file": "screenshots/hr-admin/50-hire-03-employment-step.png",
+    "captured_at": "2026-10-21T07:28:18.813Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Hire an employee (with duplicate check)",
+    "screen": "Hire employee \u203a 02 Employment",
+    "action": "Joining date, probation end (blank = tenant default), employee code (blank = next code), work e-mail",
+    "expected": "Employment details completed",
+    "prereq": "employee.create (Tenant HR Admin, HR Manager, HR Executive, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Joining date",
+        "x": 426,
+        "y": 552,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Code (auto if blank)",
+        "x": 1570,
+        "y": 552,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Work e-mail",
+        "x": 426,
+        "y": 726,
+        "w": 548,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-hire-04-position-step",
+    "file": "screenshots/hr-admin/50-hire-04-position-step.png",
+    "captured_at": "2026-10-21T07:28:36.664Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Hire an employee (with duplicate check)",
+    "screen": "Hire employee \u203a 03 Position",
+    "action": "Place the person: company (required), location, department, team, designation \u2026",
+    "expected": "Organisation placement chosen from the configured structure",
+    "prereq": "employee.create (Tenant HR Admin, HR Manager, HR Executive, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Company (required)",
+        "x": 426,
+        "y": 552,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Department",
+        "x": 998,
+        "y": 684,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Team",
+        "x": 1570,
+        "y": 684,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Designation",
+        "x": 426,
+        "y": 816,
+        "w": 548,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-hire-05-manager-step",
+    "file": "screenshots/hr-admin/50-hire-05-manager-step.png",
+    "captured_at": "2026-10-21T07:28:42.118Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Hire an employee (with duplicate check)",
+    "screen": "Hire employee \u203a 04 Manager",
+    "action": "Choose the line manager and give a reason (recorded in the audit trail)",
+    "expected": "Manager and reason entered; review and create",
+    "prereq": "employee.create (Tenant HR Admin, HR Manager, HR Executive, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Line manager",
+        "x": 426,
+        "y": 552,
+        "w": 1692,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Reason (audited)",
+        "x": 426,
+        "y": 684,
+        "w": 1692,
+        "h": 102
+      },
+      {
+        "n": "3",
+        "label": "Create",
+        "x": 1899,
+        "y": 852,
+        "w": 219,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-hire-07-created-record",
+    "file": "screenshots/hr-admin/50-hire-07-created-record.png",
+    "captured_at": "2026-10-21T07:28:45.642Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      9,
+      11
+    ],
+    "workflow": "Hire an employee (with duplicate check)",
+    "screen": "Employee 360 (new hire)",
+    "action": "Create",
+    "expected": "The new Employee 360 opens: code generated, status, manager; the hire is audited",
+    "prereq": "employee.create (Tenant HR Admin, HR Manager, HR Executive, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Created",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "New record",
+        "x": 549,
+        "y": 186,
+        "w": 1035,
+        "h": 63
+      },
+      {
+        "n": "3",
+        "label": "Manager",
+        "x": 1287,
+        "y": 303,
+        "w": 108,
+        "h": 39
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "hr-admin/50-chg-05-manager-context",
+    "file": "screenshots/hr-admin/50-chg-05-manager-context.png",
+    "captured_at": "2026-10-21T07:34:52.939Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Change manager (reporting relationship)",
+    "screen": "Employee 360 \u203a Action \u203a Change manager \u203a 01 Context",
+    "action": "Choose which relationship changes (line, functional, dotted line, HR business partner, mentor \u2026)",
+    "expected": "Relationship type chosen",
+    "prereq": "employee.position (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Change manager is partly hidden under the sticky section bar when the Action menu opens (F27); the menu item still works.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Relationship",
+        "x": 30,
+        "y": 605,
+        "w": 1284,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-chg-06-manager-change",
+    "file": "screenshots/hr-admin/50-chg-06-manager-change.png",
+    "captured_at": "2026-10-21T07:34:57.375Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Change manager (reporting relationship)",
+    "screen": "Change manager \u203a 02 Change",
+    "action": "Choose the new manager and the date",
+    "expected": "New line manager Ravi Kumar",
+    "prereq": "employee.position (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New manager",
+        "x": 30,
+        "y": 330,
+        "w": 1284,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-chg-07-manager-review",
+    "file": "screenshots/hr-admin/50-chg-07-manager-review.png",
+    "captured_at": "2026-10-21T07:34:58.758Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Change manager (reporting relationship)",
+    "screen": "Change manager \u203a 03 Review",
+    "action": "Review Before \u2192 After and give a reason",
+    "expected": "Amit Verma \u2192 Ravi Kumar, with the reason",
+    "prereq": "employee.position (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Reason (audited)",
+        "x": 30,
+        "y": 510,
+        "w": 1284,
+        "h": 102
+      },
+      {
+        "n": "2",
+        "label": "Confirm",
+        "x": 1005,
+        "y": 678,
+        "w": 309,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-chg-08-manager-done",
+    "file": "screenshots/hr-admin/50-chg-08-manager-done.png",
+    "captured_at": "2026-10-21T07:35:03.358Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      11
+    ],
+    "workflow": "Change manager (reporting relationship)",
+    "screen": "Employee 360 (after the change)",
+    "action": "Confirm reporting change",
+    "expected": "Header: Reports to Ravi Kumar; the change is on the Journey and in History",
+    "prereq": "employee.position (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New manager",
+        "x": 1286,
+        "y": 303,
+        "w": 108,
+        "h": 39
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-chg-09-lifecycle-modal",
+    "file": "screenshots/hr-admin/50-chg-09-lifecycle-modal.png",
+    "captured_at": "2026-10-21T07:35:08.283Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Change lifecycle state",
+    "screen": "Employee 360 \u203a Action \u203a Change lifecycle state",
+    "action": "Choose the new state (only allowed next states are offered), the effective date and a reason",
+    "expected": "Opened and filled; cancelled in this demonstration",
+    "prereq": "employee.lifecycle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Allowed next states",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Effective date",
+        "x": 30,
+        "y": 276,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Reason (required)",
+        "x": 30,
+        "y": 408,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-chg-04b-transfer-done",
+    "file": "screenshots/hr-admin/50-chg-04b-transfer-done.png",
+    "captured_at": "2026-10-21T07:37:16.445Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Transfer / promote (guided change)",
+    "screen": "Employee 360 (after the transfer)",
+    "action": "Confirm change, effective 22 Oct 2026",
+    "expected": "Confirmation; the change is scheduled for its effective date and appears on the Journey",
+    "prereq": "employee.position (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Recorded",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-onb-01-plans",
+    "file": "screenshots/hr-admin/50-onb-01-plans.png",
+    "captured_at": "2026-10-21T07:40:35.713Z",
+    "url": "/admin/onboarding-plans",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Onboarding plan and tasks",
+    "screen": "People \u203a Lifecycle \u203a Onboarding",
+    "action": "Open Onboarding",
+    "expected": "Plans in progress with joining date, progress, open and overdue tasks; the new hire\u2019s plan started automatically",
+    "prereq": "onboarding.view / onboarding.manage; plans start automatically on hire (template conditions)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Auto-started plan",
+        "x": 426,
+        "y": 586,
+        "w": 1692,
+        "h": 104
+      },
+      {
+        "n": "2",
+        "label": "Progress",
+        "x": 1303,
+        "y": 513,
+        "w": 207,
+        "h": 85
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-onb-03-plan-tasks",
+    "file": "screenshots/hr-admin/50-onb-03-plan-tasks.png",
+    "captured_at": "2026-10-21T07:40:49.372Z",
+    "url": "/admin/employees/24?relation=1#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Onboarding plan and tasks",
+    "screen": "Employee 360 \u203a Records \u203a Employment \u203a Onboarding",
+    "action": "Open the new hire\u2019s onboarding plan",
+    "expected": "Tasks by phase (Preboarding, Day 1, First week, 30 days), type, owner, due date, status; Done / Skip per task",
+    "prereq": "onboarding.view / onboarding.manage; plans start automatically on hire (template conditions)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Tasks assigned to the line manager at hire stay with that person after a manager change (Amit Verma here).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Task",
+        "x": 426,
+        "y": 857,
+        "w": 1692,
+        "h": 98
+      },
+      {
+        "n": "2",
+        "label": "Done",
+        "x": 1895,
+        "y": 882,
+        "w": 95,
+        "h": 48
+      },
+      {
+        "n": "3",
+        "label": "Skip (note required)",
+        "x": 1995,
+        "y": 882,
+        "w": 87,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "hr-admin/50-onb-04-task-done-confirm",
+    "file": "screenshots/hr-admin/50-onb-04-task-done-confirm.png",
+    "captured_at": "2026-10-21T07:42:21.569Z",
+    "url": "/admin/employees/24?relation=1#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Onboarding plan and tasks",
+    "screen": "Onboarding task \u203a Done",
+    "action": "Done",
+    "expected": "Confirm completion (a document is required for document tasks)",
+    "prereq": "onboarding.view / onboarding.manage; plans start automatically on hire (template conditions)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "hr-admin/50-onb-05-task-completed",
+    "file": "screenshots/hr-admin/50-onb-05-task-completed.png",
+    "captured_at": "2026-10-21T07:42:29.273Z",
+    "url": "/admin/employees/24?relation=1#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Onboarding plan and tasks",
+    "screen": "Employee 360 \u203a Records \u203a Employment \u203a Onboarding (after Done)",
+    "action": "Mark the task done",
+    "expected": "Task status done, who and when; plan progress moves up",
+    "prereq": "onboarding.view / onboarding.manage; plans start automatically on hire (template conditions)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Completed task",
+        "x": 426,
+        "y": 1037,
+        "w": 1692,
+        "h": 278
+      },
+      {
+        "n": "2",
+        "label": "Progress",
+        "x": 462,
+        "y": 204,
+        "w": 1620,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "manager/50-onb-06-manager-onboarding-tasks",
+    "file": "screenshots/manager/50-onb-06-manager-onboarding-tasks.png",
+    "captured_at": "2026-10-21T07:42:32.810Z",
+    "url": "/admin/task-inbox",
+    "http_status": 200,
+    "persona": "manager",
+    "user": "Amit Verma",
+    "role": "Manager + Employee",
+    "deck": [
+      2,
+      3
+    ],
+    "workflow": "Onboarding tasks for the manager",
+    "screen": "My work \u203a Task inbox \u203a Onboarding tasks",
+    "action": "The manager opens Task inbox \u203a Onboarding tasks",
+    "expected": "Tasks the onboarding template assigned to the manager (meet the team, 30-day goals, check-in), with Done / Skip",
+    "prereq": "onboarding.view / onboarding.manage; plans start automatically on hire (template conditions)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Onboarding tasks",
+        "x": 614,
+        "y": 249,
+        "w": 228,
+        "h": 78
+      },
+      {
+        "n": "2",
+        "label": "Task for the new hire",
+        "x": 426,
+        "y": 436,
+        "w": 1692,
+        "h": 98
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-onb-02-template",
+    "file": "screenshots/hr-admin/50-onb-02-template.png",
+    "captured_at": "2026-10-21T07:44:55.076Z",
+    "url": "/admin/onboarding-templates/1/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Onboarding template",
+    "screen": "People \u203a Lifecycle \u203a Onboarding templates \u203a Edit Standard onboarding",
+    "action": "Open the template",
+    "expected": "Name, key, description, priority (lower wins), status, Applies to conditions, reason for change; Checklist items and History tabs below",
+    "prereq": "onboarding.manage",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "The Checklist items list below raised a lazy-loading error in this non-production environment (see support/50-onb-err-01).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Priority",
+        "x": 462,
+        "y": 818,
+        "w": 83,
+        "h": 42
+      },
+      {
+        "n": "2",
+        "label": "Applies to",
+        "x": 1320,
+        "y": 432,
+        "w": 714,
+        "h": 36
+      },
+      {
+        "n": "3",
+        "label": "Checklist items",
+        "x": 426,
+        "y": 1358,
+        "w": 206,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/50-onb-err-01-template-items-lazy-loading",
+    "file": "screenshots/support/50-onb-err-01-template-items-lazy-loading.png",
+    "captured_at": "2026-10-21T07:45:26.195Z",
+    "url": "/admin/onboarding-templates/1/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      7
+    ],
+    "workflow": "Onboarding template: checklist items fail to load (non-production)",
+    "screen": "Onboarding templates \u203a Edit \u203a Checklist items",
+    "action": "Scroll to the Checklist items list",
+    "expected": "Internal Server Error: LazyLoadingViolationException \u2014 \"Attempted to lazy load [ownerRole] on model OnboardingTemplateItem but lazy loading is disabled.\"",
+    "prereq": "onboarding.manage",
+    "status": "INCOMPLETE",
+    "note": "Same class as F26: strict mode is on outside production (Model::shouldBeStrict), so production probably renders the list; unverified. Source: ItemsRelationManager.php:57.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "hr-admin/50-doc-01-upload-form",
+    "file": "screenshots/hr-admin/50-doc-01-upload-form.png",
+    "captured_at": "2026-10-21T07:46:27.378Z",
+    "url": "/admin/employees/24?relation=5#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Employee documents: upload and verify (two people)",
+    "screen": "Employee 360 \u203a Records \u203a Operations \u203a Documents \u203a Upload",
+    "action": "Upload a document for the employee: type, title, file (PDF/JPEG/PNG/Word, max 10 MB), dates, reason",
+    "expected": "File attached; Submit saves it as Pending verification",
+    "prereq": "document.upload (Tenant HR Admin, HR Manager, HR Executive); document.verify (Tenant HR Admin, HR Manager); the uploader cannot verify",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Document type",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Title",
+        "x": 30,
+        "y": 276,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "File",
+        "x": 30,
+        "y": 450,
+        "w": 1284,
+        "h": 113
+      },
+      {
+        "n": "4",
+        "label": "Reason",
+        "x": 30,
+        "y": 893,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-doc-02-uploaded-pending",
+    "file": "screenshots/hr-admin/50-doc-02-uploaded-pending.png",
+    "captured_at": "2026-10-21T07:48:06.278Z",
+    "url": "/admin/employees/24?relation=5#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Employee documents: upload and verify (two people)",
+    "screen": "Employee 360 \u203a Records \u203a Operations \u203a Documents",
+    "action": "Submit",
+    "expected": "The document is listed as Pending verification with Download, Verify and Reject",
+    "prereq": "document.upload (Tenant HR Admin, HR Manager, HR Executive); document.verify (Tenant HR Admin, HR Manager); the uploader cannot verify",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Uploaded document",
+        "x": 426,
+        "y": 511,
+        "w": 2203,
+        "h": 133
+      },
+      {
+        "n": "2",
+        "label": "Pending verification",
+        "x": 1188,
+        "y": 558,
+        "w": 113,
+        "h": 42
+      },
+      {
+        "n": "3",
+        "label": "Verify",
+        "x": 1872,
+        "y": 554,
+        "w": 99,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/50-doc-03-uploader-cannot-verify",
+    "file": "screenshots/security-compliance/50-doc-03-uploader-cannot-verify.png",
+    "captured_at": "2026-10-21T07:49:44.756Z",
+    "url": "/admin/employees/24?relation=5#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8,
+      7
+    ],
+    "workflow": "Separation of duties: document verification",
+    "screen": "Employee 360 \u203a Records \u203a Operations \u203a Documents",
+    "action": "The person who uploaded the document tries to verify it",
+    "expected": "Refused, but as an unhandled error: Internal Server Error \u2014 RuntimeException \"The person who uploaded a document cannot verify it.\" (local debug page; production shows a generic server-error dialog). Nothing is changed.",
+    "prereq": "document.upload (Tenant HR Admin, HR Manager, HR Executive); document.verify (Tenant HR Admin, HR Manager); the uploader cannot verify",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Separation of duties works (Documents::review); the refusal is not caught and shown as a message, so users see a server error. Not in documentation-gaps F1\u2013F46.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-doc-04-verify-confirm",
+    "file": "screenshots/hr-admin/50-doc-04-verify-confirm.png",
+    "captured_at": "2026-10-21T07:49:53.927Z",
+    "url": "/admin/employees/24?relation=5#records",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Employee documents: upload and verify (two people)",
+    "screen": "Documents \u203a Verify (second HR person)",
+    "action": "A different HR person verifies",
+    "expected": "Verify dialog",
+    "prereq": "document.upload (Tenant HR Admin, HR Manager, HR Executive); document.verify (Tenant HR Admin, HR Manager); the uploader cannot verify",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-doc-05-verified",
+    "file": "screenshots/hr-admin/50-doc-05-verified.png",
+    "captured_at": "2026-10-21T07:50:01.685Z",
+    "url": "/admin/employees/24?relation=5#records",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Employee documents: upload and verify (two people)",
+    "screen": "Employee 360 \u203a Records \u203a Operations \u203a Documents (after Verify)",
+    "action": "Verify",
+    "expected": "Status Verified, with who verified it",
+    "prereq": "document.upload (Tenant HR Admin, HR Manager, HR Executive); document.verify (Tenant HR Admin, HR Manager); the uploader cannot verify",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Verified",
+        "x": 426,
+        "y": 511,
+        "w": 1891,
+        "h": 133
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/50-sec-01-360-records-tenant-hr-admin",
+    "file": "screenshots/security-compliance/50-sec-01-360-records-tenant-hr-admin.png",
+    "captured_at": "2026-10-21T08:49:51.425Z",
+    "url": "/admin/employees/4#records",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      3
+    ],
+    "workflow": "Field-level protection on the Employee 360",
+    "screen": "Employee 360 \u203a Records (as Tenant HR Admin (Kavya))",
+    "action": "Open the same person\u2019s Records as Tenant HR Admin (Kavya)",
+    "expected": "Record tabs offered: Timeline, Employment, Time, Growth, Rewards, Operations, Bank & personal, History",
+    "prereq": "employee.bank / sensitive-field permissions differ by role",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Record tabs for this role",
+        "x": 426,
+        "y": 159,
+        "w": 1692,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/50-sec-02-360-records-hr-manager",
+    "file": "screenshots/security-compliance/50-sec-02-360-records-hr-manager.png",
+    "captured_at": "2026-10-21T08:49:56.302Z",
+    "url": "/admin/employees/4#records",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      8,
+      3
+    ],
+    "workflow": "Field-level protection on the Employee 360",
+    "screen": "Employee 360 \u203a Records (as HR Manager (Neha))",
+    "action": "Open the same person\u2019s Records as HR Manager (Neha)",
+    "expected": "Record tabs offered: Timeline, Employment, Time, Rewards, Operations, Personal, History",
+    "prereq": "employee.bank / sensitive-field permissions differ by role",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Record tabs for this role",
+        "x": 426,
+        "y": 210,
+        "w": 1692,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-aud-01-change-history",
+    "file": "screenshots/hr-admin/50-aud-01-change-history.png",
+    "captured_at": "2026-10-21T08:50:48.108Z",
+    "url": "/admin/audit-events",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8,
+      12
+    ],
+    "workflow": "Change history (audit trail)",
+    "screen": "Insights \u203a Audit \u203a Change history (Audit events)",
+    "action": "Open Change history",
+    "expected": "Every audited event: when, action, module, record, who, reason; newest first; filters",
+    "prereq": "audit.view (Tenant HR Admin, HR Manager, Payroll Admin, Auditor, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "When",
+        "x": 426,
+        "y": 458,
+        "w": 295,
+        "h": 85
+      },
+      {
+        "n": "2",
+        "label": "Event",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 98
+      },
+      {
+        "n": "3",
+        "label": "Filters",
+        "x": 1986,
+        "y": 384,
+        "w": 66,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-aud-02-event-detail",
+    "file": "screenshots/hr-admin/50-aud-02-event-detail.png",
+    "captured_at": "2026-10-21T08:50:52.795Z",
+    "url": "/admin/audit-events/01M5EP93XDYHP6JJW7592VQJXY",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8,
+      12
+    ],
+    "workflow": "Change history (audit trail)",
+    "screen": "Change history \u203a event",
+    "action": "Open one event: the transfer of Tanvi Joshi",
+    "expected": "What happened (action Transferred, module, record, reason, effective date 22 Oct 2026), Field changes (team Platform \u2192 Mobile), Who and where, Integrity (tamper-evident hash chain)",
+    "prereq": "audit.view (Tenant HR Admin, HR Manager, Payroll Admin, Auditor, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-aud-03-all-changes-person",
+    "file": "screenshots/hr-admin/50-aud-03-all-changes-person.png",
+    "captured_at": "2026-10-21T08:50:57.957Z",
+    "url": "/admin/change-intelligence?employee=24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8,
+      12
+    ],
+    "workflow": "Change history (audit trail)",
+    "screen": "Employee 360 \u203a More \u203a All changes (opens Change intelligence)",
+    "action": "Open All changes for one person",
+    "expected": "Change intelligence filtered to this person: hire, documents, transfer, reporting change, onboarding task \u2026, each with who, why and Explain; sensitive values are masked unless you may see them",
+    "prereq": "audit.view (Tenant HR Admin, HR Manager, Payroll Admin, Auditor, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "hr-admin/50-dir-01-directory-cards",
+    "file": "screenshots/hr-admin/50-dir-01-directory-cards.png",
+    "captured_at": "2026-10-21T08:52:02.090Z",
+    "url": "/admin/people?view=grid",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      9
+    ],
+    "workflow": "Find people: Directory and register",
+    "screen": "People \u203a Directory (Cards)",
+    "action": "Open People \u203a Directory",
+    "expected": "Everyone the HR user can see, with search, department, location, status and grouping filters",
+    "prereq": "employee.view (HR roles); scope applies",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Search",
+        "x": 480,
+        "y": 337,
+        "w": 570,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Filters",
+        "x": 1068,
+        "y": 324,
+        "w": 257,
+        "h": 69
+      },
+      {
+        "n": "3",
+        "label": "Cards / Table",
+        "x": 1550,
+        "y": 398,
+        "w": 66,
+        "h": 57
+      },
+      {
+        "n": "4",
+        "label": "Employee register",
+        "x": 1907,
+        "y": 396,
+        "w": 212,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-dir-02-person-preview",
+    "file": "screenshots/hr-admin/50-dir-02-person-preview.png",
+    "captured_at": "2026-10-21T08:52:04.979Z",
+    "url": "/admin/people?view=grid&q=Priya",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Find people: Directory and register",
+    "screen": "People \u203a Directory \u203a person preview",
+    "action": "Search for a name and select the person",
+    "expected": "A preview drawer with role, manager and quick actions (Open profile, Message, Org map, Start a change)",
+    "prereq": "employee.view (HR roles); scope applies",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Open profile",
+        "x": 1344,
+        "y": 265,
+        "w": 161,
+        "h": 60
+      },
+      {
+        "n": "2",
+        "label": "Start a change",
+        "x": 1344,
+        "y": 572,
+        "w": 792,
+        "h": 74
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-dir-03-employee-register",
+    "file": "screenshots/hr-admin/50-dir-03-employee-register.png",
+    "captured_at": "2026-10-21T08:52:06.982Z",
+    "url": "/admin/employees",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Find people: Directory and register",
+    "screen": "People \u203a Lifecycle \u203a Employees",
+    "action": "Open the Employee register",
+    "expected": "Table with ID, name, designation, department, manager, status, joining date; Hire employee; View and Edit per row",
+    "prereq": "employee.view (HR roles); scope applies",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Hire employee",
+        "x": 1926,
+        "y": 244,
+        "w": 192,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Search",
+        "x": 540,
+        "y": 464,
+        "w": 732,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Filters",
+        "x": 2040,
+        "y": 390,
+        "w": 42,
+        "h": 42
+      },
+      {
+        "n": "4",
+        "label": "View",
+        "x": 1904,
+        "y": 638,
+        "w": 92,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-chg-01-transfer-context",
+    "file": "screenshots/hr-admin/50-chg-01-transfer-context.png",
+    "captured_at": "2026-10-21T08:52:11.778Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Transfer / promote (guided change)",
+    "screen": "Employee 360 \u203a Action \u203a Transfer or promote \u203a 01 Context",
+    "action": "Choose the kind of change and the effective date",
+    "expected": "Today\u2019s position is shown; three guided steps: Context, Change, Review",
+    "prereq": "employee.position (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Kind of change",
+        "x": 30,
+        "y": 648,
+        "w": 412,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Effective from",
+        "x": 466,
+        "y": 648,
+        "w": 412,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Next",
+        "x": 1220,
+        "y": 738,
+        "w": 95,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-chg-02-transfer-change",
+    "file": "screenshots/hr-admin/50-chg-02-transfer-change.png",
+    "captured_at": "2026-10-21T08:52:16.115Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Transfer / promote (guided change)",
+    "screen": "Transfer or promote \u203a 02 Change",
+    "action": "Change only what is different: team Platform \u2192 Mobile",
+    "expected": "Only the changed field is edited",
+    "prereq": "employee.position (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New team",
+        "x": 902,
+        "y": 462,
+        "w": 412,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-chg-03-transfer-review",
+    "file": "screenshots/hr-admin/50-chg-03-transfer-review.png",
+    "captured_at": "2026-10-21T08:52:18.122Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8,
+      11
+    ],
+    "workflow": "Transfer / promote (guided change)",
+    "screen": "Transfer or promote \u203a 03 Review",
+    "action": "Review Before \u2192 After and give a reason",
+    "expected": "Before \u2192 After comparison and the effective date; the reason is stored in the audit trail",
+    "prereq": "employee.position (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Before \u2192 After",
+        "x": 30,
+        "y": 78,
+        "w": 1004,
+        "h": 42
+      },
+      {
+        "n": "2",
+        "label": "Reason (audited)",
+        "x": 30,
+        "y": 510,
+        "w": 1284,
+        "h": 102
+      },
+      {
+        "n": "3",
+        "label": "Confirm",
+        "x": 1104,
+        "y": 678,
+        "w": 210,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/50-chg-04-transfer-refused-same-day",
+    "file": "screenshots/hr-admin/50-chg-04-transfer-refused-same-day.png",
+    "captured_at": "2026-10-21T08:00:00.000Z",
+    "url": "/admin/employees/24",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      7,
+      11
+    ],
+    "workflow": "Transfer / promote (guided change)",
+    "screen": "Employee 360 (after Confirm change)",
+    "action": "Confirm a transfer effective on the same day the current position started",
+    "expected": "Refused: \"Not allowed \u2014 The new position must start after the current one (2026-10-21).\" Nothing is changed.",
+    "prereq": "employee.position (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Effective-dated rule: a new assignment must start after the current one. Retried with 22 Oct 2026 (shot 04b). Manifest entry rebuilt after the capture run ended early; image unchanged; no callout boxes recorded.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

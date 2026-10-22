@@ -53,7 +53,7 @@ final class Blueprints
             'format' => self::FORMAT,
             'exported_at' => now()->toIso8601String(),
             'settings' => $this->settings->all(),
-            'features' => $this->features->all(),
+            'features' => array_filter($this->features->all(), fn (string $feature) => ! FeatureFlags::platformControlled($feature), ARRAY_FILTER_USE_KEY),
             'roles' => Role::query()->with('permissions')->orderBy('slug')->get()
                 ->map(fn (Role $r) => ['slug' => $r->slug, 'name' => $r->name, 'description' => $r->description, 'is_system' => $r->is_system, 'permissions' => $r->permissions->pluck('key')->sort()->values()->all()])->all(),
             'levels' => $simple(Level::class, ['code', 'name', 'rank', 'description']),
@@ -98,6 +98,9 @@ final class Blueprints
             }
 
             foreach ($blueprint['features'] ?? [] as $feature => $enabled) {
+                if (FeatureFlags::platformControlled($feature)) {
+                    continue;
+                }
                 $this->features->set($feature, (bool) $enabled, $reason);
                 $counts['features'] = ($counts['features'] ?? 0) + 1;
             }

@@ -1,0 +1,660 @@
+[
+  {
+    "name": "analytics/80-ins-01-people-analytics",
+    "file": "screenshots/analytics/80-ins-01-people-analytics.png",
+    "captured_at": "2026-10-21T07:34:42.951Z",
+    "url": "/admin/people-analytics",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      9
+    ],
+    "workflow": "Analytics and dashboards",
+    "screen": "Insights \u203a Analytics \u203a People analytics",
+    "action": "Open People analytics (Tenant HR Admin)",
+    "expected": "Sections People, Workforce, Attendance, Leave, Performance, Learning, Career & talent, Compensation, HR service, Engagement \u2014 each with a detail link",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-02-workforce-pulse",
+    "file": "screenshots/analytics/80-ins-02-workforce-pulse.png",
+    "captured_at": "2026-10-21T07:34:44.729Z",
+    "url": "/admin/workforce-command-centre",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      9
+    ],
+    "workflow": "Analytics and dashboards",
+    "screen": "Insights \u203a Analytics \u203a Workforce Command Centre (Workforce pulse)",
+    "action": "Open the Workforce Command Centre",
+    "expected": "Movement (moves, promotions, joiners, exits vs last month), size, attendance, performance, critical skills, exceptions, decisions and planning",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-03-workforce-intelligence",
+    "file": "screenshots/analytics/80-ins-03-workforce-intelligence.png",
+    "captured_at": "2026-10-21T07:34:46.433Z",
+    "url": "/admin/workforce-intelligence",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12
+    ],
+    "workflow": "Analytics and dashboards",
+    "screen": "Insights \u203a Analytics \u203a Workforce Intelligence",
+    "action": "Open Workforce Intelligence",
+    "expected": "Attrition and capacity signals and critical skills, each with its reason",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-04-hr-overview-dashboard",
+    "file": "screenshots/analytics/80-ins-04-hr-overview-dashboard.png",
+    "captured_at": "2026-10-21T07:34:48.217Z",
+    "url": "/admin/dashboard-viewer",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      9
+    ],
+    "workflow": "Analytics and dashboards",
+    "screen": "Insights \u203a Analytics \u203a Dashboards (HR overview)",
+    "action": "Open Dashboards",
+    "expected": "Tiles: headcount, attrition (12 months), absenteeism (30 days), people cost, headcount trend and by department, needs attention, mandatory learning",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-05-reports-list",
+    "file": "screenshots/analytics/80-ins-05-reports-list.png",
+    "captured_at": "2026-10-21T07:34:50.142Z",
+    "url": "/admin/reports",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12
+    ],
+    "workflow": "Reports: run and export",
+    "screen": "Insights \u203a Analytics \u203a Reports",
+    "action": "Open Reports",
+    "expected": "Six starter reports with dataset, chart type and schedule; Run and Edit per report; New report",
+    "prereq": "report.view / report.manage and permission on the report\u2019s dataset",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Starter report",
+        "x": 426,
+        "y": 701,
+        "w": 1730,
+        "h": 98
+      },
+      {
+        "n": "2",
+        "label": "Run",
+        "x": 1946,
+        "y": 726,
+        "w": 50,
+        "h": 42
+      },
+      {
+        "n": "3",
+        "label": "New report",
+        "x": 1961,
+        "y": 244,
+        "w": 158,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-06-report-result",
+    "file": "screenshots/analytics/80-ins-06-report-result.png",
+    "captured_at": "2026-10-21T07:34:52.924Z",
+    "url": "/admin/reports/1",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12
+    ],
+    "workflow": "Reports: run and export",
+    "screen": "Report: Headcount by department",
+    "action": "Run the starter report",
+    "expected": "Chart and grouped results computed from the records this user may see; Export CSV",
+    "prereq": "report.view / report.manage and permission on the report\u2019s dataset",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Grouped results",
+        "x": 462,
+        "y": 1062,
+        "w": 1620,
+        "h": 36
+      },
+      {
+        "n": "2",
+        "label": "Export CSV",
+        "x": 1820,
+        "y": 263,
+        "w": 203,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-07-report-exported",
+    "file": "screenshots/analytics/80-ins-07-report-exported.png",
+    "captured_at": "2026-10-21T07:36:29.423Z",
+    "url": "/admin/reports/1",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12
+    ],
+    "workflow": "Reports: run and export",
+    "screen": "Report (after Export CSV)",
+    "action": "Export CSV (executed)",
+    "expected": "Export CSV downloads a CSV file immediately (observed: headcount-by-department-20261021-073623-1.csv, 70 bytes); no on-screen message",
+    "prereq": "report.view / report.manage and permission on the report\u2019s dataset",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-08-report-builder-f44",
+    "file": "screenshots/analytics/80-ins-08-report-builder-f44.png",
+    "captured_at": "2026-10-21T07:36:33.857Z",
+    "url": "/admin/reports/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      7
+    ],
+    "workflow": "Report builder",
+    "screen": "Insights \u203a Analytics \u203a Reports \u203a New report",
+    "action": "Choose a dataset, then open Group by / Sort by",
+    "expected": "Observed: with the dataset \"Employees\" chosen, Group by offers only \"No grouping (list rows)\", Sort by only \"Dataset order | Count\", chart X only \"Auto\": no dataset fields are offered (finding F44). Editing the starter report also shows no grouping",
+    "prereq": "report.view / report.manage and permission on the report\u2019s dataset",
+    "status": "INCOMPLETE",
+    "note": "Known defect F44 (ReportBuilderSchema: $get('dataset', true)). Nothing was saved.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Dataset chosen",
+        "x": 1320,
+        "y": 518,
+        "w": 762,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Group by: no fields",
+        "x": 1320,
+        "y": 1245,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Sort by: no fields",
+        "x": 1320,
+        "y": 1685,
+        "w": 173,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-09-dashboard-builder",
+    "file": "screenshots/analytics/80-ins-09-dashboard-builder.png",
+    "captured_at": "2026-10-21T07:36:35.615Z",
+    "url": "/admin/dashboards",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12
+    ],
+    "workflow": "Dashboard builder",
+    "screen": "Insights \u203a Analytics \u203a Dashboard builder",
+    "action": "Open the Dashboard builder",
+    "expected": "HR overview dashboard (audience Everyone, 8 widgets); New dashboard, Open, Edit",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New dashboard",
+        "x": 1914,
+        "y": 244,
+        "w": 204,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-10-change-history",
+    "file": "screenshots/analytics/80-ins-10-change-history.png",
+    "captured_at": "2026-10-21T07:36:37.525Z",
+    "url": "/admin/audit-events",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      8,
+      3,
+      10
+    ],
+    "workflow": "Audit and change history",
+    "screen": "Insights \u203a Audit \u203a Change history (Audit events)",
+    "action": "Open Change history",
+    "expected": "Every recorded change: when, action, module, record, who, reason; filter and open any event",
+    "prereq": "audit.view (Tenant HR Admin, HR Manager, Payroll Admin, Auditor, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "When",
+        "x": 426,
+        "y": 458,
+        "w": 267,
+        "h": 85
+      },
+      {
+        "n": "2",
+        "label": "Latest event",
+        "x": 426,
+        "y": 530,
+        "w": 1919,
+        "h": 98
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-12-change-intelligence",
+    "file": "screenshots/analytics/80-ins-12-change-intelligence.png",
+    "captured_at": "2026-10-21T07:37:11.618Z",
+    "url": "/admin/change-intelligence",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      8
+    ],
+    "workflow": "Audit and change history",
+    "screen": "Insights \u203a Audit \u203a Change intelligence",
+    "action": "Open Change intelligence",
+    "expected": "Recorded changes by person and date with Explain",
+    "prereq": "audit.view (Tenant HR Admin, HR Manager, Payroll Admin, Auditor, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Explain",
+        "x": 0,
+        "y": 1235,
+        "w": 384,
+        "h": 116
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-13-ai-interactions",
+    "file": "screenshots/analytics/80-ins-13-ai-interactions.png",
+    "captured_at": "2026-10-21T07:37:13.466Z",
+    "url": "/admin/ai-interactions",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      8
+    ],
+    "workflow": "AI interaction log",
+    "screen": "Insights \u203a Audit \u203a AI interactions",
+    "action": "Open AI interactions",
+    "expected": "Every assistant question and answer is logged with the user, assistant and sources (read only)",
+    "prereq": "audit.view (Tenant HR Admin, HR Manager, Payroll Admin, Auditor, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-14-performance-analytics",
+    "file": "screenshots/analytics/80-ins-14-performance-analytics.png",
+    "captured_at": "2026-10-21T07:37:15.244Z",
+    "url": "/admin/performance-analytics",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      3
+    ],
+    "workflow": "Analytics and dashboards",
+    "screen": "People \u203a Growth \u203a Analytics (Performance)",
+    "action": "Open Performance analytics for cycle FY27",
+    "expected": "Review progress and rating distribution for the cycle",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-15-exit-insights",
+    "file": "screenshots/analytics/80-ins-15-exit-insights.png",
+    "captured_at": "2026-10-21T07:37:16.997Z",
+    "url": "/admin/exit-insights",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      3
+    ],
+    "workflow": "Analytics and dashboards",
+    "screen": "People \u203a Lifecycle \u203a Exit insights",
+    "action": "Open Exit insights",
+    "expected": "Reasons for leaving and average exit-interview ratings (employee answers only)",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-16-service-analytics",
+    "file": "screenshots/analytics/80-ins-16-service-analytics.png",
+    "captured_at": "2026-10-21T07:37:18.668Z",
+    "url": "/admin/service-analytics",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12
+    ],
+    "workflow": "Analytics and dashboards",
+    "screen": "Services \u203a Service Desk \u203a Service analytics",
+    "action": "Open HR service analytics",
+    "expected": "With fewer than 5 requesters in the period, no figures are shown (privacy suppression note)",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-17-ask-peopleos",
+    "file": "screenshots/analytics/80-ins-17-ask-peopleos.png",
+    "captured_at": "2026-10-21T07:37:57.099Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      9,
+      10
+    ],
+    "workflow": "Ask PeopleOS (assistant)",
+    "screen": "Ask PeopleOS panel (PeopleOS Assistant)",
+    "action": "Ask \"What is our attrition?\"",
+    "expected": "Observed answer: \"Attrition rate (12 months, %): 4.5% (Exits in the last 12 months \u00f7 average headcount)\" with Sources (Workforce metrics, computed live) and a suggested action; marked Assistive. External language model off by default",
+    "prereq": "Assistant permission and feature; ai.llm off (no external model)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Question",
+        "x": 1362,
+        "y": 1094,
+        "w": 708,
+        "h": 63
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "executive-demo/80-ins-18-executive-home",
+    "file": "screenshots/executive-demo/80-ins-18-executive-home.png",
+    "captured_at": "2026-10-21T07:38:02.137Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "executive",
+    "user": "Meera Iyer",
+    "role": "Executive + Employee",
+    "deck": [
+      9,
+      12
+    ],
+    "workflow": "Executive experience",
+    "screen": "Home (Executive)",
+    "action": "An executive signs in",
+    "expected": "Home opens on the workforce lens: pulse, decisions and signals for the company",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-19-people-analytics-executive",
+    "file": "screenshots/analytics/80-ins-19-people-analytics-executive.png",
+    "captured_at": "2026-10-21T07:38:03.768Z",
+    "url": "/admin/people-analytics",
+    "http_status": 200,
+    "persona": "executive",
+    "user": "Meera Iyer",
+    "role": "Executive + Employee",
+    "deck": [
+      12,
+      9
+    ],
+    "workflow": "Analytics and dashboards (executive)",
+    "screen": "Insights \u203a Analytics \u203a People analytics (Executive)",
+    "action": "Open People analytics as an executive",
+    "expected": "Aggregated figures only; sections the role has no dataset permission for are not shown",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-20-dashboard-executive-f45",
+    "file": "screenshots/analytics/80-ins-20-dashboard-executive-f45.png",
+    "captured_at": "2026-10-21T07:38:05.410Z",
+    "url": "/admin/dashboard-viewer",
+    "http_status": 200,
+    "persona": "executive",
+    "user": "Meera Iyer",
+    "role": "Executive + Employee",
+    "deck": [
+      12,
+      7
+    ],
+    "workflow": "Analytics and dashboards (executive)",
+    "screen": "Insights \u203a Analytics \u203a Dashboards (Executive)",
+    "action": "Open the HR overview dashboard as an executive",
+    "expected": "Tiles show \"You cannot report on the \u2026 dataset.\" \u2014 the Executive role template has no dataset permission (finding F45)",
+    "prereq": "Analytics permissions per dataset; privacy minimum group size",
+    "status": "AVAILABLE ONLY AFTER CONFIGURATION",
+    "note": "Finding F45: give the executive role dataset permissions (role configuration) for these tiles to show figures.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/80-ins-21-reports-executive",
+    "file": "screenshots/analytics/80-ins-21-reports-executive.png",
+    "captured_at": "2026-10-21T07:38:07.061Z",
+    "url": "/admin/reports",
+    "http_status": 200,
+    "persona": "executive",
+    "user": "Meera Iyer",
+    "role": "Executive + Employee",
+    "deck": [
+      12
+    ],
+    "workflow": "Reports (executive)",
+    "screen": "Insights \u203a Analytics \u203a Reports (Executive)",
+    "action": "Open Reports as an executive",
+    "expected": "Observed list for a role without dataset permissions (F45)",
+    "prereq": "report.view / report.manage and permission on the report\u2019s dataset",
+    "status": "AVAILABLE ONLY AFTER CONFIGURATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/80-ins-11-audit-event-detail",
+    "file": "screenshots/security-compliance/80-ins-11-audit-event-detail.png",
+    "captured_at": "2026-10-21T07:39:04.374Z",
+    "url": "/admin/audit-events/01M5EP93WWVXKR0HMXB7KQHD2K",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      12,
+      10
+    ],
+    "workflow": "Audit and change history",
+    "screen": "Change history \u203a event",
+    "action": "View one event",
+    "expected": "Who, when, action, reason and the field-level before \u2192 after values; events are chained (hash) and cannot be edited",
+    "prereq": "audit.view (Tenant HR Admin, HR Manager, Payroll Admin, Auditor, Account Owner)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/80-ins-11b-audit-integrity",
+    "file": "screenshots/security-compliance/80-ins-11b-audit-integrity.png",
+    "captured_at": "2026-10-21T07:42:48.614Z",
+    "url": "/admin/audit-events/01M5EP93WWVXKR0HMXB7KQHD2K",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      10
+    ],
+    "workflow": "Audit and change history",
+    "screen": "Change history \u203a event (Who and where, Integrity expanded)",
+    "action": "Expand Who and where and Integrity",
+    "expected": "Observed: Who and where (actor Kavya Menon, actor roles employee + tenant-hr-admin, source web, IP, user agent, request id) and Integrity (Hash, Previous hash, Hash verified \u2713): each event is chained to the previous one",
+    "prereq": "audit.view",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "(Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

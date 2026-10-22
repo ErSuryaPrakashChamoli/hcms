@@ -3,9 +3,13 @@
 namespace App\Filament\Support;
 
 use App\Domain\Attendance\Imports\PunchImports;
+use App\Domain\Compensation\Imports\SalaryImports;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImports;
+use App\Domain\Organisation\Models\Company;
+use App\Filament\Resources\CompensationCycles\CompensationCycleResource;
 use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -19,8 +23,13 @@ final class ImportActions
     /** @return list<Action> */
     public static function forImport(): array
     {
-        $svc = fn (EmployeeImport $record) => $record->type === 'punches' ? app(PunchImports::class) : app(EmployeeImports::class);
-        $fieldsFor = fn (EmployeeImport $record) => collect($record->type === 'punches' ? PunchImports::FIELDS : EmployeeImports::FIELDS)->mapWithKeys(fn ($def, $key) => [$key => $def[0].($def[1] ? ' *' : '')])->all();
+        $svc = fn (EmployeeImport $record) => app(match ($record->type) {
+            'punches' => PunchImports::class, SalaryImports::TYPE => SalaryImports::class, default => EmployeeImports::class,
+        });
+        $fieldsFor = fn (EmployeeImport $record) => collect(match ($record->type) {
+            'punches' => PunchImports::FIELDS, SalaryImports::TYPE => SalaryImports::fields(), default => EmployeeImports::FIELDS,
+        })->mapWithKeys(fn ($def, $key) => [$key => $def[0].($def[1] ? ' *' : '')])->all();
+        $salaries = fn (EmployeeImport $record) => $record->type === SalaryImports::TYPE;
 
         return [
             Action::make('inspect')->label('Inspect file')->icon('heroicon-m-magnifying-glass')
@@ -29,19 +38,27 @@ final class ImportActions
 
             Action::make('map')->label('Map columns')->icon('heroicon-m-arrows-right-left')
                 ->visible(fn (EmployeeImport $record) => in_array($record->status, ['inspected', 'mapped', 'validated'], true))
-                ->fillForm(fn (EmployeeImport $record) => ['mapping' => collect($record->headers ?? [])->mapWithKeys(fn ($h, $i) => [(string) $i => $record->mapping[$h] ?? null])->all(), 'on_duplicate' => $record->options['on_duplicate'] ?? 'update', 'timezone' => $record->options['timezone'] ?? null])
+                ->fillForm(fn (EmployeeImport $record) => ['mapping' => collect($record->headers ?? [])->mapWithKeys(fn ($h, $i) => [(string) $i => $record->mapping[$h] ?? null])->all(), 'on_duplicate' => $record->options['on_duplicate'] ?? 'update', 'timezone' => $record->options['timezone'] ?? null, 'company_id' => $record->options['company_id'] ?? null, 'effective_from' => $record->options['effective_from'] ?? null])
                 ->schema(fn (EmployeeImport $record) => [
                     Section::make('Columns')->description('Choose the PeopleOS field for each column. Fields marked * are required.')->columns(2)
                         ->schema(collect($record->headers ?? [])->map(fn ($header, $i) => Select::make("mapping.{$i}")->label($header)->options($fieldsFor($record))->searchable()->placeholder('Ignore column'))->values()->all()),
-                    Select::make('on_duplicate')->label('When the person already exists')->options(['update' => 'Update person details', 'skip' => 'Skip the row'])->required()->visible($record->type !== 'punches'),
+                    Select::make('on_duplicate')->label('When the person already exists')->options(['update' => 'Update person details', 'skip' => 'Skip the row'])->required()->visible(! in_array($record->type, ['punches', SalaryImports::TYPE], true)),
                     Select::make('timezone')->label('Default timezone for timestamps')->options(collect(timezone_identifiers_list())->mapWithKeys(fn ($tz) => [$tz => $tz]))->searchable()->visible($record->type === 'punches')->placeholder(config('app.timezone')),
+                    Select::make('company_id')->label('Company')->helperText('One upload prepares one compensation cycle for one company.')
+                        ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all())->required()->visible($salaries($record)),
+                    DatePicker::make('effective_from')->label('Default effective date')->helperText('Used for rows without an Effective from value.')->visible($salaries($record)),
                 ])
-                ->action(function (EmployeeImport $record, array $data) {
+                ->action(function (EmployeeImport $record, array $data) use ($svc) {
                     $mapping = [];
                     foreach ($record->headers ?? [] as $i => $header) {
                         $mapping[$header] = $data['mapping'][(string) $i] ?? null;
                     }
-                    self::run(fn () => $svc($record)->map($record, $mapping, $record->type === 'punches' ? ['timezone' => $data['timezone'] ?? null] : ['on_duplicate' => $data['on_duplicate']]), 'Mapping saved');
+                    $options = match ($record->type) {
+                        'punches' => ['timezone' => $data['timezone'] ?? null],
+                        SalaryImports::TYPE => ['company_id' => $data['company_id'] ?? null, 'effective_from' => $data['effective_from'] ?? null],
+                        default => ['on_duplicate' => $data['on_duplicate']],
+                    };
+                    self::run(fn () => $svc($record)->map($record, $mapping, $options), 'Mapping saved');
                 }),
 
             Action::make('validate')->label('Validate rows')->icon('heroicon-m-check-badge')
@@ -51,14 +68,24 @@ final class ImportActions
             Action::make('approve')->label('Approve import')->icon('heroicon-m-hand-thumb-up')->color('warning')
                 ->visible(fn (EmployeeImport $record) => $record->status === 'validated')
                 ->requiresConfirmation()
-                ->modalDescription(fn (EmployeeImport $record) => $record->type === 'punches' ? "This will record {$record->create_count} punch(es); {$record->error_count} row(s) with errors and {$record->skip_count} duplicate(s) will be skipped. Attendance is recalculated from the punches." : "This will create {$record->create_count} and update {$record->update_count} employee(s); {$record->error_count} row(s) with errors and {$record->skip_count} duplicate(s) will be skipped.")
+                ->modalDescription(fn (EmployeeImport $record) => match ($record->type) {
+                    'punches' => "This will record {$record->create_count} punch(es); {$record->error_count} row(s) with errors and {$record->skip_count} duplicate(s) will be skipped. Attendance is recalculated from the punches.",
+                    SalaryImports::TYPE => "Running it prepares a draft compensation cycle with {$record->create_count} line(s); {$record->error_count} row(s) with errors and {$record->skip_count} row(s) already in force will be skipped. Nobody's pay changes until the cycle is submitted, reviewed, approved and executed by different people.",
+                    default => "This will create {$record->create_count} and update {$record->update_count} employee(s); {$record->error_count} row(s) with errors and {$record->skip_count} duplicate(s) will be skipped.",
+                })
                 ->schema([Textarea::make(AuditReasonField::NAME)->label('Reason')->required()->maxLength(500)])
                 ->action(fn (EmployeeImport $record, array $data) => self::run(fn () => $svc($record)->approve($record, auth()->user(), $data[AuditReasonField::NAME]), 'Import approved')),
 
             Action::make('run')->label('Run import')->icon('heroicon-m-play')->color('success')
                 ->visible(fn (EmployeeImport $record) => $record->status === 'approved')
                 ->requiresConfirmation()
-                ->action(fn (EmployeeImport $record) => self::run(fn () => $svc($record)->run($record, auth()->user()), fn (EmployeeImport $i) => "Created {$i->create_count}, updated {$i->update_count}, skipped {$i->skip_count}, failed {$i->failure_count}")),
+                ->action(fn (EmployeeImport $record) => self::run(fn () => $svc($record)->run($record, auth()->user()), fn (EmployeeImport $i) => $salaries($i)
+                    ? "Cycle prepared with {$i->create_count} line(s); skipped {$i->skip_count}, failed {$i->failure_count}. Open the cycle to submit it for review."
+                    : "Created {$i->create_count}, updated {$i->update_count}, skipped {$i->skip_count}, failed {$i->failure_count}")),
+
+            Action::make('openCycle')->label('Open compensation cycle')->icon('heroicon-m-arrow-path-rounded-square')->color('gray')
+                ->visible(fn (EmployeeImport $record) => $salaries($record) && filled($record->options['compensation_cycle_id'] ?? null))
+                ->url(fn (EmployeeImport $record) => CompensationCycleResource::getUrl('view', ['record' => $record->options['compensation_cycle_id']])),
 
             Action::make('discard')->label('Discard')->icon('heroicon-m-trash')->color('danger')
                 ->visible(fn (EmployeeImport $record) => ! in_array($record->status, ['importing', 'imported', 'discarded'], true))

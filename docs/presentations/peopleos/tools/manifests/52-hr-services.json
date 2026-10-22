@@ -1,0 +1,793 @@
+[
+  {
+    "name": "hr-admin/52-let-01-letters",
+    "file": "screenshots/hr-admin/52-let-01-letters.png",
+    "captured_at": "2026-10-21T08:00:02.785Z",
+    "url": "/admin/letters",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Letters: generate \u2192 approve (different person) \u2192 issue",
+    "screen": "People \u203a Lifecycle \u203a Letters",
+    "action": "Open Letters",
+    "expected": "Generated letters with number, employee, type, status; Generate letter",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin); the requester cannot approve",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Generate letter",
+        "x": 1877,
+        "y": 244,
+        "w": 242,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "support/52-let-err-01-letter-history-f26",
+    "file": "screenshots/support/52-let-err-01-letter-history-f26.png",
+    "captured_at": "2026-10-21T08:27:36.927Z",
+    "url": "/admin/letters/4",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      7
+    ],
+    "workflow": "Letter page: History section error (F26, non-production)",
+    "screen": "Letters \u203a letter page",
+    "action": "Open a letter",
+    "expected": "Internal Server Error over the page: LazyLoadingViolationException \"Attempted to lazy load [fieldChanges] on model AuditEvent\" (AuditHistoryRelationManager.php:38). Closing the dialog leaves the page usable.",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin); templates marked \"needs approval\" must be approved by someone other than the requester",
+    "status": "INCOMPLETE",
+    "note": "Known finding F26: strict mode is on outside production only; production behaviour unverified.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "security-compliance/52-let-04-requester-cannot-approve",
+    "file": "screenshots/security-compliance/52-let-04-requester-cannot-approve.png",
+    "captured_at": "2026-10-21T08:27:41.887Z",
+    "url": "/admin/letters/4",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      8,
+      7
+    ],
+    "workflow": "Separation of duties: letter approval",
+    "screen": "Letters \u203a Approve (by the requester)",
+    "action": "The HR person who generated the letter tries to approve it",
+    "expected": "Refused: \"The person who requested a letter cannot approve it.\"",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin); templates marked \"needs approval\" must be approved by someone other than the requester",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Refused",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 159
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "hr-admin/52-let-05-approver-view",
+    "file": "screenshots/hr-admin/52-let-05-approver-view.png",
+    "captured_at": "2026-10-21T08:27:52.388Z",
+    "url": "/admin/letters/4",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Letters: generate \u2192 approve (different person) \u2192 issue",
+    "screen": "Letters \u203a letter (second HR person)",
+    "action": "A different HR person opens the letter",
+    "expected": "Preview with Approve / Reject",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin); templates marked \"needs approval\" must be approved by someone other than the requester",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Approve",
+        "x": 1802,
+        "y": 265,
+        "w": 173,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [
+      "2:Reject"
+    ],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "hr-admin/52-let-06-issued",
+    "file": "screenshots/hr-admin/52-let-06-issued.png",
+    "captured_at": "2026-10-21T08:28:01.906Z",
+    "url": "/admin/letters/4",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Letters: generate \u2192 approve (different person) \u2192 issue",
+    "screen": "Letters \u203a letter (after Approve and Issue)",
+    "action": "Approve, then Issue",
+    "expected": "Issued; Download available",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin); templates marked \"needs approval\" must be approved by someone other than the requester",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Issued",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  },
+  {
+    "name": "employee/52-let-07-my-letters",
+    "file": "screenshots/employee/52-let-07-my-letters.png",
+    "captured_at": "2026-10-21T08:28:03.856Z",
+    "url": "/admin/letters",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      3
+    ],
+    "workflow": "My letters (employee)",
+    "screen": "My letters",
+    "action": "The employee opens My letters",
+    "expected": "Only their own issued letters, with Open",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin); templates marked \"needs approval\" must be approved by someone other than the requester",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Issued letter",
+        "x": 426,
+        "y": 530,
+        "w": 1729,
+        "h": 104
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/52-let-08-letter-view",
+    "file": "screenshots/employee/52-let-08-letter-view.png",
+    "captured_at": "2026-10-21T08:28:08.038Z",
+    "url": "/admin/letters/4",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      3
+    ],
+    "workflow": "My letters (employee)",
+    "screen": "Letter (employee view)",
+    "action": "Open the letter",
+    "expected": "The issued letter on screen (HTML; no PDF or e-signature yet)",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin); templates marked \"needs approval\" must be approved by someone other than the requester",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/52-ast-01-register",
+    "file": "screenshots/hr-admin/52-ast-01-register.png",
+    "captured_at": "2026-10-21T08:28:59.514Z",
+    "url": "/admin/assets",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      6
+    ],
+    "workflow": "Assets: issue a laptop to a new joiner",
+    "screen": "Organisation \u203a Assets \u203a Asset register",
+    "action": "Open the asset register",
+    "expected": "Assets with tag, category, serial, status (In stock / Assigned), custodian, location, warranty; Receive asset",
+    "prereq": "asset.manage (Asset Admin, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Receive asset",
+        "x": 1932,
+        "y": 244,
+        "w": 186,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Spare laptop (In stock)",
+        "x": 426,
+        "y": 623,
+        "w": 1761,
+        "h": 134
+      },
+      {
+        "n": "3",
+        "label": "Status tabs",
+        "x": 741,
+        "y": 354,
+        "w": 185,
+        "h": 57
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/52-ast-02-assign",
+    "file": "screenshots/hr-admin/52-ast-02-assign.png",
+    "captured_at": "2026-10-21T08:29:08.960Z",
+    "url": "/admin/assets/4",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      6
+    ],
+    "workflow": "Assets: issue a laptop to a new joiner",
+    "screen": "Asset register \u203a LT-0004 \u203a Assign",
+    "action": "Assign the spare laptop: employee, date, condition, expected return, note",
+    "expected": "Custody is recorded against the employee",
+    "prereq": "asset.manage (Asset Admin, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Employee",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Condition",
+        "x": 30,
+        "y": 408,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Note",
+        "x": 30,
+        "y": 672,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/52-ast-03-assigned",
+    "file": "screenshots/hr-admin/52-ast-03-assigned.png",
+    "captured_at": "2026-10-21T08:29:14.096Z",
+    "url": "/admin/assets/4",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      6
+    ],
+    "workflow": "Assets: issue a laptop to a new joiner",
+    "screen": "Asset register \u203a LT-0004 (after Assign)",
+    "action": "Submit",
+    "expected": "Status Assigned; custody history shows Tanvi Joshi from today",
+    "prereq": "asset.manage (Asset Admin, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Assigned",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Custody history",
+        "x": 444,
+        "y": 990,
+        "w": 171,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/52-ast-04-my-assets",
+    "file": "screenshots/employee/52-ast-04-my-assets.png",
+    "captured_at": "2026-10-21T08:29:16.165Z",
+    "url": "/admin/assets",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      3
+    ],
+    "workflow": "My assets (employee)",
+    "screen": "My assets",
+    "action": "The employee opens My assets",
+    "expected": "Only the assets in their custody; the employee acknowledges receipt",
+    "prereq": "asset.manage (Asset Admin, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "My laptop",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 133
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/52-tkt-03-hr-queue",
+    "file": "screenshots/hr-admin/52-tkt-03-hr-queue.png",
+    "captured_at": "2026-10-21T08:31:11.326Z",
+    "url": "/admin/tickets",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      1
+    ],
+    "workflow": "HR request: raise \u2192 handle \u2192 resolve",
+    "screen": "Services \u203a Service Desk \u203a HR queue",
+    "action": "HR opens the queue",
+    "expected": "New requests with category, requester, priority, status, assignee and SLA due",
+    "prereq": "Employees: ticket.create (My HR); HR: ticket.manage (HR Manager, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New request",
+        "x": 426,
+        "y": 592,
+        "w": 1792,
+        "h": 104
+      },
+      {
+        "n": "2",
+        "label": "SLA due",
+        "x": 1693,
+        "y": 513,
+        "w": 204,
+        "h": 91
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/52-tkt-04-reply",
+    "file": "screenshots/hr-admin/52-tkt-04-reply.png",
+    "captured_at": "2026-10-21T08:31:23.591Z",
+    "url": "/admin/tickets/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      1
+    ],
+    "workflow": "HR request: raise \u2192 handle \u2192 resolve",
+    "screen": "HR queue \u203a request \u203a Reply",
+    "action": "Take it, then Reply to the employee",
+    "expected": "The reply is added to the conversation the employee sees",
+    "prereq": "Employees: ticket.create (My HR); HR: ticket.manage (HR Manager, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Reply",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 174
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "hr-admin/52-tkt-05-resolved",
+    "file": "screenshots/hr-admin/52-tkt-05-resolved.png",
+    "captured_at": "2026-10-21T08:31:38.777Z",
+    "url": "/admin/tickets/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      1
+    ],
+    "workflow": "HR request: raise \u2192 handle \u2192 resolve",
+    "screen": "HR queue \u203a request (after Take it, Reply, Resolve)",
+    "action": "Resolve",
+    "expected": "Status Resolved; assignee, SLA and the conversation are kept on the request",
+    "prereq": "Employees: ticket.create (My HR); HR: ticket.manage (HR Manager, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Assignment and SLA",
+        "x": 1320,
+        "y": 432,
+        "w": 762,
+        "h": 36
+      },
+      {
+        "n": "2",
+        "label": "Conversation",
+        "x": 444,
+        "y": 1226,
+        "w": 147,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "employee/52-tkt-06-my-requests",
+    "file": "screenshots/employee/52-tkt-06-my-requests.png",
+    "captured_at": "2026-10-21T08:33:34.184Z",
+    "url": "/admin/tickets?filters[breached][isActive]=false&lens=resolved",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      3
+    ],
+    "workflow": "Raise an HR request (employee): result",
+    "screen": "My requests (filter cleared, Resolved tab)",
+    "action": "The employee opens My requests, clears the default status filter and chooses Resolved",
+    "expected": "The answered request is listed as Resolved",
+    "prereq": "ticket.create",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "The list opens with a status filter that excludes resolved requests; with that filter on, the Resolved tab shows \"No requests\". Clear the filter (\u00d7) first.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Status tabs",
+        "x": 753,
+        "y": 281,
+        "w": 197,
+        "h": 57
+      },
+      {
+        "n": "2",
+        "label": "Resolved request",
+        "x": 426,
+        "y": 550,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/52-tkt-07-request-answer",
+    "file": "screenshots/employee/52-tkt-07-request-answer.png",
+    "captured_at": "2026-10-21T08:33:38.394Z",
+    "url": "/admin/tickets/3",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      3
+    ],
+    "workflow": "Raise an HR request (employee): result",
+    "screen": "My requests \u203a TKT request",
+    "action": "Open the request",
+    "expected": "Status Resolved with HR\u2019s resolution; the conversation shows the reply; the employee can close and rate or reopen",
+    "prereq": "ticket.create",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Resolution",
+        "x": 462,
+        "y": 956,
+        "w": 116,
+        "h": 42
+      },
+      {
+        "n": "2",
+        "label": "Conversation",
+        "x": 426,
+        "y": 1208,
+        "w": 183,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/52-let-02-generate-form",
+    "file": "screenshots/hr-admin/52-let-02-generate-form.png",
+    "captured_at": "2026-10-21T08:53:30.531Z",
+    "url": "/admin/letters",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Letters: generate \u2192 approve (different person) \u2192 issue",
+    "screen": "Letters \u203a Generate letter",
+    "action": "Choose the employee and the template (No objection certificate); add extra fields",
+    "expected": "Template merge fields come from the employee record; templates marked \"needs approval\" go to Pending approval",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Employee",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Template",
+        "x": 30,
+        "y": 276,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Extra fields",
+        "x": 30,
+        "y": 408,
+        "w": 1284,
+        "h": 123
+      },
+      {
+        "n": "4",
+        "label": "Submit",
+        "x": 30,
+        "y": 609,
+        "w": 122,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/52-let-03-pending",
+    "file": "screenshots/hr-admin/52-let-03-pending.png",
+    "captured_at": "2026-10-21T08:53:33.164Z",
+    "url": "/admin/letters",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Letters: generate \u2192 approve (different person) \u2192 issue",
+    "screen": "Letters (list)",
+    "action": "Check the list after generating",
+    "expected": "Letters by status: Pending approval (NOC), Issued (employment certificate, NOC)",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Pending approval",
+        "x": 426,
+        "y": 722,
+        "w": 1875,
+        "h": 104
+      },
+      {
+        "n": "2",
+        "label": "Status tabs",
+        "x": 543,
+        "y": 357,
+        "w": 300,
+        "h": 57
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/52-let-02b-ready-to-issue",
+    "file": "screenshots/hr-admin/52-let-02b-ready-to-issue.png",
+    "captured_at": "2026-10-21T08:00:00.000Z",
+    "url": "/admin/letters/2",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      8
+    ],
+    "workflow": "Letters: issue a letter that needs no approval",
+    "screen": "Letters \u203a LTR-2026-00002 (Employment certificate)",
+    "action": "Open a generated letter whose template does not need approval",
+    "expected": "The letter preview with Issue (status Approved: \"ready to issue\"); Issue was then executed (\"Letter issued\")",
+    "prereq": "letter.issue (HR Manager, Tenant HR Admin)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Manifest entry rebuilt after the capture run ended early; image unchanged; no callout boxes recorded.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/52-tkt-01-ask-hr",
+    "file": "screenshots/employee/52-tkt-01-ask-hr.png",
+    "captured_at": "2026-10-21T08:00:00.000Z",
+    "url": "/admin/my-hr",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      3
+    ],
+    "workflow": "Raise an HR request (employee)",
+    "screen": "My HR \u203a Ask HR",
+    "action": "Choose a category, write a subject and the question, set the priority",
+    "expected": "The request goes to the HR queue with an SLA from its category",
+    "prereq": "ticket.create (employees)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Manifest entry rebuilt after the capture run ended early; image unchanged; no callout boxes recorded.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/52-tkt-02-raised",
+    "file": "screenshots/employee/52-tkt-02-raised.png",
+    "captured_at": "2026-10-21T08:00:00.000Z",
+    "url": "/admin/my-hr",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      3
+    ],
+    "workflow": "Raise an HR request (employee)",
+    "screen": "My HR (after submitting)",
+    "action": "Submit",
+    "expected": "Confirmation \"Request TKT-2026-00003 raised\"; the request shows under My requests as Submitted",
+    "prereq": "ticket.create (employees)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Manifest entry rebuilt after the capture run ended early; image unchanged; no callout boxes recorded.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

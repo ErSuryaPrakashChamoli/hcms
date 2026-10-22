@@ -13,6 +13,7 @@ use App\Domain\Leave\Services\LeaveOutput;
 use App\Domain\Payroll\Models\PayrollAdjustment;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\SalaryComponent;
+use App\Domain\Payroll\Support\FormulaVariables;
 use App\Domain\Platform\Services\SettingsRepository;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -39,8 +40,13 @@ class PayrollCalculator
      *       compensation only; the contract version and a fingerprint of the compensation used are
      *       recorded, and finalisation refuses an entry whose compensation changed since). Amounts,
      *       proration and statutory treatment are unchanged.
+     * 2.4 = 2.3 + formula flexibility: a structure line's formula override applies whatever the
+     *       component's calculation method (2.3 ignored it on fixed components); structure parameters,
+     *       variable_target_annual and employee values (grade, work_city, years_of_service, …) as
+     *       variables; text comparison and the lookup / slab / in / between / clamp / round_to functions;
+     *       a division by zero in a branch not taken no longer fails the formula.
      */
-    public const VERSION = 'payroll-2.3';
+    public const VERSION = 'payroll-2.4';
 
     public const BLOCKING = ['no_salary', 'no_structure', 'negative_net', 'formula_error', 'invalid_component'];
 
@@ -106,6 +112,7 @@ class PayrollCalculator
         // 5. Earnings, segment by segment; manual LOP is taken from the last segment.
         $overtimeMinutes = (int) $days->sum('approvedOvertimeMinutes');
         $overtimeUsed = false;
+        $attributes = null; // employee values for formulas, read once, on first use
         $perComponent = [];
         $segmentInputs = [];
 
@@ -130,7 +137,7 @@ class PayrollCalculator
             $segmentInputs[] = ['assignment_id' => $pay->assignmentId, 'structure' => $pay->structureCode, 'ctc_annual' => $pay->ctcAnnual, 'from' => $segment->from->toDateString(), 'to' => $segment->to->toDateString(), 'units' => $units, 'lop' => round($segLop, 2), 'paid_units' => round($segPaid, 2), 'proration' => round($proration, 6)];
 
             $full = [];
-            $variables = function (string $name) use (&$full, $pay, $items, $c, $overtimeMinutes, &$overtimeUsed) {
+            $variables = function (string $name) use (&$full, &$attributes, $pay, $segment, $items, $c, $employee, $end, $overtimeMinutes, &$overtimeUsed) {
                 if (str_starts_with($name, 'overtime_')) {
                     $overtimeUsed = true;
                 }
@@ -145,6 +152,9 @@ class PayrollCalculator
                     $name === 'overtime_minutes' => (float) $overtimeMinutes,
                     $name === 'overtime_hours' => round($overtimeMinutes / 60, 4),
                     $name === 'pf_employer' => $this->statutory->estimateEmployerPf($c, array_sum(array_intersect_key($full, array_flip($this->pfVariables($items))))),
+                    $name === 'variable_target_annual' => (float) ($pay->variableTargetAnnual ?? 0),
+                    isset(FormulaVariables::EMPLOYEE[$name]) => ($attributes ??= FormulaVariables::employeeAttributes($employee, $end))[$name],
+                    array_key_exists($name, $segment->parameters) => (float) $segment->parameters[$name],
                     default => $pay->hasValueFor($name) ? $pay->valueFor($name) : null,
                 };
             };
@@ -161,9 +171,9 @@ class PayrollCalculator
                     continue;
                 }
 
-                $formula = $item->formulaOverride ?: $component->formula;
+                $formula = $component->formulaFor($item->formulaOverride);
                 try {
-                    $amount = $component->calculation_method === 'formula' && $formula ? $this->formulas->evaluate($formula, $variables) : $pay->valueFor($component->code);
+                    $amount = $formula !== null ? $this->formulas->evaluate($formula, $variables) : $pay->valueFor($component->code);
                 } catch (RuntimeException $e) {
                     $c->exception('formula_error', "{$component->code}: {$e->getMessage()}");
                     $amount = 0;
@@ -215,7 +225,7 @@ class PayrollCalculator
     private function segments(PayrollCompensation $compensation, Carbon $start, Carbon $end): Collection
     {
         return $compensation->segments
-            ->map(fn (CompensationSegment $s) => new CompensationSegment($s->compensation, $s->from->copy()->max($start)->copy(), $s->to->copy()->min($end)->copy(), $s->components))
+            ->map(fn (CompensationSegment $s) => new CompensationSegment($s->compensation, $s->from->copy()->max($start)->copy(), $s->to->copy()->min($end)->copy(), $s->components, $s->parameters))
             ->filter(fn (CompensationSegment $s) => $s->from->lte($s->to))
             ->values();
     }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\EmployeeImports;
 
 use App\Domain\Employment\Imports\EmployeeImport;
+use App\Domain\Employment\Imports\EmployeeImports;
 use App\Filament\Resources\EmployeeImports\Pages\ListEmployeeImports;
 use App\Filament\Resources\EmployeeImports\Pages\ViewEmployeeImport;
 use App\Filament\Resources\EmployeeImports\RelationManagers\RowsRelationManager;
@@ -30,6 +31,11 @@ class EmployeeImportResource extends Resource
     protected static ?string $navigationLabel = 'Employee imports';
 
     protected static ?int $navigationSort = 30;
+
+    public static function canAccess(): bool
+    {
+        return EmployeeImports::enabled() && parent::canAccess();
+    }
 
     public static function getEloquentQuery(): Builder
     {

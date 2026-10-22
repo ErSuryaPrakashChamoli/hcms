@@ -6,9 +6,12 @@ use App\Domain\Compensation\Services\CompensationChanges;
 use App\Domain\Compensation\Services\CompensationRanges;
 use App\Domain\Compensation\Services\CompensationStructures;
 use App\Domain\Employment\Models\EmployeeBankAccount;
+use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Grade;
+use App\Domain\Organisation\Models\Level;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Services\PayrollCalculator;
@@ -126,6 +129,47 @@ it('validates proposals against the structure version in force: existence, appli
         ->and(fn () => $proposal(['currency' => 'XYZ']))->toThrow(RuntimeException::class, 'not a supported ISO 4217 currency')
         ->and(fn () => $proposal(['effective_from' => 'not a date']))->toThrow(RuntimeException::class, 'valid effective date')
         ->and($proposal([])->status)->toBe('draft');
+});
+
+it('fixes a structure version to grades, designations, levels, departments or any other position dimension', function () {
+    $employee = salariedEmployee(600000);
+    $actors = compensationActors();
+    $changes = app(CompensationChanges::class);
+    $sales = Department::factory()->create(['name' => 'Sales']);
+    $finance = Department::factory()->create(['name' => 'Finance']);
+    $executive = Designation::factory()->create(['name' => 'Sales executive']);
+    $level = Level::factory()->create(['name' => 'L2']);
+    $narrowing = ['grade_ids' => [$this->grade->id], 'applicability' => ['department_id' => [$sales->id, $finance->id], 'designation_id' => [$executive->id], 'level_id' => [$level->id]]];
+
+    expect(fn () => $this->structures->create(['name' => 'Bad', 'code' => 'bad', 'applicability' => ['salary_band_id' => [1]]], $this->preparer))->toThrow(RuntimeException::class, 'cannot be narrowed by [salary_band_id]')
+        ->and(fn () => $this->structures->create(['name' => 'Bad', 'code' => 'bad', 'applicability' => ['grade_id' => [$this->grade->id]]], $this->preparer))->toThrow(RuntimeException::class, 'cannot be narrowed by [grade_id]')
+        ->and(fn () => $this->structures->create(['name' => 'Bad', 'code' => 'bad', 'applicability' => ['division_id' => [999999]]], $this->preparer))->toThrow(RuntimeException::class, 'A division in the applicability list does not exist');
+
+    $structure = $this->structures->create(['name' => 'Sales force', 'code' => 'salesforce', 'effective_from' => '2026-11-01', ...$narrowing, 'components' => [['salary_component_id' => $this->basic->id]]], $this->preparer);
+    $v1 = $structure->versions()->sole();
+    expect($v1->applicability)->toBe(['department_id' => [$sales->id, $finance->id], 'designation_id' => [$executive->id], 'level_id' => [$level->id]])
+        ->and(array_keys($v1->restrictions()))->toBe(['department_id', 'designation_id', 'level_id', 'grade_id']);
+    $this->structures->submit($v1, $this->preparer);
+    expect(fn () => $v1->refresh()->update(['applicability' => null]))->toThrow(RuntimeException::class, 'Only a draft structure version is edited');
+    $this->structures->approve($v1->refresh(), $this->approver);
+
+    $proposal = fn () => $changes->propose($employee, ['change_type' => 'annual_increment', 'effective_from' => '2026-12-01', 'salary_structure_id' => $structure->id, 'ctc_annual' => 650000, 'reason' => 'x'], $actors['proposer']);
+    $place = fn (array $dimensions) => EmployeePosition::query()->where('employee_id', $employee->id)->update($dimensions);
+
+    // A narrowed dimension the position has no value for does not match; the refusal names the dimension.
+    expect($proposal)->toThrow(RuntimeException::class, "does not apply to this employee's department");
+    $place(['department_id' => $finance->id, 'designation_id' => $executive->id, 'level_id' => $level->id, 'grade_id' => Grade::factory()->create()->id]);
+    expect($proposal)->toThrow(RuntimeException::class, "does not apply to this employee's grade");
+    $place(['grade_id' => $this->grade->id]);
+    expect($proposal()->status)->toBe('draft');
+
+    // A new version carries the narrowing over; the draft can widen it again.
+    $v2 = $this->structures->newVersion($structure, $this->preparer, '2027-04-01');
+    expect($v2->applicability)->toBe($v1->refresh()->applicability)->and($v2->grade_ids)->toBe([$this->grade->id]);
+    $v2 = $this->structures->updateDraft($v2, ['applicability' => ['department_id' => [$sales->id]], 'grade_ids' => []], $this->preparer);
+    expect($v2->restrictions())->toBe(['department_id' => [$sales->id]])
+        ->and($v2->appliesTo(['company_id' => $this->company->id, 'department_id' => $sales->id]))->toBeTrue()
+        ->and($v2->mismatch(['department_id' => $finance->id]))->toBe('department');
 });
 
 it('validates ranges: order, sign, currency, dates and the configurable range model', function () {

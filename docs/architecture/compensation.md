@@ -109,7 +109,13 @@ draft ─submit─► pending_approval ─approve (≠ preparer)─► scheduled
 
 - **Versions:** a structure is an identity (code, name, status). Its composition is a series of
   effective-dated versions with currency, pay frequency and applicability (one company or every
-  company; a list of grades or every grade).
+  company; a list of grades or every grade; optionally lists of any other position dimension —
+  designation, level, department, division, business unit, team, location, employment type,
+  employee category, work mode, cost centre — kept in `applicability` as {position column: [ids]}).
+- **Applicability match:** `SalaryStructureVersion::mismatch()` checks the employee's position on
+  the proposal's effective date. Every narrowed dimension must match (values within one are
+  alternatives); a position with no value in a narrowed dimension does not match. The refusal names
+  the dimension. The admin picks dimensions in the draft form ("Fix this version to particular …").
 - **No parallel table:** the existing `salary_structure_components` rows are the version lines
   (`salary_structure_version_id`). The Phase 11 migration gave every existing structure version 1,
   in force since 2000-01-01, holding its rows, so payroll calculates exactly as before.
@@ -121,6 +127,12 @@ draft ─submit─► pending_approval ─approve (≠ preparer)─► scheduled
   - is refused on or before an approved version's start.
 - **Activation:** the daily processor turns a scheduled version active on its date and supersedes the
   one before it.
+- **Parameters and formula check (§30):** a version carries `parameters`, named numbers its formulas
+  use (`basic_pct => 50`). They are part of its content: copied to a new version, frozen on submit,
+  and included in the checksum when present. Creating, saving or submitting a draft runs Payroll's
+  `StructureFormulas::check` and refuses the draft on any formula error. Payroll receives the
+  parameters on `CompensationSegment::$parameters`. The contract version and fingerprint are
+  unchanged, since a version's parameters never change once approved. See payroll-architecture §2.1.
 
 ## 5. Ranges, range position and compa-ratio (§8, §25)
 
@@ -256,6 +268,37 @@ is the same controlled, audited path.
 
 A rating only prefills a proposal; people review, approve and execute every line. No "update
 salaries" mass action exists.
+
+### Salary uploads
+
+**Compensation › Salary uploads** (`SalaryImports`, import type `salaries` on the shared
+`employee_imports` staging tables) loads amounts from a CSV file. The file never writes pay. Running it
+prepares a draft cycle of type `salary_upload`, and that cycle goes through the same four-person chain.
+
+- **Columns:** employee code, salary structure code and annual CTC (required). Optional: effective
+  from, currency, variable target, change type, and one column per fixed-amount, non-statutory
+  component (monthly). "Download template" writes every column header. Amounts may use thousands
+  separators ("6,00,000").
+- **Mapping:** the person mapping the columns chooses the company (one upload = one cycle = one
+  company) and a default effective date for rows that have none.
+- **Validation:** runs as the uploader and touches no compensation.
+  - Each row passes `CompensationChanges::check` (the same rules as `propose`).
+  - Each row also passes the timeline rules `AssignmentWriter` would refuse at execution: employee not
+    in the company on the date, another open change, compensation already starting on the date
+    (identical → skipped; different → needs change type `correction`), and payroll finalized on or
+    after the date.
+  - This keeps one stale row from blocking the cycle's all-or-none execution.
+  - With no change type given, a row is `hire` when the employee has no earlier compensation, and
+    `revision` otherwise.
+  - Validation is not wrapped in one transaction, so the payroll-closure locks are not held for the
+    whole file.
+- **Run:** `CompensationCycles::fromUpload` creates the cycle and one line per row (source `import`)
+  under one audit operation. The uploader becomes the preparer. A line a rule refuses is reported on
+  its row; a cycle that gets no line is cancelled. An upload cycle is never populated, and
+  `CompensationCycles::create` refuses the upload type.
+- **Access:** `compensation.cycles` + `compensation.propose`. Each person sees and acts on only the
+  files they uploaded, because the rows hold pay (`EmployeeImportPolicy`, `SalaryImportResource`
+  query).
 
 ## 9. Budgets (§16)
 

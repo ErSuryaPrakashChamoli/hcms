@@ -1,0 +1,2293 @@
+[
+  {
+    "name": "employee/30-self-01-sign-in",
+    "file": "screenshots/employee/30-self-01-sign-in.png",
+    "captured_at": "2026-10-21T07:14:59.266Z",
+    "url": "/admin/login",
+    "http_status": 200,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      1,
+      2,
+      7
+    ],
+    "workflow": "Sign in",
+    "screen": "Sign in (/admin/login)",
+    "action": "Open the PeopleOS address and sign in with your work e-mail and password",
+    "expected": "E-mail, Password, Remember me, Forgot password?, Sign in",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Work e-mail",
+        "x": 762,
+        "y": 592,
+        "w": 636,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Password",
+        "x": 762,
+        "y": 728,
+        "w": 569,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Forgot password?",
+        "x": 1209,
+        "y": 683,
+        "w": 189,
+        "h": 45
+      },
+      {
+        "n": "4",
+        "label": "Sign in",
+        "x": 762,
+        "y": 884,
+        "w": 636,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-02-sign-in-failed",
+    "file": "screenshots/employee/30-self-02-sign-in-failed.png",
+    "captured_at": "2026-10-21T07:15:00.997Z",
+    "url": "/admin/login",
+    "http_status": 200,
+    "persona": "guest",
+    "user": "Signed out",
+    "role": "Visitor",
+    "deck": [
+      1,
+      7
+    ],
+    "workflow": "Sign in",
+    "screen": "Sign in (failed attempt)",
+    "action": "Sign in with a wrong password",
+    "expected": "A generic message under the e-mail field; the same message is used for unknown, suspended or wrong credentials",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Failure message",
+        "x": 762,
+        "y": 637,
+        "w": 636,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-06-navigation",
+    "file": "screenshots/employee/30-self-06-navigation.png",
+    "captured_at": "2026-10-21T07:17:36.336Z",
+    "url": "/admin/goals",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Navigation",
+    "screen": "People › Growth › Goals (navigation shell)",
+    "action": "Use the sidebar section, its sub-menu and the area bar",
+    "expected": "Sidebar sections; sub-menu of the open section; area bar with the pages of the area and All in …",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Sidebar section",
+        "x": 66,
+        "y": 293,
+        "w": 284,
+        "h": 42
+      },
+      {
+        "n": "2",
+        "label": "Area",
+        "x": 66,
+        "y": 417,
+        "w": 284,
+        "h": 42
+      },
+      {
+        "n": "3",
+        "label": "Area bar",
+        "x": 435,
+        "y": 120,
+        "w": 186,
+        "h": 44
+      },
+      {
+        "n": "4",
+        "label": "All in Growth",
+        "x": 1862,
+        "y": 112,
+        "w": 248,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-10-my-day",
+    "file": "screenshots/employee/30-self-10-my-day.png",
+    "captured_at": "2026-10-21T07:19:52.350Z",
+    "url": "/admin/my-day",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "My day",
+    "screen": "My day (avatar menu › My day)",
+    "action": "Open My day",
+    "expected": "Apply leave, Regularise attendance, Ask HR, Resign; attendance today, leave balance, needs attention",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Apply leave",
+        "x": 1266,
+        "y": 224,
+        "w": 206,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Regularise attendance",
+        "x": 1478,
+        "y": 224,
+        "w": 315,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Ask HR",
+        "x": 1799,
+        "y": 224,
+        "w": 158,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-48-account-security",
+    "file": "screenshots/employee/30-self-48-account-security.png",
+    "captured_at": "2026-10-21T07:26:28.253Z",
+    "url": "/admin/profile",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      8
+    ],
+    "workflow": "Account security and preferences",
+    "screen": "Avatar menu › Account security",
+    "action": "Open Account security",
+    "expected": "Change password; Two-factor authentication (authenticator app) with Set up; name and e-mail are managed by HR",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New password",
+        "x": 994,
+        "y": 249,
+        "w": 1057,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Set up 2FA",
+        "x": 450,
+        "y": 549,
+        "w": 114,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-49-preferences",
+    "file": "screenshots/employee/30-self-49-preferences.png",
+    "captured_at": "2026-10-21T07:26:29.891Z",
+    "url": "/admin/preferences",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Account security and preferences",
+    "screen": "Avatar menu › Preferences",
+    "action": "Open Preferences",
+    "expected": "Density, pinned people, Home and history, notification preferences",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Density",
+        "x": 611,
+        "y": 412,
+        "w": 128,
+        "h": 57
+      },
+      {
+        "n": "2",
+        "label": "Notification preferences",
+        "x": 968,
+        "y": 753,
+        "w": 267,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-50-phone-home",
+    "file": "screenshots/employee/30-self-50-phone-home.png",
+    "captured_at": "2026-10-21T07:26:31.944Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      9
+    ],
+    "workflow": "Phone layout",
+    "screen": "Home on a phone (390 × 844)",
+    "action": "Open PeopleOS in a phone browser",
+    "expected": "The same Home, with a bottom bar: Home, Work, Actions, Services, People",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Bottom bar",
+        "x": 253,
+        "y": 1214,
+        "w": 78,
+        "h": 44
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-51-dark-home",
+    "file": "screenshots/employee/30-self-51-dark-home.png",
+    "captured_at": "2026-10-21T07:26:33.793Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Phone layout",
+    "screen": "Home (dark theme)",
+    "action": "Avatar menu › theme: dark",
+    "expected": "The same screens in the dark theme",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-52-restricted-page",
+    "file": "screenshots/employee/30-self-52-restricted-page.png",
+    "captured_at": "2026-10-21T07:26:35.748Z",
+    "url": "/admin/employees",
+    "http_status": 403,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      7,
+      8
+    ],
+    "workflow": "Restricted access",
+    "screen": "People › Lifecycle › Employees (HR register) as an employee",
+    "action": "Open an HR-only address directly",
+    "expected": "HTTP 403: \"This page is not available to you\", with Go to Home and Go back",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Not available",
+        "x": 702,
+        "y": 439,
+        "w": 756,
+        "h": 67
+      },
+      {
+        "n": "2",
+        "label": "Go to Home",
+        "x": 702,
+        "y": 901,
+        "w": 192,
+        "h": 69
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-53-my-exit",
+    "file": "screenshots/employee/30-self-53-my-exit.png",
+    "captured_at": "2026-10-21T07:27:37.967Z",
+    "url": "/admin/exit-cases",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Resignation (My exit)",
+    "screen": "You › My exit",
+    "action": "Open My exit",
+    "expected": "Your exit case (none) and the Resign button",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Resign",
+        "x": 1962,
+        "y": 244,
+        "w": 156,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-54-resign-form",
+    "file": "screenshots/employee/30-self-54-resign-form.png",
+    "captured_at": "2026-10-21T07:27:40.242Z",
+    "url": "/admin/exit-cases",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Resignation (My exit)",
+    "screen": "My exit › Resign (dialog)",
+    "action": "Write the reason and, optionally, the last day you request; Confirm submits the resignation",
+    "expected": "Form shown; in this walkthrough it is cancelled (Priya does not resign)",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Reason",
+        "x": 30,
+        "y": 318,
+        "w": 612,
+        "h": 174
+      },
+      {
+        "n": "2",
+        "label": "Requested last day",
+        "x": 30,
+        "y": 558,
+        "w": 612,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Confirm",
+        "x": 339,
+        "y": 648,
+        "w": 303,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-30-career-passport",
+    "file": "screenshots/employee/30-self-30-career-passport.png",
+    "captured_at": "2026-10-21T07:43:25.514Z",
+    "url": "/admin/career-passport-page",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Career",
+    "screen": "People › Growth › Career passport",
+    "action": "Open Career passport",
+    "expected": "Skills, certifications, performance history, experience, aspirations and next step",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Skills",
+        "x": 450,
+        "y": 642,
+        "w": 792,
+        "h": 36
+      },
+      {
+        "n": "2",
+        "label": "Career path",
+        "x": 1302,
+        "y": 957,
+        "w": 792,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-31-my-career",
+    "file": "screenshots/employee/30-self-31-my-career.png",
+    "captured_at": "2026-10-21T07:43:27.705Z",
+    "url": "/admin/my-career",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Career",
+    "screen": "You › My career",
+    "action": "Avatar menu › My career",
+    "expected": "Career profile and sharing, aspirations, career goals, mobility interest",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Profile & sharing",
+        "x": 1035,
+        "y": 224,
+        "w": 300,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Record aspiration",
+        "x": 1341,
+        "y": 224,
+        "w": 264,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-43-surveys",
+    "file": "screenshots/employee/30-self-43-surveys.png",
+    "captured_at": "2026-10-21T07:47:50.910Z",
+    "url": "/admin/my-hr?tab=surveys",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Surveys and feedback",
+    "screen": "My HR › Surveys",
+    "action": "Open the Surveys tab",
+    "expected": "Surveys open to you (none open in the demonstration)",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Surveys tab",
+        "x": 1335,
+        "y": 252,
+        "w": 128,
+        "h": 80
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-27-appraisal",
+    "file": "screenshots/employee/30-self-27-appraisal.png",
+    "captured_at": "2026-10-21T07:51:16.239Z",
+    "url": "/admin/appraisals/4",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Goals and performance",
+    "screen": "People › Growth › Appraisals › View",
+    "action": "Open your appraisal for FY 2026-27",
+    "expected": "Cycle stage Self review; reviews pending; Self review button",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Cycle stage",
+        "x": 462,
+        "y": 656,
+        "w": 128,
+        "h": 42
+      },
+      {
+        "n": "2",
+        "label": "Self review",
+        "x": 1922,
+        "y": 265,
+        "w": 197,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-28-self-review-form",
+    "file": "screenshots/employee/30-self-28-self-review-form.png",
+    "captured_at": "2026-10-21T07:51:18.991Z",
+    "url": "/admin/appraisals/4",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Goals and performance",
+    "screen": "Appraisal › Self review (dialog)",
+    "action": "Rate each goal and competency, choose an overall rating, add strengths and improvements",
+    "expected": "Submit sends the self review; the manager review follows",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Cropped: the blank top 560 px of the element capture (dialog taller than the viewport) removed; uncropped original in screenshots/_originals/employee/.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Overall",
+        "x": 66,
+        "y": 645,
+        "w": 1212,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Submit",
+        "x": 30,
+        "y": 1275,
+        "w": 122,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-32-my-learning",
+    "file": "screenshots/employee/30-self-32-my-learning.png",
+    "captured_at": "2026-10-21T07:52:23.563Z",
+    "url": "/admin/my-learning",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Learning",
+    "screen": "You › My learning",
+    "action": "Avatar menu › My learning",
+    "expected": "Assigned learning, certificates, skills, assessments and development plans; Request learning",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Assigned course",
+        "x": 462,
+        "y": 522,
+        "w": 177,
+        "h": 39
+      },
+      {
+        "n": "2",
+        "label": "Request learning",
+        "x": 1860,
+        "y": 224,
+        "w": 258,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-33-enrolment",
+    "file": "screenshots/employee/30-self-33-enrolment.png",
+    "captured_at": "2026-10-21T07:52:25.906Z",
+    "url": "/admin/learning-enrolments/4",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Learning",
+    "screen": "My learning › enrolment",
+    "action": "Open the assigned course",
+    "expected": "Status Assigned, due date, modules; Start",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Start",
+        "x": 1253,
+        "y": 265,
+        "w": 138,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Modules",
+        "x": 1320,
+        "y": 432,
+        "w": 762,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-34-enrolment-started",
+    "file": "screenshots/employee/30-self-34-enrolment-started.png",
+    "captured_at": "2026-10-21T07:52:27.292Z",
+    "url": "/admin/learning-enrolments/4",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Learning",
+    "screen": "My learning › enrolment (started)",
+    "action": "Start",
+    "expected": "Status In progress; Mark module complete and Update progress",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Mark module complete",
+        "x": 1133,
+        "y": 191,
+        "w": 318,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-35-my-hr",
+    "file": "screenshots/employee/30-self-35-my-hr.png",
+    "captured_at": "2026-10-21T07:54:04.018Z",
+    "url": "/admin/my-hr",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      9
+    ],
+    "workflow": "HR requests and knowledge",
+    "screen": "Services › My HR",
+    "action": "Open Services (My HR)",
+    "expected": "Ask HR, Give feedback, Your record; tabs Requests, Tasks, Documents, Policies, Services, Surveys…; Needs you",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Ask HR",
+        "x": 1517,
+        "y": 170,
+        "w": 158,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Tabs",
+        "x": 426,
+        "y": 293,
+        "w": 143,
+        "h": 80
+      }
+    ],
+    "missing_callouts": [
+      "3:Needs you"
+    ],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-36-ask-hr-form",
+    "file": "screenshots/employee/30-self-36-ask-hr-form.png",
+    "captured_at": "2026-10-21T07:54:06.616Z",
+    "url": "/admin/my-hr",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "HR requests and knowledge",
+    "screen": "My HR › Ask HR (dialog)",
+    "action": "Choose a category, write a subject and description, set the priority",
+    "expected": "Submit raises a numbered request with an SLA",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Category",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Subject",
+        "x": 30,
+        "y": 276,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Description",
+        "x": 30,
+        "y": 408,
+        "w": 1284,
+        "h": 210
+      },
+      {
+        "n": "4",
+        "label": "Priority",
+        "x": 30,
+        "y": 684,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "5",
+        "label": "Submit",
+        "x": 30,
+        "y": 774,
+        "w": 122,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-37-ask-hr-submitted",
+    "file": "screenshots/employee/30-self-37-ask-hr-submitted.png",
+    "captured_at": "2026-10-21T07:54:08.419Z",
+    "url": "/admin/my-hr",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "HR requests and knowledge",
+    "screen": "My HR (after submitting)",
+    "action": "Submit",
+    "expected": "Confirmation with the request number",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-40-knowledge-base",
+    "file": "screenshots/employee/30-self-40-knowledge-base.png",
+    "captured_at": "2026-10-21T07:55:47.539Z",
+    "url": "/admin/articles",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "HR requests and knowledge",
+    "screen": "You › Knowledge base",
+    "action": "Open the Knowledge base",
+    "expected": "Published HR articles; those that need acknowledgement are marked",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Article",
+        "x": 426,
+        "y": 773,
+        "w": 1692,
+        "h": 133
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-41-policy-acknowledge",
+    "file": "screenshots/employee/30-self-41-policy-acknowledge.png",
+    "captured_at": "2026-10-21T07:55:49.682Z",
+    "url": "/admin/articles/1",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Policies and announcements",
+    "screen": "Knowledge base › Leave policy",
+    "action": "Read the policy",
+    "expected": "\"I have read and understood\" records your acknowledgement of this version",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Acknowledge",
+        "x": 1758,
+        "y": 265,
+        "w": 360,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-42-policy-acknowledged",
+    "file": "screenshots/employee/30-self-42-policy-acknowledged.png",
+    "captured_at": "2026-10-21T07:55:52.639Z",
+    "url": "/admin/articles/1",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Policies and announcements",
+    "screen": "Knowledge base › Leave policy (acknowledged)",
+    "action": "I have read and understood",
+    "expected": "Confirmation; the policy leaves \"Policies to acknowledge\"",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-44-give-feedback-form",
+    "file": "screenshots/employee/30-self-44-give-feedback-form.png",
+    "captured_at": "2026-10-21T07:57:27.893Z",
+    "url": "/admin/my-hr",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      7
+    ],
+    "workflow": "Surveys and feedback",
+    "screen": "My HR › Give feedback (dialog)",
+    "action": "Choose identified, confidential or anonymous; pick a category; write the feedback",
+    "expected": "Submit sends it to the HR feedback inbox",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Mode",
+        "x": 30,
+        "y": 78,
+        "w": 1284,
+        "h": 72
+      },
+      {
+        "n": "2",
+        "label": "Category",
+        "x": 30,
+        "y": 450,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Feedback",
+        "x": 30,
+        "y": 582,
+        "w": 1284,
+        "h": 210
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-45-give-feedback-error",
+    "file": "screenshots/employee/30-self-45-give-feedback-error.png",
+    "captured_at": "2026-10-21T07:57:30.141Z",
+    "url": "/admin/my-hr",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      7,
+      11
+    ],
+    "workflow": "Surveys and feedback",
+    "screen": "My HR › Give feedback (after Submit)",
+    "action": "Submit",
+    "expected": "Observed: Not allowed SQLSTATE[HY000]: General error: 1366 Incorrect integer value: 'b1e6fae4-6e91-4a6a-b6ae-3b1ea825a59e' for column 'source_id' at row 1 (Connection: my",
+    "prereq": "",
+    "status": "INCOMPLETE",
+    "note": "Known defect F17 (MySQL): the feedback is saved, but the HR notification fails and the employee sees an error.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Message shown",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 729
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-46-announcements",
+    "file": "screenshots/employee/30-self-46-announcements.png",
+    "captured_at": "2026-10-21T08:00:33.370Z",
+    "url": "/admin/announcements-feed",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      9
+    ],
+    "workflow": "Policies and announcements",
+    "screen": "Communication › Announcements",
+    "action": "Open Communication",
+    "expected": "Announcements; some ask you to acknowledge",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "I acknowledge",
+        "x": 632,
+        "y": 450,
+        "w": 188,
+        "h": 60
+      },
+      {
+        "n": "2",
+        "label": "Mark as read",
+        "x": 462,
+        "y": 450,
+        "w": 170,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-47-announcement-acknowledged",
+    "file": "screenshots/employee/30-self-47-announcement-acknowledged.png",
+    "captured_at": "2026-10-21T08:00:35.047Z",
+    "url": "/admin/announcements-feed",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Policies and announcements",
+    "screen": "Communication › Announcements (acknowledged)",
+    "action": "I acknowledge",
+    "expected": "Confirmation; the announcement shows it is acknowledged",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-38-my-requests",
+    "file": "screenshots/employee/30-self-38-my-requests.png",
+    "captured_at": "2026-10-21T08:11:44.137Z",
+    "url": "/admin/tickets",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "HR requests and knowledge",
+    "screen": "You › My requests",
+    "action": "Open My requests",
+    "expected": "The request with its number, service, priority, status Submitted and SLA due date",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Your request",
+        "x": 426,
+        "y": 586,
+        "w": 1692,
+        "h": 97
+      },
+      {
+        "n": "2",
+        "label": "Status",
+        "x": 1272,
+        "y": 615,
+        "w": 116,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-39-request-detail",
+    "file": "screenshots/employee/30-self-39-request-detail.png",
+    "captured_at": "2026-10-21T08:11:45.823Z",
+    "url": "/admin/tickets/2",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "HR requests and knowledge",
+    "screen": "My requests › request",
+    "action": "Open the request",
+    "expected": "Status, SLA and the conversation with HR",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Request",
+        "x": 462,
+        "y": 432,
+        "w": 762,
+        "h": 60
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-20-payslips-none",
+    "file": "screenshots/employee/30-self-20-payslips-none.png",
+    "captured_at": "2026-10-21T08:22:04.320Z",
+    "url": "/admin/payslips",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Payslips and tax",
+    "screen": "People › Pay › Payslips",
+    "action": "Open Payslips",
+    "expected": "\"No payslips yet\": payslips are generated only when a payroll run is finalised, and finalisation is blocked until the statutory rules are verified",
+    "prereq": "A finalised payroll run (blocked: 0 of 24 statutory rules verified)",
+    "status": "AVAILABLE ONLY AFTER CONFIGURATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Empty state",
+        "x": 1172,
+        "y": 699,
+        "w": 201,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object",
+      "Object",
+      "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+      "Object"
+    ]
+  },
+  {
+    "name": "employee/30-self-21-tax-declaration-form",
+    "file": "screenshots/employee/30-self-21-tax-declaration-form.png",
+    "captured_at": "2026-10-21T08:22:09.915Z",
+    "url": "/admin/tax-declarations",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Payslips and tax",
+    "screen": "Tax declarations › New employee tax declaration",
+    "action": "Choose the financial year and regime; add previous-employer figures and declared amounts",
+    "expected": "The declaration is saved as a draft",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "F13: there is no employee \"submit\" step; payroll staff change the status.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Financial year",
+        "x": 261,
+        "y": 279,
+        "w": 170,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Regime",
+        "x": 455,
+        "y": 279,
+        "w": 170,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Create",
+        "x": 32,
+        "y": 1260,
+        "w": 116,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object",
+      "Object",
+      "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+      "Object"
+    ]
+  },
+  {
+    "name": "employee/30-self-22-tax-declaration-saved",
+    "file": "screenshots/employee/30-self-22-tax-declaration-saved.png",
+    "captured_at": "2026-10-21T08:22:11.670Z",
+    "url": "/admin/tax-declarations",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Payslips and tax",
+    "screen": "Tax declarations (own)",
+    "action": "Create",
+    "expected": "The declaration is listed with status Draft; there is no Submit action for the employee (F13)",
+    "prereq": "",
+    "status": "INCOMPLETE",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Draft declaration",
+        "x": 426,
+        "y": 457,
+        "w": 1692,
+        "h": 104
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object",
+      "Object",
+      "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+      "Object"
+    ]
+  },
+  {
+    "name": "employee/30-self-23-my-compensation",
+    "file": "screenshots/employee/30-self-23-my-compensation.png",
+    "captured_at": "2026-10-21T08:22:13.838Z",
+    "url": "/admin/my-compensation",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "My compensation",
+    "screen": "You › My compensation",
+    "action": "Avatar menu › My compensation",
+    "expected": "Pay in force today and the history of approved changes (fictional figures); viewing is audited",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "In force today",
+        "x": 462,
+        "y": 347,
+        "w": 1620,
+        "h": 36
+      },
+      {
+        "n": "2",
+        "label": "History",
+        "x": 462,
+        "y": 660,
+        "w": 1620,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object",
+      "Object",
+      "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+      "Object"
+    ]
+  },
+  {
+    "name": "employee/30-self-24-goals",
+    "file": "screenshots/employee/30-self-24-goals.png",
+    "captured_at": "2026-10-21T08:22:16.532Z",
+    "url": "/admin/goals",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      2
+    ],
+    "workflow": "Goals and performance",
+    "screen": "People › Growth › Goals",
+    "action": "Open Goals",
+    "expected": "Your goals with weight, progress and the parent goal they support; Check in on each goal",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Goal linked to a team goal",
+        "x": 426,
+        "y": 719,
+        "w": 1946,
+        "h": 302
+      },
+      {
+        "n": "2",
+        "label": "Check in",
+        "x": 1851,
+        "y": 846,
+        "w": 128,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object",
+      "Object",
+      "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+      "Object"
+    ]
+  },
+  {
+    "name": "employee/30-self-25-goal-check-in",
+    "file": "screenshots/employee/30-self-25-goal-check-in.png",
+    "captured_at": "2026-10-21T08:22:19.962Z",
+    "url": "/admin/goals",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Goals and performance",
+    "screen": "Goals › Check in (dialog)",
+    "action": "Choose the key result, enter its current value, your confidence and a note",
+    "expected": "Submit records the check-in and recalculates progress from the key result (40 → 80; 68 = 70 %)",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "A check-in on \"The goal itself\" is recorded but does not change the Progress column of a goal that has key results (observed).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Key result",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Current value",
+        "x": 30,
+        "y": 276,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Confidence",
+        "x": 30,
+        "y": 408,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Note",
+        "x": 30,
+        "y": 672,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object",
+      "Object",
+      "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+      "Object"
+    ]
+  },
+  {
+    "name": "employee/30-self-26-goal-updated",
+    "file": "screenshots/employee/30-self-26-goal-updated.png",
+    "captured_at": "2026-10-21T08:22:21.694Z",
+    "url": "/admin/goals",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Goals and performance",
+    "screen": "People › Growth › Goals (after check-in)",
+    "action": "Submit",
+    "expected": "Confirmation; the goal shows the new progress",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Updated progress",
+        "x": 426,
+        "y": 646,
+        "w": 1946,
+        "h": 302
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object",
+      "Object",
+      "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+      "Object"
+    ]
+  },
+  {
+    "name": "support/30-self-90-record-tab-500",
+    "file": "screenshots/support/30-self-90-record-tab-500.png",
+    "captured_at": "2026-10-21T08:21:52.330Z",
+    "url": "/admin/employees/4?relation=1#records",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      3,
+      7
+    ],
+    "workflow": "Server error on Employee 360 › Records › Employment",
+    "screen": "Your record › Records › Employment (error overlay, development mode)",
+    "action": "Open an Employee 360 › Records › Employment, then scroll down so the lazy-loaded tables of the Employment group load",
+    "expected": "Observed: HTTP 500 TypeError \"Filament\\Tables\\Table::getRelationshipQuery(): Return value must be of type ?Illuminate\\Database\\Eloquent\\Builder, Illuminate\\Database\\Query\\Builder returned\". Reproduced on every attempt after scrolling, for Employee (own record), Manager and Tenant HR Admin, on two records. Opening the tab without scrolling works; Timeline and Personal do not fail.",
+    "prereq": "",
+    "status": "INCOMPLETE",
+    "note": "New defect found during capture (not in documentation-gaps.md). One of the lazy-loaded tables of the Employment group (Positions, Reporting, Onboarding, Exit, Workflows) fails. The screenshot shows the development error page; production shows a generic error.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object",
+      "Object",
+      "InvalidStateError: Failed to execute 'showModal' on 'HTMLDialogElement': The dialog is already open as a non-modal dialog, and therefore cannot be opened as a modal dialog.",
+      "Object"
+    ]
+  },
+  {
+    "name": "employee/30-self-29-self-review-submitted",
+    "file": "screenshots/employee/30-self-29-self-review-submitted.png",
+    "captured_at": "2026-10-21T08:29:02.826Z",
+    "url": "/admin/appraisals/4",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      2
+    ],
+    "workflow": "Goals and performance",
+    "screen": "Appraisal (after the self review)",
+    "action": "Submit the self review (confirmation \"Review submitted\"), then open the appraisal again",
+    "expected": "Reviews: Self — submitted, overall 4.00, with the submission time. The employee sees only their own review row (the manager review is not listed for the employee)",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Self review submitted",
+        "x": 426,
+        "y": 1337,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-03-first-home-welcome",
+    "file": "screenshots/employee/30-self-03-first-home-welcome.png",
+    "captured_at": "2026-10-21T08:31:11.043Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      9
+    ],
+    "workflow": "Sign in and Home",
+    "screen": "Home (first visit)",
+    "action": "First sign-in: Home explains how PeopleOS brings work to you",
+    "expected": "Welcome note with Shortcuts and Got it; Request leave and Start something",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Welcome note",
+        "x": 522,
+        "y": 411,
+        "w": 1317,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Got it",
+        "x": 1989,
+        "y": 431,
+        "w": 99,
+        "h": 60
+      },
+      {
+        "n": "3",
+        "label": "Search (Ctrl K)",
+        "x": 744,
+        "y": 13,
+        "w": 792,
+        "h": 69
+      },
+      {
+        "n": "4",
+        "label": "Request leave",
+        "x": 1668,
+        "y": 279,
+        "w": 195,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-04-home",
+    "file": "screenshots/employee/30-self-04-home.png",
+    "captured_at": "2026-10-21T08:31:14.141Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      9
+    ],
+    "workflow": "Sign in and Home",
+    "screen": "Home",
+    "action": "Read Home from top to bottom",
+    "expected": "For you, Need attention, Your day and PeopleOS Intelligence; each item says why it is there",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "For you",
+        "x": 426,
+        "y": 381,
+        "w": 120,
+        "h": 36
+      },
+      {
+        "n": "2",
+        "label": "Need attention",
+        "x": 426,
+        "y": 659,
+        "w": 210,
+        "h": 36
+      },
+      {
+        "n": "3",
+        "label": "PeopleOS Intelligence",
+        "x": 1644,
+        "y": 413,
+        "w": 210,
+        "h": 39
+      },
+      {
+        "n": "4",
+        "label": "Start something",
+        "x": 1863,
+        "y": 279,
+        "w": 255,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-05-home-full",
+    "file": "screenshots/employee/30-self-05-home-full.png",
+    "captured_at": "2026-10-21T08:31:15.056Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Sign in and Home",
+    "screen": "Home (whole page)",
+    "action": "Scroll Home",
+    "expected": "Your day (check in/out), My requests, What changed, Your people, Your momentum, Start something",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Your day",
+        "x": 426,
+        "y": 1031,
+        "w": 109,
+        "h": 36
+      },
+      {
+        "n": "2",
+        "label": "My requests",
+        "x": 426,
+        "y": 1359,
+        "w": 177,
+        "h": 36
+      },
+      {
+        "n": "3",
+        "label": "Your momentum",
+        "x": 1578,
+        "y": 1086,
+        "w": 193,
+        "h": 36
+      },
+      {
+        "n": "4",
+        "label": "Start something",
+        "x": 1863,
+        "y": 279,
+        "w": 255,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-07-search-person",
+    "file": "screenshots/employee/30-self-07-search-person.png",
+    "captured_at": "2026-10-21T08:31:20.512Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      2
+    ],
+    "workflow": "Search and quick launch",
+    "screen": "Command center (Ctrl K)",
+    "action": "Press Ctrl K (or click Search) and type a name",
+    "expected": "People results with Preview and In org map; scopes Everything / Actions / People",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Person result",
+        "x": 1662,
+        "y": 977,
+        "w": 129,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Scopes",
+        "x": 555,
+        "y": 270,
+        "w": 140,
+        "h": 54
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-08-search-payslip",
+    "file": "screenshots/employee/30-self-08-search-payslip.png",
+    "captured_at": "2026-10-21T08:31:22.489Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Search and quick launch",
+    "screen": "Command center (Ctrl K)",
+    "action": "Type what you are looking for, e.g. \"payslip\"",
+    "expected": "Navigation and action results you are allowed to open",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Matching page",
+        "x": 627,
+        "y": 393,
+        "w": 939,
+        "h": 44
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-09-quick-launch",
+    "file": "screenshots/employee/30-self-09-quick-launch.png",
+    "captured_at": "2026-10-21T08:31:26.050Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Search and quick launch",
+    "screen": "+ New (Start something)",
+    "action": "Click + New (or press N)",
+    "expected": "The command center opens in Actions mode with what you can start",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Actions you can start",
+        "x": 1668,
+        "y": 279,
+        "w": 195,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-11-my-work",
+    "file": "screenshots/employee/30-self-11-my-work.png",
+    "captured_at": "2026-10-21T08:31:28.694Z",
+    "url": "/admin/my-work",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      2
+    ],
+    "workflow": "My work and notifications",
+    "screen": "My work › Inbox",
+    "action": "Open My work",
+    "expected": "Everything, Decisions, Tasks, Follow-ups, Waiting on others, Done; Do this next",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Filters",
+        "x": 426,
+        "y": 284,
+        "w": 140,
+        "h": 54
+      },
+      {
+        "n": "2",
+        "label": "Waiting on others",
+        "x": 966,
+        "y": 284,
+        "w": 243,
+        "h": 54
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-12-notifications",
+    "file": "screenshots/employee/30-self-12-notifications.png",
+    "captured_at": "2026-10-21T08:31:30.954Z",
+    "url": "/admin/notifications",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "My work and notifications",
+    "screen": "My work › Notifications",
+    "action": "Open Notifications",
+    "expected": "Grouped notifications with Open, Mark read and Snooze; Preferences link",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Groups",
+        "x": 432,
+        "y": 299,
+        "w": 119,
+        "h": 62
+      },
+      {
+        "n": "2",
+        "label": "Mark all read",
+        "x": 1797,
+        "y": 367,
+        "w": 164,
+        "h": 60
+      },
+      {
+        "n": "3",
+        "label": "Snooze",
+        "x": 2028,
+        "y": 534,
+        "w": 63,
+        "h": 63
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-13-bell-panel",
+    "file": "screenshots/employee/30-self-13-bell-panel.png",
+    "captured_at": "2026-10-21T08:31:32.360Z",
+    "url": "/admin/notifications",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "My work and notifications",
+    "screen": "Notification bell (top bar)",
+    "action": "Click the bell",
+    "expected": "Unread notifications in a side panel",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Bell",
+        "x": 1869,
+        "y": 14,
+        "w": 66,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-14-my-record-now",
+    "file": "screenshots/employee/30-self-14-my-record-now.png",
+    "captured_at": "2026-10-21T08:32:06.543Z",
+    "url": "/admin/employees/4",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1,
+      9
+    ],
+    "workflow": "My profile (own record)",
+    "screen": "Your record (own Employee 360) › Now",
+    "action": "Avatar menu › My profile (or My HR › Your record)",
+    "expected": "Read-only record: status, what is next, recent changes; no action menus",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Your record",
+        "x": 1578,
+        "y": 524,
+        "w": 154,
+        "h": 36
+      },
+      {
+        "n": "2",
+        "label": "Views",
+        "x": 512,
+        "y": 408,
+        "w": 123,
+        "h": 80
+      },
+      {
+        "n": "3",
+        "label": "Reports to",
+        "x": 1272,
+        "y": 303,
+        "w": 108,
+        "h": 39
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-15-my-record-work",
+    "file": "screenshots/employee/30-self-15-my-record-work.png",
+    "captured_at": "2026-10-21T08:32:08.247Z",
+    "url": "/admin/employees/4#work",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "My profile (own record)",
+    "screen": "Your record › Work",
+    "action": "Open the Work view",
+    "expected": "Position, organisation and working relationships",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Work view",
+        "x": 629,
+        "y": 408,
+        "w": 101,
+        "h": 80
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-16-my-record-timeline",
+    "file": "screenshots/employee/30-self-16-my-record-timeline.png",
+    "captured_at": "2026-10-21T08:32:12.740Z",
+    "url": "/admin/employees/4#records",
+    "http_status": null,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "My profile (own record)",
+    "screen": "Your record › Records › Timeline",
+    "action": "Records › Timeline",
+    "expected": "Every recorded change to your record with its effective date — the same history HR sees, read only",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Records › Employment fails with a server error once its lazy tables load (see support/30-self-90-record-tab-500).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Timeline tab",
+        "x": 426,
+        "y": 1014,
+        "w": 137,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-17-my-record-personal",
+    "file": "screenshots/employee/30-self-17-my-record-personal.png",
+    "captured_at": "2026-10-21T08:32:17.210Z",
+    "url": "/admin/employees/4?relation=6#records",
+    "http_status": null,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "My profile (own record)",
+    "screen": "Your record › Records › Personal",
+    "action": "Records › Personal",
+    "expected": "Personal details; changes are requested from HR (employees do not edit their own record)",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Personal tab",
+        "x": 1209,
+        "y": 945,
+        "w": 135,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-18-my-documents",
+    "file": "screenshots/employee/30-self-18-my-documents.png",
+    "captured_at": "2026-10-21T08:32:21.029Z",
+    "url": "/admin/employees/4#documents",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Documents and letters",
+    "screen": "Your record › Documents",
+    "action": "Open the Documents view",
+    "expected": "Your documents with status and expiry (employees cannot upload their own documents; HR does)",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Documents view",
+        "x": 965,
+        "y": 408,
+        "w": 165,
+        "h": 80
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/30-self-19-my-letters",
+    "file": "screenshots/employee/30-self-19-my-letters.png",
+    "captured_at": "2026-10-21T08:32:23.362Z",
+    "url": "/admin/letters",
+    "http_status": 200,
+    "persona": "employee",
+    "user": "Priya Nair",
+    "role": "Employee",
+    "deck": [
+      1
+    ],
+    "workflow": "Documents and letters",
+    "screen": "You › My letters",
+    "action": "Open My letters",
+    "expected": "Letters HR has issued to you, with status and issue date; open one to read or download it",
+    "prereq": "",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8098",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "My letters",
+        "x": 1113,
+        "y": 111,
+        "w": 144,
+        "h": 62
+      },
+      {
+        "n": "2",
+        "label": "Issued letter",
+        "x": 426,
+        "y": 530,
+        "w": 1729,
+        "h": 104
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

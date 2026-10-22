@@ -1,0 +1,345 @@
+[
+  {
+    "name": "client-onboarding/90-onb-38-hire-person",
+    "file": "screenshots/client-onboarding/90-onb-38-hire-person.png",
+    "captured_at": "2026-10-21T07:27:34.867Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Employee data: hire with the wizard",
+    "screen": "Hire employee › 01 Person",
+    "action": "Name, date of birth, personal details and personal e-mail",
+    "expected": "The person is checked against existing people before you continue",
+    "prereq": "Organisation, designations and levels configured; employee.create permission",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Step 1 of 4",
+        "x": 426,
+        "y": 366,
+        "w": 300,
+        "h": 120
+      },
+      {
+        "n": "2",
+        "label": "Name",
+        "x": 426,
+        "y": 726,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Personal e-mail",
+        "x": 426,
+        "y": 1122,
+        "w": 548,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-39-hire-employment",
+    "file": "screenshots/client-onboarding/90-onb-39-hire-employment.png",
+    "captured_at": "2026-10-21T07:27:38.419Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Employee data: hire with the wizard",
+    "screen": "Hire employee › 02 Employment",
+    "action": "Joining date, probation end, employee code, work e-mail and phone",
+    "expected": "Employee code is generated when left blank",
+    "prereq": "Organisation, designations and levels configured; employee.create permission",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Joining date",
+        "x": 426,
+        "y": 552,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Employee code",
+        "x": 1570,
+        "y": 552,
+        "w": 548,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Work e-mail",
+        "x": 426,
+        "y": 726,
+        "w": 548,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-40-hire-position",
+    "file": "screenshots/client-onboarding/90-onb-40-hire-position.png",
+    "captured_at": "2026-10-21T07:28:05.815Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Employee data: hire with the wizard",
+    "screen": "Hire employee › 03 Position",
+    "action": "Company, location, business unit, department, team, designation, level, employment type, category, work mode",
+    "expected": "Only Company is required; the rest place the person in the structure built earlier",
+    "prereq": "Organisation, designations and levels configured; employee.create permission",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Company",
+        "x": 426,
+        "y": 510,
+        "w": 548,
+        "h": 108
+      },
+      {
+        "n": "2",
+        "label": "Department",
+        "x": 998,
+        "y": 642,
+        "w": 548,
+        "h": 108
+      },
+      {
+        "n": "3",
+        "label": "Designation",
+        "x": 426,
+        "y": 774,
+        "w": 548,
+        "h": 108
+      },
+      {
+        "n": "4",
+        "label": "Employment type",
+        "x": 426,
+        "y": 906,
+        "w": 548,
+        "h": 108
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-41-hire-manager",
+    "file": "screenshots/client-onboarding/90-onb-41-hire-manager.png",
+    "captured_at": "2026-10-21T07:28:08.337Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Employee data: hire with the wizard",
+    "screen": "Hire employee › 04 Manager",
+    "action": "Reporting line (none for the first manager) and the reason",
+    "expected": "The reason is recorded in the audit trail",
+    "prereq": "Organisation, designations and levels configured; employee.create permission",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Line manager",
+        "x": 426,
+        "y": 510,
+        "w": 1692,
+        "h": 108
+      },
+      {
+        "n": "2",
+        "label": "Reason for change",
+        "x": 426,
+        "y": 684,
+        "w": 1692,
+        "h": 102
+      },
+      {
+        "n": "3",
+        "label": "Create employee",
+        "x": 1899,
+        "y": 852,
+        "w": 219,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-43-hire-created",
+    "file": "screenshots/client-onboarding/90-onb-43-hire-created.png",
+    "captured_at": "2026-10-21T07:28:11.058Z",
+    "url": "/admin/employees/23",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Employee data: hire with the wizard",
+    "screen": "Employee record (after Create employee)",
+    "action": "Create employee",
+    "expected": "Vivek Rao (EMP00001) opens in Employee 360: Preboarding, One lifetime record, joins Nov 2026",
+    "prereq": "Organisation, designations and levels configured; employee.create permission",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Employee",
+        "x": 549,
+        "y": 186,
+        "w": 576,
+        "h": 63
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')",
+      "TypeError: Cannot read properties of null (reading 'style')",
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "client-onboarding/90-onb-44-hire-with-manager",
+    "file": "screenshots/client-onboarding/90-onb-44-hire-with-manager.png",
+    "captured_at": "2026-10-21T07:29:25.373Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      7
+    ],
+    "workflow": "Reporting relationships: who can be a line manager",
+    "screen": "Hire employee › 04 Manager (Line manager search)",
+    "action": "Hire Ishita Sen and search for Vivek Rao as her line manager",
+    "expected": "\"No options match your search\": only employed people (joined, probation, confirmed …) can be line managers; Vivek is still Preboarding. Ishita was created without a manager and linked later with Change manager",
+    "prereq": "Organisation, designations and levels configured; employee.create permission",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Line manager",
+        "x": 426,
+        "y": 510,
+        "w": 1692,
+        "h": 108
+      },
+      {
+        "n": "2",
+        "label": "Reason for change",
+        "x": 426,
+        "y": 684,
+        "w": 1692,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')",
+      "TypeError: Cannot read properties of null (reading 'style')",
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "client-onboarding/90-onb-45-duplicate-person",
+    "file": "screenshots/client-onboarding/90-onb-45-duplicate-person.png",
+    "captured_at": "2026-10-21T07:31:13.845Z",
+    "url": "/admin/employees/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3,
+      7
+    ],
+    "workflow": "Person matching and duplicate prevention",
+    "screen": "Hire employee › 01 Person (duplicate check)",
+    "action": "Enter a person who already exists (same name, date of birth and personal e-mail) and press Next",
+    "expected": "PeopleOS matches the existing person and stops or warns before a duplicate is created",
+    "prereq": "Organisation, designations and levels configured; employee.create permission",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "This person already exists",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 189
+      },
+      {
+        "n": "2",
+        "label": "Re-use the existing person",
+        "x": 426,
+        "y": 510,
+        "w": 1692,
+        "h": 150
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

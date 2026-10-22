@@ -2,7 +2,7 @@
 
 Phase 4 (27 September 2026). Describes what is implemented; *deferred* items are not built. Statutory rates remain **illustrative** (see §8).
 
-## 1. Pipeline (engine `payroll-2.1`; 2.1 = 2.0 + Phase 5 establishment-resolved statutory context, see compliance architecture)
+## 1. Pipeline (engine `payroll-2.4`: 2.1 = Phase 5 establishment-resolved statutory context; 2.2 = salary TDS by payment date; 2.3 = compensation through `CompensationOutput`; 2.4 = formula flexibility, §2.1)
 
 ```
 PayrollPeriod (company, month; open → closed)
@@ -23,7 +23,24 @@ The engine never reads punches, never recalculates attendance and never touches 
 
 ## 2. Salary structure and components
 
-`salary_components` (tenant-configurable, code-unique) with a controlled `type` (earning, deduction, employer_contribution, reimbursement — `SalaryComponent::TYPES`), classification, calculation method (fixed value from the assignment, formula, statutory), flags (taxable, PF/ESI wages, CTC, gross, recurring, proratable, arrear-eligible, statutory) and effective dates. `salary_structures` order components with optional formula overrides. Statutory components are platform-owned and locked. Formulas run in `FormulaEngine` (shunting-yard, arithmetic and whitelisted functions only; no PHP). Variables: other components, `ctc_annual`, `ctc_monthly`, `paid_days`, `lop_days`, `days_in_period`, `overtime_minutes`, `overtime_hours`, `pf_employer`, fixed values from the assignment.
+`salary_components` (tenant-configurable, code-unique) with a controlled `type` (earning, deduction, employer_contribution, reimbursement — `SalaryComponent::TYPES`), classification, calculation method (fixed value from the assignment, formula, statutory), flags (taxable, PF/ESI wages, CTC, gross, recurring, proratable, arrear-eligible, statutory) and effective dates. `salary_structures` order components with optional formula overrides. Statutory components are platform-owned and locked.
+
+### 2.1 Formulas (engine `payroll-2.4`)
+
+- **Engine:** `FormulaEngine` (tokenizer + shunting-yard, no PHP `eval`): numbers, `"text"`, variables, `+ - * / %`, comparisons, `&& ||`, and the whitelisted `FormulaEngine::FUNCTIONS`: `min max clamp round round_to ceil_to floor_to floor ceil abs if in between lookup slab`. Arity, alternation of values and operators, and unknown functions are parse errors. `"basic * 40%"` gets a hint, because `%` is the remainder operator, not percent. Text compares ignoring case and is refused in arithmetic. A division by zero poisons only its own value, so an untaken `if` / `lookup` / `slab` branch does not fail the formula.
+- **Which formula runs:** `SalaryComponent::formulaFor(override)`. The structure line's override applies whatever the calculation method; otherwise the component's formula when it is formula-calculated; otherwise the fixed amount on the employee's compensation. Payroll 2.3 ignored an override on a fixed component.
+- **Names:** `Payroll\Support\FormulaVariables` is the single catalogue, used by the calculator, the draft check, the preview and the in-app guide. It covers:
+  - pay and month values (`ctc_annual`, `ctc_monthly`, `variable_target_annual`, `days_in_period`, `paid_days`, `lop_days`, `overtime_*`, `pf_employer`);
+  - employee values read from the position on the last day paid (`grade`, `grade_rank`, `level`, `company`, `location`, `work_city`, `work_state`, `department`, `designation`, `employment_type`, `employee_category`, `years_of_service`), loaded once per entry and only when a formula uses one;
+  - the structure version's **parameters** (`salary_structure_versions.parameters`, named numbers such as `basic_pct = 50`, versioned and approved with the version);
+  - the lowercase codes of the components above the line.
+
+  These names are reserved: a new component code or a parameter cannot take one, nor a statutory code.
+- **Order:** lines run in sort order. A formula may use only the components above it.
+- **Draft check:** `StructureFormulas::check` runs when a draft is created, saved or submitted (`CompensationStructures`; errors roll the save back). It reports parse errors, unknown names (with a "did you mean"), components used before they are calculated, components missing from the structure, statutory codes, self-reference and bad parameter names. It also warns when `pf_employer` is used above a PF-wage component.
+- **Preview:** `StructureFormulas::preview` gives the full-month breakup for a sample CTC, fixed amounts and employee values, using the same rules as the calculator. The employer-PF estimate goes through `StatutoryEngine::employerPfOn`. The preview reconciles to monthly CTC and shows advisory guardrails from `peopleos.payroll.guardrails`. The only one so far is the Code on Wages 50% wage-share check, which is *advisory, not legal advice*; the statutory engine does **not** apply the wage add-back to PF / gratuity.
+- **UI:** structure Versions: a **Formula guide** header action, a **Preview** row action, a parameters editor and a live preview in the draft form, and a placeholder showing each line's default formula. The components form links to the guide.
+- **Known limit:** editing a catalogue component's formula changes it for every structure without an override, including approved versions, because catalogue formulas are not versioned. Structure-specific formulas belong in an override, which is versioned and approved.
 
 ## 3. Effective-dated salary
 

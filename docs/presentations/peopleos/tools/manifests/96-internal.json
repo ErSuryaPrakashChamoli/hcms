@@ -1,0 +1,199 @@
+[
+  {
+    "name": "internal-operations/96-int-03-tenants-side-by-side",
+    "file": "screenshots/internal-operations/96-int-03-tenants-side-by-side.png",
+    "captured_at": "2026-10-21T08:04:44.677Z",
+    "url": "/admin/tenants",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      6,
+      5
+    ],
+    "workflow": "Separation of the operator console and Markedge\u2019s HR",
+    "screen": "Admin \u203a Platform \u203a Tenants",
+    "action": "Operator view of all tenants",
+    "expected": "Demo Group, Northwind Retail and Markedge Technologies (internal workforce) are peers: the internal tenant has no special access",
+    "prereq": "Platform operator provisions the internal tenant; Markedge HR administers it",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Markedge\u2019s own tenant",
+        "x": 426,
+        "y": 616,
+        "w": 1792,
+        "h": 98
+      },
+      {
+        "n": "2",
+        "label": "A customer tenant",
+        "x": 426,
+        "y": 701,
+        "w": 1792,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "internal-operations/96-int-04-internal-home",
+    "file": "screenshots/internal-operations/96-int-04-internal-home.png",
+    "captured_at": "2026-10-21T08:04:46.587Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "meadmin",
+    "user": "Sana Qureshi",
+    "role": "Tenant Super Admin (Markedge internal HR)",
+    "deck": [
+      6
+    ],
+    "workflow": "Markedge internal HR: first sign-in",
+    "screen": "Home (Markedge internal tenant)",
+    "action": "Markedge HR\u2019s administrator signs in to the internal tenant",
+    "expected": "The same tenant Home as any customer: administration lens, governance items",
+    "prereq": "Platform operator provisions the internal tenant; Markedge HR administers it",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "internal-operations/96-int-05-internal-directory",
+    "file": "screenshots/internal-operations/96-int-05-internal-directory.png",
+    "captured_at": "2026-10-21T08:05:58.172Z",
+    "url": "/admin/people",
+    "http_status": 200,
+    "persona": "meadmin",
+    "user": "Sana Qureshi",
+    "role": "Tenant Super Admin (Markedge internal HR)",
+    "deck": [
+      6
+    ],
+    "workflow": "Markedge internal HR: employee records",
+    "screen": "People \u203a Directory (Markedge internal tenant)",
+    "action": "Markedge HR opens the Directory",
+    "expected": "Only Markedge\u2019s own (fictional) employees; no customer data is visible here",
+    "prereq": "Platform operator provisions the internal tenant; Markedge HR administers it",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "internal-operations/96-int-06-internal-org-map",
+    "file": "screenshots/internal-operations/96-int-06-internal-org-map.png",
+    "captured_at": "2026-10-21T08:05:59.754Z",
+    "url": "/admin/organisation-map",
+    "http_status": 200,
+    "persona": "meadmin",
+    "user": "Sana Qureshi",
+    "role": "Tenant Super Admin (Markedge internal HR)",
+    "deck": [
+      6
+    ],
+    "workflow": "Markedge internal HR: employee records",
+    "screen": "Organisation \u203a Org map (Markedge internal tenant)",
+    "action": "Open the Org map",
+    "expected": "Reporting lines: Aditya Kulkarni \u2192 Rahul Desai",
+    "prereq": "Platform operator provisions the internal tenant; Markedge HR administers it",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "internal-operations/96-int-07-internal-employee-360",
+    "file": "screenshots/internal-operations/96-int-07-internal-employee-360.png",
+    "captured_at": "2026-10-21T08:06:03.554Z",
+    "url": "/admin/employees/28",
+    "http_status": 200,
+    "persona": "meadmin",
+    "user": "Sana Qureshi",
+    "role": "Tenant Super Admin (Markedge internal HR)",
+    "deck": [
+      6
+    ],
+    "workflow": "Markedge internal HR: employee records",
+    "screen": "Employee 360 (Markedge internal tenant)",
+    "action": "Open an internal employee record",
+    "expected": "The same Employee 360 as customers use: status, reports to, journey, records",
+    "prereq": "Platform operator provisions the internal tenant; Markedge HR administers it",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "internal-operations/96-int-08-hr-cannot-open-tenants",
+    "file": "screenshots/internal-operations/96-int-08-hr-cannot-open-tenants.png",
+    "captured_at": "2026-10-21T08:06:04.939Z",
+    "url": "/admin/tenants",
+    "http_status": 403,
+    "persona": "meadmin",
+    "user": "Sana Qureshi",
+    "role": "Tenant Super Admin (Markedge internal HR)",
+    "deck": [
+      6,
+      8
+    ],
+    "workflow": "Separation of the operator console and Markedge\u2019s HR",
+    "screen": "Tenants (as Markedge HR administrator)",
+    "action": "Markedge HR\u2019s administrator opens the operator\u2019s Tenants screen directly",
+    "expected": "Refused: being Markedge staff in HR does not grant platform-operator access",
+    "prereq": "Platform operator provisions the internal tenant; Markedge HR administers it",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "internal-operations/96-int-02-tenant-created",
+    "file": "screenshots/internal-operations/96-int-02-tenant-created.png",
+    "captured_at": "2026-10-21T08:02:14.000Z",
+    "url": "/admin/tenants/3/edit",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      6,
+      4,
+      5
+    ],
+    "workflow": "Provision Markedge\u2019s internal tenant (operator)",
+    "screen": "Tenant (after Create tenant)",
+    "action": "Create tenant",
+    "expected": "\"Created\": the tenant record opens; system roles, default features and settings are provisioned and the invitation e-mail is sent to the first administrator",
+    "prereq": "Platform operator with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Manifest entry written from the capture script after the run that took the screenshot stopped before recording it.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

@@ -1,0 +1,797 @@
+[
+  {
+    "name": "employee/70-exit-01-resign",
+    "file": "screenshots/employee/70-exit-01-resign.png",
+    "captured_at": "2026-10-21T08:36:15.295Z",
+    "url": "/admin/exit-cases",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      3,
+      11
+    ],
+    "workflow": "Resign (employee)",
+    "screen": "My exit \u203a Resign",
+    "action": "The employee resigns: reason and requested last working day",
+    "expected": "Blank last day = end of the notice period",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Reason",
+        "x": 30,
+        "y": 318,
+        "w": 612,
+        "h": 174
+      },
+      {
+        "n": "2",
+        "label": "Requested last day",
+        "x": 30,
+        "y": 558,
+        "w": 612,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Confirm",
+        "x": 339,
+        "y": 648,
+        "w": 303,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/70-exit-02-my-exit",
+    "file": "screenshots/employee/70-exit-02-my-exit.png",
+    "captured_at": "2026-10-21T08:36:20.059Z",
+    "url": "/admin/exit-cases",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      3
+    ],
+    "workflow": "Resign (employee)",
+    "screen": "My exit",
+    "action": "The employee checks My exit",
+    "expected": "The exit case with its status and last working day",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "My exit case",
+        "x": 426,
+        "y": 586,
+        "w": 1692,
+        "h": 103
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-03-exit-cases",
+    "file": "screenshots/hr-admin/70-exit-03-exit-cases.png",
+    "captured_at": "2026-10-21T08:36:22.232Z",
+    "url": "/admin/exit-cases",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "People \u203a Lifecycle \u203a Exit cases",
+    "action": "HR opens Exit cases",
+    "expected": "The resignation appears as a new exit case",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New exit case",
+        "x": 426,
+        "y": 679,
+        "w": 1692,
+        "h": 103
+      },
+      {
+        "n": "2",
+        "label": "Initiate exit (HR-led)",
+        "x": 1754,
+        "y": 244,
+        "w": 203,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-04-case",
+    "file": "screenshots/hr-admin/70-exit-04-case.png",
+    "captured_at": "2026-10-21T08:36:28.498Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "Exit case (HR view)",
+    "action": "Open the case",
+    "expected": "Status, dates, notice; actions to start clearance, record the interview, generate letters and complete the exit",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-05-clearance-started",
+    "file": "screenshots/hr-admin/70-exit-05-clearance-started.png",
+    "captured_at": "2026-10-21T08:37:03.974Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "Exit case \u203a Clearance",
+    "action": "Start clearance",
+    "expected": "Clearance stages are created from the exit checklist (Clearance started; owners notified)",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Started",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Clearance",
+        "x": 426,
+        "y": 1080,
+        "w": 150,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-06-clearance-stages",
+    "file": "screenshots/hr-admin/70-exit-06-clearance-stages.png",
+    "captured_at": "2026-10-21T08:38:42.099Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "Exit case \u203a Clearance (stages)",
+    "action": "Review the clearance stages",
+    "expected": "One row per stage (manager, IT, finance, assets, HR \u2026) with owner and status; Clear / Block / Not applicable",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Stage",
+        "x": 426,
+        "y": 415,
+        "w": 1701,
+        "h": 494
+      },
+      {
+        "n": "2",
+        "label": "Clear",
+        "x": 1691,
+        "y": 638,
+        "w": 95,
+        "h": 48
+      },
+      {
+        "n": "3",
+        "label": "Block",
+        "x": 1791,
+        "y": 638,
+        "w": 98,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "manager/70-exit-07-manager-clears-stage",
+    "file": "screenshots/manager/70-exit-07-manager-clears-stage.png",
+    "captured_at": "2026-10-21T08:38:50.926Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "manager",
+    "user": "Amit Verma",
+    "role": "Manager + Employee",
+    "deck": [
+      2,
+      3
+    ],
+    "workflow": "Exit clearance: manager stage",
+    "screen": "Exit case \u203a Clearance \u203a Clear (manager)",
+    "action": "The line manager clears the Manager clearance stage",
+    "expected": "Clear dialog with a note",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "hr-admin/70-exit-09-exit-interview",
+    "file": "screenshots/hr-admin/70-exit-09-exit-interview.png",
+    "captured_at": "2026-10-21T08:40:17.164Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "Exit case \u203a Record exit interview",
+    "action": "Record the exit interview: reason, ratings 1\u20135, would recommend / rejoin, comments",
+    "expected": "Answers feed Exit insights (averages use employee answers only)",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-08a-asset-stage-blocked",
+    "file": "screenshots/hr-admin/70-exit-08a-asset-stage-blocked.png",
+    "captured_at": "2026-10-21T08:41:00.930Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      7,
+      11
+    ],
+    "workflow": "Exit clearance: assets still in custody",
+    "screen": "Exit case \u203a Clearance \u203a Asset clearance \u203a Clear",
+    "action": "Clear the Asset clearance stage while the leaver still holds a laptop",
+    "expected": "Refused: \"Not allowed \u2014 Assets still in custody: LT-0001. Take them back, or record a recoverable amount.\"",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Refused",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 159
+      },
+      {
+        "n": "2",
+        "label": "Asset clearance",
+        "x": 426,
+        "y": 730,
+        "w": 1883,
+        "h": 242
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-08b-take-back-asset",
+    "file": "screenshots/hr-admin/70-exit-08b-take-back-asset.png",
+    "captured_at": "2026-10-21T08:41:09.232Z",
+    "url": "/admin/assets/1",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit clearance: return company assets",
+    "screen": "Asset register \u203a LT-0001 \u203a Take back",
+    "action": "Take the laptop back from the leaver: date, condition, note",
+    "expected": "Custody ends; the asset returns to stock",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-08-clearance-done",
+    "file": "screenshots/hr-admin/70-exit-08-clearance-done.png",
+    "captured_at": "2026-10-21T08:41:30.817Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "Exit case \u203a Clearance (all stages cleared)",
+    "action": "Clear each stage (manager, IT, finance, assets, HR)",
+    "expected": "Every stage cleared, with who and when",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Cleared stages",
+        "x": 426,
+        "y": 602,
+        "w": 1692,
+        "h": 206
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-13b-ff-mark-paid-form",
+    "file": "screenshots/hr-admin/70-exit-13b-ff-mark-paid-form.png",
+    "captured_at": "2026-10-21T08:44:27.323Z",
+    "url": "/admin/exit-cases/3?relation=1",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Full & final settlement",
+    "screen": "Full & final \u203a Mark paid",
+    "action": "Record the payment reference",
+    "expected": "Mark paid dialog",
+    "prereq": "exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "hr-admin/70-exit-14-complete-exit",
+    "file": "screenshots/hr-admin/70-exit-14-complete-exit.png",
+    "captured_at": "2026-10-21T08:44:48.884Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "Exit case \u203a Complete exit",
+    "action": "Complete the exit",
+    "expected": "Confirmation; the employee becomes Exited on the last working day",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-15-completed",
+    "file": "screenshots/hr-admin/70-exit-15-completed.png",
+    "captured_at": "2026-10-21T08:44:53.182Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "Exit case (after Complete exit)",
+    "action": "Complete exit",
+    "expected": "Exit completed",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-16-create-alumni",
+    "file": "screenshots/hr-admin/70-exit-16-create-alumni.png",
+    "captured_at": "2026-10-21T08:45:57.410Z",
+    "url": "/admin/exit-cases/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "Exit case \u203a Create alumni profile",
+    "action": "Create the alumni profile (personal e-mail, portal access, consent)",
+    "expected": "The leaver keeps a lifetime record as an alumnus",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-17-alumni-list",
+    "file": "screenshots/hr-admin/70-exit-17-alumni-list.png",
+    "captured_at": "2026-10-21T08:46:03.321Z",
+    "url": "/admin/alumni-profiles",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "People \u203a Lifecycle \u203a Alumni",
+    "action": "Open Alumni",
+    "expected": "The new alumni profile (with the earlier seeded alumnus)",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New alumnus",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 104
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-18-employee-exited",
+    "file": "screenshots/hr-admin/70-exit-18-employee-exited.png",
+    "captured_at": "2026-10-21T08:46:05.624Z",
+    "url": "/admin/employees/3",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      9,
+      11
+    ],
+    "workflow": "Exit: resignation to alumni",
+    "screen": "Employee 360 (after the exit)",
+    "action": "Open the leaver\u2019s Employee 360",
+    "expected": "Status Exited / Alumni; the one lifetime record keeps the whole journey",
+    "prereq": "Employee: own exit (Resign). HR: exit.manage / exit.clear / exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Lifetime record",
+        "x": 680,
+        "y": 299,
+        "w": 227,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/70-alumni-01-portal",
+    "file": "screenshots/employee/70-alumni-01-portal.png",
+    "captured_at": "2026-10-21T08:46:53.102Z",
+    "url": "/admin/alumni-portal",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      3,
+      6
+    ],
+    "workflow": "Alumni portal",
+    "screen": "Alumni portal (former employee)",
+    "action": "The former employee signs in after the exit and opens the Alumni portal",
+    "expected": "Welcome back; My requests, My documents, Payslips; Request a document or reference",
+    "prereq": "Alumni role with portal enabled on the alumni profile",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Request a document",
+        "x": 1700,
+        "y": 224,
+        "w": 419,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "My documents",
+        "x": 1018,
+        "y": 630,
+        "w": 508,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/70-alumni-02-request-document",
+    "file": "screenshots/employee/70-alumni-02-request-document.png",
+    "captured_at": "2026-10-21T08:46:55.785Z",
+    "url": "/admin/alumni-portal",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      3,
+      6
+    ],
+    "workflow": "Alumni portal",
+    "screen": "Alumni portal \u203a Request a document or reference",
+    "action": "Choose the document and give a purpose",
+    "expected": "The request goes to HR, who verify identity before issuing",
+    "prereq": "Alumni role with portal enabled on the alumni profile",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "employee/70-alumni-03-requested",
+    "file": "screenshots/employee/70-alumni-03-requested.png",
+    "captured_at": "2026-10-21T08:47:00.012Z",
+    "url": "/admin/alumni-portal",
+    "http_status": 200,
+    "persona": "employee2",
+    "user": "Rahul Sharma",
+    "role": "Employee",
+    "deck": [
+      1,
+      3,
+      6
+    ],
+    "workflow": "Alumni portal",
+    "screen": "Alumni portal (after the request)",
+    "action": "Submit",
+    "expected": "The request appears under My requests",
+    "prereq": "Alumni role with portal enabled on the alumni profile",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Requested",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "My requests",
+        "x": 450,
+        "y": 557,
+        "w": 508,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-alumni-04-hr-requests",
+    "file": "screenshots/hr-admin/70-alumni-04-hr-requests.png",
+    "captured_at": "2026-10-21T08:47:08.921Z",
+    "url": "/admin/alumni-profiles/2",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      6
+    ],
+    "workflow": "Alumni requests (HR)",
+    "screen": "Alumni \u203a Rahul Sharma \u203a Requests",
+    "action": "HR opens the alumni profile\u2019s Requests",
+    "expected": "The request with Verify identity, Approve & generate, Mark delivered, Reject",
+    "prereq": "Alumni role with portal enabled on the alumni profile",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Alumni request",
+        "x": 426,
+        "y": 1069,
+        "w": 1773,
+        "h": 313
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": [
+      "TypeError: Cannot read properties of null (reading 'style')"
+    ]
+  },
+  {
+    "name": "hr-admin/70-exit-11-ff-settlement",
+    "file": "screenshots/hr-admin/70-exit-11-ff-settlement.png",
+    "captured_at": "2026-10-21T08:48:56.235Z",
+    "url": "/admin/exit-cases/3?relation=1",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Full & final settlement",
+    "screen": "Exit case \u203a Full & final",
+    "action": "Calculate, Approve and Mark paid (executed in this order)",
+    "expected": "Settlement: total earnings 43,400.06, deductions 5,146.00, net 38,254.06; status Paid with reference; Breakdown per line",
+    "prereq": "exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Gratuity is not calculated (not implemented). Statutory deductions use payroll rules that are not yet verified. The same HR person calculated and approved (no separation of duties on F&F approval).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Settlement",
+        "x": 426,
+        "y": 1337,
+        "w": 1865,
+        "h": 97
+      },
+      {
+        "n": "2",
+        "label": "Breakdown",
+        "x": 1929,
+        "y": 1362,
+        "w": 153,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/70-exit-12-ff-breakdown",
+    "file": "screenshots/hr-admin/70-exit-12-ff-breakdown.png",
+    "captured_at": "2026-10-21T08:49:00.893Z",
+    "url": "/admin/exit-cases/3?relation=1",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Full & final settlement",
+    "screen": "Full & final \u203a Breakdown",
+    "action": "Open Breakdown",
+    "expected": "Each line with type, name, amount and its basis (the Basis column shows raw technical values)",
+    "prereq": "exit.settle (Tenant HR Admin, HR Manager)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8099",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

@@ -1,0 +1,149 @@
+[
+  {
+    "name": "client-onboarding/90-onb-65-new-holiday",
+    "file": "screenshots/client-onboarding/90-onb-65-new-holiday.png",
+    "captured_at": "2026-10-21T07:43:18.612Z",
+    "url": "/admin/holiday-calendars/2/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Attendance configuration: holiday calendar",
+    "screen": "Holiday calendar \u203a Holidays \u203a New holiday",
+    "action": "Date, name, type and half day",
+    "expected": "The date counts as a holiday for everyone the calendar applies to",
+    "prereq": "Signed in as the tenant administrator (attendance.manage, leave.manage, policy.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Known limitation F39: the holiday type and the Half day switch are not used by the attendance engine; every date counts as a full holiday.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-68-new-leave-policy",
+    "file": "screenshots/client-onboarding/90-onb-68-new-leave-policy.png",
+    "captured_at": "2026-10-21T07:43:28.524Z",
+    "url": "/admin/policies/create",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Leave configuration: leave types and leave policy",
+    "screen": "Workflows \u203a Policies \u203a New policy",
+    "action": "Type Leave policy, name, code, description",
+    "expected": "The rules themselves are set on a draft version of the saved policy, then published",
+    "prereq": "Signed in as the tenant administrator (attendance.manage, leave.manage, policy.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Policy type",
+        "x": 462,
+        "y": 518,
+        "w": 369,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Name",
+        "x": 462,
+        "y": 650,
+        "w": 369,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-66-holiday-calendar-saved",
+    "file": "screenshots/client-onboarding/90-onb-66-holiday-calendar-saved.png",
+    "captured_at": "2026-10-21T07:52:33.258Z",
+    "url": "/admin/holiday-calendars/2/edit",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Attendance configuration: holiday calendar",
+    "screen": "Holiday calendar (edit page)",
+    "action": "Holidays added",
+    "expected": "Holidays list (Kannada Rajyotsava, Christmas), Applies to and History tabs",
+    "prereq": "Signed in as the tenant administrator (attendance.manage, leave.manage, policy.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New holiday",
+        "x": 1911,
+        "y": 1266,
+        "w": 171,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Applies to",
+        "x": 555,
+        "y": 1149,
+        "w": 149,
+        "h": 78
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-67-leave-types",
+    "file": "screenshots/client-onboarding/90-onb-67-leave-types.png",
+    "captured_at": "2026-10-21T07:52:35.080Z",
+    "url": "/admin/leave-types",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4
+    ],
+    "workflow": "Leave configuration: leave types and leave policy",
+    "screen": "Time & leave \u203a Leave types",
+    "action": "Review the leave types every new tenant receives",
+    "expected": "Earned, Casual, Sick, Maternity, Paternity, Bereavement, Compensatory off, Restricted holiday and Leave without pay \u2014 paid / half day / encashable flags and who they apply to",
+    "prereq": "Signed in as the tenant administrator (attendance.manage, leave.manage, policy.manage)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Seeded type",
+        "x": 426,
+        "y": 530,
+        "w": 1760,
+        "h": 98
+      },
+      {
+        "n": "2",
+        "label": "New leave type",
+        "x": 1917,
+        "y": 244,
+        "w": 201,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

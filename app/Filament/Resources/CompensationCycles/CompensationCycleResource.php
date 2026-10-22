@@ -54,7 +54,7 @@ class CompensationCycleResource extends Resource
                 ->schema([
                     TextInput::make('code')->required()->maxLength(40),
                     TextInput::make('name')->required(),
-                    Select::make('cycle_type')->options(collect(config('peopleos.compensation.cycle_types'))->map(fn ($t) => $t['label'])->all())->required(),
+                    Select::make('cycle_type')->options(collect(config('peopleos.compensation.cycle_types'))->reject(fn ($t) => $t['upload'] ?? false)->map(fn ($t) => $t['label'])->all())->required(),
                     Select::make('company_id')->label('Company')->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all())->required(),
                     Select::make('organisation_node_id')->label('Organisation unit (optional)')->options(fn () => TalentActions::nodeOptions())->searchable(),
                     Select::make('location_id')->label('Location (optional)')->options(fn () => Location::query()->orderBy('name')->pluck('name', 'id')->all()),
@@ -78,7 +78,7 @@ class CompensationCycleResource extends Resource
         return [
             Action::make('populate')->label('Populate')->icon('heroicon-m-user-group')->requiresConfirmation()
                 ->modalDescription('Snapshots the eligible employees and their current compensation and proposes each line; earlier draft lines are replaced.')
-                ->visible(fn (CompensationCycle $record) => $record->status === 'draft' && (int) $record->prepared_by === (int) auth()->id())
+                ->visible(fn (CompensationCycle $record) => $record->status === 'draft' && ! $record->isUpload() && (int) $record->prepared_by === (int) auth()->id())
                 ->action(fn (CompensationCycle $record) => CompensationActions::run(fn () => $service()->populate($record, $user()), fn ($r) => "{$r['lines']} line(s) proposed, {$r['skipped']} skipped")),
             Action::make('submit')->label('Submit for review')->icon('heroicon-m-paper-airplane')->requiresConfirmation()
                 ->visible(fn (CompensationCycle $record) => $record->status === 'draft' && (int) $record->prepared_by === (int) auth()->id())

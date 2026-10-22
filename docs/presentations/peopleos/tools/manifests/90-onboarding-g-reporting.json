@@ -1,0 +1,299 @@
+[
+  {
+    "name": "client-onboarding/90-onb-46-mark-as-joined",
+    "file": "screenshots/client-onboarding/90-onb-46-mark-as-joined.png",
+    "captured_at": "2026-10-21T07:33:11.823Z",
+    "url": "/admin/employees/23",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Mark a new hire as joined",
+    "screen": "Employee 360 › Action › Mark as joined",
+    "action": "Confirm the actual joining date with a reason",
+    "expected": "Lifecycle moves Preboarding → Joined → Probation",
+    "prereq": "Employees hired; employee.lifecycle / employee.position permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "2",
+        "label": "Reason for change",
+        "x": 30,
+        "y": 276,
+        "w": 1284,
+        "h": 102
+      }
+    ],
+    "missing_callouts": [
+      "1:Joining date"
+    ],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-47-joined-probation",
+    "file": "screenshots/client-onboarding/90-onb-47-joined-probation.png",
+    "captured_at": "2026-10-21T07:33:14.519Z",
+    "url": "/admin/employees/23",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Mark a new hire as joined",
+    "screen": "Employee 360 (after Mark as joined)",
+    "action": "Submit",
+    "expected": "\"Joined — Now in probation.\"; the status badge shows Probation",
+    "prereq": "Employees hired; employee.lifecycle / employee.position permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 129
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-48-change-manager-context",
+    "file": "screenshots/client-onboarding/90-onb-48-change-manager-context.png",
+    "captured_at": "2026-10-21T07:35:55.489Z",
+    "url": "/admin/employees/25",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Reporting relationships: Change manager",
+    "screen": "Employee 360 › Action › Change manager (01 Context)",
+    "action": "Choose which relationship changes (line manager, dotted line, project …)",
+    "expected": "Step 1 of 3 shows today’s reporting lines",
+    "prereq": "Employees hired; employee.lifecycle / employee.position permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Relationship",
+        "x": 30,
+        "y": 518,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Next",
+        "x": 1220,
+        "y": 608,
+        "w": 95,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-49-change-manager-change",
+    "file": "screenshots/client-onboarding/90-onb-49-change-manager-change.png",
+    "captured_at": "2026-10-21T07:36:00.534Z",
+    "url": "/admin/employees/25",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Reporting relationships: Change manager",
+    "screen": "Change manager (02 Change)",
+    "action": "Pick the new manager and the date the change takes effect",
+    "expected": "Only employed people are offered as managers",
+    "prereq": "Employees hired; employee.lifecycle / employee.position permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New manager",
+        "x": 30,
+        "y": 330,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Effective from",
+        "x": 30,
+        "y": 462,
+        "w": 1284,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-50-change-manager-review",
+    "file": "screenshots/client-onboarding/90-onb-50-change-manager-review.png",
+    "captured_at": "2026-10-21T07:36:02.705Z",
+    "url": "/admin/employees/25",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Reporting relationships: Change manager",
+    "screen": "Change manager (03 Review)",
+    "action": "Review Before → After and give the reason",
+    "expected": "The old and new reporting line side by side; Confirm reporting change",
+    "prereq": "Employees hired; employee.lifecycle / employee.position permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Reason for change",
+        "x": 30,
+        "y": 510,
+        "w": 1284,
+        "h": 102
+      },
+      {
+        "n": "2",
+        "label": "Confirm reporting change",
+        "x": 1005,
+        "y": 678,
+        "w": 309,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-51-reporting-changed",
+    "file": "screenshots/client-onboarding/90-onb-51-reporting-changed.png",
+    "captured_at": "2026-10-21T07:36:05.450Z",
+    "url": "/admin/employees/25",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Reporting relationships: Change manager",
+    "screen": "Employee 360 (after the change)",
+    "action": "Confirm reporting change",
+    "expected": "Ishita Sen now reports to Vivek Rao; the change is in her history",
+    "prereq": "Employees hired; employee.lifecycle / employee.position permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Reports to",
+        "x": 1400,
+        "y": 301,
+        "w": 110,
+        "h": 44
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-52-org-map-with-people",
+    "file": "screenshots/client-onboarding/90-onb-52-org-map-with-people.png",
+    "captured_at": "2026-10-21T07:36:07.595Z",
+    "url": "/admin/organisation-map",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Validate the structure",
+    "screen": "Organisation › Org map",
+    "action": "Open the Org map after hiring",
+    "expected": "Vivek Rao with Ishita Sen reporting to him; Rohit Menon",
+    "prereq": "Employees hired; employee.lifecycle / employee.position permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Manager",
+        "x": 552,
+        "y": 548,
+        "w": 117,
+        "h": 39
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "client-onboarding/90-onb-53-directory",
+    "file": "screenshots/client-onboarding/90-onb-53-directory.png",
+    "captured_at": "2026-10-21T07:36:09.205Z",
+    "url": "/admin/people",
+    "http_status": 200,
+    "persona": "nwadmin",
+    "user": "Farah Khan",
+    "role": "Tenant Super Admin (Northwind Retail, first administrator)",
+    "deck": [
+      4,
+      3
+    ],
+    "workflow": "Validate the structure",
+    "screen": "People › Directory",
+    "action": "Open the Directory",
+    "expected": "The three Northwind employees with designation, department and location",
+    "prereq": "Employees hired; employee.lifecycle / employee.position permissions",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

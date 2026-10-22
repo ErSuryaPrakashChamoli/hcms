@@ -1,0 +1,593 @@
+[
+  {
+    "name": "hr-admin/65-grow-01-performance-cycles",
+    "file": "screenshots/hr-admin/65-grow-01-performance-cycles.png",
+    "captured_at": "2026-10-21T07:26:55.190Z",
+    "url": "/admin/performance-cycles",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Performance and goals administration",
+    "screen": "People › Growth › All in Growth › Cycles",
+    "action": "Open Performance cycles",
+    "expected": "FY 2026-27 annual review, active, stage Self review; next stage action \"Move to Manager review\"",
+    "prereq": "Tenant HR Admin (performance.*); the Performance Admin role template lacks these permissions (F3)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Active cycle",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 97
+      },
+      {
+        "n": "2",
+        "label": "Advance stage",
+        "x": 1800,
+        "y": 555,
+        "w": 282,
+        "h": 48
+      },
+      {
+        "n": "3",
+        "label": "New performance cycle",
+        "x": 1835,
+        "y": 244,
+        "w": 284,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-grow-02-new-cycle-form",
+    "file": "screenshots/hr-admin/65-grow-02-new-cycle-form.png",
+    "captured_at": "2026-10-21T07:26:57.392Z",
+    "url": "/admin/performance-cycles/create",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Performance and goals administration",
+    "screen": "New performance cycle",
+    "action": "Open the New performance cycle form (not saved)",
+    "expected": "Name, code, type, period, template, rating scale, eligibility rules and stage options",
+    "prereq": "Tenant HR Admin (performance.*); the Performance Admin role template lacks these permissions (F3)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Options \"Show self review to manager\" and \"Peer reviews anonymous by default\" are stored but not applied (F20); scheduled cycles do not launch automatically (F21).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-grow-03-appraisals",
+    "file": "screenshots/hr-admin/65-grow-03-appraisals.png",
+    "captured_at": "2026-10-21T07:26:59.171Z",
+    "url": "/admin/appraisals",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      9
+    ],
+    "workflow": "Performance and goals administration",
+    "screen": "People › Growth › Appraisals",
+    "action": "Open Appraisals",
+    "expected": "One appraisal per employee in the cycle, with reviewer, stage and review progress",
+    "prereq": "Tenant HR Admin (performance.*); the Performance Admin role template lacks these permissions (F3)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Stage",
+        "x": 1323,
+        "y": 458,
+        "w": 137,
+        "h": 85
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-grow-04-calibration-board",
+    "file": "screenshots/hr-admin/65-grow-04-calibration-board.png",
+    "captured_at": "2026-10-21T07:27:01.160Z",
+    "url": "/admin/calibration-board",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      9
+    ],
+    "workflow": "Performance and goals administration",
+    "screen": "People › Growth › Calibration",
+    "action": "Open the Calibration board",
+    "expected": "Rating distribution for the cycle; Calibrate and Finalize",
+    "prereq": "Tenant HR Admin (performance.*); the Performance Admin role template lacks these permissions (F3)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Calibrate",
+        "x": 1824,
+        "y": 878,
+        "w": 134,
+        "h": 48
+      },
+      {
+        "n": "2",
+        "label": "Finalize",
+        "x": 1964,
+        "y": 878,
+        "w": 119,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-grow-05-goals-hr-view",
+    "file": "screenshots/hr-admin/65-grow-05-goals-hr-view.png",
+    "captured_at": "2026-10-21T07:27:03.168Z",
+    "url": "/admin/goals",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Performance and goals administration",
+    "screen": "People › Growth › Goals (HR view)",
+    "action": "Open Goals",
+    "expected": "Goal cascade: company → department → employee goals with weight and progress; Check in on each goal",
+    "prereq": "Tenant HR Admin (performance.*); the Performance Admin role template lacks these permissions (F3)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Cascaded from a department goal",
+        "x": 653,
+        "y": 894,
+        "w": 99,
+        "h": 102
+      },
+      {
+        "n": "2",
+        "label": "Check in",
+        "x": 1851,
+        "y": 605,
+        "w": 128,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-learn-01-courses",
+    "file": "screenshots/hr-admin/65-learn-01-courses.png",
+    "captured_at": "2026-10-21T07:27:04.990Z",
+    "url": "/admin/courses",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Learning administration",
+    "screen": "People › Growth › All in Growth › Courses",
+    "action": "Open Courses",
+    "expected": "Courses with format, category, duration, mandatory flag and version; Submit for approval / Retire / Versions",
+    "prereq": "Tenant HR Admin (learning.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Mandatory course",
+        "x": 426,
+        "y": 623,
+        "w": 2292,
+        "h": 134
+      },
+      {
+        "n": "2",
+        "label": "New course",
+        "x": 1956,
+        "y": 244,
+        "w": 162,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-learn-02-assignments",
+    "file": "screenshots/hr-admin/65-learn-02-assignments.png",
+    "captured_at": "2026-10-21T07:27:06.893Z",
+    "url": "/admin/learning-assignments",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3
+    ],
+    "workflow": "Learning administration",
+    "screen": "People › Growth › All in Growth › Assignments",
+    "action": "Open Learning assignments",
+    "expected": "\"PoSH for everyone (annual)\": audience Everyone, due 30 days, recurs every 12 months, mandatory; Apply now",
+    "prereq": "Tenant HR Admin (learning.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Assign learning",
+        "x": 1913,
+        "y": 244,
+        "w": 206,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Apply now",
+        "x": 1733,
+        "y": 551,
+        "w": 146,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/65-learn-03-learning-dashboard",
+    "file": "screenshots/analytics/65-learn-03-learning-dashboard.png",
+    "captured_at": "2026-10-21T07:27:08.865Z",
+    "url": "/admin/learning-dashboard",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      3
+    ],
+    "workflow": "Learning administration",
+    "screen": "People › Growth › Dashboard (Learning & development)",
+    "action": "Open the learning dashboard",
+    "expected": "Certificates, development plans, mandatory training completion, popular courses, skill gaps, by department, providers and costs",
+    "prereq": "Tenant HR Admin (learning.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/65-talent-01-talent-dashboard",
+    "file": "screenshots/analytics/65-talent-01-talent-dashboard.png",
+    "captured_at": "2026-10-21T07:27:10.627Z",
+    "url": "/admin/talent-dashboard",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      3
+    ],
+    "workflow": "Talent and succession",
+    "screen": "People › Growth › Dashboard (Talent & succession)",
+    "action": "Open the talent dashboard",
+    "expected": "Positions without a ready-now successor and talent pools (empty in the demonstration)",
+    "prereq": "Tenant HR Admin; critical positions and succession plans recorded",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-wf-01-positions",
+    "file": "screenshots/hr-admin/65-wf-01-positions.png",
+    "captured_at": "2026-10-21T07:27:12.420Z",
+    "url": "/admin/positions",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Workforce planning and positions",
+    "screen": "Organisation › Workforce › Positions",
+    "action": "Open Positions",
+    "expected": "Position register; New position",
+    "prereq": "Tenant HR Admin (position.*, workforce.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New position",
+        "x": 1901,
+        "y": 244,
+        "w": 218,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-wf-04-headcount-plans",
+    "file": "screenshots/hr-admin/65-wf-04-headcount-plans.png",
+    "captured_at": "2026-10-21T07:28:19.567Z",
+    "url": "/admin/workforce-plans",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Workforce planning and positions",
+    "screen": "Organisation › Workforce › Headcount plans (Plan versions)",
+    "action": "Open Headcount plans",
+    "expected": "Plan versions with lines and forecast; review and approval by a second person",
+    "prereq": "Tenant HR Admin (position.*, workforce.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New plan",
+        "x": 1938,
+        "y": 244,
+        "w": 180,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-wf-05-org-map",
+    "file": "screenshots/hr-admin/65-wf-05-org-map.png",
+    "captured_at": "2026-10-21T07:28:21.379Z",
+    "url": "/admin/organisation-map",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4,
+      9
+    ],
+    "workflow": "Organisation map",
+    "screen": "Organisation › Org map",
+    "action": "Open the organisation map",
+    "expected": "Reporting lines from the CEO down; switch to Departments or Other relationships; zoom and expand",
+    "prereq": "Tenant HR Admin (position.*, workforce.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Reporting lines",
+        "x": 431,
+        "y": 299,
+        "w": 179,
+        "h": 57
+      },
+      {
+        "n": "2",
+        "label": "Departments",
+        "x": 600,
+        "y": 299,
+        "w": 162,
+        "h": 57
+      },
+      {
+        "n": "3",
+        "label": "Top of the hierarchy",
+        "x": 1095,
+        "y": 626,
+        "w": 354,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/65-wf-06-workforce-dashboard",
+    "file": "screenshots/analytics/65-wf-06-workforce-dashboard.png",
+    "captured_at": "2026-10-21T07:28:23.145Z",
+    "url": "/admin/workforce-dashboard",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      3
+    ],
+    "workflow": "Workforce planning and positions",
+    "screen": "Organisation › Workforce › Dashboard (Workforce overview)",
+    "action": "Open the workforce overview",
+    "expected": "Positions, vacancies, budgets and plan figures (mostly zero in the demonstration)",
+    "prereq": "Tenant HR Admin (position.*, workforce.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-wf-03-position-created",
+    "file": "screenshots/hr-admin/65-wf-03-position-created.png",
+    "captured_at": "2026-10-21T07:32:26.713Z",
+    "url": "/admin/positions",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Workforce planning and positions",
+    "screen": "Positions (after Submit)",
+    "action": "Submit",
+    "expected": "Draft position listed; lifecycle actions Propose → Approve → Open follow",
+    "prereq": "Tenant HR Admin (position.*, workforce.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Draft position",
+        "x": 426,
+        "y": 457,
+        "w": 1692,
+        "h": 97
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-wf-07-position-hierarchy",
+    "file": "screenshots/hr-admin/65-wf-07-position-hierarchy.png",
+    "captured_at": "2026-10-21T07:32:28.312Z",
+    "url": "/admin/position-hierarchy",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Workforce planning and positions",
+    "screen": "Organisation › Workforce › Position hierarchy",
+    "action": "Open Position hierarchy",
+    "expected": "Positions arranged by reporting position (only the new draft position exists)",
+    "prereq": "Tenant HR Admin (position.*, workforce.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/65-wf-02-new-position-form",
+    "file": "screenshots/hr-admin/65-wf-02-new-position-form.png",
+    "captured_at": "2026-10-21T07:32:55.607Z",
+    "url": "/admin/positions",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Workforce planning and positions",
+    "screen": "New position (dialog, top half)",
+    "action": "Code, effective from, title, designation, company, organisation unit, employment type, worker type, grade (lower half: occupancy, seats, FTE, reason)",
+    "expected": "A position is created as a Draft; it must be proposed and approved before it can be filled",
+    "prereq": "Tenant HR Admin (position.*, workforce.*)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Same values as the position actually created (POS-TRN-001). FTE left blank: the FTE field (minimum 0.01, step 0.05) refuses whole numbers such as 1 (finding F8).",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Code",
+        "x": 438,
+        "y": 168,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Title",
+        "x": 438,
+        "y": 432,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Company",
+        "x": 438,
+        "y": 1002,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Grade",
+        "x": 438,
+        "y": 1704,
+        "w": 1284,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

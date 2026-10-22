@@ -1,0 +1,858 @@
+[
+  {
+    "name": "hr-admin/60-pay-01-control-room",
+    "file": "screenshots/hr-admin/60-pay-01-control-room.png",
+    "captured_at": "2026-10-21T07:13:42.511Z",
+    "url": "/admin/payroll-control-room",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      9,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "People \u203a Pay \u203a Control room (Payroll control room)",
+    "action": "Open the payroll control room",
+    "expected": "Readiness figures, the company card and the run register; the subheading lists statutory rules that are not verified, so runs cannot be finalised",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Unverified rules warning",
+        "x": 426,
+        "y": 287,
+        "w": 1092,
+        "h": 75
+      },
+      {
+        "n": "2",
+        "label": "Open payroll run",
+        "x": 426,
+        "y": 374,
+        "w": 254,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Open run",
+        "x": 462,
+        "y": 1035,
+        "w": 102,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-02-runs-list",
+    "file": "screenshots/hr-admin/60-pay-02-runs-list.png",
+    "captured_at": "2026-10-21T07:13:44.336Z",
+    "url": "/admin/payroll-runs",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "People \u203a Pay \u203a Payroll runs",
+    "action": "Open Payroll runs",
+    "expected": "One run per company and month with status, employees, net pay",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Oct 2026 run",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 97
+      },
+      {
+        "n": "2",
+        "label": "Open payroll run",
+        "x": 1865,
+        "y": 244,
+        "w": 254,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-03-open-run-form",
+    "file": "screenshots/hr-admin/60-pay-03-open-run-form.png",
+    "captured_at": "2026-10-21T07:13:45.691Z",
+    "url": "/admin/payroll-runs",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "Open payroll run (dialog)",
+    "action": "Open payroll run: choose company, year and month",
+    "expected": "Opening a run calculates it for every employee with a salary (opened and cancelled here)",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Dialog opened and cancelled; the existing October run is used for the rest of the workflow.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-04-run-view",
+    "file": "screenshots/hr-admin/60-pay-04-run-view.png",
+    "captured_at": "2026-10-21T07:13:49.124Z",
+    "url": "/admin/payroll-runs/1",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      9,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "Payroll run (Oct 2026, Demo Technologies)",
+    "action": "Open the run",
+    "expected": "Status Calculated; totals (gross, deductions, net, PF, PT, TDS, employer cost); actions Recalculate, Validate, Set payment date",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Run status",
+        "x": 426,
+        "y": 329,
+        "w": 383,
+        "h": 44
+      },
+      {
+        "n": "2",
+        "label": "Recalculate",
+        "x": 1461,
+        "y": 265,
+        "w": 206,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Validate",
+        "x": 1673,
+        "y": 265,
+        "w": 171,
+        "h": 66
+      },
+      {
+        "n": "4",
+        "label": "Totals",
+        "x": 1844,
+        "y": 518,
+        "w": 87,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-05-employee-issues",
+    "file": "screenshots/hr-admin/60-pay-05-employee-issues.png",
+    "captured_at": "2026-10-21T07:13:49.969Z",
+    "url": "/admin/payroll-runs/1",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      7,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "Payroll run \u203a Employees tab",
+    "action": "Read the Issues column for each employee",
+    "expected": "Every employee is in \"exception\": unverified statutory rules, pending statutory change, missing PAN / bank account, attendance not processed",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Statutory issue codes are shown raw (e.g. unverified_statutory_rule): finding F12.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Raw issue codes (F12)",
+        "x": 1631,
+        "y": 360,
+        "w": 299,
+        "h": 456
+      },
+      {
+        "n": "2",
+        "label": "Line status",
+        "x": 1515,
+        "y": 568,
+        "w": 110,
+        "h": 42
+      },
+      {
+        "n": "3",
+        "label": "Breakdown",
+        "x": 1929,
+        "y": 564,
+        "w": 153,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-06-breakdown",
+    "file": "screenshots/hr-admin/60-pay-06-breakdown.png",
+    "captured_at": "2026-10-21T07:13:51.997Z",
+    "url": "/admin/payroll-runs/1",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      10,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "Payroll run \u203a Breakdown (dialog)",
+    "action": "Breakdown on one employee",
+    "expected": "Breakdown dialog: each statutory line with its basis and source, then the list of exceptions (unverified rules, pending statutory change, PAN missing, no bank account)",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Viewport capture of the open dialog (the breakdown scrolls).",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-07-recalculate-confirm",
+    "file": "screenshots/hr-admin/60-pay-07-recalculate-confirm.png",
+    "captured_at": "2026-10-21T07:13:56.810Z",
+    "url": "/admin/payroll-runs/1",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "Recalculate (confirmation)",
+    "action": "Recalculate",
+    "expected": "Confirmation before the run is recalculated",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-08-recalculated",
+    "file": "screenshots/hr-admin/60-pay-08-recalculated.png",
+    "captured_at": "2026-10-21T07:14:00.572Z",
+    "url": "/admin/payroll-runs/1",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "Payroll run (after Recalculate)",
+    "action": "Recalculate (executed)",
+    "expected": "Observed: \"Calculated for 19 employee(s); 19 with exceptions\" \u2014 every employee with a salary is recalculated and each still has blocking exceptions",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 123
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-09-validate-blocked",
+    "file": "screenshots/hr-admin/60-pay-09-validate-blocked.png",
+    "captured_at": "2026-10-21T07:14:03.011Z",
+    "url": "/admin/payroll-runs/1",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      7,
+      9,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "Payroll run \u203a Validate",
+    "action": "Validate (executed)",
+    "expected": "Refused: \"Not allowed \u2014 N employee(s) have blocking exceptions. Fix the inputs and recalculate.\" Approve and Finalize never appear while blocking exceptions remain",
+    "prereq": "Statutory rules verified (0 of 24 today); PAN, bank account and attendance inputs complete",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Blocking message",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 159
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-11-payroll-auditor",
+    "file": "screenshots/hr-admin/60-pay-11-payroll-auditor.png",
+    "captured_at": "2026-10-21T07:14:37.086Z",
+    "url": "/admin/payroll-auditor",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      9,
+      12
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "People \u203a Pay \u203a Payroll Auditor",
+    "action": "Open the Payroll Auditor for the October run",
+    "expected": "Findings with severity and evidence (deterministic rules; read only)",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Labelled \"AI Payroll Auditor\" but the checks are deterministic rules. (Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Choose run",
+        "x": 1919,
+        "y": 224,
+        "w": 200,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Findings",
+        "x": 462,
+        "y": 639,
+        "w": 1620,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-12-salary-components",
+    "file": "screenshots/hr-admin/60-pay-12-salary-components.png",
+    "captured_at": "2026-10-21T07:14:38.836Z",
+    "url": "/admin/salary-components",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Payroll components and structures",
+    "screen": "People \u203a Pay \u203a Salary components",
+    "action": "Open Salary components",
+    "expected": "Earnings and deductions with formula (e.g. Basic = ctc_monthly * 0.40); statutory lines are not configured here",
+    "prereq": "Payroll Admin or Tenant HR Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "(Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Formula component",
+        "x": 426,
+        "y": 530,
+        "w": 1973,
+        "h": 98
+      },
+      {
+        "n": "2",
+        "label": "New salary component",
+        "x": 1841,
+        "y": 244,
+        "w": 278,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-13-new-component-form",
+    "file": "screenshots/hr-admin/60-pay-13-new-component-form.png",
+    "captured_at": "2026-10-21T07:14:40.552Z",
+    "url": "/admin/salary-components/create",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Payroll components and structures",
+    "screen": "New salary component",
+    "action": "Open the New salary component form (not saved)",
+    "expected": "Name, code, type, calculation (fixed / formula), taxable, order; formulas are validated on save",
+    "prereq": "Payroll Admin or Tenant HR Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "(Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-14-salary-structures",
+    "file": "screenshots/hr-admin/60-pay-14-salary-structures.png",
+    "captured_at": "2026-10-21T07:14:42.502Z",
+    "url": "/admin/salary-structures",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Payroll components and structures",
+    "screen": "People \u203a Pay \u203a Salary structures",
+    "action": "Open Salary structures (Tenant HR Admin)",
+    "expected": "Structures with versions; New salary structure is offered to the Tenant HR Admin only",
+    "prereq": "Payroll Admin or Tenant HR Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New salary structure",
+        "x": 1866,
+        "y": 244,
+        "w": 252,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-15-structure-versions",
+    "file": "screenshots/hr-admin/60-pay-15-structure-versions.png",
+    "captured_at": "2026-10-21T07:14:44.335Z",
+    "url": "/admin/salary-structures/1/edit",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Payroll components and structures",
+    "screen": "Edit salary structure \u203a Versions",
+    "action": "Open the Standard structure (edit page) and its Versions tab",
+    "expected": "Versions move Draft \u2192 Submitted \u2192 Approved; a version cannot start inside a finalised period",
+    "prereq": "Payroll Admin or Tenant HR Admin",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-16-new-adjustment",
+    "file": "screenshots/hr-admin/60-pay-16-new-adjustment.png",
+    "captured_at": "2026-10-21T07:15:17.653Z",
+    "url": "/admin/payroll-adjustments",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Payroll adjustments",
+    "screen": "New payroll adjustment",
+    "action": "Open the New payroll adjustment form (cancelled)",
+    "expected": "Employee, period, type, component, amount or days, taxable, note; approval only when the tenant setting requires it",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "(Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-17-tax-declarations",
+    "file": "screenshots/hr-admin/60-pay-17-tax-declarations.png",
+    "captured_at": "2026-10-21T07:15:20.390Z",
+    "url": "/admin/tax-declarations",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Tax declarations (payroll view)",
+    "screen": "People \u203a Pay \u203a Tax declarations",
+    "action": "Open Tax declarations",
+    "expected": "Employee declarations per financial year; payroll verifies them. Employees cannot submit a declaration themselves (F13)",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "INCOMPLETE",
+    "note": "(Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New declaration",
+        "x": 1766,
+        "y": 244,
+        "w": 353,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-stat-01-compliance-control-room",
+    "file": "screenshots/hr-admin/60-stat-01-compliance-control-room.png",
+    "captured_at": "2026-10-21T07:15:22.380Z",
+    "url": "/admin/compliance-control-room",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      4,
+      8,
+      9
+    ],
+    "workflow": "Statutory configuration and verification",
+    "screen": "People \u203a Pay \u203a Control room (Compliance control room)",
+    "action": "Open the compliance control room",
+    "expected": "Rules this tenant needs and their verification state, establishments, returns; nothing can be exported while rules are unverified",
+    "prereq": "Tenant HR Admin or Payroll Admin; statutory rules verified by two platform administrators",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "(Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Rules needed",
+        "x": 462,
+        "y": 968,
+        "w": 1620,
+        "h": 36
+      },
+      {
+        "n": "2",
+        "label": "Returns",
+        "x": 1116,
+        "y": 2114,
+        "w": 312,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-stat-02-compliance-rules",
+    "file": "screenshots/hr-admin/60-stat-02-compliance-rules.png",
+    "captured_at": "2026-10-21T07:15:24.260Z",
+    "url": "/admin/compliance-rules",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      4,
+      8,
+      10
+    ],
+    "workflow": "Statutory configuration and verification",
+    "screen": "People \u203a Pay \u203a Compliance rules",
+    "action": "Open Compliance rules (read only for tenants)",
+    "expected": "Statutory rule versions (EPF, ESI, PT, LWF, TDS, gratuity\u2026) with verification status; tenants cannot edit them",
+    "prereq": "Tenant HR Admin or Payroll Admin; statutory rules verified by two platform administrators",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "(Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Verification status",
+        "x": 2400,
+        "y": 458,
+        "w": 188,
+        "h": 85
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-stat-03-rule-verifications",
+    "file": "screenshots/hr-admin/60-stat-03-rule-verifications.png",
+    "captured_at": "2026-10-21T07:15:26.151Z",
+    "url": "/admin/rule-verifications",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      4,
+      8
+    ],
+    "workflow": "Statutory configuration and verification",
+    "screen": "People \u203a Pay \u203a Rule verification",
+    "action": "Open Rule verification",
+    "expected": "Verification records: rules move draft \u2192 review \u2192 verified only with official evidence and two platform administrators; none verified yet",
+    "prereq": "Tenant HR Admin or Payroll Admin; statutory rules verified by two platform administrators",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "(Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-stat-04-rule-notices",
+    "file": "screenshots/hr-admin/60-stat-04-rule-notices.png",
+    "captured_at": "2026-10-21T07:15:27.949Z",
+    "url": "/admin/rule-notices",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Statutory configuration and verification",
+    "screen": "People \u203a Pay \u203a Regulatory notices",
+    "action": "Open Regulatory notices",
+    "expected": "Open notices of statutory changes that block finalisation until reviewed",
+    "prereq": "Tenant HR Admin or Payroll Admin; statutory rules verified by two platform administrators",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "(Browser console errors recorded on this tab came from an earlier step in the same session \u2014 the History-tab error F26 or the capture script \u2014 not from this screen.)",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Notice",
+        "x": 426,
+        "y": 530,
+        "w": 1692,
+        "h": 170
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-stat-05-statutory-registrations",
+    "file": "screenshots/hr-admin/60-stat-05-statutory-registrations.png",
+    "captured_at": "2026-10-21T07:15:29.893Z",
+    "url": "/admin/statutory-registrations",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Statutory configuration and verification",
+    "screen": "People \u203a Pay \u203a Statutory registrations",
+    "action": "Open Statutory registrations (Tenant HR Admin)",
+    "expected": "Registration numbers per establishment (PF, ESI, PT, LWF, TAN\u2026) with Verify / Correct / New number",
+    "prereq": "Tenant HR Admin or Payroll Admin; statutory rules verified by two platform administrators",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New registration",
+        "x": 1904,
+        "y": 244,
+        "w": 215,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Verify",
+        "x": 1689,
+        "y": 555,
+        "w": 99,
+        "h": 48
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-stat-06-establishment-profiles",
+    "file": "screenshots/hr-admin/60-stat-06-establishment-profiles.png",
+    "captured_at": "2026-10-21T07:15:31.752Z",
+    "url": "/admin/establishment-statutory-profiles",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Statutory configuration and verification",
+    "screen": "People \u203a Pay \u203a Statutory profiles",
+    "action": "Open establishment Statutory profiles",
+    "expected": "Which statutory schemes apply to each establishment and from when",
+    "prereq": "Tenant HR Admin or Payroll Admin; statutory rules verified by two platform administrators",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "New profile",
+        "x": 1958,
+        "y": 244,
+        "w": 161,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-stat-07-epf-returns-empty",
+    "file": "screenshots/hr-admin/60-stat-07-epf-returns-empty.png",
+    "captured_at": "2026-10-21T07:15:33.602Z",
+    "url": "/admin/compliance/epf-returns",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      4
+    ],
+    "workflow": "Statutory configuration and verification",
+    "screen": "People \u203a Pay \u203a EPF returns (ECR)",
+    "action": "Open EPF returns",
+    "expected": "No returns: returns are generated from a finalised payroll, which is blocked until the rules are verified",
+    "prereq": "Tenant HR Admin or Payroll Admin; statutory rules verified by two platform administrators",
+    "status": "DISABLED BY SAFETY OR COMMERCIAL GATES",
+    "note": "",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Generate ECR",
+        "x": 1929,
+        "y": 244,
+        "w": 189,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/60-pay-10-run-history-error-f26",
+    "file": "screenshots/hr-admin/60-pay-10-run-history-error-f26.png",
+    "captured_at": "2026-10-21T07:15:51.145Z",
+    "url": "/admin/payroll-runs/1?relation=1",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      7,
+      11
+    ],
+    "workflow": "Payroll run and controls (payroll admin)",
+    "screen": "Payroll run \u203a History tab (error)",
+    "action": "Open History",
+    "expected": "Observed: HTTP 500 \"LazyLoadingViolationException: Attempted to lazy load [fieldChanges] on model AuditEvent\" (AuditHistoryRelationManager.php:38). Known finding F26; occurs in non-production strict mode; production behaviour not verified",
+    "prereq": "Payroll Admin role (payroll.*); salary assigned to employees",
+    "status": "INCOMPLETE",
+    "note": "Development error page from the local environment (APP_DEBUG). Shown as defect evidence only.",
+    "environment": "Local development \u00b7 disposable hcm_training_showcase (fictional data) \u00b7 http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": [
+      "Object",
+      "Object"
+    ]
+  }
+]

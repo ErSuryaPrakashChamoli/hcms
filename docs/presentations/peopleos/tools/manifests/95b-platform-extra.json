@@ -1,0 +1,170 @@
+[
+  {
+    "name": "platform-admin/95-pl-33-request-release",
+    "file": "screenshots/platform-admin/95-pl-33-request-release.png",
+    "captured_at": "2026-10-21T07:59:33.445Z",
+    "url": "/admin/platform-offboarding?tenant=2",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Offboarding, export, legal hold and deletion",
+    "screen": "Offboarding › Legal holds › Request release",
+    "action": "Request the release of the hold with a reason",
+    "expected": "The release waits for a different operator to approve it (two-person rule)",
+    "prereq": "Platform operator with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-34-release-pending",
+    "file": "screenshots/platform-admin/95-pl-34-release-pending.png",
+    "captured_at": "2026-10-21T07:59:37.098Z",
+    "url": "/admin/platform-offboarding?tenant=2",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Offboarding, export, legal hold and deletion",
+    "screen": "Offboarding › Legal holds (release requested)",
+    "action": "Submit the release request",
+    "expected": "The hold stays active until a second operator approves the release; only one operator exists in this environment, so it stays pending",
+    "prereq": "Platform operator with MFA",
+    "status": "AVAILABLE ONLY AFTER CONFIGURATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 123
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-32-request-export-dialog",
+    "file": "screenshots/platform-admin/95-pl-32-request-export-dialog.png",
+    "captured_at": "2026-10-21T08:00:57.402Z",
+    "url": "/admin/platform-offboarding?tenant=2",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Offboarding, export, legal hold and deletion",
+    "screen": "Offboarding › Request export",
+    "action": "Open Request export for a tenant",
+    "expected": "Scope and reason; the package is produced in the background and protected",
+    "prereq": "Platform operator with MFA",
+    "status": "IMPLEMENTED BUT NOT VERIFIED END-TO-END",
+    "note": "Opened and cancelled: generation needs the queue worker, which does not run in this local environment.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-35-enter-tenant-dialog",
+    "file": "screenshots/platform-admin/95-pl-35-enter-tenant-dialog.png",
+    "captured_at": "2026-10-21T08:01:01.619Z",
+    "url": "/admin/tenants",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Operator access to a customer tenant",
+    "screen": "Tenants › Enter",
+    "action": "Enter a customer tenant with a reason",
+    "expected": "Operator access is deliberate, explained and audited",
+    "prereq": "Platform operator with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-36-operator-in-tenant",
+    "file": "screenshots/platform-admin/95-pl-36-operator-in-tenant.png",
+    "captured_at": "2026-10-21T08:01:06.398Z",
+    "url": "/admin",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Operator access to a customer tenant",
+    "screen": "Home inside Northwind Retail (operator support access)",
+    "action": "After Enter, open Home",
+    "expected": "The operator works in the tenant with the administration lens; the tenant name shows in the date line",
+    "prereq": "Platform operator with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "Observation: no persistent on-screen banner marks the session as operator support access. The Enter dialog states that access is recorded in Markedge’s and the tenant’s audit trails and ends after 60 minutes.",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Tenant in context",
+        "x": 426,
+        "y": 150,
+        "w": 707,
+        "h": 36
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "platform-admin/95-pl-37-platform-audit-after",
+    "file": "screenshots/platform-admin/95-pl-37-platform-audit-after.png",
+    "captured_at": "2026-10-21T08:01:09.206Z",
+    "url": "/admin/platform-audit",
+    "http_status": 200,
+    "persona": "operator",
+    "user": "Markedge Platform Admin",
+    "role": "Platform operator",
+    "deck": [
+      5,
+      8
+    ],
+    "workflow": "Platform audit trail",
+    "screen": "Admin › Platform › Platform audit trail",
+    "action": "Review what the operator did",
+    "expected": "Tenant suspended / reactivated, legal hold placed, release requested and tenant entered, with actor and reason",
+    "prereq": "Platform operator with MFA",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8101",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]

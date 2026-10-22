@@ -4,6 +4,9 @@ use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\CompensationChanges;
 use App\Domain\Compensation\Services\CompensationCycles;
+use App\Domain\Compensation\Services\CompensationStructures;
+use App\Domain\Organisation\Models\Department;
+use App\Domain\Organisation\Models\Level;
 use App\Filament\Resources\CompensationBudgets\CompensationBudgetResource;
 use App\Filament\Resources\CompensationChanges\CompensationChangeResource;
 use App\Filament\Resources\CompensationChanges\Pages\ManageCompensationChanges;
@@ -62,4 +65,21 @@ it('lets a reviewer act from the change queue and shows the Employee 360 tabs', 
 
     Livewire::test(CompensationRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])->assertOk()->assertSee('600,000.00')->assertSee('Current');
     Livewire::test(CompensationChangesRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])->assertOk()->assertSee('660,000.00');
+});
+
+it('lets an administrator fix a draft structure version to chosen dimensions from the Versions tab', function () {
+    $sales = Department::factory()->create(['name' => 'Sales']);
+    $level = Level::factory()->create(['name' => 'L3']);
+    $draft = app(CompensationStructures::class)->newVersion($this->structure, $this->admin, '2027-01-01');
+    $versions = fn () => Livewire::test(VersionsRelationManager::class, ['ownerRecord' => $this->structure, 'pageClass' => EditSalaryStructure::class]);
+
+    $versions()->callTableAction('edit', $draft, data: ['narrow_by' => ['department_id', 'designation_id']])->assertHasTableActionErrors(['applicability.designation_id' => 'required']);
+    $versions()->callTableAction('edit', $draft, data: ['narrow_by' => ['department_id', 'level_id'], 'applicability' => ['department_id' => [$sales->id], 'level_id' => [$level->id]]])->assertHasNoTableActionErrors();
+    expect($draft->refresh()->applicability)->toBe(['department_id' => [$sales->id], 'level_id' => [$level->id]]);
+    $versions()->assertSee('Every company · Department: Sales · Level: L3');
+
+    // Unticking a dimension clears it, even though its (hidden) values are still in the form state.
+    $versions()->callTableAction('edit', $draft, data: ['narrow_by' => ['department_id']])->assertHasNoTableActionErrors();
+    expect($draft->refresh()->restrictions())->toBe(['department_id' => [$sales->id]])
+        ->and($draft->components()->count())->toBe($this->structure->versionOn('2026-09-21')->components()->count());
 });

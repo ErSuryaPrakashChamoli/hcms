@@ -1,0 +1,464 @@
+[
+  {
+    "name": "hr-admin/62-comp-00-refused-alumni",
+    "file": "screenshots/hr-admin/62-comp-00-refused-alumni.png",
+    "captured_at": "2026-10-21T07:19:31.418Z",
+    "url": "/admin/employees/5?relation=4#records",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      7
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "Employee 360 (after proposing for an exited employee)",
+    "action": "Propose a compensation change for Vikram Singh, who has exited (alumni)",
+    "expected": "Refused: \"Cannot propose — An employee who is alumni cannot receive future compensation.\"",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 159
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/62-comp-01-employee-compensation",
+    "file": "screenshots/hr-admin/62-comp-01-employee-compensation.png",
+    "captured_at": "2026-10-21T07:23:16.472Z",
+    "url": "/admin/employees/2?relation=4#records",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "Employee 360 › Records › Rewards › Compensation",
+    "action": "HR Manager opens the employee’s Rewards tab",
+    "expected": "Current salary assignment and change history; Propose compensation change and Propose from position",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Propose compensation change",
+        "x": 1683,
+        "y": 726,
+        "w": 399,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Propose from position",
+        "x": 1371,
+        "y": 726,
+        "w": 306,
+        "h": 66
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/62-comp-02-propose-form",
+    "file": "screenshots/hr-admin/62-comp-02-propose-form.png",
+    "captured_at": "2026-10-21T07:23:19.142Z",
+    "url": "/admin/employees/2?relation=4#records",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      11
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "Propose compensation change (dialog)",
+    "action": "Change type, effective date, structure, new annual CTC, reason; Submit for review now",
+    "expected": "Annual CTC 24,00,000 → 26,40,000 proposed with a reason; internal notes are never shown to the employee",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Change type",
+        "x": 30,
+        "y": 144,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "2",
+        "label": "Annual CTC",
+        "x": 30,
+        "y": 540,
+        "w": 1284,
+        "h": 66
+      },
+      {
+        "n": "3",
+        "label": "Reason",
+        "x": 30,
+        "y": 1221,
+        "w": 1284,
+        "h": 102
+      },
+      {
+        "n": "4",
+        "label": "Submit now",
+        "x": 114,
+        "y": 1515,
+        "w": 230,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/62-comp-03-submitted",
+    "file": "screenshots/hr-admin/62-comp-03-submitted.png",
+    "captured_at": "2026-10-21T07:23:21.674Z",
+    "url": "/admin/employees/2?relation=4#records",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      8,
+      11
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "Employee 360 (after proposing)",
+    "action": "Submit",
+    "expected": "Confirmation \"Compensation change submitted for review\" with its reference",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Confirmation",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 159
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/62-comp-04-list-submitted",
+    "file": "screenshots/hr-admin/62-comp-04-list-submitted.png",
+    "captured_at": "2026-10-21T07:23:23.565Z",
+    "url": "/admin/compensation-changes",
+    "http_status": 200,
+    "persona": "hr",
+    "user": "Neha Kapoor",
+    "role": "HR Manager + Employee",
+    "deck": [
+      3,
+      8,
+      11
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "People › Pay › Compensation changes",
+    "action": "Open Compensation changes",
+    "expected": "The new change is listed as submitted, waiting for review",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Submitted change",
+        "x": 426,
+        "y": 630,
+        "w": 2133,
+        "h": 134
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/62-comp-05-reviewer-menu",
+    "file": "screenshots/hr-admin/62-comp-05-reviewer-menu.png",
+    "captured_at": "2026-10-21T07:23:26.602Z",
+    "url": "/admin/compensation-changes",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8,
+      11
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "Compensation changes › row actions (reviewer)",
+    "action": "Reviewer opens the row actions",
+    "expected": "Mark reviewed, Reject, Return to proposer — only the steps this person may take are shown",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Mark reviewed",
+        "x": 1794,
+        "y": 736,
+        "w": 270,
+        "h": 42
+      },
+      {
+        "n": "2",
+        "label": "Return to proposer",
+        "x": 1794,
+        "y": 847,
+        "w": 270,
+        "h": 42
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/62-comp-06-reviewed",
+    "file": "screenshots/hr-admin/62-comp-06-reviewed.png",
+    "captured_at": "2026-10-21T07:23:30.123Z",
+    "url": "/admin/compensation-changes",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      3,
+      8,
+      11
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "Compensation changes (after review)",
+    "action": "Mark reviewed → Confirm",
+    "expected": "Status moves to under review",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Under review",
+        "x": 426,
+        "y": 557,
+        "w": 2153,
+        "h": 134
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "security-compliance/62-comp-07-reviewer-cannot-approve",
+    "file": "screenshots/security-compliance/62-comp-07-reviewer-cannot-approve.png",
+    "captured_at": "2026-10-21T07:25:03.488Z",
+    "url": "/admin/compensation-changes",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      8,
+      3,
+      11
+    ],
+    "workflow": "Separation of duties: compensation",
+    "screen": "Compensation changes › row actions (after reviewing)",
+    "action": "The reviewer (who holds compensation.approve) opens the actions again",
+    "expected": "No Approve action: a person who already acted on the change cannot approve it (four different people required)",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "No Approve for the reviewer",
+        "x": 1734,
+        "y": 718,
+        "w": 348,
+        "h": 189
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/62-comp-08-approve-confirm",
+    "file": "screenshots/hr-admin/62-comp-08-approve-confirm.png",
+    "captured_at": "2026-10-21T07:25:07.645Z",
+    "url": "/admin/compensation-changes",
+    "http_status": 200,
+    "persona": "superadmin",
+    "user": "Demo Admin",
+    "role": "Tenant Super Admin",
+    "deck": [
+      3,
+      8,
+      11
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "Approve (confirmation)",
+    "action": "Approver (a third person) chooses Approve",
+    "expected": "Confirmation with an optional note",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/62-comp-09-approved",
+    "file": "screenshots/hr-admin/62-comp-09-approved.png",
+    "captured_at": "2026-10-21T07:25:09.926Z",
+    "url": "/admin/compensation-changes",
+    "http_status": 200,
+    "persona": "superadmin",
+    "user": "Demo Admin",
+    "role": "Tenant Super Admin",
+    "deck": [
+      3,
+      8,
+      11
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "Compensation changes (after approval)",
+    "action": "Approve → Confirm",
+    "expected": "Status approved; waiting for payroll to execute",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Approved",
+        "x": 426,
+        "y": 557,
+        "w": 2126,
+        "h": 134
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "hr-admin/62-comp-10-executed",
+    "file": "screenshots/hr-admin/62-comp-10-executed.png",
+    "captured_at": "2026-10-21T07:25:15.999Z",
+    "url": "/admin/compensation-changes",
+    "http_status": 200,
+    "persona": "payroll",
+    "user": "Arjun Bose",
+    "role": "Payroll Admin + Employee",
+    "deck": [
+      3,
+      8,
+      11
+    ],
+    "workflow": "Compensation change (four-person chain)",
+    "screen": "Compensation changes (after execution)",
+    "action": "Payroll Admin (a fourth person): Execute (schedule) → Confirm",
+    "expected": "Status scheduled; the new salary takes effect on the effective date and is used by payroll from then",
+    "prereq": "Four different people: proposer (compensation.propose), reviewer (compensation.review), approver (compensation.approve), executor (compensation.execute)",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [
+      {
+        "n": "1",
+        "label": "Result",
+        "x": 1554,
+        "y": 18,
+        "w": 588,
+        "h": 93
+      },
+      {
+        "n": "2",
+        "label": "Scheduled change",
+        "x": 426,
+        "y": 550,
+        "w": 2067,
+        "h": 134
+      }
+    ],
+    "missing_callouts": [],
+    "page_errors": []
+  },
+  {
+    "name": "analytics/62-comp-11-compensation-analytics",
+    "file": "screenshots/analytics/62-comp-11-compensation-analytics.png",
+    "captured_at": "2026-10-21T07:25:17.922Z",
+    "url": "/admin/compensation-analytics",
+    "http_status": 200,
+    "persona": "admin",
+    "user": "Kavya Menon",
+    "role": "Tenant HR Admin + Employee",
+    "deck": [
+      12,
+      3
+    ],
+    "workflow": "Compensation analytics",
+    "screen": "People › Pay › Analytics (Compensation analytics)",
+    "action": "Open Compensation analytics",
+    "expected": "Pay distribution, compa-ratios and breakdowns; groups smaller than the minimum size are suppressed",
+    "prereq": "compensation.view; analytics minimum group size",
+    "status": "VERIFIED IN RUNNING APPLICATION",
+    "note": "",
+    "environment": "Local development · disposable hcm_training_showcase (fictional data) · http://127.0.0.1:8100",
+    "callouts": [],
+    "missing_callouts": [],
+    "page_errors": []
+  }
+]
