@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Schema;
  * existing tables are unchanged.
  *
  * - One open application per e-mail address: `open_email_hash` is the address hash only while the application is
- *   open, and unique.
+ *   open, and unique. Both hash columns are VARCHAR, not CHAR: MariaDB refuses to index a generated column that reads
+ *   a CHAR column (its value depends on the PAD_CHAR_TO_FULL_LENGTH sql_mode).
  * - The e-mail link is stored as its SHA-256 only (`token_hash`), single-use, with an expiry.
  * - Provisioning: `attempts`, `claim_token` (the fencing token of the run that owns it), `claimed_at` (lease),
  *   `next_attempt_at` (backoff), `failure_code` / `failure_summary` (safe text only).
@@ -26,7 +27,7 @@ return new class extends Migration
             $table->char('reference', 26)->unique();
             $table->string('status', 32);
             $table->string('email', 254)->nullable();
-            $table->char('email_hash', 64)->nullable();
+            $table->string('email_hash', 64)->nullable();
             $table->string('contact_name', 120)->nullable();
             $table->string('company_name', 200);
             $table->string('legal_name', 200)->nullable();
@@ -73,7 +74,7 @@ return new class extends Migration
             $table->timestamp('cancelled_at')->nullable();
             $table->foreignId('cancelled_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('cancel_reason', 500)->nullable();
-            $table->char('open_email_hash', 64)->nullable()->virtualAs("CASE WHEN status IN ('email_pending', 'details_pending', 'review_pending', 'approved', 'provisioning', 'failed_retryable', 'failed_manual_review') THEN email_hash END");
+            $table->string('open_email_hash', 64)->nullable()->virtualAs("CASE WHEN status IN ('email_pending', 'details_pending', 'review_pending', 'approved', 'provisioning', 'failed_retryable', 'failed_manual_review') THEN email_hash END");
             $table->timestamps();
 
             $table->unique('open_email_hash', 'signup_applications_open_email_unique');
