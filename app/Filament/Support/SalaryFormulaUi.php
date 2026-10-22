@@ -5,6 +5,7 @@ namespace App\Filament\Support;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Services\StructureFormulas;
 use App\Domain\Payroll\Support\FormulaVariables;
+use App\Support\Tenancy\TenantContext;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\KeyValue;
@@ -17,9 +18,10 @@ use Illuminate\Support\Carbon;
 use Throwable;
 
 /**
- * §30 formula help in the admin: the formula guide (generated from FormulaVariables, so it never drifts
- * from the engine) and the live breakup preview of a structure for a sample CTC. Display only: drafts are
- * still checked by CompensationStructures and pay is still calculated by PayrollCalculator.
+ * §30 formula help in the admin: the formula guide (generated from FormulaVariables, with a worked example
+ * from StructureFormulas, so it never drifts from the engine; also downloadable) and the live breakup
+ * preview of a structure for a sample CTC. Display only: drafts are still checked by
+ * CompensationStructures and pay is still calculated by PayrollCalculator.
  */
 final class SalaryFormulaUi
 {
@@ -28,10 +30,33 @@ final class SalaryFormulaUi
         return Action::make($name)->label('Formula guide')->icon('heroicon-m-book-open')->color('gray')
             ->modalHeading('Salary formula guide')->modalWidth('5xl')->slideOver()
             ->modalSubmitAction(false)->modalCancelActionLabel('Close')
-            ->modalContent(fn () => view('filament.payroll.formula-guide', [
-                'pay' => FormulaVariables::PAY, 'employee' => FormulaVariables::EMPLOYEE, 'functions' => FormulaVariables::FUNCTIONS,
-                'recipes' => FormulaVariables::RECIPES, 'statutory' => SalaryComponent::STATUTORY_CODES,
-            ]));
+            ->modalContent(fn () => view('filament.payroll.formula-guide', self::guideData()))
+            ->extraModalFooterActions([
+                Action::make('downloadGuide')->label('Download')->icon('heroicon-m-arrow-down-tray')->color('gray')
+                    ->action(fn () => response()->streamDownload(fn () => print (self::guideDocument()), 'salary-formula-guide.html', ['Content-Type' => 'text/html'])),
+            ]);
+    }
+
+    /** The guide as a standalone HTML page to keep, share or print to PDF. */
+    public static function guideDocument(): string
+    {
+        return view('filament.payroll.formula-guide-document', self::guideData() + ['tenant' => app(TenantContext::class)->current()?->name])->render();
+    }
+
+    /** @return array<string, mixed> */
+    private static function guideData(): array
+    {
+        try {
+            $example = app(StructureFormulas::class)->example();
+        } catch (Throwable $e) {
+            report($e);
+            $example = null;
+        }
+
+        return [
+            'pay' => FormulaVariables::PAY, 'employee' => FormulaVariables::EMPLOYEE, 'functions' => FormulaVariables::FUNCTIONS,
+            'recipes' => FormulaVariables::RECIPES, 'statutory' => SalaryComponent::STATUTORY_CODES, 'example' => $example,
+        ];
     }
 
     /**

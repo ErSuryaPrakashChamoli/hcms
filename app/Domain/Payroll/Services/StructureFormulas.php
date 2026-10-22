@@ -2,6 +2,7 @@
 
 namespace App\Domain\Payroll\Services;
 
+use App\Domain\Compensation\Services\CompensationDefaults;
 use App\Domain\Compliance\Services\StatutoryEngine;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Support\FormulaVariables;
@@ -226,6 +227,48 @@ final class StructureFormulas
                 'breakup' => $breakup, 'difference' => $difference, 'wage_share' => $share],
             'errors' => array_values(array_unique($errors)),
             'warnings' => array_values(array_unique($warnings)),
+        ];
+    }
+
+    /**
+     * The formula guide's worked example: the Standard structure as shipped (not the tenant's edits, so
+     * the guide reads the same everywhere) previewed for a sample CTC under today's statutory rules, with
+     * each formula worked through, the employee PF and ESI payroll deducts, and a month with loss of pay.
+     *
+     * @param  array<string, float>  $values  fixed amounts by component code
+     * @return array<string, mixed>
+     */
+    public function example(float $ctcAnnual = 600000, array $values = ['CONV' => 1600], int $days = 30, int $lopDays = 2): array
+    {
+        $defaults = collect(config('peopleos.payroll.defaults'))->keyBy('code');
+        $components = collect(CompensationDefaults::STANDARD_COMPONENTS)->filter(fn (string $code) => $defaults->has($code))
+            ->mapWithKeys(fn (string $code) => [$code => new SalaryComponent($defaults[$code] + ['is_recurring' => true])]);
+        $lines = $components->values()->map(fn (SalaryComponent $component, int $i) => ['component' => $component, 'formula_override' => null, 'sort_order' => ($i + 1) * 10])->all();
+        $on = now()->startOfDay();
+        $preview = $this->preview($lines, [], ['ctc_annual' => $ctcAnnual, 'values' => $values, 'days' => $days, 'pf_applies' => true, 'pf_restrict_to_ceiling' => true, 'on' => $on]);
+
+        $rows = collect($preview['rows'])->filter(fn (array $row) => $row['monthly'] !== null);
+        $known = ['ctc_annual' => $ctcAnnual, 'ctc_monthly' => $preview['totals']['ctc_monthly'], 'days_in_period' => $days, 'paid_days' => $days, 'pf_employer' => $preview['totals']['pf_employer']]
+            + $rows->mapWithKeys(fn (array $row) => [strtolower($row['code']) => $row['monthly']])->all();
+        $plain = fn (float $value) => rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
+        $working = $rows->filter(fn (array $row) => $row['formula'] !== null)->mapWithKeys(fn (array $row) => [$row['code'] => preg_replace_callback(
+            '/\b[a-z_][a-z0-9_]*\b(?!\s*\()/',
+            fn (array $m) => array_key_exists($m[0], $known) ? $plain((float) $known[$m[0]]) : $m[0],
+            $row['formula'],
+        )])->all();
+
+        $wageRows = fn (string $flag) => $rows->filter(fn (array $row) => $components[$row['code']]->isEarning() && $components[$row['code']]->{$flag});
+        $contributions = $this->statutory->contributionsOn(round($wageRows('pf_applicable')->sum('monthly'), 2), round($wageRows('esi_applicable')->sum('monthly'), 2), $on, true);
+        $deducted = ($contributions['pf']['employee'] ?? 0.0) + ($contributions['esi']['employee'] ?? 0.0);
+
+        $paidDays = $days - $lopDays;
+        $prorated = $rows->filter(fn (array $row) => $components[$row['code']]->is_proratable)->mapWithKeys(fn (array $row) => [$row['code'] => round($row['monthly'] * $paidDays / $days, 2)]);
+
+        return [
+            'on' => $on, 'ctc_annual' => $ctcAnnual, 'values' => $values, 'days' => $days, 'preview' => $preview, 'working' => $working,
+            'pf' => $contributions['pf'], 'pf_components' => $wageRows('pf_applicable')->pluck('name')->all(), 'esi' => $contributions['esi'], 'take_home' => round($preview['totals']['gross'] - $preview['totals']['deductions'] - $deducted, 2),
+            'lop' => ['lop_days' => $lopDays, 'paid_days' => $paidDays, 'amounts' => $prorated->all(),
+                'gross' => round($prorated->filter(fn ($amount, string $code) => $components[$code]->isEarning() && $components[$code]->include_in_gross)->sum(), 2)],
         ];
     }
 

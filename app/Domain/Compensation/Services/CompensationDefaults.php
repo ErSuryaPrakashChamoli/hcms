@@ -12,6 +12,9 @@ use App\Domain\Payroll\Models\SalaryComponent;
  */
 final class CompensationDefaults
 {
+    /** The Standard structure's components, in calculation order (also the formula guide's worked example). */
+    public const STANDARD_COMPONENTS = ['BASIC', 'HRA', 'CONV', 'SPECIAL'];
+
     public function seed(): SalaryStructure
     {
         $structure = SalaryStructure::query()->firstOrCreate(['code' => 'STANDARD'], ['name' => 'Standard structure', 'description' => 'Basic 40% of CTC, HRA 50% of basic, conveyance, special allowance balancing to CTC.', 'status' => 'active']);
@@ -20,7 +23,7 @@ final class CompensationDefaults
         // migration gave existing structures. Written directly: tenant provisioning has no approver.
         if ($structure->versions()->doesntExist()) {
             $version = SalaryStructureVersion::query()->create(['salary_structure_id' => $structure->id, 'version' => 1, 'status' => 'draft', 'effective_from' => '2000-01-01', 'currency' => config('peopleos.settings.tenant.base_currency', 'INR'), 'pay_frequency' => 'monthly', 'change_note' => 'Standard structure provisioned with the tenant.']);
-            foreach (['BASIC', 'HRA', 'CONV', 'SPECIAL'] as $i => $code) {
+            foreach (self::STANDARD_COMPONENTS as $i => $code) {
                 $component = SalaryComponent::query()->where('code', $code)->first();
                 if ($component) {
                     $version->components()->create(['salary_structure_id' => $structure->id, 'salary_component_id' => $component->id, 'sort_order' => ($i + 1) * 10]);

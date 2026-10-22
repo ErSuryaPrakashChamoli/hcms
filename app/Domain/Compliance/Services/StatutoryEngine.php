@@ -194,6 +194,31 @@ final class StatutoryEngine
         return $this->round($base * $rule->param('employer_rate'), $rule);
     }
 
+    /**
+     * Full-month PF and ESI for an employee covered by both, under the rules in force on a date, with
+     * apply()'s ceilings and rounding: the formula guide's worked example. Null for a scheme without a rule.
+     *
+     * @return array{pf: ?array{wages: float, base: float, wage_ceiling: float, employee_rate: float, employer_rate: float, employee: float, employer: float}, esi: ?array{wages: float, wage_ceiling: float, employee_rate: float, covered: bool, employee: float}}
+     */
+    public function contributionsOn(float $pfWagesFullMonth, float $esiWagesFullMonth, CarbonInterface|string $on, bool $restrictToCeiling): array
+    {
+        $pf = null;
+        if ($rule = $this->rules->resolve('EPF', $on)) {
+            $base = $restrictToCeiling ? min($pfWagesFullMonth, (float) $rule->param('wage_ceiling')) : $pfWagesFullMonth;
+            $pf = ['wages' => $pfWagesFullMonth, 'base' => $base, 'wage_ceiling' => (float) $rule->param('wage_ceiling'), 'employee_rate' => (float) $rule->param('employee_rate'),
+                'employer_rate' => (float) $rule->param('employer_rate'), 'employee' => $this->round($base * $rule->param('employee_rate'), $rule), 'employer' => $this->round($base * $rule->param('employer_rate'), $rule)];
+        }
+
+        $esi = null;
+        if ($rule = $this->rules->resolve('ESI', $on)) {
+            $covered = $esiWagesFullMonth > 0 && $esiWagesFullMonth <= (float) $rule->param('wage_ceiling');
+            $esi = ['wages' => $esiWagesFullMonth, 'wage_ceiling' => (float) $rule->param('wage_ceiling'), 'employee_rate' => (float) $rule->param('employee_rate'),
+                'covered' => $covered, 'employee' => $covered ? $this->round($esiWagesFullMonth * $rule->param('employee_rate'), $rule) : 0.0];
+        }
+
+        return ['pf' => $pf, 'esi' => $esi];
+    }
+
     /** @deprecated Phase 5: use context(); kept for callers of the Phase 4 API. */
     public function profile(PayrollComputation $c): CompanyStatutoryProfile
     {

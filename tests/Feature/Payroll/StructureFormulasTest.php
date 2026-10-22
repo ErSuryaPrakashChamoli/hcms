@@ -179,3 +179,22 @@ it('shows the formula guide and the preview on the structure screen, and saves p
 
     expect($draft->refresh()->parameters)->toEqual(['basic_pct' => 50]);
 });
+
+it('works the Standard structure through for a sample CTC in the guide, and downloads the guide', function () {
+    // 21 Sep 2026: the EPF wage ceiling is 25,000, so all of Basic is PF wages; ESI wages are above 21,000.
+    $example = $this->formulas->example();
+    expect(collect($example['preview']['rows'])->pluck('monthly', 'code')->all())->toEqual(['BASIC' => 20000.0, 'HRA' => 10000.0, 'CONV' => 1600.0, 'SPECIAL' => 16000.0])
+        ->and($example['working'])->toBe(['BASIC' => '50000 * 0.40', 'HRA' => '20000 * 0.50', 'SPECIAL' => 'max(0, 50000 - 20000 - 10000 - 1600 - 2400)'])
+        ->and($example['preview']['totals'])->toMatchArray(['gross' => 47600.0, 'pf_employer' => 2400.0, 'breakup' => 50000.0, 'difference' => 0.0])
+        ->and($example['pf'])->toMatchArray(['base' => 20000.0, 'wage_ceiling' => 25000.0, 'employee' => 2400.0, 'employer' => 2400.0])
+        ->and($example['esi'])->toMatchArray(['covered' => false, 'employee' => 0.0])
+        ->and($example['take_home'])->toBe(45200.0)
+        ->and($example['lop'])->toMatchArray(['paid_days' => 28, 'gross' => 44426.66])
+        ->and($example['lop']['amounts']['BASIC'])->toBe(18666.67);
+
+    expect(SalaryFormulaUi::guideDocument())->toStartWith('<!doctype html>')->toContain('Worked example: CTC 600,000.00 a year')
+        ->toContain('max(0, 50000 - 20000 - 10000 - 1600 - 2400)')->toContain('45,200.00')->toContain('above the 21,000.00 ceiling')->toContain('lookup(key, k1, v1, k2, v2, …, otherwise)');
+
+    Livewire::test(VersionsRelationManager::class, ['ownerRecord' => $this->standard, 'pageClass' => EditSalaryStructure::class])
+        ->callAction([TestAction::make('formulaGuide')->table(), TestAction::make('downloadGuide')])->assertFileDownloaded('salary-formula-guide.html');
+});
