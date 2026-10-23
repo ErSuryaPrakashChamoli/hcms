@@ -4,11 +4,13 @@ namespace App\Filament\Resources\Letters;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Letters\Models\Letter;
+use App\Domain\Letters\Models\LetterSignatory;
 use App\Domain\Letters\Models\LetterTemplate;
 use App\Domain\Letters\Services\Letters;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\Letters\Pages\ListLetters;
 use App\Filament\Resources\Letters\Pages\ViewLetter;
+use App\Filament\Resources\LetterTemplates\LetterTemplateResource;
 use App\Filament\Support\ServiceDeskActions;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -17,6 +19,7 @@ use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ViewEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -55,7 +58,7 @@ class LetterResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['employee.person', 'template', 'requester', 'approver']);
+        $query = parent::getEloquentQuery()->with(['employee.person', 'template', 'signatory', 'requester', 'approver']);
         $user = auth()->user();
         if ($user->can('letter.issue') || $user->can('letter.view') || $user->can('letter.manage')) {
             return $query;
@@ -78,9 +81,12 @@ class LetterResource extends Resource
             ->schema([
                 Select::make('employee_id')->label('Employee')->required()->searchable()->options(fn () => Employee::query()->with('person')->get()->mapWithKeys(fn ($e) => [$e->id => "{$e->employee_code} · {$e->person?->full_name}"])->all()),
                 Select::make('template_id')->label('Template')->required()->options(fn () => LetterTemplate::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all()),
-                KeyValue::make('extra')->label('Extra variables')->keyLabel('Variable')->valueLabel('Value'),
+                Select::make('letter_signatory_id')->label('Signing authority')->placeholder('As on the template')->options(fn () => LetterTemplateResource::signatories()),
+                KeyValue::make('extra')->label('Extra variables')->keyLabel('Variable')->valueLabel('Value')
+                    ->helperText('Values for variables the template asks for that are not employee details, such as purpose = Visa application.'),
             ])
-            ->action(fn (array $data) => ServiceDeskActions::run(fn () => app(Letters::class)->generate(LetterTemplate::query()->findOrFail($data['template_id']), Employee::query()->findOrFail($data['employee_id']), $data['extra'] ?? [], auth()->user()), fn ($l) => "Letter {$l->number} ".($l->status === 'approved' ? 'ready to issue' : 'sent for approval')));
+            ->action(fn (array $data) => ServiceDeskActions::run(fn () => app(Letters::class)->generate(LetterTemplate::query()->findOrFail($data['template_id']), Employee::query()->findOrFail($data['employee_id']), $data['extra'] ?? [], auth()->user(),
+                signatory: filled($data['letter_signatory_id'] ?? null) ? LetterSignatory::query()->findOrFail($data['letter_signatory_id']) : null), fn ($l) => "Letter {$l->number} ".($l->status === 'approved' ? 'ready to issue' : 'sent for approval')));
     }
 
     /** @return array<int, Action> */
@@ -104,9 +110,16 @@ class LetterResource extends Resource
             Action::make('download')->label('Download')->icon(Heroicon::OutlinedArrowDownTray)->color('gray')
                 ->visible(fn (Letter $record) => $record->status === 'issued')
                 ->action(function (Letter $record) {
-                    $html = app(Letters::class)->download($record, auth()->user());
+                    $file = app(Letters::class)->download($record, auth()->user());
 
-                    return response()->streamDownload(fn () => print ($html), $record->number.'.html', ['Content-Type' => 'text/html']);
+                    return response()->streamDownload(fn () => print ($file['content']), $file['name'], ['Content-Type' => $file['mime']]);
+                }),
+            Action::make('draft')->label(fn (Letter $record) => $record->isDocx() ? 'Download Word draft' : 'Download draft')->icon(Heroicon::OutlinedDocumentMagnifyingGlass)->color('gray')
+                ->visible(fn (Letter $record) => in_array($record->status, ['pending_approval', 'approved'], true) && $issue())
+                ->action(function (Letter $record) {
+                    $file = app(Letters::class)->draft($record, auth()->user());
+
+                    return response()->streamDownload(fn () => print ($file['content']), $file['name'], ['Content-Type' => $file['mime']]);
                 }),
         ];
     }
@@ -123,7 +136,12 @@ class LetterResource extends Resource
                 TextEntry::make('approver.name')->label('Approved by')->placeholder('—'),
                 TextEntry::make('issued_at')->dateTime()->placeholder('—'),
                 TextEntry::make('review_note')->placeholder('—'),
-                TextEntry::make('body')->hiddenLabel()->markdown()->columnSpanFull(),
+                TextEntry::make('format')->label('Made as')->formatStateUsing(fn (string $state) => match ($state) {
+                    'docx' => 'Word file', 'html' => 'Written in PeopleOS', default => 'Markdown'
+                }),
+                TextEntry::make('signatory.name')->label('Signed by')->placeholder('—'),
+                ViewEntry::make('body')->hiddenLabel()->columnSpanFull()->view('filament.letters.letter-body')
+                    ->viewData(fn (Letter $record) => ['page' => $record->isDocx() ? null : app(Letters::class)->html($record), 'text' => $record->isDocx() ? $record->body : null]),
             ]),
         ]);
     }

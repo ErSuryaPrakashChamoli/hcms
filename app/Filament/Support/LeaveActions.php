@@ -3,6 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Domain\Documents\Models\EmployeeDocument;
+use App\Domain\Documents\Services\Documents;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
@@ -10,8 +11,10 @@ use App\Domain\Leave\Services\LeaveBalances;
 use App\Domain\Leave\Services\LeaveEntitlements;
 use App\Domain\Leave\Services\Leaves;
 use App\Domain\Leave\Services\LeaveYear;
+use App\Support\Storage\StagedUpload;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -31,6 +34,9 @@ final class LeaveActions
                 ->label('Leave type')
                 ->options(function () use ($employee) {
                     $emp = $employee();
+                    if (! $emp->exists) {
+                        return []; // "Apply on behalf" before an employee is picked
+                    }
                     $codes = array_keys(app(LeaveEntitlements::class)->for($emp));
 
                     return LeaveType::query()->where('status', 'active')->orderBy('sort_order')->get()
@@ -50,19 +56,39 @@ final class LeaveActions
             // Experience Transformation §21: days and balance before → after, before submitting.
             BeforeAfterPreview::leave($employee),
             Textarea::make('reason')->required()->maxLength(255),
-            Select::make('document_id')->label('Supporting document')->options(fn () => $employee()->documents()->pluck('title', 'id')->all())->placeholder('Optional'),
+            FileUpload::make('document_upload')->label('Supporting document')->helperText('Optional. Saved to the employee\'s documents.')
+                ->disk(StagedUpload::disk())->directory('tmp-uploads')->maxSize(config('peopleos.documents.max_kb'))
+                ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                ->live(),
+            Select::make('document_id')->label('Or attach an existing document')->options(fn () => $employee()->documents()->pluck('title', 'id')->all())->placeholder('Optional')
+                ->visible(fn (Get $get) => blank($get('document_upload')) && $employee()->documents()->exists()),
         ];
     }
 
     public static function apply(Employee $employee, array $data): void
     {
+        $uploaded = null;
         try {
             $type = LeaveType::query()->findOrFail($data['leave_type_id']);
-            $document = isset($data['document_id']) ? EmployeeDocument::query()->find($data['document_id']) : null;
+            $document = filled($data['document_upload'] ?? null)
+                ? $uploaded = self::storeUpload($employee, $type, $data['document_upload'])
+                : (isset($data['document_id']) ? EmployeeDocument::query()->find($data['document_id']) : null);
             $request = app(Leaves::class)->request($employee, $type, $data['from_date'], $data['to_date'], $data['reason'], $data['from_session'] ?? 'full', ($data['from_date'] === $data['to_date'] ? $data['from_session'] : $data['to_session']) ?? 'full', $document);
             Notification::make()->success()->title(sprintf('Leave requested: %.1f day(s)', (float) $request->days))->send();
         } catch (RuntimeException $e) {
+            // A refused request leaves no orphan document behind.
+            $uploaded && app(Documents::class)->delete($uploaded, 'Leave request not submitted');
             Notification::make()->danger()->title('Cannot apply')->body($e->getMessage())->persistent()->send();
+        }
+    }
+
+    private static function storeUpload(Employee $employee, LeaveType $type, string $staged): EmployeeDocument
+    {
+        $file = StagedUpload::toUploadedFile($staged);
+        try {
+            return app(Documents::class)->store($employee, $file, title: "{$type->name}: supporting document");
+        } finally {
+            StagedUpload::discard($staged, $file);
         }
     }
 

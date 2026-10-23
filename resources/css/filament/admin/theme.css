@@ -201,6 +201,7 @@
 
     /* Layers */
     --pos-z-sticky: 20;
+    --pos-z-dropdown: 25;
     --pos-z-nav: 40;
     --pos-z-overlay: 60;
     --pos-z-drawer: 61;
@@ -2035,6 +2036,10 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-command-trigger { position: relative; }
     .pos-command-trigger .pos-command-trigger-label { display: block; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
+
+/* Dropdown menus open above sticky bars (the Employee 360 section nav, the form review bar) and below the topbar
+   (z-30). Filament gives its panels z-20, the same as our sticky layer, so a later sticky bar painted over them. */
+.fi-dropdown-panel { z-index: var(--pos-z-dropdown); }
 
 /* Command center on phones: a full-screen sheet sized to the visible viewport (the on-screen keyboard never covers
    the results), safe-area aware, with Cancel. Desktop ⌘K/Ctrl+K and its card are unchanged. */

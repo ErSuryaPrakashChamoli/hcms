@@ -131,3 +131,17 @@ it('lands the finder’s own example on the setting itself, by name and key only
     $this->actingAs(tenantUser($this->tenant, ['user.view']));
     expect(collect(Livewire::test(AdminCentre::class)->set('find', 'probation period')->instance()->matches)->pluck('hint')->implode(' '))->not->toContain('employee.probation');
 });
+
+it('opens search from the top bar for an operator outside any tenant, with navigation results only', function () {
+    // The top-bar trigger rendered for every signed-in user while the command center it opens was mounted only inside a
+    // tenant, so a platform operator's search button and Ctrl K did nothing.
+    $operator = platformAdmin();
+    $this->actingAs($operator)->get(AdminCentre::getUrl())->assertOk()
+        ->assertSee('data-pos-command-trigger', false)->assertSee('posCommand(\'all\')', false);
+
+    $command = Livewire::test(CommandCenter::class)->call('opened', 'all')->set('query', 'tenants');
+    expect(collect($command->instance()->groups)->firstWhere('key', 'modules')['items'] ?? [])->not->toBeEmpty();
+
+    // Tenant data stays closed: no people are found without a tenant.
+    expect(collect($command->call('setMode', 'people')->set('query', 'priya')->instance()->groups))->toBeEmpty();
+});

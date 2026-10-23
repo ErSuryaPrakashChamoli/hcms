@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'holiday_calendar_id', 'date', 'name', 'type', 'is_half_day'])]
+#[Fillable(['tenant_id', 'holiday_calendar_id', 'holiday_library_entry_id', 'date', 'name', 'type', 'is_half_day'])]
 class Holiday extends Model
 {
     use Auditable, BelongsToTenant;
@@ -31,5 +31,11 @@ class Holiday extends Model
     public function calendar(): BelongsTo
     {
         return $this->belongsTo(HolidayCalendar::class, 'holiday_calendar_id');
+    }
+
+    /** The platform holiday library entry this holiday was copied from (null when entered by hand). */
+    public function libraryEntry(): BelongsTo
+    {
+        return $this->belongsTo(HolidayLibraryEntry::class, 'holiday_library_entry_id');
     }
 }

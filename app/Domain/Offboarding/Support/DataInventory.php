@@ -49,7 +49,7 @@ final class DataInventory
         'statutory' => ['label' => 'Statutory: registrations, employee statutory identifiers, EPF / ESI / PT / LWF returns, snapshots, reconciliations, parallel runs', 'owner' => 'tenant', 'sensitivity' => 'sensitive', 'significance' => 'statutory', 'export' => true, 'action' => self::DELETE, 'anonymisable' => false],
         'tax' => ['label' => 'Income tax (TDS): profiles, declarations, investments, ledgers, quarterly returns, certificates', 'owner' => 'tenant', 'sensitivity' => 'sensitive', 'significance' => 'statutory', 'export' => true, 'action' => self::DELETE, 'anonymisable' => false],
         'banking' => ['label' => 'Banking: employee bank accounts', 'owner' => 'tenant', 'sensitivity' => 'sensitive', 'significance' => 'financial', 'export' => true, 'action' => self::DELETE, 'anonymisable' => false],
-        'documents' => ['label' => 'Documents: employee documents and their files, letters, letter templates, document types', 'owner' => 'tenant', 'sensitivity' => 'sensitive', 'significance' => 'employment', 'export' => true, 'action' => self::DELETE, 'anonymisable' => false],
+        'documents' => ['label' => 'Documents: employee documents and their files, letters, letter templates, signing authorities and their signatures, document types', 'owner' => 'tenant', 'sensitivity' => 'sensitive', 'significance' => 'employment', 'export' => true, 'action' => self::DELETE, 'anonymisable' => false],
         'performance' => ['label' => 'Performance: cycles, appraisals, ratings, reviews, calibration, feedback, one-on-ones, improvement plans', 'owner' => 'tenant', 'sensitivity' => 'personal', 'significance' => 'employment', 'export' => true, 'action' => self::DELETE, 'anonymisable' => false],
         'goals' => ['label' => 'Goals: goals, key results, KRAs, check-ins', 'owner' => 'tenant', 'sensitivity' => 'personal', 'significance' => 'none', 'export' => true, 'action' => self::DELETE, 'anonymisable' => false],
         'learning' => ['label' => 'Learning: courses, paths, programmes, enrolments, completions, certificates and their files, evidence, sessions, costs', 'owner' => 'tenant', 'sensitivity' => 'personal', 'significance' => 'employment', 'export' => true, 'action' => self::DELETE, 'anonymisable' => false],
@@ -89,7 +89,7 @@ final class DataInventory
         'statutory' => ['company_statutory_profiles', 'employee_statutory_details', 'epf_return_entries', 'epf_return_revisions', 'epf_return_runs', 'esi_return_entries', 'esi_return_runs', 'establishment_statutory_profiles', 'lwf_return_entries', 'lwf_returns', 'parallel_payroll_lines', 'parallel_payroll_runs', 'professional_tax_return_entries', 'professional_tax_returns', 'statutory_reconciliations', 'statutory_registrations', 'statutory_return_actions', 'statutory_returns', 'statutory_snapshots'],
         'tax' => ['employee_tax_declarations', 'tds_annual_ledgers', 'tds_certificates', 'tds_employee_investments', 'tds_financial_years', 'tds_profiles', 'tds_quarterly_return_entries', 'tds_quarterly_returns'],
         'banking' => ['employee_bank_accounts'],
-        'documents' => ['document_types', 'employee_documents', 'letter_templates', 'letters'],
+        'documents' => ['document_types', 'employee_documents', 'letter_templates', 'letters', 'letter_signatories'],
         'performance' => ['appraisal_ratings', 'appraisal_reviews', 'appraisals', 'calibration_adjustments', 'calibration_sessions', 'competencies', 'feedback_entries', 'improvement_plan_checkpoints', 'improvement_plans', 'one_on_ones', 'performance_check_ins', 'performance_cycles', 'performance_reminder_logs', 'performance_template_versions', 'performance_templates', 'rating_scales'],
         'goals' => ['goal_check_ins', 'goals', 'key_results', 'kras'],
         'learning' => ['assessment_attempts', 'assessments', 'course_modules', 'course_versions', 'courses', 'learning_assignments', 'learning_certificates', 'learning_completions', 'learning_costs', 'learning_enrolments', 'learning_evidence', 'learning_instructors', 'learning_path_courses', 'learning_path_versions', 'learning_paths', 'learning_program_participants', 'learning_program_versions', 'learning_programs', 'learning_providers', 'learning_reminder_logs', 'training_session_attendees', 'training_sessions'],
@@ -144,6 +144,8 @@ final class DataInventory
         // name and address are removed from it at activation (the tenant's user account holds them, under the deletion
         // controls); applications that never became a tenant keep them until a retention decision (D10-6).
         'signup_applications',
+        // The holiday library: platform holiday lists tenants copy from (a copied holiday is the tenant's own row in `holidays`).
+        'holiday_library_lists', 'holiday_library_entries', 'country_regions',
     ];
 
     /**
@@ -154,6 +156,9 @@ final class DataInventory
     public const FILES = [
         'employee_documents' => [['path' => 'path', 'disk_column' => 'disk']],
         'employee_imports' => [['path' => 'path', 'disk_column' => 'disk']],
+        'letter_templates' => [['path' => 'file_path', 'disk_column' => 'file_disk']],
+        'letters' => [['path' => 'file_path', 'disk_column' => 'file_disk']],
+        'letter_signatories' => [['path' => 'signature_path', 'disk_column' => 'signature_disk']],
         'learning_evidence' => [['path' => 'path', 'disk_column' => 'disk']],
         'report_runs' => [['path' => 'path', 'disk_column' => 'disk']],
         'announcements' => [['path' => 'attachment_path', 'disk' => 'documents']],
@@ -253,7 +258,7 @@ final class DataInventory
         $id = $tenant->getKey();
 
         return [
-            'documents' => [['disk' => self::disk('documents'), 'prefix' => "tenants/{$id}/employees"]],
+            'documents' => [['disk' => self::disk('documents'), 'prefix' => "tenants/{$id}/employees"], ['disk' => self::disk('documents'), 'prefix' => "tenants/{$id}/letters"]],
             'employment' => [['disk' => self::disk('documents'), 'prefix' => "tenants/{$id}/imports"]],
             'grievances' => [['disk' => self::disk('documents'), 'prefix' => "tenants/{$id}/grievances"]],
             'communication' => [['disk' => self::disk('documents'), 'prefix' => "tenants/{$id}/communication"]],

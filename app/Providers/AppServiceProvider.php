@@ -236,8 +236,10 @@ use App\Domain\Leave\Policies\LeaveRequestPolicy;
 use App\Domain\Leave\Policies\LeaveTypePolicy;
 use App\Domain\Leave\Services\AttendanceLeaveDayResolver;
 use App\Domain\Letters\Models\Letter;
+use App\Domain\Letters\Models\LetterSignatory;
 use App\Domain\Letters\Models\LetterTemplate;
 use App\Domain\Letters\Policies\LetterPolicy;
+use App\Domain\Letters\Policies\LetterSignatoryPolicy;
 use App\Domain\Letters\Policies\LetterTemplatePolicy;
 use App\Domain\Lifecycle\Events\EmployeeLifecycleChanged;
 use App\Domain\Lifecycle\Models\EmployeeLifecycleTransition;
@@ -578,6 +580,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ExitInterview::class, ExitCasePolicy::class);
         Gate::policy(FinalSettlement::class, SettlementPolicy::class);
         Gate::policy(LetterTemplate::class, LetterTemplatePolicy::class);
+        Gate::policy(LetterSignatory::class, LetterSignatoryPolicy::class);
         Gate::policy(Letter::class, LetterPolicy::class);
         Gate::policy(AlumniProfile::class, AlumniPolicy::class);
         Gate::policy(AlumniRequest::class, AlumniPolicy::class);

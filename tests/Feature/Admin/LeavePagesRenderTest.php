@@ -13,6 +13,8 @@ use App\Filament\Resources\LeaveEncashments\LeaveEncashmentResource;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\LeaveRequests\Pages\ListLeaveRequests;
 use App\Filament\Resources\LeaveTypes\LeaveTypeResource;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 require_once __DIR__.'/../Leave/LeaveTestHelpers.php';
@@ -73,4 +75,43 @@ it('restricts the register to own requests without leave.view and hides admin wi
     $this->get(LeaveRequestResource::getUrl('index'))->assertOk()->assertDontSee('Trip');
     $this->get(LeaveTypeResource::getUrl('index'))->assertOk();
     $this->get(LeaveEncashmentResource::getUrl('index'))->assertForbidden();
+});
+
+it('lets an admin apply on behalf of an employee from the register', function () {
+    actAsTenant($this->tenant);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->mountAction('applyOnBehalf')
+        ->fillForm(['employee_id' => $this->employee->id])
+        ->fillForm(['leave_type_id' => $this->el->id, 'from_date' => '2026-09-28', 'to_date' => '2026-09-28', 'from_session' => 'full', 'to_session' => 'full', 'reason' => 'Errand'])
+        ->callMountedAction()
+        ->assertHasNoActionErrors()
+        ->assertNotified('Leave requested: 1.0 day(s)');
+
+    expect($this->employee->leaveRequests()->where('reason', 'Errand')->exists())->toBeTrue();
+});
+
+it('uploads a supporting document with the request and drops it when the request is refused', function () {
+    Storage::fake('local');
+    actAsTenant($this->tenant);
+    $this->actingAs($this->employee->user);
+    $form = ['leave_type_id' => $this->el->id, 'from_session' => 'full', 'to_session' => 'full', 'reason' => 'Medical'];
+
+    Livewire::test(LeaveRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])
+        ->callTableAction('apply', data: $form + ['from_date' => '2026-09-28', 'to_date' => '2026-09-28', 'document_upload' => UploadedFile::fake()->createWithContent('note.pdf', "%PDF-1.4\nsick note")])
+        ->assertHasNoTableActionErrors()
+        ->assertNotified('Leave requested: 1.0 day(s)');
+
+    $request = $this->employee->leaveRequests()->where('reason', 'Medical')->sole();
+    expect($request->document)->not->toBeNull()
+        ->and($request->document->employee_id)->toBe($this->employee->id)
+        ->and($request->document->title)->toBe('Earned leave: supporting document');
+    Storage::disk('local')->assertExists($request->document->path);
+
+    // Overlaps the existing "Trip" request: refused, and the uploaded file is not left behind.
+    Livewire::test(LeaveRelationManager::class, ['ownerRecord' => $this->employee, 'pageClass' => ViewEmployee::class])
+        ->callTableAction('apply', data: $form + ['from_date' => '2026-09-23', 'to_date' => '2026-09-23', 'document_upload' => UploadedFile::fake()->createWithContent('again.pdf', "%PDF-1.4\nsick note")])
+        ->assertNotified('Cannot apply');
+
+    expect($this->employee->documents()->count())->toBe(1);
 });

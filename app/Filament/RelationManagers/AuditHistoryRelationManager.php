@@ -29,6 +29,7 @@ class AuditHistoryRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('action')
+            ->modifyQueryUsing(fn ($query) => $query->with('fieldChanges'))
             ->columns([
                 TextColumn::make('occurred_at')->label('When')->dateTime('d M Y, H:i:s')->sortable(),
                 TextColumn::make('action')->badge()->formatStateUsing(fn (AuditAction $state) => $state->label()),

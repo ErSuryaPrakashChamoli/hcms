@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Locations\Schemas;
 
+use App\Domain\Attendance\Services\CountryRegions;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Enums\LocationType;
 use App\Domain\Organisation\Models\Location;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class LocationForm
@@ -29,9 +31,11 @@ class LocationForm
                         TextInput::make('address_line_1')->maxLength(255),
                         TextInput::make('address_line_2')->maxLength(255),
                         TextInput::make('city')->maxLength(255),
-                        TextInput::make('state_code')->maxLength(16),
+                        TextInput::make('state_code')->label('State / region code')->maxLength(16)
+                            ->datalist(fn (Get $get) => array_map('strval', array_keys(app(CountryRegions::class)->active($get('country_code')))))
+                            ->helperText('The code on the platform\'s region list, e.g. MH for Maharashtra (the name works too). It lets the holiday library suggest this location\'s regional holidays.'),
                         TextInput::make('postal_code')->maxLength(16),
-                        TextInput::make('country_code')->required()->default('IN')->length(2),
+                        TextInput::make('country_code')->required()->default('IN')->length(2)->live(onBlur: true),
                         TextInput::make('timezone')->placeholder('Asia/Kolkata')->maxLength(64),
                         Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
                     ]),

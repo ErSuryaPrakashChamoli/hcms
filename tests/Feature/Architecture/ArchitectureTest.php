@@ -1,6 +1,9 @@
 <?php
 
 use App\Domain\Attendance\Contracts\LeaveDayResolver;
+use App\Domain\Attendance\Models\CountryRegion;
+use App\Domain\Attendance\Models\HolidayLibraryEntry;
+use App\Domain\Attendance\Models\HolidayLibraryList;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Audit\Models\AuditEventChange;
@@ -114,6 +117,9 @@ it('scopes every domain model to a tenant except the documented platform-level m
         RetentionPolicy::class,
         // SaaS.10: a signup application exists before its tenant; provisioned_tenant_id names the tenant it became.
         SignupApplication::class,
+        // Holiday library: the platform's holiday lists per country, region and year, and its region list per country
+        // (no tenant). A tenant's copy of a holiday is a tenant-scoped Holiday.
+        HolidayLibraryList::class, HolidayLibraryEntry::class, CountryRegion::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -236,6 +242,11 @@ it('audits every domain model except the documented append-only or derived table
         // SaaS.10: signup applications are audited explicitly by SignupAudit on the platform chain (reference, states,
         // codes; never the applicant's address, name or link), and on the tenant chain once it exists.
         'Signup\Models\SignupApplication',
+        // Holiday library: audited explicitly by HolidayLibrary on the platform chain (upload, publish, withdraw, delete with
+        // country, region, year and counts). A tenant's copy is an audited Holiday.
+        'Attendance\Models\HolidayLibraryList', 'Attendance\Models\HolidayLibraryEntry',
+        // The region list: audited explicitly by CountryRegions on the platform chain (add, rename, retire, restore, sync).
+        'Attendance\Models\CountryRegion',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -594,9 +605,13 @@ it('keeps the attendance domain free of payroll money, duplicate identity, appro
         expect((bool) preg_match('/RecruitmentEdge|\\bRms\\b/', $source))->toBeFalse("{$file} must not reference RMS");
     }
 
-    // Attendance models are tenant-scoped and audited or documented as evidence/derived tables.
+    // Attendance models are tenant-scoped and audited or documented as evidence/derived tables. The holiday library is
+    // platform configuration that tenants copy from (see the platform-level models above).
     foreach (glob(app_path('Domain/Attendance/Models/*.php')) as $path) {
         $class = 'App\\Domain\\Attendance\\Models\\'.basename($path, '.php');
+        if (in_array($class, [HolidayLibraryList::class, HolidayLibraryEntry::class, CountryRegion::class], true)) {
+            continue;
+        }
         expect(in_array(BelongsToTenant::class, class_uses_recursive($class), true))->toBeTrue("{$class} must be tenant-scoped");
     }
 });

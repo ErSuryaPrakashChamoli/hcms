@@ -7,9 +7,12 @@ use App\Domain\Audit\Services\AuditIntegrityVerifier;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Company;
+use App\Filament\RelationManagers\AuditHistoryRelationManager;
+use App\Filament\Resources\Companies\Pages\ViewCompany;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 beforeEach(function () {
     $this->tenant = provisionTenant();
@@ -169,4 +172,15 @@ it('records the model type for users as identity module', function () {
     $user = tenantUser($this->tenant);
     expect($user->auditEvents()->first()->module)->toBe('identity');
     expect(User::class)->toBe($user->auditEvents()->first()->entity_type);
+});
+
+it('lists several events with their field changes on the History tab without lazy loading', function () {
+    $this->actingAs(tenantUser($this->tenant, ['company.*', 'audit.view']));
+    $company = Company::factory()->create(['name' => 'Old Name', 'code' => 'OLD']);
+    $company->withAuditReason('Rebrand')->update(['name' => 'New Name']);
+
+    Livewire::test(AuditHistoryRelationManager::class, ['ownerRecord' => $company, 'pageClass' => ViewCompany::class])
+        ->assertOk()
+        ->assertSee('name: Old Name → New Name')
+        ->assertSee('Rebrand');
 });

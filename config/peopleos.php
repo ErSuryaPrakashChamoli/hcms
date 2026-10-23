@@ -1482,6 +1482,7 @@ return [
             ['keywords' => 'form builder', 'label' => 'Forms', 'url' => '/admin/forms', 'module' => 'people'],
             ['keywords' => 'onboarding template checklist', 'label' => 'Onboarding templates', 'url' => '/admin/onboarding-templates', 'module' => 'lifecycle'],
             ['keywords' => 'letter template experience relieving', 'label' => 'Letter templates', 'url' => '/admin/letter-templates', 'module' => 'lifecycle'],
+            ['keywords' => 'letter signature signatory signing authority', 'label' => 'Signing authorities', 'url' => '/admin/letter-signatories', 'module' => 'lifecycle'],
             ['keywords' => 'working hours shift timing schedule roster', 'label' => 'Shifts', 'url' => '/admin/shifts', 'module' => 'time'],
             ['keywords' => 'working hours schedule week pattern roster', 'label' => 'Work schedules', 'url' => '/admin/work-schedules', 'module' => 'time'],
             ['keywords' => 'holiday calendar', 'label' => 'Holiday calendars', 'url' => '/admin/holiday-calendars', 'module' => 'time'],

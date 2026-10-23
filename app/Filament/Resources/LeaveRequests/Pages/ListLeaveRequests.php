@@ -24,7 +24,7 @@ class ListLeaveRequests extends PeopleListRecords
                 ->authorize(fn () => auth()->user()->can('leave.manage'))
                 ->schema(fn () => [
                     Select::make('employee_id')->label('Employee')->options(fn () => CreateEmployee::managerOptions())->searchable()->required()->live(),
-                    ...LeaveActions::applyForm(fn () => Employee::query()->find($this->mountedActions[0]?->getFormData()['employee_id'] ?? 0) ?? new Employee),
+                    ...LeaveActions::applyForm(fn () => Employee::query()->find(data_get($this->mountedActions, '0.data.employee_id') ?? 0) ?? new Employee),
                 ])
                 ->action(fn (array $data) => LeaveActions::apply(Employee::query()->findOrFail($data['employee_id']), $data)),
         ];

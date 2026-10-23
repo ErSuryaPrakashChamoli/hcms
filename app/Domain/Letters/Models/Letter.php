@@ -13,8 +13,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
-/** A generated letter (§40): rendered content frozen at generation, approval, issue as an employee document. */
-#[Fillable(['tenant_id', 'number', 'employee_id', 'letter_template_id', 'type', 'subject', 'body', 'context', 'status', 'requested_by', 'approved_by', 'approved_at', 'issued_by', 'issued_at', 'document_id', 'review_note', 'source_type', 'source_id'])]
+/**
+ * A generated letter (§40): rendered content frozen at generation, approval, issue as an employee document. format is
+ * markdown (letters from before the letter studio), html, or docx (rendered to file_path; body holds its text).
+ */
+#[Fillable(['tenant_id', 'number', 'employee_id', 'letter_template_id', 'letter_signatory_id', 'type', 'format', 'subject', 'body', 'file_disk', 'file_path', 'context', 'status', 'requested_by', 'approved_by', 'approved_at', 'issued_by', 'issued_at', 'document_id', 'review_note', 'source_type', 'source_id'])]
 class Letter extends Model
 {
     use Auditable, BelongsToTenant;
@@ -52,6 +55,11 @@ class Letter extends Model
         return $this->belongsTo(LetterTemplate::class, 'letter_template_id');
     }
 
+    public function signatory(): BelongsTo
+    {
+        return $this->belongsTo(LetterSignatory::class, 'letter_signatory_id');
+    }
+
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
@@ -70,6 +78,11 @@ class Letter extends Model
     public function source(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function isDocx(): bool
+    {
+        return $this->format === LetterTemplate::DOCX;
     }
 
     public function isIssued(): bool
