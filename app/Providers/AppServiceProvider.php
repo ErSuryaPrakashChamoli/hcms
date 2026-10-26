@@ -133,6 +133,7 @@ use App\Domain\Employment\Contracts\PositionAssignmentGuard;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
+use App\Domain\Employment\Models\EmployeeCodeSeries;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Models\EmployeeStatutoryDetail;
 use App\Domain\Employment\Models\ReportingRelationship;
@@ -712,7 +713,7 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, OrganisationStructurePolicy::class);
         }
 
-        foreach ([Level::class, Grade::class, JobFamily::class, Designation::class, EmploymentType::class, EmployeeCategory::class, WorkMode::class, Skill::class] as $model) {
+        foreach ([Level::class, Grade::class, JobFamily::class, Designation::class, EmploymentType::class, EmployeeCategory::class, WorkMode::class, Skill::class, EmployeeCodeSeries::class] as $model) {
             Gate::policy($model, PeopleSetupPolicy::class);
         }
 

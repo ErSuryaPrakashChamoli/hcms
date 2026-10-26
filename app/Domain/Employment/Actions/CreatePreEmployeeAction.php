@@ -45,6 +45,7 @@ final class CreatePreEmployeeAction
         }
 
         return DB::transaction(function () use ($payload, $reason, $reference) {
+            $position = $this->resolvePosition($payload['position'] ?? []);
             $person = new Person(array_intersect_key($payload['person'] ?? [], array_flip(['first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'gender', 'nationality', 'personal_email', 'personal_phone'])));
             $person->withAuditReason($reason)->save();
 
@@ -52,7 +53,7 @@ final class CreatePreEmployeeAction
 
             $employee = new Employee([
                 'person_id' => $person->id,
-                'employee_code' => $payload['employee_code'] ?? $this->codes->next(),
+                'employee_code' => $payload['employee_code'] ?? $this->codes->next($position['company_id']),
                 'lifecycle_state' => LifecycleState::PreEmployee,
                 'source' => $payload['source'] ?? 'rms',
                 'external_reference' => $reference,
@@ -63,7 +64,7 @@ final class CreatePreEmployeeAction
             ]);
             $employee->withAuditReason($reason)->save();
 
-            $this->positions->handle($employee, $this->resolvePosition($payload['position'] ?? []), 'hire', $joining, $reason);
+            $this->positions->handle($employee, $position, 'hire', $joining, $reason);
 
             if (! empty($payload['manager_code'])) {
                 $manager = Employee::query()->where('employee_code', $payload['manager_code'])->first() ?? throw new InvalidArgumentException("Unknown manager code [{$payload['manager_code']}].");

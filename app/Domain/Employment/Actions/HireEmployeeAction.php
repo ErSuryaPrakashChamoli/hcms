@@ -4,6 +4,7 @@ namespace App\Domain\Employment\Actions;
 
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Exceptions\DuplicatePersonException;
+use App\Domain\Employment\Exceptions\EmployeeCodeTakenException;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Services\EmployeeCodeGenerator;
 use App\Domain\Lifecycle\Enums\LifecycleState;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Person + Employee + first position + line manager + lifecycle "joined/probation" in one
  * transaction. Everything it touches is audited by the models and services it calls.
+ * Without an employee_code the code comes from the hire's company series; a given code must be free in the tenant.
  */
 final class HireEmployeeAction
 {
@@ -37,6 +39,10 @@ final class HireEmployeeAction
     public function handle(array $person, array $employee, array $position, ?int $managerId = null, ?string $reason = null): Employee
     {
         return DB::transaction(function () use ($person, $employee, $position, $managerId, $reason) {
+            if (isset($employee['employee_code']) && $this->codes->isTaken($employee['employee_code'])) {
+                throw new EmployeeCodeTakenException($employee['employee_code']);
+            }
+
             if (isset($person['id'])) {
                 $personModel = Person::query()->findOrFail($person['id']);
                 if ($personModel->employee()->exists()) {
@@ -61,7 +67,7 @@ final class HireEmployeeAction
 
             $record = new Employee([
                 'person_id' => $personModel->getKey(),
-                'employee_code' => $employee['employee_code'] ?? $this->codes->next(),
+                'employee_code' => $employee['employee_code'] ?? $this->codes->next(isset($position['company_id']) ? (int) $position['company_id'] : null),
                 'lifecycle_state' => LifecycleState::PreEmployee,
                 'joining_date' => $joiningDate,
                 'probation_end_date' => $probationEnd,

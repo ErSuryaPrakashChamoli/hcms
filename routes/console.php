@@ -13,6 +13,8 @@ Schedule::command('peopleos:scheduler:heartbeat')->everyMinute()->withoutOverlap
 Schedule::command('peopleos:configuration:publish-due')->dailyAt('00:05')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:workflows:tick')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:lifecycle:reminders')->dailyAt('06:00')->withoutOverlapping()->onOneServer();
+// Birthdays: hourly, so each tenant is greeted after 06:00 on its own clock (claimed once per day and once per month).
+Schedule::command('peopleos:birthdays:send')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:performance:reminders')->dailyAt('07:00')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:attendance:process')->dailyAt('02:00')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:leave:accrue')->dailyAt('01:00')->withoutOverlapping()->onOneServer();

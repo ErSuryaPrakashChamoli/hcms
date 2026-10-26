@@ -494,6 +494,11 @@ return [
             'employee.import' => 'Import employees from files (upload, map, validate, approve, run)',
             'employee.sensitive.update' => 'Update bank and statutory details',
         ],
+        // Birthdays: colleagues see the day and month only (never the year); celebration managers see private ones too.
+        'celebration' => [
+            'celebration.view' => 'See colleagues\' birthdays (day and month only) and wish them on the day',
+            'celebration.manage' => 'See every birthday in my scope (including private ones), receive the monthly and daily birthday lists, and set up birthdays',
+        ],
     ],
 
     /*
@@ -513,22 +518,22 @@ return [
         'account-owner' => [
             'name' => 'Account Owner',
             'description' => 'Sets up the organisation, invites people and gives them roles. Payroll, statutory and sensitive data need a specialist role, given explicitly.',
-            'permissions' => ['company.view', 'company.create', 'company.update', 'organisation.view', 'organisation.create', 'organisation.update', 'organisation.design', 'legal_entity.view', 'legal_entity.create', 'legal_entity.update', 'establishment.view', 'establishment.create', 'establishment.update', 'people_setup.view', 'people_setup.create', 'people_setup.update', 'policy.view', 'employee.view', 'employee.create', 'employee.update', 'employee.import', 'user.view', 'user.create', 'user.update', 'user.assign_roles', 'role.view', 'settings.view', 'settings.update', 'features.view', 'security.manage', 'audit.view', 'notification.view', 'data.export', 'task.view', 'task.act'],
+            'permissions' => ['company.view', 'company.create', 'company.update', 'organisation.view', 'organisation.create', 'organisation.update', 'organisation.design', 'legal_entity.view', 'legal_entity.create', 'legal_entity.update', 'establishment.view', 'establishment.create', 'establishment.update', 'people_setup.view', 'people_setup.create', 'people_setup.update', 'policy.view', 'employee.view', 'employee.create', 'employee.update', 'employee.import', 'user.view', 'user.create', 'user.update', 'user.assign_roles', 'role.view', 'settings.view', 'settings.update', 'features.view', 'security.manage', 'audit.view', 'notification.view', 'data.export', 'task.view', 'task.act', 'celebration.view', 'celebration.manage'],
         ],
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'integration.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'integration.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view', 'celebration.*'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
             'description' => 'Operates HR processes.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.view', 'engagement.manage', 'engagement.approve', 'engagement.analytics', 'engagement.comments', 'engagement.responses', 'engagement.participate', 'engagement.feedback', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.view', 'engagement.manage', 'engagement.approve', 'engagement.analytics', 'engagement.comments', 'engagement.responses', 'engagement.participate', 'engagement.feedback', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view', 'celebration.view', 'celebration.manage'],
         ],
         'hr-executive' => [
             'name' => 'HR Executive',
             'description' => 'Day-to-day HR operations.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'document.view', 'document.upload', 'bgv.view', 'leave.view', 'leave.apply', 'user.view'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'document.view', 'document.upload', 'bgv.view', 'leave.view', 'leave.apply', 'user.view', 'celebration.view'],
         ],
         'payroll-admin' => [
             'name' => 'Payroll Admin',
@@ -553,12 +558,12 @@ return [
         'manager' => [
             'name' => 'Manager',
             'description' => 'People manager.',
-            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'workforce.team', 'asset.own', 'servicedesk.request', 'servicedesk.team', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'engagement.team_results', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager'],
+            'permissions' => ['company.view', 'organisation.view', 'employee.view', 'task.view', 'task.act', 'onboarding.view', 'onboarding.act', 'attendance.view', 'attendance.approve', 'attendance.regularise', 'leave.view', 'leave.apply', 'leave.approve', 'performance.goals', 'performance.review', 'performance.feedback', 'performance.team', 'learning.learn', 'learning.assign', 'learning.team', 'learning.approve', 'skills.self', 'skills.assess', 'development.own', 'development.team', 'career.self', 'career.team', 'workforce.team', 'asset.own', 'servicedesk.request', 'servicedesk.team', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'engagement.team_results', 'exit.clear', 'exit.resign', 'ai.use', 'ai.manager', 'celebration.view'],
         ],
         'employee' => [
             'name' => 'Employee',
             'description' => 'Standard employee access.',
-            'permissions' => ['employee.self', 'task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'document.own', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'exit.resign', 'ai.use'],
+            'permissions' => ['employee.self', 'task.view', 'task.act', 'onboarding.act', 'attendance.regularise', 'leave.apply', 'payroll.payslip', 'compensation.self', 'document.own', 'performance.goals', 'performance.review', 'performance.feedback', 'learning.learn', 'skills.self', 'development.own', 'career.self', 'asset.own', 'servicedesk.request', 'grievance.raise', 'kb.view', 'communication.view', 'engagement.participate', 'exit.resign', 'ai.use', 'celebration.view'],
         ],
         'executive' => [
             'name' => 'Executive',
@@ -835,6 +840,17 @@ return [
         'employee.probation.default_months' => 6,
         'employee.probation.reminder_days' => 14,
         'employee.joining.reminder_days' => 3,
+        // Birthdays: who sees colleagues' birthdays (organisation | company | team), the built-in greeting ({name},
+        // {organisation}), who is nudged on the day (none | manager | team), and the lists for celebration managers: the
+        // monthly list goes out digest_lead_days before the month starts (0 = on the 1st), the day's list on the day.
+        'celebration.birthdays.visible_to' => 'organisation',
+        'celebration.birthdays.greeting_enabled' => true,
+        'celebration.birthdays.greeting_message' => 'Happy birthday, {name}! Wishing you a wonderful year ahead, from all of us at {organisation}.',
+        'celebration.birthdays.announce_to' => 'team',
+        'celebration.birthdays.digest_enabled' => true,
+        'celebration.birthdays.digest_lead_days' => 0,
+        'celebration.birthdays.notify_admins_on_day' => true,
+        'celebration.birthdays.email' => true,
         'documents.expiry.reminder_days' => 30,
         'attendance.punch_window_hours' => 4,
         'attendance.regularisation.window_days' => 7,
@@ -1143,6 +1159,7 @@ return [
             'form.submitted' => 'Form submitted', 'configuration.change.proposed' => 'Configuration change proposed',
             'employee.pre_employee' => 'Pre-employee created (from RMS or manually)', 'employee.preboarding' => 'Preboarding started',
             'employee.joining_due' => 'Joining date approaching', 'employee.probation_ending' => 'Probation ending soon', 'employee.probation_overdue' => 'Probation end date passed',
+            'employee.birthday' => 'Employee birthday (on the day)',
             'onboarding.completed' => 'Onboarding plan completed', 'bgv.completed' => 'Background verification completed', 'document.expiring' => 'Document expiring',
             'attendance.regularisation_requested' => 'Attendance regularisation requested', 'attendance.overtime_recorded' => 'Overtime recorded',
             'servicedesk.ticket.created' => 'Service desk ticket created', 'grievance.raised' => 'Grievance raised',
@@ -1188,7 +1205,7 @@ return [
             'employee.joined', 'employee.probation', 'employee.confirmed', 'employee.notice_period', 'employee.exited', 'employee.alumni',
             'form.submitted', 'form.reviewed', 'configuration.change.proposed', 'configuration.change.published',
             'workflow.task.assigned', 'workflow.task.reminder', 'workflow.task.escalated', 'workflow.completed',
-            'employee.pre_employee', 'employee.preboarding', 'employee.joining_due', 'employee.probation_ending', 'employee.probation_overdue',
+            'employee.pre_employee', 'employee.preboarding', 'employee.joining_due', 'employee.probation_ending', 'employee.probation_overdue', 'employee.birthday',
             'employee.created', 'employee.transferred', 'employee.promoted', 'employee.manager_changed', 'employee.salary_changed', 'employee.department_changed', 'employee.designation_changed', 'employee.location_changed', 'employee.company_changed', 'employee.rehired',
             'onboarding.started', 'onboarding.task.assigned', 'onboarding.completed', 'bgv.initiated', 'bgv.completed', 'document.uploaded', 'document.verified', 'document.rejected', 'document.expiring',
             'attendance.regularisation_requested', 'attendance.regularisation_approved', 'attendance.regularisation_rejected', 'attendance.overtime_recorded', 'attendance.exception',
@@ -1476,6 +1493,7 @@ return [
             ['keywords' => 'job family function', 'label' => 'Job families', 'url' => '/admin/job-families', 'module' => 'people'],
             ['keywords' => 'employee category staff worker', 'label' => 'Employee categories', 'url' => '/admin/employee-categories', 'module' => 'people'],
             ['keywords' => 'employment type permanent contract intern consultant', 'label' => 'Employment types', 'url' => '/admin/employment-types', 'module' => 'people'],
+            ['keywords' => 'employee code id number series prefix suffix sequence numbering', 'label' => 'Employee code series', 'url' => '/admin/employee-code-series', 'module' => 'people'],
             ['keywords' => 'work mode remote hybrid office', 'label' => 'Work modes', 'url' => '/admin/work-modes', 'module' => 'people'],
             ['keywords' => 'document type', 'label' => 'Document types', 'url' => '/admin/document-types', 'module' => 'people'],
             ['keywords' => 'custom field', 'label' => 'Custom fields', 'url' => '/admin/custom-fields', 'module' => 'people'],

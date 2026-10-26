@@ -38,6 +38,9 @@ class EmployeeInfolist
                         TextEntry::make('work_email')->copyable()->placeholder('—'),
                         TextEntry::make('work_phone')->placeholder('—'),
                         TextEntry::make('person.date_of_birth')->label('Date of birth')->date()->placeholder('—'),
+                        TextEntry::make('birthday')->label('Birthday')->placeholder('—')
+                            ->state(fn (Employee $record) => $record->person?->birthdayLabel())
+                            ->formatStateUsing(fn (string $state, Employee $record) => $state.($record->person->celebratesOtherDay() ? ' (celebrated; differs from date of birth)' : '').($record->person->birthday_shared ? '' : ' · private')),
                         TextEntry::make('source')->badge()->color('gray')->formatStateUsing(fn (?string $state) => strtoupper((string) $state)),
                         TextEntry::make('person.gender')->label('Gender')->formatStateUsing(fn (?string $state) => config("peopleos.people.genders.{$state}", $state))->placeholder('—'),
                         TextEntry::make('currentPosition.company.name')->label('Company')->placeholder('—'),

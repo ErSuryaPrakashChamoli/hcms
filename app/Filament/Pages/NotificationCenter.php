@@ -110,7 +110,7 @@ class NotificationCenter extends Page
                     'id' => $n->id, 'title' => (string) ($n->data['title'] ?? ''), 'body' => (string) ($n->data['body'] ?? ''), 'group' => $group, 'group_label' => $label,
                     'icon' => $icon, 'tone' => ['danger' => 'rose', 'warning' => 'amber', 'info' => 'sky', 'primary' => 'violet'][$color] ?? 'indigo',
                     'at' => $n->created_at, 'read' => $n->read_at !== null, 'snoozed_until' => $snoozed[$n->id] ?? null,
-                    'source_type' => $meta['source_type'] ?? null, 'source_id' => $meta['source_id'] ?? null,
+                    'source_type' => $meta['source_type'] ?? null, 'source_id' => $meta['source_id'] ?? null, 'event' => $meta['event'] ?? null,
                 ];
             });
     }
@@ -196,7 +196,9 @@ class NotificationCenter extends Page
             return;
         }
         auth()->user()->notifications()->whereKey($id)->first()?->markAsRead();
-        $url = $this->linkFor($item['source_type'], $item['source_id']);
+        // Birthday greetings, nudges, lists and wishes open the Birthdays page (where the wish button is).
+        $url = str_starts_with((string) $item['event'], 'celebration.') && Birthdays::canAccess()
+            ? Birthdays::getUrl() : $this->linkFor($item['source_type'], $item['source_id']);
         unset($this->items, $this->counts);
         if ($url !== null) {
             $this->redirect($url, navigate: true);

@@ -11,6 +11,9 @@ reporting relationships and the employee timeline. Lifecycle states and the life
   `person_family_members` (dependents and nominees), `person_emergency_contacts`,
   `person_qualifications`, `person_experiences`, `person_certifications`, `person_skills`
   (against a tenant `skills` master). All tenant-scoped and audited.
+- Besides the date of birth, a person may carry a celebrated birthday (day and month) when the
+  papers say otherwise, and choose whether colleagues see it; wishes and birthday notices are in
+  `birthdays.md` (2026-10-23).
 - `employees` is the employment of that person in this tenant: code, lifecycle state, joining /
   probation / confirmation / exit dates, work contact, optional login `user_id`. One employee
   per person per tenant (unique); a rehire reuses the person.
@@ -43,8 +46,32 @@ writes the timeline and dispatches `EmployeeLifecycleChanged` (the `employee.*` 
 §88, one class, branch on `$to`).
 
 `HireEmployeeAction` composes it all: person (new or existing) → employee with a generated code
-(`EmployeeCodeGenerator`, prefix and padding from tenant settings) → first position → line
-manager → pre-employee → joined → probation (or preboarding for future joiners). One transaction.
+(`EmployeeCodeGenerator`, see below) → first position → line manager → pre-employee → joined →
+probation (or preboarding for future joiners). One transaction.
+
+### Employee code series (2026-10-23)
+
+`employee_code_series` (`EmployeeCodeSeries`, People Setup → Employee code series, `people_setup.*`)
+holds prefix + number padded to `digits` + suffix (`MKT-00042-IN`), one row per company plus an
+optional tenant default (`company_id` null). The generator picks the hire's company series, else
+the default series, else the old settings pattern (`employee.code.prefix` + `padding`, counted in
+`employee_code_sequences`), so tenants that never set up a series keep their codes unchanged.
+
+- The series row is its own counter (`next_number`), taken under `lockForUpdate` and moved with a
+  direct update (no audit row per hire; the hire is audited, admin edits of the series are).
+- A series never goes back: saving one moves `next_number` past the highest code already used in
+  its prefix/suffix pattern, and generation skips any number already held (typed or imported).
+- Codes stay unique per tenant across companies (`employees (tenant_id, employee_code)`). A code
+  given to `HireEmployeeAction` is looked up first, tenant-wide, outside the access scope and
+  without case (as MySQL's index compares), and refused with `EmployeeCodeTakenException`
+  (`InvalidArgumentException`: 422 on the API, a failed row on imports).
+- Hire wizard: Company moved from Position to the Employment step, then *Auto-generate* (shows
+  the next code of that company's series as a preview; the number is taken only on create) or
+  *Enter manually* (validated on blur and on Next; the holder is named only if the viewer can see
+  them). `allow_manual = false` on a series removes the manual choice, and the page refuses a
+  forged manual code server-side.
+- The API, imports and the RMS hand-over (`CreatePreEmployeeAction`) generate from the hire's
+  company series too.
 
 ## Timeline (§18)
 

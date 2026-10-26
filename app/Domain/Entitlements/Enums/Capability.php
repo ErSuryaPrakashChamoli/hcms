@@ -186,7 +186,7 @@ enum Capability: string
             self::Workforce => ['workforce'],
             self::Assets => ['asset'],
             self::ServiceDesk => ['servicedesk', 'grievance', 'kb'],
-            self::Engagement => ['communication', 'engagement'],
+            self::Engagement => ['communication', 'engagement', 'celebration'],
             self::Exit => ['exit', 'letter', 'alumni'],
             self::Analytics => ['analytics'],
             self::Ai => ['ai'],

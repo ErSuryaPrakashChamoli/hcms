@@ -41,11 +41,11 @@ beforeEach(function () {
 });
 
 it('accepts on create a code that only another tenant holds, so the form reveals nothing about other tenants', function () {
-    Livewire::test(CreateEmployee::class)->fillForm(['employee_code' => 'SHARED-7'])->call('create')->assertHasNoFormErrors(['employee_code']);
+    Livewire::test(CreateEmployee::class)->fillForm(['employee_code_mode' => 'manual', 'employee_code' => 'SHARED-7'])->call('create')->assertHasNoFormErrors(['employee_code']);
 });
 
 it('still refuses on create a code the same tenant already holds', function () {
-    Livewire::test(CreateEmployee::class)->fillForm(['employee_code' => 'BETA-1'])->call('create')->assertHasFormErrors(['employee_code']);
+    Livewire::test(CreateEmployee::class)->fillForm(['employee_code_mode' => 'manual', 'employee_code' => 'BETA-1'])->call('create')->assertHasFormErrors(['employee_code']);
 });
 
 it('saves an employee whose code another tenant also uses, and refuses a duplicate inside the tenant', function () {

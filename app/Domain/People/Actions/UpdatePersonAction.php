@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 /** Authoritative person update: only person-owned facts, audited with a reason (contract §3). */
 final class UpdatePersonAction
 {
-    public const FIELDS = ['first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'gender', 'marital_status', 'nationality', 'blood_group', 'personal_email', 'personal_phone', 'photo_path', 'metadata'];
+    public const FIELDS = ['first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'birthday_month', 'birthday_day', 'birthday_shared', 'gender', 'marital_status', 'nationality', 'blood_group', 'personal_email', 'personal_phone', 'photo_path', 'metadata'];
 
     /** @param  array<string, mixed>  $attributes */
     public function handle(Person $person, array $attributes, ?string $reason = null): Person

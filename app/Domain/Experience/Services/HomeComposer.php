@@ -15,7 +15,9 @@ use App\Domain\Leave\Services\LeaveEntitlements;
 use App\Domain\Leave\Services\LeaveYear;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
+use App\Domain\People\Services\Birthdays;
 use App\Filament\Pages\Approvals;
+use App\Filament\Pages\Birthdays as BirthdaysPage;
 use App\Filament\Pages\LeaveCalendar;
 use App\Filament\Pages\MyTeam;
 use App\Filament\Pages\PayrollControlRoom;
@@ -45,12 +47,12 @@ final class HomeComposer
     ];
 
     public const SIDE = [
-        'employee' => ['intelligence', 'circle', 'momentum', 'actions'],
-        'manager' => ['intelligence', 'team_pulse', 'actions'],
-        'hr' => ['intelligence', 'actions'],
-        'payroll' => ['intelligence', 'actions'],
-        'executive' => ['intelligence', 'actions'],
-        'admin' => ['intelligence', 'actions'],
+        'employee' => ['intelligence', 'birthdays', 'circle', 'momentum', 'actions'],
+        'manager' => ['intelligence', 'team_pulse', 'birthdays', 'actions'],
+        'hr' => ['intelligence', 'birthdays', 'actions'],
+        'payroll' => ['intelligence', 'birthdays', 'actions'],
+        'executive' => ['intelligence', 'birthdays', 'actions'],
+        'admin' => ['intelligence', 'birthdays', 'actions'],
     ];
 
     public function __construct(
@@ -133,6 +135,25 @@ final class HomeComposer
             'payroll' => $experience === 'payroll' ? $this->payroll($user) : null,
             'feed' => $changes !== null,
             'hidden' => $hidden,
+            'birthdays' => in_array('birthdays', $hidden, true) ? null : $safe(fn () => $this->birthdays($user)),
+        ];
+    }
+
+    /** Birthdays today the viewer can see (the Birthdays page's own rule), with who they already wished. */
+    private function birthdays(User $user): ?array
+    {
+        if (! $user->hasPermission('celebration.view') && ! $user->hasPermission('celebration.manage')) {
+            return null;
+        }
+        $service = app(Birthdays::class);
+        $today = $service->today();
+        $people = $service->on($today, $user);
+
+        return $people->isEmpty() ? null : [
+            'people' => $people->take(6)->values(),
+            'count' => $people->count(),
+            'wished' => $service->wishedBy($user, $today->year),
+            'url' => BirthdaysPage::getUrl(),
         ];
     }
 

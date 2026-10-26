@@ -56,7 +56,7 @@ final class NotificationCategories
                 return 'approvals';
             }
         }
-        foreach (['comment', 'mention', 'reply', 'feedback.'] as $needle) {
+        foreach (['comment', 'mention', 'reply', 'feedback.', 'birthday.wish'] as $needle) {
             if (str_contains($e, $needle)) {
                 return 'mentions';
             }

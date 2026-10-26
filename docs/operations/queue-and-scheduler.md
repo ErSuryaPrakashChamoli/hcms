@@ -66,6 +66,7 @@ Every entry runs `withoutOverlapping()->onOneServer()`. Each command that iterat
 | `peopleos:exit:tick` | daily 04:00 | per exit state | Start clearance inside the lead window |
 | `peopleos:warehouse:export` | daily 05:00 | overwrite per day | Warehouse feed (non-sensitive fields unless enabled). **SaaS.8: only tenants with `warehouse.export_enabled`** |
 | `peopleos:lifecycle:reminders` | daily 06:00 | **`scheduler_claims` per tenant per day (Phase 14)**; `--force` to re-run | Joining, probation and document-expiry reminder events |
+| `peopleos:birthdays:send` | hourly (each tenant after 06:00 on its own clock) | `scheduler_claims` per tenant per day (`birthdays.day`) and per month (`birthdays.month`); `--force` to re-send | Birthday greetings, team reminders, the day's list and the month's list for celebration managers; `employee.birthday` for tenant rules (`docs/architecture/birthdays.md`) |
 | `peopleos:performance:reminders` | daily 07:00 | reminder log | Performance reminders |
 | `peopleos:learning:send-reminders` | daily 07:30 | reminder log | Learning reminders |
 | `peopleos:talent:send-reminders` | daily 07:45 | reminder log | Talent / succession reminders |

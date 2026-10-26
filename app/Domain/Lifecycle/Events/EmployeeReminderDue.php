@@ -5,7 +5,7 @@ namespace App\Domain\Lifecycle\Events;
 use App\Domain\Employment\Models\Employee;
 use Illuminate\Foundation\Events\Dispatchable;
 
-/** Time-based lifecycle events: employee.joining_due, employee.probation_ending, employee.probation_overdue. */
+/** Time-based lifecycle events: employee.joining_due, employee.probation_ending, employee.probation_overdue, employee.birthday. */
 final class EmployeeReminderDue
 {
     use Dispatchable;

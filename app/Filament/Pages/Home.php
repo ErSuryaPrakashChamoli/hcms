@@ -11,6 +11,7 @@ use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Experience\Services\UxMetrics;
 use App\Domain\Platform\Models\Tenant;
 use App\Filament\Resources\Tenants\TenantResource;
+use App\Filament\Support\BirthdayActions;
 use App\Filament\Support\LeaveActions;
 use App\Filament\Support\ServiceDeskActions;
 use App\Support\Tenancy\TenantContext;
@@ -215,6 +216,13 @@ class Home extends Dashboard
                     Notification::make()->danger()->title('Cannot request')->body($e->getMessage())->persistent()->send();
                 }
             });
+    }
+
+    public function wishAction(): Action
+    {
+        return BirthdayActions::wish(function () {
+            unset($this->home);
+        });
     }
 
     public function askHrAction(): Action
