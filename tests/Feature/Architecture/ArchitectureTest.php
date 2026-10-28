@@ -191,6 +191,10 @@ it('audits every domain model except the documented append-only or derived table
         // Phase 14: inbound integration events are an event log whose every state change is audited
         // explicitly (INTEGRATION_EVENT_*); automatic auditing would copy the payload into the trail.
         'Integration\Models\InboundEvent',
+        // Bulk uploads: a monthly attendance upload writes up to a month of marks per employee in one statement; the
+        // upload is one audited bulk operation whose rows keep what they marked, and each day the engine recalculates
+        // from a mark is audited on the attendance record.
+        'Attendance\Models\AttendanceMark',
         // Phase 14: API idempotency keys are a short-lived replay cache (request fingerprint plus an
         // encrypted response); the domain action they guard is audited by its own service.
         'Integration\Models\ApiIdempotencyKey',

@@ -74,6 +74,21 @@ the older one. Each return records the layout version used. Every export is stru
 against its layout before the file is stored; a failing file is refused. Files from unverified
 layouts carry `UNVERIFIED-FORMAT_`.
 
+**Checksum algorithm (2026-10-27, D7).** MySQL's `json` column re-sorts object keys on storage, so a layout sealed
+by hashing its specification as written could never reproduce its checksum there, and no layout could be verified on
+MySQL. `checksum_algorithm` (migration `2026_11_09_100004`) records how each layout was sealed:
+- New layouts are sealed `canonical-v2`, with keys sorted at every level and list order kept.
+- Layouts sealed before keep NULL and their checksum unchanged, and are verified exactly as before.
+- On MySQL such a layout's checksum no longer reproduces. `php artisan peopleos:compliance:layout-checksums`
+  (read-only) reports it as `intact_against_pack` when the layout pack proves it, or `mismatch` (exit code 1) when
+  content or checksum changed or no pack definition proves it.
+- To prove it, the stored checksum must be the original algorithm's checksum of the pack definition of the same code
+  and version, and the content must equal that definition once key order is ignored.
+
+Owner decision D7 (2026-10-27) chose this verification against the original layout files (option B). No stored
+checksum is rewritten (`docs/compliance-research/compliance-owner-decisions.md`).
+`verify()` also locks the row, so two checkers at once record one verification. A database that has not yet run migration `2026_11_09_100004` reads its layouts as original-algorithm rows, without an error (`checksumAlgorithm()` reads the attribute array). New layouts can be created only after the migration.
+
 ## 6. Establishment, legal entity and registration verification
 
 Configured ≠ verified. Legal entities and establishments are verified against their certificates by

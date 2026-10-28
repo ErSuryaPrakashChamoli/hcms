@@ -5,6 +5,7 @@ namespace App\Domain\Exit\Services;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Contracts\CompensationOutput;
+use App\Domain\Compliance\Services\GratuityEntitlements;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\FinalSettlement;
@@ -23,9 +24,11 @@ use RuntimeException;
 
 /**
  * Full & final (§60). Earnings: unpaid salary for the last month (through the payroll calculator, so
- * LOP and statutory deductions are identical to a normal run), leave encashment, manual items.
+ * LOP and statutory deductions are identical to a normal run), leave encashment, gratuity, manual items.
  * Deductions: statutory on that salary, notice shortfall recovery, asset recovery, manual items.
- * Every auto line carries its basis; manual lines survive recalculation.
+ * Every auto line carries its basis; manual lines survive recalculation. Gratuity is determined every time
+ * (inputs.gratuity) but becomes a line only when the determination is decisive and eligible; otherwise the
+ * provisional amount and what blocks it are shown for a person to act on with a manual line.
  */
 final class FinalSettlements
 {
@@ -37,6 +40,7 @@ final class FinalSettlements
         private readonly LeaveYear $leaveYear,
         private readonly SettingsRepository $settings,
         private readonly AuditRecorder $audit,
+        private readonly GratuityEntitlements $gratuity,
     ) {}
 
     public function ensure(ExitCase $case): FinalSettlement
@@ -68,10 +72,11 @@ final class FinalSettlements
             $companyId = $employee->currentPosition?->company_id;
             $assignment = $this->compensation->on($employee, $lwd);
             $monthlyBasic = 0.0;
+            $monthlyBasicDa = 0.0;
             $monthlyGross = 0.0;
 
             if ($companyId && $assignment) {
-                $period = PayrollPeriod::for($employee->currentPosition->company, (int) $lwd->year, (int) $lwd->month);
+                $period = PayrollPeriod::containing($employee->currentPosition->company, $lwd);
                 $alreadyPaid = PayrollEntry::query()->where('employee_id', $employee->id)->whereHas('run', fn ($q) => $q->where('payroll_period_id', $period->id)->whereIn('status', ['finalized', 'paid']))->exists();
                 $inputs['salary_period'] = $period->label();
                 $inputs['salary_already_paid'] = $alreadyPaid;
@@ -81,6 +86,9 @@ final class FinalSettlements
                     $full = (float) ($line['basis']['full_month'] ?? $line['amount']);
                     if ($line['type'] === 'earning' && $line['classification'] === 'basic') {
                         $monthlyBasic += $full;
+                    }
+                    if ($line['type'] === 'earning' && in_array($line['classification'], ['basic', 'da'], true)) {
+                        $monthlyBasicDa += $full;
                     }
                     if ($line['type'] === 'earning' && $line['include_in_gross']) {
                         $monthlyGross += $full;
@@ -116,6 +124,17 @@ final class FinalSettlements
                 if ($days > 0 && $perDay > 0) {
                     $add('earning', 'ENCASH_'.$type->code, "{$type->name} encashment", $days * $perDay, ['days' => $days, 'per_day' => $perDay, 'basis' => $this->settings->get('exit.encashment_basis', 'basic'), 'leave_type_id' => $type->id, 'period' => $period]);
                 }
+            }
+
+            // Gratuity on the last drawn wages (basic + DA); never twice when a person has already added it by hand.
+            $gratuity = $this->gratuity->onExit($employee, $lwd, (string) $case->type, $monthlyBasicDa > 0 ? $monthlyBasicDa : null, $monthlyGross > 0 ? $monthlyGross : null);
+            $inputs['gratuity'] = $gratuity->toArray();
+            $manualGratuity = $settlement->lines()->where('source', 'manual')->where('name', 'like', '%ratuity%')->exists();
+            if ($gratuity->payable() && ! $manualGratuity) {
+                $add('earning', 'GRATUITY', 'Gratuity', (float) $gratuity->amount, ['rule' => $gratuity->ruleLabel(), 'rule_id' => $gratuity->rule?->getKey(), 'service' => $gratuity->serviceText,
+                    'years_counted' => $gratuity->yearsCounted, 'wages' => $gratuity->wages, 'capped' => $gratuity->capped, 'coverage' => $gratuity->coverage['reason'] ?? null]);
+            } elseif ($gratuity->payable()) {
+                $inputs['gratuity']['manual_line'] = 'A gratuity line was added by hand, so none was added automatically.';
             }
 
             if ($case->type === 'resignation' && (bool) $this->settings->get('exit.notice_recovery', true) && $case->resignation_date) {

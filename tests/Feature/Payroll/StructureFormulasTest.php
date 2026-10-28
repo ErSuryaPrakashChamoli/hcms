@@ -130,7 +130,7 @@ it('pays with structure parameters, employee values and overrides on fixed compo
         ->and($c->amount('BASIC'))->toBe(25000.0)
         ->and($c->amount('HRA'))->toBe(12500.0)
         ->and($c->amount('CONV'))->toBe(2500.0) // the override replaces the fixed 1,600 on the compensation
-        ->and($c->inputs['calculation_version'])->toBe('payroll-2.4');
+        ->and($c->inputs['calculation_version'])->toBe('payroll-2.5');
 });
 
 it('previews the breakup the payroll calculator pays, with guardrail warnings', function () {

@@ -20,6 +20,13 @@ use RuntimeException;
  */
 final class ExportLayouts
 {
+    public const INTACT = 'intact';
+
+    public const MISMATCH = 'mismatch';
+
+    /** D7, decision B: an original-algorithm seal proven against the layout pack (see integrity()). */
+    public const INTACT_AGAINST_PACK = 'intact_against_pack';
+
     public function __construct(private readonly AuditRecorder $audit) {}
 
     /** The layout version to use for new exports: newest that is not rejected or superseded. */
@@ -53,25 +60,52 @@ final class ExportLayouts
         return implode(',', array_map(fn ($v) => '"'.str_replace('"', '""', (string) $v).'"', $row));
     }
 
-    /** Insert layouts from database/data/compliance/layouts/*.php; a changed existing version is refused. */
+    /**
+     * Insert layouts from database/data/compliance/layouts/*.php; a changed existing version is refused. An existing
+     * version is compared with the algorithm that sealed it, so original-algorithm layouts keep syncing on MySQL.
+     */
     public function sync(): Collection
     {
         $synced = collect();
 
-        foreach (glob(database_path('data/compliance/layouts/*.php')) ?: [] as $file) {
-            foreach (require $file as $definition) {
-                $checksum = StatutoryExportLayout::checksumFor($definition['code'], (int) $definition['version'], $definition['specification']);
-                $layout = StatutoryExportLayout::query()->where('code', $definition['code'])->where('version', $definition['version'])->first();
+        foreach ($this->definitions() as $definition) {
+            $layout = StatutoryExportLayout::query()->where('code', $definition['code'])->where('version', $definition['version'])->first();
 
-                if ($layout !== null && ! hash_equals($layout->checksum, $checksum)) {
-                    throw new RuntimeException("The layout pack changes {$layout->label()}, which is immutable. Publish it as version ".($layout->version + 1).'.');
-                }
-
-                $synced->push($layout ?? StatutoryExportLayout::query()->create(collect($definition)->only(['code', 'version', 'name', 'authority', 'specification', 'notes'])->all() + ['status' => 'draft']));
+            if ($layout !== null && ! hash_equals($layout->checksum, StatutoryExportLayout::checksumFor($definition['code'], (int) $definition['version'], $definition['specification'], $layout->checksumAlgorithm()))) {
+                throw new RuntimeException("The layout pack changes {$layout->label()}, which is immutable. Publish it as version ".($layout->version + 1).'.');
             }
+
+            $synced->push($layout ?? StatutoryExportLayout::query()->create(collect($definition)->only(['code', 'version', 'name', 'authority', 'specification', 'notes'])->all() + ['status' => 'draft']));
         }
 
         return $synced;
+    }
+
+    /**
+     * Integrity, read-only. INTACT: the checksum reproduces from the stored content. INTACT_AGAINST_PACK (D7, owner
+     * decision B, 2026-10-27): sealed with the original algorithm, the stored checksum is exactly that algorithm's
+     * checksum of the layout pack's definition of the same code and version, and the stored content equals that
+     * definition once key order is ignored; only the database's key order stops the checksum reproducing, and nothing
+     * stored is rewritten. MISMATCH: anything else (changed content or checksum, no pack definition, a pack definition
+     * other than the one sealed, an unknown algorithm).
+     */
+    public function integrity(StatutoryExportLayout $layout): string
+    {
+        if ($layout->checksumIntact()) {
+            return self::INTACT;
+        }
+        $definition = collect($this->definitions())->first(fn (array $d) => $d['code'] === $layout->code && (int) $d['version'] === (int) $layout->version);
+
+        return $layout->sealedWithOriginalAlgorithm() && $definition !== null
+            && hash_equals((string) $layout->checksum, StatutoryExportLayout::checksumFor($layout->code, (int) $layout->version, $definition['specification'], null))
+            && StatutoryExportLayout::checksumFor($layout->code, (int) $layout->version, (array) $layout->specification) === StatutoryExportLayout::checksumFor($layout->code, (int) $layout->version, $definition['specification'])
+            ? self::INTACT_AGAINST_PACK : self::MISMATCH;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function definitions(): array
+    {
+        return collect(glob(database_path('data/compliance/layouts/*.php')) ?: [])->flatMap(fn (string $file) => require $file)->values()->all();
     }
 
     public function publishVersion(StatutoryExportLayout $of, array $specification, string $reason, User $actor): StatutoryExportLayout
@@ -130,11 +164,15 @@ final class ExportLayouts
         if (blank($notes)) {
             throw new RuntimeException('Verification notes are required.');
         }
-        if (! $layout->checksumIntact() || $layout->evidence_sha256 === null) {
+        if (! $layout->sealHolds() || $layout->evidence_sha256 === null) {
             throw new RuntimeException('The layout has no intact specification evidence.');
         }
 
         return DB::transaction(function () use ($layout, $verifier, $notes) {
+            // Two checkers at the same moment: the row lock lets one verify; the other finds it no longer in review.
+            if (StatutoryExportLayout::query()->whereKey($layout->getKey())->lockForUpdate()->value('status') !== 'review') {
+                throw new RuntimeException('Only a layout in review can be verified.');
+            }
             $layout->update(['status' => 'verified', 'verified_by' => $verifier->getKey(), 'verified_at' => now(), 'verification_notes' => $notes]);
             StatutoryExportLayout::query()->where('code', $layout->code)->where('version', '<', $layout->version)->where('status', 'verified')->get()
                 ->each(fn (StatutoryExportLayout $old) => $old->update(['status' => 'superseded', 'superseded_by_id' => $layout->getKey()]));

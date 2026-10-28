@@ -46,7 +46,8 @@ it('freezes approved returns and verified rules and layouts, and corrects them o
     expect(StatutoryReturn::EDITABLE)->not->toContain(StatutoryReturn::APPROVED)
         ->and(StatutoryReturn::CONTENT)->toContain('totals', 'rule_versions', 'validation')
         ->and(ComplianceRule::IMMUTABLE)->toContain('parameters', 'effective_from', 'effective_to', 'checksum', 'corrects_rule_id')
-        ->and(file_get_contents(app_path('Domain/Compliance/Models/StatutoryExportLayout.php')))->toContain("['code', 'version', 'name', 'specification', 'checksum', 'authority']");
+        // D7: the checksum algorithm is locked with the checksum it produced.
+        ->and(file_get_contents(app_path('Domain/Compliance/Models/StatutoryExportLayout.php')))->toContain("['code', 'version', 'name', 'specification', 'checksum', 'checksum_algorithm', 'authority']");
 
     // Rule and layout versions are only ever created, never updated in place, by the services.
     expect(complianceFilesMatching('/ComplianceRule::query\(\)->(update|updateOrCreate)\(/'))->toBe([])
@@ -89,4 +90,26 @@ it('keeps compliance free of RMS, attendance and leave calculation, and of a sec
     expect(complianceFilesMatching('/RecruitmentEdge|\\\\Rms\\\\|\\brms\./i'))->toBe([])
         ->and(complianceFilesMatching('/App\\\\Domain\\\\(Attendance|Leave)\\\\/'))->toBe([])
         ->and(complianceFilesMatching('/(Employee|Person)::(query\(\)->)?create\(|new (Employee|Person)\(/'))->toBe([]);
+});
+
+/*
+ | Compliance reports (registers, challan workings, statements) live in their own domain because registers such as the
+ | muster roll and the leave register need attendance and leave, which the statutory-returns domain above never reads.
+ | They only read, like Analytics: nothing but their own pack is ever written.
+ */
+it('keeps compliance reports read-only, on finalized payroll and free of statutory rate literals', function () {
+    $files = [...glob(app_path('Domain/ComplianceReports/Builders/*.php')), ...glob(app_path('Domain/ComplianceReports/Support/*.php'))];
+    expect($files)->not->toBeEmpty();
+
+    foreach ($files as $file) {
+        $source = file_get_contents($file);
+        expect((bool) preg_match('/(?<!Carbon)(?<!CarbonImmutable)::(create|insert|upsert|updateOrCreate|firstOrCreate|destroy)\(|->(save|update|delete|forceDelete|increment|decrement|forceFill)\(/', $source))->toBeFalse(basename($file).' must only read');
+        expect((bool) preg_match('/\b0\.(12|0075|0325|0833|0367)\b|\b(15000|21000|25000|7000)\b/', $source))->toBeFalse(basename($file).' must take statutory parameters from compliance rules');
+    }
+
+    // Payroll is read from finalized or paid runs only; the salary variance check (latestRun) is the documented exception.
+    $data = file_get_contents(app_path('Domain/ComplianceReports/Support/ReportData.php'));
+    expect($data)->toContain("->whereIn('status', ['finalized', 'paid'])")
+        ->and(substr_count($data, 'function latestRun('))->toBe(1)
+        ->and(collect($files)->filter(fn ($f) => str_contains(file_get_contents($f), 'latestRun('))->map(fn ($f) => basename($f))->values()->all())->toEqualCanonicalizing(['ReportData.php', 'SalaryVariance.php']);
 });

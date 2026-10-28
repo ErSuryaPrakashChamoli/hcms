@@ -10,6 +10,7 @@ use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\CompensationChanges;
 use App\Domain\Compensation\Services\CompensationCycles;
+use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Models\Employee;
@@ -49,6 +50,13 @@ final class SalaryImports
         'change_type' => ['Change type', false], 'reason' => ['Reason', false],
     ];
 
+    /** What a file can be for: mode => [label, description]. "On file" means the employee has a CTC assigned. */
+    public const MODES = [
+        'new' => ['Assign CTC to new employees', 'For employees with no CTC on file yet (their first salary). Employees who already have one are skipped.'],
+        'update' => ['Revise CTC of existing employees', 'For employees who already have a CTC on file. Employees without one are skipped.'],
+        'both' => ['Both', 'Assigns a first CTC where there is none and revises the rest.'],
+    ];
+
     public function __construct(
         private readonly CompensationChanges $changes,
         private readonly CompensationCycles $cycles,
@@ -71,7 +79,7 @@ final class SalaryImports
         return self::FIELDS + $components->mapWithKeys(fn ($name, $code) => ["component.{$code}" => ["{$name} ({$code}), monthly", false]])->all();
     }
 
-    public function register(string $path, string $originalName, User $user, ?string $reason = null): EmployeeImport
+    public function register(string $path, string $originalName, User $user, ?string $reason = null, ImportMode $mode = ImportMode::Both): EmployeeImport
     {
         if (! self::allowed($user)) {
             throw new RuntimeException('Uploading salaries needs compensation.cycles and compensation.propose.');
@@ -83,7 +91,7 @@ final class SalaryImports
         $companies = Company::query()->pluck('id');
 
         $import = new EmployeeImport(['type' => self::TYPE, 'original_name' => $originalName, 'disk' => $disk, 'path' => $path, 'size_bytes' => (int) Storage::disk($disk)->size($path), 'status' => 'uploaded', 'uploaded_by' => $user->getKey(),
-            'options' => ['company_id' => $companies->count() === 1 ? (int) $companies->first() : null, 'effective_from' => null]]);
+            'options' => ['company_id' => $companies->count() === 1 ? (int) $companies->first() : null, 'effective_from' => null, 'mode' => $mode->value]]);
         $import->withAuditReason($reason)->save();
 
         return $import;
@@ -107,6 +115,35 @@ final class SalaryImports
         $csv->insertOne(array_map(fn ($field) => $example[$field] ?? '', array_keys($fields)));
 
         return $csv->toString();
+    }
+
+    /**
+     * The format guide the upload screen shows: every column with whether it is required, what to enter and an example.
+     *
+     * @return array{columns: list<array{0: string, 1: string, 2: string, 3: string}>, notes: list<string>}
+     */
+    public function format(): array
+    {
+        $what = [
+            'employee_code' => ['The employee\'s code.', 'EMP0001'],
+            'structure_code' => ['Code of an active salary structure (Compensation › Salary structures).', SalaryStructure::query()->where('status', 'active')->orderBy('id')->value('code') ?? 'STANDARD'],
+            'ctc_annual' => ['Annual cost to company. Commas are fine (6,00,000).', '600000'],
+            'effective_from' => ['YYYY-MM-DD. Leave blank to use the default date you choose when mapping.', now()->toDateString()],
+            'currency' => ['Three-letter code; blank means the organisation\'s base currency.', config('peopleos.settings.tenant.base_currency', 'INR')],
+            'variable_target_annual' => ['Annual variable pay at target, if any.', '60000'],
+            'change_type' => ['One of: '.implode(', ', array_keys(config('peopleos.compensation.change_types', []))).'. Blank means hire for a first CTC and revision otherwise; use correction to replace a CTC that starts on the same date.', 'annual_increment'],
+            'reason' => ['Shown on the change; blank uses the file name.', 'FY27 increments'],
+        ];
+        $columns = [];
+        foreach (self::fields() as $field => [$label, $required]) {
+            $columns[] = [$label, $required ? 'Yes' : 'No', $what[$field][0] ?? 'Monthly amount of this fixed component; blank uses the structure\'s default.', $what[$field][1] ?? ''];
+        }
+
+        return ['columns' => $columns, 'notes' => [
+            'One file covers one company; you choose it when mapping the columns.',
+            'Running the upload prepares a draft compensation cycle. Nobody\'s pay changes until that cycle is submitted, reviewed, approved and executed by different people.',
+            'A row that matches the CTC already in force from the same date is skipped as already on file.',
+        ]];
     }
 
     public function inspect(EmployeeImport $import): EmployeeImport
@@ -192,6 +229,7 @@ final class SalaryImports
             throw new RuntimeException('Map an Effective from column or choose a default effective date.');
         }
         $options['company_id'] = (int) $options['company_id'];
+        $options['mode'] = (ImportMode::tryFrom((string) ($options['mode'] ?? '')) ?? ImportMode::of($import))->value;
 
         $import->update(['mapping' => $mapping, 'options' => $options, 'status' => 'mapped', 'valid_count' => 0, 'error_count' => 0, 'review_count' => 0, 'create_count' => 0, 'update_count' => 0, 'skip_count' => 0]);
 
@@ -205,6 +243,7 @@ final class SalaryImports
         $actor = User::query()->find($import->uploaded_by) ?? throw new RuntimeException('The uploader of this file no longer exists.');
         $lookups = $this->lookups();
         $companyId = (int) ($import->options['company_id'] ?? 0);
+        $mode = ImportMode::of($import);
         $counts = ['valid' => 0, 'error' => 0, 'create' => 0, 'skip' => 0];
         $seen = [];
 
@@ -221,7 +260,11 @@ final class SalaryImports
 
             $action = 'create';
             $match = null;
-            if ($errors === []) {
+            $outside = $errors === [] ? $this->outsideMode($employee, $mode) : null;
+            if ($outside !== null) {
+                $action = 'skip';
+                $match = ['employee_id' => $employee->id, 'employee_code' => $employee->employee_code, 'name' => $employee->person?->full_name, 'matched_on' => ['employee code'], 'reason' => $outside];
+            } elseif ($errors === []) {
                 try {
                     $content = $this->changes->check($employee, $proposal, $actor);
                     [$action, $note] = $this->againstTimeline($employee, $content, $companyId);
@@ -345,6 +388,20 @@ final class SalaryImports
     }
 
     // ---------------------------------------------------------------------------------------
+
+    /** Why the chosen mode leaves this employee out, or null when the row belongs to it. */
+    private function outsideMode(Employee $employee, ImportMode $mode): ?string
+    {
+        $onFile = EmployeeSalaryAssignment::query()->withoutGlobalScope(AccessScope::class)->active()->where('employee_id', $employee->id)->exists();
+        if ($onFile && ! $mode->updates()) {
+            return "{$employee->employee_code} already has a CTC on file; choose Revise CTC of existing employees or Both to change it.";
+        }
+        if (! $onFile && ! $mode->adds()) {
+            return "{$employee->employee_code} has no CTC on file yet; choose Assign CTC to new employees or Both to assign one.";
+        }
+
+        return null;
+    }
 
     /** @return array{employees: array<string, int>, structures: array<string, int>} lower-cased code => id */
     private function lookups(): array

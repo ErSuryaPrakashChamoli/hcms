@@ -15,7 +15,7 @@ final class WorkforceCost implements WorkforceCostReader
     public function employerCost(int $companyId, CarbonInterface $from, CarbonInterface $to, ?Builder $employeeIds = null): array
     {
         $runs = PayrollRun::query()->where('company_id', $companyId)->whereIn('status', ['finalized', 'paid'])
-            ->whereHas('period', fn ($q) => $q->whereDate('start_date', '>=', $from->toDateString())->whereDate('start_date', '<=', $to->toDateString()))
+            ->whereHas('period', fn ($q) => $q->monthsBetween($from, $to))
             ->pluck('id');
         $entries = PayrollEntry::query()->whereIn('payroll_run_id', $runs)->when($employeeIds, fn ($q) => $q->whereIn('employee_id', $employeeIds));
 

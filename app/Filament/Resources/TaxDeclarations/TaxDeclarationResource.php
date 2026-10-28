@@ -3,19 +3,13 @@
 namespace App\Filament\Resources\TaxDeclarations;
 
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
-use App\Domain\Compliance\Services\FinancialYear;
-use App\Domain\Employment\Models\Employee;
+use App\Filament\Pages\DeclareInvestments;
 use App\Filament\Resources\TaxDeclarations\Pages\ManageTaxDeclarations;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -23,7 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-/** Regime choice and investment declarations (§32 TDS). Employees file their own; payroll verifies. */
+/** Regime choice and investment declarations (§32 TDS). Employees file their own in DeclareInvestments; payroll verifies. */
 class TaxDeclarationResource extends Resource
 {
     protected static ?string $model = EmployeeTaxDeclaration::class;
@@ -47,31 +41,10 @@ class TaxDeclarationResource extends Resource
         return $query;
     }
 
-    public static function form(Schema $schema): Schema
-    {
-        $manager = auth()->user()->can('payroll.manage');
-        $fy = app(FinancialYear::class);
-
-        return $schema->components([
-            Section::make('Declaration')->columns(3)->schema([
-                Select::make('employee_id')->label('Employee')->required()->searchable()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated()
-                    ->options(fn () => ($manager ? Employee::query()->with('person')->employed() : Employee::query()->with('person')->where('user_id', auth()->id()))->get()->mapWithKeys(fn ($e) => [$e->id => "{$e->employee_code} · {$e->person?->full_name}"])->all())
-                    ->default(fn () => $manager ? null : Employee::query()->where('user_id', auth()->id())->value('id')),
-                Select::make('financial_year')->options([$fy->label(now()->subYear()) => $fy->label(now()->subYear()), $fy->label(now()) => $fy->label(now()), $fy->label(now()->addYear()) => $fy->label(now()->addYear())])->default($fy->label(now()))->required(),
-                Select::make('regime')->options(config('peopleos.compliance.tax_regimes'))->default('new')->required()->helperText('Chapter VI-A and HRA exemption apply in the old regime only'),
-                TextInput::make('previous_employer_income')->numeric()->default(0)->label('Previous employer taxable income'),
-                TextInput::make('previous_employer_tds')->numeric()->default(0)->label('TDS deducted by previous employer'),
-                Select::make('status')->options(EmployeeTaxDeclaration::STATUSES)->default('draft')->required()->visible($manager),
-            ]),
-            Section::make('Declared amounts (annual)')->schema([
-                KeyValue::make('declarations')->hiddenLabel()->keyLabel('Section')->valueLabel('Amount')->addActionLabel('Add section')
-                    ->helperText(collect(EmployeeTaxDeclaration::SECTIONS)->map(fn ($v, $k) => "{$k}: {$v}")->implode(' · ')),
-            ]),
-        ]);
-    }
-
     public static function table(Table $table): Table
     {
+        $canDeclare = DeclareInvestments::canAccess();
+
         return $table
             ->columns([
                 TextColumn::make('financial_year')->label('FY')->sortable(),
@@ -86,7 +59,24 @@ class TaxDeclarationResource extends Resource
             ->defaultSort('id', 'desc')
             ->filters([SelectFilter::make('status')->options(EmployeeTaxDeclaration::STATUSES)])
             ->recordActions([
-                EditAction::make(),
+                // The employee's items are filed in the guided declaration, which recalculates the section totals.
+                Action::make('open')->label(fn (EmployeeTaxDeclaration $record) => auth()->user()->can('update', $record) ? 'Open' : 'View')->icon('heroicon-m-arrow-top-right-on-square')
+                    ->visible(fn (EmployeeTaxDeclaration $record) => $canDeclare && (auth()->user()->hasPermission('payroll.manage') || (int) $record->employee?->user_id === (int) auth()->id()))
+                    ->url(fn (EmployeeTaxDeclaration $record) => DeclareInvestments::getUrl(['employee' => $record->employee_id, 'year' => $record->financial_year])),
+                Action::make('payrollFields')->label('Employer NPS')->icon('heroicon-m-pencil-square')->color('gray')
+                    ->visible(fn () => auth()->user()->can('payroll.manage'))
+                    ->modalHeading('Employer NPS contribution')
+                    ->fillForm(fn (EmployeeTaxDeclaration $record) => ['employer_nps' => $record->amount('80CCD2') ?: null])
+                    ->schema([
+                        TextInput::make('employer_nps')->label('Employer’s NPS contribution for the year (80CCD(2))')->prefix('₹')->numeric()->minValue(0)->maxValue(1_000_000_000)
+                            ->helperText('Counts in both regimes. The employee files everything else in the guided declaration.'),
+                    ])
+                    ->action(function (EmployeeTaxDeclaration $record, array $data) {
+                        $amount = round((float) ($data['employer_nps'] ?? 0), 2);
+                        $declarations = collect($record->declarations ?? [])->except('80CCD2')->all() + ($amount > 0 ? ['80CCD2' => $amount] : []);
+                        $record->withAuditReason('Employer NPS contribution set by payroll')->update(['declarations' => $declarations]);
+                        Notification::make()->success()->title('Employer NPS saved')->send();
+                    }),
                 Action::make('verify')->label('Verify')->icon('heroicon-m-check-badge')->color('success')
                     ->visible(fn (EmployeeTaxDeclaration $record) => $record->status !== 'verified' && auth()->user()->can('payroll.manage'))
                     ->requiresConfirmation()

@@ -2,34 +2,61 @@
 
 namespace App\Filament\Support;
 
+use App\Domain\Attendance\Imports\AttendanceSheetImports;
 use App\Domain\Attendance\Imports\PunchImports;
 use App\Domain\Compensation\Imports\SalaryImports;
+use App\Domain\Employment\Enums\ImportMode;
+use App\Domain\Employment\Imports\BankAccountImports;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImports;
 use App\Domain\Organisation\Models\Company;
 use App\Filament\Resources\CompensationCycles\CompensationCycleResource;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Carbon;
+use League\Csv\Reader;
 use RuntimeException;
 use Throwable;
 
 /** Header actions for the import pipeline; every step calls the service and reports the outcome. */
 final class ImportActions
 {
+    /** Import type => [the service that runs it, its name in the format guide]. */
+    public const TYPES = [
+        'employees' => [EmployeeImports::class, 'Employee import'],
+        PunchImports::TYPE => [PunchImports::class, 'Punch import'],
+        SalaryImports::TYPE => [SalaryImports::class, 'Salary upload'],
+        BankAccountImports::TYPE => [BankAccountImports::class, 'Bank details upload'],
+        AttendanceSheetImports::TYPE => [AttendanceSheetImports::class, 'Monthly attendance upload'],
+    ];
+
+    public static function service(EmployeeImport|string $import): EmployeeImports|PunchImports|SalaryImports|BankAccountImports|AttendanceSheetImports
+    {
+        return app(self::TYPES[is_string($import) ? $import : $import->type][0] ?? EmployeeImports::class);
+    }
+
+    /** @return array<string, array{0: string, 1: string}>|null mode => [label, description], for the imports that offer the choice */
+    public static function modes(string $type): ?array
+    {
+        $class = self::TYPES[$type][0] ?? EmployeeImports::class;
+
+        return defined("{$class}::MODES") ? $class::MODES : null;
+    }
+
     /** @return list<Action> */
     public static function forImport(): array
     {
-        $svc = fn (EmployeeImport $record) => app(match ($record->type) {
-            'punches' => PunchImports::class, SalaryImports::TYPE => SalaryImports::class, default => EmployeeImports::class,
-        });
-        $fieldsFor = fn (EmployeeImport $record) => collect(match ($record->type) {
-            'punches' => PunchImports::FIELDS, SalaryImports::TYPE => SalaryImports::fields(), default => EmployeeImports::FIELDS,
-        })->mapWithKeys(fn ($def, $key) => [$key => $def[0].($def[1] ? ' *' : '')])->all();
-        $salaries = fn (EmployeeImport $record) => $record->type === SalaryImports::TYPE;
+        $svc = fn (EmployeeImport $record) => self::service($record);
+        $fieldsFor = fn (EmployeeImport $record) => collect(($svc($record))::fields())->mapWithKeys(fn ($def, $key) => [$key => $def[0].($def[1] ? ' *' : '')])->all();
+        $is = fn (string $type) => fn (EmployeeImport $record) => $record->type === $type;
 
         return [
             Action::make('inspect')->label('Inspect file')->icon('heroicon-m-magnifying-glass')
@@ -38,15 +65,18 @@ final class ImportActions
 
             Action::make('map')->label('Map columns')->icon('heroicon-m-arrows-right-left')
                 ->visible(fn (EmployeeImport $record) => in_array($record->status, ['inspected', 'mapped', 'validated'], true))
-                ->fillForm(fn (EmployeeImport $record) => ['mapping' => collect($record->headers ?? [])->mapWithKeys(fn ($h, $i) => [(string) $i => $record->mapping[$h] ?? null])->all(), 'on_duplicate' => $record->options['on_duplicate'] ?? 'update', 'timezone' => $record->options['timezone'] ?? null, 'company_id' => $record->options['company_id'] ?? null, 'effective_from' => $record->options['effective_from'] ?? null])
+                ->fillForm(fn (EmployeeImport $record) => ['mapping' => collect($record->headers ?? [])->mapWithKeys(fn ($h, $i) => [(string) $i => $record->mapping[$h] ?? null])->all(), 'mode' => ImportMode::of($record)->value]
+                    + collect($record->options ?? [])->only(['timezone', 'company_id', 'effective_from', 'month', 'blank_days'])->all())
                 ->schema(fn (EmployeeImport $record) => [
                     Section::make('Columns')->description('Choose the PeopleOS field for each column. Fields marked * are required.')->columns(2)
                         ->schema(collect($record->headers ?? [])->map(fn ($header, $i) => Select::make("mapping.{$i}")->label($header)->options($fieldsFor($record))->searchable()->placeholder('Ignore column'))->values()->all()),
-                    Select::make('on_duplicate')->label('When the person already exists')->options(['update' => 'Update person details', 'skip' => 'Skip the row'])->required()->visible(! in_array($record->type, ['punches', SalaryImports::TYPE], true)),
-                    Select::make('timezone')->label('Default timezone for timestamps')->options(collect(timezone_identifiers_list())->mapWithKeys(fn ($tz) => [$tz => $tz]))->searchable()->visible($record->type === 'punches')->placeholder(config('app.timezone')),
+                    ...(($modes = self::modes($record->type)) ? [self::modeField($modes)] : []),
+                    Select::make('timezone')->label('Default timezone for timestamps')->options(collect(timezone_identifiers_list())->mapWithKeys(fn ($tz) => [$tz => $tz]))->searchable()->visible($is(PunchImports::TYPE))->placeholder(config('app.timezone')),
                     Select::make('company_id')->label('Company')->helperText('One upload prepares one compensation cycle for one company.')
-                        ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all())->required()->visible($salaries($record)),
-                    DatePicker::make('effective_from')->label('Default effective date')->helperText('Used for rows without an Effective from value.')->visible($salaries($record)),
+                        ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all())->required()->visible($is(SalaryImports::TYPE)),
+                    DatePicker::make('effective_from')->label('Default effective date')->helperText('Used for rows without an Effective from value.')->visible($is(SalaryImports::TYPE)),
+                    self::monthField()->visible($is(AttendanceSheetImports::TYPE)),
+                    self::blankDaysField()->visible($is(AttendanceSheetImports::TYPE)),
                 ])
                 ->action(function (EmployeeImport $record, array $data) use ($svc) {
                     $mapping = [];
@@ -54,9 +84,10 @@ final class ImportActions
                         $mapping[$header] = $data['mapping'][(string) $i] ?? null;
                     }
                     $options = match ($record->type) {
-                        'punches' => ['timezone' => $data['timezone'] ?? null],
-                        SalaryImports::TYPE => ['company_id' => $data['company_id'] ?? null, 'effective_from' => $data['effective_from'] ?? null],
-                        default => ['on_duplicate' => $data['on_duplicate']],
+                        PunchImports::TYPE => ['timezone' => $data['timezone'] ?? null],
+                        SalaryImports::TYPE => ['company_id' => $data['company_id'] ?? null, 'effective_from' => $data['effective_from'] ?? null, 'mode' => $data['mode'] ?? null],
+                        AttendanceSheetImports::TYPE => ['month' => $data['month'] ?? null, 'blank_days' => $data['blank_days'] ?? null, 'mode' => $data['mode'] ?? null],
+                        default => ['mode' => $data['mode'] ?? null],
                     };
                     self::run(fn () => $svc($record)->map($record, $mapping, $options), 'Mapping saved');
                 }),
@@ -69,9 +100,11 @@ final class ImportActions
                 ->visible(fn (EmployeeImport $record) => $record->status === 'validated')
                 ->requiresConfirmation()
                 ->modalDescription(fn (EmployeeImport $record) => match ($record->type) {
-                    'punches' => "This will record {$record->create_count} punch(es); {$record->error_count} row(s) with errors and {$record->skip_count} duplicate(s) will be skipped. Attendance is recalculated from the punches.",
-                    SalaryImports::TYPE => "Running it prepares a draft compensation cycle with {$record->create_count} line(s); {$record->error_count} row(s) with errors and {$record->skip_count} row(s) already in force will be skipped. Nobody's pay changes until the cycle is submitted, reviewed, approved and executed by different people.",
-                    default => "This will create {$record->create_count} and update {$record->update_count} employee(s); {$record->error_count} row(s) with errors and {$record->skip_count} duplicate(s) will be skipped.",
+                    PunchImports::TYPE => "This will record {$record->create_count} punch(es); {$record->error_count} row(s) with errors and {$record->skip_count} duplicate(s) will be skipped. Attendance is recalculated from the punches.",
+                    SalaryImports::TYPE => "Running it prepares a draft compensation cycle with {$record->create_count} line(s); {$record->error_count} row(s) with errors and {$record->skip_count} row(s) already in force or outside the chosen mode will be skipped. Nobody's pay changes until the cycle is submitted, reviewed, approved and executed by different people.",
+                    BankAccountImports::TYPE => "This will add bank details for {$record->create_count} employee(s) and update them for {$record->update_count}; {$record->error_count} row(s) with errors and {$record->skip_count} skipped row(s) are left out. Each change is recorded on the employee's timeline.",
+                    AttendanceSheetImports::TYPE => 'This will mark '.self::monthLabel($record)." attendance for {$record->create_count} employee(s) and correct it for {$record->update_count}; {$record->error_count} row(s) with errors and {$record->skip_count} skipped row(s) are left out. The marked days are then recalculated.",
+                    default => "This will create {$record->create_count} and update {$record->update_count} employee(s); {$record->error_count} row(s) with errors and {$record->skip_count} skipped row(s) are left out.",
                 })
                 ->schema([Textarea::make(AuditReasonField::NAME)->label('Reason')->required()->maxLength(500)])
                 ->action(fn (EmployeeImport $record, array $data) => self::run(fn () => $svc($record)->approve($record, auth()->user(), $data[AuditReasonField::NAME]), 'Import approved')),
@@ -79,12 +112,15 @@ final class ImportActions
             Action::make('run')->label('Run import')->icon('heroicon-m-play')->color('success')
                 ->visible(fn (EmployeeImport $record) => $record->status === 'approved')
                 ->requiresConfirmation()
-                ->action(fn (EmployeeImport $record) => self::run(fn () => $svc($record)->run($record, auth()->user()), fn (EmployeeImport $i) => $salaries($i)
-                    ? "Cycle prepared with {$i->create_count} line(s); skipped {$i->skip_count}, failed {$i->failure_count}. Open the cycle to submit it for review."
-                    : "Created {$i->create_count}, updated {$i->update_count}, skipped {$i->skip_count}, failed {$i->failure_count}")),
+                ->action(fn (EmployeeImport $record) => self::run(fn () => $svc($record)->run($record, auth()->user()), fn (EmployeeImport $i) => match ($i->type) {
+                    SalaryImports::TYPE => "Cycle prepared with {$i->create_count} line(s); skipped {$i->skip_count}, failed {$i->failure_count}. Open the cycle to submit it for review.",
+                    BankAccountImports::TYPE => "Added {$i->create_count}, updated {$i->update_count}, skipped {$i->skip_count}, failed {$i->failure_count}",
+                    AttendanceSheetImports::TYPE => 'Marked '.($i->create_count + $i->update_count)." employee(s), skipped {$i->skip_count}, failed {$i->failure_count}. The marked days are being recalculated.",
+                    default => "Created {$i->create_count}, updated {$i->update_count}, skipped {$i->skip_count}, failed {$i->failure_count}",
+                })),
 
             Action::make('openCycle')->label('Open compensation cycle')->icon('heroicon-m-arrow-path-rounded-square')->color('gray')
-                ->visible(fn (EmployeeImport $record) => $salaries($record) && filled($record->options['compensation_cycle_id'] ?? null))
+                ->visible(fn (EmployeeImport $record) => $record->type === SalaryImports::TYPE && filled($record->options['compensation_cycle_id'] ?? null))
                 ->url(fn (EmployeeImport $record) => CompensationCycleResource::getUrl('view', ['record' => $record->options['compensation_cycle_id']])),
 
             Action::make('discard')->label('Discard')->icon('heroicon-m-trash')->color('danger')
@@ -92,6 +128,81 @@ final class ImportActions
                 ->requiresConfirmation()
                 ->action(fn (EmployeeImport $record) => self::run(fn () => $svc($record)->discard($record), 'Import discarded')),
         ];
+    }
+
+    /** The "new or existing" choice an upload offers, with what each choice does. */
+    public static function modeField(array $modes): Radio
+    {
+        return Radio::make('mode')->label('What is this file for?')
+            ->options(array_map(fn (array $mode) => $mode[0], $modes))->descriptions(array_map(fn (array $mode) => $mode[1], $modes))->required();
+    }
+
+    public static function monthField(): Select
+    {
+        return Select::make('month')->label('Attendance month')->options(fn () => AttendanceSheetImports::months())->default(fn () => AttendanceSheetImports::currentMonth())->required();
+    }
+
+    public static function blankDaysField(): Radio
+    {
+        return Radio::make('blank_days')->label('Blank days')->options(array_map(fn (array $o) => $o[0], AttendanceSheetImports::BLANK_DAYS))
+            ->descriptions(array_map(fn (array $o) => $o[1], AttendanceSheetImports::BLANK_DAYS))->default('calculate')->required();
+    }
+
+    /** The CSV field of every upload dialog: a file on the private disk, under the tenant's import folder. */
+    public static function fileField(): FileUpload
+    {
+        return FileUpload::make('file')->label('CSV file')->disk(EmployeeImports::disk())->directory(fn () => EmployeeImports::directory())->visibility('private')
+            ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])->maxSize((int) config('peopleos.documents.max_kb', 10240))
+            ->storeFileNamesIn('original_name')->required();
+    }
+
+    /** The uploaded file's own name, as the upload field stored it. */
+    public static function originalName(array $data): string
+    {
+        $name = $data['original_name'] ?? null;
+
+        return (string) (is_array($name) ? (reset($name) ?: basename($data['file'])) : ($name ?? basename($data['file'])));
+    }
+
+    /** The format guide inside an upload dialog, folded away under the fields. */
+    public static function formatSection(string $type): Section
+    {
+        return Section::make('File format and example')->description('Every column, what to enter, and an example file.')->collapsible()->collapsed()
+            ->schema([View::make('filament.imports.csv-format')->viewData(fn () => self::formatData($type))]);
+    }
+
+    /** The format guide on its own, from the list page. */
+    public static function formatAction(string $type): Action
+    {
+        return Action::make('format')->label('File format')->icon(Heroicon::OutlinedInformationCircle)->color('gray')
+            ->modalHeading(self::TYPES[$type][1].': file format')->modalWidth('4xl')
+            ->modalContent(fn () => view('filament.imports.csv-format', self::formatData($type)))
+            ->modalSubmitAction(false)->modalCancelActionLabel('Close');
+    }
+
+    /** @return array<string, mixed> what the format guide view shows, from the import service so it matches what the upload accepts */
+    public static function formatData(string $type): array
+    {
+        $service = self::service($type);
+        $format = $service->format();
+
+        $sample = $format['sample'] ?? $service->template();
+
+        return ['title' => self::TYPES[$type][1], 'columns' => $format['columns'], 'codes' => $format['codes'] ?? null, 'modes' => self::modes($type),
+            'notes' => $format['notes'], 'sample' => $sample, 'sampleRows' => iterator_to_array(Reader::fromString($sample)->getRecords(), false)];
+    }
+
+    public static function monthLabel(EmployeeImport $import): string
+    {
+        $month = $import->options['month'] ?? null;
+        if (! is_string($month) || ! preg_match('/^\d{4}-\d{2}$/', $month)) {
+            return 'the month\'s';
+        }
+
+        // The dates the upload was made for, when it kept them (a 25th-to-24th pay cycle shows them).
+        return isset($import->options['from'], $import->options['to'])
+            ? AttendanceSheetImports::monthName($month, Carbon::parse($import->options['from']), Carbon::parse($import->options['to']))
+            : Carbon::parse("{$month}-01")->format('F Y');
     }
 
     public static function run(callable $callback, callable|string $success): mixed

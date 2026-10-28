@@ -88,18 +88,19 @@ it('runs the pipeline end to end with separation of duties, locking, payslips an
     expect($csv)->toContain('HDFC0000001', '1234567890', 'Salary Sep 2026')
         ->and(AuditEvent::query()->where('action', 'EXPORT')->where('module', 'payroll')->exists())->toBeTrue();
 
-    // Reopen withdraws payslips and unlocks; then finalize again and pay.
-    expect(fn () => $this->runs->reopen($run, ''))->toThrow(RuntimeException::class, 'reason');
-    $run = $this->runs->reopen($run, 'Missed an adjustment', $this->approver);
-    expect($run->status)->toBe('draft')
-        ->and(Payslip::query()->count())->toBe(0)
-        ->and(AttendanceRecord::query()->where('employee_id', $a->id)->first()->is_locked)->toBeFalse()
-        ->and(AuditEvent::query()->where('action', 'PAYROLL_REOPENED')->exists())->toBeTrue();
+    // Finalized payroll is never reopened (decision C12-D1 open): payslips, locks and the closed period stay, and the
+    // attempt is audited. A correction goes forward as an arrear or a recovery.
+    expect(fn () => $this->runs->reopen($run, 'Missed an adjustment', $this->approver))->toThrow(RuntimeException::class, 'cannot be reopened');
+    expect($run->refresh()->status)->toBe('finalized')
+        ->and(Payslip::query()->count())->toBe(2)
+        ->and(AttendanceRecord::query()->where('employee_id', $a->id)->first()->is_locked)->toBeTrue()
+        ->and(PayrollPeriod::query()->find($run->payroll_period_id)->status)->toBe('closed')
+        ->and(AuditEvent::query()->where('action', 'PAYROLL_REOPENED')->exists())->toBeFalse()
+        ->and(AuditEvent::query()->where('module', 'payroll')->where('action', 'REJECTED')->exists())->toBeTrue();
 
-    $run = $this->runs->finalize($this->runs->approve($this->runs->validate($this->runs->calculate($run)), $this->approver), $this->approver);
     $run = $this->runs->markPaid($run, '2026-09-30', $this->approver);
     expect($run->status)->toBe('paid')->and($run->paid_at->toDateString())->toBe('2026-09-30');
-    expect(fn () => $this->runs->reopen($run, 'x'))->toThrow(RuntimeException::class, 'unpaid');
+    expect(fn () => $this->runs->reopen($run, 'x'))->toThrow(RuntimeException::class, 'cannot be reopened');
 });
 
 it('prorates by attendance LOP, manual LOP, mid-month joining and exit', function () {
@@ -116,13 +117,15 @@ it('prorates by attendance LOP, manual LOP, mid-month joining and exit', functio
     PayrollAdjustment::create(['employee_id' => $employee->id, 'payroll_period_id' => $period->id, 'type' => 'earning', 'name' => 'Spot bonus', 'amount' => 5000, 'taxable' => true]);
     PayrollAdjustment::create(['employee_id' => $employee->id, 'payroll_period_id' => $period->id, 'type' => 'deduction', 'name' => 'Canteen', 'amount' => 300]);
 
+    // payroll-2.5: 3 September is half-day unpaid leave with nothing in the other half, so a whole day (0.5 absent + 0.5 unpaid leave).
     $c = app(PayrollCalculator::class)->calculate($employee, $period);
-    expect($c->lopDays)->toBe(2.5)->and($c->paidDays)->toBe(27.5)
-        ->and($c->amount('BASIC'))->toBe(round(20000 * 27.5 / 30, 2))
+    expect($c->lopDays)->toBe(3.0)->and($c->paidDays)->toBe(27.0)
+        ->and($c->inputs['lop_by_date'])->toBe(['2026-09-02' => 1.0, '2026-09-03' => 1.0])
+        ->and($c->amount('BASIC'))->toBe(round(20000 * 27 / 30, 2))
         ->and($c->amount('ADJ1'))->toBe(5000.0)->and($c->amount('ADJ2'))->toBe(300.0)
         // Phase 7: September 2026 uses draft EPF v2 (ceiling 25,000), so the CTC-balancing special
         // allowance is 600 lower (employer PF 2,400 instead of 1,800): monthly gross 47,600.
-        ->and($c->earnings())->toEqualWithDelta(47600 * 27.5 / 30 + 5000, 0.05);
+        ->and($c->earnings())->toEqualWithDelta(47600 * 27 / 30 + 5000, 0.05);
 
     $joiner = salariedEmployee(600000);
     $joiner->update(['joining_date' => '2026-09-16']);
@@ -132,6 +135,24 @@ it('prorates by attendance LOP, manual LOP, mid-month joining and exit', functio
     $leaver = salariedEmployee(600000);
     $leaver->update(['exit_date' => '2026-09-10']);
     expect(app(PayrollCalculator::class)->calculate($leaver->refresh(), $period)->paidDays)->toBe(10.0);
+});
+
+it('charges half a day for a half day, and for the absent half of a half-day leave (payroll-2.5)', function () {
+    $employee = salariedEmployee(600000);
+    $period = PayrollPeriod::for($this->company, 2026, 9);
+    foreach ([
+        ['2026-09-07', 'half_day', false], // worked half the day: 0.5
+        ['2026-09-08', 'leave', true],     // paid half-day leave, nothing in the other half: 0.5
+        ['2026-09-09', 'half_day', true],  // paid half-day leave, the other half worked: nothing
+        ['2026-09-10', 'present', true],   // paid half-day leave, present for the other half: nothing
+    ] as [$date, $status, $halfDayLeave]) {
+        AttendanceRecord::create(['employee_id' => $employee->id, 'date' => $date, 'status' => $status, 'is_half_day_leave' => $halfDayLeave, 'processed_at' => now()]);
+    }
+
+    $c = app(PayrollCalculator::class)->calculate($employee, $period);
+    expect($c->inputs['lop_by_date'])->toBe(['2026-09-07' => 0.5, '2026-09-08' => 0.5])
+        ->and($c->lopDays)->toBe(1.0)->and($c->paidDays)->toBe(29.0)
+        ->and($c->amount('BASIC'))->toBe(round(20000 * 29 / 30, 2));
 });
 
 it('blocks validation on missing salaries and formula errors while warnings pass', function () {

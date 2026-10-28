@@ -14,9 +14,13 @@ use App\Domain\Organisation\Models\LegalEntity;
 use App\Domain\Organisation\Services\EstablishmentAssignments;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollPeriod;
+use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Services\PayrollCalculator;
 use App\Domain\Payroll\Services\PayrollRuns;
+use App\Filament\Resources\EstablishmentStatutoryProfiles\Pages\ManageEstablishmentStatutoryProfiles;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/../Payroll/PayrollTestHelpers.php';
@@ -98,6 +102,47 @@ it('keeps establishment profiles rate-free, non-overlapping and within the legal
 
     $pt = ProfessionalTaxProfile::query()->create(['establishment_id' => $this->mh->id, 'applicable' => true, 'effective_from' => '2020-01-01']);
     expect($pt->statute)->toBe('PT')->and(ProfessionalTaxProfile::query()->count())->toBe(1);
+});
+
+it('reopens or deletes a closed establishment profile, never one payroll past review used', function () {
+    $epf = EstablishmentStatutoryProfile::query()->create(['establishment_id' => $this->mh->id, 'statute' => 'EPF', 'applicable' => true, 'effective_from' => '2020-01-01']);
+    $esi = EstablishmentStatutoryProfile::query()->create(['establishment_id' => $this->mh->id, 'statute' => 'ESI', 'applicable' => true, 'effective_from' => '2020-01-01']);
+
+    // An open profile is closed, not deleted.
+    expect($this->admin->can('delete', $epf))->toBeFalse()
+        ->and(fn () => $epf->delete())->toThrow(RuntimeException::class, 'Close this EPF profile');
+
+    $epf->update(['effective_to' => '2025-12-31']);
+    $later = EstablishmentStatutoryProfile::query()->create(['establishment_id' => $this->mh->id, 'statute' => 'EPF', 'applicable' => false, 'effective_from' => '2026-01-01', 'effective_to' => '2026-03-31']);
+    expect($this->admin->can('delete', $epf->fresh()))->toBeTrue()
+        ->and($this->admin->can('delete', StatutoryRegistration::query()->make()))->toBeFalse()
+        ->and(tenantUser($this->tenant, ['compliance.registrations.view'])->can('delete', $epf->fresh()))->toBeFalse();
+
+    // Reopening may not run into a later period of the same statute.
+    expect(fn () => $epf->fresh()->update(['effective_to' => null]))->toThrow(RuntimeException::class, 'overlapping');
+
+    Livewire::test(ManageEstablishmentStatutoryProfiles::class)
+        ->assertActionHidden(TestAction::make('reopen')->table($esi))
+        ->assertActionHidden(TestAction::make('delete')->table($esi))
+        ->callAction(TestAction::make('delete')->table($later), ['reason' => 'Entered by mistake'])
+        ->callAction(TestAction::make('reopen')->table($epf), ['reason' => 'Still registered with EPFO']);
+
+    expect(EstablishmentStatutoryProfile::query()->find($later->id))->toBeNull()
+        ->and($epf->fresh()->effective_to)->toBeNull()
+        ->and(AuditEvent::query()->where('entity_type', EstablishmentStatutoryProfile::class)->where('entity_id', (string) $later->id)->where('action', 'DELETE')->value('reason'))->toBe('Entered by mistake')
+        ->and(AuditEvent::query()->where('entity_type', EstablishmentStatutoryProfile::class)->where('entity_id', (string) $epf->id)->latest('id')->value('reason'))->toBe('Still registered with EPFO');
+
+    // A period an approved run resolved stays as history; a draft run does not hold it.
+    $employee = salariedEmployee(600000);
+    $this->assignments->assign($employee, $this->mh, '2025-01-01', 'Pune');
+    $esi->update(['effective_to' => '2026-12-31']);
+    $runs = app(PayrollRuns::class);
+    $run = $runs->calculate($runs->open($this->company, 2026, 9, $this->admin), $this->admin);
+    expect($esi->fresh()->usedByLockedPayroll())->toBeFalse();
+
+    PayrollRun::query()->whereKey($run->id)->update(['status' => 'approved']);
+    expect(fn () => $esi->fresh()->delete())->toThrow(RuntimeException::class, 'stays as history')
+        ->and(EstablishmentStatutoryProfile::query()->whereKey($esi->id)->exists())->toBeTrue();
 });
 
 it('keeps establishment assignment history immutable and one assignment per date', function () {

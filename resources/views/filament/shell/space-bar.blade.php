@@ -3,7 +3,7 @@
     @php($posBar = app(\App\Domain\Experience\Services\ExperienceNavigation::class)->areaBar(auth()->user()))
     @if ($posBar)
         {{-- UX.15 area bar: where you are, the everyday modules of this area, and the rest one step away (in flow). --}}
-        <div x-data="{ open: false, q: '' }" x-on:keydown.escape="open = false">
+        <div class="pos-spacebar-wrap" x-data="{ open: false, q: '' }" x-on:keydown.escape="open = false">
             <nav class="pos-spacebar" aria-label="{{ $posBar['label'] }}">
                 <span class="pos-spacebar-title">{{ $posBar['section'] }} <span aria-hidden="true">/</span> {{ $posBar['label'] }}</span>
                 <div class="pos-spacebar-scroll">

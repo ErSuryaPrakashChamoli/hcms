@@ -139,6 +139,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.shell.body-start'))
             ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn () => view('filament.shell.command-trigger'))
             ->renderHook(PanelsRenderHook::USER_MENU_BEFORE, fn () => view('filament.shell.quick-launch'))
+            ->renderHook(PanelsRenderHook::TOPBAR_LOGO_AFTER, fn () => view('filament.shell.rail-toggle'))
             ->renderHook(PanelsRenderHook::SIDEBAR_NAV_END, fn () => view('filament.shell.sidebar-personal'))
             ->renderHook(PanelsRenderHook::SIDEBAR_FOOTER, fn () => view('filament.shell.rail-footer'))
             ->renderHook(PanelsRenderHook::PAGE_START, fn () => view('filament.shell.space-bar'))

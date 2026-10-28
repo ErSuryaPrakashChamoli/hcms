@@ -110,11 +110,13 @@ final class RuleVerifications
         }
 
         return DB::transaction(function () use ($rule, $reviewer, $notes, $submission) {
+            // A proposed version comes into force only through its verification by a second platform administrator.
             $rule->update([
                 'verification_status' => ComplianceRule::VERIFIED,
                 'verified_by' => $reviewer->getKey(),
                 'verified_at' => now(),
                 'verification_notes' => $notes,
+                'status' => ComplianceRule::ACTIVE,
             ]);
             $this->history($rule, 'verified', ComplianceRule::REVIEW, ComplianceRule::VERIFIED, $submission->only(['authority', 'source_url', 'source_title', 'source_published_date', 'effective_date', 'requirement_text', 'mapping', 'evidence_reference', 'evidence_checksum']), $reviewer, null, $notes);
             $this->auditRule($rule, AuditAction::StatutoryRuleVerified, $notes, $reviewer);

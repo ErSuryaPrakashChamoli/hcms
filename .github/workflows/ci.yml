@@ -32,3 +32,25 @@ jobs:
 
       - name: Tests (Pest, SQLite in-memory)
         run: php artisan test --compact
+
+  compliance-catalogue:
+    name: Compliance catalogue reproducibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      # Regenerates the catalogue and the two research documents in a temporary directory and fails on any byte of
+      # difference (C8). See tools/compliance-catalogue/README.md.
+      - name: Regenerate and compare
+        run: tools/compliance-catalogue/check.sh

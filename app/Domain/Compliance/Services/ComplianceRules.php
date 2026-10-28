@@ -49,6 +49,28 @@ final class ComplianceRules
             ->first();
     }
 
+    /**
+     * For reports only: the version in force on the date and, separately, a newer proposed version prepared for review
+     * that would take its place once verified. Payroll never sees proposed versions (resolve() only returns active ones).
+     *
+     * @return array{active: ?ComplianceRule, proposed: ?ComplianceRule}
+     */
+    public function resolveWithProposed(string $code, CarbonInterface|string|null $on = null, ?string $state = null, string $jurisdiction = 'IN'): array
+    {
+        $day = Carbon::parse($on ?? now())->toDateString();
+        $active = $this->resolve($code, $day, $state, $jurisdiction);
+        $proposed = $this->cache["proposed|{$jurisdiction}|{$code}|{$state}|{$day}"] ??= ComplianceRule::query()
+            ->where('jurisdiction', $jurisdiction)->where('code', $code)
+            ->when($state === null, fn ($q) => $q->whereNull('state'), fn ($q) => $q->where('state', $state))
+            ->where('status', ComplianceRule::PROPOSED)
+            ->whereNotIn('verification_status', [ComplianceRule::SUPERSEDED, ComplianceRule::REJECTED])
+            ->effectiveOn($day)
+            ->orderByDesc('effective_from')->orderByDesc('version')
+            ->first();
+
+        return ['active' => $active, 'proposed' => $proposed];
+    }
+
     /** Whether PeopleOS holds any statutory rule for this jurisdiction (verified or not). */
     public function covers(string $jurisdiction): bool
     {
@@ -126,7 +148,9 @@ final class ComplianceRules
                         'effective_to' => $definition['effective_to'] ?? null,
                         'parameters' => $definition['parameters'],
                         'source' => $definition['source'] ?? null,
-                        'status' => 'active',
+                        // A version prepared for review (e.g. a reported amendment not yet confirmed) is published as
+                        // `proposed`: payroll never resolves it, and only its verification activates it.
+                        'status' => in_array($definition['status'] ?? 'active', [ComplianceRule::ACTIVE, ComplianceRule::PROPOSED], true) ? ($definition['status'] ?? 'active') : throw new RuntimeException("{$definition['name']} v{$definition['version']}: unknown status {$definition['status']}."),
                         'verification_status' => ComplianceRule::DRAFT,
                         'verification_notes' => $definition['notes'] ?? null,
                         'corrects_rule_id' => $corrects?->getKey(),

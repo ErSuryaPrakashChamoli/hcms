@@ -147,6 +147,8 @@ SLA, assignment, communication and service status, and never the profile data. T
 | `People\Actions\ChangeEmergencyContactAction` (same) | People | `person_emergency_contacts` | as above | `employee.emergency_contact_changed` |
 | `People\Actions\ChangeFamilyMemberAction` (same) | People | `person_family_members` | as above | `employee.family_member_changed` |
 
+The bank details upload (`BankAccountImports`, see `bulk-uploads.md`) calls the same `add` / `update` per row with origin `bulk_upload`.
+
 There is no `UpdateEmployeeProfile` action:
 - Identifiers and applicability are separate actions because they are separate concerns (who someone
   is for the state vs which schemes apply).

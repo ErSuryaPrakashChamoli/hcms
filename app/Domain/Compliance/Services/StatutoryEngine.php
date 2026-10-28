@@ -89,10 +89,13 @@ final class StatutoryEngine
             $amount = $this->slab($rule->param('slabs', []), $gross);
             $month = (int) $c->period->month;
 
-            if ($month === 2 && $rule->param('february_amount') !== null && $amount > 0) {
+            // A special-month amount (February ₹300 in Maharashtra and Karnataka, Madhya Pradesh's 12th month) replaces
+            // the top band's amount only: Maharashtra's ₹175 band stays ₹175 in February (Mah. Act XIX of 2023).
+            $topBand = $amount > 0 && self::inTopSlab($rule->param('slabs', []), $gross);
+            if ($month === 2 && $rule->param('february_amount') !== null && $topBand) {
                 $amount = (float) $rule->param('february_amount');
             }
-            if ($month === 3 && $rule->param('march_amount') !== null && $amount > 0) {
+            if ($month === 3 && $rule->param('march_amount') !== null && $topBand) {
                 $amount = (float) $rule->param('march_amount');
             }
             if ($rule->param('female_exempt_upto') !== null && $c->employee->person?->gender === 'female' && $gross <= (float) $rule->param('female_exempt_upto')) {
@@ -112,8 +115,17 @@ final class StatutoryEngine
 
             if ($ceiling === null || $c->gross() <= (float) $ceiling) {
                 $basis = [...$this->ruleRef($rule), 'state' => $lwfState, 'establishment_id' => $context->establishment?->getKey()];
-                $c->addLine('LWF_EE', 'Labour welfare fund (employee)', 'deduction', (float) $rule->param('employee_amount'), ['classification' => 'lwf_employee', 'basis' => $basis, 'sort_order' => 530]);
-                $c->addLine('LWF_ER', 'Labour welfare fund (employer)', 'employer_contribution', (float) $rule->param('employer_amount'), ['classification' => 'lwf_employer', 'basis' => $basis, 'sort_order' => 720]);
+                // Flat amounts, or (Haryana from 2019) a rate of wages up to a cap with the employer paying a multiple.
+                if ($rule->param('employee_rate') !== null) {
+                    $employee = min(round($c->gross() * (float) $rule->param('employee_rate'), 2), (float) $rule->param('employee_cap', PHP_FLOAT_MAX));
+                    $employer = round($employee * (float) $rule->param('employer_multiplier', 1), 2);
+                    $basis += ['gross' => $c->gross(), 'rate' => $rule->param('employee_rate'), 'cap' => $rule->param('employee_cap')];
+                } else {
+                    $employee = (float) $rule->param('employee_amount');
+                    $employer = (float) $rule->param('employer_amount');
+                }
+                $c->addLine('LWF_EE', 'Labour welfare fund (employee)', 'deduction', $employee, ['classification' => 'lwf_employee', 'basis' => $basis, 'sort_order' => 530]);
+                $c->addLine('LWF_ER', 'Labour welfare fund (employer)', 'employer_contribution', $employer, ['classification' => 'lwf_employer', 'basis' => $basis, 'sort_order' => 720]);
             }
         }
 
@@ -227,6 +239,18 @@ final class StatutoryEngine
     }
 
     /** @param  array<int, array{0: float|null, 1: float}>  $slabs */
+    /** Whether the value falls in the open-ended top slab ([null, amount]). */
+    public static function inTopSlab(array $slabs, float $value): bool
+    {
+        foreach ($slabs as [$upper]) {
+            if ($upper === null || $value <= $upper) {
+                return $upper === null;
+            }
+        }
+
+        return false;
+    }
+
     public static function slab(array $slabs, float $value): float
     {
         foreach ($slabs as [$upper, $amount]) {

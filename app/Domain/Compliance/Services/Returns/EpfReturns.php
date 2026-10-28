@@ -129,7 +129,7 @@ final class EpfReturns implements StatutoryReturnGenerator
             'statutory_return_id' => $return->getKey(),
             'establishment_id' => $establishment->getKey(),
             'statutory_registration_id' => $registration?->getKey(),
-            'payroll_period_id' => PayrollPeriod::query()->where('company_id', $return->company_id)->whereDate('start_date', $start->toDateString())->value('id'),
+            'payroll_period_id' => PayrollPeriod::query()->where('company_id', $return->company_id)->where('year', $start->year)->where('month', $start->month)->value('id'),
             'wage_month' => $start->toDateString(),
             'return_kind' => $return->return_kind,
         ]);

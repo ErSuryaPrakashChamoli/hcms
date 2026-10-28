@@ -12,4 +12,11 @@ use Illuminate\Support\Carbon;
 interface LeaveDayResolver
 {
     public function approvedLeaveOn(Employee $employee, Carbon $date): ?LeaveDay;
+
+    /**
+     * The same answer for every day of a range, in one read (a monthly attendance upload checks a month at a time).
+     *
+     * @return array<string, LeaveDay> Y-m-d => the approved leave on that day; days without leave are absent
+     */
+    public function approvedLeaveBetween(Employee $employee, Carbon $from, Carbon $to): array;
 }

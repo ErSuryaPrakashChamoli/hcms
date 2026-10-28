@@ -17,12 +17,12 @@ final class StatutoryPayrollSource
 {
     public function __construct(private readonly EstablishmentAssignments $assignments) {}
 
-    /** @return Collection<int, PayrollRun> finalized/paid runs of the company whose period starts in the range */
+    /** @return Collection<int, PayrollRun> finalized/paid runs of the company for the wage months in the range (PayrollPeriod::monthsBetween) */
     public function runs(int $companyId, Carbon|string $from, Carbon|string $to): Collection
     {
         return PayrollRun::query()->with('period')
             ->where('company_id', $companyId)->whereIn('status', ['finalized', 'paid'])
-            ->whereHas('period', fn ($q) => $q->whereDate('start_date', '>=', Carbon::parse($from)->toDateString())->whereDate('start_date', '<=', Carbon::parse($to)->toDateString()))
+            ->whereHas('period', fn ($q) => $q->monthsBetween($from, $to))
             ->orderBy('id')->get();
     }
 
@@ -30,7 +30,7 @@ final class StatutoryPayrollSource
     public function unfinalizedRuns(int $companyId, Carbon|string $from, Carbon|string $to): Collection
     {
         return PayrollRun::query()->where('company_id', $companyId)->whereNotIn('status', ['finalized', 'paid'])
-            ->whereHas('period', fn ($q) => $q->whereDate('start_date', '>=', Carbon::parse($from)->toDateString())->whereDate('start_date', '<=', Carbon::parse($to)->toDateString()))
+            ->whereHas('period', fn ($q) => $q->monthsBetween($from, $to))
             ->get();
     }
 

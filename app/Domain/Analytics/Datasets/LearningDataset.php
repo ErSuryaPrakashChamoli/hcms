@@ -17,6 +17,11 @@ class LearningDataset extends Dataset
         return 'Learning enrolments';
     }
 
+    public function category(): string
+    {
+        return 'Performance & learning';
+    }
+
     public function permissions(): array
     {
         return ['learning.view'];

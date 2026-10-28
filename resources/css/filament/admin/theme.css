@@ -136,6 +136,31 @@
     --pos-rail-badge: #c4314b;
     --pos-rail-gold: #e2c48c;
 
+    /* The Home hero: the identity at full strength, once per screen. Deep ink (the rail's) into iris, a trace of gold.
+       Text on it is white; its secondary (84%) and muted (72%) whites stay above 7:1 where text sits (the ink side). */
+    --pos-hero-ink: #12163a;
+    --pos-hero-mid: #262170;
+    --pos-hero-iris: #4337ad;
+    --pos-hero-glow: rgb(157 150 242 / 0.42);
+    --pos-hero-warm: rgb(226 196 140 / 0.16);
+    --pos-hero-text: #ffffff;
+    --pos-hero-text-secondary: rgb(255 255 255 / 0.84);
+    --pos-hero-text-muted: rgb(255 255 255 / 0.72);
+    --pos-hero-on-light: #2b2577;
+    --pos-hero-line: rgb(255 255 255 / 0.14);
+    --pos-hero-line-strong: rgb(255 255 255 / 0.32);
+    --pos-hero-glass: rgb(255 255 255 / 0.08);
+    --pos-hero-glass-strong: rgb(255 255 255 / 0.16);
+    --pos-hero-band: rgb(8 10 28 / 0.22);
+    --pos-hero-node-iris: #bdb7ff;
+    /* The fixed iris button (rail handle hover, back to top): the same in both themes, so no .dark override. */
+    --pos-iris-from: #7366e6;
+    --pos-iris-to: #463ba6;
+    --pos-iris-text: #ffffff;
+    --pos-shadow-hero: 0 24px 48px -28px rgb(18 22 58 / 0.55), 0 2px 6px -2px rgb(18 22 58 / 0.18);
+    /* Home cards: a soft lift instead of a hairline alone */
+    --pos-shadow-soft: 0 1px 2px rgb(16 20 30 / 0.04), 0 6px 18px -10px rgb(16 20 30 / 0.10), 0 0 0 1px var(--pos-border);
+
     /* States: identical across components */
     --pos-state-hover: color-mix(in srgb, var(--pos-text) 4%, transparent);
     --pos-state-pressed: color-mix(in srgb, var(--pos-text) 8%, transparent);
@@ -200,6 +225,7 @@
     --pos-peek-delay: 350ms;
 
     /* Layers */
+    --pos-z-header: 15;
     --pos-z-sticky: 20;
     --pos-z-dropdown: 25;
     --pos-z-nav: 40;
@@ -292,6 +318,16 @@
     --pos-rail-bg: #0a0b0e;
     --pos-rail-bg-2: #0f1116;
     --pos-rail-indicator: #a39ef5;
+
+    /* The hero dims with the page: graphite ink into a quiet iris, glows halved, a hairline instead of a shadow */
+    --pos-hero-ink: #12141f;
+    --pos-hero-mid: #1b1940;
+    --pos-hero-iris: #2c2770;
+    --pos-hero-glow: rgb(163 158 245 / 0.24);
+    --pos-hero-warm: rgb(226 184 107 / 0.09);
+    --pos-hero-band: rgb(0 0 0 / 0.24);
+    --pos-shadow-hero: 0 0 0 1px rgb(255 255 255 / 0.06);
+    --pos-shadow-soft: 0 0 0 1px var(--pos-border);
 
     --pos-state-hover: color-mix(in srgb, var(--pos-text) 5%, transparent);
     --pos-state-pressed: color-mix(in srgb, var(--pos-text) 9%, transparent);
@@ -424,19 +460,91 @@ html {
 @media (min-width: 1024px) {
     .fi-body-has-navigation .fi-topbar { position: relative; }
     .fi-body-has-navigation .fi-topbar-start { position: relative; z-index: 1; min-width: calc(var(--sidebar-width, 16rem) - 1rem); }
+    /* Reaches over the bar's bottom hairline, so the brand block and the rail read as one navy shape */
     .fi-body-has-navigation .fi-topbar::before {
         content: '';
         position: absolute;
-        inset-block: 0;
+        inset-block: 0 -1px;
         inset-inline-start: 0;
         width: var(--sidebar-width, 16rem);
         background: var(--pos-rail-bg);
     }
+    .fi-body-has-navigation .fi-topbar .pos-brand { gap: 8px; }
     .fi-body-has-navigation .fi-topbar .pos-brand-word { color: var(--pos-rail-strong); }
     .fi-body-has-navigation .fi-topbar .pos-brand-word span { color: var(--pos-rail-gold); }
     .fi-body-has-navigation .fi-topbar .pos-brand-tag { color: var(--pos-rail-muted); }
-    .fi-body-has-navigation .fi-topbar .fi-topbar-collapse-sidebar-btn-ctn .fi-icon-btn { color: var(--pos-rail-muted); }
-    .fi-body-has-navigation:has(.fi-sidebar:not(.fi-sidebar-open)) .fi-topbar::before { width: var(--collapsed-sidebar-width, 4.5rem); }
+    /* The brand block keeps its place and width whether the rail is open or folded; only the menu below folds. The
+       handle on its edge (.pos-rail-toggle) replaces Filament's arrow beside the logo. */
+    .fi-body-has-navigation .fi-topbar .fi-topbar-collapse-sidebar-btn-ctn { display: none; }
+    .fi-body-has-navigation .fi-topbar-start .fi-logo { margin-inline-start: 4px; }
+    /* Folded: the block rounds off its free corner and an inner curve joins it to the rail */
+    .fi-body-has-navigation:has(.fi-sidebar:not(.fi-sidebar-open)) .fi-topbar::before { border-end-end-radius: 20px; }
+    .fi-body-has-navigation .fi-sidebar:not(.fi-sidebar-open)::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        inset-inline-start: 100%;
+        width: 20px;
+        height: 20px;
+        background: radial-gradient(circle at 100% 100%, transparent 19.5px, var(--pos-rail-bg) 20px);
+        pointer-events: none;
+    }
+
+    /* One icon axis, open or folded: the brand mark and every menu icon centre on the folded rail's middle (36 px).
+       The nav keeps no scrollbar gutter, so both sides of a row are even; a thin bar shows on hover when it scrolls. */
+    .fi-sidebar-nav { scrollbar-gutter: auto; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+    .fi-sidebar-nav:hover { scrollbar-color: var(--pos-rail-line) transparent; }
+    .fi-sidebar-nav-groups { margin-inline: 0; }
+    .fi-sidebar.fi-sidebar-open .fi-sidebar-item-btn { padding-inline-start: 12px; }
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-nav { padding-inline: 16px; }
+}
+
+/* Rail handle (desktop): a small chevron on the brand block's edge, level with the logo, that keeps the menu open or
+   folds it to icons. It never moves: the block keeps its width either way. */
+.pos-rail-toggle { display: none; }
+
+@media (min-width: 1024px) {
+    .pos-rail-toggle {
+        position: absolute;
+        top: calc(50% - 11px);
+        inset-inline-end: -11px;
+        z-index: 2;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: var(--pos-radius-pill);
+        background: var(--pos-surface);
+        color: var(--pos-primary);
+        box-shadow: 0 0 0 1px var(--pos-border), 0 2px 6px -1px rgb(16 20 30 / 0.18);
+        cursor: pointer;
+        transition: transform var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease), box-shadow var(--pos-dur-1) var(--pos-ease);
+    }
+    /* The iris fill fades in on hover; a wider invisible ring keeps the small handle easy to hit */
+    .pos-rail-toggle::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(135deg, var(--pos-iris-from), var(--pos-iris-to)); opacity: 0; transition: opacity var(--pos-dur-1) var(--pos-ease); }
+    .pos-rail-toggle::after { content: ''; position: absolute; inset: -7px; border-radius: inherit; }
+    .pos-rail-toggle svg { position: relative; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform var(--pos-dur-2) var(--pos-ease-emphasised), translate var(--pos-dur-1) var(--pos-ease); }
+    .pos-rail-toggle.pos-pinned svg { transform: rotate(180deg); }
+    .pos-rail-toggle:hover { color: var(--pos-iris-text); transform: scale(1.12); box-shadow: 0 0 0 1px rgb(87 75 196 / 0.45), 0 6px 16px -4px rgb(87 75 196 / 0.65); }
+    .pos-rail-toggle:hover::before { opacity: 1; }
+    .pos-rail-toggle:hover svg { translate: 1px 0; }
+    .pos-rail-toggle.pos-pinned:hover svg { translate: -1px 0; }
+    .pos-rail-toggle:focus-visible { outline: 2px solid var(--pos-primary); outline-offset: 2px; }
+    .dark .pos-rail-toggle { background: var(--pos-surface-elevated); box-shadow: 0 0 0 1px var(--pos-border-strong), 0 2px 8px -1px rgb(0 0 0 / 0.6); }
+
+    /* A peek opens the folded rail over the page (and over pinned bars): the rail keeps its folded footprint, so nothing
+       on the page moves */
+    html[data-pos-rail-peek] .fi-sidebar.fi-sidebar-open {
+        z-index: var(--pos-z-dropdown);
+        margin-inline-end: calc(var(--collapsed-sidebar-width) - var(--sidebar-width));
+        box-shadow: 20px 0 44px -20px rgb(8 10 30 / 0.55);
+        animation: pos-rail-peek var(--pos-dur-2) var(--pos-ease-emphasised);
+    }
+}
+
+@keyframes pos-rail-peek {
+    from { clip-path: inset(0 calc(100% - var(--collapsed-sidebar-width)) 0 0); }
+    to { clip-path: inset(0 -64px 0 0); }
 }
 
 .fi-main {
@@ -457,6 +565,113 @@ html {
     color: var(--pos-text-secondary);
     font-size: var(--pos-fs-body);
     line-height: var(--pos-lh-body);
+}
+
+/*
+ * Pinned page chrome: what names the page stays in sight while it scrolls, on every page. Under the top bar two layers
+ * pin in order, the area bar (where you are, the area's modules) and the page header; they share one frosted canvas
+ * and read as one panel. Once content runs beneath the panel, its lower edge gains a hairline, a soft shadow and a
+ * reading-progress line, and the header folds to one row (heading and actions) whose fold height is given back as
+ * margin, so the page never moves. Tables pin their column headings under the panel, and the browser keeps focused
+ * fields and scrolled-to errors clear of it (scroll-padding). Heights come from peopleos.js. Below the rail (z-20), so
+ * a peek opens over it.
+ */
+.fi-body {
+    --pos-main-pad: 1rem;
+    --pos-header-top: calc(var(--topbar-height) + var(--pos-area-h, 0px));
+    --pos-sticky-top: calc(var(--pos-header-top) + var(--pos-header-h, 0px));
+}
+@media (min-width: 768px) { .fi-body { --pos-main-pad: 1.5rem; } }
+@media (min-width: 1024px) { .fi-body { --pos-main-pad: 2rem; } }
+html { scroll-padding-top: calc(var(--pos-pinned-h, 4rem) + var(--pos-space-3)); }
+
+.pos-spacebar-wrap,
+.fi-page-header-main-ctn > .fi-header {
+    position: sticky;
+    z-index: var(--pos-z-header);
+    margin-inline: calc(var(--pos-main-pad) * -1);
+    padding-inline: var(--pos-main-pad);
+    transition: box-shadow var(--pos-dur-1) var(--pos-ease);
+}
+/* The frosted canvas is a layer behind the content, so the blur never becomes the positioning box of a menu */
+.pos-spacebar-wrap::before,
+.fi-page-header-main-ctn > .fi-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: color-mix(in srgb, var(--pos-canvas) 86%, transparent);
+    backdrop-filter: saturate(140%) blur(12px);
+}
+.pos-spacebar-wrap { top: var(--topbar-height); margin-block: -8px -4px; padding-block: 8px 4px; }
+.pos-spacebar-wrap .pos-spacebar-menu { max-height: calc(100dvh - var(--topbar-height) - 160px); overflow-y: auto; overscroll-behavior: contain; }
+.fi-page-header-main-ctn > .fi-header { top: var(--pos-header-top); margin-block: -12px; padding-block: 12px; }
+
+/* The panel's lower edge: the folded header, or the area bar while no header is pinned beneath it */
+html[data-pos-header-stuck] .fi-page-header-main-ctn > .fi-header,
+html[data-pos-scrolled]:not([data-pos-header-stuck]) .pos-spacebar-wrap {
+    box-shadow: 0 1px 0 var(--pos-border), 0 14px 24px -20px rgb(16 20 30 / 0.4);
+}
+@supports (animation-timeline: scroll()) {
+    html[data-pos-header-stuck] .fi-page-header-main-ctn > .fi-header::after,
+    html[data-pos-scrolled]:not([data-pos-header-stuck]) .pos-spacebar-wrap::after {
+        content: '';
+        position: absolute;
+        inset-inline: 0;
+        bottom: -1px;
+        height: 2px;
+        background: linear-gradient(90deg, var(--pos-primary), var(--pos-gold));
+        transform-origin: left center;
+        animation: pos-read-progress linear both;
+        animation-timeline: scroll(root block);
+    }
+}
+@keyframes pos-read-progress {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+html[data-pos-header-stuck] .fi-page-header-main-ctn > .fi-header {
+    margin-bottom: calc(var(--pos-header-fold, 0px) - 12px);
+    padding-block: 8px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pos-space-3);
+}
+html[data-pos-header-stuck] .fi-page-header-main-ctn > .fi-header > div:first-child { min-width: 0; }
+html[data-pos-header-stuck] .fi-page-header-main-ctn > .fi-header :is(.fi-breadcrumbs, .fi-header-subheading) { display: none; }
+html[data-pos-header-stuck] .fi-page-header-main-ctn > .fi-header .fi-header-heading { font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-pos-header-stuck] .fi-page-header-main-ctn > .fi-header .fi-header-actions-ctn { align-self: center; }
+
+/* Back to top: a small iris button once the page is well scrolled (html[data-pos-far]); it steps aside while the form
+   review card is up, and rides above the phone bar */
+.pos-to-top {
+    position: fixed;
+    inset-inline-end: 24px;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    z-index: var(--pos-z-nav);
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--pos-radius-pill);
+    color: var(--pos-iris-text);
+    background: linear-gradient(135deg, var(--pos-iris-from), var(--pos-iris-to));
+    box-shadow: 0 10px 24px -8px rgb(70 59 166 / 0.6), inset 0 0 0 1px rgb(255 255 255 / 0.14);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px) scale(0.9);
+    transition: opacity var(--pos-dur-2) var(--pos-ease), transform var(--pos-dur-2) var(--pos-ease-emphasised), box-shadow var(--pos-dur-1) var(--pos-ease), visibility 0s linear var(--pos-dur-2);
+}
+.pos-to-top svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+html[data-pos-far] .pos-to-top { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+html[data-pos-far] .pos-to-top:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -8px rgb(70 59 166 / 0.75), inset 0 0 0 1px rgb(255 255 255 / 0.2); }
+.pos-to-top:focus-visible { outline: 2px solid var(--pos-primary); outline-offset: 3px; }
+body:has(.pos-form-review:not([style*='display: none'])) .pos-to-top { display: none; }
+@media (max-width: 1023px) {
+    .pos-to-top { inset-inline-end: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Sections and cards: flat, hairline, no heavy rings */
@@ -484,6 +699,39 @@ html {
     position: sticky;
     top: 0;
     z-index: 2;
+}
+
+/* Column headings stay in sight (peopleos.js): a table that fits drops the sideways scroller so its headings stick
+   under the page header; a wider one keeps scrolling sideways and its heading row is moved down with the page. The
+   clip keeps the rounded corners without making the card a scroller of its own. */
+.fi-ta-ctn:not(.fi-ta-ctn-with-header) { overflow: clip; }
+.fi-ta-content-ctn[data-pos-fit] { overflow-x: clip; }
+.fi-ta-content-ctn[data-pos-fit] .fi-ta-table thead { top: var(--pos-sticky-top); }
+
+/*
+ * List pages: only the records scroll (html[data-pos-list]; peopleos.js turns it on, on screens 768 px and wider, when
+ * the page holds one table that can fill the rest of the screen, and sizes it). The area bar, the header (one row:
+ * title, its note, actions), the search and filters, the column headings and the pagination stay put; the box that
+ * holds the rows becomes the scroller, sideways too, with its headings pinned at its top. Its headings lift once rows
+ * pass beneath them.
+ */
+html[data-pos-list] .fi-page-header-main-ctn { padding-block: var(--pos-space-4); row-gap: var(--pos-space-5); }
+html[data-pos-list] .fi-page-header-main-ctn > .fi-header { flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: var(--pos-space-4); }
+html[data-pos-list] .fi-page-header-main-ctn > .fi-header > div:first-child { display: flex; align-items: baseline; gap: var(--pos-space-3); min-width: 0; }
+html[data-pos-list] .fi-page-header-main-ctn > .fi-header .fi-breadcrumbs { display: none; }
+html[data-pos-list] .fi-page-header-main-ctn > .fi-header .fi-header-heading { white-space: nowrap; }
+html[data-pos-list] .fi-page-header-main-ctn > .fi-header .fi-header-subheading { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--pos-text-muted); }
+html[data-pos-list] .fi-page .fi-ta-content-ctn { max-height: var(--pos-list-h); overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--pos-border-strong) transparent; }
+html[data-pos-list] .fi-page .fi-ta-content-ctn .fi-ta-table thead { top: 0; }
+@supports (animation-timeline: scroll()) {
+    html[data-pos-list] .fi-page .fi-ta-content-ctn .fi-ta-table thead > tr > th {
+        animation: pos-thead-lift linear both;
+        animation-timeline: scroll(nearest block);
+        animation-range: 0 32px;
+    }
+}
+@keyframes pos-thead-lift {
+    to { box-shadow: 0 10px 14px -12px rgb(16 20 30 / 0.4); }
 }
 
 .fi-ta-header-cell {
@@ -1645,7 +1893,7 @@ html {
     .pos-change-row[data-unchanged] .pos-change-after { font-weight: var(--pos-fw-regular); color: var(--pos-text-secondary); }
 
     /* Section navigation inside a workspace (Now · Journey · Work …): a quiet underline, not a tab strip */
-    .pos-sectnav { position: sticky; top: 0; z-index: var(--pos-z-sticky); display: flex; gap: var(--pos-space-1); overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--pos-gutter) * -0.5); padding-inline: calc(var(--pos-gutter) * 0.5); background: color-mix(in srgb, var(--pos-canvas) 92%, transparent); backdrop-filter: blur(8px); box-shadow: inset 0 -1px 0 var(--pos-border); }
+    .pos-sectnav { position: sticky; top: calc(var(--topbar-height, 0px) + var(--pos-area-h, 0px)); scroll-margin-top: calc(var(--topbar-height, 0px) + var(--pos-area-h, 0px)); z-index: var(--pos-z-sticky); display: flex; gap: var(--pos-space-1); overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--pos-gutter) * -0.5); padding-inline: calc(var(--pos-gutter) * 0.5); background: color-mix(in srgb, var(--pos-canvas) 92%, transparent); backdrop-filter: blur(8px); box-shadow: inset 0 -1px 0 var(--pos-border); }
     .pos-sectnav::-webkit-scrollbar { display: none; }
     .pos-sectnav a, .pos-sectnav button { position: relative; flex: none; padding: var(--pos-space-3) var(--pos-space-3); font-size: var(--pos-fs-body); font-weight: var(--pos-fw-medium); color: var(--pos-text-secondary); white-space: nowrap; }
     .pos-sectnav a:hover, .pos-sectnav button:hover { color: var(--pos-text); }
@@ -2101,3 +2349,134 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
    UX.17 sizes. */
 .fi-ta-actions .fi-link { min-height: 24px; }
 .pos-intel-item > .pos-link { display: inline-flex; align-items: center; min-height: 24px; }
+
+/* ------------------------------------------------------------------ H. Home: the hero and its cards
+   Home is the first screen people see. It carries the identity at full strength once (the hero: greeting, brief, the
+   role's actions and the view switcher on deep ink) and lifts its cards softly. Everything is scoped to Home; other
+   workspaces keep the base components. The hero's colours are tokens (--pos-hero-*), designed for light and dark. */
+.pos-home .pos-home-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: grid;
+    justify-content: stretch;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    border-radius: var(--pos-radius-xl);
+    color: var(--pos-hero-text);
+    background:
+        radial-gradient(55% 95% at 88% 6%, var(--pos-hero-glow), transparent 70%),
+        radial-gradient(45% 80% at 2% 100%, var(--pos-hero-warm), transparent 70%),
+        linear-gradient(118deg, var(--pos-hero-ink) 0%, var(--pos-hero-mid) 58%, var(--pos-hero-iris) 100%);
+    box-shadow: var(--pos-shadow-hero);
+}
+/* A fine dot field that fades in towards the artwork */
+.pos-home-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: radial-gradient(var(--pos-hero-line) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(100deg, transparent 30%, #000 85%);
+}
+.pos-home-hero-art {
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    inset-inline-end: -64px;
+    top: 50%;
+    width: 460px;
+    height: 460px;
+    transform: translateY(-50%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 42%);
+}
+.pos-hero-halo { fill: var(--pos-hero-glass); }
+.pos-hero-ring { fill: none; stroke: var(--pos-hero-line); stroke-width: 1; }
+.pos-hero-ring-dash { stroke: var(--pos-hero-line-strong); stroke-dasharray: 2 7; }
+.pos-hero-link { fill: none; stroke: var(--pos-hero-line-strong); stroke-width: 1; stroke-dasharray: 3 5; }
+.pos-hero-node { fill: var(--pos-hero-text); opacity: 0.85; }
+.pos-hero-node-iris { fill: var(--pos-hero-node-iris); }
+.pos-hero-gold { fill: var(--pos-rail-gold); }
+.pos-hero-avatar { fill: var(--pos-hero-mid); stroke: var(--pos-hero-line-strong); stroke-width: 1; }
+.pos-hero-person { fill: var(--pos-hero-text-secondary); }
+.pos-hero-core { fill: var(--pos-hero-glass-strong); stroke: var(--pos-hero-line-strong); stroke-width: 1; }
+
+.pos-home-hero-body { display: grid; justify-items: start; gap: var(--pos-space-6); max-width: 760px; padding: var(--pos-space-10) var(--pos-space-10) var(--pos-space-8); }
+.pos-home-hero .pos-ws-head-text { gap: var(--pos-space-3); max-width: 60ch; }
+.pos-home-hero .pos-ws-eyebrow { color: var(--pos-hero-text-muted); }
+.pos-home-hero .pos-ws-title { color: var(--pos-hero-text); }
+.pos-home-hero .pos-ws-title-display { letter-spacing: -0.015em; }
+.pos-home-hero .pos-ws-brief { color: var(--pos-hero-text-secondary); }
+.pos-home-hero .pos-ws-brief :is(b, strong) { color: var(--pos-hero-text); }
+/* The counts in the brief read as small chips */
+.pos-home-hero .pos-ws-brief .pos-num { display: inline-block; min-width: 1.7em; padding-inline: var(--pos-space-1); border-radius: var(--pos-radius-sm); background: var(--pos-hero-glass-strong); text-align: center; }
+
+.pos-home-hero .pos-btn { height: 40px; padding-inline: var(--pos-space-4); }
+.pos-home-hero .pos-btn-primary { background: var(--pos-hero-text); color: var(--pos-hero-on-light); }
+.pos-home-hero .pos-btn-primary:hover { background: color-mix(in srgb, var(--pos-hero-text) 88%, var(--pos-hero-node-iris)); }
+.pos-home-hero .pos-btn-secondary { background: var(--pos-hero-glass); color: var(--pos-hero-text); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); backdrop-filter: blur(6px); }
+.pos-home-hero .pos-btn-secondary:hover { background: var(--pos-hero-glass-strong); }
+/* Focus stays visible on the ink (the iris ring is too dark here) */
+.pos-home-hero :focus-visible { outline-color: var(--pos-hero-text); }
+
+/* "View as": the hero's footer band */
+.pos-home-hero .pos-home-lens { margin: 0; padding: var(--pos-space-3) var(--pos-space-10); background: var(--pos-hero-band); box-shadow: inset 0 1px 0 var(--pos-hero-line); }
+.pos-home-hero .pos-home-lens > .pos-meta { margin-inline-end: var(--pos-space-1); color: var(--pos-hero-text-muted); }
+.pos-home-hero .pos-lens-chip { color: var(--pos-hero-text-secondary); background: transparent; box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); transition: background var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+.pos-home-hero .pos-lens-chip:hover { background: var(--pos-hero-glass); color: var(--pos-hero-text); }
+.pos-home-hero .pos-lens-chip[aria-pressed='true'] { background: var(--pos-hero-text); color: var(--pos-hero-on-light); box-shadow: none; }
+
+/* Cards: a soft lift; section counts as pills; signal counts as tinted tiles that carry the row's severity */
+.pos-home .pos-panel { box-shadow: var(--pos-shadow-soft); }
+.pos-home .pos-sec-title { color: var(--pos-text-secondary); }
+.pos-home .pos-sec-title .pos-sec-count { align-self: center; display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding-inline: var(--pos-space-1); border-radius: var(--pos-radius-pill); background: var(--pos-primary-soft); color: var(--pos-state-selected-text); line-height: 1; }
+.pos-home .pos-signal-row > .pos-signal-count { display: grid; place-items: center; inline-size: auto; min-inline-size: 44px; block-size: 44px; padding-inline: var(--pos-space-1); border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); color: var(--pos-text); font-size: var(--pos-fs-section); }
+.pos-home .pos-signal-row[data-tone='danger'] > .pos-signal-count { background: var(--pos-danger-soft); color: var(--pos-danger); }
+.pos-home .pos-signal-row[data-tone='warning'] > .pos-signal-count { background: var(--pos-warning-soft); color: var(--pos-warning); }
+.pos-home .pos-signal-row[data-tone='success'] > .pos-signal-count { background: var(--pos-success-soft); color: var(--pos-success); }
+.pos-home .pos-signal-row[data-tone='info'] > .pos-signal-count { background: var(--pos-info-soft); color: var(--pos-info); }
+.pos-home .pos-signal-row[data-tone='accent'] > .pos-signal-count { background: var(--pos-accent-soft); color: var(--pos-accent); }
+
+/* A standalone figure panel ("At a glance") becomes a ruled grid of headline figures */
+.pos-home .pos-panel.pos-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0; padding: 0; overflow: hidden; }
+.pos-home .pos-panel.pos-figures > .pos-figure { margin: 0; padding: var(--pos-space-5); border-radius: 0; gap: var(--pos-space-1); box-shadow: -1px 0 0 var(--pos-border), 0 -1px 0 var(--pos-border); }
+.pos-home .pos-panel.pos-figures .pos-figure-value { font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); letter-spacing: -0.02em; }
+
+/* Intelligence: a faint iris wash under its gold rule */
+.pos-home .pos-intel { background: radial-gradient(120% 70% at 0% 0%, var(--pos-primary-soft), transparent 65%), var(--pos-surface); box-shadow: var(--pos-shadow-soft), inset 0 2px 0 var(--pos-gold); }
+
+/* Start something: identity-tinted tiles, the arrow leans in on hover */
+.pos-home-actions .pos-stream-icon { width: 36px; height: 36px; border-radius: var(--pos-radius-md); background: var(--pos-primary-soft); color: var(--pos-primary); }
+.pos-home-actions .pos-stream-row > :last-child { transition: transform var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+.pos-home-actions .pos-stream-row:hover > :last-child { transform: translateX(3px); color: var(--pos-primary); }
+
+/* Arrival: the hero, then each column's blocks in order (no retained transform: fill-mode backwards) */
+@media (prefers-reduced-motion: no-preference) {
+    .pos-home .pos-home-hero { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) backwards; }
+    .pos-home :is(.pos-ws-main, .pos-ws-side) > * { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) 80ms backwards; }
+    .pos-home :is(.pos-ws-main, .pos-ws-side) > :nth-child(2) { animation-delay: 140ms; }
+    .pos-home :is(.pos-ws-main, .pos-ws-side) > :nth-child(n + 3) { animation-delay: 200ms; }
+    .pos-hero-orbit { transform-box: view-box; transform-origin: 50% 50%; animation: pos-spin 180s linear infinite; }
+}
+
+@media (max-width: 1279px) {
+    .pos-home-hero-art { opacity: 0.7; }
+}
+@media (max-width: 767px) {
+    .pos-home .pos-home-hero { border-radius: var(--pos-radius-lg); }
+    .pos-home-hero-art { top: -96px; inset-inline-end: -110px; width: 280px; height: 280px; transform: none; opacity: 0.55; }
+    .pos-home-hero-body { gap: var(--pos-space-5); padding: var(--pos-space-6) var(--pos-space-5) var(--pos-space-5); }
+    .pos-home-hero .pos-ws-title-display { font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); }
+    .pos-home-hero .pos-home-lens { padding: var(--pos-space-2) var(--pos-space-5); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+}
+
+/* ------------------------------------------------------------------ I. Compliance reports: the States filter
+   States the company operates in read green and selectable; states with no establishment are greyed out, so the two
+   groups part at a glance (keyed on whether a group holds enabled options, so either may be absent) */
+.pos-state-filter .fi-select-input-option-group:has(.fi-select-input-option:not(.fi-disabled)) > .fi-dropdown-header { color: var(--pos-success); background: var(--pos-success-soft); font-weight: var(--pos-fw-semibold); }
+.pos-state-filter .fi-select-input-option:not(.fi-disabled) > span::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-inline-end: 8px; border-radius: 50%; background: var(--pos-success); vertical-align: 1px; }
+.pos-state-filter .fi-select-input-option-group:has(.fi-select-input-option.fi-disabled) > .fi-dropdown-header { color: var(--pos-text-muted); background: var(--pos-surface-muted); }
+.pos-state-filter .fi-select-input-option.fi-disabled { color: var(--pos-text-disabled); background: var(--pos-surface-sunken); opacity: 1; }

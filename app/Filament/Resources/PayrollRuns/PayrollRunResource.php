@@ -57,6 +57,7 @@ class PayrollRunResource extends Resource
         return $schema->components([
             Section::make('Run')->columns(4)->schema([
                 TextEntry::make('period.label')->label('Period')->state(fn (PayrollRun $record) => $record->period->label()),
+                TextEntry::make('period.dates')->label('Covers')->state(fn (PayrollRun $record) => $record->period->rangeLabel()),
                 TextEntry::make('company.name')->label('Company'),
                 TextEntry::make('status')->badge()->color(fn (string $state) => self::statusColor($state))->formatStateUsing(fn (string $state) => config("peopleos.payroll.run_statuses.{$state}", $state)),
                 TextEntry::make('exception_count')->label('Employees with exceptions')->badge()->color(fn ($state) => $state > 0 ? 'warning' : 'success'),
@@ -65,7 +66,7 @@ class PayrollRunResource extends Resource
                 TextEntry::make('approver.name')->label('Approved by')->placeholder('—'),
                 TextEntry::make('finalized_at')->dateTime()->placeholder('—'),
                 TextEntry::make('paid_at')->dateTime()->placeholder('—'),
-                TextEntry::make('notes')->placeholder('—')->columnSpan(3),
+                TextEntry::make('notes')->placeholder('—')->columnSpan(2),
             ]),
             Section::make('Totals')->columns(6)->schema([
                 TextEntry::make('totals.employees')->label('Employees')->placeholder('—'),

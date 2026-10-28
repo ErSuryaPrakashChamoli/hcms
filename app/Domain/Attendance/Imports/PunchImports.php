@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use League\Csv\Reader;
+use League\Csv\Writer;
 use RuntimeException;
 
 /**
@@ -26,12 +27,60 @@ use RuntimeException;
  */
 final class PunchImports
 {
+    public const TYPE = 'punches';
+
     public const FIELDS = [
         'employee_code' => ['Employee code', true], 'punched_at' => ['Punch timestamp', true], 'timezone' => ['Timezone', false],
         'direction' => ['Direction (in/out)', false], 'external_id' => ['External punch id', false], 'device_code' => ['Device code', false],
     ];
 
     public function __construct(private readonly PunchIngestion $ingestion, private readonly AuditRecorder $audit) {}
+
+    /** @return array<string, array{0: string, 1: bool}> */
+    public static function fields(): array
+    {
+        return self::FIELDS;
+    }
+
+    /** Downloadable starting file: every field label as a header, so an upload maps automatically, and an IN and OUT example. */
+    public function template(): string
+    {
+        $code = Employee::query()->orderBy('id')->value('employee_code') ?? 'EMP0001';
+        $day = now()->subDay()->toDateString();
+
+        $csv = Writer::fromString();
+        $csv->insertOne(array_column(self::FIELDS, 0));
+        $csv->insertOne([$code, "{$day} 09:02", config('app.timezone'), 'in', '', '']);
+        $csv->insertOne([$code, "{$day} 18:11", config('app.timezone'), 'out', '', '']);
+
+        return $csv->toString();
+    }
+
+    /**
+     * The format guide the upload screen shows.
+     *
+     * @return array{columns: list<array{0: string, 1: string, 2: string, 3: string}>, notes: list<string>}
+     */
+    public function format(): array
+    {
+        $what = [
+            'employee_code' => ['The employee\'s code, as on the device.', 'EMP0001'],
+            'punched_at' => ['Date and time of the punch: YYYY-MM-DD HH:MM (seconds optional).', now()->subDay()->toDateString().' 09:02'],
+            'timezone' => ['Timezone of the timestamp; blank uses the default you choose when mapping.', 'Asia/Kolkata'],
+            'direction' => ['in, out or blank (the first and last punch of the day count).', 'in'],
+            'external_id' => ['The device\'s id for the punch, if it has one; stops the same punch being loaded twice.', '884213'],
+            'device_code' => ['Code of a device registered under Attendance › Devices.', 'GATE-1'],
+        ];
+
+        return [
+            'columns' => array_map(fn (string $field) => [self::FIELDS[$field][0], self::FIELDS[$field][1] ? 'Yes' : 'No', ...$what[$field]], array_keys(self::FIELDS)),
+            'notes' => [
+                'Each row is one punch. Attendance is recalculated from the punches; the file never writes attendance days directly.',
+                'Punches are events, not records to update: a punch already loaded is skipped. To correct a day, add the missing punch or approve a regularisation.',
+                'Without a biometric device, use Monthly attendance uploads instead: one row per employee with a code for each day of the month.',
+            ],
+        ];
+    }
 
     public function register(string $path, string $originalName, User $user, ?string $reason = null): EmployeeImport
     {
@@ -40,7 +89,7 @@ final class PunchImports
             throw new RuntimeException('The uploaded file could not be found on the private disk.');
         }
 
-        $import = new EmployeeImport(['type' => 'punches', 'original_name' => $originalName, 'disk' => $disk, 'path' => $path, 'size_bytes' => (int) Storage::disk($disk)->size($path), 'status' => 'uploaded', 'uploaded_by' => $user->getKey(), 'options' => ['timezone' => null]]);
+        $import = new EmployeeImport(['type' => self::TYPE, 'original_name' => $originalName, 'disk' => $disk, 'path' => $path, 'size_bytes' => (int) Storage::disk($disk)->size($path), 'status' => 'uploaded', 'uploaded_by' => $user->getKey(), 'options' => ['timezone' => null]]);
         $import->withAuditReason($reason)->save();
 
         return $import;
@@ -256,7 +305,7 @@ final class PunchImports
 
     private function assert(EmployeeImport $import, array $allowed): void
     {
-        if ($import->type !== 'punches') {
+        if ($import->type !== self::TYPE) {
             throw new RuntimeException('This import is not a punch import.');
         }
         if (! in_array($import->status, $allowed, true)) {

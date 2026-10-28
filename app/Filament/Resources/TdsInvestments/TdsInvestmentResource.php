@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\TdsInvestments;
 
 use App\Domain\Compliance\Models\TdsEmployeeInvestment;
-use App\Domain\Employment\Models\Employee;
+use App\Domain\Compliance\Support\InvestmentCatalogue;
 use App\Filament\Resources\TdsInvestments\Pages\ManageTdsInvestments;
 use App\Filament\Support\StatutoryReturnActions;
 use BackedEnum;
@@ -12,15 +12,15 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use RuntimeException;
 use UnitEnum;
 
-/** Part L/T: investment and deduction proofs against employee tax declarations. */
+/** Part L/T: investment and deduction proofs against employee tax declarations, one row per item filed in DeclareInvestments. */
 class TdsInvestmentResource extends Resource
 {
     protected static ?string $model = TdsEmployeeInvestment::class;
@@ -33,25 +33,16 @@ class TdsInvestmentResource extends Resource
 
     protected static ?int $navigationSort = 37;
 
-    public static function form(Schema $schema): Schema
-    {
-        return $schema->columns(2)->components([
-            Select::make('employee_id')->label('Employee')->required()->searchable()
-                ->getSearchResultsUsing(fn (string $search) => Employee::query()->where('employee_code', 'like', "%{$search}%")->limit(25)->pluck('employee_code', 'id')->all()),
-            TextInput::make('financial_year')->required()->maxLength(9)->placeholder('2026-27'),
-            TextInput::make('section')->required()->maxLength(16)->placeholder('80C'),
-            TextInput::make('description')->maxLength(255),
-            TextInput::make('declared_amount')->numeric()->required(),
-        ]);
-    }
-
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('employee.person'))
             ->columns([
-                TextColumn::make('employee.employee_code')->label('Employee'),
+                TextColumn::make('employee.employee_code')->label('Code')->searchable(),
+                TextColumn::make('employee.person.display_name')->label('Employee'),
                 TextColumn::make('financial_year')->label('FY'),
-                TextColumn::make('section'),
+                TextColumn::make('section')->formatStateUsing(fn (string $state) => InvestmentCatalogue::SECTIONS[$state]['code'] ?? $state),
+                TextColumn::make('description')->label('Item')->wrap()->placeholder('—'),
                 TextColumn::make('declared_amount')->numeric(2),
                 TextColumn::make('proof_amount')->numeric(2)->placeholder('—'),
                 TextColumn::make('proof_status')->badge(),

@@ -2,11 +2,15 @@
 
 namespace App\Domain\Compliance\Policies;
 
+use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\AccessScopes;
 use Illuminate\Database\Eloquent\Model;
 
-/** Registrations and establishment statutory profiles: view with compliance.registrations.view, change with .manage; never deleted. */
+/**
+ * Registrations and establishment statutory profiles: view with compliance.registrations.view, change with .manage.
+ * Registrations are never deleted; a closed establishment profile may be (the model refuses one payroll used).
+ */
 class StatutoryRegistrationPolicy
 {
     public function viewAny(User $user): bool
@@ -31,7 +35,7 @@ class StatutoryRegistrationPolicy
 
     public function delete(User $user, Model $model): bool
     {
-        return false;
+        return $model instanceof EstablishmentStatutoryProfile && $model->effective_to !== null && $this->update($user, $model);
     }
 
     public function deleteAny(User $user): bool

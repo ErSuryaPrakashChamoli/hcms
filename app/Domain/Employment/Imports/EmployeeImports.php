@@ -5,6 +5,7 @@ namespace App\Domain\Employment\Imports;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Actions\HireEmployeeAction;
+use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\BusinessUnit;
@@ -60,6 +61,13 @@ final class EmployeeImports
         'manager_code' => ['Manager employee code', false],
     ];
 
+    /** What a file can be for: mode => [label, description]. */
+    public const MODES = [
+        'new' => ['Add new employees', 'Creates people who are not on file yet. Rows that match an employee already on file are skipped.'],
+        'update' => ['Update existing employees', 'Updates people already on file, found by employee code. Only the employee code is required; blank cells keep what is on file. Rows for people not on file are skipped.'],
+        'both' => ['Add new and update existing', 'Creates people not on file and updates the ones who are.'],
+    ];
+
     private const ORGANISATION = [
         'company_code' => ['company_id', Company::class], 'location_code' => ['location_id', Location::class], 'business_unit_code' => ['business_unit_id', BusinessUnit::class],
         'division_code' => ['division_id', Division::class], 'department_code' => ['department_id', Department::class], 'team_code' => ['team_id', Team::class],
@@ -92,8 +100,25 @@ final class EmployeeImports
         return app(FeatureFlags::class)->enabled(self::FEATURE);
     }
 
+    /** @return array<string, array{0: string, 1: bool}> */
+    public static function fields(): array
+    {
+        return self::FIELDS;
+    }
+
+    /**
+     * Fields every row must carry: adding someone needs the hire facts; in Update existing employees mode only the
+     * employee code that finds them.
+     *
+     * @return list<string>
+     */
+    public static function required(ImportMode $mode): array
+    {
+        return $mode === ImportMode::Update ? ['employee.employee_code'] : array_keys(array_filter(self::FIELDS, fn (array $def) => $def[1]));
+    }
+
     /** Register an uploaded CSV that already sits on the private disk (Filament upload) or store a raw file. */
-    public function register(string $path, string $originalName, User $user, ?string $reason = null): EmployeeImport
+    public function register(string $path, string $originalName, User $user, ?string $reason = null, ImportMode $mode = ImportMode::Both): EmployeeImport
     {
         $this->assertEnabled();
         $disk = self::disk();
@@ -103,7 +128,7 @@ final class EmployeeImports
 
         $import = new EmployeeImport([
             'original_name' => $originalName, 'disk' => $disk, 'path' => $path, 'size_bytes' => (int) Storage::disk($disk)->size($path),
-            'status' => 'uploaded', 'uploaded_by' => $user->getKey(), 'options' => ['on_duplicate' => 'update'],
+            'status' => 'uploaded', 'uploaded_by' => $user->getKey(), 'options' => ['mode' => $mode->value],
         ]);
         $import->withAuditReason($reason)->save();
 
@@ -195,6 +220,46 @@ final class EmployeeImports
     }
 
     /**
+     * The format guide the upload screens show: every column with when it is required, what to enter and an example.
+     *
+     * @return array{columns: list<array{0: string, 1: string, 2: string, 3: string}>, notes: list<string>}
+     */
+    public function format(): array
+    {
+        $code = 'The code set up under Organisation; leave blank if not used.';
+        $what = [
+            'person.first_name' => ['Given name.', 'Asha'], 'person.middle_name' => ['', ''], 'person.last_name' => ['Family name.', 'Rao'],
+            'person.preferred_name' => ['The name used day to day, if different.', 'Ash'], 'person.date_of_birth' => ['YYYY-MM-DD.', '1995-01-15'],
+            'person.gender' => ['One of: '.implode(', ', array_keys(config('peopleos.people.genders', []))).'.', 'female'],
+            'person.marital_status' => ['One of: '.implode(', ', array_keys(config('peopleos.people.marital_statuses', []))).'.', 'single'],
+            'person.nationality' => ['Two-letter country code.', 'IN'], 'person.personal_email' => ['Also used to spot a person already on file.', 'asha@example.com'],
+            'person.personal_phone' => ['Also used to spot a person already on file.', '+919800000000'],
+            'employee.employee_code' => ['Adding: leave blank to have it generated from the company\'s code series. Updating: the code of the employee to update.', 'EMP0001'],
+            'employee.joining_date' => ['YYYY-MM-DD.', now()->toDateString()], 'employee.probation_end_date' => ['YYYY-MM-DD.', ''],
+            'employee.work_email' => ['Official email.', 'asha.rao@example.com'], 'employee.work_phone' => ['', ''],
+            'employee.external_reference' => ['An id from another system (ATS, old HRMS).', 'ATS-1042'],
+            'position.company_code' => ['The company\'s code (Organisation › Companies).', 'ALPHA'],
+            'manager_code' => ['Employee code of the reporting manager.', 'EMP0002'],
+        ];
+        $required = array_flip(self::required(ImportMode::New));
+
+        return [
+            'columns' => array_map(fn (string $field) => [
+                self::FIELDS[$field][0],
+                $field === 'employee.employee_code' ? 'To update' : (isset($required[$field]) ? 'To add' : 'No'),
+                $what[$field][0] ?? (str_starts_with($field, 'position.') ? $code : ''),
+                $what[$field][1] ?? '',
+            ], array_keys(self::FIELDS)),
+            'notes' => [
+                'To add people, fill the columns marked "To add". To update people, the employee code is enough; add only the columns you want to change.',
+                'Updating changes names, date of birth, gender, marital status, nationality, emails, phones and external reference. Joining date, position and manager changes are made on the employee\'s record.',
+                'Employees › Export gives your current employees in this format: edit it and upload it with Update existing employees.',
+                'Nothing changes until the file is mapped, validated, approved and run. Rows that may be someone already on file wait for you to decide.',
+            ],
+        ];
+    }
+
+    /**
      * Employees in the template format, so the file can be edited and uploaded back: each row matches its employee
      * by code and updates person and contact details (position and manager changes go through moves, not imports).
      */
@@ -243,12 +308,15 @@ final class EmployeeImports
         if (count($mapping) !== count(array_unique($mapping))) {
             throw new RuntimeException('Each field can be mapped from one column only.');
         }
-        $missing = collect(self::FIELDS)->filter(fn ($def) => $def[1])->keys()->diff(array_values($mapping));
+        $options = array_merge($import->options ?? [], $options);
+        $mode = ImportMode::tryFrom((string) ($options['mode'] ?? '')) ?? ImportMode::of($import);
+        $options = ['mode' => $mode->value] + array_diff_key($options, ['on_duplicate' => true]);
+        $missing = collect(self::required($mode))->diff(array_values($mapping));
         if ($missing->isNotEmpty()) {
             throw new RuntimeException('Required fields are not mapped: '.$missing->map(fn ($f) => self::FIELDS[$f][0])->implode(', ').'.');
         }
 
-        $import->update(['mapping' => $mapping, 'options' => array_merge($import->options ?? [], $options), 'status' => 'mapped', 'valid_count' => 0, 'error_count' => 0, 'review_count' => 0, 'create_count' => 0, 'update_count' => 0, 'skip_count' => 0]);
+        $import->update(['mapping' => $mapping, 'options' => $options, 'status' => 'mapped', 'valid_count' => 0, 'error_count' => 0, 'review_count' => 0, 'create_count' => 0, 'update_count' => 0, 'skip_count' => 0]);
 
         return $import->refresh();
     }
@@ -258,15 +326,15 @@ final class EmployeeImports
     {
         $this->assertStatus($import, ['mapped', 'validated']);
         $mapping = $import->mapping ?? [];
-        $onDuplicate = $import->options['on_duplicate'] ?? 'update';
+        $mode = ImportMode::of($import);
         $counts = ['valid' => 0, 'error' => 0, 'review' => 0, 'create' => 0, 'update' => 0, 'skip' => 0];
         $seen = ['employee_code' => [], 'work_email' => [], 'personal_email' => [], 'external_reference' => []];
         $lookups = [];
 
-        DB::transaction(function () use ($import, $mapping, $onDuplicate, &$counts, &$seen, &$lookups) {
+        DB::transaction(function () use ($import, $mapping, $mode, &$counts, &$seen, &$lookups) {
             foreach ($import->rows()->cursor() as $row) {
                 $record = $this->recordFor($row, $mapping);
-                $errors = $this->validateRecord($record, $lookups);
+                $errors = $this->validateRecord($record, $lookups, $mode);
 
                 foreach ($seen as $key => $values) {
                     $value = mb_strtolower((string) ($record['employee'][$key] ?? $record['person'][$key] ?? ''));
@@ -283,9 +351,17 @@ final class EmployeeImports
                 if ($errors === []) {
                     $definite = $this->matcher->definite($record['person'], $record['employee']);
                     $possible = $this->matcher->candidates($record['person'], $record['employee'])->where('definite', false)->values();
-                    if ($definite->isNotEmpty()) {
+                    $byCode = $definite->first(fn (array $hit) => in_array('employee code', $hit['matched_on'], true));
+                    if ($mode === ImportMode::Update && $byCode === null) {
+                        // Updating finds people by their code only: a row for someone not on file is left out, not created.
+                        $action = 'skip';
+                        $match = ['reason' => "No employee on file has code {$record['employee']['employee_code']}; Update existing employees leaves out people not on file."];
+                    } elseif ($definite->isNotEmpty()) {
                         $match = $definite->first();
-                        $action = $definite->count() > 1 || $match['employee_id'] === null ? 'review' : ($onDuplicate === 'skip' ? 'skip' : 'update');
+                        $action = $definite->count() > 1 || $match['employee_id'] === null ? 'review' : ($mode->updates() ? 'update' : 'skip');
+                        if ($action === 'skip') {
+                            $match['reason'] = 'Already on file as '.($match['employee_code'] ?? 'an employee').'; Add new employees leaves out people on file.';
+                        }
                     } elseif ($possible->isNotEmpty()) {
                         $match = $possible->first();
                         $action = 'review';
@@ -315,6 +391,10 @@ final class EmployeeImports
         }
         if ($decision === 'update' && empty($row->match['employee_id'])) {
             throw new RuntimeException('This row has no matched employee to update.');
+        }
+        $mode = ImportMode::of($row->import()->firstOrFail());
+        if (($decision === 'create' && ! $mode->adds()) || ($decision === 'update' && ! $mode->updates())) {
+            throw new RuntimeException('This file is set to '.mb_strtolower(self::MODES[$mode->value][0]).'; that decision belongs to another mode.');
         }
 
         DB::transaction(function () use ($row, $decision) {
@@ -363,7 +443,7 @@ final class EmployeeImports
         $operationId = $this->audit->operation('employment', "Employee import #{$import->getKey()} ({$import->original_name})", function () use ($import, $mapping, &$result) {
             foreach ($import->rows()->whereIn('action', ['create', 'update', 'skip'])->cursor() as $row) {
                 if ($row->action === 'skip') {
-                    $row->update(['status' => 'skipped', 'result' => 'Skipped: existing employee '.($row->match['employee_code'] ?? '')]);
+                    $row->update(['status' => 'skipped', 'result' => 'Skipped: '.($row->match['reason'] ?? 'existing employee '.($row->match['employee_code'] ?? ''))]);
                     $result['skipped']++;
 
                     continue;
@@ -429,14 +509,14 @@ final class EmployeeImports
     }
 
     /** @return list<string> */
-    private function validateRecord(array $record, array &$lookups): array
+    private function validateRecord(array $record, array &$lookups, ImportMode $mode): array
     {
         $errors = [];
-        foreach (self::FIELDS as $field => [$label, $required]) {
+        foreach (self::required($mode) as $field) {
             [$group, $key] = $field === 'manager_code' ? ['manager_code', null] : explode('.', $field, 2);
             $value = $key === null ? $record['manager_code'] : ($record[$group][$key] ?? null);
-            if ($required && ($value === null || $value === '')) {
-                $errors[] = "{$label} is required.";
+            if ($value === null || $value === '') {
+                $errors[] = self::FIELDS[$field][0].' is required.';
             }
         }
 

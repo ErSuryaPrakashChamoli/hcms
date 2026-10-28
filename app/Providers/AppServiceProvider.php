@@ -109,6 +109,9 @@ use App\Domain\Compliance\Policies\TaxDeclarationPolicy;
 use App\Domain\Compliance\Policies\TdsPolicy;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\FinancialYear;
+use App\Domain\ComplianceReports\Models\ComplianceReportPack;
+use App\Domain\ComplianceReports\Policies\ComplianceReportPackPolicy;
+use App\Domain\ComplianceReports\Support\ReportCatalogue;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\CustomFieldValue;
@@ -283,6 +286,7 @@ use App\Domain\Organisation\Policies\EstablishmentPolicy;
 use App\Domain\Organisation\Policies\LegalEntityPolicy;
 use App\Domain\Organisation\Policies\OrganisationStructurePolicy;
 use App\Domain\Organisation\Policies\PeopleSetupPolicy;
+use App\Domain\Payroll\Contracts\PayCycleReader;
 use App\Domain\Payroll\Contracts\PayrollClosureReader;
 use App\Domain\Payroll\Contracts\WorkforceCostReader;
 use App\Domain\Payroll\Models\PayrollAdjustment;
@@ -293,6 +297,7 @@ use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Policies\PayrollConfigPolicy;
 use App\Domain\Payroll\Policies\PayrollRunPolicy;
 use App\Domain\Payroll\Policies\PayslipPolicy;
+use App\Domain\Payroll\Services\PayCycle;
 use App\Domain\Payroll\Services\PayrollClosure;
 use App\Domain\Payroll\Services\WorkforceCost;
 use App\Domain\People\Models\Person;
@@ -435,6 +440,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        // Compliance reports: the catalogue is read once per process.
+        $this->app->singleton(ReportCatalogue::class);
         // Experience Transformation: per-request read models (the shell asks them several times per page).
         // Scoped, and forgotten after every handled request so no answer outlives its request.
         foreach (self::EXPERIENCE_SCOPED as $service) {
@@ -462,6 +469,8 @@ class AppServiceProvider extends ServiceProvider
         // Phase 11: Compensation is read through its contract; Payroll answers closure questions through its own.
         $this->app->bind(CompensationOutput::class, CompensationLedger::class);
         $this->app->bind(PayrollClosureReader::class, PayrollClosure::class);
+        // The monthly attendance upload works in payroll months, which follow the tenant's pay cycle.
+        $this->app->bind(PayCycleReader::class, PayCycle::class);
         $this->app->singleton(AccessScopes::class);
         // UX.15 closure: bounded authorisation passes are per request (and per job), never shared.
         $this->app->scoped(AuthorizationContext::class);
@@ -705,6 +714,7 @@ class AppServiceProvider extends ServiceProvider
         foreach ([StatutoryReturn::class, StatutoryReturnAction::class, StatutorySnapshot::class, StatutoryReconciliation::class, EpfReturnRun::class, EpfReturnEntry::class, EpfReturnRevision::class, EsiReturnRun::class, EsiReturnEntry::class, ProfessionalTaxReturn::class, ProfessionalTaxReturnEntry::class, LwfReturn::class, LwfReturnEntry::class, TdsAnnualLedger::class, TdsQuarterlyReturn::class, TdsQuarterlyReturnEntry::class, TdsCertificate::class, ParallelPayrollRun::class, ParallelPayrollLine::class] as $model) {
             Gate::policy($model, StatutoryReturnPolicy::class);
         }
+        Gate::policy(ComplianceReportPack::class, ComplianceReportPackPolicy::class);
         Gate::policy(EstablishmentStatutoryProfile::class, StatutoryRegistrationPolicy::class);
         Gate::policy(ProfessionalTaxProfile::class, StatutoryRegistrationPolicy::class);
         Gate::policy(AuditEvent::class, AuditEventPolicy::class);

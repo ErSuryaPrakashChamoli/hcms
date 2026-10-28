@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/PayrollTestHelpers.php';
 
-/* Phase 6 §34 / Phase 7 / Phase 11: older engine versions (2.0 – 2.3) → current engine (payroll-2.4: formula flexibility on top of 2.3's CompensationOutput contract). */
+/* Phase 6 §34 / Phase 7 / Phase 11: older engine versions (2.0 – 2.4) → current engine (payroll-2.5: half days cost half a day's pay, on top of 2.4's formula flexibility). */
 
 beforeEach(function () {
     $this->travelTo('2026-09-21 09:00:00');
@@ -25,12 +25,12 @@ beforeEach(function () {
     $this->runs = app(PayrollRuns::class);
 });
 
-it('calculates on the current engine (payroll-2.4) and records the establishment context', function () {
+it('calculates on the current engine (payroll-2.5) and records the establishment context', function () {
     $run = $this->runs->calculate($this->runs->open($this->company, 2026, 9, $this->preparer), $this->preparer);
     $entry = PayrollEntry::query()->where('payroll_run_id', $run->id)->sole();
 
-    expect(PayrollCalculator::VERSION)->toBe('payroll-2.4')
-        ->and($run->calculation_version)->toBe('payroll-2.4')
+    expect(PayrollCalculator::VERSION)->toBe('payroll-2.5')
+        ->and($run->calculation_version)->toBe('payroll-2.5')
         ->and($entry->inputs['statutory_context'])->toHaveKeys(['establishment_id', 'establishment_source', 'profile_source', 'pt_state_source'])
         ->and($entry->establishment_id)->not->toBeNull()
         ->and($entry->inputs['compensation'])->toHaveKeys(['contract', 'fingerprint']);
@@ -40,15 +40,15 @@ it('refuses to finalize an approved run from an older engine, reopens it to draf
     $run = $this->runs->approve($this->runs->validate($this->runs->calculate($this->runs->open($this->company, 2026, 9, $this->preparer), $this->preparer)), $this->approver, 'ok');
     DB::table('payroll_runs')->where('id', $run->id)->update(['calculation_version' => 'payroll-2.0']);
 
-    expect(fn () => $this->runs->finalize($run->refresh(), $this->approver))->toThrow(RuntimeException::class, 'recalculate with payroll-2.4');
+    expect(fn () => $this->runs->finalize($run->refresh(), $this->approver))->toThrow(RuntimeException::class, 'recalculate with payroll-2.5');
     expect(fn () => $this->runs->calculate($run->refresh(), $this->preparer))->toThrow(RuntimeException::class, 'Reopen it first');
     expect(fn () => $this->runs->reopen($run->refresh(), ' ', $this->approver))->toThrow(RuntimeException::class, 'reason');
 
-    $run = $this->runs->reopen($run->refresh(), 'Engine moved to payroll-2.4', $this->approver);
+    $run = $this->runs->reopen($run->refresh(), 'Engine moved to payroll-2.5', $this->approver);
     expect($run->status)->toBe('draft')->and($run->approved_by)->toBeNull();
 
     $run = $this->runs->calculate($run, $this->preparer);
-    expect($run->calculation_version)->toBe('payroll-2.4');
+    expect($run->calculation_version)->toBe('payroll-2.5');
     expect($this->runs->finalize($this->runs->approve($this->runs->validate($run), $this->approver, 'ok'), $this->approver)->status)->toBe('finalized');
 });
 

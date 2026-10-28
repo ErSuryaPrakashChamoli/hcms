@@ -254,7 +254,7 @@ it('creates a template from an uploaded Word file through the form, warns about 
         ->assertHasActionErrors();
 
     $preview = $this->letters->preview($template, $this->employee, $this->hr);
-    expect(view('filament.letters.template-preview', ['message' => null, 'page' => null, 'text' => $preview['text']])->render())->toContain('Dear '.$this->employee->person->first_name.',');
+    expect(view('filament.letters.template-preview', ['message' => null, 'page' => null, 'text' => $preview['text']])->render())->toContain('Dear '.e($this->employee->person->first_name).','); // Faker names may hold an apostrophe
 
     Livewire::test(ManageLetterTemplates::class)
         ->mountAction(TestAction::make('preview')->table($template))

@@ -10,12 +10,22 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** An immutable snapshot generated at finalization (§31). Deleted only when a run is reopened. */
+/** An immutable snapshot generated at finalization (§31). Kept for as long as its run is finalized or paid, which is for good. */
 #[Fillable(['tenant_id', 'payroll_entry_id', 'employee_id', 'number', 'snapshot', 'generated_at', 'viewed_at'])]
 class Payslip extends Model
 {
     use Auditable, BelongsToTenant;
     use ScopedByEmployee;
+
+    protected static function booted(): void
+    {
+        // Issued payslips are never withdrawn: finalized payroll is not reopened (decision C12-D1 open).
+        static::deleting(function (self $payslip): void {
+            if (in_array(PayrollRun::query()->whereKey(PayrollEntry::query()->whereKey($payslip->payroll_entry_id)->value('payroll_run_id'))->value('status'), ['finalized', 'paid'], true)) {
+                throw new \RuntimeException('A payslip of finalized payroll is kept as issued and cannot be deleted.');
+            }
+        });
+    }
 
     protected function casts(): array
     {

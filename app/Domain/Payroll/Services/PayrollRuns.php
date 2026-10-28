@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
-/** The run pipeline (§31): draft → calculated → validated → approved → finalized → paid, with reopen. */
+/** The run pipeline (§31): draft → calculated → validated → approved → finalized → paid; an approved run may return to draft. */
 final class PayrollRuns
 {
     public function __construct(
@@ -45,7 +45,7 @@ final class PayrollRuns
         $period = PayrollPeriod::for($company, $year, $month);
 
         if ($period->status === 'closed') {
-            throw new RuntimeException("{$period->label()} is closed. Reopen the finalized run to change it.");
+            throw new RuntimeException("{$period->label()} is closed: its payroll is finalized and stays as issued. Correct it with an arrear or a recovery in an open month.");
         }
 
         $existing = $period->runs()->whereNotIn('status', ['finalized', 'paid'])->first();
@@ -97,6 +97,8 @@ final class PayrollRuns
             $run = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail()->loadMissing('period');
             $this->assertEditable($run);
             $this->complianceRules->forget(); // never calculate on a stale rule status
+            // The results replaced here were never issued (the run is editable); the audit keeps what they were.
+            $replaced = ['entries' => $run->entries()->count(), 'net' => round((float) $run->entries()->sum('net_pay'), 2), 'calculated_at' => $run->calculated_at?->toIso8601String(), 'calculation_version' => $run->calculation_version];
             $run->entries()->delete();
             $ruleVersions = [];
             $totals = ['employees' => 0, 'gross' => 0.0, 'earnings' => 0.0, 'deductions' => 0.0, 'net' => 0.0, 'employer_cost' => 0.0, 'pf_employee' => 0.0, 'pf_employer' => 0.0, 'esi' => 0.0, 'pt' => 0.0, 'tds' => 0.0, 'lop_days' => 0.0];
@@ -153,7 +155,7 @@ final class PayrollRuns
 
             $run->update(['status' => 'calculated', 'calculation_version' => PayrollCalculator::VERSION, 'rule_versions' => $ruleVersions, 'totals' => array_map(fn ($v) => is_float($v) ? round($v, 2) : $v, $totals), 'exception_count' => $exceptions, 'calculated_at' => now(), 'operation_id' => Context::get('audit.operation_id')]);
             $run->update(['reconciliation' => $this->reconciliation->reconcile($run)]);
-            $this->audit->record(AuditAction::PayrollCalculated, 'payroll', $run, [], null, metadata: ['employees' => $totals['employees'], 'net' => round($totals['net'], 2), 'exceptions' => $exceptions], actor: $actor);
+            $this->audit->record(AuditAction::PayrollCalculated, 'payroll', $run, [], null, metadata: ['employees' => $totals['employees'], 'net' => round($totals['net'], 2), 'exceptions' => $exceptions] + ($replaced['entries'] > 0 ? ['replaced' => $replaced] : []), actor: $actor);
             PayrollEvent::dispatch('payroll.calculated', $run, ['period' => $run->period->label(), 'employees' => $totals['employees'], 'exceptions' => $exceptions]);
 
             return $run->refresh();
@@ -309,43 +311,44 @@ final class PayrollRuns
         return $run;
     }
 
-    /** Reopen a finalized (unpaid) run: payslips withdrawn, attendance unlocked, period reopened. Always audited with a reason. */
+    /**
+     * Phase 5: return an approved run that is not finalized yet to draft, when it can no longer be finalized as approved
+     * (the engine version changed, a rule was superseded). Nothing was locked or issued, and it needs a new calculation
+     * and an independent approval again. Always audited with a reason.
+     *
+     * Finalized and paid payroll is never reopened: its entries, lines and payslips stay as issued, because returns,
+     * ledgers and compliance packs were built from them. A pay mistake is corrected with an ordinary arrear or recovery
+     * in an open month (owner, 2026-10-28). A correction caused by a wrong statutory profile is settled as decision
+     * C12-D1 decides (open; reopening is its option D). A refused attempt is audited too.
+     */
     public function reopen(PayrollRun $run, string $reason, ?User $actor = null): PayrollRun
     {
-        if (! in_array($run->status, ['approved', 'finalized'], true)) {
-            throw new RuntimeException('Only an approved or finalized, unpaid run can be reopened.');
-        }
+        // Decided on the locked row, so a finalization that commits first is seen here and never overwritten from a stale copy.
+        [$reopened, $refused] = DB::transaction(function () use ($run, $reason, $actor) {
+            $locked = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail();
+            if ($locked->isLocked()) {
+                return [null, $locked->status];
+            }
+            if ($locked->status !== 'approved') {
+                throw new RuntimeException('Only an approved run that is not finalized yet can be reopened.');
+            }
+            if (trim($reason) === '') {
+                throw new RuntimeException('A reason is required to reopen payroll.');
+            }
 
-        if (trim($reason) === '') {
-            throw new RuntimeException('A reason is required to reopen payroll.');
-        }
+            $locked->update(['status' => 'draft', 'approved_by' => null, 'approved_at' => null]);
+            $this->audit->record(AuditAction::PayrollReopened, 'payroll', $locked, [['field' => 'status', 'before' => 'approved', 'after' => 'draft']], $reason, actor: $actor);
 
-        // Phase 5: an approved run that can no longer be finalized (engine version changed, a rule
-        // was superseded) goes back to draft for recalculation. Nothing was locked or issued yet.
-        if ($run->status === 'approved') {
-            return DB::transaction(function () use ($run, $reason, $actor) {
-                $run->update(['status' => 'draft', 'approved_by' => null, 'approved_at' => null]);
-                $this->audit->record(AuditAction::PayrollReopened, 'payroll', $run, [['field' => 'status', 'before' => 'approved', 'after' => 'draft']], $reason, actor: $actor);
-
-                return $run->refresh();
-            });
-        }
-
-        return DB::transaction(function () use ($run, $reason, $actor) {
-            $run->loadMissing('period');
-            $employeeIds = $run->entries()->pluck('employee_id');
-
-            AttendanceRecord::query()->whereIn('employee_id', $employeeIds)
-                ->whereBetween('date', [$run->period->start_date->toDateString(), $run->period->end_date->toDateString()])
-                ->update(['is_locked' => false, 'finalized_at' => null]);
-
-            $this->payslips->withdrawForRun($run);
-            $run->period->update(['status' => 'open']);
-            $run->update(['status' => 'draft', 'approved_by' => null, 'approved_at' => null, 'finalized_by' => null, 'finalized_at' => null]);
-            $this->audit->record(AuditAction::PayrollReopened, 'payroll', $run, [['field' => 'status', 'before' => 'finalized', 'after' => 'draft']], $reason, actor: $actor);
-
-            return $run->refresh();
+            return [$locked->refresh(), null];
         });
+
+        if ($refused !== null) {
+            $this->audit->record(AuditAction::Rejected, 'payroll', $run, [], trim($reason) === '' ? null : $reason, actor: $actor, metadata: ['attempt' => 'reopen', 'status' => $refused]);
+
+            throw new RuntimeException("A {$refused} run cannot be reopened: finalized payroll stays as issued. Correct a pay mistake with an arrear or a recovery in an open month; a correction caused by a wrong statutory profile waits for decision C12-D1.");
+        }
+
+        return $reopened;
     }
 
     private function assertEditable(PayrollRun $run): void

@@ -2,11 +2,14 @@
 
 namespace App\Filament\Resources\EmployeeImports;
 
+use App\Domain\Attendance\Imports\AttendanceSheetImports;
+use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImports;
 use App\Filament\Resources\EmployeeImports\Pages\ListEmployeeImports;
 use App\Filament\Resources\EmployeeImports\Pages\ViewEmployeeImport;
 use App\Filament\Resources\EmployeeImports\RelationManagers\RowsRelationManager;
+use App\Filament\Support\ImportActions;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\TextEntry;
@@ -62,6 +65,13 @@ class EmployeeImportResource extends Resource
                 TextEntry::make('update_count')->label('Update'),
                 TextEntry::make('skip_count')->label('Skip'),
                 TextEntry::make('failure_count')->label('Failed'),
+            ]),
+            Section::make('Choices')->columns(4)->visible(fn (EmployeeImport $record) => ImportActions::modes($record->type) !== null)->schema([
+                TextEntry::make('mode')->label('File is for')->state(fn (EmployeeImport $record) => ImportActions::modes($record->type)[ImportMode::of($record)->value][0] ?? null),
+                TextEntry::make('month')->label('Attendance month')->state(fn (EmployeeImport $record) => ImportActions::monthLabel($record))
+                    ->visible(fn (EmployeeImport $record) => $record->type === AttendanceSheetImports::TYPE),
+                TextEntry::make('blank_days')->label('Blank days')->state(fn (EmployeeImport $record) => AttendanceSheetImports::BLANK_DAYS[$record->options['blank_days'] ?? '']['0'] ?? null)
+                    ->visible(fn (EmployeeImport $record) => $record->type === AttendanceSheetImports::TYPE),
             ]),
             Section::make('Mapping')->schema([
                 TextEntry::make('mapping')->hiddenLabel()->placeholder('Not mapped yet')->state(fn (EmployeeImport $record) => collect($record->mapping ?? [])->map(fn ($f, $h) => "{$h} → {$f}")->values()->all())->listWithLineBreaks(),

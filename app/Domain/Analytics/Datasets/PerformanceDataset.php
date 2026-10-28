@@ -17,6 +17,11 @@ class PerformanceDataset extends Dataset
         return 'Appraisals';
     }
 
+    public function category(): string
+    {
+        return 'Performance & learning';
+    }
+
     public function permissions(): array
     {
         return ['performance.view'];

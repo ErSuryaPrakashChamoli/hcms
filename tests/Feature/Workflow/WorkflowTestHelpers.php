@@ -22,7 +22,8 @@ function employeeWithUser(?Employee $manager = null, array $userPermissions = ['
 {
     $tenant = app(TenantContext::class)->current();
     $user = tenantUser($tenant, $userPermissions);
-    $company = Company::query()->first() ?? Company::factory()->create();
+    // The earliest company: without an order MySQL may return any (the (tenant_id, code) index sorts by random codes).
+    $company = Company::query()->orderBy('id')->first() ?? Company::factory()->create();
 
     return app(HireEmployeeAction::class)->handle(
         ['first_name' => $user->name, 'last_name' => 'Emp'],

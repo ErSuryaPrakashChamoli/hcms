@@ -2,9 +2,10 @@
 
 namespace App\Filament\Resources\TaxDeclarations\Pages;
 
+use App\Filament\Pages\DeclareInvestments;
 use App\Filament\Resources\TaxDeclarations\TaxDeclarationResource;
 use App\Filament\Support\Pages\PeopleManageRecords;
-use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
 
 class ManageTaxDeclarations extends PeopleManageRecords
 {
@@ -12,6 +13,10 @@ class ManageTaxDeclarations extends PeopleManageRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()];
+        return [
+            Action::make('declare')->label('Declare investments')->icon('heroicon-m-clipboard-document-check')
+                ->visible(fn () => DeclareInvestments::canAccess())
+                ->url(fn () => DeclareInvestments::getUrl()),
+        ];
     }
 }

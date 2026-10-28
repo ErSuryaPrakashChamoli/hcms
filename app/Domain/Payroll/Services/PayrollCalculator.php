@@ -23,7 +23,7 @@ use RuntimeException;
  * Payroll calculation engine (Phase 4). Deterministic pipeline for one employee and one period:
  *
  *   eligibility window (joining / exit) → salary segments (every approved compensation in force in
- *   the period, read through the Compensation contract, so mid-month revisions are split) → loss of pay from AttendanceOutput (absent days)
+ *   the period, read through the Compensation contract, so mid-month revisions are split) → loss of pay from AttendanceOutput (absent days, half days)
  *   and LeaveOutput (unpaid leave dates) + manual LOP → proration with an explicit divisor →
  *   earnings per segment → approved adjustments → statutory (compliance rules) → net → exceptions.
  *
@@ -45,8 +45,10 @@ class PayrollCalculator
      *       variable_target_annual and employee values (grade, work_city, years_of_service, …) as
      *       variables; text comparison and the lookup / slab / in / between / clamp / round_to functions;
      *       a division by zero in a branch not taken no longer fails the formula.
+     * 2.5 = 2.4 + half days cost half a day's pay: a half_day attendance day is 0.5 LOP, and a day of
+     *       half-day leave with nothing in the other half is 0.5 LOP for that half (2.4 paid both in full).
      */
-    public const VERSION = 'payroll-2.4';
+    public const VERSION = 'payroll-2.5';
 
     public const BLOCKING = ['no_salary', 'no_structure', 'negative_net', 'formula_error', 'invalid_component'];
 
@@ -246,8 +248,20 @@ class PayrollCalculator
 
         /** @var AttendanceDay $day */
         foreach ($days as $date => $day) {
-            if ($date >= $start->toDateString() && $date <= $end->toDateString() && $day->status === 'absent') {
-                $lop[$date] = 1.0;
+            if ($date < $start->toDateString() || $date > $end->toDateString()) {
+                continue;
+            }
+            $halfDayLeave = ! empty($day->adjustments['half_day_leave']);
+            $quantity = match (true) {
+                $day->status === 'absent' => 1.0,
+                // A half day costs half a day's pay. With half-day leave, the leave is one half and the half day the other.
+                $day->status === 'half_day' => $halfDayLeave ? 0.0 : 0.5,
+                // Half-day leave and nothing in the other half: that half is absent. The leave half follows LeaveOutput below.
+                in_array($day->status, ['leave', 'unpaid_leave'], true) && $halfDayLeave => 0.5,
+                default => 0.0,
+            };
+            if ($quantity > 0) {
+                $lop[$date] = $quantity;
             }
         }
 

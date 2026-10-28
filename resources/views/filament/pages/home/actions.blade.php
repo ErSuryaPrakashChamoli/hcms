@@ -1,7 +1,7 @@
 {{-- Start something: the actions this person most often starts --}}
 @if (count($h['actions']) > 0)
     <x-pos.section title="Start something">
-        <div class="pos-panel pos-stream">
+        <div class="pos-panel pos-stream pos-home-actions">
             @foreach ($h['actions'] as $a)
                 @php($mount = ['request_leave' => 'requestLeave', 'regularise' => 'regularise', 'ask_hr' => 'askHr'][$a['key']] ?? null)
                 @if ($mount)

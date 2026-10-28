@@ -52,9 +52,14 @@ class EstablishmentResource extends Resource
             TextInput::make('code')->required()->maxLength(32)->disabledOn('edit'),
             TextInput::make('name')->required()->maxLength(255),
             Select::make('establishment_type')->options(config('peopleos.organisation.establishment_types'))->default('office')->required(),
+            Select::make('appropriate_government')->label('Appropriate government (Code on Wages, OSH Code)')->options(config('peopleos.organisation.appropriate_governments'))
+                ->helperText('Decides which rules and register forms apply. Usually the State Government for private shops, offices and factories; compliance reports ask for it rather than assume it.'),
+            Select::make('ss_appropriate_government')->label('Appropriate government (Code on Social Security)')->options(config('peopleos.organisation.appropriate_governments'))
+                ->helperText('Can differ: the Central Government where the establishment has departments or branches in more than one state (s.2(3)). Governs gratuity, maternity and employment information.'),
+            Select::make('industry')->options(config('peopleos.organisation.industries'))->searchable(),
             Textarea::make('address')->rows(2)->columnSpanFull(),
             TextInput::make('country')->required()->length(2)->default('IN'),
-            Select::make('state')->options(config('peopleos.compliance.states'))->searchable()->helperText('Selects the professional tax and labour welfare fund rules.'),
+            Select::make('state')->options(config('peopleos.compliance.states'))->searchable()->helperText('Selects the state rules: professional tax, labour welfare fund, shops and establishments.'),
             TextInput::make('district')->maxLength(128),
             TextInput::make('postal_code')->maxLength(16),
             Select::make('status')->options(ActiveStatus::class)->default('active')->required(),

@@ -14,11 +14,11 @@ use App\Domain\Compliance\Services\Tds\TdsLedgers;
 use App\Domain\Compliance\Services\Tds\TdsQuarterlyReturns;
 use App\Domain\Employment\Models\EmployeeStatutoryDetail;
 use App\Domain\Payroll\Models\PayrollRun;
-use App\Domain\Payroll\Services\PayrollRuns;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 require_once __DIR__.'/ComplianceTestHelpers.php';
+require_once __DIR__.'/../Payroll/PayrollHistoryTestHelpers.php';
 
 beforeEach(function () {
     Storage::fake('local');
@@ -58,9 +58,10 @@ it('keeps an immutable annual ledger of what finalized payroll deducted, superse
         ->and($this->ledgers->sync($this->entity, '2026-27'))->toBe(['added' => 0, 'superseded' => 0, 'withdrawn' => 0]);
     expect(fn () => $rows->first()->update(['tds_deducted' => 1]))->toThrow(RuntimeException::class, 'immutable');
 
-    // September payroll is reopened and re-finalized with a raise: that month's rows are superseded.
+    // September payroll changed after the ledger was built (reopened before reopening was refused, or settled later under
+    // C12-D1) and is re-finalized with a raise: that month's rows are superseded.
     $september = PayrollRun::query()->whereHas('period', fn ($q) => $q->where('month', 9))->sole();
-    app(PayrollRuns::class)->reopen($september, 'Raise', $this->payrollApprover);
+    returnFinalizedRunToDraftForTest($september);
     expect($this->ledgers->sync($this->entity, '2026-27')['withdrawn'])->toBe(2);
     compensate($this->withPan, 3000000, '2026-09-01', ['CONV' => 1600], 'revision', 'Raise');
     finalizedPayroll($this->company, 2026, 9, $this->preparer, $this->payrollApprover);

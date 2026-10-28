@@ -17,6 +17,11 @@ class ServiceDeskDataset extends Dataset
         return 'HR service desk tickets';
     }
 
+    public function category(): string
+    {
+        return 'Assets & service desk';
+    }
+
     public function permissions(): array
     {
         return ['servicedesk.view'];

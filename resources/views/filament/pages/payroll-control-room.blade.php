@@ -9,7 +9,7 @@
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         @foreach ($this->getCompanies() as $row)
-            <x-filament::section :heading="$row['company']->name" :description="'Payroll for ' . $row['period_label']">
+            <x-filament::section :heading="$row['company']->name" :description="'Payroll for ' . $row['period_label'] . ' · ' . $row['period_dates']">
                 <dl class="grid grid-cols-2 gap-y-1 text-sm">
                     <dt class="text-gray-500">Status</dt>
                     <dd>

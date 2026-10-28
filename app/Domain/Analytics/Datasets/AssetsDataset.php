@@ -17,6 +17,11 @@ class AssetsDataset extends Dataset
         return 'Asset register';
     }
 
+    public function category(): string
+    {
+        return 'Assets & service desk';
+    }
+
     public function permissions(): array
     {
         return ['asset.view'];

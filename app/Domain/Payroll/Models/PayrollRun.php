@@ -19,6 +19,25 @@ class PayrollRun extends Model
 
     public const EDITABLE = ['draft', 'calculated', 'validated'];
 
+    protected static function booted(): void
+    {
+        // Finalized payroll is history (Phase 4 §32): its one remaining step is being marked paid. It is never reopened,
+        // changed or deleted, whatever the caller. Pay mistakes go into an open month as arrears or recoveries; a
+        // correction caused by a wrong statutory profile waits for decision C12-D1 (open).
+        static::updating(function (self $run): void {
+            $from = $run->getOriginal('status');
+            $paying = $from === 'finalized' && $run->status === 'paid' && array_diff(array_keys($run->getDirty()), ['status', 'paid_at', 'updated_at']) === [];
+            if (in_array($from, ['finalized', 'paid'], true) && ! $paying) {
+                throw new \RuntimeException('Finalized payroll cannot be reopened or changed; correct the month with an arrear or a recovery in an open month.');
+            }
+        });
+        static::deleting(function (self $run): void {
+            if (in_array($run->getOriginal('status'), ['finalized', 'paid'], true)) {
+                throw new \RuntimeException('Finalized payroll is kept as history and cannot be deleted.');
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [

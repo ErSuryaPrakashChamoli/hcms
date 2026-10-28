@@ -31,9 +31,10 @@ working schedules, and no screen or document claims filing readiness.
 ## Annual ledger
 
 - One row per employee per finalized payroll run, keyed by run and employee. Rows are never edited:
-  if payroll is reopened and re-finalized with different figures, the old row becomes
-  `superseded` and a new row is appended; if a run is reopened and not re-finalized, its rows are
-  `withdrawn`.
+  if a month's payroll changes after the ledger was built (re-finalized with different figures), the old
+  row becomes `superseded` and a new row is appended; if its run is no longer finalized, its rows are
+  `withdrawn`. Since 2026-10-28 finalized payroll is never reopened, so this applies only to months
+  changed before then or settled later under decision C12-D1.
 - Syncing is idempotent and runs automatically when a statement is generated.
 - **Ledger verification** (Compliance → TDS certificates → "Verify annual ledger") requires all
   four quarterly statements to be ACKNOWLEDGED (or RECONCILED) and each to match the current

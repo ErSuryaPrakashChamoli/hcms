@@ -270,6 +270,59 @@ components.posPeek = (wire) => ({
         },
     });
 
+/*
+ * Rail (desktop): the handle on the brand block's edge keeps the menu open or folds it to icons; that choice is
+ * Filament's own (isOpenDesktop, remembered). While folded, resting the mouse on the rail opens it over the page without
+ * moving the page (a peek) until the mouse leaves. A peek only sets isOpen, which Filament puts back on every load and
+ * navigation. Touch never peeks, and below 1024 px the rail is Filament's drawer.
+ */
+components.posRail = () => ({
+        tip: false, timer: null, abort: null,
+        get pinned() { return this.$store.sidebar.isOpenDesktop; },
+        peeking: () => document.documentElement.hasAttribute('data-pos-rail-peek'),
+        init() {
+            this.unpeek();
+            const rail = document.querySelector('.fi-main-sidebar');
+            if (!rail) return;
+            this.abort = new AbortController();
+            const on = { signal: this.abort.signal };
+            const mouse = (e) => e.pointerType === 'mouse' && window.innerWidth >= 1024;
+            const leave = () => {
+                clearTimeout(this.timer);
+                if (this.peeking()) this.timer = setTimeout(() => this.unpeek(), 220);
+            };
+            rail.addEventListener('pointerover', (e) => {
+                if (!mouse(e) || this.pinned) return;
+                clearTimeout(this.timer);
+                if (!this.peeking()) this.timer = setTimeout(() => this.peek(), 140);
+            }, on);
+            rail.addEventListener('pointerleave', leave, on);
+            // Moving from a peek up to the handle keeps the peek, so the click pins what is on screen.
+            this.$el.addEventListener('pointerenter', () => clearTimeout(this.timer), on);
+            this.$el.addEventListener('pointerleave', leave, on);
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.peeking()) this.unpeek(); }, on);
+        },
+        destroy() { this.abort?.abort(); this.unpeek(); },
+        peek() {
+            if (this.pinned || window.innerWidth < 1024) return;
+            document.documentElement.setAttribute('data-pos-rail-peek', '');
+            this.$store.sidebar.isOpen = true;
+        },
+        unpeek() {
+            clearTimeout(this.timer);
+            if (!this.peeking()) return;
+            if (!this.pinned) this.$store.sidebar.isOpen = false;
+            document.documentElement.removeAttribute('data-pos-rail-peek');
+        },
+        toggle() {
+            const pinned = this.pinned;
+            clearTimeout(this.timer);
+            document.documentElement.removeAttribute('data-pos-rail-peek');
+            if (pinned) this.$store.sidebar.close();
+            else this.$store.sidebar.open();
+        },
+    });
+
 /* Organisation map: pan and zoom with mouse, touch and keyboard. */
 components.posPanZoom = () => ({
         scale: 1, x: 0, y: 0, dragging: false, sx: 0, sy: 0,
@@ -444,6 +497,121 @@ document.addEventListener('keydown', (e) => {
     };
     new MutationObserver(watchBody).observe(document.documentElement, { childList: true });
     if (document.body) watchBody(); else document.addEventListener('DOMContentLoaded', watchBody);
+})();
+
+/*
+ * Pinned page chrome (CSS sticks the area bar and the page header under the top bar). This measures them: the area
+ * bar's height places the header below it (--pos-area-h); once content runs beneath the header it folds to one row
+ * (html[data-pos-header-stuck]), and --pos-header-fold keeps its place in the page the same height, so nothing below
+ * moves as it folds. --pos-pinned-h, the whole panel, keeps focused fields clear of it (scroll-padding). Tables pin
+ * their column headings just below the panel: one that fits its width drops Filament's sideways scroller, whose box
+ * would otherwise hold its headings (data-pos-fit, CSS); a wider one keeps the scroller, and its heading row is moved
+ * down as the page scrolls. Tables in modals keep Filament's own behaviour. html[data-pos-scrolled] and
+ * html[data-pos-far] drive the panel's edge and the back-to-top button. A Livewire update rewrites the tables'
+ * attributes, so the marks are put back after every one.
+ *
+ * List pages go further: when the page holds one table and, on a screen 768 px or wider, its rows can have at least
+ * LIST_MIN of the screen, only the rows scroll (html[data-pos-list], CSS). The page is laid out to fit the screen and
+ * --pos-list-h is the room left for the rows; otherwise (forms with a table below, phones) the page scrolls as above.
+ */
+(() => {
+    const root = document.documentElement;
+    const watched = new WeakSet();
+    let header = null;
+    let area = 0;
+    let compact = 0;
+    let wide = [];
+    let list = false;
+    let measuring = 0;
+    const LIST_MIN = 220;
+    const follow = () => {
+        const y = window.scrollY;
+        const line = (document.querySelector('.fi-topbar-ctn')?.getBoundingClientRect().bottom ?? 0) + area;
+        const live = !!header?.isConnected;
+        root.toggleAttribute('data-pos-scrolled', y > 2);
+        root.toggleAttribute('data-pos-far', y > Math.max(800, window.innerHeight));
+        root.toggleAttribute('data-pos-header-stuck', !list && live && y > 0 && header.getBoundingClientRect().top <= line + 1);
+        const top = line + (live ? compact : 0);
+        wide.forEach(({ box, head, height }) => {
+            const r = box.getBoundingClientRect();
+            const shift = Math.max(0, Math.min(top - r.top, r.height - height));
+            head.style.transform = shift > 0 ? `translateY(${shift}px)` : '';
+        });
+    };
+    const sizes = new ResizeObserver(() => schedule());
+    const watch = (el) => { if (el && !watched.has(el)) { watched.add(el); sizes.observe(el); } };
+    const measure = () => {
+        measuring = 0;
+        const bar = document.querySelector('.fi-topbar-ctn');
+        const areaBar = document.querySelector('.pos-spacebar-wrap');
+        header = document.querySelector('.fi-page-header-main-ctn > .fi-header');
+        watch(areaBar);
+        watch(header);
+        area = areaBar?.offsetHeight ?? 0;
+        root.style.setProperty('--pos-area-h', `${area}px`);
+        wide = [];
+        const boxes = [...document.querySelectorAll('.fi-page .fi-ta-content-ctn')].filter((box) => !box.closest('.fi-modal'));
+        list = false;
+        if (boxes.length === 1 && window.innerWidth >= 768) {
+            // Measured in the list layout: the room is the screen less what sits above and below the rows.
+            const box = boxes[0];
+            const main = document.querySelector('.fi-main');
+            root.setAttribute('data-pos-list', '');
+            root.removeAttribute('data-pos-header-stuck');
+            const r = box.getBoundingClientRect();
+            const below = (box.closest('.fi-page')?.getBoundingClientRect().bottom ?? r.bottom) - r.bottom + (main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 0);
+            const room = Math.floor(window.innerHeight - (r.top + window.scrollY) - below);
+            list = room >= LIST_MIN;
+            if (list) {
+                root.style.setProperty('--pos-list-h', `${room}px`);
+                box.removeAttribute('data-pos-fit');
+                box.querySelector('.fi-ta-table > thead')?.style.removeProperty('transform');
+                watch(box);
+                watch(box.closest('.fi-ta-ctn'));
+            }
+        }
+        root.toggleAttribute('data-pos-list', list);
+        let full = 0;
+        compact = 0;
+        if (header && !list) {
+            // Both heights, read with the fold off and on; restored before the frame is drawn.
+            const folded = root.hasAttribute('data-pos-header-stuck');
+            root.removeAttribute('data-pos-header-stuck');
+            full = header.offsetHeight;
+            root.setAttribute('data-pos-header-stuck', '');
+            compact = header.offsetHeight;
+            root.toggleAttribute('data-pos-header-stuck', folded);
+        }
+        root.style.setProperty('--pos-header-fold', `${full - compact}px`);
+        root.style.setProperty('--pos-header-h', `${compact}px`);
+        root.style.setProperty('--pos-pinned-h', `${(bar?.offsetHeight ?? 0) + area + (list ? header?.offsetHeight ?? 0 : compact)}px`);
+        (list ? [] : boxes).forEach((box) => {
+            const table = box.querySelector('.fi-ta-table');
+            const head = table?.querySelector(':scope > thead');
+            watch(box);
+            watch(table);
+            const isWide = !!table && table.offsetWidth > box.clientWidth + 1;
+            box.toggleAttribute('data-pos-fit', !isWide);
+            if (isWide && head) wide.push({ box, head, height: head.offsetHeight });
+        });
+        follow();
+    };
+    const schedule = () => { if (!measuring) measuring = requestAnimationFrame(measure); };
+    // In the scroll event itself (not a later frame), so a moved heading row keeps pace with the page.
+    window.addEventListener('scroll', follow, { passive: true });
+    window.addEventListener('resize', schedule);
+    // Straight away after a page swap, so the new page is drawn in its own layout.
+    document.addEventListener('livewire:navigated', measure);
+    const hook = () => window.Livewire.hook('morphed', schedule);
+    if (window.Livewire) hook(); else document.addEventListener('livewire:init', hook, { once: true });
+    // At once when the page is parsed (Filament keeps it hidden until Alpine starts), and again once web fonts settle.
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', measure); else measure();
+    document.fonts?.ready.then(schedule);
+    // Back to top, then on to the start of the page content for keyboard users.
+    window.posToTop = () => {
+        window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        document.getElementById('pos-main')?.focus({ preventScroll: true });
+    };
 })();
 
 /*

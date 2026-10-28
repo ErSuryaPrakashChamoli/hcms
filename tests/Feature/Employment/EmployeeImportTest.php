@@ -131,9 +131,9 @@ it('matches existing people deterministically: definite matches update or skip, 
         ->and(Employee::query()->count())->toBe(3)
         ->and(Employee::query()->where('work_email', 'asha@alpha.test')->first()->person->nationality)->toBe('IN');
 
-    // "skip" option turns definite matches into skips.
+    // "Add new employees" turns definite matches into skips.
     $again = app(EmployeeImports::class)->inspect(stageCsv($csv));
-    $again = app(EmployeeImports::class)->map($again, $again->mapping + ['Email' => 'employee.work_email'], ['on_duplicate' => 'skip']);
+    $again = app(EmployeeImports::class)->map($again, $again->mapping + ['Email' => 'employee.work_email'], ['mode' => 'new']);
     $again = app(EmployeeImports::class)->validate($again);
     expect($again->rows()->where('row_number', 1)->first()->action)->toBe('skip');
 });
@@ -222,4 +222,31 @@ it('keeps imports inside the tenant and behind the employee.import permission', 
     // Files sit on the private disk under the tenant prefix, never on a public URL.
     expect($import->path)->toStartWith('tenants/'.$this->tenant->id.'/imports/')->and($import->disk)->toBe('local');
     expect(fn () => app(EmployeeImports::class)->discard(app(EmployeeImports::class)->approve(app(EmployeeImports::class)->validate(app(EmployeeImports::class)->map($import, $import->mapping + ['Email' => 'employee.work_email'])), $this->hr)))->not->toThrow(RuntimeException::class);
+});
+
+it('updates existing employees from a file with only the employee code and the columns that change, leaving out people not on file', function () {
+    $import = app(EmployeeImports::class)->inspect(stageCsv("Employee code,Personal phone,Nationality\nBOSS1,+919800000001,IN\nNEW9,+919800000002,IN\n"));
+    expect(fn () => app(EmployeeImports::class)->map($import, $import->mapping))->toThrow(RuntimeException::class, 'Required fields are not mapped: First name');
+
+    $import = app(EmployeeImports::class)->validate(app(EmployeeImports::class)->map($import, $import->mapping, ['mode' => 'update']));
+    $rows = $import->rows()->get()->keyBy('row_number');
+    expect($import->options)->toBe(['mode' => 'update'])->and($import->update_count)->toBe(1)->and($import->skip_count)->toBe(1)->and($import->error_count)->toBe(0)
+        ->and($rows[1]->action)->toBe('update')->and($rows[1]->employee_id)->toBe($this->boss->id)
+        ->and($rows[2]->action)->toBe('skip')->and($rows[2]->match['reason'])->toContain('No employee on file has code NEW9');
+
+    app(EmployeeImports::class)->run(app(EmployeeImports::class)->approve($import, $this->hr), $this->hr);
+    expect($this->boss->person->refresh()->personal_phone)->toBe('+919800000001')->and($this->boss->person->first_name)->toBe('Bhavna')
+        ->and(Employee::query()->count())->toBe(1)
+        ->and($import->rows()->where('row_number', 2)->value('result'))->toContain('Skipped: No employee on file has code NEW9');
+});
+
+it('keeps review decisions inside the chosen mode', function () {
+    app(HireEmployeeAction::class)->handle(['first_name' => 'Asha', 'last_name' => 'Rao', 'date_of_birth' => '1990-05-05'], ['joining_date' => '2025-01-01'], ['company_id' => $this->company->id]);
+    $import = app(EmployeeImports::class)->inspect(stageCsv("First Name,Last Name,DOJ,Company Code,DOB\nAsha,Rao,2026-03-01,ALPHA,1990-05-05\n"));
+    $import = app(EmployeeImports::class)->validate(app(EmployeeImports::class)->map($import, $import->mapping + ['DOB' => 'person.date_of_birth'], ['mode' => 'new']));
+    $row = $import->rows()->first();
+
+    expect($row->action)->toBe('review')
+        ->and(fn () => app(EmployeeImports::class)->resolveReview($row, 'update'))->toThrow(RuntimeException::class, 'add new employees')
+        ->and(app(EmployeeImports::class)->resolveReview($row, 'skip')->action)->toBe('skip');
 });

@@ -25,6 +25,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use UnitEnum;
 
 /** One-off inputs for a period (§31): extra earnings, deductions, reimbursements, manual LOP. */
@@ -69,7 +70,10 @@ class PayrollAdjustmentResource extends Resource
     {
         $options = [];
         foreach (Company::query()->orderBy('name')->get() as $company) {
-            foreach ([now()->subMonth(), now(), now()->addMonth()] as $d) {
+            // The payroll month holding today (on a 25th-to-24th cycle, 26 October is November's) and its neighbours.
+            $current = PayrollPeriod::containing($company, today());
+            $month = Carbon::create($current->year, $current->month, 1);
+            foreach ([$month->copy()->subMonthNoOverflow(), $month, $month->copy()->addMonthNoOverflow()] as $d) {
                 $period = PayrollPeriod::for($company, $d->year, $d->month);
                 if ($period->status === 'open') {
                     $options[$period->id] = "{$company->name} · {$period->label()}";

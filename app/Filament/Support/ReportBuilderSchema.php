@@ -39,14 +39,15 @@ final class ReportBuilderSchema
 
         return [
             Section::make('Dataset & fields')->columns(1)->schema([
-                Select::make('dataset')->label('Dataset')->required()->live()->options(fn () => $registry->options(auth()->user()))->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
+                Select::make('dataset')->label('Dataset')->required()->live()->searchable()->options(fn () => $registry->groupedOptions(auth()->user()))->disabled(fn (string $operation) => $operation === 'edit')->dehydrated()
+                    ->helperText('Or start from a ready-made report in the Report library.'),
                 CheckboxList::make('definition.fields')->label('Fields')->columns(3)->options(fn (Get $get) => $get('dataset') ? collect($registry->get($get('dataset'))->catalogue(auth()->user()))->map(fn ($f) => $f['label'])->all() : [])->required(),
             ]),
             Section::make('Filters')->schema([
                 Repeater::make('definition.filters')->hiddenLabel()->columns(3)->default([])->schema([
                     Select::make('field')->options(fn (Get $get) => $fieldOptions($get))->getOptionLabelUsing(fn ($value) => (string) $value)->required(),
                     Select::make('operator')->options(config('peopleos.analytics.operators'))->default('equals')->required(),
-                    TextInput::make('value')->placeholder('value · a,b,c for "any of" / between · N for last N days'),
+                    TextInput::make('value')->placeholder('value · a,b,c for "any of" / between · N for last / next N days'),
                 ]),
             ])->collapsed(fn (string $operation) => $operation === 'create'),
             Section::make('Grouping & aggregation')->columns(2)->schema([

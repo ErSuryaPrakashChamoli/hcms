@@ -28,8 +28,12 @@ beforeEach(function () {
     $this->coverage = fn (ComplianceRule $rule) => ComplianceRuleParameter::query()->where('compliance_rule_verification_id', ($this->phase9)($rule)->id)->get()->keyBy('parameter');
 });
 
-it('keeps the statutory status: 24 versions, none verified, the same 5 open notices, enforcement untouched', function () {
-    expect(ComplianceRule::query()->count())->toBe(24)
+it('keeps the statutory status: 24 versions in force, none verified, the same 5 open notices, enforcement untouched', function () {
+    // 2026-10-26: 11 further versions are prepared for review as `proposed` (payroll never resolves them); the 24 in
+    // force are unchanged.
+    expect(ComplianceRule::query()->where('status', ComplianceRule::ACTIVE)->count())->toBe(24)
+        ->and(ComplianceRule::query()->where('status', ComplianceRule::PROPOSED)->count())->toBe(11)
+        ->and(ComplianceRule::query()->where('status', ComplianceRule::PROPOSED)->where('verification_status', ComplianceRule::VERIFIED)->count())->toBe(0)
         ->and(ComplianceRule::query()->where('verification_status', ComplianceRule::VERIFIED)->count())->toBe(0)
         ->and(ComplianceRuleNotice::query()->where('status', ComplianceRuleNotice::OPEN)->count())->toBe(5)
         ->and($this->epf->refresh()->verification_status)->toBe(ComplianceRule::REVIEW)

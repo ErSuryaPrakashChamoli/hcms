@@ -5,7 +5,9 @@ namespace App\Domain\Experience\Services;
 use App\Domain\Identity\Models\User;
 use Filament\Navigation\NavigationItem;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Livewire\Livewire;
 use Throwable;
 
 /**
@@ -102,7 +104,8 @@ final class ExperienceNavigation
         'Pay' => ['PayrollControlRoom', 'PayrollRunResource', 'CompensationChangeResource', 'PayslipResource'],
         'Organisation' => ['OrganisationDesigner', 'DepartmentResource'],
         'Workforce' => ['WorkforceDashboard', 'PositionResource'],
-        'Analytics' => ['WorkforceCommandCentre', 'PeopleAnalyticsPage', 'ReportResource'],
+        // Not the Workforce Command Centre: that is where the Insights section itself opens.
+        'Analytics' => ['ReportResource', 'PeopleAnalyticsPage', 'DashboardViewer'],
         'Audit' => ['ChangeIntelligencePage', 'AuditEventResource'],
         'Service Desk' => ['TicketResource', 'ServiceDefinitionResource'],
         'Setup' => ['ConfigurationFinder', 'TenantSettingResource'],
@@ -112,9 +115,10 @@ final class ExperienceNavigation
 
     /**
      * UX.15: workspaces carry their own header (where am I, what matters, what can I do), so they show no
-     * module bar. The Employee 360 is a person workspace, not a module page.
+     * module bar. The Employee 360 is a person workspace, not a module page. The Workforce Command Centre is not
+     * one: it shares the Analytics area with reports and dashboards, so it shows that area's bar.
      */
-    public const WORKSPACES = ['Home', 'Dashboard', 'MyWork', 'Approvals', 'NotificationCenter', 'People', 'OrganisationMap', 'WorkforceCommandCentre', 'MyHr', 'AdminCentre', 'AnnouncementsFeed'];
+    public const WORKSPACES = ['Home', 'Dashboard', 'MyWork', 'Approvals', 'NotificationCenter', 'People', 'OrganisationMap', 'MyHr', 'AdminCentre', 'AnnouncementsFeed'];
 
     private const WORKSPACE_ROUTES = ['filament.admin.resources.employees.view'];
 
@@ -140,6 +144,9 @@ final class ExperienceNavigation
         'Setup' => ['ConfigurationFinder', 'ConfigurationChangeResource', 'UserResource', 'RoleResource', 'TenantSettingResource'],
         'Platform' => ['IntegrationSystemResource', 'SecurityPolicyPage', 'InboundEventResource', 'ApiKeyResource'],
     ];
+
+    /** @var array<string, string> page URL → route name, for re-renders on Livewire's update route */
+    private array $routes = [];
 
     public function __construct(private readonly ModuleCatalogue $catalogue) {}
 
@@ -222,10 +229,32 @@ final class ExperienceNavigation
         return array_values(array_filter($this->catalogue->for($user), fn (array $module) => $this->sectionOf($module) === $section));
     }
 
+    /**
+     * The route of the page being shown. The area bar renders inside the page's Livewire component, so an action,
+     * a filter or the next page re-renders it on Livewire's update route: the page is then the one the component
+     * was mounted on (its path travels in the checksummed snapshot).
+     */
+    public function currentRoute(): string
+    {
+        if (! Livewire::isLivewireRequest()) {
+            return (string) Route::currentRouteName();
+        }
+        $url = (string) Livewire::originalUrl();
+        if (! array_key_exists($url, $this->routes)) {
+            try {
+                $this->routes[$url] = (string) Route::getRoutes()->match(Request::create($url))->getName();
+            } catch (Throwable) {
+                $this->routes[$url] = '';
+            }
+        }
+
+        return $this->routes[$url];
+    }
+
     /** The module the current request is on, if any. */
     public function currentModule(User $user): ?array
     {
-        $route = (string) Route::currentRouteName();
+        $route = $this->currentRoute();
         if ($route === '') {
             return null;
         }
@@ -321,7 +350,7 @@ final class ExperienceNavigation
     /** Is the current page a workspace (its own header, no module bar)? */
     public function onWorkspace(User $user): bool
     {
-        if (in_array((string) Route::currentRouteName(), self::WORKSPACE_ROUTES, true)) {
+        if (in_array($this->currentRoute(), self::WORKSPACE_ROUTES, true)) {
             return true;
         }
         $current = $this->currentModule($user);
@@ -384,9 +413,16 @@ final class ExperienceNavigation
         }
     }
 
-    /** @param list<array<string, mixed>> $modules */
+    /**
+     * An area of several modules opens a module page, never a workspace: a workspace has no area bar, so the
+     * area would open on a page that does not show it.
+     *
+     * @param  list<array<string, mixed>>  $modules
+     */
     private function areaLanding(string $area, array $modules): array
     {
+        $pages = array_values(array_filter($modules, fn (array $m) => ! in_array(class_basename($m['key']), self::WORKSPACES, true)));
+        $modules = count($modules) > 1 && $pages !== [] ? $pages : $modules;
         foreach (self::AREA_LANDING[$area] ?? [] as $basename) {
             foreach ($modules as $module) {
                 if (class_basename($module['key']) === $basename) {

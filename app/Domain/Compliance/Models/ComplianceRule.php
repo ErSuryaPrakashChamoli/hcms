@@ -35,6 +35,11 @@ class ComplianceRule extends Model
 
     public const STATUSES = [self::DRAFT, self::REVIEW, self::VERIFIED, self::SUPERSEDED, self::REJECTED];
 
+    /** `status`: an active version is resolved for calculation; a proposed one is prepared for review and is not. */
+    public const ACTIVE = 'active';
+
+    public const PROPOSED = 'proposed';
+
     /** Never changed after creation. */
     public const IMMUTABLE = ['jurisdiction', 'country', 'code', 'state', 'state_key', 'version', 'effective_from', 'effective_to', 'parameters', 'checksum', 'name', 'corrects_rule_id', 'correction_reason'];
 
@@ -111,6 +116,11 @@ class ComplianceRule extends Model
     public function checksumIntact(): bool
     {
         return $this->checksum !== null && hash_equals($this->checksum, $this->computeChecksum());
+    }
+
+    public function isProposed(): bool
+    {
+        return $this->status === self::PROPOSED;
     }
 
     public function isVerified(): bool

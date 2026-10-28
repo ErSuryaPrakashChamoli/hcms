@@ -7,6 +7,8 @@ Frozen in Phase 2 (27 September 2026). Describes what is implemented; planned it
 ```
 Attendance source (device adapter · API · web · mobile · manual · import)
   └─ PunchIngestion::record()            raw punch, fingerprint-unique per tenant, never rewritten
+Monthly attendance upload (no device)
+  └─ attendance_marks                    one day code per employee and date (bulk-uploads.md)
        └─ ProcessAttendanceDay (queued, TenantAwareJob)    work date chosen by punch window
             └─ AttendanceProcessor::process()
                  ├─ ShiftResolver         schedule assignment / rule → shift for the date (effective-dated)
@@ -15,6 +17,7 @@ Attendance source (device adapter · API · web · mobile · manual · import)
                  ├─ PolicyResolver        attendance + overtime policy versions effective on the date
                  ├─ LeaveDayResolver      contract implemented by the Leave domain
                  ├─ approved regularisations (override IN/OUT, WFH / on duty / field duty)
+                 ├─ attendance mark from a monthly upload (status; full-day leave still wins)
                  └─ AttendanceRecord      status, times, minutes, exceptions, overtime, basis, version
                       ├─ exceptions → Exception Centre, notifications, workflows
                       ├─ regularisation → approval → recalculation (snapshots kept)
@@ -55,6 +58,8 @@ Idempotency: the pre-check plus the unique index make retries safe for devices, 
 
 Deterministic and transactional (row lock on the record). Steps: resolve shift/timezone/holiday/policies/regularisations/leave → punch window (shift ± `attendance.punch_window_hours`, or the local calendar day for flexible/no shift) → first IN / last OUT (`resolveInOut`: directed punches win, earliest IN, latest OUT; single punch, only-OUT, only-IN and reversed sequences raise `missing_in`, `missing_out`, `invalid_sequence` and mark the day `incomplete`) → regularisation overrides → late/early with grace → worked = span − unpaid breaks → status → overtime → record.
 
+Status precedence: approved full-day leave, then an `attendance_marks` row for the day (a monthly upload: its status, or for `working` present on a working day and the schedule's weekly off or holiday otherwise; a mark split into halves uses only the half not on leave on a half-day-leave day; no punch exceptions, lateness or overtime; recorded as `attendance_mark_id` in the basis), then punches and regularisations. Half-day leave turns an absent result into leave either way.
+
 Statuses: present, half_day, absent, incomplete (missing punch), weekly_off, holiday, leave, unpaid_leave, wfh, on_duty, field_duty. Exceptions: missed_punch, missing_in, missing_out, invalid_sequence, late, early_leave, short_hours, absent, no_shift, holiday_work, overtime. Regularisation-pending and regularised are derived (`is_regularised`, pending requests).
 
 Each record stores `scheduled_start/end/minutes`, `break_minutes`, `timezone`, `calculation_version` and `calculation_basis` (schedule, shift, policy version ids, holiday, grace, breaks, thresholds, punch ids, regularisation ids, leave request, window), so any day can be explained and reproduced. Historical days use the assignment/shift/policy versions effective on that date; changing a shift's grace today does change a *reprocessed* old day — the basis shows which values were used, and reprocessing is an explicit action.
@@ -75,7 +80,7 @@ Attendance produces `overtime_minutes` and the reviewed `overtime_approved_minut
 
 ## 8. Leave-ready contract
 
-`App\Domain\Attendance\Contracts\LeaveDayResolver::approvedLeaveOn(employee, date): ?LeaveDay` (request id, session full/first_half/second_half, paid flag, type code). The Leave domain binds `AttendanceLeaveDayResolver`; Attendance never reads balances or approvals directly.
+`App\Domain\Attendance\Contracts\LeaveDayResolver::approvedLeaveOn(employee, date): ?LeaveDay` (request id, session full/first_half/second_half, paid flag, type code), and `approvedLeaveBetween(employee, from, to)` for a range in one read (date => LeaveDay; the monthly attendance upload). The Leave domain binds `AttendanceLeaveDayResolver`; Attendance never reads balances or approvals directly. Leave is recorded only by leave requests: approving or cancelling one recalculates its days, and a monthly upload has no leave code.
 
 ## 9. Security model
 

@@ -67,19 +67,6 @@ final class Payslips
         return $payslip;
     }
 
-    public function withdrawForRun(PayrollRun $run): int
-    {
-        $ids = $run->entries()->pluck('id');
-        $payslips = Payslip::query()->whereIn('payroll_entry_id', $ids)->get();
-
-        foreach ($payslips as $payslip) {
-            $this->audit->record(AuditAction::Delete, 'payroll', $payslip, [], 'Payroll run reopened');
-            $payslip->delete();
-        }
-
-        return $payslips->count();
-    }
-
     /** Indian-style number to words (lakhs / crores). */
     public static function inWords(int $n): string
     {

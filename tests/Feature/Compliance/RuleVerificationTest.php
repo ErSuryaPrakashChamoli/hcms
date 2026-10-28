@@ -40,7 +40,8 @@ it('records creation history and a checksum for every published version', functi
     expect($this->epf->checksum)->toHaveLength(64)
         ->and($this->epf->checksumIntact())->toBeTrue()
         ->and($this->epf->verifications()->where('action', 'created')->exists())->toBeTrue()
-        ->and(ComplianceRuleVerification::query()->where('action', 'submitted')->count())->toBe(7); // ESI, EPF v2 and TDS v3 (Phase 7) plus the Phase 8 and Phase 9 evidence revisions of EPF v2 and TDS v3
+        ->and(ComplianceRuleVerification::query()->where('action', 'submitted')->count())->toBe(15) // ESI, EPF v2 and TDS v3 (Phase 7) plus the Phase 8 and Phase 9 evidence revisions of EPF v2 and TDS v3 …
+        ->and(ComplianceRuleVerification::query()->where('action', 'submitted')->whereIn('compliance_rule_id', ComplianceRule::query()->where('status', ComplianceRule::PROPOSED)->select('id'))->count())->toBe(8); // … and the evidence of 8 versions prepared for review on 2026-10-26 (BONUS v1, v2; GRATUITY v2, v3; LWF KA v2, HR v5; PT WB v2, KL v2)
 });
 
 it('keeps rule versions immutable: no payload edits, no deletion, no pack rewrite', function () {

@@ -19,7 +19,7 @@ use RuntimeException;
  * professional tax and labour welfare fund rules; registrations (EPFO, ESIC, PT, LWF) hang off it.
  * `company_id` is denormalised from the legal entity so the company access dimension applies.
  */
-#[Fillable(['tenant_id', 'company_id', 'legal_entity_id', 'code', 'name', 'address', 'country', 'state', 'district', 'postal_code', 'establishment_type', 'is_primary', 'status', 'effective_from', 'effective_to', 'metadata'])]
+#[Fillable(['tenant_id', 'company_id', 'legal_entity_id', 'code', 'name', 'address', 'country', 'state', 'district', 'postal_code', 'establishment_type', 'appropriate_government', 'ss_appropriate_government', 'industry', 'is_primary', 'status', 'effective_from', 'effective_to', 'metadata'])]
 class Establishment extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates, HasRecordVerification, ScopedByOrganisation;
@@ -56,7 +56,7 @@ class Establishment extends Model
 
     public function verificationIdentity(): array
     {
-        return ['legal_entity_id', 'code', 'name', 'address', 'country', 'state', 'district', 'postal_code', 'establishment_type'];
+        return ['legal_entity_id', 'code', 'name', 'address', 'country', 'state', 'district', 'postal_code', 'establishment_type', 'appropriate_government', 'ss_appropriate_government'];
     }
 
     public function auditModule(): string

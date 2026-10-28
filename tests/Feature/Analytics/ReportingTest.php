@@ -43,8 +43,9 @@ it('exposes datasets by permission and drops sensitive fields for users without 
     $registry = app(DatasetRegistry::class);
     $viewer = tenantUser($this->tenant, ['employee.view', 'analytics.reports']);
 
-    expect(array_keys($registry->availableTo($viewer)))->toBe(['employees'])
-        ->and(array_keys($registry->availableTo($this->hr)))->toHaveCount(9)
+    // employee.view opens the non-sensitive people datasets; statutory IDs, family and contacts need employee.sensitive.view.
+    expect(array_keys($registry->availableTo($viewer)))->toBe(['employees', 'employee_movements', 'manager_changes', 'lifecycle_transitions', 'qualifications'])
+        ->and(array_keys($registry->availableTo($this->hr)))->toHaveCount(count($registry->all()))
         ->and($registry->get('employees')->catalogue($viewer))->not->toHaveKey('ctc_annual')
         ->and($registry->get('employees')->catalogue($this->hr))->toHaveKey('ctc_annual');
 

@@ -15,11 +15,11 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Services\EstablishmentAssignments;
 use App\Domain\Payroll\Models\PayrollEntry;
-use App\Domain\Payroll\Services\PayrollRuns;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 require_once __DIR__.'/ComplianceTestHelpers.php';
+require_once __DIR__.'/../Payroll/PayrollHistoryTestHelpers.php';
 
 beforeEach(function () {
     Storage::fake('local');
@@ -145,9 +145,9 @@ it('applies EPFO sequencing: supplementary for new members only and revised retu
 
     $regular = $this->returns->approve($this->returns->validate($this->epf->generate($this->establishment, 2026, 9, $this->generator), $this->generator), $this->approver);
 
-    // Payroll is corrected: reopen, lower Ravi's salary, add a new joiner, re-finalize.
-    $runs = app(PayrollRuns::class);
-    $runs->reopen($this->run, 'Correction', $this->payrollApprover);
+    // The month's payroll changed after the regular return (a month reopened before reopening was refused, or one settled
+    // later under C12-D1): Ravi's salary is lower, a new joiner is added, and the month is re-finalized.
+    returnFinalizedRunToDraftForTest($this->run);
     compensate($this->ravi, 216000, '2026-09-01', ['CONV' => 1600], 'correction', 'Correction');
     $newJoiner = statutoryEmployee(300000, $this->establishment, '100200300402');
     $this->run = finalizedPayroll($this->company, 2026, 9, $this->preparer, $this->payrollApprover);

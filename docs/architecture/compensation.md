@@ -281,6 +281,9 @@ prepares a draft cycle of type `salary_upload`, and that cycle goes through the 
   separators ("6,00,000").
 - **Mapping:** the person mapping the columns chooses the company (one upload = one cycle = one
   company) and a default effective date for rows that have none.
+- **New or existing:** at upload (changeable when mapping) the uploader chooses *Assign CTC to new
+  employees* (no active salary assignment yet), *Revise CTC of existing employees* (has one) or *Both*.
+  A row outside the choice is skipped with the reason (`ImportMode`, see `bulk-uploads.md`).
 - **Validation:** runs as the uploader and touches no compensation.
   - Each row passes `CompensationChanges::check` (the same rules as `propose`).
   - Each row also passes the timeline rules `AssignmentWriter` would refuse at execution: employee not

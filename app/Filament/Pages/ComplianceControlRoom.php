@@ -46,7 +46,7 @@ class ComplianceControlRoom extends Page implements HasTable
 
     protected static string|UnitEnum|null $navigationGroup = 'Compliance';
 
-    protected static ?string $navigationLabel = 'Control room';
+    protected static ?string $navigationLabel = 'Compliance control room';
 
     protected static ?string $title = 'Compliance control room';
 

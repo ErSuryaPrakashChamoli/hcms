@@ -6,11 +6,11 @@ Phase 4 (27 September 2026). Describes what is implemented; *deferred* items are
 
 ```
 PayrollPeriod (company, month; open → closed)
-  └─ PayrollRun  draft → calculated → validated → approved → finalized → paid   (reopen: finalized → draft, audited)
+  └─ PayrollRun  draft → calculated → validated → approved → finalized → paid   (approved → draft allowed, audited; finalized and paid runs are never reopened, 2026-10-28)
        └─ PayrollCalculator::calculate(employee, period)
             1 eligibility window (joining / exit)
             2 salary segments — every EmployeeSalaryAssignment effective in the window (mid-month revisions split)
-            3 loss of pay — AttendanceOutput (absent days) + LeaveOutput::unpaidDays (approved unpaid leave) + approved manual LOP
+            3 loss of pay — AttendanceOutput (absent day 1; half day 0.5; half-day leave with nothing in the other half 0.5) + LeaveOutput::unpaidDays (approved unpaid leave) + approved manual LOP; at most 1 a day
             4 divisor — setting payroll.proration_basis: calendar_days | fixed_days (payroll.proration_fixed_days) | working_days (scheduled days from AttendanceOutput)
             5 earnings per segment (FormulaEngine, sandboxed arithmetic) — prorated components per segment; fixed and overtime-driven components once, on the current salary
             6 approved adjustments (earning, deduction, reimbursement, arrear, recovery, correction, lop)
@@ -20,6 +20,17 @@ PayrollPeriod (company, month; open → closed)
 ```
 
 The engine never reads punches, never recalculates attendance and never touches leave balances (architecture test). Attendance and leave are consumed only as `AttendanceOutput` / `LeaveOutput`.
+
+### 1.1 Pay cycle (2026-10-28)
+
+A payroll month's dates come from the tenant's **pay cycle**: setting `payroll.cycle_start_day`, 1 (calendar month, the default) to 28. At 25, November runs from 25 October to 24 November. A month is named after the month it ends in. Every company of the tenant shares the cycle, so the monthly attendance upload stays one sheet a month. Admins change it under **Payroll → Pay cycle** (`PayCyclePage`, `payroll.manage`). The page shows what the next four months will cover for each company before saving, and the reason is audited with the setting.
+
+- `PayCycle` (`Payroll\Services`) holds the rules. `PayrollPeriod::for()` and `::containing(company, date)` delegate to it. Other modules read the cycle through `Payroll\Contracts\PayCycleReader`.
+- **Fixed dates.** A month's dates are fixed once a run is opened for it or it closes. Before that, they follow the cycle as it is now: `for()` re-dates the month, and `PayCycle::change()` re-dates every open month with no run.
+- **Changeover.** A month starts the day after a fixed month before it and ends the day before a fixed month after it. So a change never pays a day twice or leaves one out. After a calendar October, a 25th cycle gives November 1–24 Nov. Going back to calendar months after a 25 Nov – 24 Dec December gives January 25 Dec – 31 Jan.
+- **Selecting months by name.** Code that selects months by name uses `year`/`month` or the `monthsBetween($from, $to)` scope, never `start_date`. A month counts when its 1st is in the range, the same as before for calendar months. That covers statutory returns (`StatutoryPayrollSource`, `EpfReturns`), workforce cost, compliance-report payroll states, analytics period columns and the API `period` (`PayrollPeriod::key()`).
+- **Wage month.** Statutory wage months (PF, ESI, PT, LWF months) are the month's name. TDS stays on the payment date, which defaults to the period end.
+- **Calendar-month registers.** Compliance registers built from attendance (muster rolls, wage registers) still read calendar months (`ReportPeriod`). Whether they follow the cycle is an open decision.
 
 ## 2. Salary structure and components
 
@@ -68,7 +79,7 @@ All 22 synced rule versions (India EPF, ESI, PT by state, LWF, TDS; UAE generic)
 
 ## 9. Immutability and corrections
 
-Entries and lines of finalized/paid runs refuse update and delete; adjustments of a closed period are refused; attendance days are locked and leave on locked days cannot be approved or cancelled. Corrections: an **arrear** or **recovery** adjustment in an open period with `reference_period_id` pointing at the closed one, or an audited **reopen** of a finalized, unpaid run. Automatic arrear computation from retro salary/attendance changes is *deferred*.
+Entries and lines of finalized/paid runs refuse update and delete; adjustments of a closed period are refused; attendance days are locked and leave on locked days cannot be approved or cancelled. Corrections: an **arrear** or **recovery** adjustment in an open period with `reference_period_id` pointing at the closed one. Since 2026-10-28 a finalized or paid run is never reopened: `PayrollRuns::reopen()` refuses it on the locked row and audits the attempt (`REJECTED`); `PayrollRun`, `PayrollPeriod` and `Payslip` refuse the same change through Eloquent. How a wrong finalized month is settled is decision C12-D1 (open; reopening is its option D). Automatic arrear computation from retro salary/attendance changes is *deferred*.
 
 ## 10. Adjustments
 
@@ -102,5 +113,5 @@ Runs, periods, bank files and statutory profiles are per company (ADR-0001: Comp
 | Finalization says "recalculate" | Run calculated on an older engine version |
 | Finalization says "do not reconcile" | Totals were changed outside calculation; recalculate |
 | Finalization says rules are illustrative | Compliance rules need verification (production enforcement) |
-| LOP seems wrong | `inputs.lop_by_date`: absent attendance days and approved unpaid leave only |
+| LOP seems wrong | `inputs.lop_by_date`: absent days (1), half days (0.5, none when the day also has half-day leave), half-day leave with the other half absent (0.5), and approved unpaid leave; payroll-2.5 onward (2.4 and earlier paid half days in full) |
 | Salary revision refused | The date is inside a paid period; use a later date and an arrear |

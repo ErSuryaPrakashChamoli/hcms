@@ -15,6 +15,7 @@ use App\Domain\Leave\Events\LeaveEvent;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Lifecycle\Services\Timeline;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -308,6 +309,19 @@ final class Leaves
             ->whereDate('to_date', '>=', $date->toDateString())
             ->get()
             ->first(fn (LeaveRequest $r) => $r->sessionOn($date->toDateString()) !== null);
+    }
+
+    /** @return Collection<int, LeaveRequest> requests taken (approved) that overlap the range, oldest first */
+    public function approvedBetween(Employee $employee, Carbon $from, Carbon $to): Collection
+    {
+        return LeaveRequest::query()
+            ->with('leaveType')
+            ->where('employee_id', $employee->id)
+            ->whereIn('status', LeaveRequest::TAKEN)
+            ->whereDate('from_date', '<=', $to->toDateString())
+            ->whereDate('to_date', '>=', $from->toDateString())
+            ->orderBy('id')
+            ->get();
     }
 
     /** @return array<int, float> period => days */

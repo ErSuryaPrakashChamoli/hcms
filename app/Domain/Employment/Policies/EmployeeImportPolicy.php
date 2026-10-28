@@ -2,13 +2,16 @@
 
 namespace App\Domain\Employment\Policies;
 
+use App\Domain\Attendance\Imports\AttendanceSheetImports;
 use App\Domain\Compensation\Imports\SalaryImports;
+use App\Domain\Employment\Imports\BankAccountImports;
 use App\Domain\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Imports are high risk: one permission for the whole pipeline, tenant-bound by the model scope. A salary
- * upload holds pay, so only its uploader sees it, and only while allowed to prepare compensation cycles.
+ * upload holds pay and a bank details upload holds account numbers, so only the uploader sees either, and
+ * only while allowed to make those changes. A monthly attendance upload also needs attendance.manage.
  */
 class EmployeeImportPolicy
 {
@@ -39,10 +42,13 @@ class EmployeeImportPolicy
 
     private function allowed(User $user, Model $model): bool
     {
-        if ($model->getAttribute('type') === SalaryImports::TYPE) {
-            return SalaryImports::allowed($user) && (int) $model->getAttribute('uploaded_by') === (int) $user->getKey();
-        }
+        $uploader = (int) $model->getAttribute('uploaded_by') === (int) $user->getKey();
 
-        return $user->hasPermission('employee.import');
+        return match ($model->getAttribute('type')) {
+            SalaryImports::TYPE => SalaryImports::allowed($user) && $uploader,
+            BankAccountImports::TYPE => BankAccountImports::allowed($user) && $uploader,
+            AttendanceSheetImports::TYPE => AttendanceSheetImports::allowed($user),
+            default => $user->hasPermission('employee.import'),
+        };
     }
 }

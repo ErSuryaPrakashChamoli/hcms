@@ -10,6 +10,7 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\PayrollRun;
+use App\Domain\Payroll\Services\PayCycle;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Support\PayrollActions;
 use BackedEnum;
@@ -21,6 +22,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use UnitEnum;
 
 /** Payroll Control Room (§31): readiness per company, this month's status, and the run register. */
@@ -58,6 +60,8 @@ class PayrollControlRoom extends Page implements HasTable
     {
         return [
             PayrollActions::openRun(),
+            Action::make('payCycle')->label('Pay cycle')->icon(Heroicon::OutlinedCalendarDays)->color('gray')
+                ->visible(fn () => PayCyclePage::canAccess())->url(fn () => PayCyclePage::getUrl()),
             // Phase 5: statutory outputs built from finalized payroll live in the Compliance control room.
             Action::make('complianceControlRoom')->label('Compliance control room')->icon(Heroicon::OutlinedShieldCheck)->color('gray')
                 ->visible(fn () => ComplianceControlRoom::canAccess())->url(fn () => ComplianceControlRoom::getUrl()),
@@ -67,10 +71,13 @@ class PayrollControlRoom extends Page implements HasTable
     /** @return array<int, array<string, mixed>> */
     public function getCompanies(): array
     {
-        $now = now();
+        $cycle = app(PayCycle::class);
 
-        return Company::query()->orderBy('name')->get()->map(function (Company $company) use ($now) {
-            $period = PayrollPeriod::query()->where('company_id', $company->id)->where('year', $now->year)->where('month', $now->month)->first();
+        return Company::query()->orderBy('name')->get()->map(function (Company $company) use ($cycle) {
+            // The payroll month holding today: on a 25th-to-24th cycle, 26 October is in November's.
+            [$year, $month] = $cycle->monthContaining($company->id, today());
+            $period = PayrollPeriod::query()->where('company_id', $company->id)->where('year', $year)->where('month', $month)->first();
+            [$start, $end] = $period?->isFixed() ? [$period->start_date, $period->end_date] : $cycle->bounds($company->id, $year, $month);
             $run = $period?->runs()->orderByDesc('id')->first();
             $headcount = Employee::query()->employed()->whereHas('positions', fn (Builder $q) => $q->where('company_id', $company->id)->currentlyEffective())->count();
             $withSalary = Employee::query()->employed()->whereHas('positions', fn (Builder $q) => $q->where('company_id', $company->id)->currentlyEffective())
@@ -78,7 +85,8 @@ class PayrollControlRoom extends Page implements HasTable
 
             return [
                 'company' => $company,
-                'period_label' => $now->format('M Y'),
+                'period_label' => Carbon::create($year, $month, 1)->format('M Y'),
+                'period_dates' => $start->format('j M').' – '.$end->format('j M Y'),
                 'run' => $run,
                 'status' => $run?->status ?? 'not_started',
                 'headcount' => $headcount,

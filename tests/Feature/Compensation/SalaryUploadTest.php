@@ -170,3 +170,20 @@ it('maps and validates a salary upload from its page', function () {
 
     expect($import->refresh()->status)->toBe('validated')->and($import->create_count)->toBe(1)->and($import->options['effective_from'])->toBe('2026-10-01');
 });
+
+it('assigns a first CTC or revises an existing one as the uploader chooses, skipping the others with the reason', function () {
+    $csv = "Employee code,Salary structure code,Annual CTC,Effective from\n{$this->newJoiner->employee_code},STANDARD,480000,2026-10-01\n{$this->paid->employee_code},STANDARD,720000,2026-10-01\n";
+
+    $new = validatedSalaryUpload($csv, ['mode' => 'new']);
+    $rows = $new->rows()->get()->keyBy('row_number');
+    expect($new->create_count)->toBe(1)->and($rows[1]->action)->toBe('create')
+        ->and($rows[2]->action)->toBe('skip')->and($rows[2]->match['reason'])->toContain('already has a CTC on file');
+
+    $existing = validatedSalaryUpload($csv, ['mode' => 'update']);
+    $rows = $existing->rows()->get()->keyBy('row_number');
+    expect($existing->create_count)->toBe(1)->and($rows[1]->action)->toBe('skip')->and($rows[1]->match['reason'])->toContain('has no CTC on file yet')
+        ->and($rows[2]->action)->toBe('create');
+
+    $import = $this->imports->run($this->imports->approve($existing, $this->uploader), $this->uploader);
+    expect(CompensationChange::query()->withoutGlobalScope(AccessScope::class)->where('compensation_cycle_id', $import->options['compensation_cycle_id'])->pluck('employee_id')->all())->toBe([$this->paid->id]);
+});

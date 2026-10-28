@@ -12,10 +12,14 @@ use App\Filament\Pages\AdminCentre;
 use App\Filament\Pages\Home;
 use App\Filament\Pages\MyHr;
 use App\Filament\Pages\People;
+use App\Filament\Pages\WorkforceCommandCentre;
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Filament\Resources\Employees\Pages\ListEmployees;
+use App\Filament\Resources\Reports\ReportResource;
 use App\Livewire\Experience\CommandCenter;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
+use Livewire\Mechanisms\HandleRequests\HandleRequests;
 
 /*
 | UX.15.5: navigation as a workspace. Workspaces carry no module bar; module pages show their area's
@@ -53,6 +57,38 @@ it('shows no module bar on workspaces and a grouped area bar on module pages', f
 
     expect(ExperienceNavigation::EVERYDAY['Growth'])->toHaveCount(6)
         ->and(collect(ExperienceNavigation::EVERYDAY)->every(fn (array $m) => count($m) <= 6))->toBeTrue();
+});
+
+it('opens Analytics apart from the Insights section, and shows the Analytics bar on both pages', function () {
+    $analyst = tenantUser($this->tenant, ['analytics.executive', 'analytics.view', 'analytics.reports']);
+    $this->actingAs($analyst);
+    actAsTenant($this->tenant);
+    $nav = app(ExperienceNavigation::class);
+
+    $insights = $nav->landing($analyst, 'insights', $nav->experience($analyst))['url'];
+    $analytics = collect($nav->children($analyst, 'insights'))->firstWhere('label', 'Analytics')['url'];
+    actAsTenant(null);
+    expect($insights)->toBe(WorkforceCommandCentre::getUrl())->and($analytics)->toBe(ReportResource::getUrl('index'));
+
+    $this->get($analytics)->assertOk()->assertSee('class="pos-spacebar"', false)->assertSee('Workforce Command Centre');
+    $this->get($insights)->assertOk()->assertSee('class="pos-spacebar"', false)->assertSee(ReportResource::getUrl('index'), false);
+});
+
+it('keeps the area bar when a module page re-renders on Livewire\'s update route', function () {
+    $this->actingAs($this->admin);
+
+    $html = $this->get(EmployeeResource::getUrl('index'))->assertOk()->getContent();
+    preg_match_all('/wire:snapshot="([^"]+)"/', $html, $matches);
+    $snapshot = collect($matches[1])->map(fn (string $s) => html_entity_decode($s, ENT_QUOTES))
+        ->first(fn (string $s) => (json_decode($s, true)['memo']['name'] ?? null) === ListEmployees::class);
+    expect($snapshot)->not->toBeNull();
+
+    // An action, a filter or the next page: the page component alone re-renders, from Livewire's endpoint.
+    $update = $this->withHeaders(['X-Livewire' => 'true'])->postJson(app(HandleRequests::class)->getUpdateUri(), [
+        'components' => [['snapshot' => $snapshot, 'updates' => [], 'calls' => [['path' => '', 'method' => '$refresh', 'params' => []]]]],
+    ])->assertOk();
+
+    expect($update->json('components.0.effects.html'))->toContain('class="pos-spacebar"')->toContain('All in Lifecycle');
 });
 
 it('starts a person-first change only for people allowed to make it, and only towards profiles they may open', function () {

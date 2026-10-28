@@ -86,6 +86,13 @@ it('uses the Maharashtra February amount, the female exemption and LWF in contri
         ->and(($this->calc)($employee, 2026, 6)->amount('LWF_EE'))->toBe(25.0)
         ->and(($this->calc)($employee, 2026, 6)->amount('LWF_ER'))->toBe(75.0);
 
+    // The ₹175 band (₹7,501–₹10,000) stays ₹175 in February: only the top band pays ₹300.
+    $low = salariedEmployee(120000);
+    $low->person->update(['gender' => 'male']);
+    expect(($this->calc)($low, 2026, 9)->gross())->toBeGreaterThan(7500.0)->toBeLessThanOrEqual(10000.0)
+        ->and(($this->calc)($low, 2026, 9)->amount('PT'))->toBe(175.0)
+        ->and(($this->calc)($low, 2026, 2)->amount('PT'))->toBe(175.0);
+
     $employee->person->update(['gender' => 'female']);
     $woman = salariedEmployee(240000); // gross 19,040 ≤ 25,000
     $woman->person->update(['gender' => 'female']);

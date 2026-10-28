@@ -6,8 +6,11 @@ use App\Domain\Compliance\Models\CompanyStatutoryProfile;
 use App\Domain\Compliance\Models\EstablishmentStatutoryProfile;
 use App\Domain\Compliance\Support\StatutoryContext;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Services\EstablishmentAssignments;
 use App\Domain\Payroll\Models\PayrollPeriod;
+use Illuminate\Support\Collection;
 
 /**
  * Resolves Employee → Establishment (on the period end date) → State → profiles. The state never
@@ -22,11 +25,45 @@ final class StatutoryContexts
         return $this->resolve($employee, $period);
     }
 
+    /**
+     * Whether each statute applies at an establishment on each date, decided as for an employee there: from the
+     * establishment's profiles when it has any, otherwise from the company statutory settings. Compliance reports
+     * use it so a pack decides as payroll did. Pass $profiles to decide for a proposed set instead of the stored one.
+     *
+     * @param  list<string>  $dates
+     * @param  Collection<int, EstablishmentStatutoryProfile>|null  $profiles  all of the establishment's profiles
+     * @return array<string, array<string, bool>> date => statute => applies
+     */
+    public function applicability(Establishment $establishment, array $dates, ?Collection $profiles = null): array
+    {
+        $profiles ??= EstablishmentStatutoryProfile::query()->withoutGlobalScope(AccessScope::class)->where('establishment_id', $establishment->getKey())->get();
+        $settings = $this->companySettings((int) $establishment->company_id);
+        $out = [];
+
+        foreach ($dates as $on) {
+            $effective = [];
+            foreach (EstablishmentStatutoryProfile::STATUTES as $statute) {
+                $effective[$statute] = $profiles->filter(fn (EstablishmentStatutoryProfile $p) => $p->statute === $statute && $p->isEffectiveOn($on))
+                    ->sortByDesc(fn (EstablishmentStatutoryProfile $p) => $p->effective_from)->first();
+            }
+            $context = new StatutoryContext($establishment, null, $settings, $effective, $profiles->isNotEmpty(), null, null, null);
+            $out[$on] = array_combine(EstablishmentStatutoryProfile::STATUTES, array_map($context->applies(...), EstablishmentStatutoryProfile::STATUTES));
+        }
+
+        return $out;
+    }
+
+    /** The company statutory settings payroll falls back to for an establishment without profiles (defaults if none saved). */
+    public function companySettings(int $companyId): CompanyStatutoryProfile
+    {
+        return CompanyStatutoryProfile::query()->where('company_id', $companyId)->first()
+            ?? new CompanyStatutoryProfile(CompanyStatutoryProfile::defaults() + ['company_id' => $companyId]);
+    }
+
     private function resolve(Employee $employee, PayrollPeriod $period): StatutoryContext
     {
         $on = $period->end_date->toDateString();
-        $legacy = CompanyStatutoryProfile::query()->where('company_id', $period->company_id)->first()
-            ?? new CompanyStatutoryProfile(CompanyStatutoryProfile::defaults() + ['company_id' => $period->company_id]);
+        $legacy = $this->companySettings((int) $period->company_id);
 
         ['establishment' => $establishment, 'source' => $source] = $this->assignments->resolve($employee, $on);
 

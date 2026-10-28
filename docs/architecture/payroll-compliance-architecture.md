@@ -72,6 +72,7 @@ enforces it; an approved run can now be reopened to draft for that).
 | Verification by a different platform admin, official domains only | `RuleVerifications` |
 | One establishment assignment per date, history immutable | `EstablishmentAssignments`, model guard |
 | Profiles carry no rates and do not overlap | `EstablishmentStatutoryProfile` guard |
+| Payroll past review (approved, finalized, paid) keeps the statutory profile it was calculated with: no profile create, update or delete may change whether a statute applied on its period end (C12, 2026-10-27; months calculated from the company profile are not covered) | `EstablishmentStatutoryProfile::assertPayrollHistoryKept()`; `StatutoryContexts::applicability()` decides for payroll and compliance reports alike |
 | Registration numbers, UAN, IP number, PAN encrypted + masked | model casts, data classification test |
 | Return content frozen after approval | `StatutoryReturn` + `FrozenWithReturn` guards |
 | Snapshots, actions, reconciliations, verification history append-only | model guards |
@@ -89,7 +90,7 @@ versions, readiness, action log), entries (masked, access audited), reconciliati
 ## 6. Preserved limitations
 
 Phase 4: split-month PF/ESI eligibility uses the latest segment; split-month fixed components paid
-once; SQLite does not exercise row locks; finalized-unpaid reopen allowed with a reason; pending
+once; SQLite does not exercise row locks; finalized payroll is no longer reopened (2026-10-28; settlement of a wrong finalized month is decision C12-D1, open); pending
 leave does not reduce payroll; rehire accrual unresolved; leave year and payroll period
 independent.
 

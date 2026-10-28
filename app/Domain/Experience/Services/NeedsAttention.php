@@ -20,6 +20,7 @@ use App\Domain\Workflow\Enums\TaskStatus;
 use App\Domain\Workflow\Models\WorkflowTask;
 use App\Filament\Pages\AnnouncementsFeed;
 use App\Filament\Pages\Approvals;
+use App\Filament\Pages\DeclareInvestments;
 use App\Filament\Pages\MyHr;
 use App\Filament\Pages\MyLearning;
 use App\Filament\Pages\TaskInbox;
@@ -58,7 +59,7 @@ final class NeedsAttention
         'assets' => [AssetResource::class],
         'tasks' => [TaskInbox::class],
         'records' => [[MyHr::class, ['tab' => 'services']]],
-        'tax_declaration' => [TaxDeclarationResource::class],
+        'tax_declaration' => [DeclareInvestments::class, TaxDeclarationResource::class],
         // A manager's work about their team.
         'team_decisions' => [Approvals::class],
         'team_learning' => [TeamLearning::class, LearningEnrolmentResource::class],

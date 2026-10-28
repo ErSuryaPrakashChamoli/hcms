@@ -4,6 +4,7 @@ namespace App\Domain\Attendance\Services;
 
 use App\Domain\Attendance\Contracts\LeaveDayResolver;
 use App\Domain\Attendance\Events\AttendanceEvent;
+use App\Domain\Attendance\Models\AttendanceMark;
 use App\Domain\Attendance\Models\AttendancePunch;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Attendance\Models\AttendanceRegularisation;
@@ -19,8 +20,10 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The attendance calculation engine (Phase 2 §16–§22). Deterministic: the same punches, shift,
- * schedule, holiday, policies, regularisations and leave answer produce the same record. Raw
- * punches are never modified; the record stores the basis it was calculated from.
+ * schedule, holiday, policies, regularisations, leave answer and uploaded mark produce the same
+ * record. Raw punches are never modified; the record stores the basis it was calculated from.
+ * Precedence for the status: approved full-day leave, then a mark from a monthly attendance
+ * upload, then punches and regularisations.
  */
 final class AttendanceProcessor
 {
@@ -62,6 +65,7 @@ final class AttendanceProcessor
             $overtimePolicy = $this->policies->resolve('overtime', $employee, $date);
             $regularisations = AttendanceRegularisation::query()->where('employee_id', $employee->id)->whereDate('date', $date->toDateString())->where('status', 'approved')->orderBy('id')->get();
             $leave = $this->leave->approvedLeaveOn($employee, $date);
+            $mark = AttendanceMark::query()->where('employee_id', $employee->id)->whereDate('date', $date->toDateString())->first();
 
             $scheduledStart = $shift?->startsAt($date, $timezone);
             $scheduledEnd = $shift?->endsAt($date, $timezone);
@@ -114,7 +118,14 @@ final class AttendanceProcessor
                 $late = $early = 0;
                 $exceptions = [];
             } else {
-                $status = $this->status($resolved, $holiday, $punches, $firstIn, $lastOut, $worked, $fullDay, $halfDay, $regularisations, $exceptions);
+                if ($mark !== null) {
+                    // The uploaded sheet is the day's evidence: punch exceptions and lateness do not apply.
+                    $status = $mark->statusOn($holiday !== null, (bool) $resolved['weekly_off'], $leave?->session);
+                    $late = $early = 0;
+                    $exceptions = [];
+                } else {
+                    $status = $this->status($resolved, $holiday, $punches, $firstIn, $lastOut, $worked, $fullDay, $halfDay, $regularisations, $exceptions);
+                }
 
                 if ($leave !== null && $status === 'absent') {
                     $status = $leave->isPaid ? 'leave' : 'unpaid_leave';
@@ -129,7 +140,7 @@ final class AttendanceProcessor
                 $exceptions[] = 'early_leave';
             }
 
-            [$overtime, $overtimeStatus] = $this->overtime($employee, $date, $shift, $overtimePolicy, $status, $holiday, $resolved, $punches, $worked, $fullDay, $record, $exceptions);
+            [$overtime, $overtimeStatus] = $mark !== null ? [0, 'none'] : $this->overtime($employee, $date, $shift, $overtimePolicy, $status, $holiday, $resolved, $punches, $worked, $fullDay, $record, $exceptions);
 
             $exceptions = array_values(array_unique(array_filter($exceptions)));
             $previouslyApproved = $record->exists ? (int) $record->overtime_approved_minutes : 0;
@@ -164,7 +175,7 @@ final class AttendanceProcessor
                     'full_day_minutes' => $fullDay, 'half_day_minutes' => $halfDay, 'punch_ids' => $punches->pluck('id')->all(),
                     'regularisation_ids' => $regularisations->pluck('id')->all(), 'leave_request_id' => $leave?->leaveRequestId,
                     'window' => [$windowStart->toIso8601String(), $windowEnd->toIso8601String()],
-                ],
+                ] + ($mark !== null ? ['attendance_mark_id' => $mark->id, 'attendance_mark' => $mark->label()] : []),
                 'processed_at' => now(),
             ]);
             $record->withAuditReason('Attendance processing')->save();

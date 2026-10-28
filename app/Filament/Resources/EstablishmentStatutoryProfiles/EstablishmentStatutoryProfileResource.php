@@ -82,6 +82,24 @@ class EstablishmentStatutoryProfileResource extends Resource
                         fn () => $record->withAuditReason($data['reason'])->update(['effective_to' => $data['effective_to']]),
                         'Profile closed',
                     )),
+                Action::make('reopen')->icon(Heroicon::OutlinedLockOpen)->requiresConfirmation()
+                    ->modalDescription('The profile applies again with no end date. A later profile for the same statute must be deleted first.')
+                    ->visible(fn (EstablishmentStatutoryProfile $record) => $record->effective_to !== null && auth()->user()?->can('update', $record))
+                    ->schema([Textarea::make('reason')->required()->rows(2)])
+                    ->action(fn (EstablishmentStatutoryProfile $record, array $data) => StatutoryRegistrationResource::attempt(
+                        fn () => $record->withAuditReason($data['reason'])->update(['effective_to' => null]),
+                        'Profile reopened',
+                    )),
+                Action::make('delete')->icon(Heroicon::OutlinedTrash)->color('danger')->requiresConfirmation()
+                    ->modalHeading('Delete profile permanently')
+                    ->modalDescription(fn (EstablishmentStatutoryProfile $record) => 'This removes the profile from the system; the audit trail keeps a record of the deletion.'
+                        .(EstablishmentStatutoryProfile::query()->where('establishment_id', $record->establishment_id)->count() === 1 ? ' It is the last profile of this establishment, so payroll falls back to the company statutory settings.' : ''))
+                    ->visible(fn (EstablishmentStatutoryProfile $record) => auth()->user()?->can('delete', $record))
+                    ->schema([Textarea::make('reason')->required()->rows(2)])
+                    ->action(fn (EstablishmentStatutoryProfile $record, array $data) => StatutoryRegistrationResource::attempt(
+                        fn () => $record->withAuditReason($data['reason'])->delete(),
+                        'Profile deleted',
+                    )),
             ]);
     }
 

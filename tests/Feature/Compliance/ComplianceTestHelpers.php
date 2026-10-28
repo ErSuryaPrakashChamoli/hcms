@@ -10,6 +10,7 @@ use App\Domain\Organisation\Models\LegalEntity;
 use App\Domain\Organisation\Services\EstablishmentAssignments;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Services\PayrollRuns;
+use OpenSpout\Reader\XLSX\Reader;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/../Payroll/PayrollTestHelpers.php';
@@ -63,4 +64,36 @@ function complianceUsers($tenant): array
         'approver' => tenantUser($tenant, ['compliance.returns.view', 'compliance.returns.approve']),
         'filer' => tenantUser($tenant, ['compliance.returns.view', 'compliance.returns.file', 'compliance.returns.export', 'compliance.reconcile', 'compliance.sensitive.view']),
     ];
+}
+
+/** Every sheet of an .xlsx string: sheet name => rows of cell values. */
+function xlsxSheets(string $content): array
+{
+    $path = tempnam(sys_get_temp_dir(), 'xlsx-test');
+    file_put_contents($path, $content);
+    $reader = new Reader;
+    $reader->open($path);
+    $sheets = [];
+    foreach ($reader->getSheetIterator() as $sheet) {
+        foreach ($sheet->getRowIterator() as $row) {
+            $sheets[$sheet->getName()][] = $row->toArray();
+        }
+    }
+    $reader->close();
+    unlink($path);
+
+    return $sheets;
+}
+
+function sheetHas(array $rows, mixed $value): bool
+{
+    return collect($rows)->flatten()->contains(fn ($cell) => $cell == $value);
+}
+
+/** The first sheet of an .xlsx string. */
+function firstSheet(string $content): array
+{
+    $sheets = xlsxSheets($content);
+
+    return reset($sheets) ?: [];
 }

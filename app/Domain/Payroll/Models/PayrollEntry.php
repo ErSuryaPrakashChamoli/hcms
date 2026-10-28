@@ -21,10 +21,10 @@ class PayrollEntry extends Model
 
     protected static function booted(): void
     {
-        // Phase 4 §32: finalized payroll is history; corrections go through arrears, recoveries or a reopen.
+        // Phase 4 §32: finalized payroll is history; corrections go forward as arrears or recoveries (it is never reopened).
         $guard = function (self $model): void {
             if (in_array($model->run()->value('status'), ['finalized', 'paid'], true)) {
-                throw new \RuntimeException('Entries of finalized payroll cannot be changed; use an arrear, a recovery or reopen the run.');
+                throw new \RuntimeException('Entries of finalized payroll cannot be changed; use an arrear or a recovery in an open month.');
             }
         };
         static::updating($guard);

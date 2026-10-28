@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ExitCases\RelationManagers;
 
+use App\Domain\Compliance\Support\GratuityDetermination;
 use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Exit\Services\FinalSettlements;
 use App\Filament\Support\ExitActions;
@@ -59,8 +60,11 @@ class SettlementRelationManager extends RelationManager
                             TextEntry::make('amount')->numeric(2),
                             TextEntry::make('basis')->state(fn ($record) => collect($record->basis ?? [])->except(['formula'])->map(fn ($v, $k) => "{$k}: ".(is_scalar($v) ? $v : json_encode($v)))->implode(' · '))->placeholder('—')->wrap(),
                         ]),
+                        Section::make('Gratuity')->schema([
+                            TextEntry::make('gratuity')->hiddenLabel()->state(fn (FinalSettlement $record) => GratuityDetermination::describe($record->inputs['gratuity'] ?? null))->listWithLineBreaks(),
+                        ]),
                         Section::make('Inputs')->collapsed()->schema([
-                            TextEntry::make('inputs')->hiddenLabel()->state(fn (FinalSettlement $record) => collect($record->inputs ?? [])->map(fn ($v, $k) => "{$k}: ".(is_scalar($v) ? var_export($v, true) : json_encode($v)))->all())->listWithLineBreaks(),
+                            TextEntry::make('inputs')->hiddenLabel()->state(fn (FinalSettlement $record) => collect($record->inputs ?? [])->except('gratuity')->map(fn ($v, $k) => "{$k}: ".(is_scalar($v) ? var_export($v, true) : json_encode($v)))->all())->listWithLineBreaks(),
                         ]),
                     ]),
                 ...ExitActions::forSettlement(),

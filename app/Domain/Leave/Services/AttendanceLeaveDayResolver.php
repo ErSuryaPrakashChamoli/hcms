@@ -21,4 +21,20 @@ final class AttendanceLeaveDayResolver implements LeaveDayResolver
 
         return new LeaveDay($leave->id, $leave->sessionOn($date->toDateString()) ?? 'full', (bool) $leave->leaveType?->is_paid, $leave->leaveType?->code);
     }
+
+    public function approvedLeaveBetween(Employee $employee, Carbon $from, Carbon $to): array
+    {
+        $days = [];
+        foreach (app(Leaves::class)->approvedBetween($employee, $from, $to) as $leave) {
+            foreach ($leave->dates ?? [] as $entry) {
+                $date = $entry['date'] ?? null;
+                if ($date !== null && $date >= $from->toDateString() && $date <= $to->toDateString()) {
+                    $days[$date] ??= new LeaveDay($leave->id, $entry['session'] ?? 'full', (bool) $leave->leaveType?->is_paid, $leave->leaveType?->code);
+                }
+            }
+        }
+        ksort($days);
+
+        return $days;
+    }
 }
