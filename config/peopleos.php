@@ -882,9 +882,9 @@ return [
         'attendance.punch_window_hours' => 4,
         'attendance.regularisation.window_days' => 7,
         'leave.year_start_month' => 1,
-        // Pay cycle: the day every payroll month starts on, 1 (calendar month) to 28. 25 runs November from 25 October
-        // to 24 November; attendance, loss of pay and the monthly attendance upload follow it (PayCycle).
-        'payroll.cycle_start_day' => 1,
+        // Pay cycle: dated changes [{from: Y-m-d}], each the first day of the first month on a cycle (from 25 Nov 2026,
+        // December runs 25 Nov – 24 Dec). None = calendar months. Set at Payroll → Pay cycle (PayCycle).
+        'payroll.pay_cycle' => [],
         'payroll.lop_from_attendance' => true,
         'payroll.proration_basis' => 'calendar_days',
         'payroll.proration_fixed_days' => 30,

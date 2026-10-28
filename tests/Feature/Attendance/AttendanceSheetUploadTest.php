@@ -18,6 +18,7 @@ use App\Domain\Payroll\Services\PayCycle;
 use App\Filament\Resources\AttendanceSheetImports\AttendanceSheetImportResource;
 use App\Filament\Resources\AttendanceSheetImports\Pages\ListAttendanceSheetImports;
 use App\Filament\Resources\AttendanceSheetImports\Pages\ViewAttendanceSheetImport;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -198,24 +199,37 @@ it('downloads the month sheet with everyone employed in it, maps it from the pag
     expect(fn () => stageSheetCsv("Employee code,1\nEMP1,P\n"))->toThrow(RuntimeException::class, 'attendance.manage');
 });
 
-it('follows a 25th-to-24th pay cycle and keeps the dates an upload was made for when the cycle changes', function () {
-    app(PayCycle::class)->change(25, 'Client runs attendance from the 25th to the 24th');
+it('follows the pay cycle, keeps the dates an upload was made for, and heads repeated days of a long changeover month by date', function () {
+    app(PayCycle::class)->change(Carbon::parse('2026-09-25'), 'Client runs attendance from the 25th to the 24th');
 
-    // 20 October falls in October's 25 September – 24 October.
+    // 20 October falls in October's 25 September – 24 October; September is the short changeover month.
     expect(AttendanceSheetImports::currentMonth())->toBe('2026-10')
         ->and(AttendanceSheetImports::months()['2026-10'])->toBe('October 2026 (25 Sep – 24 Oct)')
-        ->and($this->imports->format()['columns'][2][0])->toBe('25 … 24');
+        ->and(AttendanceSheetImports::months()['2026-09'])->toBe('September 2026 (1 Sep – 24 Sep)')
+        ->and($this->imports->format()['columns'][2][0])->toBe('25 … 24')
+        ->and(runSheet("Employee code,28\nEMP1,P\n", month: '2026-09')->rows()->first()->errors)->toBe(['Day 28 is not in September 2026 (1 Sep – 24 Sep); leave it blank.']);
     $header = str_getcsv(strtok($this->imports->template('2026-10'), "\n"), escape: '');
     expect($header[2])->toBe('25 Fri')->and(end($header))->toBe('24 Sat')->and(count($header))->toBe(32);
 
+    // Back to calendar months from November, before the upload runs: it keeps 25 September – 24 October.
     $import = $this->imports->inspect(stageSheetCsv("Employee code,28 Mon,2 Fri\nEMP1,A,A\n"));
-    app(PayCycle::class)->change(1);
+    app(PayCycle::class)->change(Carbon::parse('2026-11-01'));
     $import = $this->imports->validate($this->imports->map($import, $import->mapping));
     $this->imports->run($this->imports->approve($import, auth()->user(), 'October attendance'), auth()->user());
     expect(AttendanceMark::query()->where('employee_id', $this->asha->id)->orderBy('date')->get()->map(fn ($m) => $m->date->toDateString())->all())
         ->toBe(['2026-09-28', '2026-10-02']);
 
-    app(PayCycle::class)->change(25);
-    $march = runSheet("Employee code,30\nEMP1,P\n", month: '2026-03');
-    expect($march->rows()->first()->errors)->toBe(['Day 30 is not in March 2026 (25 Feb – 24 Mar); leave it blank.']);
+    // October is now the long changeover month, 25 September – 31 October: days 25 to 30 come round twice.
+    expect(AttendanceSheetImports::months()['2026-10'])->toBe('October 2026 (25 Sep – 31 Oct)');
+    $header = str_getcsv(strtok($this->imports->template('2026-10'), "\n"), escape: '');
+    expect(array_slice($header, 2, 7))->toBe(['2026-09-25', '2026-09-26', '2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30', '1 Thu'])
+        ->and($header)->toContain('25 Sun')->and(count($header))->toBe(39);
+
+    $import = $this->imports->inspect(stageSheetCsv("Employee code,2026-09-29,5 Mon\nEMP1,A,WFH\n"));
+    expect($import->mapping)->toBe(['Employee code' => 'employee_code', '2026-09-29' => 'date.2026-09-29', '5 Mon' => 'day.5'])
+        ->and(AttendanceSheetImports::fields($import))->toHaveKey('date.2026-09-29');
+    $import = $this->imports->validate($this->imports->map($import, $import->mapping));
+    $this->imports->run($this->imports->approve($import, auth()->user(), 'October attendance'), auth()->user());
+    $marks = AttendanceMark::query()->where('employee_id', $this->asha->id)->get()->mapWithKeys(fn ($m) => [$m->date->toDateString() => $m->status]);
+    expect($marks->only(['2026-09-29', '2026-10-05'])->all())->toBe(['2026-09-29' => 'absent', '2026-10-05' => 'wfh']);
 });

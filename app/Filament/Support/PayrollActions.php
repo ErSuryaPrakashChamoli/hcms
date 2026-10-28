@@ -45,7 +45,7 @@ final class PayrollActions
             });
     }
 
-    /** "Covers 25 Oct – 24 Nov 2026 (pay cycle: 25th to 24th)" for the month the open-run form names. */
+    /** "Covers 25 Oct – 24 Nov 2026" for the month the open-run form names. */
     public static function periodDates(mixed $companyId, mixed $year, mixed $month): ?string
     {
         if (! is_numeric($companyId) || ! is_numeric($year) || ! is_numeric($month)) {
@@ -59,7 +59,7 @@ final class PayrollActions
             return null;
         }
 
-        return 'Covers '.$start->format('j M').' – '.$end->format('j M Y').' (pay cycle: '.PayCycle::describe($cycle->startDay()).')';
+        return 'Covers '.$start->format('j M').' – '.$end->format('j M Y').' ('.((int) $start->diffInDays($end) + 1).' days)';
     }
 
     /** @return array<int, Action> */

@@ -31,7 +31,9 @@ use Throwable;
  * imports (upload → inspect → map → validate → approve → run).
  *
  * A month is a payroll month under the tenant's pay cycle (PayCycleReader): the calendar month, or 25 October to
- * 24 November for November on a 25th-to-24th cycle, so day numbers are unique within it. The upload keeps the dates it
+ * 24 November for November on a 25th-to-24th cycle. A day column is read as the date in the month with that day number.
+ * A changeover month longer than a calendar month (25 Oct – 30 Nov) repeats day numbers: the first of each pair is
+ * headed by its date (2026-10-25, field date.2026-10-25), the number means the later one. The upload keeps the dates it
  * was made for (options from/to), so a later change of cycle never moves its days.
  *
  * The file never writes attendance days. Running it stores attendance_marks (one per employee and day), which the
@@ -76,19 +78,30 @@ final class AttendanceSheetImports
         'present' => ['Present on working days', 'A blank working day counts as present; weekly offs, holidays and approved leave stay as they are. Choose this when you only mark absences.'],
     ];
 
-    public function __construct(private readonly AuditRecorder $audit, private readonly LeaveDayResolver $leave, private readonly PayCycleReader $cycle) {}
+    public function __construct(private readonly AuditRecorder $audit, private readonly LeaveDayResolver $leave) {}
 
     public static function allowed(?User $user): bool
     {
         return $user !== null && $user->hasPermission('attendance.manage') && $user->hasPermission('employee.import');
     }
 
-    /** @return array<string, array{0: string, 1: bool}> the employee code and one field per day of the longest month */
-    public static function fields(): array
+    /**
+     * The employee code and one field per day of the longest month; for an upload, each day named with its date and a
+     * date field for each repeated day of a long changeover month.
+     *
+     * @param  EmployeeImport|array{0: Carbon, 1: Carbon}|null  $for  an upload, or a month's first and last day
+     * @return array<string, array{0: string, 1: bool}>
+     */
+    public static function fields(EmployeeImport|array|null $for = null): array
     {
+        $window = $for instanceof EmployeeImport ? self::windowOf($for) : $for;
+        $dates = $window !== null ? self::dayDates(...$window) : [];
         $fields = ['employee_code' => ['Employee code', true]];
         for ($day = 1; $day <= 31; $day++) {
-            $fields["day.{$day}"] = ["Day {$day}", false];
+            $fields["day.{$day}"] = ["Day {$day}".(isset($dates[$day]) && $window[0]->day !== 1 ? ' ('.$dates[$day]->format('j M').')' : ''), false];
+        }
+        foreach ($window !== null ? self::repeated(...$window) : [] as $date) {
+            $fields["date.{$date->toDateString()}"] = ["Day {$date->day} ({$date->format('j M')})", false];
         }
 
         return $fields;
@@ -131,10 +144,31 @@ final class AttendanceSheetImports
         return [Carbon::instance($start), Carbon::instance($end)];
     }
 
-    /** "September 2026", or "November 2026 (25 Oct – 24 Nov)" when the month does not start on the 1st. */
+    /** "September 2026", or "November 2026 (25 Oct – 24 Nov)" when the month is not the calendar month. */
     public static function monthName(string $month, Carbon $start, Carbon $end): string
     {
-        return Carbon::parse("{$month}-01")->format('F Y').($start->day === 1 ? '' : ' ('.$start->format('j M').' – '.$end->format('j M').')');
+        $calendar = $start->day === 1 && $start->isSameMonth($end) && $end->isSameDay($end->copy()->endOfMonth());
+
+        return Carbon::parse("{$month}-01")->format('F Y').($calendar ? '' : ' ('.$start->format('j M').' – '.$end->format('j M').')');
+    }
+
+    /**
+     * The days an upload is for: the dates kept when it was made, else the month under the pay cycle as it is now (null
+     * when it names no valid month).
+     *
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    public static function windowOf(EmployeeImport $import): ?array
+    {
+        $options = $import->options ?? [];
+        if (isset($options['from'], $options['to'])) {
+            return [Carbon::parse($options['from'])->startOfDay(), Carbon::parse($options['to'])->startOfDay()];
+        }
+        try {
+            return self::period($options['month'] ?? null, false);
+        } catch (RuntimeException) {
+            return null;
+        }
     }
 
     public function register(string $path, string $originalName, User $user, string $month, ImportMode $mode = ImportMode::Both, string $blankDays = 'calculate', ?string $reason = null): EmployeeImport
@@ -187,20 +221,21 @@ final class AttendanceSheetImports
         $month = self::currentMonth();
         [$start, $end] = self::period($month, false);
         $example = $start->copy()->addDays(4);
-        $cycle = $this->cycle->startDay();
+        $calendar = self::monthName($month, $start, $end) === Carbon::parse("{$month}-01")->format('F Y');
 
         return [
             'columns' => [
                 ['Employee code', 'Yes', 'The employee\'s code.', 'EMP0001'],
                 ['Employee name', 'No', 'Not read: it helps you find people in the sheet.', 'Asha Rao'],
-                [$cycle === 1 ? '1 … 31' : "{$cycle} … ".($cycle - 1), 'No', 'One column per day of the month you upload for, headed by the day number: '.$example->day.', Day '.$example->day.', '.$example->format('j D').' or the date '.$example->toDateString().'. Enter a day code for the whole day, or a code for each half as first half|second half (P|A), or leave the cell blank.', 'P or P|A'],
+                [$calendar ? '1 … 31' : "{$start->day} … {$end->day}", 'No', 'One column per day of the month you upload for, headed by the day number: '.$example->day.', Day '.$example->day.', '.$example->format('j D').' or the date '.$example->toDateString().'. Enter a day code for the whole day, or a code for each half as first half|second half (P|A), or leave the cell blank.', 'P or P|A'],
             ],
             'codes' => collect(self::CODES)->map(fn (array $code) => $code[1])->all() + ['AB' => 'Absent (the same as A)',
                 'P|P' => 'Each half on its own, first half first: P|A is present in the morning and absent in the afternoon. A half takes any code but HD.'],
             'notes' => [
                 'One file is one month, which you choose when you upload. Download template gives the month\'s sheet with everyone employed in it.',
-                $cycle === 1 ? 'Months follow the pay cycle (Payroll → Pay cycle), now the calendar month.'
+                $calendar ? 'Months follow the pay cycle (Payroll → Pay cycle), now the calendar month.'
                     : 'Months follow the pay cycle (Payroll → Pay cycle): '.self::monthName($month, $start, $end).', so the sheet\'s day columns run '.$start->day.', '.$start->copy()->addDay()->day.' … '.$end->day.'.',
+                'A changeover month longer than a calendar month repeats day numbers: the template heads the first of each pair with its date (such as 2026-10-25), and the number alone means the later one.',
                 'In payroll, a day with both halves absent (A or A|A) is a day of loss of pay; a day with one absent half (HD, P|A, A|WFH, …) is half a day.',
                 'Blank cells follow your choice at upload: calculated as usual (a working day without punches is absent) or present on working days.',
                 'Leave cannot be marked in the sheet: employees apply for leave on the portal. Days of approved full-day leave are left as leave, whatever the sheet says; on a half-day leave, the code is for the other half.',
@@ -232,7 +267,7 @@ final class AttendanceSheetImports
                 }
                 EmployeeImportRow::create(['employee_import_id' => $import->getKey(), 'row_number' => $count, 'data' => array_map(fn ($v) => is_string($v) ? trim($v) : $v, $record)]);
             }
-            $import->update(['headers' => $headers, 'row_count' => $count, 'mapping' => $import->mapping ?: $this->suggestMapping($headers, $this->window($import)), 'status' => 'inspected']);
+            $import->update(['headers' => $headers, 'row_count' => $count, 'mapping' => $import->mapping ?: $this->suggestMapping($headers, self::windowOf($import)), 'status' => 'inspected']);
         });
 
         return $import->refresh();
@@ -250,7 +285,14 @@ final class AttendanceSheetImports
             if (in_array(Str::slug($header, '_'), ['employee_code', 'code', 'emp_code', 'employee', 'emp_id', 'employee_id'], true)) {
                 $field = 'employee_code';
             } elseif (preg_match('/^\d{4}-\d{2}-(\d{2})$/', $header, $m)) {
-                $field = $window === null || Carbon::parse($header)->betweenIncluded($window[0], $window[1]) ? 'day.'.(int) $m[1] : null;
+                $date = Carbon::parse($header)->startOfDay();
+                $field = match (true) {
+                    $window === null => 'day.'.(int) $m[1],
+                    ! $date->betweenIncluded($window[0], $window[1]) => null,
+                    // The first of a repeated day number in a long changeover month keeps its date.
+                    in_array($header, array_map(fn (Carbon $d) => $d->toDateString(), self::repeated(...$window)), true) => "date.{$header}",
+                    default => 'day.'.(int) $m[1],
+                };
             } elseif (preg_match('/^(?:day\s*)?(\d{1,2})(?!\d)/i', $header, $m) && (int) $m[1] >= 1 && (int) $m[1] <= 31) {
                 $field = 'day.'.(int) $m[1];
             }
@@ -269,7 +311,13 @@ final class AttendanceSheetImports
     public function map(EmployeeImport $import, array $mapping, array $options = []): EmployeeImport
     {
         $this->assert($import, ['inspected', 'mapped', 'validated']);
-        $fields = self::fields();
+        $options = array_merge($import->options ?? [], array_filter($options, fn ($v) => $v !== null && $v !== ''));
+        [$from, $to] = self::period($options['month'] ?? null);
+        if (($import->options['month'] ?? null) !== $options['month'] || ! isset($options['from'], $options['to'])) {
+            // A different month (or an upload from before pay cycles) takes the month's dates as the cycle has them now.
+            $options = ['from' => $from->toDateString(), 'to' => $to->toDateString()] + $options;
+        }
+        $fields = self::fields([Carbon::parse($options['from']), Carbon::parse($options['to'])]);
         $mapping = array_filter($mapping, fn ($f) => $f !== null && $f !== '');
         foreach ($mapping as $header => $field) {
             // A header that is a bare day number ("5") becomes an integer array key.
@@ -283,15 +331,8 @@ final class AttendanceSheetImports
         if (! in_array('employee_code', $mapping, true)) {
             throw new RuntimeException('Required fields are not mapped: Employee code.');
         }
-        if (collect($mapping)->filter(fn ($f) => str_starts_with($f, 'day.'))->isEmpty()) {
+        if (collect($mapping)->filter(fn ($f) => str_starts_with($f, 'day.') || str_starts_with($f, 'date.'))->isEmpty()) {
             throw new RuntimeException('Map at least one day column.');
-        }
-
-        $options = array_merge($import->options ?? [], array_filter($options, fn ($v) => $v !== null && $v !== ''));
-        [$from, $to] = self::period($options['month'] ?? null);
-        if (($import->options['month'] ?? null) !== $options['month'] || ! isset($options['from'], $options['to'])) {
-            // A different month (or an upload from before pay cycles) takes the month's dates as the cycle has them now.
-            $options = ['from' => $from->toDateString(), 'to' => $to->toDateString()] + $options;
         }
         if (! isset(self::BLANK_DAYS[$options['blank_days'] ?? ''])) {
             throw new RuntimeException('Choose how blank days are read.');
@@ -421,30 +462,58 @@ final class AttendanceSheetImports
     // ---------------------------------------------------------------------------------------
 
     /**
-     * The days the upload is for: the dates kept when it was made, else the month under the pay cycle as it is now.
+     * The days the upload is for (windowOf), refusing an upload for a month that has not started.
      *
      * @return array{0: Carbon, 1: Carbon}
      */
     private function window(EmployeeImport $import): array
     {
-        $options = $import->options ?? [];
-        $period = self::period($options['month'] ?? null);
+        $period = self::period($import->options['month'] ?? null);
 
-        return isset($options['from'], $options['to']) ? [Carbon::parse($options['from'])->startOfDay(), Carbon::parse($options['to'])->startOfDay()] : $period;
+        return self::windowOf($import) ?? $period;
     }
 
-    /**
-     * The employee a row names, its marks (day of month => status and halves) and what is wrong with it.
-     *
-     * @param  array<string, int>  $employees
-     * @return array{0: ?Employee, 1: array<int, array{status: string, first_half: ?string, second_half: ?string}>, 2: list<string>}
-     */
-    private function resolve(EmployeeImportRow $row, EmployeeImport $import, array $employees, Carbon $start, Carbon $end): array
+    /** @return array<int, Carbon> day number => its date in the window (the later one where a long month repeats it) */
+    private static function dayDates(Carbon $start, Carbon $end): array
     {
         $dates = [];
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
             $dates[$date->day] = $date->copy();
         }
+
+        return $dates;
+    }
+
+    /** @return list<Carbon> dates of a long changeover month whose day number comes round again later in it */
+    private static function repeated(Carbon $start, Carbon $end): array
+    {
+        $later = self::dayDates($start, $end);
+        $repeated = [];
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            if (! $later[$date->day]->isSameDay($date)) {
+                $repeated[] = $date->copy();
+            }
+        }
+
+        return $repeated;
+    }
+
+    /** How messages name a date: its day number, or the date itself for the first of a repeated day number. */
+    private static function dayLabel(Carbon $date, array $repeated): string
+    {
+        return in_array($date->toDateString(), $repeated, true) ? $date->toDateString() : (string) $date->day;
+    }
+
+    /**
+     * The employee a row names, its marks (date => status and halves) and what is wrong with it.
+     *
+     * @param  array<string, int>  $employees
+     * @return array{0: ?Employee, 1: array<string, array{status: string, first_half: ?string, second_half: ?string}>, 2: list<string>}
+     */
+    private function resolve(EmployeeImportRow $row, EmployeeImport $import, array $employees, Carbon $start, Carbon $end): array
+    {
+        $dates = self::dayDates($start, $end);
+        $repeated = array_map(fn (Carbon $d) => $d->toDateString(), self::repeated($start, $end));
         $r = $this->recordFor($row, $import->mapping ?? []);
         $errors = [];
         $employee = null;
@@ -462,17 +531,23 @@ final class AttendanceSheetImports
         $beyond = [];
         $refused = ['leave' => [], 'code' => [], 'half' => []];
         foreach ($r as $field => $value) {
-            if (! str_starts_with($field, 'day.')) {
+            if (str_starts_with($field, 'day.')) {
+                $day = (int) Str::after($field, 'day.');
+                $date = $dates[$day] ?? null;
+                $label = (string) $day;
+            } elseif (str_starts_with($field, 'date.')) {
+                $label = Str::after($field, 'date.');
+                $date = in_array($label, $repeated, true) ? Carbon::parse($label)->startOfDay() : null;
+            } else {
                 continue;
             }
-            $day = (int) Str::after($field, 'day.');
             [$mark, $problem] = self::cell($value);
-            if (! isset($dates[$day])) {
-                $beyond[] = $day;
+            if ($date === null) {
+                $beyond[] = $label;
             } elseif ($problem !== null) {
-                $refused[$problem][] = "day {$day} ('{$value}')";
+                $refused[$problem][] = "day {$label} ('{$value}')";
             } else {
-                $days[$day] = $mark;
+                $days[$date->toDateString()] = $mark;
             }
         }
         ksort($days);
@@ -491,8 +566,9 @@ final class AttendanceSheetImports
 
         if ($employee !== null) {
             $outside = ['before' => [], 'after' => [], 'future' => []];
-            foreach (array_keys($days) as $day) {
-                $date = $dates[$day];
+            foreach (array_keys($days) as $key) {
+                $date = Carbon::parse($key);
+                $day = self::dayLabel($date, $repeated);
                 if ($employee->joining_date !== null && $date->lt($employee->joining_date)) {
                     $outside['before'][] = $day;
                 } elseif ($employee->exit_date !== null && $date->gt($employee->exit_date)) {
@@ -520,7 +596,7 @@ final class AttendanceSheetImports
      * Which days of the employee's month the row marks under the upload's mode and blank-day choice, against what earlier
      * uploads marked, what payroll has locked and the employee's approved full-day leave (left to the leave).
      *
-     * @param  array<int, array{status: string, first_half: ?string, second_half: ?string}>  $days
+     * @param  array<string, array{status: string, first_half: ?string, second_half: ?string}>  $days  date => mark
      * @return array{write: array<string, array{status: string, first_half: ?string, second_half: ?string}>, added: int, replaced: int, errors: list<string>, summary: string}
      */
     private function plan(Employee $employee, array $days, EmployeeImport $import, Carbon $start, Carbon $end): array
@@ -537,16 +613,17 @@ final class AttendanceSheetImports
             ->whereDate('date', '>=', $start->toDateString())->whereDate('date', '<=', $end->toDateString())->get()
             ->mapWithKeys(fn (AttendanceRecord $r) => [$r->date->toDateString() => true])->all();
         $leave = $from->lte($to) ? $this->leave->approvedLeaveBetween($employee, $from, $to) : [];
+        $repeated = array_map(fn (Carbon $d) => $d->toDateString(), self::repeated($start, $end));
 
         $write = [];
         $tally = ['added' => 0, 'replaced' => 0, 'same' => 0, 'kept' => 0, 'not_uploaded' => 0, 'leave' => 0];
         $lockedDays = [];
         for ($date = $from->copy(); $date->lte($to); $date->addDay()) {
             $key = $date->toDateString();
-            $want = $days[$date->day] ?? null;
+            $want = $days[$key] ?? null;
             if (isset($locked[$key])) {
                 if ($want !== null) {
-                    $lockedDays[] = $date->day;
+                    $lockedDays[] = self::dayLabel($date, $repeated);
                 }
 
                 continue;
@@ -661,12 +738,13 @@ final class AttendanceSheetImports
         return in_array($key, self::LEAVE_CODES, true) || preg_match('/\bLEAVE\b/', $key) === 1;
     }
 
-    /** @return list<string> Employee code, Employee name and one "5 Thu" header per day of the month */
+    /** @return list<string> Employee code, Employee name and one "5 Thu" header per day of the month (the date for the first of a repeated day number) */
     private function headers(Carbon $start, Carbon $end): array
     {
+        $repeated = array_map(fn (Carbon $d) => $d->toDateString(), self::repeated($start, $end));
         $days = [];
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
-            $days[] = $date->day.' '.$date->format('D');
+            $days[] = in_array($date->toDateString(), $repeated, true) ? $date->toDateString() : $date->day.' '.$date->format('D');
         }
 
         return ['Employee code', 'Employee name', ...$days];

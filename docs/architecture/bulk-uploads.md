@@ -95,7 +95,7 @@ also has a `template()` method that returns a downloadable CSV whose headers map
 ## Monthly attendance
 
 This upload is for organisations whose attendance no device captures. The person uploading picks:
-- **Attendance month:** a `Y-m` value naming a payroll month under the pay cycle (payroll-architecture §1.1). It is never a month that has not started. On a 25th-to-24th cycle, `2026-11` runs from 25 October to 24 November. The template's columns then run 25 … 24, and a day number maps to the one date in the window. The upload keeps the dates it was made for (`options.from` / `options.to`), so a later change of cycle never moves its days.
+- **Attendance month:** a `Y-m` value naming a payroll month under the pay cycle (payroll-architecture §1.1). It is never a month that has not started. On a 25th-to-24th cycle, `2026-11` runs from 25 October to 24 November. The template's columns then run 25 … 24, and a day number maps to its date in the month. A long changeover month (25 Oct – 30 Nov) repeats day numbers. The template heads the first of each pair with its ISO date, which maps to field `date.2026-10-25`, and the bare number means the later one. The upload keeps the dates it was made for (`options.from` / `options.to`), so a later change of cycle never moves its days.
 - **Mode:** see *New or existing* above.
 - **Blank days:** how an empty cell is read (`calculate` or `present`, below).
 

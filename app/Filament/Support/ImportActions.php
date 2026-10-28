@@ -55,7 +55,7 @@ final class ImportActions
     public static function forImport(): array
     {
         $svc = fn (EmployeeImport $record) => self::service($record);
-        $fieldsFor = fn (EmployeeImport $record) => collect(($svc($record))::fields())->mapWithKeys(fn ($def, $key) => [$key => $def[0].($def[1] ? ' *' : '')])->all();
+        $fieldsFor = fn (EmployeeImport $record) => collect(($svc($record))::fields($record))->mapWithKeys(fn ($def, $key) => [$key => $def[0].($def[1] ? ' *' : '')])->all();
         $is = fn (string $type) => fn (EmployeeImport $record) => $record->type === $type;
 
         return [
