@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
  * Weekly pattern(s) of shifts (§13, §14). pattern = [['mon' => shiftId|null, ...], ...]:
  * one entry is a plain weekly schedule, several entries rotate week by week.
  */
-#[Fillable(['tenant_id', 'name', 'code', 'pattern', 'status', 'effective_from', 'effective_to'])]
+#[Fillable(['tenant_id', 'name', 'code', 'pattern', 'auto_shift_ids', 'auto_shift_on_off_days', 'status', 'effective_from', 'effective_to'])]
 class WorkSchedule extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
@@ -26,6 +26,8 @@ class WorkSchedule extends Model
     {
         return [
             'pattern' => 'array',
+            'auto_shift_ids' => 'array',
+            'auto_shift_on_off_days' => 'boolean',
             'status' => ActiveStatus::class,
             'effective_from' => 'date',
             'effective_to' => 'date',

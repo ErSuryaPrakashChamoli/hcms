@@ -131,6 +131,8 @@ final class OrganisationTree
             ]);
 
             $this->rebuildPaths($node, $newParent, $oldPath);
+            // HROne setup parity CA-2: a department moved in the tree takes its new parent department (or none).
+            app(DepartmentHierarchy::class)->followNode($node, $reason);
 
             return $node->refresh();
         });

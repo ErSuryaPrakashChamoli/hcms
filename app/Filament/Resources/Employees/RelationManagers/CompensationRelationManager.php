@@ -22,6 +22,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -100,12 +101,15 @@ class CompensationRelationManager extends RelationManager
                     ->schema([
                         Select::make('change_type')->options(config('peopleos.compensation.change_types'))->default('annual_increment')->required(),
                         DatePicker::make('effective_from')->native(false)->required()->default(now()->startOfMonth()->addMonth()),
-                        Select::make('salary_structure_id')->label('Structure')->required()->options(fn () => SalaryStructure::query()->where('status', 'active')->pluck('name', 'id')->all())
+                        Select::make('salary_structure_id')->label('Structure')->required()->live()->options(fn () => SalaryStructure::query()->where('status', 'active')->pluck('name', 'id')->all())
                             ->default(fn () => $this->getOwnerRecord()->salaryAssignments()->where('status', 'active')->orderByDesc('effective_from')->value('salary_structure_id')),
-                        TextInput::make('ctc_annual')->label('Annual CTC')->numeric()->required()->minValue(1),
+                        // HROne setup parity BP-2: a structure built from component amounts works its CTC out from them.
+                        TextInput::make('ctc_annual')->label('Annual CTC')->numeric()->minValue(1)
+                            ->required(fn (Get $get) => ! self::componentsMode($get('salary_structure_id'), $get('effective_from')))
+                            ->helperText(fn (Get $get) => self::componentsMode($get('salary_structure_id'), $get('effective_from')) ? 'Worked out from the component amounts below (and employer PF) when saved.' : null),
                         Select::make('currency')->options(fn () => array_combine(config('peopleos.compensation.currencies'), config('peopleos.compensation.currencies')))->default(config('peopleos.settings.tenant.base_currency', 'INR'))->required(),
                         TextInput::make('variable_target_annual')->label('Variable target (annual)')->numeric()->minValue(0),
-                        KeyValue::make('component_values')->label('Fixed component amounts (monthly)')->keyLabel('Component code')->valueLabel('Amount')->helperText('For components calculated as "fixed", e.g. CONV = 1600'),
+                        KeyValue::make('component_values')->label('Fixed component amounts and inputs (monthly)')->keyLabel('Component code')->valueLabel('Amount')->helperText('For components calculated as "fixed" or "input", e.g. CONV = 1600'),
                         Textarea::make('reason')->required()->maxLength(2000),
                         Textarea::make('internal_notes')->label('Internal notes (never shown to the employee)')->maxLength(2000),
                         Toggle::make('submit')->label('Submit for review now')->default(true),
@@ -123,6 +127,16 @@ class CompensationRelationManager extends RelationManager
                         }
                     }),
             ]);
+    }
+
+    /** Whether the structure's version in force on the date is built from component amounts (no CTC to enter). */
+    private static function componentsMode(mixed $structureId, mixed $from): bool
+    {
+        if (blank($structureId)) {
+            return false;
+        }
+
+        return SalaryStructure::query()->find((int) $structureId)?->versionOn(filled($from) ? $from : null)?->formulaOptions()['ctc_mode'] === 'components';
     }
 
     private function rangeLabel(EmployeeSalaryAssignment $record): string

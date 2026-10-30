@@ -43,6 +43,8 @@ class PerformanceDataset extends Dataset
             'final_rating' => ['label' => 'Final rating', 'type' => 'number', 'value' => fn ($a) => $a->final_rating === null ? null : (float) $a->final_rating],
             'final_label' => ['label' => 'Final label', 'type' => 'string', 'value' => fn ($a) => $a->final_label],
             'promotion_recommended' => ['label' => 'Promotion recommended', 'type' => 'boolean', 'value' => fn ($a) => (bool) $a->promotion_recommended],
+            // HROne setup parity HP-8b: when the rating reached the employee (manual publishing).
+            'published_on' => ['label' => 'Rating published on', 'type' => 'date', 'value' => fn ($a) => $a->published_at],
         ];
     }
 

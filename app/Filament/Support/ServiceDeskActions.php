@@ -15,6 +15,7 @@ use App\Domain\ServiceDesk\Services\CaseAccess;
 use App\Domain\ServiceDesk\Services\CaseAssignment;
 use App\Domain\ServiceDesk\Services\DomainActionExecutor;
 use App\Domain\ServiceDesk\Services\DomainActions;
+use App\Domain\ServiceDesk\Services\HelpdeskAccess;
 use App\Domain\ServiceDesk\Services\ServiceCatalogue;
 use App\Domain\ServiceDesk\Services\ServiceDesk;
 use App\Domain\ServiceDesk\Services\ServiceForms;
@@ -28,6 +29,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -58,20 +60,37 @@ final class ServiceDeskActions
             ->visible(fn () => auth()->user()->can('create', Ticket::class) && (self::me() !== null || auth()->user()->can('servicedesk.agent')))
             ->schema([
                 Select::make('employee_id')->label('For employee')->required()->searchable()->options(fn () => Employee::query()->with('person')->employed()->get()->mapWithKeys(fn ($e) => [$e->id => "{$e->employee_code} · {$e->person?->full_name}"])->all())
-                    ->default(fn () => self::me()?->id)->visible(fn () => auth()->user()->can('servicedesk.agent')),
-                Select::make('ticket_category_id')->label('What is it about?')->required()->options(fn () => TicketCategory::query()->where('status', 'active')->orderBy('sort_order')->pluck('name', 'id')->all()),
+                    ->default(fn () => self::me()?->id)->visible(fn () => auth()->user()->can('servicedesk.agent'))->live(),
+                // HROne parity RQ-2: whose request it is (an agent's pick, else one's own).
+                RequestChrome::header(fn (?Get $get) => auth()->user()->can('servicedesk.agent') ? RequestChrome::picked($get?->__invoke('employee_id')) : self::me()),
+                Select::make('ticket_category_id')->label('What is it about?')->required()->options(fn () => self::askableCategories()),
                 TextInput::make('subject')->required()->maxLength(255),
                 Textarea::make('description')->required()->rows(5)->maxLength(4000),
                 Select::make('priority')->options(config('peopleos.servicedesk.priorities'))->default('normal')->required(),
+                // HROne parity RQ-2: who handles it, who is informed, and the HR policies.
+                RequestChrome::route('helpdesk', fn (?Get $get) => auth()->user()->can('servicedesk.agent') ? RequestChrome::picked($get?->__invoke('employee_id')) : self::me()),
             ])
             ->action(function (array $data) {
                 $employee = auth()->user()->can('servicedesk.agent') && ! empty($data['employee_id']) ? Employee::query()->findOrFail($data['employee_id']) : self::me();
-                self::run(function () use ($employee, $data) {
-                    $ticket = app(ServiceDesk::class)->open($employee, TicketCategory::query()->findOrFail($data['ticket_category_id']), $data['subject'], $data['description'], $data['priority'], auth()->user());
-
-                    return 'Request '.$ticket->number.' raised';
-                }, fn ($m) => $m);
+                self::run(fn () => app(ServiceDesk::class)->open($employee, TicketCategory::query()->findOrFail($data['ticket_category_id']), $data['subject'], $data['description'], $data['priority'], auth()->user()),
+                    fn ($ticket) => 'Request '.$ticket->number.' raised',
+                    // HROne parity RQ-2: "Follow this request" and the other follow-ups on one's own request.
+                    fn ($ticket) => RequestChrome::followUps('helpdesk', $ticket));
             });
+    }
+
+    /** Active request categories; for one's own request, only those the helpdesk access policy allows (HD-C). */
+    public static function askableCategories(): array
+    {
+        $options = TicketCategory::query()->where('status', 'active')->orderBy('sort_order')->pluck('name', 'id')->all();
+        $me = self::me();
+        if ($me === null || auth()->user()->can('servicedesk.agent')) {
+            return $options;
+        }
+        $access = app(HelpdeskAccess::class);
+        $settings = $access->settingsFor($me);
+
+        return array_filter($options, fn ($name, $id) => $access->allowsCategory($me, (int) $id, $settings), ARRAY_FILTER_USE_BOTH);
     }
 
     /**
@@ -190,13 +209,19 @@ final class ServiceDeskActions
                 ->visible(fn (Ticket $record) => $record->isOpen() && $works($record))
                 ->schema(fn (Ticket $record) => [
                     Textarea::make('resolution')->required()->rows(4)->maxLength(4000)->helperText(in_array($record->domain_action_status, ['ready', 'awaiting_approval'], true) ? 'Resolving without applying withdraws the requested change.' : null),
+                    // HROne setup parity HD-A: the root cause (mandatory when the category makes RCA mandatory).
+                    Select::make('root_cause_code')->label('Root cause')->placeholder('—')->options(config('peopleos.servicedesk.root_causes')),
+                    Textarea::make('root_cause')->label('Root cause analysis')->rows(3)->maxLength(4000)
+                        ->required(fn () => (bool) $record->loaded('category')?->rca_required)
+                        ->helperText(fn () => $record->loaded('category')?->rca_required ? 'This category needs the root cause before the request is resolved.' : null),
                     Select::make('article_id')->label('Link a knowledge article')->placeholder('—')->searchable()->options(fn () => Article::query()->whereNotNull('published_version')->where('status', '!=', 'archived')->orderBy('title')->pluck('title', 'id')->all()),
                 ])
-                ->action(fn (Ticket $record, array $data) => self::run(fn () => app(ServiceDesk::class)->resolve($record, $data['resolution'], auth()->user(), $data['article_id'] ?? null, $version($record)), 'Resolved')),
+                ->action(fn (Ticket $record, array $data) => self::run(fn () => app(ServiceDesk::class)->resolve($record, $data['resolution'], auth()->user(), $data['article_id'] ?? null, $version($record), $data['root_cause'] ?? null, $data['root_cause_code'] ?? null), 'Resolved')),
             Action::make('close')->label(fn (Ticket $record) => $requester($record) ? 'Close & rate' : 'Close')->icon(Heroicon::OutlinedLockClosed)->color('gray')
                 ->visible(fn (Ticket $record) => $record->status === 'resolved' && ($requester($record) || $works($record)))
-                ->schema(fn (Ticket $record) => $requester($record) ? [
-                    Radio::make('satisfaction')->label('How was the help?')->options([1 => '1 · Poor', 2 => '2', 3 => '3 · OK', 4 => '4', 5 => '5 · Excellent'])->inline(),
+                ->schema(fn (Ticket $record) => $requester($record) && app(ServiceDesk::class)->takesFeedback($record) ? [
+                    Radio::make('satisfaction')->label('How was the help?')->options([1 => '1 · Poor', 2 => '2', 3 => '3 · OK', 4 => '4', 5 => '5 · Excellent'])->inline()
+                        ->required(fn () => app(ServiceDesk::class)->feedbackRequired($record)),
                     Textarea::make('comment')->maxLength(500),
                 ] : [])
                 ->action(fn (Ticket $record, array $data) => self::run(fn () => app(ServiceDesk::class)->close($record, auth()->user(), isset($data['satisfaction']) ? (int) $data['satisfaction'] : null, $data['comment'] ?? null), 'Closed')),
@@ -260,11 +285,16 @@ final class ServiceDeskActions
         Notification::make()->danger()->title('Not allowed')->body($message)->persistent()->send();
     }
 
-    public static function run(callable $callback, string|callable $success): void
+    /** @param  (callable(mixed): list<Action>)|null  $actions  HROne parity RQ-2: follow-up links on the success message */
+    public static function run(callable $callback, string|callable $success, ?callable $actions = null): void
     {
         try {
             $result = $callback();
-            Notification::make()->success()->title(is_callable($success) ? $success($result) : $success)->send();
+            $notification = Notification::make()->success()->title(is_callable($success) ? $success($result) : $success);
+            if ($actions !== null && ($links = $actions($result)) !== []) {
+                $notification->actions($links);
+            }
+            $notification->send();
         } catch (RuntimeException $e) {
             self::refuse($e->getMessage());
         } catch (Throwable $e) {

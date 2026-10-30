@@ -15,6 +15,12 @@ class DocumentTypePolicy extends PermissionPolicy
         return $user->hasPermission('document.types') || $user->hasPermission('document.view');
     }
 
+    /** HROne setup parity CA-4: a type's details (and its sample file) are open to employees who keep their own documents. */
+    public function view(User $user, Model $model): bool
+    {
+        return $user->hasPermission('document.types') || $user->hasPermission('document.view') || $user->hasPermission('document.own');
+    }
+
     public function create(User $user): bool
     {
         return $user->hasPermission('document.types');

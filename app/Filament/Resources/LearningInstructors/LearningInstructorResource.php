@@ -14,6 +14,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -37,14 +38,18 @@ class LearningInstructorResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
-            Select::make('employee_id')->label('Internal instructor (employee)')->searchable()->placeholder('External instructor')->live()
-                ->options(fn () => LearningActions::allPeopleOptions()),
-            TextInput::make('name')->maxLength(255)->required(fn (Get $get) => blank($get('employee_id')))->helperText('Taken from the employee record for internal instructors.'),
-            Select::make('learning_provider_id')->label('Provider')->options(fn () => LearningProvider::query()->orderBy('name')->pluck('name', 'id')->all()),
-            TextInput::make('email')->email()->maxLength(255)->visible(fn (Get $get) => blank($get('employee_id'))),
-            TextInput::make('specialisation')->maxLength(255),
-            Select::make('status')->options(['active' => 'Active', 'inactive' => 'Inactive'])->default('active')->required(),
-            Textarea::make('bio')->rows(3)->columnSpanFull(),
+            Section::make('Instructor')->columns(2)->schema([
+                Select::make('employee_id')->label('Internal instructor (employee)')->searchable()->placeholder('External instructor')->live()
+                    ->options(fn () => LearningActions::allPeopleOptions()),
+                TextInput::make('name')->maxLength(255)->required(fn (Get $get) => blank($get('employee_id')))->helperText('Taken from the employee record for internal instructors.'),
+                TextInput::make('email')->email()->maxLength(255)->visible(fn (Get $get) => blank($get('employee_id'))),
+                Select::make('status')->options(['active' => 'Active', 'inactive' => 'Inactive'])->default('active')->required(),
+            ]),
+            Section::make('Expertise')->columns(2)->schema([
+                Select::make('learning_provider_id')->label('Provider')->options(fn () => LearningProvider::query()->orderBy('name')->pluck('name', 'id')->all()),
+                TextInput::make('specialisation')->maxLength(255),
+                Textarea::make('bio')->rows(3)->columnSpanFull(),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

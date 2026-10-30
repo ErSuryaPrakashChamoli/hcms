@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Tickets;
 
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Domain\ServiceDesk\Models\ServiceDefinition;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Services\CaseAccess;
@@ -133,6 +134,10 @@ class TicketResource extends Resource
                 TextEntry::make('submitted_at')->label('Submitted')->dateTime()->placeholder('Draft'),
                 TextEntry::make('description')->label('Details')->columnSpanFull(),
                 TextEntry::make('resolution')->placeholder('—')->columnSpanFull()->visible(fn (Ticket $record) => $record->resolution !== null),
+                // HROne setup parity HD-A: the root cause recorded at resolution, for the people who work the case.
+                TextEntry::make('root_cause_code')->label('Root cause')->formatStateUsing(fn (?string $state) => config("peopleos.servicedesk.root_causes.{$state}", $state))
+                    ->visible(fn (Ticket $record) => $record->root_cause_code !== null && $works($record)),
+                TextEntry::make('root_cause')->label('Root cause analysis')->columnSpanFull()->visible(fn (Ticket $record) => $record->root_cause !== null && $works($record)),
                 TextEntry::make('article.title')->label('Related article')->placeholder('—')->url(fn (Ticket $record) => $record->article ? ArticleResource::getUrl('view', ['record' => $record->article]) : null),
                 TextEntry::make('satisfaction')->placeholder('—')->formatStateUsing(fn ($state) => $state ? str_repeat('★', (int) $state) : '—'),
             ]),
@@ -141,6 +146,18 @@ class TicketResource extends Resource
                 ->schema([
                     TextEntry::make('form')->hiddenLabel()->listWithLineBreaks()->placeholder('Removed after the change was decided')
                         ->state(fn (Ticket $record) => collect(app(CaseAccess::class)->formDataFor(auth()->user(), $record))->map(fn ($f) => $f['label'].': '.(is_bool($f['value']) ? ($f['value'] ? 'Yes' : 'No') : (string) $f['value']).($f['masked'] ? ' (protected)' : ''))->values()->all()),
+                ]),
+            // HROne setup parity HD-A: with servicedesk.show_sla_to_employee the requester sees the SLA (never who works it).
+            Section::make('Service level')->columns(3)
+                ->visible(fn (Ticket $record) => ! $works($record) && $record->due_at !== null && (bool) app(SettingsRepository::class)->get('servicedesk.show_sla_to_employee', false))
+                ->schema([
+                    TextEntry::make('requester_due')->label('Resolution due')->state(fn (Ticket $record) => $record->due_at)->dateTime(),
+                    TextEntry::make('requester_sla')->label('Status')->badge()->state(fn (Ticket $record) => self::requesterSlaText($record))
+                        ->color(fn (string $state) => match ($state) {
+                            'Overdue' => 'danger', 'On track' => 'success', default => 'gray'
+                        }),
+                    TextEntry::make('requester_first_response_due')->label('First response due')->state(fn (Ticket $record) => $record->first_response_due_at)->dateTime()->placeholder('—')
+                        ->visible(fn (Ticket $record) => $record->first_responded_at === null && $record->first_response_due_at !== null),
                 ]),
             Section::make('Assignment and SLA')->columns(4)->visible($works)->schema([
                 TextEntry::make('team.name')->label('Team')->placeholder('—'),
@@ -222,6 +239,17 @@ class TicketResource extends Resource
         $other = collect($result['results'])->reject(fn (string $r) => $r === 'done');
         Notification::make()->title("{$done} case(s) updated")->body(($other->isEmpty() ? '' : $other->map(fn ($r, $id) => "#{$id}: {$r}")->implode("\n")."\n").'Operation '.$result['operation_id'])
             ->color($other->isEmpty() ? 'success' : 'warning')->persistent($other->isNotEmpty())->send();
+    }
+
+    /** The SLA as the requester sees it (HD-A): on track, overdue, paused or stopped — no service-hour detail or names. */
+    public static function requesterSlaText(Ticket $record): string
+    {
+        return match (true) {
+            ! $record->isOpen() => 'Stopped ('.self::statusLabel($record->status).')',
+            $record->isPaused() => 'Paused',
+            $record->isBreached() => 'Overdue',
+            default => 'On track',
+        };
     }
 
     public static function slaText(Ticket $record): string

@@ -7,7 +7,11 @@ use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Services\CompensationAccess;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\ReportingRelationship;
+use App\Domain\Experience\Contracts\ApprovalSource;
+use App\Domain\Experience\Contracts\DescribesApprovalKinds;
+use App\Domain\Experience\Contracts\SupportsSendBack;
 use App\Domain\Experience\Support\ApprovalItem;
+use App\Domain\Experience\Support\InboxActions;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Identity\Services\AuthorizationContext;
@@ -15,10 +19,16 @@ use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Services\LeaveBalances;
 use App\Domain\Leave\Services\LeaveYear;
 use App\Domain\Letters\Models\Letter;
+use App\Domain\People\Models\ProfileChangeRequest;
+use App\Domain\People\Services\ProfileChanges;
 use App\Domain\Workflow\Enums\InstanceStatus;
 use App\Domain\Workflow\Enums\TaskStatus;
 use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Domain\Workflow\Models\WorkflowTask;
+use App\Domain\Workflow\Services\InboxArchives;
+use App\Domain\Workflow\Services\RequestReturns;
+use App\Domain\Workflow\Services\TaskDelegations;
+use App\Domain\Workflow\Support\RequestWorkflows;
 use App\Filament\Resources\AttendanceRegularisations\AttendanceRegularisationResource;
 use App\Filament\Resources\CompensationChanges\CompensationChangeResource;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
@@ -29,6 +39,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -41,6 +52,15 @@ final class ApprovalCenter
 {
     private const SCAN = 200;
 
+    /** HROne setup parity P3: the request types the center gathers itself (sources add theirs). */
+    public const KINDS = [
+        'workflow_task' => 'Workflow step', 'leave' => 'Leave', 'leave_cancellation' => 'Leave cancellation',
+        'regularisation' => 'Attendance regularisation', 'compensation' => 'Compensation change', 'letter' => 'Letter',
+    ];
+
+    /** HROne setup parity P3: built-in types that may be sent back (a workflow run, or a pending leave request). */
+    private const SEND_BACK = ['workflow_task', 'leave'];
+
     /** @var array<string, Collection<int, ApprovalItem>> */
     private array $memo = [];
 
@@ -50,9 +70,54 @@ final class ApprovalCenter
     /** @var array<string, bool> memo key => a source returned SCAN rows, so more may be waiting than are listed */
     private array $capped = [];
 
+    /** @var array<string, Collection<int, ApprovalItem>> HROne setup parity P4: memo key => the person's archived items */
+    private array $archived = [];
+
     private string $scanning = '';
 
+    /** HROne setup parity P4: while gathering a delegator's queue for their delegate (delegations never chain). */
+    private bool $forDelegate = false;
+
     public function __construct(private readonly TenantContext $tenants) {}
+
+    /** @return list<ApprovalSource> the tagged extension sources (HROne parity) */
+    public static function sources(): array
+    {
+        return array_values(iterator_to_array(app()->tagged('peopleos.approval_sources'), false));
+    }
+
+    /**
+     * HROne setup parity P3 (Inbox actions): every request type the Approval Center lists, by name — its own and those of
+     * each tagged source (named by the source when it implements DescribesApprovalKinds). Settings inbox.*.types and
+     * the Setup centre's `approval_kinds` options read it.
+     *
+     * @return array<string, string>
+     */
+    public static function kinds(): array
+    {
+        $kinds = self::KINDS;
+        foreach (self::sources() as $source) {
+            $labels = $source instanceof DescribesApprovalKinds ? $source->kindLabels() : [];
+            foreach ($source->types() as $type) {
+                $kinds[$type] ??= $labels[$type] ?? Str::headline($type);
+            }
+        }
+
+        return $kinds;
+    }
+
+    /** @return list<string> the request types that can be sent back to their requester (RequestReturns) */
+    public static function sendBackKinds(): array
+    {
+        $kinds = self::SEND_BACK;
+        foreach (self::sources() as $source) {
+            if ($source instanceof SupportsSendBack) {
+                $kinds = [...$kinds, ...array_values(array_intersect($source->sendBackTypes(), $source->types()))];
+            }
+        }
+
+        return array_values(array_unique($kinds));
+    }
 
     /** @return Collection<int, ApprovalItem> pending decisions, most urgent first */
     public function pending(User $user): Collection
@@ -92,6 +157,8 @@ final class ApprovalCenter
             fn () => $this->regularisations($user, $about),
             fn () => $this->compensationChanges($user, $about),
             fn () => $this->letters($user, $about),
+            // HROne parity: further systems of record plug in as tagged ApprovalSources.
+            ...array_map(fn (ApprovalSource $source) => fn () => $source->pending($user, $about), self::sources()),
         ])->flatMap(function (callable $source) {
             try {
                 return $source();
@@ -102,8 +169,79 @@ final class ApprovalCenter
             }
         }));
         $order = ['urgent' => 0, 'today' => 1, 'upcoming' => 2];
+        // HROne setup parity P3: while sending back is switched on, a request sent back to its requester waits for them,
+        // not for an approver, and the types switched on offer it (nothing is read while it is off).
+        if (InboxActions::kinds('send_back') !== []) {
+            $returns = app(RequestReturns::class);
+            $items = $items->reject(fn (ApprovalItem $i) => $returns->isReturned($i))
+                ->map(fn (ApprovalItem $i) => $returns->offers($i, $user) ? $i->withDecision('send_back') : $i);
+        }
+        // HROne setup parity P4 (out of office): the queues of the people who delegated to this person, as those people see
+        // them, for the request types delegated (never the person's own requests, never twice). Nothing is read while
+        // delegation is switched off.
+        if (! $this->forDelegate && TaskDelegations::switchedOn()) {
+            $items = $items->concat($this->delegatedItems($user, $about, $items->pluck('id')->flip()->all()));
+        }
+        // HROne setup parity P4 (archive): items the person archived leave the queue and its counts (they are not decided).
+        $this->archived[$key] = collect();
+        $archives = app(InboxArchives::class);
+        if ($archives->active()) {
+            [$archived, $items] = $items->partition(fn (ApprovalItem $i) => $archives->isArchived($user, $i))->all();
+            $this->archived[$key] = $archived->values();
+        }
 
         return $this->memo[$key] = $items->sortBy(fn (ApprovalItem $i) => [$order[$i->group()], $i->dueAt?->timestamp ?? $i->effectiveOn?->timestamp ?? PHP_INT_MAX])->values();
+    }
+
+    /**
+     * HROne setup parity P4: items waiting for the people who delegated their approvals to this person today, gathered as
+     * each delegator sees them (signed in as them, so their scope and permissions decide what is listed).
+     *
+     * @param  array<string, int>  $own  ids already in the person's own queue (kept once, under their own authority)
+     * @return list<ApprovalItem>
+     */
+    private function delegatedItems(User $user, ?int $about, array $own): array
+    {
+        $delegations = app(TaskDelegations::class);
+        $items = [];
+        foreach ($delegations->running($user) as $delegation) {
+            $delegator = $delegation->delegator;
+            if ($delegator === null) {
+                continue;
+            }
+            $this->forgetMemo($delegator);
+            $this->forDelegate = true;
+            try {
+                $theirs = ScreenAccess::as($delegator, fn () => $this->gather($delegator, $about));
+            } catch (Throwable $e) {
+                report($e);
+                $theirs = collect();
+            } finally {
+                $this->forDelegate = false;
+                $this->forgetMemo($delegator);
+            }
+            foreach ($theirs as $item) {
+                if (isset($own[$item->id]) || isset($items[$item->id]) || ! $delegations->covers($delegation, $item->type)
+                    || $delegations->isOwnRequest($user, $item->subjectEmployeeId, $item->record)) {
+                    continue;
+                }
+                $items[$item->id] = $item->delegatedBy((int) $delegation->id, (int) $delegator->id, $delegator->name, $delegation->ends_on);
+            }
+        }
+
+        return array_values($items);
+    }
+
+    /**
+     * HROne setup parity P4: the person's archived items that are still waiting (restorable).
+     *
+     * @return Collection<int, ApprovalItem>
+     */
+    public function archived(User $user): Collection
+    {
+        $this->pending($user);
+
+        return $this->archived[$this->tenants->id().':'.$user->id] ?? collect();
     }
 
     /** @return array{urgent: Collection, today: Collection, upcoming: Collection, completed: Collection} */
@@ -155,6 +293,7 @@ final class ApprovalCenter
         $mine = fn (string $key) => $key === $prefix || str_starts_with($key, $prefix.':about:');
         $this->memo = array_filter($this->memo, fn (string $key) => ! $mine($key), ARRAY_FILTER_USE_KEY);
         $this->capped = array_filter($this->capped, fn (string $key) => ! $mine($key), ARRAY_FILTER_USE_KEY);
+        $this->archived = array_filter($this->archived, fn (string $key) => ! $mine($key), ARRAY_FILTER_USE_KEY);
     }
 
     /** Decisions the viewer took in the last two weeks (their own trail, newest first). */
@@ -165,7 +304,7 @@ final class ApprovalCenter
         }
         $since = now()->subDays($days);
         $rows = collect();
-        WorkflowTask::query()->with('instance')->where('completed_by', $user->id)->where('completed_at', '>=', $since)->latest('completed_at')->limit(20)->get()
+        WorkflowTask::query()->with('instance')->where(fn ($q) => $q->where('completed_by', $user->id)->orWhere('delegate_id', $user->id))->where('completed_at', '>=', $since)->latest('completed_at')->limit(20)->get()
             ->each(fn (WorkflowTask $t) => $rows->push(['title' => $t->title, 'type' => 'Workflow', 'subject' => $t->instance?->subject_label, 'status' => $t->status->getLabel(), 'at' => $t->completed_at, 'url' => $t->instance ? $this->safeUrl(fn () => WorkflowInstanceResource::getUrl('view', ['record' => $t->instance])) : null]));
         LeaveRequest::query()->with(['employee.person', 'leaveType'])->where('reviewed_by', $user->id)->where('reviewed_at', '>=', $since)->latest('reviewed_at')->limit(20)->get()
             ->each(fn (LeaveRequest $r) => $rows->push(['title' => ($r->leaveType?->name ?? 'Leave').' · '.$this->days($r->days), 'type' => 'Leave', 'subject' => $r->employee?->display_name, 'status' => ucfirst((string) $r->status), 'at' => $r->reviewed_at, 'url' => $this->safeUrl(fn () => LeaveRequestResource::getUrl('index'))]));
@@ -178,7 +317,9 @@ final class ApprovalCenter
     /** @return list<ApprovalItem> */
     private function workflowTasks(User $user, ?int $about = null): array
     {
-        $tasks = WorkflowTask::query()->with(['instance.workflow'])->where('status', TaskStatus::Pending)->actionableBy($user)->orderBy('due_at')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows));
+        // HROne parity RQ-8: the starter is read for every item; loaded with the runs so strict models (outside production) never
+        // drop the whole source when the person has steps of several runs.
+        $tasks = WorkflowTask::query()->with(['instance.workflow', 'instance.starter'])->where('status', TaskStatus::Pending)->actionableBy($user)->orderBy('due_at')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows));
         $items = [];
         foreach ($tasks as $task) {
             if (! $user->can('act', $task)) {
@@ -209,7 +350,12 @@ final class ApprovalCenter
                 decisions: $isApproval ? ['approve', 'reject'] : ['complete'],
                 url: $instance ? $this->safeUrl(fn () => WorkflowInstanceResource::getUrl('view', ['record' => $instance])) : null,
                 record: $task,
-                changesUsing: $subject instanceof LeaveRequest ? fn () => $this->leaveChanges($subject) : null,
+                changesUsing: match (true) {
+                    $subject instanceof LeaveRequest => fn () => $this->leaveChanges($subject),
+                    // HROne parity MS-3: a profile change decided by its workflow shows earlier → new to the step's approver.
+                    $subject instanceof ProfileChangeRequest => fn () => app(ProfileChanges::class)->diff($subject, $user),
+                    default => null,
+                },
             );
         }
 
@@ -227,7 +373,7 @@ final class ApprovalCenter
             ->when($about !== null, fn ($q) => $q->where('employee_id', $about))->orderBy('from_date')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows));
         // A request with a running workflow is decided through its workflow task (listed above).
         $inWorkflow = WorkflowInstance::query()->where('subject_type', (new LeaveRequest)->getMorphClass())->whereIn('subject_id', $requests->pluck('id'))
-            ->whereIn('status', [InstanceStatus::Running, InstanceStatus::Waiting])->pluck('subject_id')->all();
+            ->whereIn('status', InstanceStatus::inFlight())->pluck('subject_id')->all();
         $requests = $requests->reject(fn (LeaveRequest $r) => in_array($r->id, $inWorkflow, false));
         app(AccessScopes::class)->primeEmployeeIds($user, $requests->pluck('employee_id'));
         $requests = $requests->filter(fn (LeaveRequest $r) => $user->can('approve', $r));
@@ -254,8 +400,10 @@ final class ApprovalCenter
                 decisions: ['approve', 'reject'],
                 url: $this->safeUrl(fn () => LeaveRequestResource::getUrl('index')),
                 record: $request,
-                changesUsing: $cancellation ? null : fn () => $this->leaveChanges($request),
-                facts: array_values(array_filter([$this->range($request->from_date, $request->to_date), $request->contact_details ? 'Reachable: '.$request->contact_details : null])),
+                // HROne parity RQ-8 (R.3.3 #1): a cancellation shows the balance after cancelling and why it is cancelled.
+                changesUsing: $cancellation ? fn () => $this->leaveChanges($request, cancelling: true) : fn () => $this->leaveChanges($request),
+                facts: array_values(array_filter([$this->range($request->from_date, $request->to_date), $request->contact_details ? 'Reachable: '.$request->contact_details : null,
+                    $cancellation && filled($request->cancel_reason) ? 'Why cancel: '.$request->cancel_reason : null])),
                 decisionLabels: $cancellation ? ['approve' => 'Approve cancellation', 'reject' => 'Keep leave'] : [],
             );
         }
@@ -271,6 +419,9 @@ final class ApprovalCenter
         }
         $items = [];
         $regularisations = AttendanceRegularisation::query()->with(['employee.person', 'requester'])->where('status', 'pending')->when($about !== null, fn ($q) => $q->where('employee_id', $about))->orderBy('date')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows));
+        // HROne setup parity P5: a regularisation a workflow decides is decided through its workflow task (listed above).
+        $inWorkflow = RequestWorkflows::inFlight(new AttendanceRegularisation, $regularisations->pluck('id'));
+        $regularisations = $regularisations->reject(fn (AttendanceRegularisation $r) => in_array((int) $r->id, $inWorkflow, true));
         app(AccessScopes::class)->primeEmployeeIds($user, $regularisations->pluck('employee_id'));
         foreach ($regularisations as $r) {
             if (! $user->can('approve', $r)) {
@@ -315,8 +466,11 @@ final class ApprovalCenter
         }
         $access = app(CompensationAccess::class);
         $items = [];
-        foreach (CompensationChange::query()->with(['employee.person'])->whereIn('status', CompensationChange::PENDING)->when($about !== null, fn ($q) => $q->where('employee_id', $about))->orderBy('effective_from')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows)) as $change) {
-            if ((int) $change->proposed_by === (int) $user->id) {
+        $changes = CompensationChange::query()->with(['employee.person'])->whereIn('status', CompensationChange::PENDING)->when($about !== null, fn ($q) => $q->where('employee_id', $about))->orderBy('effective_from')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows));
+        // HROne setup parity P5: a change a workflow decides is decided through its workflow task (listed above).
+        $inWorkflow = RequestWorkflows::inFlight(new CompensationChange, $changes->pluck('id'));
+        foreach ($changes as $change) {
+            if ((int) $change->proposed_by === (int) $user->id || in_array((int) $change->id, $inWorkflow, true)) {
                 continue;
             }
             $actors = array_map('intval', $change->actors());
@@ -369,8 +523,11 @@ final class ApprovalCenter
             return [];
         }
         $items = [];
-        foreach (Letter::query()->with(['employee.person', 'requester'])->where('status', 'pending_approval')->when($about !== null, fn ($q) => $q->where('employee_id', $about))->latest('id')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows)) as $letter) {
-            if ($letter->requested_by !== null && (int) $letter->requested_by === (int) $user->id) {
+        $letters = Letter::query()->with(['employee.person', 'requester'])->where('status', 'pending_approval')->when($about !== null, fn ($q) => $q->where('employee_id', $about))->latest('id')->limit(self::SCAN)->get()->tap(fn (Collection $rows) => $this->noteScan($rows));
+        // HROne setup parity P5: a letter a workflow decides is decided through its workflow task (listed above).
+        $inWorkflow = RequestWorkflows::inFlight(new Letter, $letters->pluck('id'));
+        foreach ($letters as $letter) {
+            if (($letter->requested_by !== null && (int) $letter->requested_by === (int) $user->id) || in_array((int) $letter->id, $inWorkflow, true)) {
                 continue;
             }
             $items[] = new ApprovalItem(
@@ -423,8 +580,13 @@ final class ApprovalCenter
         return $overlap > 0 ? $overlap.' other '.($overlap === 1 ? 'person' : 'people').' in the team away on these dates' : 'No one else in the team is away on these dates';
     }
 
-    /** @return list<array{label: string, before: ?string, after: string}> */
-    private function leaveChanges(LeaveRequest $request): array
+    /**
+     * The leave type's balance before → after the request; for a cancellation (HROne parity RQ-8), before → after cancelling
+     * (the days come back).
+     *
+     * @return list<array{label: string, before: ?string, after: string}>
+     */
+    private function leaveChanges(LeaveRequest $request, bool $cancelling = false): array
     {
         if ($request->leaveType === null || $request->employee === null || $request->leaveType->category === 'unpaid') {
             return [];
@@ -435,6 +597,9 @@ final class ApprovalCenter
             return [];
         }
         $closing = (float) $balance->closing;
+        if ($cancelling) {
+            return [['label' => $request->leaveType->name.' balance after cancelling', 'before' => $this->days($closing), 'after' => $this->days($closing + (float) $request->days)]];
+        }
 
         return [['label' => $request->leaveType->name.' balance', 'before' => $this->days($closing), 'after' => $this->days($closing - (float) $request->days)]];
     }

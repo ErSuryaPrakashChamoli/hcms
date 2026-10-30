@@ -11,17 +11,17 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'employee_id', 'leave_type_id', 'period_year', 'days', 'status', 'reason', 'requested_by', 'reviewed_by', 'reviewed_at', 'review_note'])]
+#[Fillable(['tenant_id', 'employee_id', 'leave_type_id', 'period_year', 'days', 'status', 'reason', 'requested_by', 'reviewed_by', 'reviewed_at', 'review_note', 'cancelled_at', 'cancelled_by', 'cancel_reason'])]
 class LeaveEncashment extends Model
 {
     use Auditable, BelongsToTenant;
     use ScopedByEmployee;
 
-    public const STATUSES = ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'paid' => 'Paid'];
+    public const STATUSES = ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'paid' => 'Paid', 'cancelled' => 'Cancelled'];
 
     protected function casts(): array
     {
-        return ['days' => 'decimal:2', 'period_year' => 'integer', 'reviewed_at' => 'datetime'];
+        return ['days' => 'decimal:2', 'period_year' => 'integer', 'reviewed_at' => 'datetime', 'cancelled_at' => 'datetime'];
     }
 
     public function auditModule(): string

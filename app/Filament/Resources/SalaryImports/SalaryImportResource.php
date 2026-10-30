@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalaryImports;
 
 use App\Domain\Compensation\Imports\SalaryImports;
 use App\Domain\Employment\Imports\EmployeeImport;
+use App\Domain\Employment\Imports\ImportGovernance;
 use App\Filament\Resources\EmployeeImports\EmployeeImportResource;
 use App\Filament\Resources\EmployeeImports\RelationManagers\RowsRelationManager;
 use App\Filament\Resources\SalaryImports\Pages\ListSalaryImports;
@@ -49,7 +50,8 @@ class SalaryImportResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('type', SalaryImports::TYPE)->where('uploaded_by', auth()->id());
+        // HROne setup parity P2: plus the uploads this person checks under maker-checker or workflow approval.
+        return ImportGovernance::ownOrChecked(parent::getEloquentQuery()->where('type', SalaryImports::TYPE), SalaryImports::TYPE, auth()->user());
     }
 
     public static function infolist(Schema $schema): Schema

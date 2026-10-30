@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Employees\RelationManagers;
 use App\Domain\Employment\Actions\ChangeBankAccountAction;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
+use App\Domain\Experience\Services\ProfileSectionVisibility;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\ProfileChangeActions;
 use Filament\Actions\Action;
@@ -35,7 +37,14 @@ class BankAccountsRelationManager extends RelationManager
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        return auth()->user()?->can('viewSensitive', $ownerRecord) ?? false;
+        // HROne setup parity CA-6: the profile-section matrix (section bank) can only hide the tab.
+        return (auth()->user()?->can('viewSensitive', $ownerRecord) ?? false)
+            && app(ProfileSectionVisibility::class)->allows(auth()->user(), $ownerRecord, 'bank');
+    }
+
+    public static function showsIfscAndBranch(): bool
+    {
+        return (bool) app(SettingsRepository::class)->get('payroll.bank.show_ifsc_branch', true);
     }
 
     public function mount(): void
@@ -61,10 +70,11 @@ class BankAccountsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('bank_name')->description(fn ($record) => $record->branch_name),
+                // HROne setup parity BP-13: payroll.bank.show_ifsc_branch (default on) decides whether the IFSC and branch are shown here.
+                TextColumn::make('bank_name')->description(fn ($record) => self::showsIfscAndBranch() ? $record->branch_name : null),
                 TextColumn::make('account_holder_name')->label('Holder'),
                 TextColumn::make('account_number_last4')->label('Account')->formatStateUsing(fn ($state) => '••••'.$state),
-                TextColumn::make('ifsc')->label('IFSC')->placeholder('—'),
+                TextColumn::make('ifsc')->label('IFSC')->placeholder('—')->visible(fn () => self::showsIfscAndBranch()),
                 TextColumn::make('account_type')->badge()->placeholder('—'),
                 IconColumn::make('is_primary')->label('Primary')->boolean(),
                 TextColumn::make('verified_at')->dateTime()->placeholder('Unverified'),
@@ -87,7 +97,7 @@ class BankAccountsRelationManager extends RelationManager
 
                         Notification::make()
                             ->title($record->bank_name)
-                            ->body("Account number: {$record->account_number}\nIFSC: {$record->ifsc}")
+                            ->body("Account number: {$record->account_number}".(self::showsIfscAndBranch() ? "\nIFSC: {$record->ifsc}" : ''))
                             ->persistent()
                             ->send();
                     }),

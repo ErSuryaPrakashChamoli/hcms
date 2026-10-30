@@ -48,6 +48,12 @@ final class WorkflowDefinition
             if ($type === 'webhook' && empty($node['config']['url'])) {
                 $errors[] = "Webhook node [{$id}] needs a URL.";
             }
+
+            // HROne setup parity P5: deciding automatically is for the last approval level only.
+            $autoDecides = collect($node['config']['escalation'] ?? [])->contains(fn ($step) => ($step['action'] ?? null) === 'auto_decide');
+            if ($autoDecides && ($type !== 'approval' || ! $this->isLastApproval($definition, (string) $id))) {
+                $errors[] = "Node [{$id}]: \"Decide automatically\" is allowed only on the last approval step.";
+            }
         }
 
         $starts = array_keys(array_filter($ids, fn ($t) => $t === 'start'));
@@ -87,5 +93,33 @@ final class WorkflowDefinition
         }
 
         return $errors;
+    }
+
+    /** HROne setup parity P5: an approval node from which no other approval node can be reached (the last level). */
+    public function isLastApproval(array $definition, string $nodeId): bool
+    {
+        $types = collect($definition['nodes'] ?? [])->mapWithKeys(fn ($n) => [(string) ($n['id'] ?? '') => $n['type'] ?? null])->all();
+        if (($types[$nodeId] ?? null) !== 'approval') {
+            return false;
+        }
+        $edges = collect($definition['edges'] ?? []);
+        $seen = [$nodeId => true];
+        $queue = [$nodeId];
+        while ($queue !== []) {
+            $current = array_shift($queue);
+            foreach ($edges->where('from', $current)->pluck('to') as $next) {
+                $next = (string) $next;
+                if (isset($seen[$next])) {
+                    continue;
+                }
+                if (($types[$next] ?? null) === 'approval') {
+                    return false;
+                }
+                $seen[$next] = true;
+                $queue[] = $next;
+            }
+        }
+
+        return true;
     }
 }

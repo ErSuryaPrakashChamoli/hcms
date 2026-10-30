@@ -41,6 +41,12 @@ class PayslipsDataset extends Dataset
         ];
     }
 
+    /** HROne parity CA-10: rows come from payroll runs (a view's payroll refresh day applies). */
+    public function payrollRunPath(): ?string
+    {
+        return 'entry.run';
+    }
+
     public function query(): Builder
     {
         return Payslip::query()->with([...self::employeeWith('employee'), 'entry.run.period'])->orderByDesc('id');

@@ -9,6 +9,7 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Identity\Models\User;
 use App\Domain\Letters\Services\Letters;
+use App\Support\Numbering\NumberSeries;
 use RuntimeException;
 
 /** Alumni platform (§62): document and reference requests from former employees. */
@@ -90,11 +91,9 @@ final class Alumni
         return $request;
     }
 
+    /** HROne setup parity (Code series): the alumni request code series (built-in ALR-YYYY-NNNNN), counted under a lock. */
     public function nextNumber(): string
     {
-        $year = now()->format('Y');
-        $last = AlumniRequest::query()->where('number', 'like', "ALR-{$year}-%")->orderByDesc('id')->value('number');
-
-        return sprintf('ALR-%s-%05d', $year, $last ? ((int) substr($last, -5)) + 1 : 1);
+        return app(NumberSeries::class)->next('alumni_request');
     }
 }

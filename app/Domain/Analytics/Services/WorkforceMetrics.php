@@ -5,6 +5,8 @@ namespace App\Domain\Analytics\Services;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
+use App\Domain\Expense\Models\ExpenseAdvance;
+use App\Domain\Expense\Models\ExpenseReport;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Models\LearningEnrolment;
@@ -14,9 +16,11 @@ use App\Domain\People\Models\PersonSkill;
 use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\ServiceDesk\Models\Ticket;
+use App\Domain\Skills\Support\SkillProficiencies;
 use App\Domain\Workflow\Enums\TaskStatus;
 use App\Domain\Workflow\Models\WorkflowTask;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /** The KPI catalogue behind dashboards and the Workforce Command Centre (§56, §85). */
@@ -31,7 +35,23 @@ final class WorkforceMetrics
         'high_performers' => ['performance.analytics', 'performance.view'], 'learning_completion' => ['learning.analytics', 'learning.view'],
         'open_grievances' => ['grievance.view', 'grievance.manage'], 'open_tickets' => ['servicedesk.view', 'servicedesk.analytics'],
         'exits_in_progress' => ['exit.view'], 'pending_approvals' => ['workflow.view'],
+        // HROne setup parity EX-G: the expense dashboard's figures.
+        'expense_reports_pending' => ['expense.view'], 'expense_payable' => ['expense.view'], 'expense_advances_outstanding' => ['expense.view'], 'expense_advances_overdue' => ['expense.view'],
+        // HROne parity CA-10: the HR Ops view's approval turnaround.
+        'approvals_on_time' => ['workflow.view'], 'approval_turnaround_days' => ['workflow.view'],
     ];
+
+    /**
+     * HROne parity CA-10: metrics whose every query goes through the access scope of employee-linked records, so a shared
+     * view's organisation slice narrows them (people_cost / cost_per_head through the payroll read contract). Any other
+     * metric (workflow tasks, anonymous grievances) is shown only in views of the whole organisation.
+     */
+    public const SLICEABLE = ['headcount', 'joiners_30d', 'exits_30d', 'attrition_rate', 'absenteeism_rate', 'on_leave_today', 'people_cost', 'cost_per_head',
+        'avg_tenure_months', 'women_share', 'high_performers', 'learning_completion', 'open_tickets', 'exits_in_progress',
+        'expense_reports_pending', 'expense_payable', 'expense_advances_outstanding', 'expense_advances_overdue'];
+
+    /** CA-10: trend series a slice narrows (people_cost through the payroll read contract). */
+    public const SLICEABLE_SERIES = ['headcount', 'joiners', 'exits', 'absenteeism', 'people_cost'];
 
     /** Phase 14: shares of a small population are suppressed (the PeopleOS small-group principle). */
     public const SUPPRESSED_BELOW_GROUP = ['women_share', 'high_performers', 'avg_tenure_months'];
@@ -84,6 +104,12 @@ final class WorkforceMetrics
             'open_grievances' => [Grievance::query()->whereIn('status', Grievance::OPEN)->count(), 'number', null],
             'exits_in_progress' => [ExitCase::query()->whereIn('status', ExitCase::OPEN)->count(), 'number', null],
             'pending_approvals' => [WorkflowTask::query()->where('status', TaskStatus::Pending)->count(), 'number', null],
+            'expense_reports_pending' => [ExpenseReport::query()->where('status', 'submitted')->count(), 'number', null],
+            'expense_payable' => [round((float) ExpenseReport::query()->whereIn('status', ['approved', 'partly_approved'])->whereNull('paid_on')->where('net_payable', '>', 0)->sum('net_payable'), 2), 'currency', 'Approved reports not yet paid'],
+            'expense_advances_outstanding' => [round((float) ExpenseAdvance::query()->where('status', 'disbursed')->sum('outstanding'), 2), 'currency', null],
+            'expense_advances_overdue' => [ExpenseAdvance::query()->where('status', 'disbursed')->where('outstanding', '>', 0)->whereDate('settle_by', '<', now()->toDateString())->count(), 'number', 'Past the settle-by date'],
+            'approvals_on_time' => [$this->approvalsOnTime(), 'percent', 'Decided by their due time, of the approvals with a due time decided in the last 30 days'],
+            'approval_turnaround_days' => [$this->approvalTurnaroundDays(), 'number', 'From the task being created to its decision, last 30 days'],
             default => [null, 'number', null],
         };
 
@@ -292,8 +318,35 @@ final class WorkforceMetrics
         return PersonSkill::query()->with('skill')->get()->groupBy('skill_id')->map(fn ($group) => [
             'skill' => $group->first()->skill?->name ?? '—',
             'holders' => $group->count(),
-            'experts' => $group->whereIn('proficiency', ['advanced', 'expert'])->count(),
+            'experts' => $group->filter(fn (PersonSkill $s) => SkillProficiencies::isExpert($s->proficiency))->count(),
         ])->sortBy([['experts', 'asc'], ['holders', 'desc']])->take($limit)->values()->all();
+    }
+
+    /** HROne parity CA-10: share of approvals with a due time, decided in the last 30 days, decided by it (null = none). */
+    public function approvalsOnTime(): ?float
+    {
+        $due = $this->decidedTasks()->whereNotNull('due_at');
+        $total = (clone $due)->count();
+
+        return $total > 0 ? round((clone $due)->whereColumn('completed_at', '<=', 'due_at')->count() / $total * 100, 1) : null;
+    }
+
+    /** HROne parity CA-10: average days from an approval task's creation to its decision, last 30 days (null = none). */
+    public function approvalTurnaroundDays(): ?float
+    {
+        $tasks = $this->decidedTasks()->toBase()->get(['created_at', 'completed_at']);
+        if ($tasks->isEmpty()) {
+            return null;
+        }
+
+        return round($tasks->avg(fn ($t) => max(0, Carbon::parse($t->created_at)->diffInMinutes(Carbon::parse($t->completed_at))) / 1440), 1);
+    }
+
+    /** Workflow tasks decided in the last 30 days (approved, rejected, completed or sent back). */
+    private function decidedTasks(): Builder
+    {
+        return WorkflowTask::query()->whereNotNull('completed_at')->where('completed_at', '>=', now()->subDays(30))
+            ->whereIn('status', [TaskStatus::Approved->value, TaskStatus::Rejected->value, TaskStatus::Completed->value, TaskStatus::SentBack->value]);
     }
 
     private function lastRun(): ?PayrollRun

@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+    @include('filament.partials.web-punch')
     @php($today = $this->getToday())
     @php($counters = $this->getCounters())
     @php($payslip = $this->getLatestPayslip())
@@ -12,9 +13,9 @@
             </div>
             <div class="mt-3">
                 @if ($today['checked_in'])
-                    <x-filament::button size="sm" color="warning" wire:click="punch('out')">Check out</x-filament::button>
+                    <x-filament::button size="sm" color="warning" x-on:click="window.peoplePunch($wire, 'out', @js($today['needs_location']))">Check out</x-filament::button>
                 @else
-                    <x-filament::button size="sm" color="success" wire:click="punch('in')">Check in</x-filament::button>
+                    <x-filament::button size="sm" color="success" x-on:click="window.peoplePunch($wire, 'in', @js($today['needs_location']))">Check in</x-filament::button>
                 @endif
             </div>
         </x-filament::section>

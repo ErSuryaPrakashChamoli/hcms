@@ -48,6 +48,7 @@ Route::prefix('v1')->name('api.v1.')->middleware('api.idempotent')->group(functi
     });
     Route::middleware('api.key:attendance.write')->group(function () {
         Route::post('attendance/punches', [AttendanceController::class, 'punch'])->name('attendance.punches.store');
+        Route::post('attendance/locations', [AttendanceController::class, 'locations'])->name('attendance.locations.store');
         Route::post('attendance/regularisations', [AttendanceController::class, 'requestRegularisation'])->name('attendance.regularisations.store');
     });
     Route::middleware('api.key:leave.read')->group(function () {

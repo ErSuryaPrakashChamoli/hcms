@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** One employee's appraisal in a cycle (§34): reviews, computed and calibrated scores, final rating. */
-#[Fillable(['tenant_id', 'performance_cycle_id', 'employee_id', 'manager_id', 'status', 'goal_score', 'competency_score', 'self_rating', 'manager_rating', 'peer_rating', 'computed_rating', 'calibrated_rating', 'final_rating', 'final_label', 'calibration_note', 'manager_summary', 'promotion_recommended', 'pip_recommended', 'finalized_by', 'finalized_at', 'acknowledged_at', 'employee_comment', 'performance_template_version_id', 'locked_at', 'lock_version'])]
+#[Fillable(['tenant_id', 'performance_cycle_id', 'employee_id', 'manager_id', 'status', 'goal_score', 'competency_score', 'self_rating', 'manager_rating', 'peer_rating', 'computed_rating', 'calibrated_rating', 'final_rating', 'final_label', 'calibration_note', 'manager_summary', 'promotion_recommended', 'pip_recommended', 'finalized_by', 'finalized_at', 'acknowledged_at', 'employee_comment', 'performance_template_version_id', 'locked_at', 'lock_version', 'published_at', 'published_by', 'recommendations'])]
 class Appraisal extends Model
 {
     use Auditable, BelongsToTenant;
@@ -52,7 +52,9 @@ class Appraisal extends Model
             'self_rating' => 'decimal:2', 'manager_rating' => 'decimal:2', 'peer_rating' => 'decimal:2',
             'computed_rating' => 'decimal:2', 'calibrated_rating' => 'decimal:2', 'final_rating' => 'decimal:2',
             'promotion_recommended' => 'boolean', 'pip_recommended' => 'boolean',
-            'finalized_at' => 'datetime', 'acknowledged_at' => 'datetime',
+            'finalized_at' => 'datetime', 'acknowledged_at' => 'datetime', 'published_at' => 'datetime',
+            // HROne setup parity HP-8i: reviewers' recommendations (training needs, promotion, increment, variable pay).
+            'recommendations' => 'array',
         ];
     }
 
@@ -70,7 +72,7 @@ class Appraisal extends Model
 
     public function auditSensitiveAttributes(): array
     {
-        return ['calibration_note', 'manager_summary'];
+        return ['calibration_note', 'manager_summary', 'recommendations'];
     }
 
     public function cycle(): BelongsTo
@@ -93,6 +95,12 @@ class Appraisal extends Model
         return $this->hasMany(AppraisalReview::class);
     }
 
+    /** HROne setup parity HP-8i: the periodic reviews of a performance policy's review cycle. */
+    public function periodReviews(): HasMany
+    {
+        return $this->hasMany(PerformancePeriodReview::class)->orderBy('sequence');
+    }
+
     public function finalizer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'finalized_by');
@@ -103,6 +111,17 @@ class Appraisal extends Model
         $reviews = $this->relationLoaded('reviews') ? $this->reviews : $this->reviews()->get();
 
         return $reviews->firstWhere('type', $type);
+    }
+
+    /** HP-8b: the rating has reached the employee (auto: at finalization; manual: when HR published it). */
+    public function isPublished(): bool
+    {
+        return ($this->getAttributes()['published_at'] ?? null) !== null;
+    }
+
+    public function publisher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'published_by');
     }
 
     public function isFinal(): bool

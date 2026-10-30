@@ -27,6 +27,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use RuntimeException;
 use UnitEnum;
@@ -60,7 +61,9 @@ class SalaryComponentResource extends Resource
                     }),
                 Select::make('type')->options(config('peopleos.payroll.component_types'))->required()->disabled($locked)->dehydrated(),
                 Select::make('classification')->options(config('peopleos.payroll.classifications'))->required()->default('allowance')->disabled($locked)->dehydrated(),
-                Select::make('calculation_method')->label('Calculated')->options(collect(config('peopleos.payroll.calculation_methods'))->except('statutory')->all())->default('fixed')->required()->live()->disabled($locked)->dehydrated(),
+                Select::make('calculation_method')->label('Calculated')->options(collect(config('peopleos.payroll.calculation_methods'))->except('statutory')->all())->default('fixed')->required()->live()->disabled($locked)->dehydrated()
+                    // HROne setup parity BP-2 (CTC formula tags).
+                    ->helperText(fn (Get $get) => $get('calculation_method') === 'input' ? 'A value set on each employee\'s compensation (e.g. a rate or a target) that formulas read by the lowercase code. It is never paid or printed; its name is what people see.' : null),
                 TextInput::make('sort_order')->numeric()->default(0)->helperText('Default position in new structures; in a structure, a formula uses only the rows above it'),
                 Textarea::make('formula')->rows(2)->columnSpanFull()
                     ->visible(fn (Get $get) => $get('calculation_method') === 'formula')
@@ -88,7 +91,30 @@ class SalaryComponentResource extends Resource
                 Toggle::make('is_recurring')->label('Recurring')->default(true)->helperText('Off = paid only through adjustments'),
                 Toggle::make('is_proratable')->label('Prorated for LOP')->default(true),
                 Toggle::make('is_arrear_eligible')->label('Arrear eligible')->default(true),
+                // HROne parity PY-02: a reimbursement paid against claims (with bills) instead of every month.
+                Toggle::make('pay_on_claim')->label('Paid on claim')->helperText('Reimbursements only: the monthly amount builds up a balance employees claim against with bills.')
+                    ->visible(fn ($get) => $get('type') === 'reimbursement'),
+                // HROne setup parity 08.6 (Workforce → Transfer allowances): offered on transfer requests, paid once by payroll.
+                Toggle::make('transfer_allowance')->label('Transfer allowance')->helperText('Offered on transfer requests (the name is the label) and paid once with payroll, with this component\'s tax, PF and ESI treatment.')
+                    ->visible(fn ($get) => in_array($get('type'), ['earning', 'reimbursement'], true)),
                 Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            ]),
+            // HROne setup parity (PS-1): statutory wages, display, joining / exit months, rounding, tax by regime, claims.
+            Section::make('Statutory wages, display and processing')->columns(4)->collapsible()->schema([
+                Select::make('pt_wages')->label('Professional tax wages')->options([1 => 'Yes', 0 => 'No'])->placeholder('As part of gross'),
+                Select::make('lwf_wages')->label('LWF wages')->options([1 => 'Yes', 0 => 'No'])->placeholder('As part of gross'),
+                Select::make('esi_eligibility_wages')->label('Counts for the ESI ceiling')->options([1 => 'Yes', 0 => 'No'])->placeholder('As ESI wages'),
+                Select::make('pay_nature')->label('Nature of payment')->options(['fixed' => 'Fixed', 'variable' => 'Variable'])->default('fixed')->required(),
+                Toggle::make('show_on_payslip')->label('Show on the payslip')->default(true),
+                Toggle::make('show_in_register')->label('Show on the salary register')->default(true),
+                Toggle::make('pay_in_joining_month')->label('Pay in the joining month')->default(true),
+                Toggle::make('pay_in_exit_month')->label('Pay in the exit month')->default(true),
+                Select::make('rounding')->options(['nearest_1' => 'Nearest rupee', 'up_1' => 'Up to the rupee', 'nearest_10' => 'Nearest ten'])->placeholder('No rounding'),
+                Select::make('exempt_in_regimes')->label('Tax-free in (non-taxable components)')->multiple()->options(config('peopleos.compliance.tax_regimes'))->placeholder('Every regime'),
+                Select::make('claim_attachment_required')->label('Claims need bills')->options([1 => 'Yes', 0 => 'No'])->placeholder('Organisation setting')
+                    ->visible(fn ($get) => $get('type') === 'reimbursement'),
+                TextInput::make('claim_window_days')->label('Bills no older than (days)')->numeric()->minValue(1)->visible(fn ($get) => $get('type') === 'reimbursement'),
+                TextInput::make('claim_limit_per_claim')->label('Most per claim')->numeric()->minValue(0)->visible(fn ($get) => $get('type') === 'reimbursement'),
             ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
@@ -114,7 +140,7 @@ class SalaryComponentResource extends Resource
                 TextColumn::make('status')->badge(),
             ])
             ->defaultSort('sort_order')
-            ->filters([SelectFilter::make('type')->options(config('peopleos.payroll.component_types'))])
+            ->filters([SelectFilter::make('type')->options(config('peopleos.payroll.component_types')), TernaryFilter::make('transfer_allowance')->label('Transfer allowances')])
             ->recordActions([EditAction::make()]);
     }
 

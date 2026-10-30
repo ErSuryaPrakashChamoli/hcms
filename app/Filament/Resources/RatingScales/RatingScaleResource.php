@@ -20,7 +20,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use UnitEnum;
 
-/** Rating scales (§35). */
+/**
+ * Rating scales (§35), for reviews and competencies alike (a cycle may rate competencies on another scale, HP-8c).
+ * HROne setup parity HP-8c: each level may have a range (from / to) — a rating takes the label of its range.
+ */
 class RatingScaleResource extends Resource
 {
     protected static ?string $model = RatingScale::class;
@@ -38,11 +41,14 @@ class RatingScaleResource extends Resource
         return $schema->columns(2)->components([
             TextInput::make('name')->required()->maxLength(255),
             TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
-            Repeater::make('levels')->columnSpanFull()->columns(3)->minItems(2)->reorderable(false)
+            Repeater::make('levels')->columnSpanFull()->columns(5)->minItems(2)->reorderable(false)
+                ->helperText('Optional ranges: a rating between a level\'s "from" and "to" takes that level\'s label; without ranges, the nearest level\'s.')
                 ->schema([
                     TextInput::make('value')->numeric()->required(),
                     TextInput::make('label')->required()->maxLength(64),
                     TextInput::make('description')->maxLength(255),
+                    TextInput::make('from')->label('Range from')->numeric(),
+                    TextInput::make('to')->label('Range to')->numeric(),
                 ])
                 ->default(config('peopleos.performance.defaults.rating_scale.levels')),
             Toggle::make('is_default')->label('Default scale'),
@@ -57,7 +63,7 @@ class RatingScaleResource extends Resource
             ->columns([
                 TextColumn::make('name')->searchable(),
                 TextColumn::make('code'),
-                TextColumn::make('levels')->label('Levels')->state(fn (RatingScale $record) => collect($record->levels)->map(fn ($l) => rtrim(rtrim(number_format($l['value'], 1, '.', ''), '0'), '.').' '.$l['label'])->implode(' · '))->wrap(),
+                TextColumn::make('levels')->label('Levels')->state(fn (RatingScale $record) => collect($record->levels)->map(fn ($l) => rtrim(rtrim(number_format($l['value'], 1, '.', ''), '0'), '.').' '.$l['label'].(isset($l['from'], $l['to']) ? " ({$l['from']}–{$l['to']})" : ''))->implode(' · '))->wrap(),
                 IconColumn::make('is_default')->label('Default')->boolean(),
                 TextColumn::make('status')->badge(),
             ])

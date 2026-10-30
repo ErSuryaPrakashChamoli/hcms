@@ -14,7 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
  *   (PeopleOS embeds no iframes of its own). Only the frame-ancestors directive is set: a full script CSP would need
  *   Filament / Livewire nonces and is not attempted here.
  * - X-Content-Type-Options nosniff; Referrer-Policy strict-origin-when-cross-origin (no paths or tokens in referrers);
- *   Permissions-Policy turns off camera, microphone and geolocation, which PeopleOS does not use.
+ *   Permissions-Policy turns off camera and microphone, which PeopleOS does not use, and allows geolocation for
+ *   PeopleOS's own pages only (web check-in sends the location when the employee's check-in policy needs it).
  * - X-Robots-Tag noindex, nofollow (SaaS.11; peopleos.security.robots_tag), with robots.txt disallowing everything;
  * - Strict-Transport-Security only on HTTPS requests, for peopleos.security.hsts_max_age seconds (0 turns it off);
  *   subdomains are not included (that commitment is the operator's).
@@ -36,7 +37,7 @@ class SecurityHeaders
         $set('Content-Security-Policy', "frame-ancestors 'self'");
         $set('X-Content-Type-Options', 'nosniff');
         $set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        $set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
         // SaaS.11: a private HR platform is never indexed. robots.txt asks crawlers not to visit; this header also keeps
         // out of search results a page reached through a shared link (invitation and signup links carry their token
         // in the path). Empty turns it off.

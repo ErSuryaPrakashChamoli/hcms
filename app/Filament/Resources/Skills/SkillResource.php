@@ -15,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -35,15 +36,19 @@ class SkillResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('code')->required()->maxLength(64)->alphaDash(),
-            TextInput::make('category')->maxLength(64)->placeholder('technical, behavioural, domain…'),
-            Select::make('skill_type')->label('Type')->options(config('peopleos.skills.types')),
-            Select::make('skill_scale_id')->label('Proficiency scale')->placeholder('Default scale')->options(fn () => SkillScale::query()->where('status', 'active')->pluck('name', 'id')->all()),
-            Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
-            DatePicker::make('effective_from')->native(false),
-            DatePicker::make('effective_to')->native(false)->afterOrEqual('effective_from'),
-            Textarea::make('description')->rows(2)->columnSpanFull(),
+            Section::make('Skill')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('code')->required()->maxLength(64)->alphaDash(),
+                TextInput::make('category')->maxLength(64)->placeholder('technical, behavioural, domain…'),
+                Select::make('skill_type')->label('Type')->options(config('peopleos.skills.types')),
+                Textarea::make('description')->rows(2)->columnSpanFull(),
+            ]),
+            Section::make('Scale and validity')->columns(2)->schema([
+                Select::make('skill_scale_id')->label('Proficiency scale')->placeholder('Default scale')->options(fn () => SkillScale::query()->where('status', 'active')->pluck('name', 'id')->all()),
+                Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                DatePicker::make('effective_from')->native(false),
+                DatePicker::make('effective_to')->native(false)->afterOrEqual('effective_from'),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

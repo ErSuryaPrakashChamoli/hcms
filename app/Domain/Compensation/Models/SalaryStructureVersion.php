@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * end date (closed once, when the next version is approved) and the status move. A correction is a new
  * version from a later date.
  */
-#[Fillable(['tenant_id', 'salary_structure_id', 'version', 'status', 'effective_from', 'effective_to', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'applicability', 'parameters', 'change_note', 'checksum', 'prepared_by', 'submitted_at', 'approved_by', 'approved_at', 'decision_note', 'archived_at', 'lock_version'])]
+#[Fillable(['tenant_id', 'salary_structure_id', 'version', 'status', 'effective_from', 'effective_to', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'applicability', 'parameters', 'balancing_component_id', 'ctc_mode', 'change_note', 'checksum', 'prepared_by', 'submitted_at', 'approved_by', 'approved_at', 'decision_note', 'archived_at', 'lock_version'])]
 class SalaryStructureVersion extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
@@ -35,9 +35,12 @@ class SalaryStructureVersion extends Model
     /** Approved versions: part of the structure's effective-dated history. */
     public const APPROVED = ['scheduled', 'active', 'superseded'];
 
-    public const CONTENT = ['salary_structure_id', 'version', 'effective_from', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'applicability', 'parameters', 'change_note'];
+    public const CONTENT = ['salary_structure_id', 'version', 'effective_from', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'applicability', 'parameters', 'balancing_component_id', 'ctc_mode', 'change_note'];
 
-    protected $attributes = ['status' => 'draft', 'currency' => 'INR', 'pay_frequency' => 'monthly', 'lock_version' => 0];
+    /** HROne setup parity BP-2: built from CTC (balanced to it, as before) or from component amounts (CTC worked out from them). */
+    public const CTC_MODES = ['ctc' => 'From CTC (components add up to the CTC)', 'components' => 'From component amounts (CTC is worked out)'];
+
+    protected $attributes = ['status' => 'draft', 'currency' => 'INR', 'pay_frequency' => 'monthly', 'ctc_mode' => 'ctc', 'lock_version' => 0];
 
     protected static function booted(): void
     {
@@ -127,6 +130,25 @@ class SalaryStructureVersion extends Model
         return $this->components()->with('component')->get()->filter(fn (SalaryStructureComponent $line) => $line->component !== null)
             ->map(fn (SalaryStructureComponent $line) => ['component' => $line->component, 'formula_override' => $line->formula_override, 'sort_order' => (int) $line->sort_order])
             ->values()->all();
+    }
+
+    /** The balancing component (null = none), read safely on an instance created before the column existed in it. */
+    public function balancingComponentId(): ?int
+    {
+        $id = $this->getAttributes()['balancing_component_id'] ?? null;
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    /** @return array{ctc_mode: string, balancing_component_id: ?int} what the formula check and preview need besides the lines */
+    public function formulaOptions(): array
+    {
+        return ['ctc_mode' => (string) ($this->getAttributes()['ctc_mode'] ?? 'ctc'), 'balancing_component_id' => $this->balancingComponentId()];
+    }
+
+    public function balancingComponent(): BelongsTo
+    {
+        return $this->belongsTo(SalaryComponent::class, 'balancing_component_id');
     }
 
     /**

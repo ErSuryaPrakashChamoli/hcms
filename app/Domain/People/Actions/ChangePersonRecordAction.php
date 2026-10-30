@@ -36,11 +36,20 @@ abstract class ChangePersonRecordAction
 
     abstract protected function label(): string;
 
+    /** HROne setup parity CA-4: the profile field a document type may be required with (peopleos.documents.linked_fields). */
+    protected function linkedDocumentField(): ?string
+    {
+        return null;
+    }
+
     /** @param  array<string, mixed>  $data */
     public function add(Employee $employee, array $data, User $actor, ?string $reason = null, ?ChangeOrigin $origin = null): Model
     {
-        $this->guard->authorize($actor, $employee, 'employee.create');
+        $this->guard->authorize($actor, $employee, 'employee.create', $origin);
         $clean = $this->validated($data, $this->rules());
+        if (($field = $this->linkedDocumentField()) !== null) {
+            $this->guard->requireLinkedDocument($employee, $field);
+        }
 
         return DB::transaction(function () use ($employee, $clean, $reason, $origin) {
             $employee = $this->lockEmployee($employee);
@@ -57,8 +66,11 @@ abstract class ChangePersonRecordAction
     public function update(Employee $employee, Model $record, array $data, User $actor, ?string $reason = null, ?ChangeOrigin $origin = null): Model
     {
         $this->assertBelongs($employee, $record);
-        $this->guard->authorize($actor, $employee, 'employee.update');
+        $this->guard->authorize($actor, $employee, 'employee.update', $origin);
         $clean = $this->validated($data, $this->rules());
+        if (($field = $this->linkedDocumentField()) !== null) {
+            $this->guard->requireLinkedDocument($employee, $field);
+        }
 
         return DB::transaction(function () use ($employee, $record, $clean, $reason, $origin) {
             $employee = $this->lockEmployee($employee);

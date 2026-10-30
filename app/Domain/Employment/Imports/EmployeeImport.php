@@ -11,18 +11,33 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** A staged employee import: upload → inspect → map → validate → preview → approve → import → audit. */
-#[Fillable(['tenant_id', 'type', 'original_name', 'disk', 'path', 'size_bytes', 'status', 'headers', 'mapping', 'options', 'row_count', 'valid_count', 'error_count', 'review_count', 'create_count', 'update_count', 'skip_count', 'failure_count', 'operation_id', 'uploaded_by', 'approved_by', 'approved_at', 'imported_at', 'error'])]
+#[Fillable(['tenant_id', 'type', 'source', 'original_name', 'disk', 'path', 'size_bytes', 'status', 'headers', 'mapping', 'options', 'row_count', 'valid_count', 'error_count', 'review_count', 'create_count', 'update_count', 'skip_count', 'failure_count', 'operation_id', 'uploaded_by', 'approved_by', 'approved_at', 'run_started_at', 'imported_at', 'error'])]
 class EmployeeImport extends Model
 {
     use Auditable, BelongsToTenant;
 
     public const STATUSES = ['uploaded', 'inspected', 'mapped', 'validated', 'approved', 'importing', 'imported', 'failed', 'discarded'];
 
-    protected $attributes = ['status' => 'uploaded', 'type' => 'employees'];
+    /** HROne setup parity P2: where an upload came from (employee_imports.source). */
+    public const SOURCES = ['ui' => 'Admin screens', 'api' => 'API'];
+
+    protected $attributes = ['status' => 'uploaded', 'type' => 'employees', 'source' => 'ui'];
+
+    protected static function booted(): void
+    {
+        // HROne setup parity P2: the approval rule (imports.approval_mode) and the run start time hold for every upload
+        // service; status changes raise the import events.
+        static::updating(function (EmployeeImport $import): void {
+            ImportGovernance::updating($import);
+        });
+        static::updated(function (EmployeeImport $import): void {
+            ImportGovernance::updated($import);
+        });
+    }
 
     protected function casts(): array
     {
-        return ['headers' => 'array', 'mapping' => 'array', 'options' => 'array', 'approved_at' => 'datetime', 'imported_at' => 'datetime'];
+        return ['headers' => 'array', 'mapping' => 'array', 'options' => 'array', 'approved_at' => 'datetime', 'run_started_at' => 'datetime', 'imported_at' => 'datetime'];
     }
 
     public function auditModule(): string

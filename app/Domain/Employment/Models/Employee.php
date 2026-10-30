@@ -166,9 +166,10 @@ class Employee extends Model
         return $this->hasMany(EmployeeTimelineEntry::class)->orderByDesc('occurred_on')->orderByDesc('id');
     }
 
+    /** The latest onboarding checklist plan (HROne setup parity: induction plans and items issued later are other kinds). */
     public function onboardingPlan(): HasOne
     {
-        return $this->hasOne(OnboardingPlan::class)->latestOfMany();
+        return $this->hasOne(OnboardingPlan::class)->ofMany(['id' => 'max'], fn (Builder $query) => $query->where('kind', 'onboarding'));
     }
 
     public function onboardingPlans(): HasMany
@@ -184,6 +185,12 @@ class Employee extends Model
     public function bgvCases(): HasMany
     {
         return $this->hasMany(BgvCase::class)->latest('initiated_at');
+    }
+
+    /** HROne parity WO-2: the latest background check (status column on the Employees register). */
+    public function latestBgvCase(): HasOne
+    {
+        return $this->hasOne(BgvCase::class)->latestOfMany();
     }
 
     public function attendanceRecords(): HasMany

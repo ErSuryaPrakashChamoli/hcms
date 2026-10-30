@@ -6,8 +6,10 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
 use App\Domain\ServiceDesk\Exceptions\ServiceDeskRuleViolation;
 use App\Domain\ServiceDesk\Models\ServiceDefinitionVersion;
+use App\Domain\ServiceDesk\Models\ServiceResolverRule;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Models\TicketCategory;
 use Illuminate\Support\Collection;
@@ -27,7 +29,9 @@ use Illuminate\Support\Collection;
  * - Claim, assign, reassign and unassign run under the request lock (RequestLifecycle). A claim
  *   succeeds only while the case is unassigned.
  * - Auto-assignment picks the service's (or legacy category's) default agent if eligible, else the
- *   least-loaded eligible member of the team.
+ *   least-loaded eligible member of the team. A matching resolver rule (HROne setup parity HD-B,
+ *   ResolverRules::match) comes first: its role is the team and its default resolver the agent.
+ * - A rule's intimation role is told when the request is assigned (eligible members who can see it).
  */
 final class CaseAssignment
 {
@@ -85,10 +89,16 @@ final class CaseAssignment
     }
 
     /** Default team and agent for a new request (called inside the submission transaction). */
-    public function initial(Ticket $ticket, ?ServiceDefinitionVersion $version, ?TicketCategory $category): void
+    public function initial(Ticket $ticket, ?ServiceDefinitionVersion $version, ?TicketCategory $category, ?ServiceResolverRule $rule = null): void
     {
-        $roleId = data_get($version?->assignment, 'role_id') ?: $category?->assignee_role_id;
-        $userId = data_get($version?->assignment, 'user_id') ?: $category?->default_assignee_id;
+        if ($rule !== null) {
+            $roleId = $rule->assignee_role_id;
+            $userId = $rule->assignee_user_id;
+        } else {
+            $roleId = data_get($version?->assignment, 'role_id') ?: $category?->assignee_role_id;
+            $userId = data_get($version?->assignment, 'user_id') ?: $category?->default_assignee_id;
+        }
+        $ticket->resolver_rule_id = $rule?->id;
         $ticket->assigned_role_id = $roleId ? (int) $roleId : null;
         $agent = $userId ? User::query()->find((int) $userId) : null;
         if ($agent !== null && ! $this->access->eligibleAgent($agent, $ticket)) {
@@ -120,8 +130,9 @@ final class CaseAssignment
     private function setAgent(Ticket $ticket, User $agent, User $actor, ?string $reason, ?int $expectedVersion, bool $claim = false): Ticket
     {
         $reassign = $ticket->assignee_id !== null && (int) $ticket->assignee_id !== (int) $agent->id;
+        $intimate = app(ResolverRules::class)->intimationRecipients($ticket, [$agent->id, $actor->id]);
 
-        return $this->lifecycle->move($ticket, null, $actor, $reassign ? AuditAction::RequestReassigned : AuditAction::RequestAssigned, $reason, [], 'user', $expectedVersion,
+        $moved = $this->lifecycle->move($ticket, null, $actor, $reassign ? AuditAction::RequestReassigned : AuditAction::RequestAssigned, $reason, [], 'user', $expectedVersion,
             guard: function (Ticket $fresh) use ($agent, $claim) {
                 if (! $fresh->isOpen()) {
                     throw new ServiceDeskRuleViolation('Only an open request can be assigned.');
@@ -141,6 +152,11 @@ final class CaseAssignment
             metadata: ['event' => $claim ? 'REQUEST_CLAIMED' : ($reassign ? 'REQUEST_REASSIGNED' : 'REQUEST_ASSIGNED')],
             asWorker: true,
         );
+        if ($intimate !== []) {
+            ServiceDeskEvent::dispatch('servicedesk.ticket.intimated', $moved, $this->lifecycle->context($moved), $intimate);
+        }
+
+        return $moved;
     }
 
     private function leastLoaded(Collection $candidates): ?User

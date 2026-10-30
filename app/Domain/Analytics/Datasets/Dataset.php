@@ -3,6 +3,7 @@
 namespace App\Domain\Analytics\Datasets;
 
 use App\Domain\Identity\Models\User;
+use App\Domain\Organisation\Models\Department;
 use Closure;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,6 +17,9 @@ use Illuminate\Support\Carbon;
  */
 abstract class Dataset
 {
+    /** @var array<int, ?string>|null department id => its parent department's name, read once per dataset run */
+    private ?array $departmentParents = null;
+
     abstract public function key(): string;
 
     abstract public function label(): string;
@@ -39,6 +43,16 @@ abstract class Dataset
     abstract public function fields(): array;
 
     abstract public function query(): Builder;
+
+    /**
+     * HROne parity CA-10: the relation path from a row to its payroll run ('run', 'entry.run') when the dataset's rows come
+     * from payroll runs, so a shared view with a payroll refresh day can leave out runs finalized after it. Null = the rows
+     * do not come from payroll runs (they stay live).
+     */
+    public function payrollRunPath(): ?string
+    {
+        return null;
+    }
 
     public function allowedFor(User $user): bool
     {
@@ -97,9 +111,27 @@ abstract class Dataset
             'company' => ['label' => 'Company', 'type' => 'string', 'value' => fn ($row) => $position($row)?->company?->name],
             'location' => ['label' => 'Location', 'type' => 'string', 'value' => fn ($row) => $position($row)?->location?->name],
             'department' => ['label' => 'Department', 'type' => 'string', 'value' => fn ($row) => $position($row)?->department?->name],
+            // HROne setup parity CA-2: the parent of the employee's department (sub-departments).
+            'department_parent' => ['label' => 'Parent department', 'type' => 'string', 'value' => fn ($row) => $this->departmentParent($position($row)?->department_id)],
             'designation' => ['label' => 'Designation', 'type' => 'string', 'value' => fn ($row) => $position($row)?->designation?->name],
             'employee_status' => ['label' => 'Employee status', 'type' => 'string', 'value' => fn ($row) => $employee($row)?->lifecycle_state],
         ];
+    }
+
+    /** The name of a department's parent department (one query per dataset run, not one per row). */
+    protected function departmentParent(mixed $departmentId): ?string
+    {
+        if ($departmentId === null) {
+            return null;
+        }
+        if ($this->departmentParents === null) {
+            $departments = Department::query()->get(['id', 'name', 'parent_department_id']);
+            $names = $departments->pluck('name', 'id');
+            $this->departmentParents = $departments->filter(fn (Department $d) => $d->parent_department_id !== null)
+                ->mapWithKeys(fn (Department $d) => [$d->id => $names[$d->parent_department_id] ?? null])->all();
+        }
+
+        return $this->departmentParents[(int) $departmentId] ?? null;
     }
 
     /** @return list<string> eager loads for employeeFields() under a relation path such as 'employee' or 'entry.employee' */

@@ -14,6 +14,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -36,14 +37,18 @@ class GrievanceCategoryResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(3)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
-            TextInput::make('sla_days')->label('Resolve within')->numeric()->minValue(1)->default(30)->suffix('days')->required(),
-            Toggle::make('is_confidential')->label('Confidential (handlers only)')->default(true),
-            Toggle::make('allow_anonymous')->label('Allow anonymous cases'),
-            Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
-            Select::make('handler_role_ids')->label('Handled by roles')->multiple()->options(fn () => Role::query()->orderBy('name')->pluck('name', 'id')->all())->helperText('e.g. the Internal Committee role for PoSH')->columnSpan(2),
-            Textarea::make('description')->rows(2)->columnSpanFull(),
+            Section::make('Category')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
+                Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                Textarea::make('description')->rows(2)->columnSpanFull(),
+            ]),
+            Section::make('Handling and privacy')->columns(2)->schema([
+                TextInput::make('sla_days')->label('Resolve within')->numeric()->minValue(1)->default(30)->suffix('days')->required(),
+                Toggle::make('is_confidential')->label('Confidential (handlers only)')->default(true),
+                Toggle::make('allow_anonymous')->label('Allow anonymous cases'),
+                Select::make('handler_role_ids')->label('Handled by roles')->multiple()->options(fn () => Role::query()->orderBy('name')->pluck('name', 'id')->all())->helperText('e.g. the Internal Committee role for PoSH')->columnSpan(2),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

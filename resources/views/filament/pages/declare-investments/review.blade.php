@@ -33,6 +33,18 @@
         </div>
     @endif
 
+    @if (! empty($estimate))
+        <div class="rounded-lg bg-gray-50 px-4 py-3 dark:bg-white/5">
+            <p class="font-medium">Estimated tax for the year</p>
+            <ul class="mt-1 space-y-0.5">
+                @foreach ($estimate as $e)
+                    <li>{{ $e['regime'] }}: <span class="font-semibold tabular-nums">{{ $e['tax'] }}</span></li>
+                @endforeach
+            </ul>
+            <p class="mt-1 text-xs text-gray-500">A rough guide from your recent salary and these amounts; payroll works out the tax deducted each month.</p>
+        </div>
+    @endif
+
     @if ($previous)
         <p>Previous employer this year: salary {{ $previous['income'] }}, tax deducted {{ $previous['tds'] }}.</p>
     @endif

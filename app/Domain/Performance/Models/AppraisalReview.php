@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** One reviewer's input (self / manager / peer / upward / skip level / external). */
-#[Fillable(['tenant_id', 'appraisal_id', 'type', 'reviewer_id', 'status', 'overall_rating', 'strengths', 'improvements', 'comments', 'is_anonymous', 'submitted_at'])]
+/** One reviewer's input (self / manager / peer / upward / skip level / external; HP-8d: approver, and evidence uploaded). */
+#[Fillable(['tenant_id', 'appraisal_id', 'type', 'reviewer_id', 'status', 'overall_rating', 'strengths', 'improvements', 'comments', 'is_anonymous', 'submitted_at', 'evidence'])]
 class AppraisalReview extends Model
 {
     use Auditable, BelongsToTenant;
@@ -31,7 +31,7 @@ class AppraisalReview extends Model
 
     protected function casts(): array
     {
-        return ['overall_rating' => 'decimal:2', 'is_anonymous' => 'boolean', 'submitted_at' => 'datetime'];
+        return ['overall_rating' => 'decimal:2', 'is_anonymous' => 'boolean', 'submitted_at' => 'datetime', 'evidence' => 'array'];
     }
 
     public function auditModule(): string

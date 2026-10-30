@@ -58,6 +58,7 @@ final class CompensationStructures
             ]);
             if (! empty($data['components'])) {
                 $this->writeComponents($version, $data['components']);
+                $this->fillBalancingFormula($version);
                 $this->assertFormulas($version);
             }
 
@@ -82,6 +83,7 @@ final class CompensationStructures
                 'salary_structure_id' => $structure->id, 'version' => $number, 'status' => 'draft', 'prepared_by' => $actor->id,
                 'effective_from' => $start->toDateString(), 'currency' => $latest?->currency ?? 'INR', 'pay_frequency' => $latest?->pay_frequency ?? 'monthly',
                 'company_id' => $latest?->company_id, 'grade_ids' => $latest?->grade_ids, 'applicability' => $latest?->applicability, 'parameters' => $latest?->parameters,
+                'balancing_component_id' => $latest?->balancingComponentId(), 'ctc_mode' => $latest?->formulaOptions()['ctc_mode'] ?? 'ctc',
             ]);
             $this->writeComponents($version, ($latest?->components ?? collect())->map(fn (SalaryStructureComponent $c) => $c->only(['salary_component_id', 'formula_override', 'pay_nature', 'frequency', 'sort_order']))->all());
 
@@ -95,10 +97,11 @@ final class CompensationStructures
         $this->authorise($actor, 'compensation.configure');
         $this->assertStatus($version, ['draft']);
         DB::transaction(function () use ($version, $data) {
-            $version->update($this->definition($data + $version->only(['effective_from', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'applicability', 'parameters', 'change_note'])));
+            $version->update($this->definition($data + $version->only(['effective_from', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'applicability', 'parameters', 'change_note']) + $version->formulaOptions()));
             if (array_key_exists('components', $data)) {
                 $this->writeComponents($version, (array) $data['components']);
             }
+            $this->fillBalancingFormula($version);
             $this->assertFormulas($version);
         });
 
@@ -235,7 +238,18 @@ final class CompensationStructures
             throw new CompensationRuleViolation('A grade in the applicability list does not exist.');
         }
 
-        return ['effective_from' => $from, 'currency' => $currency, 'pay_frequency' => $frequency, 'company_id' => filled($data['company_id'] ?? null) ? (int) $data['company_id'] : null, 'grade_ids' => $grades ?: null, 'applicability' => $this->applicability((array) ($data['applicability'] ?? [])), 'parameters' => $this->parameters((array) ($data['parameters'] ?? [])), 'change_note' => $data['change_note'] ?? null];
+        // HROne setup parity BP-2: the CTC mode and the balancing component (checked against the lines in assertFormulas).
+        $mode = (string) ($data['ctc_mode'] ?? 'ctc');
+        if (! array_key_exists($mode, SalaryStructureVersion::CTC_MODES)) {
+            throw new CompensationRuleViolation("[{$mode}] is not a CTC mode.");
+        }
+        $balancing = filled($data['balancing_component_id'] ?? null) ? (int) $data['balancing_component_id'] : null;
+        if ($balancing !== null && ! SalaryComponent::query()->whereKey($balancing)->exists()) {
+            throw new CompensationRuleViolation('The balancing component does not exist.');
+        }
+
+        return ['effective_from' => $from, 'currency' => $currency, 'pay_frequency' => $frequency, 'company_id' => filled($data['company_id'] ?? null) ? (int) $data['company_id'] : null, 'grade_ids' => $grades ?: null, 'applicability' => $this->applicability((array) ($data['applicability'] ?? [])), 'parameters' => $this->parameters((array) ($data['parameters'] ?? [])),
+            'balancing_component_id' => $balancing, 'ctc_mode' => $mode, 'change_note' => $data['change_note'] ?? null];
     }
 
     /**
@@ -295,10 +309,27 @@ final class CompensationStructures
     /** Formula mistakes (unknown names, components used before they are calculated, …) stop a draft here, not at the payroll run. */
     private function assertFormulas(SalaryStructureVersion $version): void
     {
-        $errors = $this->formulas->check($version->formulaLines(), (array) ($version->parameters ?? []))['errors'];
+        $errors = $this->formulas->check($version->formulaLines(), (array) ($version->parameters ?? []), $version->formulaOptions())['errors'];
         if ($errors !== []) {
             throw new CompensationRuleViolation(implode(' ', $errors));
         }
+    }
+
+    /**
+     * HROne setup parity BP-2: a balancing component without a formula of its own gets the remainder formula (CTC less the
+     * other CTC lines and the employer PF estimate) as this structure's override.
+     */
+    private function fillBalancingFormula(SalaryStructureVersion $version): void
+    {
+        $id = $version->balancingComponentId();
+        if ($id === null || $version->formulaOptions()['ctc_mode'] !== 'ctc') {
+            return;
+        }
+        $line = $version->components()->with('component')->where('salary_component_id', $id)->first();
+        if ($line === null || $line->component === null || $line->component->formulaFor($line->formula_override) !== null || ! StructureFormulas::calculated($line->component)) {
+            return;
+        }
+        $line->update(['formula_override' => $this->formulas->balancingFormula($version->formulaLines(), $line->component)]);
     }
 
     /** @param  list<array<string, mixed>>  $rows */
@@ -332,10 +363,14 @@ final class CompensationStructures
 
     private function checksum(SalaryStructureVersion $version): string
     {
+        // BP-2: the CTC mode and balancing component join the checksum only when set, so earlier checksums reproduce.
+        $options = $version->formulaOptions();
+
         return hash('sha256', json_encode([
             $version->only(['salary_structure_id', 'version', 'currency', 'pay_frequency', 'company_id', 'grade_ids', 'applicability']), $version->effective_from->toDateString(),
             $version->components()->get()->map(fn ($c) => $c->only(['salary_component_id', 'formula_override', 'pay_nature', 'frequency', 'sort_order']))->all(),
             ...($version->parameters ? [$version->parameters] : []),
+            ...($options['balancing_component_id'] !== null || $options['ctc_mode'] !== 'ctc' ? [$options] : []),
         ]));
     }
 

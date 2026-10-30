@@ -8,6 +8,7 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Engagement\Exceptions\EngagementRuleViolation;
 use App\Domain\Engagement\Models\EmployeeFeedback;
 use App\Domain\Engagement\Models\EngagementIdentity;
+use App\Domain\Engagement\Models\MoodCheckIn;
 use App\Domain\Engagement\Models\SurveyResponse;
 use App\Domain\Engagement\Models\SurveyVersion;
 use App\Domain\Engagement\Support\Guard;
@@ -38,6 +39,8 @@ final class ConfidentialIdentities
         $entity = match ($subjectType) {
             'survey_response' => $this->confidentialResponse($subjectId),
             'feedback' => $this->confidentialFeedback($subjectId),
+            // HROne setup parity HP-9f: a confidential mood check-in.
+            'mood_checkin' => $this->confidentialMoodCheckIn($subjectId),
             default => throw new EngagementRuleViolation('Unknown confidential item.'),
         };
         $employeeId = EngagementIdentity::query()->where('subject_type', $subjectType)->where('subject_id', $subjectId)->value('employee_id')
@@ -59,6 +62,16 @@ final class ConfidentialIdentities
         }
 
         return $version;
+    }
+
+    private function confidentialMoodCheckIn(string $id): MoodCheckIn
+    {
+        $checkIn = MoodCheckIn::query()->findOrFail($id);
+        if ($checkIn->privacy !== 'confidential') {
+            throw new EngagementRuleViolation('Only confidential check-ins can be identified; anonymous check-ins never can.');
+        }
+
+        return $checkIn;
     }
 
     private function confidentialFeedback(string $id): EmployeeFeedback

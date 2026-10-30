@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Analytics\Models\Dashboard;
 use App\Domain\Analytics\Services\Dashboards;
+use App\Domain\Analytics\Services\DashboardViews;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -55,6 +56,22 @@ class DashboardViewer extends Page
     public function getTitle(): string
     {
         return $this->getDashboard()?->name ?? 'Dashboards';
+    }
+
+    /** HROne parity CA-10: a shared view says which part of the organisation it shows and when its payroll figures moved. */
+    public function getSubheading(): ?string
+    {
+        $dashboard = $this->getDashboard();
+        if ($dashboard === null || ! $dashboard->isView()) {
+            return null;
+        }
+        $parts = ['Applicable on: '.app(DashboardViews::class)->describe($dashboard)];
+        if (($asOf = $dashboard->payrollAsOf()) !== null) {
+            $parts[] = 'Payroll figures as of '.$asOf->toFormattedDateString().' (they move on day '.$dashboard->refresh_day.' of each month)';
+        }
+        $parts[] = 'Figures follow your own access';
+
+        return implode(' · ', $parts);
     }
 
     protected function getHeaderActions(): array

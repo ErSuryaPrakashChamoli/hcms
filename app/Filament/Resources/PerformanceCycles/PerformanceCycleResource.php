@@ -6,6 +6,8 @@ use App\Domain\Performance\Models\Competency;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Models\PerformanceTemplateVersion;
 use App\Domain\Performance\Models\RatingScale;
+use App\Domain\Performance\Support\PerformanceLabels;
+use App\Domain\Performance\Support\PerformancePeriods;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\PerformanceCycles\Pages\CreatePerformanceCycle;
 use App\Filament\Resources\PerformanceCycles\Pages\EditPerformanceCycle;
@@ -24,6 +26,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -60,9 +63,18 @@ class PerformanceCycleResource extends Resource
             Section::make('Cycle')->columns(3)->schema([
                 TextInput::make('name')->required()->maxLength(255),
                 TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
-                Select::make('type')->options(config('peopleos.performance.cycle_types'))->default('annual')->required(),
-                DatePicker::make('period_start')->native(false)->required()->disabled($locked)->dehydrated(),
-                DatePicker::make('period_end')->native(false)->required()->afterOrEqual('period_start')->disabled($locked)->dehydrated()->live(),
+                // HP-8b: the default type and, with a performance year set, the period of that type containing today.
+                Select::make('type')->options(config('peopleos.performance.cycle_types'))->default(fn () => PerformancePeriods::defaultType())->required()->live()
+                    ->afterStateUpdated(function (Set $set, ?string $state, string $operation) {
+                        if ($operation === 'create' && ($period = PerformancePeriods::containing((string) $state)) !== null) {
+                            $set('period_start', $period[0]->toDateString());
+                            $set('period_end', $period[1]->toDateString());
+                        }
+                    }),
+                DatePicker::make('period_start')->native(false)->required()->disabled($locked)->dehydrated()
+                    ->default(fn () => (PerformancePeriods::containing(PerformancePeriods::defaultType())[0] ?? null)?->toDateString()),
+                DatePicker::make('period_end')->native(false)->required()->afterOrEqual('period_start')->disabled($locked)->dehydrated()->live()
+                    ->default(fn () => (PerformancePeriods::containing(PerformancePeriods::defaultType())[1] ?? null)?->toDateString()),
                 Select::make('performance_template_version_id')->label('Template version')->placeholder('Pin this cycle\'s own configuration at launch')->disabled($locked)->dehydrated()
                     ->options(fn () => PerformanceTemplateVersion::query()->with('template')->where('status', 'published')->orderByDesc('id')->get()->mapWithKeys(fn ($v) => [$v->id => $v->template?->name.' · v'.$v->version])->all())
                     ->helperText('The scale, competencies, workflow and weights of the chosen version are pinned when the cycle launches.'),
@@ -71,7 +83,10 @@ class PerformanceCycleResource extends Resource
                     ->default(fn () => RatingScale::default()?->id),
                 TextInput::make('weights.goals')->label('Goals weight')->numeric()->suffix('%')->default(config('peopleos.performance.default_weights.goals'))->required()->disabled($locked)->dehydrated(),
                 TextInput::make('weights.competencies')->label('Competencies weight')->numeric()->suffix('%')->default(config('peopleos.performance.default_weights.competencies'))->required()->disabled($locked)->dehydrated(),
-                Select::make('competency_ids')->label('Competencies rated')->multiple()->disabled($locked)->dehydrated()
+                // HP-8c: competencies may be rated on their own scale (pinned with the template version at launch).
+                Select::make('competency_rating_scale_id')->label(PerformanceLabels::get('competency').' rating scale')->placeholder('Same as the rating scale')->disabled($locked)->dehydrated()
+                    ->options(fn () => RatingScale::query()->where('status', 'active')->pluck('name', 'id')->all()),
+                Select::make('competency_ids')->label(PerformanceLabels::plural('competency', 'Competencies').' rated')->multiple()->disabled($locked)->dehydrated()
                     ->options(fn () => Competency::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all())
                     ->default(fn () => Competency::query()->where('status', 'active')->pluck('id')->all()),
             ]),
@@ -87,8 +102,11 @@ class PerformanceCycleResource extends Resource
             ]),
             Section::make('Options')->columns(3)->schema([
                 Toggle::make('settings.allow_resubmit')->label('Allow reviewers to resubmit'),
-                Toggle::make('settings.show_self_to_manager')->label('Show self review to manager')->default(true),
-                Toggle::make('settings.peer_anonymous')->label('Peer reviews anonymous by default'),
+                // HP-8b: both options are read (AppraisalVisibility::selfReviewVisible, Appraisals::addPeerReview).
+                Toggle::make('settings.show_self_to_manager')->label('Show self review to manager')->default(true)
+                    ->helperText('Off: managers do not see the self review or self rating (HR still does).'),
+                Toggle::make('settings.peer_anonymous')->label('Peer reviews anonymous by default')
+                    ->helperText('New reviewers are anonymous to the employee unless chosen otherwise.'),
             ]),
             Section::make('Eligibility')->description('Leave empty to include every employed person as of the period end.')->schema([
                 RuleConditionsSchema::repeater()->statePath('eligibility')->hiddenLabel(),

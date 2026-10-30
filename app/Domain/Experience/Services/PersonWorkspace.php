@@ -60,7 +60,8 @@ final class PersonWorkspace
             'now' => $this->now($employee, $state),
             'next' => $this->safe(fn () => $this->next($viewer, $employee, $state, $sections->keys()->all(), $own), []),
             'relationships' => $this->safe(fn () => $this->relationships($employee), ['up' => [], 'down' => [], 'reports' => 0]),
-            'changes' => $this->safe(fn () => $this->changes($viewer, $employee), []),
+            // HROne setup parity CA-6: recent changes are the profile's history section (the matrix can only hide them).
+            'changes' => app(ProfileSectionVisibility::class)->allows($viewer, $employee, 'history') ? $this->safe(fn () => $this->changes($viewer, $employee), []) : [],
             'journey' => $this->safe(fn () => app(JourneyMap::class)->for($viewer, $employee), ['current' => 'active', 'stages' => []]),
             'sections' => $sections,
             'viewer' => $this->safe(fn () => $this->viewer($viewer, $employee, $own, $state), null),

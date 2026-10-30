@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\Configuration\Services\OptionLists;
 use App\Domain\People\Actions\ChangeFamilyMemberAction;
 use App\Filament\Support\ProfileChangeActions;
 use Filament\Actions\CreateAction;
@@ -22,13 +23,15 @@ class FamilyMembersRelationManager extends PersonSatelliteRelationManager
 {
     protected static string $relationship = 'familyMembers';
 
+    protected static string $profileSection = 'family';
+
     protected static ?string $title = 'Family & nominees';
 
     public function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
             TextInput::make('name')->required()->maxLength(255),
-            Select::make('relation')->options(config('peopleos.people.family_relations'))->required(),
+            Select::make('relation')->options(fn () => app(OptionLists::class)->options('family_relations'))->required(),
             DatePicker::make('date_of_birth')->native(false),
             Select::make('gender')->options(config('peopleos.people.genders')),
             TextInput::make('phone')->tel()->maxLength(32),
@@ -43,7 +46,7 @@ class FamilyMembersRelationManager extends PersonSatelliteRelationManager
         return $table
             ->columns([
                 TextColumn::make('name'),
-                TextColumn::make('relation')->badge()->formatStateUsing(fn (string $state) => config("peopleos.people.family_relations.{$state}", $state)),
+                TextColumn::make('relation')->badge()->formatStateUsing(fn (string $state) => app(OptionLists::class)->label('family_relations', $state)),
                 TextColumn::make('date_of_birth')->date()->placeholder('—'),
                 IconColumn::make('is_dependent')->label('Dependent')->boolean(),
                 IconColumn::make('is_nominee')->label('Nominee')->boolean(),

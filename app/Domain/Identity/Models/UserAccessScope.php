@@ -17,7 +17,8 @@ class UserAccessScope extends Model
 {
     use Auditable, BelongsToTenant;
 
-    public const DIMENSIONS = ['company', 'location', 'business_unit', 'division', 'department', 'team', 'establishment'];
+    /** HROne parity SV-7 (AR-3): designation, grade and level too (region waits for CA-7). */
+    public const DIMENSIONS = ['company', 'location', 'business_unit', 'division', 'department', 'team', 'establishment', 'designation', 'grade', 'level'];
 
     public function auditModule(): string
     {

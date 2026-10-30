@@ -11,13 +11,16 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Models\ArticleRead;
 use App\Domain\Knowledge\Models\ArticleVersion;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -244,6 +247,80 @@ final class KnowledgeBase
             });
 
         return $sent;
+    }
+
+    /**
+     * HROne setup parity HP-9a: days employees have to acknowledge an article once its version is published
+     * (kb.acknowledgement.due_days; 0 = no due date).
+     */
+    public function acknowledgementDueDays(): int
+    {
+        return max(0, (int) app(SettingsRepository::class)->get('kb.acknowledgement.due_days', 0));
+    }
+
+    /** The day the current version must be acknowledged by (null without a due date). */
+    public function acknowledgementDueOn(Article $article): ?CarbonInterface
+    {
+        $days = $this->acknowledgementDueDays();
+
+        return $days > 0 && $article->published_at !== null ? $article->published_at->copy()->addDays($days)->endOfDay() : null;
+    }
+
+    /** Days after publication when reminders start: the due days when set, else the service desk's reminder delay (as before). */
+    public function reminderDays(): int
+    {
+        $due = $this->acknowledgementDueDays();
+
+        return $due > 0 ? $due : (int) config('peopleos.servicedesk.policy_acknowledgement_reminder_days', 7);
+    }
+
+    /**
+     * HP-9a: who in the audience read and acknowledged the current version (EN-10), for the article's writers. One row per
+     * audience member, acknowledged first, then read, then the rest by name.
+     *
+     * @return Collection<int, array{employee: Employee, read_at: ?CarbonInterface, acknowledged_at: ?CarbonInterface, source: ?string}>
+     */
+    public function acknowledgementList(Article $article): Collection
+    {
+        $reads = ArticleRead::query()->where('article_id', $article->id)->where('version', $article->published_version)->get()->keyBy('employee_id');
+
+        return $this->audienceEmployees($article)->loadMissing(['currentPosition.department', 'currentPosition.designation'])
+            ->map(fn (Employee $e) => ['employee' => $e, 'read_at' => $reads->get($e->id)?->read_at, 'acknowledged_at' => $reads->get($e->id)?->acknowledged_at, 'source' => $reads->get($e->id)?->source])
+            ->sortBy([
+                fn (array $a, array $b) => ($a['acknowledged_at'] === null) <=> ($b['acknowledged_at'] === null),
+                fn (array $a, array $b) => ($a['read_at'] === null) <=> ($b['read_at'] === null),
+                fn (array $a, array $b) => strcmp((string) $a['employee']->person?->display_name, (string) $b['employee']->person?->display_name),
+            ])->values();
+    }
+
+    /**
+     * HP-9a (kb.download_allowed): the published version as a printable page (the browser prints or saves it as PDF),
+     * for a writer or a reader in the article's audience; never a working copy. Audited.
+     *
+     * @return array{content: string, name: string, mime: string}
+     */
+    public function download(Article $article, User $user, ?Employee $reader): array
+    {
+        if (! (bool) app(SettingsRepository::class)->get('kb.download_allowed', false)) {
+            throw new RuntimeException('Articles cannot be downloaded in this organisation.');
+        }
+        $version = $article->status === 'archived' ? null : $this->publishedVersion($article);
+        if ($version === null) {
+            throw new RuntimeException('Only a published article can be downloaded.');
+        }
+        if (! $user->hasPermission('kb.manage') && ($reader === null || ! $this->inAudience($article, $reader))) {
+            throw new RuntimeException('This article is not addressed to you.');
+        }
+        $this->audit->record(AuditAction::Download, 'kb', $article, [], null, actor: $user, metadata: ['version' => $version->version]);
+        $title = e($version->title);
+        $body = Str::markdown((string) $version->body, ['html_input' => 'escape', 'allow_unsafe_links' => false]);
+        $meta = e('Version '.$version->version.' · published '.$version->published_at?->format('d M Y'));
+
+        return [
+            'content' => "<!doctype html><html><head><meta charset=\"utf-8\"><title>{$title}</title><style>body{font-family:Georgia,serif;max-width:720px;margin:40px auto;line-height:1.5;color:#111}header{border-bottom:2px solid #111;margin-bottom:24px;padding-bottom:8px}@media print{body{margin:0 auto}}</style></head><body><header><h1>{$title}</h1><div>{$meta}</div></header>{$body}</body></html>",
+            'name' => Str::slug($version->title).'-v'.$version->version.'.html',
+            'mime' => 'text/html',
+        ];
     }
 
     /** @return array{audience: int, read: int, acknowledged: int} */

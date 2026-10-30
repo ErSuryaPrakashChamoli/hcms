@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Regime choice and investment declarations for one financial year (§32 TDS). */
-#[Fillable(['tenant_id', 'employee_id', 'financial_year', 'regime', 'declarations', 'previous_employer_income', 'previous_employer_tds', 'status', 'verified_by', 'verified_at'])]
+#[Fillable(['tenant_id', 'employee_id', 'financial_year', 'regime', 'declarations', 'previous_employer_income', 'previous_employer_tds', 'previous_employer', 'status', 'verified_by', 'verified_at'])]
 class EmployeeTaxDeclaration extends Model
 {
     use Auditable, BelongsToTenant;
@@ -27,8 +27,15 @@ class EmployeeTaxDeclaration extends Model
             'declarations' => 'array',
             'previous_employer_income' => 'decimal:2',
             'previous_employer_tds' => 'decimal:2',
+            'previous_employer' => 'encrypted:array',
             'verified_at' => 'datetime',
         ];
+    }
+
+    /** @return list<string> */
+    public function auditSensitiveAttributes(): array
+    {
+        return [...config('peopleos.audit.sensitive_attributes', []), 'previous_employer'];
     }
 
     public function auditModule(): string
@@ -44,6 +51,12 @@ class EmployeeTaxDeclaration extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    /** Previous-employer details for Form 12B / 12BB (HROne parity PY-13): name, tan, from, to, pf, pt. */
+    public function previousEmployer(string $key): mixed
+    {
+        return data_get($this->previous_employer, $key);
     }
 
     public function amount(string $section): float

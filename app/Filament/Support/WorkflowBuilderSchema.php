@@ -4,6 +4,7 @@ namespace App\Filament\Support;
 
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Letters\Models\LetterTemplate;
 use App\Support\Validation\SafeOutboundUrl;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\KeyValue;
@@ -42,6 +43,7 @@ final class WorkflowBuilderSchema
                     ...self::waitFields(),
                     ...self::webhookFields(),
                     ...self::automationFields(),
+                    ...self::documentFields(),
                 ])
                 ->columns(3)
                 ->collapsible()
@@ -78,6 +80,20 @@ final class WorkflowBuilderSchema
         ];
     }
 
+    /**
+     * HROne setup parity (reliever): who takes the step when its approver cannot be found (no manager, no user). The
+     * engine already read config.fallback; the builder now offers it. Role relievers and the manager reliever come after.
+     *
+     * @return array<int, Component>
+     */
+    private static function fallbackSpec(): array
+    {
+        $fields = self::approverSpec('config.fallback', 'Fallback approver');
+        $fields[0]->helperText('Optional: used when the approver above cannot be found.');
+
+        return $fields;
+    }
+
     private static function approvalFields(): array
     {
         $is = fn (Get $get) => $get('type') === 'approval';
@@ -90,6 +106,7 @@ final class WorkflowBuilderSchema
                 ...array_map(fn (Component $c) => $c->visible(fn (Get $get) => ($get('config.mode') ?? 'single') === 'single'), self::approverSpec('config.approver')),
                 Repeater::make('config.approvers')->label('Approvers')->schema(self::approverSpec('', 'Approver'))->columns(3)
                     ->visible(fn (Get $get) => ($get('config.mode') ?? 'single') !== 'single')->columnSpanFull(),
+                ...self::fallbackSpec(),
                 self::escalationRepeater(),
             ]),
         ];
@@ -118,6 +135,7 @@ final class WorkflowBuilderSchema
                 TextInput::make('config.sla_hours')->label('Due in (hours)')->numeric()->minValue(1)->default(config('peopleos.workflows.default_sla_hours')),
                 Textarea::make('config.instructions')->rows(2)->columnSpanFull(),
                 ...self::approverSpec('config.assignee', 'Assignee'),
+                ...self::fallbackSpec(),
                 self::escalationRepeater(),
             ]),
         ];
@@ -165,12 +183,33 @@ final class WorkflowBuilderSchema
         ];
     }
 
+    /**
+     * HROne setup parity P5: the "Generate document" step writes a letter from a template for the run's employee
+     * (WorkflowEngine::generateDocument); without a template it is skipped, as before.
+     *
+     * @return array<int, Component>
+     */
+    private static function documentFields(): array
+    {
+        return [
+            Fieldset::make('Document')->visible(fn (Get $get) => $get('type') === 'document')->columns(2)->columnSpanFull()->schema([
+                Select::make('config.letter_template_id')->label('Letter template')->searchable()
+                    ->options(fn () => LetterTemplate::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all())
+                    ->helperText('Written for the employee the run is about; numbered and approved as the template says.'),
+                Radio::make('config.issue')->label('Then')->options(['draft' => 'Keep the letter for HR to issue (it waits for approval when its template needs one)', 'issue' => 'Issue it to the employee at once when no approval is needed'])->default('draft'),
+            ]),
+        ];
+    }
+
     private static function escalationRepeater(): Repeater
     {
         return Repeater::make('config.escalation')->label('Escalation steps')->schema([
             TextInput::make('after_hours')->numeric()->minValue(1)->required(),
             Select::make('action')->options(config('peopleos.workflows.escalation_actions'))->required()->live(),
             Select::make('role_id')->options(fn () => Role::query()->orderBy('name')->pluck('name', 'id')->all())->visible(fn (Get $get) => $get('action') === 'escalate_to_role'),
+            // HROne setup parity P5 (turnaround time at the last level): what the automatic decision is.
+            Select::make('decision')->label('Decision')->options(['approve' => 'Approve', 'reject' => 'Reject'])->default('approve')
+                ->visible(fn (Get $get) => $get('action') === 'auto_decide')->required(fn (Get $get) => $get('action') === 'auto_decide'),
         ])->columns(3)->columnSpanFull()->defaultItems(0);
     }
 

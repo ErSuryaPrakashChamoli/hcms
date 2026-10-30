@@ -43,6 +43,12 @@ final class ChangeStatutoryIdentityAction
             $employee = $this->lockEmployee($employee);
             $detail = EmployeeStatutoryDetail::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->lockForUpdate()->first() ?? new EmployeeStatutoryDetail(['employee_id' => $employee->id, 'pf_applicable' => true, 'pt_applicable' => true]);
             $operation = $detail->exists ? 'updated' : 'added';
+            // HROne setup parity CA-4: PAN, Aadhaar and UAN may need the matching document on file.
+            foreach (['pan' => 'statutory.pan', 'aadhaar_reference' => 'statutory.aadhaar', 'uan' => 'statutory.uan'] as $column => $field) {
+                if (filled($clean[$column] ?? null) && (string) $clean[$column] !== (string) ($detail->exists ? $detail->getAttribute($column) : '')) {
+                    $this->guard->requireLinkedDocument($employee, $field);
+                }
+            }
             $detail->fill($clean)->withAuditReason($reason, $origin?->reference)->save();
             $this->recordChange($employee, 'employee.statutory_identity_changed', 'statutory', 'Statutory identifiers '.$operation, $detail, $operation, $origin);
 

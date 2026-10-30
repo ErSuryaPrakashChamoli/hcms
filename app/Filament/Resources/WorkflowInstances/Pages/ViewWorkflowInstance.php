@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\WorkflowInstances\Pages;
 
+use App\Domain\Workflow\Enums\InstanceStatus;
 use App\Domain\Workflow\Exceptions\WorkflowException;
 use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Domain\Workflow\Services\WorkflowEngine;
@@ -24,7 +25,7 @@ class ViewWorkflowInstance extends PeopleViewRecord
                 ->icon(Heroicon::OutlinedXCircle)
                 ->color('danger')
                 ->authorize(fn () => auth()->user()->can('workflow.cancel'))
-                ->visible(fn (WorkflowInstance $record) => $record->status->isOpen())
+                ->visible(fn (WorkflowInstance $record) => in_array($record->status, InstanceStatus::inFlight(), true))
                 ->requiresConfirmation()
                 ->schema([Textarea::make('reason')->required()->maxLength(255)])
                 ->action(function (WorkflowInstance $record, array $data) {

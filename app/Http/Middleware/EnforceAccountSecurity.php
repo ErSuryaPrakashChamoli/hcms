@@ -2,10 +2,14 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Enterprise\Services\SecurityPolicy;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\MultiFactor;
+use App\Support\Tenancy\TenantContext;
 use Closure;
+use Illuminate\Contracts\Session\Session;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -18,6 +22,9 @@ use Symfony\Component\HttpFoundation\Response;
  *    set one up.
  * 3. A user whose e-mail address is not verified is sent to verify it, unless the session was opened
  *    through SSO (the identity provider vouches for the address).
+ * 4. HROne setup parity: a tenant user whose password is older than the tenant's expiry (security.password_expiry_days)
+ *    chooses a new one before going on, unless the session was opened through SSO (no password was used). A password
+ *    with no known change date counts as expired. Platform operators follow the platform's rules, not a tenant's.
  *
  * Only the pages that complete these steps, and sign-out, stay reachable meanwhile.
  */
@@ -30,6 +37,7 @@ class EnforceAccountSecurity
         'filament.admin.auth.multi-factor-authentication.challenge',
         'filament.admin.auth.email-verification.prompt',
         'filament.admin.auth.email-verification.verify',
+        'filament.admin.auth.password-expired',
     ];
 
     public const AUTH_METHOD_KEY = 'auth.method';
@@ -48,6 +56,7 @@ class EnforceAccountSecurity
             $user->hasMfaEnabled() && ! $this->mfa->isVerified($session, $user) => 'filament.admin.auth.multi-factor-authentication.challenge',
             ! $user->hasMfaEnabled() && $this->mfa->requiredFor($user) => 'filament.admin.auth.multi-factor-authentication.set-up-required',
             ! $user->hasVerifiedEmail() && $session->get(self::AUTH_METHOD_KEY) !== 'sso' => 'filament.admin.auth.email-verification.prompt',
+            self::passwordExpiredFor($user, $session) => 'filament.admin.auth.password-expired',
             default => null,
         };
         if ($target === null) {
@@ -63,5 +72,23 @@ class EnforceAccountSecurity
         }
 
         return redirect()->route($target);
+    }
+
+    /** Whether this session must choose a new password first (read from the raw attributes: strict mode, fresh instances). */
+    public static function passwordExpiredFor(User $user, Session $session): bool
+    {
+        if ($user->tenant_id === null || $user->isPlatformAdmin() || $session->get(self::AUTH_METHOD_KEY) === 'sso') {
+            return false;
+        }
+        $changed = $user->getAttributes()['password_changed_at'] ?? null;
+        $expired = fn (): bool => app(SecurityPolicy::class)->passwordExpired($changed === null ? null : Carbon::parse($changed));
+        $tenants = app(TenantContext::class);
+        if ($tenants->id() === $user->tenant_id) {
+            return $expired();
+        }
+        // Read under the user's own tenant; an account whose tenant cannot be read is held at the page (fails closed).
+        $tenant = $user->tenant()->first();
+
+        return $tenant === null || $tenants->runAs($tenant, $expired);
     }
 }

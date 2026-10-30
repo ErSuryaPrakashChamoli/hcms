@@ -6,6 +6,7 @@ use App\Domain\Attendance\Imports\AttendanceSheetImports;
 use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImports;
+use App\Domain\Employment\Imports\ImportGovernance;
 use App\Filament\Resources\EmployeeImports\Pages\ListEmployeeImports;
 use App\Filament\Resources\EmployeeImports\Pages\ViewEmployeeImport;
 use App\Filament\Resources\EmployeeImports\RelationManagers\RowsRelationManager;
@@ -77,9 +78,14 @@ class EmployeeImportResource extends Resource
                 TextEntry::make('mapping')->hiddenLabel()->placeholder('Not mapped yet')->state(fn (EmployeeImport $record) => collect($record->mapping ?? [])->map(fn ($f, $h) => "{$h} → {$f}")->values()->all())->listWithLineBreaks(),
             ])->collapsible(),
             Section::make('Approval and run')->columns(4)->schema([
+                // HROne setup parity P2: who approves this upload type, its workflow, and when the run started.
+                TextEntry::make('approval_mode')->label('Approved by rule')->state(fn (EmployeeImport $record) => ImportGovernance::approvalLabel($record)),
+                TextEntry::make('workflow_status')->label('Workflow')->state(fn (EmployeeImport $record) => ImportGovernance::workflowStatus($record))->placeholder('—'),
                 TextEntry::make('approver.name')->label('Approved by')->placeholder('—'),
                 TextEntry::make('approved_at')->dateTime()->placeholder('—'),
-                TextEntry::make('imported_at')->dateTime()->placeholder('—'),
+                TextEntry::make('run_started_at')->label('Run started')->dateTime()->placeholder('—'),
+                TextEntry::make('imported_at')->label('Run finished')->dateTime()->placeholder('—'),
+                TextEntry::make('source')->label('Uploaded through')->formatStateUsing(fn (?string $state) => EmployeeImport::SOURCES[$state] ?? $state)->placeholder('—'),
                 TextEntry::make('operation_id')->label('Audit operation')->placeholder('—')->fontFamily('mono'),
             ]),
         ]);

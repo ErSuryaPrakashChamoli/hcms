@@ -83,11 +83,17 @@ final class PayrollActions
                 ->action(fn (PayrollRun $record) => self::run(fn () => app(PayrollRuns::class)->finalize($record, auth()->user()), 'Run finalized; payslips generated')),
             Action::make('bankFile')->label('Bank file')->icon(Heroicon::OutlinedArrowDownTray)->color('gray')
                 ->visible(fn (PayrollRun $record) => $record->isLocked() && auth()->user()->can('finalize', $record))
-                ->action(function (PayrollRun $record) {
-                    $csv = app(BankFile::class)->csv($record);
-                    $name = 'salary-'.$record->period->year.'-'.str_pad((string) $record->period->month, 2, '0', STR_PAD_LEFT).'.csv';
+                // HROne setup parity BP-13 / CA-5: with paying accounts, one file per account in its bank's layout.
+                ->schema(fn (PayrollRun $record) => ($groups = app(BankFile::class)->groups($record)) === [] ? [] : [
+                    Select::make('account_id')->label('Paying account')->required()->default((string) array_key_first($groups))
+                        ->options(collect($groups)->mapWithKeys(fn (array $g, int $id) => [(string) $id => $g['account']->label().' · '.$g['count'].' transfer(s), '.number_format($g['total'], 2)])->all() + ['all' => 'Every transfer (plain file)']),
+                ])
+                ->action(function (PayrollRun $record, array $data) {
+                    $account = filled($data['account_id'] ?? null) && $data['account_id'] !== 'all' ? (int) $data['account_id'] : null;
+                    $csv = app(BankFile::class)->csv($record, $account);
+                    $name = app(BankFile::class)->fileName($record, $account);
 
-                    return response()->streamDownload(fn () => print ($csv), $name, ['Content-Type' => 'text/csv']);
+                    return response()->streamDownload(fn () => print ($csv), $name, ['Content-Type' => str_ends_with($name, '.txt') ? 'text/plain' : 'text/csv']);
                 }),
             Action::make('markPaid')->label('Mark as paid')->icon(Heroicon::OutlinedBanknotes)->color('success')
                 ->visible(fn (PayrollRun $record) => $record->status === 'finalized' && auth()->user()->can('finalize', $record))

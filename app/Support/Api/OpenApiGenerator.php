@@ -79,7 +79,8 @@ final class OpenApiGenerator
                     .' errors return `{message, code, request_id, errors?}`;'
                     .' writes honour an `Idempotency-Key` header (24 h replay);'
                     .' `X-Correlation-Id` / `X-Request-Id` are accepted and echoed;'
-                    .' 120 requests per minute per verified key; requests with a missing, invalid or unverified key share a per-IP limit (SaaS.8).',
+                    .' 120 requests per minute per verified key unless the key sets its own limit; requests with a missing, invalid or unverified key share a per-IP limit (SaaS.8).'
+                    .' A key may be limited to IP addresses or CIDR blocks: from anywhere else it is refused with 403 `ip_not_allowed` (CA-11).',
                     'Audiences: every operation here is an integration (machine-to-machine) API (`x-audience: integration`). Employee self-service, manager, HR and administrator user APIs are NOT part of this contract. People act in the PeopleOS application, where the full security chain (tenant → permission → organisation scope → relationship scope → field security) applies. A user-token API is deferred surface.',
                     'Sensitive data appears only behind the sensitive scopes listed in `x-data-classification: sensitive` operations and is audited.',
                 ]),
@@ -157,7 +158,7 @@ final class OpenApiGenerator
             default => ['200' => ['description' => 'OK', 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Record']]]]],
         };
         $errors = [];
-        foreach (['401' => 'Missing, invalid or expired key (or bad signature)', '403' => 'Key lacks the scope, or tenant refused', '404' => 'Unknown record (including another tenant\'s)', '422' => 'Validation or business rule', '429' => 'Rate limited'] as $code => $description) {
+        foreach (['401' => 'Missing, invalid or expired key (or bad signature)', '403' => 'Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused', '404' => 'Unknown record (including another tenant\'s)', '422' => 'Validation or business rule', '429' => 'Rate limited'] as $code => $description) {
             $errors[$code] = ['description' => $description, 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Error']]]];
         }
 
@@ -187,7 +188,7 @@ final class OpenApiGenerator
     {
         return ['peopleosEvent' => ['post' => [
             'summary' => 'Outbound webhook (signed, retried with backoff, dead-lettered after the maximum attempts)',
-            'description' => 'Headers: X-PeopleOS-Event, X-PeopleOS-Delivery (event id; dedupe on it), X-PeopleOS-Timestamp, X-PeopleOS-Signature (sha256=HMAC(secret, "timestamp.body")), X-Correlation-Id. Reject stale timestamps; expect retries.',
+            'description' => 'Headers: X-PeopleOS-Event, X-PeopleOS-Delivery (event id; dedupe on it), X-PeopleOS-Timestamp, X-PeopleOS-Signature (sha256=HMAC(secret, "timestamp.body")), X-Correlation-Id. Reject stale timestamps; expect retries. While a rotated secret is in its grace period, X-PeopleOS-Signature-Previous carries the same signature made with the previous secret; accept either.',
             'requestBody' => ['content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/WebhookEnvelope']]]],
             'responses' => ['2XX' => ['description' => 'Accepted by the subscriber']],
         ]]];

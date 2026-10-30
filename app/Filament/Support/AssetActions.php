@@ -105,6 +105,11 @@ final class AssetActions
         ];
     }
 
+    public static function refuse(string $message): void
+    {
+        Notification::make()->danger()->title('Not allowed')->body($message)->persistent()->send();
+    }
+
     public static function run(callable $callback, string|callable $success): void
     {
         try {

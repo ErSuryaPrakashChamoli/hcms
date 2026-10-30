@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BankAccountImports;
 
 use App\Domain\Employment\Imports\BankAccountImports;
 use App\Domain\Employment\Imports\EmployeeImport;
+use App\Domain\Employment\Imports\ImportGovernance;
 use App\Filament\Resources\BankAccountImports\Pages\ListBankAccountImports;
 use App\Filament\Resources\BankAccountImports\Pages\ViewBankAccountImport;
 use App\Filament\Resources\EmployeeImports\EmployeeImportResource;
@@ -48,7 +49,8 @@ class BankAccountImportResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('type', BankAccountImports::TYPE)->where('uploaded_by', auth()->id());
+        // HROne setup parity P2: plus the uploads this person checks under maker-checker or workflow approval.
+        return ImportGovernance::ownOrChecked(parent::getEloquentQuery()->where('type', BankAccountImports::TYPE), BankAccountImports::TYPE, auth()->user());
     }
 
     public static function infolist(Schema $schema): Schema

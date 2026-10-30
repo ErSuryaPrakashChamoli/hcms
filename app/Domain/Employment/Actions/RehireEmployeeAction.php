@@ -15,6 +15,8 @@ use InvalidArgumentException;
  * Re-employment (contract §3, ADR-0002): the SAME Employee returns from alumni to active with a
  * new effective-dated position and, optionally, a new line manager. Person, employee code,
  * history, documents and lifecycle transitions are preserved; never a second employee master.
+ * HROne parity WO-2 ("Reactivate employee"): an exited employee (not yet alumni) may be re-employed the same way —
+ * the lifecycle already allows exited → active; the move still goes through LifecycleEngine::transition().
  */
 final class RehireEmployeeAction
 {
@@ -27,8 +29,8 @@ final class RehireEmployeeAction
     /** @param  array<string, mixed>  $position */
     public function handle(Employee $employee, array $position, CarbonInterface|string|null $rejoinDate = null, ?int $managerId = null, ?string $reason = null): Employee
     {
-        if ($employee->lifecycle_state !== LifecycleState::Alumni) {
-            throw new InvalidArgumentException('Only an alumni can be re-employed; current state is '.$employee->lifecycle_state->getLabel().'.');
+        if (! in_array($employee->lifecycle_state, [LifecycleState::Alumni, LifecycleState::Exited], true)) {
+            throw new InvalidArgumentException('Only an alumni or an exited employee can be re-employed; current state is '.$employee->lifecycle_state->getLabel().'.');
         }
 
         $from = Carbon::parse($rejoinDate ?? now())->startOfDay();

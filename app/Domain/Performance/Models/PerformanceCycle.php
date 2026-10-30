@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * An appraisal cycle (§35): period, rating scale, ordered stages with windows, weights for goals vs
  * competencies, the competencies rated, and eligibility. draft → active (launched) → closed.
  */
-#[Fillable(['tenant_id', 'name', 'code', 'type', 'period_start', 'period_end', 'rating_scale_id', 'stages', 'weights', 'settings', 'competency_ids', 'eligibility', 'status', 'current_stage', 'launched_at', 'closed_at', 'performance_template_version_id', 'scheduled_for', 'archived_at'])]
+#[Fillable(['tenant_id', 'name', 'code', 'type', 'period_start', 'period_end', 'rating_scale_id', 'stages', 'weights', 'settings', 'competency_ids', 'eligibility', 'status', 'current_stage', 'launched_at', 'closed_at', 'performance_template_version_id', 'scheduled_for', 'archived_at', 'competency_rating_scale_id'])]
 class PerformanceCycle extends Model
 {
     use Auditable, BelongsToTenant;
@@ -32,7 +32,7 @@ class PerformanceCycle extends Model
             // Phase 7: once scheduled or launched, the configuration is frozen (the launched cycle pins a
             // template version); an archived cycle changes nothing at all.
             if ($cycle->exists && ! in_array($cycle->getRawOriginal('status'), ['draft'], true)) {
-                foreach (['period_start', 'period_end', 'rating_scale_id', 'weights', 'competency_ids', 'stages', 'eligibility', 'settings', 'type', 'performance_template_version_id'] as $locked) {
+                foreach (['period_start', 'period_end', 'rating_scale_id', 'weights', 'competency_ids', 'stages', 'eligibility', 'settings', 'type', 'performance_template_version_id', 'competency_rating_scale_id'] as $locked) {
                     if ($cycle->isDirty($locked) && ! ($locked === 'performance_template_version_id' && $cycle->getRawOriginal('performance_template_version_id') === null && $cycle->getRawOriginal('status') === 'scheduled')) {
                         throw new \RuntimeException('A scheduled or launched cycle keeps its configuration. Create a new cycle instead.');
                     }
@@ -89,6 +89,30 @@ class PerformanceCycle extends Model
         }
 
         return $this->relationLoaded('scale') ? $this->scale : $this->scale()->firstOrFail();
+    }
+
+    /** HP-8c: the scale competencies are rated on, when it differs from the rating scale. */
+    public function competencyScaleModel(): BelongsTo
+    {
+        return $this->belongsTo(RatingScale::class, 'competency_rating_scale_id');
+    }
+
+    /**
+     * HP-8c: the scale competencies are rated on: the pinned competency scale once launched (the rating scale when the
+     * version pinned none), else the cycle's own competency scale, else its rating scale (as before).
+     */
+    public function competencyScale(): RatingScale
+    {
+        if ($this->performance_template_version_id) {
+            $version = $this->relationLoaded('templateVersion') ? $this->templateVersion : $this->templateVersion()->firstOrFail();
+
+            return $version->competencyScale() ?? $version->ratingScale();
+        }
+        if ($this->competency_rating_scale_id) {
+            return $this->relationLoaded('competencyScaleModel') ? $this->competencyScaleModel : $this->competencyScaleModel()->firstOrFail();
+        }
+
+        return $this->ratingScale();
     }
 
     public function appraisals(): HasMany

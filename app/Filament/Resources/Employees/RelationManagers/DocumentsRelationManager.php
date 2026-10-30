@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\Configuration\Services\OptionLists;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Documents\Services\Documents;
+use App\Domain\Experience\Services\ProfileSectionVisibility;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\DocumentUploadHint;
 use App\Support\Storage\StagedUpload;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -30,7 +33,9 @@ class DocumentsRelationManager extends RelationManager
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        return auth()->user()?->can('document.view') ?? false;
+        // HROne setup parity CA-6: the profile-section matrix (section documents) can only hide the tab.
+        return (auth()->user()?->can('document.view') ?? false)
+            && app(ProfileSectionVisibility::class)->allows(auth()->user(), $ownerRecord, 'documents');
     }
 
     public function table(Table $table): Table
@@ -40,12 +45,14 @@ class DocumentsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('title')->weight('medium')->description(fn (EmployeeDocument $record) => $record->original_name)->searchable(),
                 TextColumn::make('type.name')->label('Type')->placeholder('—'),
-                TextColumn::make('type.category')->label('Category')->badge()->color('gray')->formatStateUsing(fn (?string $state) => config("peopleos.documents.categories.{$state}", $state))->placeholder('—'),
+                TextColumn::make('type.category')->label('Category')->badge()->color('gray')->formatStateUsing(fn (?string $state) => app(OptionLists::class)->label('document_categories', $state))->placeholder('—'),
                 TextColumn::make('version')->formatStateUsing(fn ($state) => "v{$state}"),
                 TextColumn::make('status')->badge()->color(fn (string $state) => match ($state) {
                     'verified' => 'success', 'rejected' => 'danger', 'archived' => 'gray', default => 'warning',
                 })->formatStateUsing(fn (string $state) => EmployeeDocument::STATUSES[$state] ?? $state),
                 TextColumn::make('expires_on')->date()->placeholder('—')->color(fn (EmployeeDocument $record) => $record->isExpired() ? 'danger' : null),
+                // HROne parity MS-3 (22.2.9 #5): the uploader's comment (My HR, or a document attached to a profile change).
+                TextColumn::make('upload_comment')->label('Uploader comment')->limit(60)->placeholder('—')->toggleable(),
                 TextColumn::make('uploader.name')->label('Uploaded by')->placeholder('—')->toggleable(),
                 TextColumn::make('created_at')->label('Uploaded')->dateTime()->sortable()->toggleable(),
             ])
@@ -58,6 +65,7 @@ class DocumentsRelationManager extends RelationManager
                     ->authorize(fn () => auth()->user()->can('document.upload'))
                     ->schema([
                         Select::make('document_type_id')->label('Document type')->options(fn () => DocumentType::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all())->searchable()->live(),
+                        DocumentUploadHint::make(),
                         TextInput::make('title')->maxLength(255)->helperText('Defaults to the document type name.'),
                         FileUpload::make('file')->required()->disk(StagedUpload::disk())->directory('tmp-uploads')->maxSize(config('peopleos.documents.max_kb'))
                             ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']),

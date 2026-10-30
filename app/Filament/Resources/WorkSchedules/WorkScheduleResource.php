@@ -17,6 +17,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -62,6 +63,13 @@ class WorkScheduleResource extends Resource
                         ->itemLabel(fn (array $state, $component) => 'Week')
                         ->columnSpanFull(),
                 ]),
+            // HROne setup parity (TO-5): automatic shift correction.
+            Section::make('Automatic shift correction')->columns(2)
+                ->description('Each day takes the listed shift whose start is nearest the first punch, instead of the scheduled one.')
+                ->schema([
+                    Select::make('auto_shift_ids')->label('Shifts to choose from')->multiple()->options($shiftOptions),
+                    Toggle::make('auto_shift_on_off_days')->label('Also on weekly offs and holidays'),
+                ])->collapsible(),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

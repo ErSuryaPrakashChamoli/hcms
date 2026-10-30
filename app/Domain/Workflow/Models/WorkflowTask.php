@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** An approval or to-do created by a workflow node, assigned to a user or to a role. */
-#[Fillable(['tenant_id', 'workflow_instance_id', 'node_id', 'type', 'title', 'instructions', 'assignee_id', 'assignee_role_id', 'sequence', 'status', 'decision', 'note', 'due_at', 'escalation_level', 'last_reminded_at', 'completed_by', 'completed_at'])]
+#[Fillable(['tenant_id', 'workflow_instance_id', 'node_id', 'type', 'title', 'instructions', 'assignee_id', 'assignee_role_id', 'sequence', 'status', 'decision', 'note', 'due_at', 'escalation_level', 'last_reminded_at', 'completed_by', 'completed_at', 'delegate_id'])]
 class WorkflowTask extends Model
 {
     use BelongsToTenant;
@@ -48,6 +48,12 @@ class WorkflowTask extends Model
     public function completer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'completed_by');
+    }
+
+    /** HROne setup parity P4: the delegate who decided this task in its assignee's stead (completed_by is the assignee). */
+    public function delegate(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'delegate_id');
     }
 
     /** Tasks this user may act on: assigned directly, or via one of their roles. */

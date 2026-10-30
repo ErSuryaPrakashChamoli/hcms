@@ -85,6 +85,9 @@ class CustomFieldResource extends Resource
                 ->schema([
                     Toggle::make('is_required')->label('Required'),
                     Toggle::make('visible_to_employee')->label('Visible to employee')->default(true),
+                    // HROne parity MS-3: changed by the employee on My profile → Other details (while that section is editable).
+                    Toggle::make('editable_by_employee')->label('Employee may change it')->default(false)
+                        ->helperText('On My profile → Other details, when Setup → Core HR lets employees edit that section.'),
                     Toggle::make('visible_to_manager')->label('Visible to manager')->default(true),
                     Toggle::make('visible_to_hr')->label('Visible to HR')->default(true),
                     Toggle::make('is_searchable')->label('Searchable'),

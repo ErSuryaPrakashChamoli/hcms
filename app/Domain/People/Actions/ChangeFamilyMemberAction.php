@@ -2,6 +2,7 @@
 
 namespace App\Domain\People\Actions;
 
+use App\Domain\Configuration\Services\OptionLists;
 use App\Domain\People\Models\PersonFamilyMember;
 
 /** Phase 12: the one write path for a person's family members (dependents, nominees). */
@@ -16,7 +17,8 @@ final class ChangeFamilyMemberAction extends ChangePersonRecordAction
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'relation' => ['required', 'in:'.implode(',', array_keys(config('peopleos.people.family_relations', [])))],
+            // HROne setup parity CA-3: the organisation's relationship list (built-in codes, renamed or hidden, plus its own).
+            'relation' => ['required', 'in:'.implode(',', array_keys(app(OptionLists::class)->labels('family_relations')))],
             'date_of_birth' => ['nullable', 'date', 'before_or_equal:today'],
             'gender' => ['nullable', 'in:'.implode(',', array_keys(config('peopleos.people.genders', [])))],
             'phone' => ['nullable', 'string', 'max:32'],

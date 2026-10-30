@@ -3,7 +3,7 @@
     "info": {
         "title": "PeopleOS API",
         "version": "v1",
-        "description": "Tenant-bound integration API of Markedge PeopleOS. Generated from the route table by `php artisan peopleos:openapi`; do not edit by hand.\n\nAuthentication: a tenant API key in `X-Api-Key` (or `Authorization: Bearer`). The key binds the tenant before any lookup. Each operation needs the scope named in `x-scope`. Records of another tenant are 404.\n\nConventions (ADR-0014): lists return `{data, meta}` with `page` / `per_page` (≤200); errors return `{message, code, request_id, errors?}`; writes honour an `Idempotency-Key` header (24 h replay); `X-Correlation-Id` / `X-Request-Id` are accepted and echoed; 120 requests per minute per verified key; requests with a missing, invalid or unverified key share a per-IP limit (SaaS.8).\n\nAudiences: every operation here is an integration (machine-to-machine) API (`x-audience: integration`). Employee self-service, manager, HR and administrator user APIs are NOT part of this contract. People act in the PeopleOS application, where the full security chain (tenant → permission → organisation scope → relationship scope → field security) applies. A user-token API is deferred surface.\n\nSensitive data appears only behind the sensitive scopes listed in `x-data-classification: sensitive` operations and is audited."
+        "description": "Tenant-bound integration API of Markedge PeopleOS. Generated from the route table by `php artisan peopleos:openapi`; do not edit by hand.\n\nAuthentication: a tenant API key in `X-Api-Key` (or `Authorization: Bearer`). The key binds the tenant before any lookup. Each operation needs the scope named in `x-scope`. Records of another tenant are 404.\n\nConventions (ADR-0014): lists return `{data, meta}` with `page` / `per_page` (≤200); errors return `{message, code, request_id, errors?}`; writes honour an `Idempotency-Key` header (24 h replay); `X-Correlation-Id` / `X-Request-Id` are accepted and echoed; 120 requests per minute per verified key unless the key sets its own limit; requests with a missing, invalid or unverified key share a per-IP limit (SaaS.8). A key may be limited to IP addresses or CIDR blocks: from anywhere else it is refused with 403 `ip_not_allowed` (CA-11).\n\nAudiences: every operation here is an integration (machine-to-machine) API (`x-audience: integration`). Employee self-service, manager, HR and administrator user APIs are NOT part of this contract. People act in the PeopleOS application, where the full security chain (tenant → permission → organisation scope → relationship scope → field security) applies. A user-token API is deferred surface.\n\nSensitive data appears only behind the sensitive scopes listed in `x-data-classification: sensitive` operations and is audited."
     },
     "servers": [
         {
@@ -54,7 +54,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -133,7 +133,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -212,7 +212,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -292,7 +292,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -389,7 +389,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -484,7 +484,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -569,7 +569,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -664,7 +664,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -759,7 +759,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -852,7 +852,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -947,7 +947,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -983,6 +983,101 @@
                                 "schema": {
                                     "$ref": "#/components/schemas/Error"
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/attendance/locations": {
+            "post": {
+                "operationId": "api.v1.attendance.locations.store",
+                "tags": [
+                    "attendance"
+                ],
+                "summary": "POST attendance locations store",
+                "x-scope": "attendance.write",
+                "x-audience": "integration",
+                "x-data-classification": "internal",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CorrelationId"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Done, or an idempotent replay",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Record"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Created"
+                    },
+                    "401": {
+                        "description": "Missing, invalid or expired key (or bad signature)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown record (including another tenant's)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation or business rule",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limited",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
                             }
                         }
                     }
@@ -1032,7 +1127,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1127,7 +1222,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1222,7 +1317,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1307,7 +1402,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1390,7 +1485,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1485,7 +1580,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1570,7 +1665,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1688,7 +1783,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1811,7 +1906,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1896,7 +1991,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1981,7 +2076,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2066,7 +2161,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2151,7 +2246,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2236,7 +2331,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2321,7 +2416,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2406,7 +2501,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2500,7 +2595,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2585,7 +2680,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2672,7 +2767,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2757,7 +2852,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2844,7 +2939,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2937,7 +3032,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3022,7 +3117,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3107,7 +3202,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3192,7 +3287,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3277,7 +3372,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3364,7 +3459,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3449,7 +3544,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3534,7 +3629,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3621,7 +3716,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3714,7 +3809,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3799,7 +3894,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3886,7 +3981,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3971,7 +4066,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4065,7 +4160,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4148,7 +4243,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4245,7 +4340,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4338,7 +4433,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4433,7 +4528,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4527,7 +4622,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4614,7 +4709,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4707,7 +4802,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4808,7 +4903,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4923,7 +5018,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5028,7 +5123,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5121,7 +5216,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5206,7 +5301,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5291,7 +5386,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5376,7 +5471,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5461,7 +5556,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5546,7 +5641,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5631,7 +5726,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5716,7 +5811,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5809,7 +5904,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5894,7 +5989,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5979,7 +6074,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6064,7 +6159,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6147,7 +6242,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6250,7 +6345,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6345,7 +6440,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6430,7 +6525,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6515,7 +6610,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6600,7 +6695,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6685,7 +6780,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6770,7 +6865,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6853,7 +6948,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6950,7 +7045,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7043,7 +7138,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7138,7 +7233,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7223,7 +7318,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7310,7 +7405,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7395,7 +7490,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7482,7 +7577,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7567,7 +7662,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7652,7 +7747,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7739,7 +7834,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7824,7 +7919,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7909,7 +8004,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7994,7 +8089,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8079,7 +8174,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8164,7 +8259,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8249,7 +8344,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8334,7 +8429,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8427,7 +8522,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8518,7 +8613,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8613,7 +8708,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8698,7 +8793,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8783,7 +8878,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8868,7 +8963,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -8953,7 +9048,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9040,7 +9135,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9133,7 +9228,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9218,7 +9313,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9315,7 +9410,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9408,7 +9503,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9493,7 +9588,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9587,7 +9682,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9674,7 +9769,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9767,7 +9862,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9852,7 +9947,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9937,7 +10032,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10022,7 +10117,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10107,7 +10202,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10194,7 +10289,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10279,7 +10374,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10366,7 +10461,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10451,7 +10546,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10536,7 +10631,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10621,7 +10716,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10706,7 +10801,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10791,7 +10886,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10876,7 +10971,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10963,7 +11058,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11048,7 +11143,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11133,7 +11228,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11218,7 +11313,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11303,7 +11398,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11398,7 +11493,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11483,7 +11578,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11568,7 +11663,7 @@
                         }
                     },
                     "403": {
-                        "description": "Key lacks the scope, or tenant refused",
+                        "description": "Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11615,7 +11710,7 @@
         "peopleosEvent": {
             "post": {
                 "summary": "Outbound webhook (signed, retried with backoff, dead-lettered after the maximum attempts)",
-                "description": "Headers: X-PeopleOS-Event, X-PeopleOS-Delivery (event id; dedupe on it), X-PeopleOS-Timestamp, X-PeopleOS-Signature (sha256=HMAC(secret, \"timestamp.body\")), X-Correlation-Id. Reject stale timestamps; expect retries.",
+                "description": "Headers: X-PeopleOS-Event, X-PeopleOS-Delivery (event id; dedupe on it), X-PeopleOS-Timestamp, X-PeopleOS-Signature (sha256=HMAC(secret, \"timestamp.body\")), X-Correlation-Id. Reject stale timestamps; expect retries. While a rotated secret is in its grace period, X-PeopleOS-Signature-Previous carries the same signature made with the previous secret; accept either.",
                 "requestBody": {
                     "content": {
                         "application/json": {

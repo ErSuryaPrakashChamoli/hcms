@@ -73,19 +73,22 @@ class VersionsRelationManager extends RelationManager
                 Action::make('components')->label('Components')->icon('heroicon-m-list-bullet')->color('gray')->modalSubmitAction(false)
                     ->schema(fn (SalaryStructureVersion $record) => [
                         ...($record->parameters ? [TextEntry::make('parameters')->label('Parameters')->state(collect($record->parameters)->map(fn ($value, $name) => "{$name} = ".(float) $value)->implode(' · '))] : []),
+                        // HROne setup parity BP-2: how CTC is handled and which component balances to it.
+                        ...($record->formulaOptions()['ctc_mode'] !== 'ctc' || $record->balancingComponentId() !== null ? [TextEntry::make('ctc_mode')->label('CTC')
+                            ->state(SalaryStructureVersion::CTC_MODES[$record->formulaOptions()['ctc_mode']].($record->balancingComponent ? ' · balanced by '.$record->balancingComponent->code : ''))] : []),
                         ...$record->components()->with('component')->get()
                             ->map(fn ($c) => TextEntry::make("c{$c->id}")->label("{$c->sort_order}. {$c->component?->name} ({$c->component?->code})")
-                                ->state(ucfirst($c->pay_nature).' · '.str_replace('_', '-', $c->frequency).' · '.(($formula = $c->component?->formulaFor($c->formula_override)) ? $formula.(filled($c->formula_override) ? ' (override)' : '') : 'fixed amount from the employee\'s compensation')))->all(),
+                                ->state(ucfirst($c->pay_nature).' · '.str_replace('_', '-', $c->frequency).' · '.($c->component?->isInput() ? 'input from the employee\'s compensation, read by formulas, never paid' : (($formula = $c->component?->formulaFor($c->formula_override)) ? $formula.(filled($c->formula_override) ? ' (override)' : '') : 'fixed amount from the employee\'s compensation'))))->all(),
                     ]),
                 Action::make('preview')->label('Preview')->icon('heroicon-m-calculator')->color('gray')
                     ->modalHeading(fn (SalaryStructureVersion $record) => "Preview breakup: v{$record->version}")->modalWidth('6xl')
                     ->modalDescription('Try the structure on a sample CTC. Nothing here is saved.')
                     ->modalSubmitAction(false)->modalCancelActionLabel('Close')
-                    ->schema(fn (SalaryStructureVersion $record) => SalaryFormulaUi::preview(fn () => $record->formulaLines(), fn () => (array) ($record->parameters ?? []), fn () => $record->effective_from)),
+                    ->schema(fn (SalaryStructureVersion $record) => SalaryFormulaUi::preview(fn () => $record->formulaLines(), fn () => (array) ($record->parameters ?? []), fn () => $record->effective_from, fn () => $record->formulaOptions())),
                 ActionGroup::make([
                     Action::make('edit')->label('Edit draft')->icon('heroicon-m-pencil-square')->modalWidth('5xl')
                         ->visible(fn (SalaryStructureVersion $record) => $record->status === 'draft' && auth()->user()->can('compensation.configure'))
-                        ->fillForm(fn (SalaryStructureVersion $record) => $record->only(['effective_from', 'currency', 'pay_frequency', 'change_note']) + StructureApplicabilitySchema::fill($record) + ['components' => $record->components()->get()->map(fn ($c) => $c->only(['salary_component_id', 'formula_override', 'pay_nature', 'frequency', 'sort_order']))->all()]
+                        ->fillForm(fn (SalaryStructureVersion $record) => $record->only(['effective_from', 'currency', 'pay_frequency', 'change_note']) + $record->formulaOptions() + StructureApplicabilitySchema::fill($record) + ['components' => $record->components()->get()->map(fn ($c) => $c->only(['salary_component_id', 'formula_override', 'pay_nature', 'frequency', 'sort_order']))->all()]
                             + ['parameters' => $record->parameters ?? [], 'preview_ctc' => 600000, 'preview_days' => 30, 'preview_pf' => true, 'preview_pf_ceiling' => true])
                         ->schema([
                             DatePicker::make('effective_from')->native(false)->required(),
@@ -93,6 +96,13 @@ class VersionsRelationManager extends RelationManager
                             Select::make('pay_frequency')->options(config('peopleos.compensation.pay_frequencies'))->required(),
                             ...StructureApplicabilitySchema::fields(),
                             Textarea::make('change_note')->label('What changes and why')->rows(2),
+                            // HROne setup parity BP-2: CTC mode ("disable CTC") and the CTC balancing component.
+                            Select::make('ctc_mode')->label('Salary is built')->options(SalaryStructureVersion::CTC_MODES)->default('ctc')->required()->live()
+                                ->helperText('From component amounts: no CTC is entered; it is worked out from the amounts that are part of CTC, plus employer PF.'),
+                            Select::make('balancing_component_id')->label('CTC balancing component')->placeholder('None')->searchable()->live()
+                                ->visible(fn (Get $get) => $get('ctc_mode') !== 'components')
+                                ->options(fn (Get $get) => SalaryComponent::query()->whereIn('id', collect($get('components'))->pluck('salary_component_id')->filter()->all())->whereIn('type', ['earning', 'reimbursement'])->where('include_in_ctc', true)->whereNotIn('calculation_method', ['statutory', 'input'])->orderBy('sort_order')->get()->mapWithKeys(fn ($c) => [$c->id => "{$c->name} ({$c->code})"])->all())
+                                ->helperText('Takes CTC less every other CTC component (and employer PF). It must come last; without a formula of its own it gets that remainder formula when the draft is saved.'),
                             KeyValue::make('parameters')->label('Parameters')->keyLabel('Name')->valueLabel('Number')->addActionLabel('Add parameter')->live(onBlur: true)
                                 ->helperText('Named numbers the formulas can use, e.g. basic_pct = 50 with the formula ctc_monthly * basic_pct / 100. Change a number here instead of rewriting formulas.'),
                             Repeater::make('components')->hintAction(SalaryFormulaUi::guideAction('componentsGuide'))->schema([
@@ -115,9 +125,11 @@ class VersionsRelationManager extends RelationManager
                                     }),
                             ])->columns(4)->defaultItems(0),
                             Section::make('Preview breakup')->description('Try this draft on a sample CTC as you edit it. Nothing here is saved.')->collapsible()->collapsed()
-                                ->schema(SalaryFormulaUi::preview(fn (Get $get) => SalaryFormulaUi::linesFromForm($get('components')), fn (Get $get) => SalaryFormulaUi::parametersFromForm($get('parameters')), fn (Get $get) => $get('effective_from'))),
+                                ->schema(SalaryFormulaUi::preview(fn (Get $get) => SalaryFormulaUi::linesFromForm($get('components')), fn (Get $get) => SalaryFormulaUi::parametersFromForm($get('parameters')), fn (Get $get) => $get('effective_from'),
+                                    fn (Get $get) => ['ctc_mode' => $get('ctc_mode') ?: 'ctc', 'balancing_component_id' => $get('ctc_mode') === 'components' ? null : $get('balancing_component_id')])),
                         ])
-                        ->action(fn (SalaryStructureVersion $record, array $data) => CompensationActions::run(fn () => app(CompensationStructures::class)->updateDraft($record, StructureApplicabilitySchema::toServiceData($data), auth()->user()), 'Draft saved')),
+                        ->action(fn (SalaryStructureVersion $record, array $data) => CompensationActions::run(fn () => app(CompensationStructures::class)->updateDraft($record, StructureApplicabilitySchema::toServiceData(
+                            ['balancing_component_id' => ($data['ctc_mode'] ?? 'ctc') === 'components' ? null : ($data['balancing_component_id'] ?? null)] + $data), auth()->user()), 'Draft saved')),
                     Action::make('submit')->label('Submit for approval')->icon('heroicon-m-paper-airplane')->requiresConfirmation()
                         ->visible(fn (SalaryStructureVersion $record) => $record->status === 'draft' && auth()->user()->can('compensation.configure'))
                         ->action(fn (SalaryStructureVersion $record) => CompensationActions::run(fn () => app(CompensationStructures::class)->submit($record, auth()->user()), 'Submitted for approval')),

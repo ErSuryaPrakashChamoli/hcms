@@ -40,6 +40,25 @@ class AttendanceRecordPolicy
         return ($user->hasPermission('attendance.manage') && $this->inScope($user, $model)) || ($user->hasPermission('attendance.regularise') && $this->isOwn($user, $model));
     }
 
+    /**
+     * HROne parity TX-2: the narrower time-office rights, each on records in scope. The narrower key is also granted by
+     * attendance.manage (peopleos.permission_splits), so everyone who could do this before still can.
+     */
+    public function roster(User $user, Model $model): bool
+    {
+        return $user->hasPermission('attendance.roster') && $this->inScope($user, $model);
+    }
+
+    public function override(User $user, Model $model): bool
+    {
+        return $user->hasPermission('attendance.override') && $this->inScope($user, $model);
+    }
+
+    public function process(User $user, Model $model): bool
+    {
+        return $user->hasPermission('attendance.process') && $this->inScope($user, $model);
+    }
+
     public function delete(User $user, Model $model): bool
     {
         return false;

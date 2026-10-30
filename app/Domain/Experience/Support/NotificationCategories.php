@@ -51,6 +51,13 @@ final class NotificationCategories
                 return 'attention';
             }
         }
+        // HROne parity RQ-2: a requester's reminder waits on the reader's decision; an intimation is addressed to them.
+        if ($e === 'request.reminder') {
+            return 'approvals';
+        }
+        if ($e === 'request.intimated') {
+            return 'mentions';
+        }
         foreach (['_requested', '.requested', 'task_assigned', 'review_requested', 'awaiting', 'submitted', 'cancel_requested', 'approval'] as $needle) {
             if (str_contains($e, $needle)) {
                 return 'approvals';

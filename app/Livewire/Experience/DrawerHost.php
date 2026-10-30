@@ -5,10 +5,12 @@ namespace App\Livewire\Experience;
 use App\Domain\Experience\Services\ApprovalCenter;
 use App\Domain\Experience\Services\ApprovalDecisions;
 use App\Domain\Experience\Services\ChangeFeed;
+use App\Domain\Experience\Services\DirectorySections;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\PeopleVisibility;
 use App\Domain\Experience\Services\UxMetrics;
 use App\Domain\Experience\Services\WorkforcePulse;
+use App\Domain\Workflow\Services\TaskComments;
 use App\Filament\Pages\OrganisationMap;
 use App\Filament\Pages\WorkforceCommandCentre;
 use App\Filament\Resources\Employees\EmployeeResource;
@@ -116,6 +118,8 @@ class DrawerHost extends Component
             'org' => OrganisationMap::canAccess() ? OrganisationMap::getUrl(['focus' => $e->id]) : null,
             'pinned' => in_array($e->id, app(ExperiencePreferences::class)->for($user)['pinned_people'] ?? [], true),
             'changes' => $changes,
+            // HROne setup parity CA-6: the directory-card sections the organisation shows (none by default).
+            'sections' => $this->type === 'person' ? app(DirectorySections::class)->for($user, $e) : [],
         ];
     }
 
@@ -183,6 +187,19 @@ class DrawerHost extends Component
             $this->addError('note.'.$id, $e->getMessage());
         } catch (AuthorizationException|RuntimeException $e) {
             $this->addError('note.'.$id, $e->getMessage());
+        }
+        unset($this->approval);
+    }
+
+    /** HROne setup parity P3 (Discussion): a message on the approval open in the drawer. */
+    public function comment(string $id, string $body): void
+    {
+        try {
+            $item = app(ApprovalCenter::class)->find(auth()->user(), $id) ?? throw new AuthorizationException('This item is no longer waiting for your decision.');
+            app(TaskComments::class)->postOnItem(auth()->user(), $item, $body);
+            $this->dispatch('pos-approval-commented', id: $id);
+        } catch (InvalidArgumentException|AuthorizationException $e) {
+            $this->addError('comment.'.$id, $e->getMessage());
         }
         unset($this->approval);
     }

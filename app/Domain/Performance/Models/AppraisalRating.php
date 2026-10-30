@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** A rating for one goal or competency within a review. */
-#[Fillable(['tenant_id', 'appraisal_review_id', 'subject_type', 'subject_id', 'rating', 'comment'])]
+/** A rating for one goal or competency within a review (HP-8d: or one KPI; with the achievement % when entered as one). */
+#[Fillable(['tenant_id', 'appraisal_review_id', 'subject_type', 'subject_id', 'rating', 'comment', 'achievement_pct'])]
 class AppraisalRating extends Model
 {
     use BelongsToTenant;
@@ -28,7 +28,7 @@ class AppraisalRating extends Model
 
     protected function casts(): array
     {
-        return ['rating' => 'decimal:2'];
+        return ['rating' => 'decimal:2', 'achievement_pct' => 'decimal:2'];
     }
 
     public function review(): BelongsTo

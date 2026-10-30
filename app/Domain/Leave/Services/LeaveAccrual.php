@@ -46,6 +46,7 @@ final class LeaveAccrual
             $written += match ($rule['accrual_frequency']) {
                 'monthly' => $this->periodic($employee, $type, $rule, $period, $periodStart, $joined, $asOf, 12),
                 'quarterly' => $this->periodic($employee, $type, $rule, $period, $periodStart, $joined, $asOf, 4),
+                'half_yearly' => $this->periodic($employee, $type, $rule, $period, $periodStart, $joined, $asOf, 2),
                 default => $this->annual($employee, $type, $rule, $period, $periodStart, $joined),
             };
         }
@@ -72,7 +73,10 @@ final class LeaveAccrual
                 continue;
             }
 
-            $carry = min($closing, (float) $rule['carry_forward_limit']);
+            // HROne setup parity (TO-7): carry all, none, or up to the limit.
+            $carry = match ($rule['carry_forward_mode'] ?? 'specific') {
+                'all' => $closing, 'zero' => 0.0, default => min($closing, (float) $rule['carry_forward_limit']),
+            };
             $lapse = $closing - $carry;
 
             if ($carry > 0 && ($entry = $this->balances->post($employee, $type, $period + 1, 'carry_forward', $carry, null, "Carried forward from {$period}", "cf-{$period}", $nextStart->toDateString()))) {
@@ -149,7 +153,7 @@ final class LeaveAccrual
             }
         }
 
-        return $this->credit($employee, $type, $period, $days, "annual-{$period}", $start, 'Annual credit');
+        return $this->credit($employee, $type, $period, $days, "annual-{$period}", $start, 'Annual credit', $rule);
     }
 
     private function periodic(Employee $employee, LeaveType $type, array $rule, int $period, Carbon $periodStart, Carbon $joined, Carbon $asOf, int $slices): int
@@ -165,18 +169,45 @@ final class LeaveAccrual
                 break;
             }
 
-            if ($joined->gt($sliceStart->copy()->addMonths($months)->subDay())) {
+            $sliceEnd = $sliceStart->copy()->addMonths($months)->subDay();
+            if ($joined->gt($sliceEnd)) {
                 continue; // joined after this slice ended
             }
 
-            $written += $this->credit($employee, $type, $period, $perSlice, "{$slices}-{$period}-{$i}", $sliceStart->max($joined), 'Periodic accrual');
+            // The slice the employee joined in follows the policy's joiner rule (full credit unless configured).
+            $days = $joined->gt($sliceStart) ? $this->joinerShare($perSlice, (string) ($rule['joiner_credit'] ?? 'full'), $joined, $sliceStart, $sliceEnd) : $perSlice;
+
+            $written += $this->credit($employee, $type, $period, $days, "{$slices}-{$period}-{$i}", $sliceStart->max($joined), 'Periodic accrual', $rule);
         }
 
         return $written;
     }
 
-    private function credit(Employee $employee, LeaveType $type, int $period, float $days, string $key, Carbon $date, string $note): int
+    /**
+     * HROne parity CF-09: the credit for the slice an employee joins in. Rule of 15 looks at the day of the month of
+     * joining (on or before the 15th: everything); proportionate shares the slice by the days left in it.
+     */
+    private function joinerShare(float $perSlice, string $rule, Carbon $joined, Carbon $sliceStart, Carbon $sliceEnd): float
     {
+        return match ($rule) {
+            'rule_of_15' => $joined->day <= 15 ? $perSlice : 0.0,
+            'rule_of_15_half' => $joined->day <= 15 ? $perSlice : round($perSlice / 2, 2),
+            'exclude' => 0.0,
+            'proportionate' => round($perSlice * ((int) $joined->diffInDays($sliceEnd) + 1) / ((int) $sliceStart->diffInDays($sliceEnd) + 1), 2),
+            default => $perSlice,
+        };
+    }
+
+    /** @param  array<string, mixed>  $rule  HROne setup parity (TO-7): credits rounded, and never beyond the balance cap */
+    private function credit(Employee $employee, LeaveType $type, int $period, float $days, string $key, Carbon $date, string $note, array $rule = []): int
+    {
+        $days = match ($rule['credit_round_off'] ?? 'none') {
+            'half' => round($days * 2) / 2, 'whole' => round($days), default => $days,
+        };
+        $cap = (float) ($rule['credit_cap'] ?? 0);
+        if ($cap > 0 && LeaveLedgerEntry::query()->where('employee_id', $employee->id)->where('leave_type_id', $type->id)->where('accrual_key', $key)->doesntExist()) {
+            $days = min($days, max(0, $cap - (float) $this->balances->balance($employee, $type, $period)->available()));
+        }
         if ($days <= 0) {
             return 0;
         }

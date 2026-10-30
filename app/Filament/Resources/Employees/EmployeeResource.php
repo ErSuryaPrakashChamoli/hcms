@@ -105,6 +105,8 @@ class EmployeeResource extends Resource
             RelationGroup::make(fn (?Model $ownerRecord) => $ownerRecord !== null && BankAccountsRelationManager::canViewForRecord($ownerRecord, ViewEmployee::class) ? 'Bank & personal' : 'Personal', [AddressesRelationManager::class, FamilyMembersRelationManager::class, EmergencyContactsRelationManager::class,
                 QualificationsRelationManager::class, ExperiencesRelationManager::class, BankAccountsRelationManager::class]),
             AuditHistoryRelationManager::class,
+            // HROne parity WO-2: everything about the employee across modules, from the audit trail (audit.view).
+            RelationManagers\ActivityRelationManager::class,
         ];
     }
 

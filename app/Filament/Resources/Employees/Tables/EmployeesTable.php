@@ -2,8 +2,12 @@
 
 namespace App\Filament\Resources\Employees\Tables;
 
+use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Lifecycle\Enums\LifecycleState;
+use App\Filament\Resources\Employees\Pages\ListEmployees;
+use App\Filament\Support\BulkRecordActions;
+use App\Filament\Support\EmployeeFilters;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -21,10 +25,8 @@ class EmployeesTable
                 TextColumn::make('employee_code')->label('ID')->searchable()->sortable(),
                 TextColumn::make('person.display_name')
                     ->label('Name')
-                    ->searchable(query: fn (Builder $query, string $search) => $query->whereHas('person', fn (Builder $q) => $q
-                        ->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('preferred_name', 'like', "%{$search}%")))
+                    // HROne parity WO-2: one employee search — code, names, work e-mail and designation.
+                    ->searchable(query: EmployeeFilters::search())
                     ->sortable(query: fn (Builder $query, string $direction) => $query
                         ->join('people', 'people.id', '=', 'employees.person_id')
                         ->orderBy('people.first_name', $direction)
@@ -39,6 +41,12 @@ class EmployeesTable
                 TextColumn::make('lifecycle_state')->badge()->label('Status'),
                 TextColumn::make('joining_date')->date()->sortable()->toggleable(),
                 TextColumn::make('work_email')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                // HROne parity WO-2: the latest background check, for people who may see checks.
+                TextColumn::make('latestBgvCase.status')->label('Background check')->badge()->color('gray')->placeholder('—')
+                    ->formatStateUsing(fn (?string $state, Employee $record) => (BgvCase::STATUSES[$state] ?? $state).(($result = $record->latestBgvCase?->overall_result) && $result !== 'pending' ? ' · '.(BgvCase::RESULTS[$result] ?? $result) : ''))
+                    ->visible(fn () => auth()->user()?->hasPermission('bgv.view') ?? false)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('created_at')->label('Added on')->date()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('lifecycle_state')->label('Status')->options(LifecycleState::class)->multiple(),
@@ -61,6 +69,13 @@ class EmployeesTable
                     ->options(fn () => Employee::query()->whereHas('directReports')->with('person')->get()->mapWithKeys(fn (Employee $e) => [$e->id => $e->person?->display_name ?? $e->employee_code])->all())
                     ->searchable()
                     ->query(fn (Builder $query, array $data) => $query->when($data['value'] ?? null, fn (Builder $q, $id) => $q->whereHas('currentManager', fn (Builder $r) => $r->where('manager_id', $id)))),
+                // HROne parity WO-2: pasted codes, the rest of the organisation, date ranges, leavers, background checks.
+                EmployeeFilters::codes(),
+                EmployeeFilters::organisation(null, ['business_unit_id', 'division_id', 'department_id', 'level_id'], 'more_organisation'),
+                EmployeeFilters::dateRange('joined', 'Joining date', 'joining_date'),
+                EmployeeFilters::dateRange('created', 'Added on', 'created_at'),
+                EmployeeFilters::excludePendingResignation(),
+                EmployeeFilters::backgroundCheck()->visible(fn () => auth()->user()?->hasPermission('bgv.view') ?? false),
             ])
             ->filtersLayout(FiltersLayout::AboveContentCollapsible)
             ->persistFiltersInSession()
@@ -68,6 +83,8 @@ class EmployeesTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
-            ]);
+            ])
+            // HROne parity WO-1: bulk actions on the rows selected (each record still authorised by its own service).
+            ->toolbarActions([BulkRecordActions::selected('employees', ListEmployees::BULK_OPERATIONS)]);
     }
 }

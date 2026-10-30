@@ -33,7 +33,8 @@ final class PunchIngestion
      * Record one punch. Returns null when it is a duplicate (already stored). Unknown employees are
      * retained as failed punches when `$employee` is null and `$meta['employee_code']` is given.
      *
-     * @param  array<string, mixed>  $meta  latitude, longitude, payload, source_timezone, source_type, employee_code, correlation_id
+     * @param  array<string, mixed>  $meta  latitude, longitude, payload, source_timezone, source_type, employee_code, correlation_id,
+     *                                      device_identifier, device_platform (HP-1 check-in controls)
      */
     public function record(?Employee $employee, Carbon|string $punchedAt, string $direction = 'auto', string $source = 'manual', ?AttendanceDevice $device = null, ?string $externalId = null, array $meta = [], ?string $note = null): ?AttendancePunch
     {
@@ -53,6 +54,10 @@ final class PunchIngestion
             return null;
         }
 
+        // HP-1: geo location, device and source controls of the employee's check-in policy.
+        $verdict = $employee !== null ? app(CheckInGuard::class)->check($employee, $at, $sourceType, $meta) : null;
+        $rejected = $verdict['rejected'] ?? null;
+
         try {
             $punch = AttendancePunch::create([
                 'employee_id' => $employee?->getKey(),
@@ -67,9 +72,19 @@ final class PunchIngestion
                 'latitude' => $meta['latitude'] ?? null,
                 'longitude' => $meta['longitude'] ?? null,
                 'payload' => $meta['payload'] ?? null,
+                'geo_status' => $verdict['geo_status'] ?? null,
+                'attendance_geo_fence_id' => $verdict['attendance_geo_fence_id'] ?? null,
+                'geo_distance_m' => $verdict['geo_distance_m'] ?? null,
+                'device_identifier' => $verdict['device_identifier'] ?? null,
+                // HROne setup parity: what the check-in carried, kept with the punch as evidence.
+                'photos' => array_values(array_filter((array) ($meta['photos'] ?? []))) ?: null,
+                'face_verified' => isset($meta['face_verified']) ? filter_var($meta['face_verified'], FILTER_VALIDATE_BOOL) : null,
+                'ip_address' => isset($meta['ip_address']) ? substr((string) $meta['ip_address'], 0, 45) : null,
+                'wifi_ssid' => isset($meta['wifi_ssid']) && $meta['wifi_ssid'] !== '' ? mb_substr((string) $meta['wifi_ssid'], 0, 64) : null,
+                'wifi_bssid' => isset($meta['wifi_bssid']) && $meta['wifi_bssid'] !== '' ? substr((string) $meta['wifi_bssid'], 0, 32) : null,
                 'received_at' => now(),
-                'processing_status' => $employee ? 'normalized' : 'failed',
-                'processing_error' => $employee ? null : 'Unknown employee code ['.($meta['employee_code'] ?? '?').'].',
+                'processing_status' => $employee ? ($rejected !== null ? 'rejected' : 'normalized') : 'failed',
+                'processing_error' => $employee ? $rejected : 'Unknown employee code ['.($meta['employee_code'] ?? '?').'].',
                 'correlation_id' => $meta['correlation_id'] ?? Context::get('request_id'),
                 'recorded_by' => auth()->id(),
                 'note' => $note,
@@ -78,7 +93,10 @@ final class PunchIngestion
             return null; // lost a race with an identical punch: idempotent by design
         }
 
-        if ($employee !== null) {
+        if ($employee !== null && $rejected !== null) {
+            // Kept as evidence of the attempt; never counted (punchesBetween skips it).
+            AttendanceEvent::dispatch('attendance.punch_rejected', $employee, $punch, ['punched_at' => $at->toIso8601String(), 'source_type' => $sourceType, 'reason' => $rejected]);
+        } elseif ($employee !== null) {
             AttendanceEvent::dispatch('attendance.punch_received', $employee, $punch, ['punched_at' => $at->toIso8601String(), 'direction' => $direction, 'source_type' => $sourceType]);
             $this->queueProcessing($employee, $at);
         }
@@ -130,7 +148,8 @@ final class PunchIngestion
             }
         }
 
-        $device->update(['last_seen_at' => now()]);
+        // HROne setup parity (TO-8): a device that is heard from again can be reported again after its next silence.
+        $device->update(['last_seen_at' => now(), 'settings' => collect($device->settings ?? [])->except('alerted_at')->all() ?: null]);
         $result['unknown'] = array_values(array_unique($result['unknown']));
         $result['dates'] = array_values(array_unique($result['dates']));
 
@@ -164,6 +183,7 @@ final class PunchIngestion
     {
         return AttendancePunch::query()
             ->where('employee_id', $employee->id)
+            ->where('processing_status', '!=', 'rejected')
             ->whereBetween('punched_at', [$from, $to])
             ->orderBy('punched_at')->orderBy('id')
             ->get();

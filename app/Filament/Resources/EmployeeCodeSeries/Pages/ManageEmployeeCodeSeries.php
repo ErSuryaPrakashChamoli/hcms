@@ -14,7 +14,7 @@ class ManageEmployeeCodeSeries extends PeopleManageRecords
 
     public function getSubheading(): ?string
     {
-        $how = 'New joiners get the next code of their company’s series; a company without one uses the default series.';
+        $how = 'New joiners get the next code of their company’s series; a company without one uses the default series. A series limited to an employment type comes first for joiners of that type.';
         if (! EmployeeCodeSeries::query()->exists()) {
             $how .= ' No series is set up yet, so codes continue as '.app(EmployeeCodeGenerator::class)->preview().' and onward.';
         }

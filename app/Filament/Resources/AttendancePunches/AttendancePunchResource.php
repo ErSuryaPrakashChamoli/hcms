@@ -5,6 +5,8 @@ namespace App\Filament\Resources\AttendancePunches;
 use App\Domain\Attendance\Models\AttendancePunch;
 use App\Domain\Attendance\Services\PunchIngestion;
 use App\Filament\Resources\AttendancePunches\Pages\ListAttendancePunches;
+use App\Filament\Support\EmployeeFilters;
+use App\Filament\Support\TimeOfficeRegisters;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -45,7 +47,8 @@ class AttendancePunchResource extends Resource
             ->columns([
                 TextColumn::make('punched_at')->dateTime('d M Y H:i:s')->sortable(),
                 TextColumn::make('employee.employee_code')->label('Code')->placeholder('—')->searchable(),
-                TextColumn::make('employee.person.display_name')->label('Employee')->placeholder(fn (AttendancePunch $record) => 'Unknown: '.($record->payload['employee_code'] ?? '?')),
+                // HROne parity TX-1: the WO-2 employee search (code, names, work e-mail, designation).
+                TextColumn::make('employee.person.display_name')->label('Employee')->searchable(query: EmployeeFilters::search('employee'))->placeholder(fn (AttendancePunch $record) => 'Unknown: '.($record->payload['employee_code'] ?? '?')),
                 TextColumn::make('direction')->badge()->color(fn (string $state) => match ($state) {
                     'in' => 'success', 'out' => 'warning', default => 'gray'
                 }),
@@ -67,11 +70,13 @@ class AttendancePunchResource extends Resource
                     ->query(fn (Builder $query, array $data) => $query
                         ->when($data['from'] ?? null, fn (Builder $q, $d) => $q->whereDate('punched_at', '>=', $d))
                         ->when($data['until'] ?? null, fn (Builder $q, $d) => $q->whereDate('punched_at', '<=', $d))),
+                // HROne parity TX-1: the WO-2 employee filters.
+                ...TimeOfficeRegisters::filters('attendance.view'),
             ])
             ->defaultSort('punched_at', 'desc')
             ->recordActions([
                 Action::make('retry')->label('Retry')->icon('heroicon-m-arrow-path')->color('warning')
-                    ->visible(fn (AttendancePunch $record) => $record->processing_status === 'failed' && auth()->user()->can('attendance.manage'))
+                    ->visible(fn (AttendancePunch $record) => $record->processing_status === 'failed' && auth()->user()->can('punch', $record))
                     ->action(function (AttendancePunch $record) {
                         try {
                             $punch = app(PunchIngestion::class)->retry($record);

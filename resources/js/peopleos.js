@@ -350,24 +350,32 @@ components.posPanZoom = () => ({
  * forms. It reads only what is already in this form (labels and the values the person sees), lists each changed
  * field as Before → After (create: what has been filled in), and masks anything that looks like a secret. It sends
  * nothing anywhere and decides nothing: saving is still the page's own action.
+ * In a form followed as a wizard (FormWizard) it is the last step: it reads every step (each step is its own form),
+ * groups the fields by step and leaves out its own step (the reason for change).
  */
 components.posFormReview = (mode = 'edit') => ({
     mode,
     items: [],
     baseline: null,
     form: null,
+    ownStep: null,
     init() {
-        // A drawer form contains its review; a record page's review sits after the page form.
-        this.form = this.$root.closest('form') ?? this.$root.closest('.fi-page')?.querySelector('form');
+        // A wizard's review reads all its steps; a drawer form contains its review; a record page's review sits after the page form.
+        this.form = this.$root.closest('.fi-sc-wizard') ?? this.$root.closest('form') ?? this.$root.closest('.fi-page')?.querySelector('form');
+        this.ownStep = this.$root.closest('.fi-sc-wizard-step');
         if (!this.form) return;
         const update = () => { clearTimeout(this.t); this.t = setTimeout(() => this.refresh(), 120); };
-        // Snapshot once Livewire and the field components have rendered their values.
+        // Snapshot once Livewire and the field components have rendered their values. Until the person changes a field,
+        // what the form shows stays the starting point: selects and date pickers that finish loading later are no change.
+        const touch = (e) => { if (e.type !== 'click' || e.target.closest?.('.fi-fo-field')) this.touched = true; update(); };
         setTimeout(() => { this.baseline = this.read(); this.refresh(); }, 400);
-        ['input', 'change', 'click', 'keyup'].forEach((e) => this.form.addEventListener(e, update));
+        ['input', 'change', 'click', 'keyup'].forEach((e) => this.form.addEventListener(e, touch));
         new MutationObserver(update).observe(this.form, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-checked', 'value'] });
-        // After a successful save the saved values are the new baseline.
-        window.Livewire?.hook?.('commit', ({ component, succeed }) => {
-            if (component?.el?.contains?.(this.$root)) succeed(() => setTimeout(() => { if (!this.form.querySelector('.fi-fo-field-wrp-error-message, [data-validation-error]')) { this.baseline = this.read(); this.refresh(); } }, 300));
+        // After a successful save the saved values are the new baseline (other round trips, such as a wizard's Next or a
+        // live field, keep the changes listed).
+        window.Livewire?.hook?.('commit', ({ component, commit, succeed }) => {
+            const saved = (commit?.calls ?? []).some((c) => ['save', 'create'].includes(c.method));
+            if (saved && component?.el?.contains?.(this.$root)) succeed(() => setTimeout(() => { if (!this.form.querySelector('.fi-fo-field-wrp-error-message, [data-validation-error]')) { this.baseline = this.read(); this.touched = false; this.refresh(); } }, 300));
         });
     },
     secret(w) {
@@ -384,6 +392,8 @@ components.posFormReview = (mode = 'edit') => ({
         if (native) return [...native.selectedOptions].map((o) => o.textContent.trim()).filter((t) => t && !/^select an option$/i.test(t)).join(', ');
         const custom = w.querySelector('.fi-select-input');
         if (custom) {
+            // A placeholder ("Any", "Location timezone, then application default", …) is no value.
+            if (custom.querySelector('.fi-select-input-placeholder')) return '';
             const shown = custom.querySelector('.fi-select-input-value-label, .fi-select-input-value-ctn, .fi-select-input-btn');
             return (shown?.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/^Select an option$/i, '');
         }
@@ -394,29 +404,51 @@ components.posFormReview = (mode = 'edit') => ({
         if (radio) return radio.closest('label')?.textContent.trim() ?? radio.value;
         return [...w.querySelectorAll('input:not([type=hidden]):not([type=file]),textarea')].map((i) => i.value.trim()).filter(Boolean).join(' – ');
     },
+    // The wizard step a field sits in, named as in the step list.
+    stepLabel(w) {
+        const step = w.closest('.fi-sc-wizard-step');
+        if (!step) return '';
+        const steps = [...this.form.querySelectorAll(':scope > .fi-sc-wizard-step')];
+        const labels = this.form.querySelectorAll(':scope > .fi-sc-wizard-header .fi-sc-wizard-header-step-label');
+        return (labels[steps.indexOf(step)]?.textContent ?? '').trim();
+    },
     read() {
         const out = new Map();
         this.form.querySelectorAll('.fi-fo-field').forEach((w, i) => {
             if (w.closest('[x-cloak]') || w.parentElement?.closest('.fi-fo-field')) return;
+            if (this.ownStep && w.closest('.fi-sc-wizard-step') === this.ownStep) return;
             const label = (w.querySelector('.fi-fo-field-label-content')?.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/\s*\*$/, '');
             if (!label) return;
-            out.set(`${i}:${label}`, { label, value: String(this.fieldValue(w) ?? ""), secret: this.secret(w) });
+            out.set(`${i}:${label}`, { label, value: String(this.fieldValue(w) ?? ""), secret: this.secret(w), group: this.stepLabel(w) });
         });
         return out;
     },
     refresh() {
         if (!this.baseline) return;
         const now = this.read();
+        if (!this.touched) this.baseline = now;
         const items = [];
         // Create: everything filled in (defaults included) is reviewed, but only once the person has started.
         const started = [...now].some(([key, f]) => f.value !== (this.baseline.get(key)?.value ?? ''));
         now.forEach((f, key) => {
             const before = this.baseline.get(key)?.value ?? '';
             if (this.mode === 'create' ? started && f.value !== '' : f.value !== before) {
-                items.push({ label: f.label, before: f.secret ? (before ? '••••' : '') : before, after: f.secret ? '••••' : f.value });
+                items.push({ key, label: f.label, group: f.group, before: f.secret ? (before ? '••••' : '') : before, after: f.secret ? '••••' : f.value });
             }
         });
-        this.items = items;
+        // Only a real change re-renders: the review sits inside the form it watches.
+        const signature = JSON.stringify(items);
+        if (signature !== this.signature) { this.signature = signature; this.items = items; }
+    },
+    // The items by wizard step, in form order.
+    get groups() {
+        const groups = [];
+        this.items.forEach((item) => {
+            const last = groups[groups.length - 1];
+            if (last && last.label === item.group) last.items.push(item);
+            else groups.push({ label: item.group, items: [item] });
+        });
+        return groups;
     },
     submit() { this.form?.requestSubmit(); },
 });

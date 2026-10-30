@@ -12,13 +12,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A birthday wish one person sent another on the day (one per sender, recipient and year). Sent through
- * Birthdays::wish(); the message is the sender's own words, so it is kept out of the audit trail.
+ * A birthday wish one person sent another on the day (one per sender, recipient, year and kind). Sent through
+ * Birthdays::wish(); the message is the sender's own words, so it is kept out of the audit trail. HP-9a: `kind` is
+ * birthday, work_anniversary or wedding_anniversary (Anniversaries::wish()).
  */
-#[Fillable(['tenant_id', 'employee_id', 'sender_user_id', 'sender_employee_id', 'year', 'message', 'read_at'])]
+#[Fillable(['tenant_id', 'employee_id', 'sender_user_id', 'sender_employee_id', 'kind', 'year', 'message', 'read_at'])]
 class BirthdayWish extends Model
 {
     use Auditable, BelongsToTenant, ScopedByEmployee;
+
+    protected $attributes = ['kind' => 'birthday'];
 
     protected function casts(): array
     {

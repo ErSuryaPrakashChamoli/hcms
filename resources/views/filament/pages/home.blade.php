@@ -88,7 +88,12 @@
                     <span class="pos-ai-orb" aria-hidden="true"></span>
                     {{-- flex basis from .pos-welcome-note (wraps the buttons below the text on phones) --}}
                     <div class="min-w-0">
-                        <h2 id="pos-welcome-title" class="pos-stream-title font-semibold">Welcome to PeopleOS. Your work comes to you here.</h2>
+                        {{-- HROne setup parity HP-9a: the organisation's own welcome, when it wrote one --}}
+                        @if ($welcome = $this->welcomeMessage())
+                            <h2 id="pos-welcome-title" class="pos-stream-title font-semibold whitespace-pre-line">{{ $welcome }}</h2>
+                        @else
+                            <h2 id="pos-welcome-title" class="pos-stream-title font-semibold">Welcome to PeopleOS. Your work comes to you here.</h2>
+                        @endif
                         {{-- UX.17: the instructions match the device: keyboard and hover on desktop, tap on touch screens --}}
                         <p class="pos-stream-meta pos-for-fine">What matters is ranked here with the reason for each item. Press <span class="pos-kbd">Ctrl K</span> to find anyone or start anything, and <span class="pos-kbd">?</span> for every shortcut. Hover a name to peek; click it for more.</p>
                         <p class="pos-stream-meta pos-for-touch">What matters is ranked here, each with its reason. Search finds anyone; the + button starts anything. Tap a name for more.</p>

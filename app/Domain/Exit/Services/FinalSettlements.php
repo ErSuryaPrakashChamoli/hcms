@@ -148,6 +148,13 @@ final class FinalSettlements
             $recoverable = (float) $case->clearances()->sum('recoverable_amount');
             $add('deduction', 'ASSET_RECOVERY', 'Asset recovery', $recoverable, ['from_clearances' => true]);
 
+            // HROne parity: money other modules settle at exit (outstanding loans …), from tagged settlement sources.
+            foreach (app()->tagged('peopleos.settlement_sources') as $source) {
+                foreach ($source->linesFor($case, $settlement) as $line) {
+                    $add($line['type'], $line['code'], $line['name'], (float) $line['amount'], $line['basis'] ?? []);
+                }
+            }
+
             $this->total($settlement);
             $settlement->update(['status' => 'calculated', 'inputs' => $inputs, 'calculated_at' => now()]);
             $this->audit->record(AuditAction::PayrollCalculated, 'exit', $settlement, [], null, actor: $actor, metadata: ['net' => (float) $settlement->net_amount, 'exit_case' => $case->number]);
@@ -218,6 +225,10 @@ final class FinalSettlements
         }
         $settlement->update(['status' => 'paid', 'paid_at' => now(), 'payment_reference' => $reference]);
         $this->audit->record(AuditAction::PayrollFinalized, 'exit', $settlement, [['field' => 'status', 'before' => 'approved', 'after' => 'paid']], $reference, actor: $actor);
+        $settlement->loadMissing('exitCase');
+        foreach (app()->tagged('peopleos.settlement_sources') as $source) {
+            $source->settled($settlement->exitCase, $settlement);
+        }
         ExitEvent::dispatch('exit.settlement.paid', $settlement->employee()->first(), $settlement, ['net' => (float) $settlement->net_amount, 'reference' => $reference], array_filter([$settlement->employee()->value('user_id')]));
 
         return $settlement;

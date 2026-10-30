@@ -2,6 +2,7 @@
 
 namespace App\Filament\Support;
 
+use App\Domain\Employment\Models\Employee;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -48,7 +49,7 @@ final class RuleConditionsSchema
     {
         $type = config("peopleos.rules.fields.{$field}.type");
 
-        return in_array($type, ['model', 'enum', 'options'], true);
+        return in_array($type, ['model', 'enum', 'options', 'employee'], true);
     }
 
     /** @return array<string|int, string> */
@@ -60,8 +61,29 @@ final class RuleConditionsSchema
             'model' => $definition['model']::query()->orderBy('name')->pluck('name', 'id')->all(),
             'enum' => collect($definition['enum']::cases())->mapWithKeys(fn ($c) => [$c->value => $c->getLabel()])->all(),
             'options' => config('peopleos.'.$definition['options_key'], []),
+            'employee' => self::employees(),
             default => [],
         };
+    }
+
+    /**
+     * Employees as "code · name", by id: all of them (capped) for a picker, or only the ids given (to label stored
+     * conditions).
+     *
+     * @param  list<int|string>|null  $ids
+     * @return array<int, string>
+     */
+    public static function employees(?array $ids = null, ?string $search = null): array
+    {
+        $term = '%'.trim((string) $search).'%';
+
+        return Employee::query()->with('person')
+            ->when($ids !== null, fn ($q) => $q->whereKey($ids))
+            ->when(filled($search), fn ($q) => $q->where(fn ($q) => $q->where('employee_code', 'like', $term)
+                ->orWhereHas('person', fn ($p) => $p->where('first_name', 'like', $term)->orWhere('last_name', 'like', $term)->orWhere('preferred_name', 'like', $term))))
+            ->orderBy('employee_code')->limit($ids === null ? 500 : count($ids))->get()
+            ->mapWithKeys(fn (Employee $e) => [$e->id => $e->employee_code.' · '.$e->person?->full_name])
+            ->all();
     }
 
     /** Human-readable rendering of stored conditions. */
@@ -73,7 +95,7 @@ final class RuleConditionsSchema
         $parts = array_map(function (array $c) use ($fields, $operators) {
             $label = $fields[$c['field']]['label'] ?? $c['field'];
             $op = $operators[$c['operator']] ?? $c['operator'];
-            $options = self::optionsFor($c['field']);
+            $options = ($fields[$c['field']]['type'] ?? null) === 'employee' ? self::employees(array_values((array) ($c['value'] ?? []))) : self::optionsFor($c['field']);
             $values = array_map(fn ($v) => $options[$v] ?? $v, (array) ($c['value'] ?? []));
 
             return trim("{$label} {$op} ".implode(', ', $values));

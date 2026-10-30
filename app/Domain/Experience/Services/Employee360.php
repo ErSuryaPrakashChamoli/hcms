@@ -68,7 +68,14 @@ final class Employee360
             'currentPosition.location', 'currentPosition.designation', 'currentManager.manager.person']);
         $p = $employee->currentPosition;
         $sections = [];
-        $add = function (string $key, string $label, string $owner, bool $allowed, callable $facts) use (&$sections) {
+        // HROne setup parity CA-6: summaries of profile sections (skills, documents) also follow the profile-section matrix,
+        // which can only hide them.
+        $matrix = app(ProfileSectionVisibility::class);
+        $profileSections = ['skills' => 'skills', 'documents' => 'documents'];
+        $add = function (string $key, string $label, string $owner, bool $allowed, callable $facts) use (&$sections, $matrix, $profileSections, $viewer, $employee) {
+            if ($allowed && isset($profileSections[$key]) && ! $matrix->allows($viewer, $employee, $profileSections[$key])) {
+                return;
+            }
             if ($allowed) {
                 $sections[] = ['key' => $key, 'label' => $label, 'owner' => $owner, 'facts' => $facts()];
             }
@@ -106,8 +113,9 @@ final class Employee360
         });
         $mayPerformance = $viewer->hasPermission('performance.view') || $manages || $own;
         $add('performance', 'Performance', 'Performance', $mayPerformance, function () use ($scoped, $viewer, $manages, $own) {
-            $appraisal = $scoped(Appraisal::class)->latest('id')->first(['status', 'final_label']);
-            $label = $appraisal && in_array($appraisal->status, ['finalized', 'acknowledged'], true) && ($viewer->hasPermission('performance.view') || $manages || $own) ? $appraisal->final_label : null;
+            $appraisal = $scoped(Appraisal::class)->latest('id')->first(['status', 'final_label', 'published_at']);
+            // HROne setup parity HP-8b: the employee sees the outcome once it is published (auto: at finalization).
+            $label = $appraisal && in_array($appraisal->status, ['finalized', 'acknowledged'], true) && ($viewer->hasPermission('performance.view') || $manages || ($own && $appraisal->published_at !== null)) ? $appraisal->final_label : null;
 
             return ['Latest review' => $appraisal ? str_replace('_', ' ', (string) $appraisal->status) : null, 'Outcome' => $label];
         });

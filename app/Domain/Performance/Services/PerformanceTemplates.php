@@ -18,7 +18,9 @@ use RuntimeException;
 final class PerformanceTemplates
 {
     /**
-     * @param  array{sections?: list<string>, rating_scale_id: int, competency_ids?: list<int>, workflow: list<array{key: string}>, weights?: array<string, float>, goal_rules?: array<string, mixed>}  $content
+     * HP-8c: competency_rating_scale_id (optional) snapshots a separate scale for competencies.
+     *
+     * @param  array{sections?: list<string>, rating_scale_id: int, competency_rating_scale_id?: ?int, competency_ids?: list<int>, workflow: list<array{key: string}>, weights?: array<string, float>, goal_rules?: array<string, mixed>}  $content
      */
     public function publish(PerformanceTemplate $template, array $content, ?User $actor = null): PerformanceTemplateVersion
     {
@@ -42,9 +44,10 @@ final class PerformanceTemplates
         }
 
         $scale = RatingScale::query()->findOrFail($content['rating_scale_id']);
+        $competencyScale = empty($content['competency_rating_scale_id']) ? null : RatingScale::query()->findOrFail($content['competency_rating_scale_id']);
         $competencies = Competency::query()->whereIn('id', $content['competency_ids'] ?? [])->orderBy('id')->get();
 
-        return DB::transaction(function () use ($template, $content, $sections, $scale, $competencies, $weights, $actor) {
+        return DB::transaction(function () use ($template, $content, $sections, $scale, $competencyScale, $competencies, $weights, $actor) {
             PerformanceTemplate::query()->whereKey($template->getKey())->lockForUpdate()->first();
 
             return PerformanceTemplateVersion::query()->create([
@@ -53,6 +56,8 @@ final class PerformanceTemplates
                 'sections' => $sections,
                 'rating_scale_id' => $scale->getKey(),
                 'rating_scale_snapshot' => ['id' => $scale->getKey(), 'code' => $scale->code, 'name' => $scale->name, 'levels' => $scale->levels],
+                'competency_rating_scale_id' => $competencyScale?->getKey(),
+                'competency_scale_snapshot' => $competencyScale === null ? null : ['id' => $competencyScale->getKey(), 'code' => $competencyScale->code, 'name' => $competencyScale->name, 'levels' => $competencyScale->levels],
                 'competency_snapshot' => $competencies->map(fn (Competency $c) => ['id' => $c->id, 'code' => $c->code, 'name' => $c->name, 'category' => $c->category, 'level' => $c->level, 'weight' => $c->weight, 'indicators' => $c->indicators])->all(),
                 'workflow' => array_values($content['workflow']),
                 'weights' => $weights,
@@ -75,6 +80,7 @@ final class PerformanceTemplates
         $cycle->update([
             'performance_template_version_id' => $version->id,
             'rating_scale_id' => $version->rating_scale_id,
+            'competency_rating_scale_id' => $version->competency_rating_scale_id,
             'competency_ids' => array_column($version->competency_snapshot, 'id'),
             'weights' => $version->weights,
             'stages' => collect($keys)->map(fn ($k) => $windows[$k] ?? ['key' => $k, 'name' => config("peopleos.performance.stages.{$k}")])->values()->all(),
@@ -92,6 +98,9 @@ final class PerformanceTemplates
         }
         if ((int) $cycle->rating_scale_id !== (int) $version->rating_scale_id) {
             $differs[] = 'rating scale';
+        }
+        if ((int) $cycle->competency_rating_scale_id !== (int) $version->competency_rating_scale_id) {
+            $differs[] = 'competency rating scale';
         }
         $ids = fn (array $a) => collect($a)->map(fn ($v) => (int) $v)->sort()->values()->all();
         if ($ids($cycle->competency_ids ?? []) !== $ids(array_column($version->competency_snapshot, 'id'))) {
@@ -122,6 +131,7 @@ final class PerformanceTemplates
 
         return $this->publish($template, [
             'rating_scale_id' => $cycle->rating_scale_id,
+            'competency_rating_scale_id' => $cycle->competency_rating_scale_id,
             'competency_ids' => $cycle->competency_ids ?? [],
             'workflow' => $cycle->stages ?? [],
             'weights' => $cycle->weights ?: config('peopleos.performance.default_weights'),

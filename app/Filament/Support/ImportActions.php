@@ -9,6 +9,10 @@ use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\BankAccountImports;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImports;
+use App\Domain\Employment\Imports\ImportDownloads;
+use App\Domain\Employment\Imports\ImportGovernance;
+use App\Domain\Employment\Imports\RowImports;
+use App\Domain\Employment\Imports\RowImportTypes;
 use App\Domain\Organisation\Models\Company;
 use App\Filament\Resources\CompensationCycles\CompensationCycleResource;
 use Filament\Actions\Action;
@@ -21,6 +25,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Carbon;
 use League\Csv\Reader;
 use RuntimeException;
@@ -38,15 +43,18 @@ final class ImportActions
         AttendanceSheetImports::TYPE => [AttendanceSheetImports::class, 'Monthly attendance upload'],
     ];
 
-    public static function service(EmployeeImport|string $import): EmployeeImports|PunchImports|SalaryImports|BankAccountImports|AttendanceSheetImports
+    public static function service(EmployeeImport|string $import): EmployeeImports|PunchImports|SalaryImports|BankAccountImports|AttendanceSheetImports|RowImports
     {
-        return app(self::TYPES[is_string($import) ? $import : $import->type][0] ?? EmployeeImports::class);
+        $type = is_string($import) ? $import : $import->type;
+
+        // HROne parity: one-row-one-change uploads (leave balances, roster, geo locations, overtime …).
+        return app(self::TYPES[$type][0] ?? RowImportTypes::TYPES[$type][0] ?? EmployeeImports::class);
     }
 
     /** @return array<string, array{0: string, 1: string}>|null mode => [label, description], for the imports that offer the choice */
     public static function modes(string $type): ?array
     {
-        $class = self::TYPES[$type][0] ?? EmployeeImports::class;
+        $class = self::TYPES[$type][0] ?? RowImportTypes::TYPES[$type][0] ?? EmployeeImports::class;
 
         return defined("{$class}::MODES") ? $class::MODES : null;
     }
@@ -57,14 +65,17 @@ final class ImportActions
         $svc = fn (EmployeeImport $record) => self::service($record);
         $fieldsFor = fn (EmployeeImport $record) => collect(($svc($record))::fields($record))->mapWithKeys(fn ($def, $key) => [$key => $def[0].($def[1] ? ' *' : '')])->all();
         $is = fn (string $type) => fn (EmployeeImport $record) => $record->type === $type;
+        // HROne setup parity P2: under maker-checker or workflow approval the checker approves or discards; preparing the
+        // file stays with its uploader.
+        $maker = fn (EmployeeImport $record) => ! ImportGovernance::checkedByAnother((string) $record->type) || (int) $record->uploaded_by === (int) auth()->id();
 
         return [
             Action::make('inspect')->label('Inspect file')->icon('heroicon-m-magnifying-glass')
-                ->visible(fn (EmployeeImport $record) => in_array($record->status, ['uploaded', 'inspected'], true))
+                ->visible(fn (EmployeeImport $record) => in_array($record->status, ['uploaded', 'inspected'], true) && $maker($record))
                 ->action(fn (EmployeeImport $record) => self::run(fn () => $svc($record)->inspect($record), fn (EmployeeImport $i) => "{$i->row_count} row(s) staged; ".count($i->mapping ?? []).' column(s) mapped automatically')),
 
             Action::make('map')->label('Map columns')->icon('heroicon-m-arrows-right-left')
-                ->visible(fn (EmployeeImport $record) => in_array($record->status, ['inspected', 'mapped', 'validated'], true))
+                ->visible(fn (EmployeeImport $record) => in_array($record->status, ['inspected', 'mapped', 'validated'], true) && $maker($record))
                 ->fillForm(fn (EmployeeImport $record) => ['mapping' => collect($record->headers ?? [])->mapWithKeys(fn ($h, $i) => [(string) $i => $record->mapping[$h] ?? null])->all(), 'mode' => ImportMode::of($record)->value]
                     + collect($record->options ?? [])->only(['timezone', 'company_id', 'effective_from', 'month', 'blank_days'])->all())
                 ->schema(fn (EmployeeImport $record) => [
@@ -93,11 +104,16 @@ final class ImportActions
                 }),
 
             Action::make('validate')->label('Validate rows')->icon('heroicon-m-check-badge')
-                ->visible(fn (EmployeeImport $record) => in_array($record->status, ['mapped', 'validated'], true))
+                ->visible(fn (EmployeeImport $record) => in_array($record->status, ['mapped', 'validated'], true) && $maker($record))
                 ->action(fn (EmployeeImport $record) => self::run(fn () => $svc($record)->validate($record), fn (EmployeeImport $i) => "{$i->valid_count} valid, {$i->error_count} with errors, {$i->review_count} to review")),
 
+            // HROne setup parity P2: what approval waits for (another person, or the upload's workflow).
+            Action::make('awaitingApproval')->label(fn (EmployeeImport $record) => ImportGovernance::waitingFor($record, auth()->user()) ?? 'Waiting for approval')
+                ->icon('heroicon-m-clock')->color('gray')->disabled()
+                ->visible(fn (EmployeeImport $record) => ImportGovernance::waitingFor($record, auth()->user()) !== null),
+
             Action::make('approve')->label('Approve import')->icon('heroicon-m-hand-thumb-up')->color('warning')
-                ->visible(fn (EmployeeImport $record) => $record->status === 'validated')
+                ->visible(fn (EmployeeImport $record) => $record->status === 'validated' && ImportGovernance::mayApproveNow($record, auth()->user()))
                 ->requiresConfirmation()
                 ->modalDescription(fn (EmployeeImport $record) => match ($record->type) {
                     PunchImports::TYPE => "This will record {$record->create_count} punch(es); {$record->error_count} row(s) with errors and {$record->skip_count} duplicate(s) will be skipped. Attendance is recalculated from the punches.",
@@ -123,11 +139,45 @@ final class ImportActions
                 ->visible(fn (EmployeeImport $record) => $record->type === SalaryImports::TYPE && filled($record->options['compensation_cycle_id'] ?? null))
                 ->url(fn (EmployeeImport $record) => CompensationCycleResource::getUrl('view', ['record' => $record->options['compensation_cycle_id']])),
 
+            // HROne setup parity P2 (Recent imports): the file as uploaded and the result of every row, audited.
+            self::downloadOriginal(),
+            self::downloadResults(),
+
             Action::make('discard')->label('Discard')->icon('heroicon-m-trash')->color('danger')
                 ->visible(fn (EmployeeImport $record) => ! in_array($record->status, ['importing', 'imported', 'discarded'], true))
                 ->requiresConfirmation()
                 ->action(fn (EmployeeImport $record) => self::run(fn () => $svc($record)->discard($record), 'Import discarded')),
         ];
+    }
+
+    /** HROne setup parity P2: download the file as uploaded (audited; only for people who may open the upload). */
+    public static function downloadOriginal(): Action
+    {
+        return Action::make('downloadFile')->label('Download file')->icon(Heroicon::OutlinedArrowDownTray)->color('gray')
+            ->visible(fn (EmployeeImport $record) => auth()->user()?->can('view', $record) ?? false)
+            ->action(fn (EmployeeImport $record) => self::download(fn () => app(ImportDownloads::class)->original($record, auth()->user())));
+    }
+
+    /** HROne setup parity P2: download every staged row with its action, outcome and errors (audited). */
+    public static function downloadResults(): Action
+    {
+        return Action::make('downloadResults')->label('Download results')->icon(Heroicon::OutlinedDocumentArrowDown)->color('gray')
+            ->visible(fn (EmployeeImport $record) => $record->status !== 'uploaded' && (auth()->user()?->can('view', $record) ?? false))
+            ->action(fn (EmployeeImport $record) => self::download(fn () => app(ImportDownloads::class)->results($record, auth()->user())));
+    }
+
+    /** @param  callable(): array{0: string, 1: string}  $file */
+    private static function download(callable $file): mixed
+    {
+        try {
+            [$name, $contents] = $file();
+
+            return response()->streamDownload(fn () => print ($contents), $name, ['Content-Type' => 'text/csv']);
+        } catch (AuthorizationException|RuntimeException $e) {
+            Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
+
+            return null;
+        }
     }
 
     /** The "new or existing" choice an upload offers, with what each choice does. */
@@ -175,7 +225,7 @@ final class ImportActions
     public static function formatAction(string $type): Action
     {
         return Action::make('format')->label('File format')->icon(Heroicon::OutlinedInformationCircle)->color('gray')
-            ->modalHeading(self::TYPES[$type][1].': file format')->modalWidth('4xl')
+            ->modalHeading((self::TYPES[$type][1] ?? RowImportTypes::TYPES[$type][1] ?? $type).': file format')->modalWidth('4xl')
             ->modalContent(fn () => view('filament.imports.csv-format', self::formatData($type)))
             ->modalSubmitAction(false)->modalCancelActionLabel('Close');
     }
@@ -188,7 +238,7 @@ final class ImportActions
 
         $sample = $format['sample'] ?? $service->template();
 
-        return ['title' => self::TYPES[$type][1], 'columns' => $format['columns'], 'codes' => $format['codes'] ?? null, 'modes' => self::modes($type),
+        return ['title' => self::TYPES[$type][1] ?? RowImportTypes::TYPES[$type][1] ?? $type, 'columns' => $format['columns'], 'codes' => $format['codes'] ?? null, 'codesTitle' => $format['codes_title'] ?? null, 'modes' => self::modes($type),
             'notes' => $format['notes'], 'sample' => $sample, 'sampleRows' => iterator_to_array(Reader::fromString($sample)->getRecords(), false)];
     }
 

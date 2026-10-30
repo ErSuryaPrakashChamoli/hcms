@@ -167,6 +167,12 @@
         </x-filament::section>
     @elseif ($tab === 'documents')
         <x-filament::section heading="My documents" description="From your document record. Downloads use a short-lived private link and are audited.">
+            {{-- HROne setup parity CA-4: documents the organisation needs from everyone, and the employee's own uploads. --}}
+            @php($missingDocuments = $this->getMissingDocuments())
+            @if ($missingDocuments->isNotEmpty())
+                <p class="mb-3 text-sm text-warning-600 dark:text-warning-400">Still needed from you: {{ $missingDocuments->pluck('name')->implode(', ') }}.</p>
+            @endif
+            <div class="mb-3">{{ $this->uploadDocumentAction }}</div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead><tr class="text-left text-gray-500"><th class="py-1">Document</th><th>Category</th><th>Status</th><th>Version</th><th>Expires</th><th class="sr-only">Download</th></tr></thead>
@@ -174,7 +180,7 @@
                         @forelse ($this->getDocuments() as $doc)
                             <tr class="border-t border-gray-200 dark:border-gray-700">
                                 <td class="py-1">{{ $doc->title }}</td>
-                                <td>{{ config('peopleos.documents.categories.'.($doc->type?->category ?? 'other'), '—') }}</td>
+                                <td>{{ app(\App\Domain\Configuration\Services\OptionLists::class)->label('document_categories', $doc->type?->category ?? 'other') ?? '—' }}</td>
                                 <td>{{ ucfirst((string) $doc->status) }}</td>
                                 <td>v{{ $doc->version }}</td>
                                 <td>{{ $doc->expires_on?->toDateString() ?? '—' }}</td>

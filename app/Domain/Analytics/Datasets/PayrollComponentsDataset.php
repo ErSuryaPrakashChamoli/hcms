@@ -45,6 +45,12 @@ class PayrollComponentsDataset extends Dataset
         ];
     }
 
+    /** HROne parity CA-10: rows come from payroll runs (a view's payroll refresh day applies). */
+    public function payrollRunPath(): ?string
+    {
+        return 'entry.run';
+    }
+
     public function query(): Builder
     {
         // Lines are not access-scoped themselves; requiring a visible entry applies the viewer's scope.

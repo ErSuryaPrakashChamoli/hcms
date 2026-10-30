@@ -2,6 +2,7 @@
 
 namespace App\Domain\Employment\Actions;
 
+use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Exceptions\DuplicatePersonException;
 use App\Domain\Employment\Exceptions\EmployeeCodeTakenException;
@@ -64,10 +65,11 @@ final class HireEmployeeAction
             $probationEnd = isset($employee['probation_end_date'])
                 ? Carbon::parse($employee['probation_end_date'])
                 : $joiningDate->copy()->addMonths((int) $this->settings->get('employee.probation.default_months', 6));
+            $probationGiven = isset($employee['probation_end_date']);
 
             $record = new Employee([
                 'person_id' => $personModel->getKey(),
-                'employee_code' => $employee['employee_code'] ?? $this->codes->next(isset($position['company_id']) ? (int) $position['company_id'] : null),
+                'employee_code' => $employee['employee_code'] ?? $this->codes->next(isset($position['company_id']) ? (int) $position['company_id'] : null, isset($position['employment_type_id']) ? (int) $position['employment_type_id'] : null),
                 'lifecycle_state' => LifecycleState::PreEmployee,
                 'joining_date' => $joiningDate,
                 'probation_end_date' => $probationEnd,
@@ -81,6 +83,12 @@ final class HireEmployeeAction
 
             if ($managerId !== null) {
                 $this->managers->handle($record, Employee::query()->findOrFail($managerId), 'line', $joiningDate, $reason);
+            }
+
+            // HROne setup parity: the confirmation policy that applies once the position is known may set the probation.
+            $months = app(PolicyResolver::class)->resolve('confirmation', $record, $joiningDate)?->setting('probation_months');
+            if (! $probationGiven && is_numeric($months)) {
+                $record->withAuditReason($reason)->update(['probation_end_date' => $joiningDate->copy()->addMonths((int) $months)]);
             }
 
             if ($joiningDate->isFuture()) {

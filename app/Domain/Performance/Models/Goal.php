@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A goal / objective / KRA / KPI (§34). Cascades company → business → department → team → employee
  * through parent_id; organisation-level goals carry an organisation_node_id instead of an employee.
  */
-#[Fillable(['tenant_id', 'level', 'employee_id', 'organisation_node_id', 'parent_id', 'performance_cycle_id', 'kra_id', 'type', 'title', 'description', 'measure_type', 'start_value', 'target_value', 'current_value', 'unit', 'weight', 'progress', 'status', 'start_date', 'due_date', 'is_locked', 'created_by', 'source', 'measurement', 'lock_version'])]
+#[Fillable(['tenant_id', 'level', 'employee_id', 'organisation_node_id', 'parent_id', 'performance_cycle_id', 'kra_id', 'type', 'title', 'description', 'measure_type', 'start_value', 'target_value', 'current_value', 'unit', 'weight', 'progress', 'status', 'start_date', 'due_date', 'is_locked', 'created_by', 'source', 'measurement', 'lock_version', 'perspective_id', 'unit_id', 'is_reverse', 'kpi_rating_formula_id', 'goal_template_id'])]
 class Goal extends Model
 {
     use Auditable, BelongsToTenant;
@@ -87,7 +87,7 @@ class Goal extends Model
         return [
             'start_value' => 'decimal:2', 'target_value' => 'decimal:2', 'current_value' => 'decimal:2',
             'weight' => 'integer', 'progress' => 'decimal:2', 'is_locked' => 'boolean',
-            'start_date' => 'date', 'due_date' => 'date', 'lock_version' => 'integer',
+            'start_date' => 'date', 'due_date' => 'date', 'lock_version' => 'integer', 'is_reverse' => 'boolean',
         ];
     }
 
@@ -129,6 +129,30 @@ class Goal extends Model
     public function kra(): BelongsTo
     {
         return $this->belongsTo(Kra::class);
+    }
+
+    /** HP-8a: the goal's perspective (performance master). */
+    public function perspective(): BelongsTo
+    {
+        return $this->belongsTo(PerformanceLookup::class, 'perspective_id');
+    }
+
+    /** HP-8a: the unit of measurement (the `unit` text keeps the code as it was when chosen). */
+    public function measurementUnit(): BelongsTo
+    {
+        return $this->belongsTo(PerformanceUnit::class, 'unit_id');
+    }
+
+    /** HP-8c: the KPI rating formula that turns the goal's achievement into a rating. */
+    public function kpiRatingFormula(): BelongsTo
+    {
+        return $this->belongsTo(KpiRatingFormula::class);
+    }
+
+    /** HP-8e: the goal template the goal was created from (system mapping or "Use template"). */
+    public function goalTemplate(): BelongsTo
+    {
+        return $this->belongsTo(GoalTemplate::class);
     }
 
     public function keyResults(): HasMany

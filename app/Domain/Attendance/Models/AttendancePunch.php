@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** A raw, normalised punch. Never edited; corrections are regularisations. */
-#[Fillable(['tenant_id', 'employee_id', 'punched_at', 'direction', 'source', 'source_type', 'source_timezone', 'attendance_device_id', 'external_id', 'fingerprint', 'latitude', 'longitude', 'payload', 'received_at', 'processing_status', 'processing_error', 'processed_at', 'correlation_id', 'recorded_by', 'note'])]
+#[Fillable(['tenant_id', 'employee_id', 'punched_at', 'direction', 'source', 'source_type', 'source_timezone', 'attendance_device_id', 'external_id', 'fingerprint', 'latitude', 'longitude', 'payload', 'received_at', 'processing_status', 'processing_error', 'processed_at', 'correlation_id', 'recorded_by', 'note', 'geo_status', 'attendance_geo_fence_id', 'geo_distance_m', 'device_identifier', 'photos', 'face_verified', 'ip_address', 'wifi_ssid', 'wifi_bssid'])]
 class AttendancePunch extends Model
 {
     use BelongsToTenant;
@@ -21,7 +21,7 @@ class AttendancePunch extends Model
 
     protected function casts(): array
     {
-        return ['punched_at' => 'datetime', 'received_at' => 'datetime', 'processed_at' => 'datetime', 'payload' => 'array', 'latitude' => 'decimal:7', 'longitude' => 'decimal:7'];
+        return ['punched_at' => 'datetime', 'received_at' => 'datetime', 'processed_at' => 'datetime', 'payload' => 'array', 'latitude' => 'decimal:7', 'longitude' => 'decimal:7', 'photos' => 'array', 'face_verified' => 'boolean'];
     }
 
     public function employee(): BelongsTo

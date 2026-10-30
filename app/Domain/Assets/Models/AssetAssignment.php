@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Custody of an asset by an employee: active until returned. The exit clearance (Phase 13) reads active rows. */
-#[Fillable(['tenant_id', 'asset_id', 'employee_id', 'assigned_on', 'expected_return_on', 'returned_on', 'condition_out', 'condition_in', 'acknowledged_at', 'status', 'note', 'return_note', 'assigned_by'])]
+#[Fillable(['tenant_id', 'asset_id', 'employee_id', 'assigned_on', 'expected_return_on', 'returned_on', 'condition_out', 'condition_in', 'acknowledged_at', 'acknowledgement_reminded_at', 'status', 'note', 'return_note', 'assigned_by'])]
 class AssetAssignment extends Model
 {
     use Auditable, BelongsToTenant;
@@ -22,7 +22,7 @@ class AssetAssignment extends Model
 
     protected function casts(): array
     {
-        return ['assigned_on' => 'date', 'expected_return_on' => 'date', 'returned_on' => 'date', 'acknowledged_at' => 'datetime'];
+        return ['assigned_on' => 'date', 'expected_return_on' => 'date', 'returned_on' => 'date', 'acknowledged_at' => 'datetime', 'acknowledgement_reminded_at' => 'datetime'];
     }
 
     public function auditModule(): string

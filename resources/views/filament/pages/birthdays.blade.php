@@ -1,5 +1,16 @@
 <x-filament-panels::page>
     <div class="pos-ws">
+        {{-- HROne setup parity HP-9a: one tab per occasion the organisation celebrates (birthdays only: no tabs, as before). --}}
+        @if (count($this->kinds()) > 1)
+            <nav class="pos-lens pos-lens-scroll" aria-label="Celebrations" x-data x-init="posRevealChip($el, $el.querySelector('[aria-pressed=true]'))">
+                @foreach ($this->kinds() as $k => $label)
+                    <button type="button" class="pos-lens-chip" aria-pressed="{{ $kind === $k ? 'true' : 'false' }}" wire:click="selectKind(@js($k))">{{ $label }}</button>
+                @endforeach
+            </nav>
+        @endif
+        @if ($kind !== 'birthday')
+            @include('filament.pages.birthdays.anniversaries')
+        @else
         @if ($this->myWishes->isNotEmpty())
             <x-pos.section title="Wishes for you" :count="$this->myWishes->count()">
                 <div class="pos-panel pos-stream">
@@ -58,5 +69,6 @@
                 </div>
             @endif
         </x-pos.section>
+        @endif
     </div>
 </x-filament-panels::page>

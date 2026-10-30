@@ -9,16 +9,19 @@ use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
 use App\Domain\ServiceDesk\Exceptions\ServiceDeskRuleViolation;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Models\TicketAccessGrant;
 use App\Domain\ServiceDesk\Models\TicketCategory;
 use App\Domain\ServiceDesk\Models\TicketComment;
+use App\Domain\Workflow\Enums\InstanceStatus;
 use App\Domain\Workflow\Models\Workflow;
 use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Domain\Workflow\Services\WorkflowEngine;
 use App\Support\Numbering\NumberSequences;
+use App\Support\Numbering\NumberSeries;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
@@ -147,13 +150,28 @@ final class ServiceDesk
         return $this->lifecycle->move($ticket, 'waiting_hr', $actor, AuditAction::RequestStatusChanged, $reason, [], 'user', $expectedVersion, asWorker: true);
     }
 
-    public function resolve(Ticket $ticket, string $resolution, ?User $actor = null, ?int $articleId = null, ?int $expectedVersion = null): Ticket
+    /**
+     * Resolve with the resolution text. HROne setup parity HD-A: a category that makes RCA mandatory needs the root cause
+     * (free text; optionally a code from peopleos.servicedesk.root_causes), checked under the request lock.
+     */
+    public function resolve(Ticket $ticket, string $resolution, ?User $actor = null, ?int $articleId = null, ?int $expectedVersion = null, ?string $rootCause = null, ?string $rootCauseCode = null): Ticket
     {
         $actor ??= $this->actor();
         $this->assertWorker($actor, $ticket);
+        $rootCause = filled($rootCause) ? trim($rootCause) : null;
+        $rootCauseCode = filled($rootCauseCode) ? $rootCauseCode : null;
+        if ($rootCauseCode !== null && ! array_key_exists($rootCauseCode, (array) config('peopleos.servicedesk.root_causes', []))) {
+            throw new ServiceDeskRuleViolation('Unknown root cause.');
+        }
         $instance = null;
         $resolved = $this->lifecycle->move($ticket, 'resolved', $actor, AuditAction::RequestResolved, $resolution, [], 'user', $expectedVersion,
-            guard: function (Ticket $fresh) use ($resolution, $articleId, &$instance) {
+            guard: function (Ticket $fresh) use ($resolution, $articleId, $rootCause, $rootCauseCode, &$instance) {
+                if ($rootCause === null && (bool) TicketCategory::query()->whereKey($fresh->ticket_category_id)->value('rca_required')) {
+                    throw new ServiceDeskRuleViolation('This category needs the root cause (RCA) before the request is resolved.');
+                }
+                if ($rootCause !== null || $rootCauseCode !== null) {
+                    $fresh->fill(array_filter(['root_cause' => $rootCause, 'root_cause_code' => $rootCauseCode], fn ($v) => $v !== null));
+                }
                 if (in_array($fresh->domain_action_status, ['ready', 'awaiting_approval'], true)) {
                     // Resolved without executing the change: the pending change is withdrawn and its values purged.
                     $fresh->fill(['domain_action_status' => 'cancelled'] + $this->executor->purge($fresh));
@@ -182,9 +200,31 @@ final class ServiceDesk
             throw new ServiceDeskRuleViolation('You cannot close this request.');
         }
         $rating = ! $system && $this->isRequester($actor, $ticket) ? array_filter(['satisfaction' => $satisfaction, 'satisfaction_comment' => $comment], fn ($v) => $v !== null) : [];
+        // HROne setup parity HD-A: a category may not take feedback (no rating is kept), and the organisation may make the
+        // requester's rating mandatory where it does. The system's automatic close is exempt.
+        if ($rating !== [] && ! $this->takesFeedback($ticket)) {
+            $rating = [];
+        }
+        if (! $system && $this->isRequester($actor, $ticket) && $satisfaction === null && $this->feedbackRequired($ticket)) {
+            throw new ServiceDeskRuleViolation('Rate the help (1 to 5) to close the request.');
+        }
 
         return $this->lifecycle->move($ticket, 'closed', $actor, AuditAction::RequestClosed, $system ? 'Closed automatically after resolution' : null, $rating, $system ? 'system' : 'user', $expectedVersion,
             notify: ['event' => 'servicedesk.ticket.closed', 'recipients' => [$ticket->assignee_id]]);
+    }
+
+    /** HROne setup parity HD-A: whether the request's category asks the requester for feedback. */
+    public function takesFeedback(Ticket $ticket): bool
+    {
+        $enabled = TicketCategory::query()->whereKey($ticket->ticket_category_id)->value('feedback_enabled');
+
+        return $enabled === null || (bool) $enabled;
+    }
+
+    /** HROne setup parity HD-A: the requester must rate the help to close (organisation setting, where feedback is taken). */
+    public function feedbackRequired(Ticket $ticket): bool
+    {
+        return (bool) app(SettingsRepository::class)->get('servicedesk.feedback_required', false) && $this->takesFeedback($ticket);
     }
 
     public function reopen(Ticket $ticket, string $reason, ?User $actor = null, ?int $expectedVersion = null): Ticket
@@ -295,11 +335,18 @@ final class ServiceDesk
         return app(ServiceDeskProcessor::class)->run();
     }
 
-    /** Collision-free numbers for service desk records (TKT, GRV) — a locked sequence per tenant and year. */
+    /**
+     * Collision-free numbers for service desk records (TKT, GRV) — a locked sequence per tenant and year. HROne setup
+     * parity: tickets follow the tenant's ticket code series (NumberSeries `ticket`, built-in TKT-YYYY-NNNNN).
+     */
     public function nextNumber(string $prefix): string
     {
-        $model = $prefix === 'TKT' ? Ticket::class : Grievance::class;
-        $seed = NumberSequences::highest($model);
+        if ($prefix === 'TKT') {
+            app(NumberSeries::class)->prepare('ticket');
+
+            return app(NumberSeries::class)->next('ticket');
+        }
+        $seed = NumberSequences::highest(Grievance::class);
         $this->numbers->ensure($prefix, $seed);
 
         return $this->numbers->next($prefix, $seed);
@@ -338,7 +385,7 @@ final class ServiceDesk
     private function cancelWorkflow(?int $instanceId, string $reason): void
     {
         $instance = $instanceId ? WorkflowInstance::query()->find($instanceId) : null;
-        if ($instance !== null && $instance->status->isOpen()) {
+        if ($instance !== null && in_array($instance->status, InstanceStatus::inFlight(), true)) {
             $this->workflows->cancel($instance, $reason);
         }
     }

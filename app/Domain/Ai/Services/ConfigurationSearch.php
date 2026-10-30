@@ -5,8 +5,8 @@ namespace App\Domain\Ai\Services;
 /** "What do you want to configure?" (§103): keyword search over the admin configuration map. */
 final class ConfigurationSearch
 {
-    /** Words too general to pick out a setting on their own ("probation period" is about probation). */
-    private const GENERIC_WORDS = ['period', 'setting', 'settings', 'policy', 'days', 'time', 'change', 'rule', 'rules'];
+    /** Words too general to pick out a setting on their own ("probation period" is about probation; "working hours" is not about every limit counted in hours). */
+    private const GENERIC_WORDS = ['period', 'setting', 'settings', 'policy', 'days', 'hours', 'time', 'change', 'rule', 'rules'];
 
     /** @return array<int, array{label: string, url: string, score: int}> */
     public function search(string $term, int $limit = 8): array

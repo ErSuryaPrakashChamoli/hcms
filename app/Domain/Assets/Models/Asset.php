@@ -13,12 +13,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use RuntimeException;
 
 /**
  * One physical or licensed item (§38). Status moves only through the Assets service so every
  * change leaves a movement row: in_stock → assigned → (in_repair | in_transit) → … → retired / disposed / lost.
  */
-#[Fillable(['tenant_id', 'asset_category_id', 'asset_model_id', 'company_id', 'location_id', 'asset_tag', 'name', 'serial_number', 'status', 'condition', 'custodian_id', 'purchase_date', 'purchase_cost', 'vendor', 'invoice_number', 'warranty_until', 'notes'])]
+#[Fillable(['tenant_id', 'asset_category_id', 'asset_subtype_id', 'asset_model_id', 'company_id', 'location_id', 'asset_tag', 'name', 'serial_number', 'status', 'condition', 'custodian_id', 'purchase_date', 'purchase_cost', 'vendor', 'invoice_number', 'warranty_until', 'notes'])]
 class Asset extends Model
 {
     use Auditable, BelongsToTenant, HasCustomFields;
@@ -27,7 +28,42 @@ class Asset extends Model
 
     protected static function booted(): void
     {
-        static::saving(fn (self $a) => $a->asset_tag = strtoupper(trim((string) $a->asset_tag)));
+        static::saving(function (self $a): void {
+            $a->asset_tag = strtoupper(trim((string) $a->asset_tag));
+            self::checkTaxonomy($a);
+        });
+    }
+
+    /**
+     * HROne setup parity AS-A: the sub type follows the product when not chosen, must belong to the asset type, and a sub
+     * type that does not allow duplicate serial numbers refuses a serial another of its assets already carries.
+     */
+    private static function checkTaxonomy(self $asset): void
+    {
+        $attributes = $asset->getAttributes();
+        if (($attributes['asset_subtype_id'] ?? null) === null && ($attributes['asset_model_id'] ?? null) !== null) {
+            $fromModel = AssetModel::query()->whereKey($attributes['asset_model_id'])->value('asset_subtype_id');
+            if ($fromModel !== null) {
+                $asset->asset_subtype_id = (int) $fromModel;
+            }
+        }
+        $subtypeId = $asset->getAttributes()['asset_subtype_id'] ?? null;
+        if ($subtypeId === null) {
+            return;
+        }
+        $subtype = AssetSubtype::query()->find($subtypeId) ?? throw new RuntimeException('Unknown asset sub type.');
+        if ((int) $subtype->asset_category_id !== (int) $asset->asset_category_id) {
+            throw new RuntimeException("The sub type {$subtype->name} belongs to another asset type.");
+        }
+        $serial = trim((string) ($attributes['serial_number'] ?? ''));
+        if ($subtype->allow_duplicate_serial || $serial === '' || ! $asset->isDirty(['serial_number', 'asset_subtype_id', 'asset_model_id'])) {
+            return;
+        }
+        $clash = self::query()->where('asset_subtype_id', $subtype->id)->whereRaw('LOWER(TRIM(serial_number)) = ?', [mb_strtolower($serial)])
+            ->when($asset->exists, fn ($q) => $q->whereKeyNot($asset->getKey()))->value('asset_tag');
+        if ($clash !== null) {
+            throw new RuntimeException("Serial number {$serial} is already used by asset {$clash}; the sub type {$subtype->name} does not allow duplicate serial numbers.");
+        }
     }
 
     protected function casts(): array
@@ -53,6 +89,11 @@ class Asset extends Model
     public function model(): BelongsTo
     {
         return $this->belongsTo(AssetModel::class, 'asset_model_id');
+    }
+
+    public function subtype(): BelongsTo
+    {
+        return $this->belongsTo(AssetSubtype::class, 'asset_subtype_id');
     }
 
     public function company(): BelongsTo

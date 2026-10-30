@@ -6,8 +6,10 @@ use App\Domain\Communication\Models\Announcement;
 use App\Domain\Communication\Models\AnnouncementRead;
 use App\Domain\Communication\Services\CommunicationPreferences;
 use App\Domain\Communication\Services\Communications;
+use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Documents\Policies\EmployeeDocumentPolicy;
+use App\Domain\Documents\Services\DocumentRules;
 use App\Domain\Documents\Services\Documents;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Engagement\Models\SurveyVersion;
@@ -16,6 +18,7 @@ use App\Domain\Engagement\Services\Feedback;
 use App\Domain\Engagement\Services\SurveyResponses;
 use App\Domain\Experience\Services\ExperienceTasks;
 use App\Domain\Experience\Services\NeedsAttention;
+use App\Domain\Experience\Services\ProfileSectionVisibility;
 use App\Domain\Identity\Services\CurrentEmployee;
 use App\Domain\Knowledge\Models\Article;
 use App\Domain\Knowledge\Services\KnowledgeBase;
@@ -25,14 +28,23 @@ use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Services\CaseAccess;
 use App\Domain\ServiceDesk\Services\ServiceCatalogue;
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Filament\Support\DocumentUploadHint;
 use App\Filament\Support\EngagementActions;
 use App\Filament\Support\ServiceDeskActions;
+use App\Support\Storage\StagedUpload;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Url;
+use RuntimeException;
 use UnitEnum;
 
 /**
@@ -128,12 +140,52 @@ class MyHr extends Page
     public function getDocuments(): Collection
     {
         $me = self::me();
-        if ($me === null || ! auth()->user()->hasPermission('document.own')) {
+        // HROne setup parity CA-6: the profile-section matrix (documents, for the employee) can only hide them.
+        if ($me === null || ! auth()->user()->hasPermission('document.own') || ! app(ProfileSectionVisibility::class)->allowsAudience('employee', 'documents')) {
             return collect();
         }
 
         return EmployeeDocument::query()->with('type')->where('employee_id', $me->id)->where('status', '!=', 'archived')->orderByDesc('id')->get()
             ->filter(fn (EmployeeDocument $d) => EmployeeDocumentPolicy::isOwn(auth()->user(), $d))->values();
+    }
+
+    /** HROne setup parity CA-4: document types every employee must have and I have none of (pending or verified). */
+    public function getMissingDocuments(): Collection
+    {
+        $me = self::me();
+
+        return $me === null || ! auth()->user()->hasPermission('document.own') || ! app(ProfileSectionVisibility::class)->allowsAudience('employee', 'documents')
+            ? collect() : app(DocumentRules::class)->missing($me)->toBase();
+    }
+
+    /** HROne setup parity CA-4: upload a document of a type employees may upload; HR verifies it. */
+    public function uploadDocumentAction(): Action
+    {
+        return Action::make('uploadDocument')->label('Upload a document')->icon(Heroicon::OutlinedArrowUpTray)
+            ->visible(fn () => self::me() !== null && auth()->user()->hasPermission('document.own') && app(DocumentRules::class)->selfUploadTypes()->isNotEmpty())
+            ->modalDescription('HR verifies the document before it counts as verified.')
+            ->schema([
+                Select::make('document_type_id')->label('Document type')->required()->live()
+                    ->options(fn () => app(DocumentRules::class)->selfUploadTypes()->pluck('name', 'id')->all()),
+                DocumentUploadHint::make(),
+                FileUpload::make('file')->required()->disk(StagedUpload::disk())->directory('tmp-uploads')->maxSize(config('peopleos.documents.max_kb'))
+                    ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
+                DatePicker::make('issued_on')->native(false),
+                DatePicker::make('expires_on')->native(false)->required(fn (Get $get) => (bool) DocumentType::query()->find($get('document_type_id'))?->requires_expiry),
+                // HROne parity MS-3 (22.2.9 #5): the uploader's comment, shown with the document.
+                Textarea::make('comment')->label('Comment (optional)')->rows(2)->maxLength(500),
+            ])
+            ->action(function (array $data) {
+                $file = StagedUpload::toUploadedFile($data['file']);
+                try {
+                    app(DocumentRules::class)->employeeUpload(auth()->user(), self::me(), DocumentType::query()->findOrFail($data['document_type_id']), $file, $data['expires_on'] ?? null, $data['issued_on'] ?? null, $data['comment'] ?? null);
+                    Notification::make()->success()->title('Document uploaded')->body('HR will verify it.')->send();
+                } catch (RuntimeException $e) {
+                    Notification::make()->danger()->title('Not uploaded')->body($e->getMessage())->send();
+                } finally {
+                    StagedUpload::discard($data['file'], $file);
+                }
+            });
     }
 
     public function documentUrl(EmployeeDocument $document): string

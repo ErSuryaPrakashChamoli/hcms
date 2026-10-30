@@ -166,6 +166,8 @@ enum AuditAction: string
     case SurveyInvitationSent = 'SURVEY_INVITATION_SENT';
     case SurveyResponseSubmitted = 'SURVEY_RESPONSE_SUBMITTED';
     case ConfidentialResponseIdentified = 'CONFIDENTIAL_RESPONSE_IDENTIFIED';
+    // HROne setup parity HP-9f: a mood check-in (anonymous unless identified; never the mood, reasons or comment).
+    case MoodCheckInSubmitted = 'MOOD_CHECKIN_SUBMITTED';
     case FeedbackSubmitted = 'FEEDBACK_SUBMITTED';
     case CampaignCreated = 'CAMPAIGN_CREATED';
     case CampaignApproved = 'CAMPAIGN_APPROVED';
@@ -195,6 +197,10 @@ enum AuditAction: string
     case ExternalReferenceRetired = 'EXTERNAL_REFERENCE_RETIRED';
     case WebhookDeadLettered = 'WEBHOOK_DEAD_LETTERED';
     case WebhookReplayed = 'WEBHOOK_REPLAYED';
+    // HROne parity SV-26: a dead letter marked as seen (it leaves the endpoint's failure count); an API key replaced by a
+    // new one with the same name and scopes (the old key is revoked in the same step).
+    case WebhookAcknowledged = 'WEBHOOK_ACKNOWLEDGED';
+    case ApiKeyRegenerated = 'API_KEY_REGENERATED';
     // SaaS.2: identity lifecycle and platform operator governance. No event ever carries a token, code or secret.
     case InvitationIssued = 'INVITATION_ISSUED';
     case InvitationAccepted = 'INVITATION_ACCEPTED';
@@ -295,6 +301,8 @@ enum AuditAction: string
     case InvitationFailed = 'INVITATION_FAILED';
     case DeferredWorkReleased = 'DEFERRED_WORK_RELEASED';
     case NotificationResent = 'NOTIFICATION_RESENT'; // tenant chain
+    // HROne parity WO-2: HR e-mailed an employee from the Employee 360 or a register (subject and recipients; never the body).
+    case EmployeeEmailed = 'EMPLOYEE_EMAILED';
     // SaaS.9: data export, offboarding, legal holds, retention and deletion (platform chain; tenant chain while it exists).
     case OffboardingRequested = 'OFFBOARDING_REQUESTED';
     case OffboardingCancelled = 'OFFBOARDING_CANCELLED';
@@ -352,6 +360,14 @@ enum AuditAction: string
     case SignupEmailSent = 'SIGNUP_EMAIL_SENT';
     case SignupEmailFailed = 'SIGNUP_EMAIL_FAILED';
     case SignupActivationResent = 'SIGNUP_ACTIVATION_RESENT';
+    // HROne setup parity (TO-8): an attendance device or sync server stopped sending punches and was reported.
+    case AttendanceDeviceAlerted = 'ATTENDANCE_DEVICE_ALERTED';
+    // HROne parity RQ-2: a requester reminded the approvers of their request / informed colleagues of it (ids, never text).
+    case RequestReminderSent = 'REQUEST_REMINDER_SENT';
+    case RequestIntimated = 'REQUEST_INTIMATED';
+    // HROne parity RQ-8: a system-generated workflow task closed as not relevant (with the reason), and brought back.
+    case TaskNotRelevant = 'TASK_NOT_RELEVANT';
+    case TaskRestored = 'TASK_RESTORED';
 
     public function label(): string
     {

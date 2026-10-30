@@ -31,6 +31,8 @@ enum Capability: string
     case Workforce = 'workforce';
     case Assets = 'assets';
     case ServiceDesk = 'service_desk';
+    // HROne setup parity (Expense): business expenses, advances and travel.
+    case Expense = 'expense';
     case Engagement = 'engagement';
     case Exit = 'exit';
     case Analytics = 'analytics';
@@ -98,6 +100,7 @@ enum Capability: string
         return match ($this) {
             self::Core => 'HCM core and security',
             self::ServiceDesk => 'Service desk',
+            self::Expense => 'Expense and travel',
             self::EnterpriseIdentity => 'Enterprise identity (SSO, SCIM)',
             self::Warehouse => 'Data warehouse feed',
             self::Ai => 'AI assistants',
@@ -174,7 +177,11 @@ enum Capability: string
             self::Core => ['tenant', 'company', 'user', 'role', 'settings', 'features', 'audit', 'organisation', 'people_setup', 'custom_field', 'form',
                 'policy', 'configuration', 'blueprint', 'workflow', 'task', 'document', 'legal_entity', 'establishment', 'security', 'currency', 'notification', 'employee',
                 // SaaS.9: a customer's export of their own data is a core right, never sold separately.
-                'data'],
+                'data',
+                // HROne setup parity P13: feedback templates and question banks (Forms & templates).
+                'feedback',
+                // HROne parity WO-1: bulk actions on registers (each record keeps its own module's permission).
+                'bulk'],
             self::Onboarding => ['onboarding', 'bgv'],
             self::Attendance => ['attendance'],
             self::Leave => ['leave'],
@@ -186,7 +193,8 @@ enum Capability: string
             self::Workforce => ['workforce'],
             self::Assets => ['asset'],
             self::ServiceDesk => ['servicedesk', 'grievance', 'kb'],
-            self::Engagement => ['communication', 'engagement', 'celebration'],
+            self::Expense => ['expense'],
+            self::Engagement => ['communication', 'engagement', 'celebration', 'recognition', 'wall'],
             self::Exit => ['exit', 'letter', 'alumni'],
             self::Analytics => ['analytics'],
             self::Ai => ['ai'],

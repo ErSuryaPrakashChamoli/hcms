@@ -22,7 +22,7 @@ use InvalidArgumentException;
  * a satellite; everything about the employment lives on Employee.
  */
 #[UseFactory(PersonFactory::class)]
-#[Fillable(['tenant_id', 'first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'birthday_month', 'birthday_day', 'birthday_shared', 'gender', 'marital_status', 'nationality', 'blood_group', 'personal_email', 'personal_phone', 'photo_path', 'metadata'])]
+#[Fillable(['tenant_id', 'first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'birthday_month', 'birthday_day', 'birthday_shared', 'wedding_anniversary_month', 'wedding_anniversary_day', 'wedding_anniversary_shared', 'directory_hidden', 'gender', 'marital_status', 'nationality', 'blood_group', 'personal_email', 'personal_phone', 'photo_path', 'metadata'])]
 class Person extends Model
 {
     /** @use HasFactory<PersonFactory> */
@@ -30,7 +30,7 @@ class Person extends Model
 
     protected $table = 'people';
 
-    protected $attributes = ['birthday_shared' => true];
+    protected $attributes = ['birthday_shared' => true, 'wedding_anniversary_shared' => false];
 
     public const MONTHS = [1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April', 5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August', 9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'];
 
@@ -46,6 +46,16 @@ class Person extends Model
                 throw new InvalidArgumentException("{$day}/{$month} is not a day of the year.");
             }
             $person->birthday_key = $person->birthdayKey();
+
+            // HROne setup parity HP-9a: the wedding anniversary is a day and month only (no year); a month without a day
+            // clears both.
+            $month = $person->getAttributes()['wedding_anniversary_month'] ?? null;
+            $day = $person->getAttributes()['wedding_anniversary_day'] ?? null;
+            if ($month === null || $day === null || $month === '' || $day === '') {
+                $person->wedding_anniversary_month = $person->wedding_anniversary_day = null;
+            } elseif (! self::validBirthday((int) $month, (int) $day)) {
+                throw new InvalidArgumentException("{$day}/{$month} is not a day of the year.");
+            }
         });
     }
 
@@ -57,6 +67,10 @@ class Person extends Model
             'birthday_day' => 'integer',
             'birthday_key' => 'integer',
             'birthday_shared' => 'boolean',
+            'wedding_anniversary_month' => 'integer',
+            'wedding_anniversary_day' => 'integer',
+            'wedding_anniversary_shared' => 'boolean',
+            'directory_hidden' => 'array',
             'metadata' => 'array',
         ];
     }
@@ -85,6 +99,15 @@ class Person extends Model
         $key = $this->birthdayKey();
 
         return $key === null ? null : ($key % 100).' '.self::MONTHS[intdiv($key, 100)];
+    }
+
+    /** "14 February": the wedding anniversary, when recorded (HP-9a). */
+    public function weddingAnniversaryLabel(): ?string
+    {
+        $month = $this->getAttributes()['wedding_anniversary_month'] ?? null;
+        $day = $this->getAttributes()['wedding_anniversary_day'] ?? null;
+
+        return $month && $day ? ((int) $day).' '.self::MONTHS[(int) $month] : null;
     }
 
     /** A celebrated birthday is recorded and differs from the date of birth. */

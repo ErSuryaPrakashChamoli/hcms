@@ -68,6 +68,12 @@ class PayrollDataset extends Dataset
         ];
     }
 
+    /** HROne parity CA-10: rows come from payroll runs (a view's payroll refresh day applies). */
+    public function payrollRunPath(): ?string
+    {
+        return 'run';
+    }
+
     public function query(): Builder
     {
         return PayrollEntry::query()->with(['run.period', 'run.company', ...self::employeeWith('employee'), 'employee.statutoryDetail', 'employee.bankAccounts', 'lines'])

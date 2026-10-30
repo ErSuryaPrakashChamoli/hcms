@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Communication\Models\Announcement;
 use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Experience\Services\ExperiencePreferences;
@@ -15,6 +16,8 @@ use App\Domain\Letters\Models\Letter;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Services\CaseAccess;
+use App\Domain\Workflow\Models\RequestReturn;
+use App\Domain\Workflow\Models\TaskComment;
 use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Domain\Workflow\Models\WorkflowTask;
 use App\Filament\Resources\CompensationChanges\CompensationChangeResource;
@@ -231,6 +234,11 @@ class NotificationCenter extends Page
                 $record instanceof Payslip => $user->can('view', $record) ? PayslipResource::getUrl('view', ['record' => $record]) : null,
                 $record instanceof ExitCase => $user->can('view', $record) ? ExitCaseResource::getUrl('view', ['record' => $record]) : null,
                 $record instanceof CompensationChange => CompensationChangeResource::canAccess() ? CompensationChangeResource::getUrl('index') : null,
+                // HROne setup parity P3 / P2: a send-back opens the requester's "Sent back to me" (or the approver's queue), a
+                // message its discussion, an upload its own screen.
+                $record instanceof RequestReturn => (int) $record->requester_id === (int) $user->id ? TaskInbox::getUrl(['tab' => 'returned']) : (Approvals::canAccess() ? Approvals::getUrl() : null),
+                $record instanceof TaskComment => RequestDiscussion::getUrl(['comment' => $record->id]),
+                $record instanceof EmployeeImport => RecentUploads::urlFor($record),
                 default => null,
             };
         } catch (Throwable) {

@@ -13,8 +13,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Part L: an investment / deduction proof against an employee's tax declaration (employee_tax_declarations).
  * Rows filed through the declaration wizard carry an InvestmentCatalogue item_key; details (the landlord) is encrypted.
+ * HROne parity PY-12: the employee submits the proof (files and the amount they show) in the proof window; payroll
+ * verifies it, and from the date set in payroll.tax.verified_proofs_from TDS counts only verified amounts.
  */
-#[Fillable(['tenant_id', 'employee_id', 'employee_tax_declaration_id', 'financial_year', 'section', 'item_key', 'description', 'details', 'declared_amount', 'proof_amount', 'proof_status', 'employee_document_id', 'verified_by', 'verified_at', 'notes'])]
+#[Fillable(['tenant_id', 'employee_id', 'employee_tax_declaration_id', 'financial_year', 'section', 'item_key', 'description', 'details', 'declared_amount', 'proof_amount', 'proof_status', 'employee_document_id', 'proof_files', 'proof_claimed_amount', 'proof_submitted_at', 'verified_by', 'verified_at', 'notes'])]
 class TdsEmployeeInvestment extends Model
 {
     use Auditable, BelongsToTenant, ScopedByEmployee;
@@ -23,7 +25,8 @@ class TdsEmployeeInvestment extends Model
 
     protected function casts(): array
     {
-        return ['declared_amount' => 'decimal:2', 'proof_amount' => 'decimal:2', 'details' => 'encrypted:array', 'verified_at' => 'datetime'];
+        return ['declared_amount' => 'decimal:2', 'proof_amount' => 'decimal:2', 'details' => 'encrypted:array', 'verified_at' => 'datetime',
+            'proof_files' => 'array', 'proof_claimed_amount' => 'decimal:2', 'proof_submitted_at' => 'datetime'];
     }
 
     /** @return list<string> */

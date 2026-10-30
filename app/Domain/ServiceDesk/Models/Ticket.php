@@ -35,7 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'tenant_id', 'number', 'ticket_category_id', 'service_definition_id', 'service_definition_version_id', 'employee_id', 'raised_by', 'source', 'subject',
     'description', 'form_data', 'form_data_purged_at', 'priority', 'confidentiality', 'visible_to_employee', 'status', 'assignee_id', 'assigned_role_id',
     'owner_id', 'first_response_due_at', 'first_responded_at', 'due_at', 'escalated_at', 'resolved_at', 'resolved_by', 'closed_at', 'resolution',
-    'satisfaction', 'satisfaction_comment', 'article_id', 'workflow_instance_id', 'sla_policy_id', 'sla_mode', 'submitted_at', 'acknowledged_at',
+    'root_cause', 'root_cause_code', 'resolver_rule_id', 'satisfaction', 'satisfaction_comment', 'article_id', 'workflow_instance_id', 'sla_policy_id', 'sla_mode', 'submitted_at', 'acknowledged_at',
     'assigned_at', 'status_changed_at', 'sla_paused_at', 'sla_paused_minutes', 'escalation_level', 'cancelled_at', 'domain_action', 'domain_action_status',
     'domain_reference_type', 'domain_reference_id', 'domain_action_executed_at', 'domain_action_executed_by', 'approved_by', 'approved_at',
     'idempotency_key', 'correlation_id', 'operation_id', 'lock_version',
@@ -78,7 +78,7 @@ class Ticket extends Model
 
     public function auditSensitiveAttributes(): array
     {
-        return ['description', 'resolution', 'satisfaction_comment', 'form_data', 'subject'];
+        return ['description', 'resolution', 'root_cause', 'satisfaction_comment', 'form_data', 'subject'];
     }
 
     public function category(): BelongsTo
@@ -104,6 +104,12 @@ class Ticket extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    /** HROne setup parity HD-B: the resolver rule that routed the request at submission (if any). */
+    public function resolverRule(): BelongsTo
+    {
+        return $this->belongsTo(ServiceResolverRule::class, 'resolver_rule_id');
     }
 
     public function raiser(): BelongsTo

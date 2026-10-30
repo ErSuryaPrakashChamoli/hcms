@@ -87,6 +87,14 @@
                 <div><strong>Deferred jobs:</strong> {{ $selected['deferred'] }} @if ($selected['deferred'] > 0 && ! $selected['tenant']->isAccessible()) (dispatched again when the tenant is reactivated) @endif</div>
                 <div><strong>Stuck notifications</strong> are marked failed by the recovery sweep; an administrator of the tenant can send a failed one again from its delivery log.</div>
                 @if ($selected['invitation_needed'])<div><strong>First administrator:</strong> no invitation they can accept: use <em>Send invitation</em> on the Tenants list.</div>@endif
+                @php($contacts = $this->contacts($selected['tenant']))
+                <div><strong>Contacts:</strong>
+                    @forelse ($contacts as $contact)
+                        {{ $contact['type'] }}: {{ $contact['name'] }}{{ $contact['email'] ? ' <'.$contact['email'].'>' : '' }}{{ $contact['mobile'] ? ' · '.$contact['mobile'] : '' }}{{ $contact['company'] ? ' ('.$contact['company'].')' : '' }}@if (! $loop->last); @endif
+                    @empty
+                        none named (the organisation adds them at Core HR → Organisation contacts).
+                    @endforelse
+                </div>
                 @if ($selected['audit'] && ! $selected['audit']->valid)<div class="text-danger-600 dark:text-danger-400"><strong>Audit chain broken</strong> at event {{ $selected['audit']->broken_event_id }}: {{ $selected['audit']->reason }}. Follow the incident runbook.</div>@endif
             </div>
         </x-filament::section>
