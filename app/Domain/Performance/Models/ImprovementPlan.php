@@ -16,16 +16,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A performance improvement plan (§34). Sensitive. Phase 7: status changes follow TRANSITIONS;
  * a closed, cancelled or withdrawn plan is read-only.
  */
-#[Fillable(['tenant_id', 'employee_id', 'manager_id', 'appraisal_id', 'start_date', 'end_date', 'reason', 'objectives', 'status', 'outcome', 'closure_reason', 'closed_at', 'created_by', 'lock_version'])]
+#[Fillable(['tenant_id', 'employee_id', 'manager_id', 'appraisal_id', 'start_date', 'end_date', 'reason', 'objectives', 'status', 'outcome', 'closure_reason', 'closed_at', 'created_by', 'lock_version', 'reason_codes', 'extension_count', 'approved_by', 'approved_at', 'decision_note', 'requested_outcome', 'evaluation_from'])]
 class ImprovementPlan extends Model
 {
     use Auditable, BelongsToTenant;
     use ScopedByEmployee;
 
+    /** HP-8f: pending_approval (PIP policy approval) and pending_outcome (outcome waiting for approval). */
     public const TRANSITIONS = [
-        'draft' => ['active', 'cancelled'],
-        'active' => ['extended', 'completed', 'unsuccessful', 'cancelled', 'withdrawn'],
-        'extended' => ['extended', 'completed', 'unsuccessful', 'cancelled', 'withdrawn'],
+        'draft' => ['active', 'cancelled', 'pending_approval'],
+        'pending_approval' => ['active', 'cancelled'],
+        'active' => ['extended', 'completed', 'unsuccessful', 'cancelled', 'withdrawn', 'pending_outcome'],
+        'extended' => ['extended', 'completed', 'unsuccessful', 'cancelled', 'withdrawn', 'pending_outcome'],
+        'pending_outcome' => ['completed', 'unsuccessful', 'active', 'extended'],
         'completed' => ['closed'],
         'unsuccessful' => ['closed'],
         'closed' => [],
@@ -34,6 +37,9 @@ class ImprovementPlan extends Model
     ];
 
     public const FINAL = ['closed', 'cancelled', 'withdrawn'];
+
+    /** HP-8f: a plan not yet closed in any way (one per employee at a time). */
+    public const UNDECIDED = ['draft', 'pending_approval', 'active', 'extended', 'pending_outcome'];
 
     protected $attributes = ['status' => 'draft'];
 
@@ -63,7 +69,7 @@ class ImprovementPlan extends Model
 
     protected function casts(): array
     {
-        return ['start_date' => 'date', 'end_date' => 'date', 'objectives' => 'array', 'closed_at' => 'datetime', 'lock_version' => 'integer'];
+        return ['start_date' => 'date', 'end_date' => 'date', 'objectives' => 'array', 'closed_at' => 'datetime', 'lock_version' => 'integer', 'reason_codes' => 'array', 'extension_count' => 'integer', 'approved_at' => 'datetime'];
     }
 
     public function auditModule(): string
@@ -78,7 +84,7 @@ class ImprovementPlan extends Model
 
     public function auditSensitiveAttributes(): array
     {
-        return ['reason', 'objectives', 'outcome', 'closure_reason'];
+        return ['reason', 'objectives', 'outcome', 'closure_reason', 'decision_note'];
     }
 
     public function employee(): BelongsTo
@@ -99,6 +105,12 @@ class ImprovementPlan extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** HROne parity GO-1: who approved the plan (PIP policy approval), for the "Approved by" column. */
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     public function checkpoints(): HasMany

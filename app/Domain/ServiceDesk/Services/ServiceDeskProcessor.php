@@ -153,7 +153,8 @@ final class ServiceDeskProcessor
     private function acknowledgementReminders(): int
     {
         $week = Carbon::now()->format('o-\WW');
-        $days = (int) config('peopleos.servicedesk.policy_acknowledgement_reminder_days', 7);
+        // HROne setup parity HP-9a: from the handbook's due days when set (kb.acknowledgement.due_days), else as before.
+        $days = app(KnowledgeBase::class)->reminderDays();
         if (! app(KnowledgeBase::class)->hasAcknowledgementsDue($days) || ! $this->claimRaw('kb_ack_sweep', 'Tenant', 0, $week)) {
             return 0;
         }

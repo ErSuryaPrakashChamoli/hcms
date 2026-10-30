@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\Experience\Services\ProfileSectionVisibility;
 use App\Domain\Skills\Models\EmployeeSkill;
 use App\Domain\Skills\Services\SkillProfiles;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -20,7 +21,9 @@ class SkillsRelationManager extends RelationManager
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        return auth()->user()?->can('view', new EmployeeSkill(['employee_id' => $ownerRecord->id])) ?? false;
+        // HROne setup parity CA-6: the profile-section matrix (section skills) can only hide the tab.
+        return (auth()->user()?->can('view', new EmployeeSkill(['employee_id' => $ownerRecord->id])) ?? false)
+            && app(ProfileSectionVisibility::class)->allows(auth()->user(), $ownerRecord, 'skills');
     }
 
     public function table(Table $table): Table

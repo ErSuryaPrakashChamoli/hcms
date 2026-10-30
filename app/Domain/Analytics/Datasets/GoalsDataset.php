@@ -35,6 +35,10 @@ class GoalsDataset extends Dataset
             ...$this->employeeFields(fn ($g) => $g->employee),
             'title' => ['label' => 'Goal', 'type' => 'string', 'value' => fn ($g) => $g->title],
             'type' => ['label' => 'Type', 'type' => 'string', 'value' => fn ($g) => $g->type],
+            // HROne setup parity HP-8a / HP-8c: perspective, unit of measurement and reverse KPIs.
+            'perspective' => ['label' => 'Perspective', 'type' => 'string', 'value' => fn ($g) => $g->perspective?->name],
+            'unit' => ['label' => 'Unit of measurement', 'type' => 'string', 'value' => fn ($g) => $g->measurementUnit?->display() ?? $g->unit],
+            'is_reverse' => ['label' => 'Lower is better', 'type' => 'boolean', 'value' => fn ($g) => (bool) $g->is_reverse],
             'weight' => ['label' => 'Weight (%)', 'type' => 'number', 'value' => fn ($g) => $g->weight !== null ? (int) $g->weight : null],
             'progress' => ['label' => 'Progress (%)', 'type' => 'number', 'value' => fn ($g) => $g->progress !== null ? (float) $g->progress : null],
             'status' => ['label' => 'Status', 'type' => 'string', 'value' => fn ($g) => $g->status],
@@ -47,6 +51,6 @@ class GoalsDataset extends Dataset
 
     public function query(): Builder
     {
-        return Goal::query()->with([...self::employeeWith('employee'), 'cycle'])->orderByDesc('id');
+        return Goal::query()->with([...self::employeeWith('employee'), 'cycle', 'perspective', 'measurementUnit'])->orderByDesc('id');
     }
 }

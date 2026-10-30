@@ -54,6 +54,8 @@ class ConfigurationFinder extends Page
         'payroll' => 'pay', 'compensation' => 'pay',
         'security' => 'access',
         'retention' => 'data', 'warehouse' => 'data', 'ai' => 'data',
+        // HROne setup parity HP-8a…c: the performance settings and terminology.
+        'performance' => 'growth',
     ];
 
     #[Url]

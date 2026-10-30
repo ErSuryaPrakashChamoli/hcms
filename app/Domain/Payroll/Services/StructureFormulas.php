@@ -6,6 +6,7 @@ use App\Domain\Compensation\Services\CompensationDefaults;
 use App\Domain\Compliance\Services\StatutoryEngine;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Support\FormulaVariables;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use RuntimeException;
 
@@ -26,19 +27,33 @@ final class StructureFormulas
     public function __construct(private readonly FormulaEngine $formulas, private readonly StatutoryEngine $statutory) {}
 
     /**
+     * HROne setup parity BP-2: `$options` carries the version's `ctc_mode` (ctc, the default, or components) and
+     * `balancing_component_id` (null = none). Input components are read anywhere in the structure and never calculated;
+     * a balancing component must be the last CTC line and balance to ctc_monthly; a structure built from components may
+     * not use CTC in its formulas. Without inputs or options the check is as before.
+     *
      * @param  list<array{component: SalaryComponent, formula_override?: ?string, sort_order?: int}>  $lines
      * @param  array<string, float|int|string>  $parameters
+     * @param  array{ctc_mode?: ?string, balancing_component_id?: int|string|null}  $options
      * @return array{errors: list<string>, warnings: list<string>}
      */
-    public function check(array $lines, array $parameters = []): array
+    public function check(array $lines, array $parameters = [], array $options = []): array
     {
         $errors = [];
         $warnings = [];
         $ordered = self::ordered($lines);
         $position = [];
+        $inputs = [];
         foreach ($ordered as $i => $line) {
             $position[$line['component']->variableName()] = $i;
+            if ($line['component']->isInput()) {
+                $inputs[$line['component']->variableName()] = true;
+                if (filled($line['formula_override'] ?? null)) {
+                    $errors[] = "{$line['component']->code} is an input taken from each employee's compensation; remove its formula override.";
+                }
+            }
         }
+        $componentsMode = ($options['ctc_mode'] ?? 'ctc') === 'components';
 
         foreach ($parameters as $name => $value) {
             $name = (string) $name;
@@ -74,7 +89,12 @@ final class StructureFormulas
 
             $names = $this->formulas->variablesIn($formula);
             foreach ($names as $name) {
-                if (isset(FormulaVariables::PAY[$name]) || isset(FormulaVariables::EMPLOYEE[$name]) || array_key_exists($name, $parameters)) {
+                if ($componentsMode && in_array($name, ['ctc_annual', 'ctc_monthly', 'pf_employer'], true)) {
+                    $errors[] = "{$code} uses {$name}: this structure is built from component amounts, and its CTC is worked out from them. Use amounts, inputs or parameters instead.";
+
+                    continue;
+                }
+                if (isset(FormulaVariables::PAY[$name]) || isset(FormulaVariables::EMPLOYEE[$name]) || array_key_exists($name, $parameters) || isset($inputs[$name])) {
                     continue;
                 }
                 if ($name === $component->variableName()) {
@@ -106,7 +126,84 @@ final class StructureFormulas
             }
         }
 
+        if (filled($options['balancing_component_id'] ?? null)) {
+            $errors = [...$errors, ...$this->balancingErrors($ordered, (int) $options['balancing_component_id'], $componentsMode)];
+        }
+
         return ['errors' => array_values(array_unique($errors)), 'warnings' => array_values(array_unique($warnings))];
+    }
+
+    /**
+     * HROne setup parity BP-2 (CTC balancing component): the remainder formula for a balancing component — CTC less every
+     * other line of the structure that is part of CTC, and less the employer PF estimate when the structure has PF wages.
+     *
+     * @param  list<array{component: SalaryComponent, formula_override?: ?string, sort_order?: int}>  $lines
+     */
+    public function balancingFormula(array $lines, SalaryComponent $balancing): string
+    {
+        $ordered = self::ordered($lines);
+        $others = collect($ordered)->filter(fn ($l) => self::calculated($l['component']) && $l['component']->include_in_ctc && $l['component']->code !== $balancing->code)
+            ->map(fn ($l) => $l['component']->variableName())->values()->all();
+        $pf = collect($ordered)->contains(fn ($l) => self::calculated($l['component']) && $l['component']->pf_applicable && $l['component']->type === 'earning');
+
+        return 'max(0, '.implode(' - ', ['ctc_monthly', ...$others, ...($pf ? ['pf_employer'] : [])]).')';
+    }
+
+    /**
+     * HROne setup parity BP-2 ("disable CTC"): the annual CTC a structure built from component amounts gives an employee:
+     * twelve times the monthly lines that are part of CTC plus the employer PF estimate on their PF wages (when PF
+     * applies), under the statutory rules in force on the date.
+     *
+     * @param  list<array{component: SalaryComponent, formula_override?: ?string, sort_order?: int}>  $lines
+     * @param  array<string, float|int|string>  $parameters
+     * @param  array<string, mixed>  $values  monthly amounts and inputs by component code
+     * @param  array<string, mixed>  $attributes  the employee's formula values (FormulaVariables::EMPLOYEE)
+     */
+    public function componentsCtc(array $lines, array $parameters, array $values, array $attributes, CarbonInterface $on, bool $pfApplies): float
+    {
+        $preview = $this->preview($lines, $parameters, ['ctc_mode' => 'components', 'values' => $values, 'attributes' => $attributes, 'on' => $on, 'pf_applies' => $pfApplies, 'pf_restrict_to_ceiling' => true]);
+        if ($preview['errors'] !== []) {
+            throw new RuntimeException(implode(' ', $preview['errors']));
+        }
+
+        return round($preview['totals']['ctc_monthly'] * 12, 2);
+    }
+
+    /** @return list<string> */
+    private function balancingErrors(array $ordered, int $componentId, bool $componentsMode): array
+    {
+        if ($componentsMode) {
+            return ['A structure built from component amounts has no CTC to balance; leave the balancing component empty.'];
+        }
+        $index = collect($ordered)->search(fn ($l) => (int) $l['component']->id === $componentId);
+        if ($index === false) {
+            return ['The balancing component must be one of the structure\'s components.'];
+        }
+        $component = $ordered[$index]['component'];
+        if (! self::calculated($component) || ! $component->include_in_ctc || ! $component->isEarning()) {
+            return ["{$component->code} cannot balance to CTC: choose an earning that is part of CTC and calculated every month."];
+        }
+        $errors = [];
+        $formula = $component->formulaFor($ordered[$index]['formula_override'] ?? null);
+        if ($formula === null || array_intersect($this->safeVariables($formula), ['ctc_monthly', 'ctc_annual']) === []) {
+            $errors[] = "{$component->code} balances to CTC, so its formula must work from ctc_monthly, e.g. ".$this->balancingFormula($ordered, $component).'.';
+        }
+        $after = collect($ordered)->slice($index + 1)->filter(fn ($l) => self::calculated($l['component']) && $l['component']->include_in_ctc)->map(fn ($l) => $l['component']->code)->values();
+        if ($after->isNotEmpty()) {
+            $errors[] = "{$after->implode(', ')} ".($after->count() === 1 ? 'is' : 'are')." part of CTC but calculated after the balancing component {$component->code}; give {$component->code} the highest sort order.";
+        }
+
+        return $errors;
+    }
+
+    /** @return list<string> */
+    private function safeVariables(string $formula): array
+    {
+        try {
+            return $this->formulas->variablesIn($formula);
+        } catch (RuntimeException) {
+            return [];
+        }
     }
 
     /**
@@ -119,7 +216,8 @@ final class StructureFormulas
      */
     public function preview(array $lines, array $parameters, array $inputs): array
     {
-        ['errors' => $errors, 'warnings' => $warnings] = $this->check($lines, $parameters);
+        $componentsMode = ($inputs['ctc_mode'] ?? 'ctc') === 'components';
+        ['errors' => $errors, 'warnings' => $warnings] = $this->check($lines, $parameters, ['ctc_mode' => $inputs['ctc_mode'] ?? null, 'balancing_component_id' => $inputs['balancing_component_id'] ?? null]);
         $ctcAnnual = max(0.0, (float) ($inputs['ctc_annual'] ?? 0));
         $ctcMonthly = round($ctcAnnual / 12, 2);
         $days = max(1, (int) ($inputs['days'] ?? 30));
@@ -141,14 +239,16 @@ final class StructureFormulas
         }
 
         $ordered = self::ordered($lines);
+        $inputNames = collect($ordered)->filter(fn ($l) => $l['component']->isInput())->mapWithKeys(fn ($l) => [$l['component']->variableName() => true])->all();
         $pfWages = array_values(collect($ordered)->filter(fn ($l) => self::calculated($l['component']) && $l['component']->pf_applicable && $l['component']->type === 'earning')->map(fn ($l) => $l['component']->variableName())->all());
         $full = [];
         $pfEmployer = function () use (&$full, $pfWages, $pfApplies, $on, $restrict): float {
             return $pfApplies ? $this->statutory->employerPfOn(array_sum(array_intersect_key($full, array_flip($pfWages))), $on, $restrict) : 0.0;
         };
-        $resolve = function (string $name) use (&$full, $pfEmployer, $ctcAnnual, $ctcMonthly, $inputs, $days, $attributes, $parameters, $values) {
+        $resolve = function (string $name) use (&$full, $pfEmployer, $ctcAnnual, $ctcMonthly, $inputs, $days, $attributes, $parameters, $values, $inputNames) {
             return match (true) {
                 array_key_exists($name, $full) => $full[$name],
+                isset($inputNames[$name]) => $values[strtoupper($name)] ?? 0.0,
                 $name === 'ctc_annual' => $ctcAnnual,
                 $name === 'ctc_monthly' => $ctcMonthly,
                 $name === 'variable_target_annual' => (float) ($inputs['variable_target_annual'] ?? 0),
@@ -168,6 +268,12 @@ final class StructureFormulas
             $component = $line['component'];
             $row = ['code' => $component->code, 'name' => $component->name, 'type' => $component->type, 'sort_order' => (int) ($line['sort_order'] ?? 0),
                 'source' => null, 'formula' => null, 'monthly' => null, 'annual' => null, 'error' => null, 'note' => null];
+            if ($component->isInput() && ! $component->is_statutory) {
+                $rows[] = ['source' => 'input', 'note' => 'Each employee’s own value, read by formulas as '.$component->variableName().'; never paid'
+                    .(array_key_exists($component->code, $values) ? ' (sample '.number_format($values[$component->code], 2).')' : '; enter a sample value to try it')] + $row;
+
+                continue;
+            }
             if (! self::calculated($component)) {
                 $rows[] = ['source' => $component->is_statutory ? 'statutory' : 'one_off', 'note' => $component->is_statutory ? 'Worked out by the compliance engine in payroll' : 'Paid through adjustments, not every month'] + $row;
 
@@ -202,7 +308,12 @@ final class StructureFormulas
         $sum = fn (callable $where) => round(collect($rows)->filter(fn ($r) => $r['monthly'] !== null && $where($calculated[$r['code']]['component']))->sum('monthly'), 2);
         $gross = $sum(fn (SalaryComponent $c) => $c->isEarning() && $c->include_in_gross);
         $pf = $pfEmployer();
-        $breakup = round($sum(fn (SalaryComponent $c) => $c->include_in_ctc) + ($usesPf ? $pf : 0.0), 2);
+        // HROne setup parity BP-2: a structure built from component amounts has its CTC worked out from them (with the
+        // employer PF estimate), so there is nothing to balance.
+        $breakup = round($sum(fn (SalaryComponent $c) => $c->include_in_ctc) + ($usesPf || $componentsMode ? $pf : 0.0), 2);
+        if ($componentsMode) {
+            $ctcMonthly = $breakup;
+        }
         $difference = round($ctcMonthly - $breakup, 2);
 
         if ($ctcMonthly > 0 && abs($difference) >= 1) {
@@ -224,7 +335,7 @@ final class StructureFormulas
             'rows' => $rows,
             'totals' => ['ctc_monthly' => $ctcMonthly, 'gross' => $gross, 'deductions' => $sum(fn (SalaryComponent $c) => $c->type === 'deduction'),
                 'employer' => $sum(fn (SalaryComponent $c) => $c->type === 'employer_contribution' && $c->include_in_ctc), 'pf_employer' => $pf, 'pf_in_ctc' => $usesPf,
-                'breakup' => $breakup, 'difference' => $difference, 'wage_share' => $share],
+                'breakup' => $breakup, 'difference' => $difference, 'wage_share' => $share] + ($componentsMode ? ['ctc_mode' => 'components'] : []),
             'errors' => array_values(array_unique($errors)),
             'warnings' => array_values(array_unique($warnings)),
         ];
@@ -275,7 +386,7 @@ final class StructureFormulas
     /** Whether payroll calculates the component from the structure (statutory lines and one-offs are not). */
     public static function calculated(SalaryComponent $component): bool
     {
-        return ! $component->is_statutory && $component->calculation_method !== 'statutory' && $component->is_recurring && in_array($component->type, SalaryComponent::TYPES, true);
+        return ! $component->is_statutory && $component->calculation_method !== 'statutory' && ! $component->isInput() && $component->is_recurring && in_array($component->type, SalaryComponent::TYPES, true);
     }
 
     /** Lines in calculation order: sort order, ties in the order given (as the structure's lines are read). */

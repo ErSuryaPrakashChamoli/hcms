@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\AttendanceRecords;
 
 use App\Domain\Attendance\Models\AttendanceRecord;
+use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Employment\Models\Employee;
 use App\Filament\Resources\AttendanceRecords\Pages\ListAttendanceRecords;
 use App\Filament\Support\AttendanceActions;
+use App\Filament\Support\TimeOfficeRegisters;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
 use Filament\Resources\Resource;
@@ -57,6 +59,21 @@ class AttendanceRecordResource extends Resource
                         ->when($data['until'] ?? null, fn (Builder $q, $d) => $q->whereDate('date', '<=', $d))),
                 SelectFilter::make('status')->options(config('peopleos.attendance.statuses'))->multiple(),
                 SelectFilter::make('department')->relationship('employee.currentPosition.department', 'name')->preload(),
+                // HROne parity TX-1 (§24.5.1 #2): the shift worked and the work schedule the day was processed with, and the
+                // WO-2 employee filters (HR side only; an employee's own list is unchanged).
+                SelectFilter::make('shift_id')->label('Shift')->relationship('shift', 'name')->preload()
+                    ->visible(fn () => TimeOfficeRegisters::hrSide('attendance.view')),
+                SelectFilter::make('work_schedule')->label('Work schedule')->multiple()
+                    ->options(fn () => WorkSchedule::query()->orderBy('name')->limit(500)->pluck('name', 'id')->all())
+                    ->query(function (Builder $query, array $data): Builder {
+                        $ids = array_values(array_filter(array_map('intval', (array) ($data['values'] ?? []))));
+
+                        return $ids === [] ? $query : $query->whereIn('calculation_basis->schedule_id', $ids);
+                    })
+                    ->visible(fn () => TimeOfficeRegisters::hrSide('attendance.view')),
+                SelectFilter::make('overtime_status')->label('Overtime')->options(fn () => (array) config('peopleos.attendance.overtime_statuses'))
+                    ->visible(fn () => TimeOfficeRegisters::hrSide('attendance.view')),
+                ...TimeOfficeRegisters::filters('attendance.view'),
             ])
             ->defaultSort('date', 'desc')
             ->recordActions(AttendanceActions::forRecords())

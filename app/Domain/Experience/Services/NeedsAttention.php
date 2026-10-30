@@ -7,6 +7,7 @@ use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Communication\Services\Communications;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Compliance\Services\FinancialYear;
+use App\Domain\Documents\Services\DocumentRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\User;
@@ -60,6 +61,8 @@ final class NeedsAttention
         'tasks' => [TaskInbox::class],
         'records' => [[MyHr::class, ['tab' => 'services']]],
         'tax_declaration' => [DeclareInvestments::class, TaxDeclarationResource::class],
+        // HROne setup parity CA-4: documents every employee must have.
+        'documents' => [[MyHr::class, ['tab' => 'documents']]],
         // A manager's work about their team.
         'team_decisions' => [Approvals::class],
         'team_learning' => [TeamLearning::class, LearningEnrolmentResource::class],
@@ -125,6 +128,8 @@ final class NeedsAttention
         $employee->loadMissing(['bankAccounts', 'statutoryDetail']);
         $add('bank', $employee->bankAccounts->where('is_primary', true)->isEmpty() ? 1 : 0, 'Bank account missing', 'Payroll cannot pay you without a primary bank account. Ask HR to add it', 'danger', 'records');
         $add('pan', blank($employee->statutoryDetail?->pan) ? 1 : 0, 'PAN not on file', 'Tax is deducted at the higher rate until PAN is recorded. Ask HR to add it', 'danger', 'records');
+        // HROne setup parity CA-4: document types marked mandatory for every employee that the employee has none of.
+        $add('documents', $user->hasPermission('document.own') ? app(DocumentRules::class)->missing($employee)->count() : 0, 'Documents to upload', 'Documents HR needs from you', 'warning', 'documents');
         $add('tax_declaration', EmployeeTaxDeclaration::query()->where('employee_id', $employee->id)->where('financial_year', $this->fy->label(now()))->exists() ? 0 : 1, 'Tax declaration', 'Choose your regime and declare investments for '.$this->fy->label(now()), 'info', 'tax_declaration');
 
         return $items->sortBy(fn ($i) => match ($i['severity']) {

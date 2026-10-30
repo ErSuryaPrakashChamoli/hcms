@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\Experience\Services\ProfileSectionVisibility;
 use App\Domain\Lifecycle\Support\TimelineCategories;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
@@ -27,7 +28,9 @@ class TimelineRelationManager extends RelationManager
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        return auth()->user()?->can('view', $ownerRecord) ?? false;
+        // HROne setup parity CA-6: the profile-section matrix (section history) can only hide the tab.
+        return (auth()->user()?->can('view', $ownerRecord) ?? false)
+            && app(ProfileSectionVisibility::class)->allows(auth()->user(), $ownerRecord, 'history');
     }
 
     /** Kept for callers of the Phase 0.3 constant; the full rule set lives in TimelineCategories. */

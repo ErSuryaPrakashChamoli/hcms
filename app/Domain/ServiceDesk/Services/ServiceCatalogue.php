@@ -199,7 +199,7 @@ final class ServiceCatalogue
 
     /**
      * Services the user may request now, for themselves (employee audience), for a report (manager), or
-     * on someone's behalf (hr), with each one's version in force.
+     * on someone's behalf (hr), with each one's version in force, within the helpdesk access policy (HD-C).
      *
      * @return Collection<int, ServiceDefinitionVersion>
      */
@@ -211,8 +211,16 @@ final class ServiceCatalogue
         if (! $user->hasPermission($permission)) {
             return collect();
         }
+        // HROne setup parity HD-C: the employee's helpdesk policy narrows what they (or their manager) may request, and a
+        // manager's own policy may stop them raising for the team. HR on someone's behalf is not limited.
+        $helpdesk = app(HelpdeskAccess::class);
+        if ($audience === 'manager' && ! $helpdesk->managerMayRaise($user)) {
+            return collect();
+        }
+        $limits = $employee !== null && $audience !== 'hr' ? $helpdesk->settingsFor($employee) : null;
 
         return ServiceDefinition::query()->where('status', 'active')->orderBy('sort_order')->orderBy('name')->get()
+            ->filter(fn (ServiceDefinition $s) => $limits === null || $helpdesk->allowsService($employee, $s, $limits))
             ->map(fn (ServiceDefinition $s) => $this->versionOn($s))
             ->filter(fn (?ServiceDefinitionVersion $v) => $v !== null && $v->listed && $v->availableTo($audience) && ($employee === null || $this->eligible($v, $employee)))
             ->values();

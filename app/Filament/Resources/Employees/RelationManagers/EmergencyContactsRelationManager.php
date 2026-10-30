@@ -17,6 +17,8 @@ class EmergencyContactsRelationManager extends PersonSatelliteRelationManager
 {
     protected static string $relationship = 'emergencyContacts';
 
+    protected static string $profileSection = 'personal';
+
     public function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([

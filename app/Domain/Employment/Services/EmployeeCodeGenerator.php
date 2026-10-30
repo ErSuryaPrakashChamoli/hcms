@@ -11,9 +11,10 @@ use Closure;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Employee codes. A hire uses its company's series (EmployeeCodeSeries), else the tenant's default series; a tenant with
- * no series at all keeps the settings pattern (employee.code.prefix + padding, counted in employee_code_sequences,
- * seeded from the highest existing code the first time).
+ * Employee codes. A hire uses its company's series (EmployeeCodeSeries), else the tenant's default series; HROne setup
+ * parity: a series for the hire's employment type comes first (company + type, company, type for all companies, default).
+ * A tenant with no series at all keeps the settings pattern (employee.code.prefix + padding, counted in
+ * employee_code_sequences, seeded from the highest existing code the first time).
  * Concurrency-safe: the counter row is locked while a number is taken, and the unique index on employees guarantees
  * no duplicate even under contention. Numbers already held (typed by hand, imported) are skipped. Never depends on an
  * external system.
@@ -23,17 +24,17 @@ final class EmployeeCodeGenerator
 {
     public function __construct(private readonly SettingsRepository $settings, private readonly TenantContext $tenants) {}
 
-    public function next(?int $companyId = null): string
+    public function next(?int $companyId = null, ?int $employmentTypeId = null): string
     {
-        $series = $this->seriesFor($companyId);
+        $series = $this->seriesFor($companyId, $employmentTypeId);
 
         return $series === null ? $this->nextFromSettings() : $this->nextFromSeries($series);
     }
 
     /** What next() would issue now, without taking it: another hire may take it first. */
-    public function preview(?int $companyId = null): string
+    public function preview(?int $companyId = null, ?int $employmentTypeId = null): string
     {
-        $series = $this->seriesFor($companyId);
+        $series = $this->seriesFor($companyId, $employmentTypeId);
         if ($series !== null) {
             return $series->format($this->firstFree($series->format(...), max(1, $series->next_number)));
         }
@@ -50,17 +51,28 @@ final class EmployeeCodeGenerator
         return $series->format($this->firstFree($series->format(...), max(1, (int) $series->next_number, $this->highestInPattern($series->prefix, $series->suffix) + 1)));
     }
 
-    /** The series a hire into this company uses: its own, else the tenant default; null when the tenant has neither. */
-    public function seriesFor(?int $companyId): ?EmployeeCodeSeries
+    /**
+     * The series a hire into this company (and employment type) uses: company + type, the company's own, the type's for all
+     * companies, else the tenant default; null when the tenant has none of them.
+     */
+    public function seriesFor(?int $companyId, ?int $employmentTypeId = null): ?EmployeeCodeSeries
     {
-        return ($companyId === null ? null : EmployeeCodeSeries::query()->where('company_id', $companyId)->first())
-            ?? EmployeeCodeSeries::query()->whereNull('company_id')->first();
+        $candidates = EmployeeCodeSeries::query()
+            ->where(fn ($q) => $q->whereNull('company_id')->when($companyId !== null, fn ($q) => $q->orWhere('company_id', $companyId)))
+            ->where(fn ($q) => $q->whereNull('employment_type_id')->when($employmentTypeId !== null, fn ($q) => $q->orWhere('employment_type_id', $employmentTypeId)))
+            ->orderBy('id')->get();
+        $pick = fn (?int $company, ?int $type) => $candidates->first(fn (EmployeeCodeSeries $s) => $s->company_id === $company && $s->employment_type_id === $type);
+
+        return ($companyId !== null && $employmentTypeId !== null ? $pick($companyId, $employmentTypeId) : null)
+            ?? ($companyId !== null ? $pick($companyId, null) : null)
+            ?? ($employmentTypeId !== null ? $pick(null, $employmentTypeId) : null)
+            ?? $pick(null, null);
     }
 
-    /** Whether a code may be typed by hand when hiring into this company: yes unless its series says otherwise. */
-    public function allowsManual(?int $companyId): bool
+    /** Whether a code may be typed by hand when hiring into this company (and type): yes unless its series says otherwise. */
+    public function allowsManual(?int $companyId, ?int $employmentTypeId = null): bool
     {
-        return $this->seriesFor($companyId)?->allow_manual ?? true;
+        return $this->seriesFor($companyId, $employmentTypeId)?->allow_manual ?? true;
     }
 
     /** The employee holding this code anywhere in the tenant, whatever the caller's scope; compared without case, as MySQL's unique index does. */

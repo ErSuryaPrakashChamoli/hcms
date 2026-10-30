@@ -1,6 +1,7 @@
 {{-- Your day: a timeline, with today's attendance as the first line (items already under Need attention are not repeated) --}}
 @php($dayRows = $h['day'] === null ? null : collect($h['day'])->reject(fn ($d) => $attention->pluck('title')->contains($d['title']))->values()->all())
 @if ($dayRows !== null)
+    @include('filament.partials.web-punch')
     <x-pos.section title="Your day" :link="\App\Filament\Pages\MyWork::getUrl(['tab' => 'today'])" link-label="View all">
         <x-pos.phone-cap :total="count($dayRows) + (($h['me'] ?? null) ? 1 : 0)">
         <div class="pos-panel pos-panel-pad">
@@ -23,9 +24,9 @@
                         </div>
                         <div class="pos-stream-end">
                             @if ($me['checked_in'])
-                                <button type="button" wire:click="punch('out')" wire:loading.attr="disabled" class="pos-btn pos-btn-secondary pos-btn-sm">Check out</button>
+                                <button type="button" x-on:click="window.peoplePunch($wire, 'out', @js($me['needs_location'] ?? false))" wire:loading.attr="disabled" class="pos-btn pos-btn-secondary pos-btn-sm">Check out</button>
                             @else
-                                <button type="button" wire:click="punch('in')" wire:loading.attr="disabled" class="pos-btn pos-btn-secondary pos-btn-sm">Check in</button>
+                                <button type="button" x-on:click="window.peoplePunch($wire, 'in', @js($me['needs_location'] ?? false))" wire:loading.attr="disabled" class="pos-btn pos-btn-secondary pos-btn-sm">Check in</button>
                             @endif
                             @if ($me['payslip'] ?? null)
                                 <a href="{{ $me['payslip']['url'] }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm" data-pos-action="payslip">Payslip</a>

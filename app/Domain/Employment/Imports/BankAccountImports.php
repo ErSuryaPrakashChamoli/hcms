@@ -8,6 +8,7 @@ use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Exceptions\ProfileChangeRefused;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
+use App\Domain\Employment\Services\BankAccountRules;
 use App\Domain\Employment\Services\ProfileChangeGuard;
 use App\Domain\Employment\Support\ChangeOrigin;
 use App\Domain\Identity\Models\User;
@@ -261,7 +262,7 @@ final class BankAccountImports
     public function approve(EmployeeImport $import, User $user, ?string $reason = null): EmployeeImport
     {
         $this->assert($import, ['validated']);
-        $this->assertUploader($import, $user);
+        $this->assertApprover($import, $user);
         if ($import->create_count + $import->update_count === 0) {
             throw new RuntimeException('Nothing to import: no row would add or update bank details.');
         }
@@ -433,6 +434,10 @@ final class BankAccountImports
         foreach ($validator->errors()->all() as $message) {
             $errors[] = $message;
         }
+        // HROne setup parity CA-5: the account number fits its bank's rule, when the bank has one.
+        if (($problem = app(BankAccountRules::class)->problem($data['account_number'] ?? null, $data['ifsc'] ?? null, $data['bank_name'] ?? null)) !== null) {
+            $errors[] = $problem;
+        }
 
         return [$employee, $data, array_values(array_unique($errors))];
     }
@@ -478,6 +483,23 @@ final class BankAccountImports
     {
         $import->rows()->toBase()->update(['sealed_data' => null]);
         Storage::disk($import->disk)->delete($import->path);
+    }
+
+    /**
+     * HROne setup parity P2: the uploader approves their own file, unless the upload type is under maker-checker or
+     * workflow approval (ImportGovernance); then another person allowed to make such uploads approves it (the upload
+     * model refuses the uploader).
+     */
+    private function assertApprover(EmployeeImport $import, User $user): void
+    {
+        if (! ImportGovernance::checkedByAnother((string) $import->type)) {
+            $this->assertUploader($import, $user);
+
+            return;
+        }
+        if (! self::allowed($user)) {
+            throw new RuntimeException('Uploading bank details needs employee.import and '.ChangeBankAccountAction::PERMISSION.'.');
+        }
     }
 
     private function assertUploader(EmployeeImport $import, User $user): void

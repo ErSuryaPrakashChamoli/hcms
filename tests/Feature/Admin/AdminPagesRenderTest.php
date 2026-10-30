@@ -32,7 +32,7 @@ it('renders every tenant-facing admin page', function () {
     $this->get(RoleResource::getUrl('index'))->assertOk()->assertSee('Auditor');
     $this->get(RoleResource::getUrl('create'))->assertOk();
     $this->get(RoleResource::getUrl('edit', ['record' => Role::query()->where('slug', 'employee')->firstOrFail()]))->assertOk();
-    $this->get(TenantSettingResource::getUrl('index'))->assertOk()->assertSee('branding.primary_colour');
+    $this->get(TenantSettingResource::getUrl('index', ['search' => 'branding']))->assertOk()->assertSee('branding.primary_colour'); // the list pages by key
     $this->get(TenantFeatureResource::getUrl('index'))->assertOk()->assertSee('organisation.designer');
     $this->get(AuditEventResource::getUrl('index'))->assertOk()->assertSee('Create');
 });

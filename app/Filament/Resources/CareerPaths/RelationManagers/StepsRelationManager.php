@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CareerPaths\RelationManagers;
 use App\Domain\Organisation\Models\Designation;
 use App\Domain\People\Models\Skill;
 use App\Domain\Performance\Models\CareerPathStep;
+use App\Domain\Skills\Support\SkillProficiencies;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -36,7 +37,8 @@ class StepsRelationManager extends RelationManager
             TextInput::make('typical_years')->label('Typical years at this step')->numeric()->minValue(0),
             Repeater::make('required_skills')->label('Required skills')->columnSpanFull()->columns(2)->default([])->schema([
                 Select::make('skill_id')->label('Skill')->required()->searchable()->options(fn () => Skill::query()->orderBy('name')->pluck('name', 'id')->all()),
-                Select::make('proficiency')->options(config('peopleos.people.skill_proficiencies'))->default('intermediate')->required(),
+                // HROne setup parity CA-3: the organisation's proficiency levels (skills.profile_scale).
+                Select::make('proficiency')->options(fn () => SkillProficiencies::options())->default(fn () => SkillProficiencies::default())->required(),
             ]),
         ]);
     }

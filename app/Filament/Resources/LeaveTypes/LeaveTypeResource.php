@@ -15,6 +15,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColorColumn;
@@ -39,25 +40,31 @@ class LeaveTypeResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('code')->required()->maxLength(16)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
-            Select::make('category')->options(config('peopleos.leave.categories'))->required(),
-            Select::make('applicable_gender')->options(config('peopleos.people.genders'))->placeholder('Everyone'),
-            Toggle::make('is_paid')->label('Paid')->default(true),
-            Toggle::make('allow_half_day')->label('Half days allowed')->default(true),
-            Toggle::make('is_encashable')->label('Encashable'),
-            Textarea::make('description')->maxLength(1000)->columnSpanFull(),
-            Select::make('unit')->options(config('peopleos.leave.units'))->default('days')->required()->helperText('Hourly requests are not available yet; hour-based types can be configured for later use.'),
-            TextInput::make('min_request_units')->label('Minimum per request')->numeric()->minValue(0),
-            TextInput::make('max_request_units')->label('Maximum per request')->numeric()->minValue(0),
-            Toggle::make('requires_document')->label('Supporting document always required'),
-            Toggle::make('requires_approval')->label('Requires approval')->default(true),
-            Select::make('cancellation_policy')->label('Cancelling approved leave')->options(config('peopleos.leave.cancellation_policies'))->default('self')->required(),
-            DatePicker::make('effective_from')->native(false),
-            DatePicker::make('effective_to')->native(false)->afterOrEqual('effective_from'),
-            ColorPicker::make('colour'),
-            TextInput::make('sort_order')->numeric()->default(0),
-            Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            Section::make('Leave type')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('code')->required()->maxLength(16)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
+                Select::make('category')->options(config('peopleos.leave.categories'))->required(),
+                Select::make('applicable_gender')->options(config('peopleos.people.genders'))->placeholder('Everyone'),
+                Toggle::make('is_paid')->label('Paid')->default(true),
+                Toggle::make('allow_half_day')->label('Half days allowed')->default(true),
+                Toggle::make('is_encashable')->label('Encashable'),
+                Textarea::make('description')->maxLength(1000)->columnSpanFull(),
+            ]),
+            Section::make('Requests and approval')->columns(2)->schema([
+                Select::make('unit')->options(config('peopleos.leave.units'))->default('days')->required()->helperText('Hourly requests are not available yet; hour-based types can be configured for later use.'),
+                TextInput::make('min_request_units')->label('Minimum per request')->numeric()->minValue(0),
+                TextInput::make('max_request_units')->label('Maximum per request')->numeric()->minValue(0),
+                Toggle::make('requires_document')->label('Supporting document always required'),
+                Toggle::make('requires_approval')->label('Requires approval')->default(true),
+                Select::make('cancellation_policy')->label('Cancelling approved leave')->options(config('peopleos.leave.cancellation_policies'))->default('self')->required(),
+            ]),
+            Section::make('Validity and display')->columns(2)->schema([
+                DatePicker::make('effective_from')->native(false),
+                DatePicker::make('effective_to')->native(false)->afterOrEqual('effective_from'),
+                ColorPicker::make('colour'),
+                TextInput::make('sort_order')->numeric()->default(0),
+                Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

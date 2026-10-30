@@ -2,21 +2,33 @@
 
 namespace App\Filament\Pages;
 
-use App\Domain\Attendance\Services\PunchIngestion;
 use App\Domain\Attendance\Services\Regularisations;
+use App\Domain\Engagement\Exceptions\EngagementRuleViolation;
+use App\Domain\Engagement\Models\MoodCheckIn;
+use App\Domain\Engagement\Services\MoodCheckIns;
 use App\Domain\Experience\Services\ContextualIntelligence;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\HomeComposer;
 use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Experience\Services\UxMetrics;
+use App\Domain\People\Services\Birthdays;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Platform\Services\SettingsRepository;
+use App\Domain\Recognition\Models\WallPost;
+use App\Domain\Recognition\Services\SocialWall;
 use App\Filament\Resources\Tenants\TenantResource;
+use App\Filament\Support\AttendanceActions;
 use App\Filament\Support\BirthdayActions;
 use App\Filament\Support\LeaveActions;
+use App\Filament\Support\PendingRequestsPanel;
+use App\Filament\Support\RequestChrome;
 use App\Filament\Support\ServiceDeskActions;
+use App\Filament\Support\WebPunch;
 use App\Support\Tenancy\TenantContext;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TimePicker;
@@ -136,10 +148,26 @@ class Home extends Dashboard
         $this->dispatch('pos-experience-changed');
     }
 
-    /** First-login welcome (§47): shown once, until the person dismisses it. */
+    /**
+     * First-login welcome (§47): shown once, until the person dismisses it. HROne setup parity HP-9a: the organisation
+     * may switch it off (experience.welcome.enabled).
+     */
     public function showWelcome(): bool
     {
-        return app(TenantContext::class)->has() && (app(ExperiencePreferences::class)->for(auth()->user())['welcomed_at'] ?? null) === null;
+        return app(TenantContext::class)->has() && (bool) app(SettingsRepository::class)->get('experience.welcome.enabled', true)
+            && (app(ExperiencePreferences::class)->for(auth()->user())['welcomed_at'] ?? null) === null;
+    }
+
+    /** HP-9a: the organisation's own welcome ({name}, {organisation}), or null for PeopleOS's built-in text. */
+    public function welcomeMessage(): ?string
+    {
+        $message = app(SettingsRepository::class)->get('experience.welcome.message');
+        if (blank($message)) {
+            return null;
+        }
+        $first = $this->home['employee']?->person?->first_name ?? strtok((string) auth()->user()->name, ' ');
+
+        return app(Birthdays::class)->render((string) $message, (string) $first);
     }
 
     public function dismissWelcome(): void
@@ -162,16 +190,17 @@ class Home extends Dashboard
         unset($this->home);
     }
 
-    public function punch(string $direction): void
+    /** @param  array<string, mixed>  $client  what the browser sends (WebPunch) */
+    public function punch(string $direction, array $client = []): void
     {
         $employee = $this->home['employee'];
         if ($employee === null || ! in_array($direction, ['in', 'out'], true)) {
             return;
         }
         try {
-            app(PunchIngestion::class)->record($employee, now(), $direction, 'web');
-            Notification::make()->success()->title($direction === 'in' ? 'Checked in' : 'Checked out')->body(now()->format('H:i'))->send();
-            $this->dispatch('pos-success', message: $direction === 'in' ? 'Checked in' : 'Checked out');
+            if (WebPunch::record($employee, $direction, $client)) {
+                $this->dispatch('pos-success', message: $direction === 'in' ? 'Checked in' : 'Checked out');
+            }
         } catch (RuntimeException $e) {
             Notification::make()->danger()->title('Could not record')->body($e->getMessage())->send();
         }
@@ -200,18 +229,25 @@ class Home extends Dashboard
             ->modalDescription('Tell your manager what happened; attendance is reprocessed once approved.')
             ->visible(fn () => $this->home['employee'] !== null && auth()->user()->can('attendance.regularise'))
             ->schema([
+                // HROne parity RQ-2: whose request it is.
+                RequestChrome::header(fn () => $this->home['employee']),
                 DatePicker::make('date')->native(false)->required()->default(now()->subDay())->maxDate(now()),
                 Select::make('type')->options(config('peopleos.attendance.regularisation_types'))->required(),
                 TimePicker::make('in')->label('Actual in')->seconds(false),
                 TimePicker::make('out')->label('Actual out')->seconds(false),
                 Textarea::make('reason')->required()->maxLength(255),
+                AttendanceActions::attachmentsField(),
+                // HROne parity RQ-2: who approves it (a read-only preview), who is informed, and the attendance policy.
+                RequestChrome::route('attendance_regularisation', fn () => $this->home['employee']),
+                // HROne parity RQ-1: the person's own open requests of the time-office family.
+                PendingRequestsPanel::make(fn () => $this->home['employee']),
             ])
             ->action(function (array $data) {
                 try {
                     $in = $data['in'] ? $data['date'].' '.$data['in'] : null;
                     $out = $data['out'] ? $data['date'].' '.$data['out'] : null;
-                    app(Regularisations::class)->request($this->home['employee'], $data['date'], $data['type'], $data['reason'], $in, $out, auth()->user());
-                    Notification::make()->success()->title('Correction sent to your manager')->send();
+                    $request = app(Regularisations::class)->request($this->home['employee'], $data['date'], $data['type'], $data['reason'], $in, $out, auth()->user(), array_values((array) ($data['attachments'] ?? [])));
+                    RequestChrome::confirmed('attendance_regularisation', $request, 'Correction sent to your manager');
                 } catch (RuntimeException $e) {
                     Notification::make()->danger()->title('Cannot request')->body($e->getMessage())->persistent()->send();
                 }
@@ -223,6 +259,50 @@ class Home extends Dashboard
         return BirthdayActions::wish(function () {
             unset($this->home);
         });
+    }
+
+    /** HROne setup parity HP-9a: wishes on a work or wedding anniversary from the celebrations card. */
+    public function wishAnniversaryAction(): Action
+    {
+        return BirthdayActions::wishAnniversary(function () {
+            unset($this->home);
+        });
+    }
+
+    /** HROne setup parity HP-9f: the mood bot's question (one check-in per period; MoodCheckIns keeps it private). */
+    public function moodCheckInAction(): Action
+    {
+        return Action::make('moodCheckIn')->label('Share my mood')->icon(Heroicon::OutlinedFaceSmile)
+            ->modalHeading('How’s your mood today?')
+            ->modalDescription(fn () => ['anonymous' => 'Your answer is anonymous: it is never linked to you, and results show only for groups large enough.',
+                'confidential' => 'Your answer is confidential: results show only for groups large enough.', 'identified' => 'HR sees your answer.'][app(MoodCheckIns::class)->privacy()])
+            ->modalSubmitActionLabel('Submit')
+            ->fillForm(fn (array $arguments) => ['mood' => (int) ($arguments['mood'] ?? 3)])
+            ->schema([
+                Radio::make('mood')->label('Mood')->options(MoodCheckIn::MOODS)->required()->inline(),
+                CheckboxList::make('reasons')->label('What is it about?')->options(fn () => app(MoodCheckIns::class)->reasons())->columns(2),
+                Textarea::make('comment')->label('Comments')->rows(3)->maxLength(MoodCheckIns::COMMENT_MAX),
+            ])
+            ->action(function (array $data) {
+                try {
+                    $result = app(MoodCheckIns::class)->checkIn(auth()->user(), (int) $data['mood'], array_values((array) ($data['reasons'] ?? [])), $data['comment'] ?? null);
+                    Notification::make()->success()->title($result['status'] === 'submitted' ? 'Thank you for sharing' : 'You already shared your mood for this period')->send();
+                } catch (EngagementRuleViolation $e) {
+                    Notification::make()->danger()->title('Not shared')->body($e->getMessage())->send();
+                }
+                unset($this->home);
+            });
+    }
+
+    /** HROne setup parity HP-9e: "Like" on a post of the social wall card. */
+    public function wallReact(int $post): void
+    {
+        try {
+            app(SocialWall::class)->react(WallPost::query()->findOrFail($post), auth()->user(), 'like');
+        } catch (RuntimeException $e) {
+            Notification::make()->danger()->title('Not done')->body($e->getMessage())->send();
+        }
+        unset($this->home);
     }
 
     public function askHrAction(): Action

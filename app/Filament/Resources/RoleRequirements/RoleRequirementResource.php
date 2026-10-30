@@ -56,7 +56,9 @@ class RoleRequirementResource extends Resource
                         Select::make('skill_id')->label('Skill')->options(fn () => Skill::query()->orderBy('name')->pluck('name', 'id')->all())->searchable()->required(),
                         TextInput::make('level')->numeric()->required()->helperText('A level on the skill\'s current scale version'),
                         Toggle::make('required')->default(true),
-                    ])->columns(3)->defaultItems(0),
+                        // HROne setup parity CA-2 (Designation → primary skill): at most one per version.
+                        Toggle::make('primary')->label('Primary skill')->default(false),
+                    ])->columns(4)->defaultItems(0),
                     Select::make('competency_ids')->label('Competencies')->multiple()->options(fn () => Competency::query()->orderBy('name')->pluck('name', 'id')->all()),
                     TextInput::make('min_experience_years')->label('Minimum experience (years)')->numeric()->minValue(0),
                     Select::make('certification_course_ids')->label('Certifications (courses)')->multiple()->options(fn () => Course::query()->orderBy('title')->pluck('title', 'id')->all()),
@@ -85,6 +87,8 @@ class RoleRequirementResource extends Resource
                 TextColumn::make('organisationNode.id')->label('Unit')->formatStateUsing(fn ($state, RoleRequirementVersion $record) => $record->organisationNode?->auditLabel())->placeholder('Role-wide'),
                 TextColumn::make('version')->prefix('v'),
                 TextColumn::make('skills')->label('Skills')->state(fn (RoleRequirementVersion $record) => count($record->skills ?? [])),
+                TextColumn::make('primary_skill')->label('Primary skill')->placeholder('—')
+                    ->state(fn (RoleRequirementVersion $record) => ($id = collect($record->skills ?? [])->firstWhere('primary', true)['skill_id'] ?? null) ? Skill::query()->whereKey($id)->value('name') : null),
                 TextColumn::make('min_experience_years')->label('Experience')->suffix(' yrs')->placeholder('—'),
                 TextColumn::make('effective_from')->date(),
                 TextColumn::make('effective_to')->date()->placeholder('open'),

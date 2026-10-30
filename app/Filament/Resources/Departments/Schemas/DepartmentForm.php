@@ -23,6 +23,10 @@ class DepartmentForm
                     ->columns(2)
                     ->schema([
                         Select::make('company_id')->relationship('company', 'name')->searchable()->preload(),
+                        // HROne setup parity CA-2 (Sub department): the department this one sits under.
+                        Select::make('parent_department_id')->label('Parent department')->placeholder('None (a top-level department)')->searchable()
+                            ->options(fn (?Department $record) => Department::query()->when($record?->exists, fn ($q) => $q->whereKeyNot($record->getKey()))->orderBy('name')->pluck('name', 'id')->all())
+                            ->helperText('Makes this a sub-department. Policies and reports can use either level.'),
                         TextInput::make('name')->required()->maxLength(255),
                         TextInput::make('code')->required()->maxLength(32)->alphaDash()->helperText('Short unique code.'),
                         Select::make('cost_centre_id')->relationship('costCentre', 'name')->label('Cost centre')->searchable()->preload(),

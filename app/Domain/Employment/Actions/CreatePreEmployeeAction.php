@@ -53,7 +53,7 @@ final class CreatePreEmployeeAction
 
             $employee = new Employee([
                 'person_id' => $person->id,
-                'employee_code' => $payload['employee_code'] ?? $this->codes->next($position['company_id']),
+                'employee_code' => $payload['employee_code'] ?? $this->codes->next($position['company_id'], isset($position['employment_type_id']) ? (int) $position['employment_type_id'] : null),
                 'lifecycle_state' => LifecycleState::PreEmployee,
                 'source' => $payload['source'] ?? 'rms',
                 'external_reference' => $reference,

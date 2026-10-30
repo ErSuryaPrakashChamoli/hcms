@@ -30,9 +30,11 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 
 /**
@@ -154,7 +156,14 @@ class ArticleResource extends Resource
                 TextColumn::make('published_at')->dateTime()->placeholder('—')->sortable(),
             ])
             ->defaultSort('published_at', 'desc')
-            ->filters([SelectFilter::make('category')->options(config('peopleos.kb.categories')), SelectFilter::make('status')->options(Article::STATUSES)->visible($writer)])
+            ->filters([
+                SelectFilter::make('category')->options(config('peopleos.kb.categories')), SelectFilter::make('status')->options(Article::STATUSES)->visible($writer),
+                // HROne setup parity HP-9a (HR handbook): created and published date filters.
+                Filter::make('created')->label('Created')->visible($writer)->schema([DatePicker::make('created_from')->label('Created from')->native(false), DatePicker::make('created_until')->label('Created until')->native(false)])
+                    ->query(fn (Builder $query, array $data) => $query->when($data['created_from'] ?? null, fn ($q, $d) => $q->whereDate('articles.created_at', '>=', $d))->when($data['created_until'] ?? null, fn ($q, $d) => $q->whereDate('articles.created_at', '<=', $d))),
+                Filter::make('published')->label('Published')->schema([DatePicker::make('published_from')->label('Published from')->native(false), DatePicker::make('published_until')->label('Published until')->native(false)])
+                    ->query(fn (Builder $query, array $data) => $query->when($data['published_from'] ?? null, fn ($q, $d) => $q->whereDate('articles.published_at', '>=', $d))->when($data['published_until'] ?? null, fn ($q, $d) => $q->whereDate('articles.published_at', '<=', $d))),
+            ])
             ->recordActions([
                 ViewAction::make()->label('Read'),
                 EditAction::make()->visible(fn (Article $record) => $writer && $record->status === 'draft'),
@@ -174,11 +183,37 @@ class ArticleResource extends Resource
                     ->visible(fn (Article $record) => $writer && $record->status === 'published')
                     ->requiresConfirmation()->modalDescription('Opens a new draft; readers keep seeing the published version until the revision is approved and published.')
                     ->action(fn (Article $record) => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->startRevision($record, auth()->user()), 'Revision started')),
+                // HROne setup parity HP-9a (EN-10): who in the audience read and acknowledged the current version.
+                Action::make('acknowledgements')->label('Who acknowledged')->icon('heroicon-m-user-group')->color('gray')
+                    ->visible(fn (Article $record) => $writer && $record->requires_acknowledgement && $record->published_version !== null)
+                    ->modalHeading(fn (Article $record) => 'Acknowledgements of version '.$record->published_version)
+                    ->modalSubmitAction(false)->modalCancelActionLabel('Close')
+                    ->modalContent(fn (Article $record) => view('filament.articles.acknowledgements', ['rows' => app(KnowledgeBase::class)->acknowledgementList($record), 'due' => app(KnowledgeBase::class)->acknowledgementDueOn($record)])),
+                Action::make('acknowledgementsCsv')->label('Acknowledgements (CSV)')->icon('heroicon-m-arrow-down-tray')->color('gray')
+                    ->visible(fn (Article $record) => $writer && $record->requires_acknowledgement && $record->published_version !== null)
+                    ->action(fn (Article $record) => self::acknowledgementsCsv($record)),
                 Action::make('archive')->label('Archive')->icon('heroicon-m-archive-box')->color('gray')
                     ->visible(fn (Article $record) => $writer && $record->status !== 'archived')
                     ->requiresConfirmation()
                     ->action(fn (Article $record) => ServiceDeskActions::run(fn () => app(KnowledgeBase::class)->archive($record, auth()->user()), 'Archived')),
             ]);
+    }
+
+    /** HP-9a: the audience's read and acknowledgement times of the current version, one row per person. */
+    public static function acknowledgementsCsv(Article $record): StreamedResponse
+    {
+        $rows = app(KnowledgeBase::class)->acknowledgementList($record);
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Employee code', 'Name', 'Department', 'Designation', 'Read at', 'Acknowledged at', 'Source']);
+            foreach ($rows as $row) {
+                $e = $row['employee'];
+                fputcsv($out, [$e->employee_code, $e->person?->display_name, $e->currentPosition?->department?->name, $e->currentPosition?->designation?->name,
+                    $row['read_at']?->format('Y-m-d H:i'), $row['acknowledged_at']?->format('Y-m-d H:i'), $row['source']]);
+            }
+            fclose($out);
+        }, 'acknowledgements-'.($record->slug ?: $record->id).'-v'.$record->published_version.'.csv', ['Content-Type' => 'text/csv']);
     }
 
     public static function getRelations(): array

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Integration\Services\ApiKeys;
 use App\Domain\ServiceDesk\Services\ServiceRequests;
 use App\Filament\Resources\Tickets\TicketResource;
@@ -41,6 +42,9 @@ it('keeps the HR queue, its search and the API at a constant query count as requ
 
     $measure = function () use ($agent, $key, $tenant) {
         $this->actingAs($agent);
+        // CA-9: access-scope answers are per request (forgotten after each one); start each measurement cold so the
+        // request before it (e.g. raising requests as another user) cannot warm them for one measurement only.
+        app(AccessScopes::class)->forget();
         $list = sdQueries(fn () => $this->get(TicketResource::getUrl('index'))->assertOk());
         $search = sdQueries(fn () => $this->get(TicketResource::getUrl('index').'?tableSearch=TKT-2026')->assertOk());
         auth()->logout();

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /** A shift definition (§13). type: fixed (timed) | flexible (hours only). */
-#[Fillable(['tenant_id', 'name', 'code', 'type', 'start_time', 'end_time', 'crosses_midnight', 'timezone', 'break_minutes', 'full_day_minutes', 'half_day_minutes', 'grace_in_minutes', 'grace_out_minutes', 'overtime_eligible', 'min_overtime_minutes', 'status', 'effective_from', 'effective_to'])]
+#[Fillable(['tenant_id', 'name', 'code', 'colour', 'type', 'start_time', 'end_time', 'crosses_midnight', 'timezone', 'break_minutes', 'full_day_minutes', 'half_day_minutes', 'grace_in_minutes', 'grace_out_minutes', 'first_half_minutes', 'early_checkin_minutes', 'absent_first_half_after', 'absent_full_day_after', 'absent_second_half_before', 'ignore_before_start', 'cutoff_time', 'requestable', 'allow_short_leave', 'allow_regularisation', 'allow_on_duty', 'allow_leave', 'allowance_eligible', 'overtime_eligible', 'min_overtime_minutes', 'status', 'effective_from', 'effective_to'])]
 class Shift extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
@@ -28,6 +28,18 @@ class Shift extends Model
             'grace_in_minutes' => 'integer',
             'grace_out_minutes' => 'integer',
             'min_overtime_minutes' => 'integer',
+            'first_half_minutes' => 'integer',
+            'early_checkin_minutes' => 'integer',
+            'absent_first_half_after' => 'integer',
+            'absent_full_day_after' => 'integer',
+            'absent_second_half_before' => 'integer',
+            'ignore_before_start' => 'boolean',
+            'requestable' => 'boolean',
+            'allow_short_leave' => 'boolean',
+            'allow_regularisation' => 'boolean',
+            'allow_on_duty' => 'boolean',
+            'allow_leave' => 'boolean',
+            'allowance_eligible' => 'boolean',
             'status' => ActiveStatus::class,
             'effective_from' => 'date',
             'effective_to' => 'date',

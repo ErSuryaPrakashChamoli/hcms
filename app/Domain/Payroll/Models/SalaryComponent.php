@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  * A pay element (§30). Non-statutory components are fully tenant-configurable; statutory ones
  * (is_statutory) are created by the compliance pack and their behaviour is locked (§101).
  */
-#[Fillable(['tenant_id', 'name', 'code', 'type', 'classification', 'calculation_method', 'formula', 'taxable', 'pf_applicable', 'esi_applicable', 'include_in_ctc', 'include_in_gross', 'is_recurring', 'is_proratable', 'is_arrear_eligible', 'is_statutory', 'sort_order', 'status', 'effective_from', 'effective_to'])]
+#[Fillable(['tenant_id', 'name', 'code', 'type', 'classification', 'calculation_method', 'formula', 'taxable', 'pf_applicable', 'esi_applicable', 'include_in_ctc', 'include_in_gross', 'is_recurring', 'is_proratable', 'is_arrear_eligible', 'pay_on_claim', 'transfer_allowance', 'pt_wages', 'lwf_wages', 'esi_eligibility_wages', 'show_on_payslip', 'show_in_register', 'pay_in_joining_month', 'pay_in_exit_month', 'rounding', 'pay_nature', 'exempt_in_regimes', 'claim_attachment_required', 'claim_window_days', 'claim_limit_per_claim', 'is_statutory', 'sort_order', 'status', 'effective_from', 'effective_to'])]
 class SalaryComponent extends Model
 {
     /** Controlled component classification (Phase 4 §9); statutory lines are produced by the compliance engine. */
@@ -51,6 +51,19 @@ class SalaryComponent extends Model
             'is_recurring' => 'boolean',
             'is_proratable' => 'boolean',
             'is_arrear_eligible' => 'boolean',
+            'pay_on_claim' => 'boolean',
+            'transfer_allowance' => 'boolean',
+            'pt_wages' => 'boolean',
+            'lwf_wages' => 'boolean',
+            'esi_eligibility_wages' => 'boolean',
+            'show_on_payslip' => 'boolean',
+            'show_in_register' => 'boolean',
+            'pay_in_joining_month' => 'boolean',
+            'pay_in_exit_month' => 'boolean',
+            'exempt_in_regimes' => 'array',
+            'claim_attachment_required' => 'boolean',
+            'claim_window_days' => 'integer',
+            'claim_limit_per_claim' => 'decimal:2',
             'is_statutory' => 'boolean',
             'sort_order' => 'integer',
             'status' => ActiveStatus::class,
@@ -72,6 +85,12 @@ class SalaryComponent extends Model
     public function isEarning(): bool
     {
         return in_array($this->type, ['earning', 'reimbursement'], true);
+    }
+
+    /** HROne setup parity BP-2: an employee input (a CTC formula tag) — formulas read it, payroll never pays it. */
+    public function isInput(): bool
+    {
+        return $this->calculation_method === 'input';
     }
 
     public function variableName(): string

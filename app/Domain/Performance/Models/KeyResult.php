@@ -9,14 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** A measurable key result under an objective (OKR). */
-#[Fillable(['tenant_id', 'goal_id', 'title', 'measure_type', 'start_value', 'target_value', 'current_value', 'unit', 'weight', 'progress', 'sort_order'])]
+#[Fillable(['tenant_id', 'goal_id', 'title', 'measure_type', 'start_value', 'target_value', 'current_value', 'unit', 'weight', 'progress', 'sort_order', 'unit_id', 'due_date', 'is_reverse'])]
 class KeyResult extends Model
 {
     use Auditable, BelongsToTenant;
 
     protected function casts(): array
     {
-        return ['start_value' => 'decimal:2', 'target_value' => 'decimal:2', 'current_value' => 'decimal:2', 'weight' => 'integer', 'progress' => 'decimal:2', 'sort_order' => 'integer'];
+        return ['start_value' => 'decimal:2', 'target_value' => 'decimal:2', 'current_value' => 'decimal:2', 'weight' => 'integer', 'progress' => 'decimal:2', 'sort_order' => 'integer', 'due_date' => 'date', 'is_reverse' => 'boolean'];
     }
 
     public function auditModule(): string
@@ -27,6 +27,11 @@ class KeyResult extends Model
     public function auditLabel(): string
     {
         return $this->title;
+    }
+
+    public function measurementUnit(): BelongsTo
+    {
+        return $this->belongsTo(PerformanceUnit::class, 'unit_id');
     }
 
     public function goal(): BelongsTo

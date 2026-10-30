@@ -7,6 +7,7 @@ use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\BgvCases\Pages\ListBgvCases;
 use App\Filament\Resources\BgvCases\Pages\ViewBgvCase;
 use App\Filament\Resources\BgvCases\RelationManagers\ChecksRelationManager;
+use App\Filament\Support\EmployeeFilters;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\TextEntry;
@@ -69,7 +70,7 @@ class BgvCaseResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('id')->label('#')->sortable(),
-                TextColumn::make('employee.person.display_name')->label('Employee')->searchable(['people.first_name', 'people.last_name']),
+                TextColumn::make('employee.person.display_name')->label('Employee')->searchable(query: EmployeeFilters::search('employee'))->description(fn (BgvCase $record) => $record->employee?->employee_code),
                 TextColumn::make('provider')->badge()->color('gray'),
                 TextColumn::make('status')->badge()->formatStateUsing(fn (string $state) => BgvCase::STATUSES[$state] ?? $state),
                 TextColumn::make('overall_result')->label('Result')->badge()->color(fn (string $state) => match ($state) {
@@ -81,6 +82,8 @@ class BgvCaseResource extends Resource
             ->filters([
                 SelectFilter::make('status')->options(BgvCase::STATUSES)->multiple(),
                 SelectFilter::make('overall_result')->options(BgvCase::RESULTS),
+                // HROne parity WO-2: the shared employee filters and the date the check started.
+                ...EmployeeFilters::forRegister('employee', 'initiated_at', 'Initiated'),
             ])
             ->defaultSort('id', 'desc')
             ->recordActions([ViewAction::make()]);

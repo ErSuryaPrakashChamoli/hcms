@@ -9,17 +9,24 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** A configurable onboarding checklist (§21): which template applies is a rule, like policies. */
-#[Fillable(['tenant_id', 'name', 'key', 'description', 'priority', 'conditions', 'status'])]
+/**
+ * A configurable onboarding checklist (§21): which template applies is a rule, like policies. HROne setup parity 08.2: a
+ * template of kind induction is an induction programme (its own plan next to the onboarding checklist), and a template
+ * may start N days before joining (preboarding items fall due then; blank = as before, when the person enters preboarding).
+ */
+#[Fillable(['tenant_id', 'name', 'key', 'kind', 'starts_days_before_joining', 'description', 'priority', 'conditions', 'status'])]
 class OnboardingTemplate extends Model
 {
     use Auditable, BelongsToTenant;
+
+    protected $attributes = ['kind' => 'onboarding'];
 
     protected function casts(): array
     {
         return [
             'conditions' => 'array',
             'priority' => 'integer',
+            'starts_days_before_joining' => 'integer',
             'status' => ActiveStatus::class,
         ];
     }

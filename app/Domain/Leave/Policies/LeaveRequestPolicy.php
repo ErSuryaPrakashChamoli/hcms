@@ -40,6 +40,12 @@ class LeaveRequestPolicy
         return ($user->hasPermission('leave.manage') && $this->inScope($user, $model)) || ($user->hasPermission('leave.apply') && $this->isOwn($user, $model));
     }
 
+    /** HROne parity TX-2: changing a balance needs leave.adjust (leave.manage also grants it), on balances in scope. */
+    public function adjust(User $user, Model $model): bool
+    {
+        return $user->hasPermission('leave.adjust') && $this->inScope($user, $model);
+    }
+
     public function delete(User $user, Model $model): bool
     {
         return false;

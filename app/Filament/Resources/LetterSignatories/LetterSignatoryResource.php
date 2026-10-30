@@ -16,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -49,28 +50,32 @@ class LetterSignatoryResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('designation')->maxLength(255)->placeholder('Head of HR'),
-            Select::make('company_id')->label('Company')->placeholder('Any company')
-                ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all()),
-            Toggle::make('is_default')->label('Default signatory')->inline(false)
-                ->default(fn () => ! LetterSignatory::query()->where('is_default', true)->exists())
-                ->helperText('Signs every template that does not name its own signatory.'),
-            View::make('filament.letters.signature-current')->columnSpanFull()
-                ->visible(fn (?LetterSignatory $record) => filled($record?->signature_path))
-                ->viewData(fn (?LetterSignatory $record) => ['image' => $record?->signatureImage()]),
-            FileUpload::make('signature_upload')->label(fn (?LetterSignatory $record) => filled($record?->signature_path) ? 'Replace the signature' : 'Signature')
-                ->image()->acceptedFileTypes(['image/png', 'image/jpeg'])->maxSize(1024)
-                ->disk(fn () => config('peopleos.documents.disk'))->directory(fn () => Letters::directory('signatures'))->visibility('private')
-                ->rule(fn () => function (string $attribute, mixed $value, Closure $fail): void {
-                    $size = $value instanceof TemporaryUploadedFile ? @getimagesize((string) $value->getRealPath()) : false;
-                    if ($value instanceof TemporaryUploadedFile && ($size === false || ! in_array($size['mime'], ['image/png', 'image/jpeg'], true))) {
-                        $fail('The signature must be a PNG or JPEG image.');
-                    }
-                })
-                ->helperText('A scan or photo of the signature, cropped close. A PNG with a transparent background prints best. It is kept privately and printed only into letters.')
-                ->columnSpanFull(),
-            Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            Section::make('Signing authority')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('designation')->maxLength(255)->placeholder('Head of HR'),
+                Select::make('company_id')->label('Company')->placeholder('Any company')
+                    ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all()),
+                Toggle::make('is_default')->label('Default signatory')->inline(false)
+                    ->default(fn () => ! LetterSignatory::query()->where('is_default', true)->exists())
+                    ->helperText('Signs every template that does not name its own signatory.'),
+                Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            ]),
+            Section::make('Signature')->columns(2)->schema([
+                View::make('filament.letters.signature-current')->columnSpanFull()
+                    ->visible(fn (?LetterSignatory $record) => filled($record?->signature_path))
+                    ->viewData(fn (?LetterSignatory $record) => ['image' => $record?->signatureImage()]),
+                FileUpload::make('signature_upload')->label(fn (?LetterSignatory $record) => filled($record?->signature_path) ? 'Replace the signature' : 'Signature')
+                    ->image()->acceptedFileTypes(['image/png', 'image/jpeg'])->maxSize(1024)
+                    ->disk(fn () => config('peopleos.documents.disk'))->directory(fn () => Letters::directory('signatures'))->visibility('private')
+                    ->rule(fn () => function (string $attribute, mixed $value, Closure $fail): void {
+                        $size = $value instanceof TemporaryUploadedFile ? @getimagesize((string) $value->getRealPath()) : false;
+                        if ($value instanceof TemporaryUploadedFile && ($size === false || ! in_array($size['mime'], ['image/png', 'image/jpeg'], true))) {
+                            $fail('The signature must be a PNG or JPEG image.');
+                        }
+                    })
+                    ->helperText('A scan or photo of the signature, cropped close. A PNG with a transparent background prints best. It is kept privately and printed only into letters.')
+                    ->columnSpanFull(),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

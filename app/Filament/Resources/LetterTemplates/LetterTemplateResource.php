@@ -27,6 +27,7 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
@@ -62,43 +63,49 @@ class LetterTemplateResource extends Resource
         $docx = fn (Get $get): bool => $get('format') === LetterTemplate::DOCX;
 
         return $schema->columns(3)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
-            Select::make('type')->options(config('peopleos.letters.types'))->default('custom')->required(),
-            ToggleButtons::make('format')->label('How is the letter made?')->inline()->live()->required()->default(LetterTemplate::HTML)->columnSpanFull()
-                ->options([LetterTemplate::HTML => 'Write it here', LetterTemplate::DOCX => 'Upload our own Word file'])
-                ->icons([LetterTemplate::HTML => 'heroicon-m-pencil-square', LetterTemplate::DOCX => 'heroicon-m-document-arrow-up'])
-                ->helperText('Either way, put variables such as {{ employee.name }} where the employee’s details should go.'),
-            TextInput::make('subject')->required()->maxLength(255)->columnSpan(2)->helperText('Variables work here too, e.g. Experience certificate – {{ employee.name }}.'),
-            Toggle::make('requires_approval')->label('Needs approval before issue')->inline(false),
-            RichEditor::make('body')->label('Letter')->columnSpanFull()
-                ->hidden($docx)->required(fn (Get $get): bool => ! $docx($get))
-                ->mergeTags(fn () => LetterVariables::mergeTags())
-                ->toolbarButtons([
-                    ['bold', 'italic', 'underline', 'strike', 'link'],
-                    ['h2', 'h3', 'paragraph'],
-                    ['alignStart', 'alignCenter', 'alignEnd', 'alignJustify'],
-                    ['bulletList', 'orderedList', 'horizontalRule'],
-                    ['table', 'mergeTags'],
-                    ['undo', 'redo', 'clearFormatting'],
-                ])
-                ->hintAction(LetterVariablesUi::guideAction('variablesFromEditor'))
-                ->helperText('Click { } to insert a variable. {{ salary.annexure }} on a line of its own prints the salary table (monthly and yearly); {{ signatory.signature }} prints the signature.'),
-            FileUpload::make('file_path')->label('Word file (.docx)')->columnSpan(2)
-                ->visible($docx)->required($docx)
-                ->disk(fn () => config('peopleos.documents.disk'))->directory(fn () => Letters::directory('templates'))->visibility('private')
-                ->acceptedFileTypes([Letters::DOCX_MIME])->maxSize(5120)->storeFileNamesIn('file_name')
-                ->rule(fn () => function (string $attribute, mixed $value, Closure $fail): void {
-                    if ($value instanceof TemporaryUploadedFile && ($problem = DocxLetter::problem((string) $value->getRealPath()))) {
-                        $fail($problem);
-                    }
-                })
-                ->hintAction(LetterVariablesUi::sampleAction('sampleFromUpload'))
-                ->helperText('Make the letter in Word with your letterhead and layout, type variables such as {{ employee.name }} where values go, and save it as .docx. Each letter is a filled copy of this file.'),
-            Select::make('letter_signatory_id')->label('Signing authority')->placeholder('The default signatory')
-                ->options(fn () => self::signatories())
-                ->helperText('Printed by {{ signatory.signature }}, {{ signatory.name }} and {{ signatory.designation }}.'),
-            Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            Section::make('Template')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
+                Select::make('type')->options(config('peopleos.letters.types'))->default('custom')->required(),
+                Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                ToggleButtons::make('format')->label('How is the letter made?')->inline()->live()->required()->default(LetterTemplate::HTML)->columnSpanFull()
+                    ->options([LetterTemplate::HTML => 'Write it here', LetterTemplate::DOCX => 'Upload our own Word file'])
+                    ->icons([LetterTemplate::HTML => 'heroicon-m-pencil-square', LetterTemplate::DOCX => 'heroicon-m-document-arrow-up'])
+                    ->helperText('Either way, put variables such as {{ employee.name }} where the employee’s details should go.'),
+            ]),
+            Section::make('Letter content')->columns(2)->schema([
+                TextInput::make('subject')->required()->maxLength(255)->columnSpan(2)->helperText('Variables work here too, e.g. Experience certificate – {{ employee.name }}.'),
+                RichEditor::make('body')->label('Letter')->columnSpanFull()
+                    ->hidden($docx)->required(fn (Get $get): bool => ! $docx($get))
+                    ->mergeTags(fn () => LetterVariables::mergeTags())
+                    ->toolbarButtons([
+                        ['bold', 'italic', 'underline', 'strike', 'link'],
+                        ['h2', 'h3', 'paragraph'],
+                        ['alignStart', 'alignCenter', 'alignEnd', 'alignJustify'],
+                        ['bulletList', 'orderedList', 'horizontalRule'],
+                        ['table', 'mergeTags'],
+                        ['undo', 'redo', 'clearFormatting'],
+                    ])
+                    ->hintAction(LetterVariablesUi::guideAction('variablesFromEditor'))
+                    ->helperText('Click { } to insert a variable. {{ salary.annexure }} on a line of its own prints the salary table (monthly and yearly); {{ signatory.signature }} prints the signature.'),
+                FileUpload::make('file_path')->label('Word file (.docx)')->columnSpan(2)
+                    ->visible($docx)->required($docx)
+                    ->disk(fn () => config('peopleos.documents.disk'))->directory(fn () => Letters::directory('templates'))->visibility('private')
+                    ->acceptedFileTypes([Letters::DOCX_MIME])->maxSize(5120)->storeFileNamesIn('file_name')
+                    ->rule(fn () => function (string $attribute, mixed $value, Closure $fail): void {
+                        if ($value instanceof TemporaryUploadedFile && ($problem = DocxLetter::problem((string) $value->getRealPath()))) {
+                            $fail($problem);
+                        }
+                    })
+                    ->hintAction(LetterVariablesUi::sampleAction('sampleFromUpload'))
+                    ->helperText('Make the letter in Word with your letterhead and layout, type variables such as {{ employee.name }} where values go, and save it as .docx. Each letter is a filled copy of this file.'),
+            ]),
+            Section::make('Signing and approval')->columns(2)->schema([
+                Select::make('letter_signatory_id')->label('Signing authority')->placeholder('The default signatory')
+                    ->options(fn () => self::signatories())
+                    ->helperText('Printed by {{ signatory.signature }}, {{ signatory.name }} and {{ signatory.designation }}.'),
+                Toggle::make('requires_approval')->label('Needs approval before issue')->inline(false),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

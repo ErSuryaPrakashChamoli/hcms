@@ -7,7 +7,9 @@ use App\Domain\Analytics\Models\ReportRun;
 use App\Domain\Enterprise\Models\WebhookDelivery;
 use App\Domain\Entitlements\Models\EntitlementShadowObservation;
 use App\Domain\Integration\Models\ApiIdempotencyKey;
+use App\Domain\Integration\Models\ApiRequestLog;
 use App\Domain\Integration\Services\InboundEvents;
+use App\Domain\Integration\Services\IntegrationLogExports;
 use App\Domain\Notifications\Models\NotificationDelivery;
 use App\Domain\Offboarding\Services\LegalHolds;
 use App\Domain\Platform\Services\SettingsRepository;
@@ -59,6 +61,13 @@ final class Retention
             $out['report_runs'] += $done;
         }
         $out['webhook_deliveries'] = $this->inBatches($guard, 'integrations', fn () => WebhookDelivery::query()->whereIn('status', ['delivered', 'failed', 'dead_letter'])->where('created_at', '<', now()->subDays(90)));
+        // HROne parity SV-26: each delivery's attempts go with it (foreign key cascade); previous webhook secrets past their
+        // grace period are cleared; queued log exports (rows and files) follow the report runs' window.
+        $out['webhook_previous_secrets'] = $guard('integrations', fn () => app(Webhooks::class)->expirePreviousSecrets()) ?? 'held';
+        $out['integration_log_exports'] = $r > 0 ? ($guard('integrations', fn () => app(IntegrationLogExports::class)->purge($r)) ?? 'held') : 0;
+        // HROne parity CA-11: API call logs past the tenant's window.
+        $calls = (int) $this->settings->get('retention.api_request_logs_days', 90);
+        $out['api_request_logs'] = $calls > 0 ? $this->inBatches($guard, 'api', fn () => ApiRequestLog::query()->where('created_at', '<', now()->subDays($calls))) : 0;
         // SaaS.8: the warehouse feed's daily snapshots past the tenant's window (they were never deleted).
         $out['warehouse_snapshots'] = $guard('warehouse_exports', fn () => app(WarehouseExport::class)->purgeSnapshots()) ?? 'held';
         // Phase 14: inbound event payload bodies are purged after the retention window; the event rows (metadata) stay.

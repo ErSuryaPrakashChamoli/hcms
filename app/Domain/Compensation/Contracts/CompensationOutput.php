@@ -50,8 +50,14 @@ interface CompensationOutput
      */
     public function history(Employee|int $employee): Collection;
 
-    /** Sub-select of employee ids with approved compensation in force on the date (for readiness counts). */
-    public function coveredEmployeeIds(CarbonInterface|string|null $date = null): Builder;
+    /**
+     * Sub-select of employee ids with approved compensation in force on the date (for readiness counts). HROne parity
+     * PO-1: with $structureIds, only those whose compensation in force is on one of these salary structures (the
+     * "pay group" filter of the payroll registers).
+     *
+     * @param  list<int>|null  $structureIds
+     */
+    public function coveredEmployeeIds(CarbonInterface|string|null $date = null, ?array $structureIds = null): Builder;
 
     /**
      * Annual CTC in force on the date for the employees the current user may reach, in one query.

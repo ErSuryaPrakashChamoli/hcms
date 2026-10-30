@@ -5,6 +5,8 @@ namespace App\Filament\Resources\TaxDeclarations;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Filament\Pages\DeclareInvestments;
 use App\Filament\Resources\TaxDeclarations\Pages\ManageTaxDeclarations;
+use App\Filament\Support\PayrollRegisters;
+use App\Http\Controllers\Form12bbController;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
@@ -51,13 +53,17 @@ class TaxDeclarationResource extends Resource
                 TextColumn::make('employee.employee_code')->label('Code')->searchable(),
                 TextColumn::make('employee.person.full_name')->label('Employee'),
                 TextColumn::make('regime')->badge()->color('gray')->formatStateUsing(fn (string $state) => config("peopleos.compliance.tax_regimes.{$state}", $state)),
-                TextColumn::make('declared')->label('Declared total')->state(fn (EmployeeTaxDeclaration $record) => array_sum(array_map('floatval', collect($record->declarations ?? [])->except(['METRO'])->all())))->numeric(2),
+                TextColumn::make('declared')->label('Declared total')->state(fn (EmployeeTaxDeclaration $record) => array_sum(array_map('floatval', collect($record->declarations ?? [])->except(['METRO', 'OTHER_INCOME'])->all())))->numeric(2),
                 TextColumn::make('status')->badge()->color(fn (string $state) => match ($state) {
                     'verified' => 'success', 'submitted' => 'info', default => 'gray'
                 }),
             ])
             ->defaultSort('id', 'desc')
-            ->filters([SelectFilter::make('status')->options(EmployeeTaxDeclaration::STATUSES)])
+            ->filters([
+                SelectFilter::make('status')->options(EmployeeTaxDeclaration::STATUSES),
+                // HROne parity PO-1: the WO-2 employee filters (payroll side only).
+                ...PayrollRegisters::filters('payroll.view'),
+            ])
             ->recordActions([
                 // The employee's items are filed in the guided declaration, which recalculates the section totals.
                 Action::make('open')->label(fn (EmployeeTaxDeclaration $record) => auth()->user()->can('update', $record) ? 'Open' : 'View')->icon('heroicon-m-arrow-top-right-on-square')
@@ -77,6 +83,10 @@ class TaxDeclarationResource extends Resource
                         $record->withAuditReason('Employer NPS contribution set by payroll')->update(['declarations' => $declarations]);
                         Notification::make()->success()->title('Employer NPS saved')->send();
                     }),
+                // HROne parity PY-13: the declaration as Form 12BB, to print and sign.
+                Action::make('form12bb')->label('Form 12BB')->icon('heroicon-m-printer')->color('gray')
+                    ->visible(fn (EmployeeTaxDeclaration $record) => Form12bbController::visibleFor($record, auth()->user()))
+                    ->url(fn (EmployeeTaxDeclaration $record) => Form12bbController::url($record), shouldOpenInNewTab: true),
                 Action::make('verify')->label('Verify')->icon('heroicon-m-check-badge')->color('success')
                     ->visible(fn (EmployeeTaxDeclaration $record) => $record->status !== 'verified' && auth()->user()->can('payroll.manage'))
                     ->requiresConfirmation()

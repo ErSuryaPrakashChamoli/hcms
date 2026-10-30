@@ -78,6 +78,7 @@ class EmployeesDataset extends Dataset
             'division' => ['label' => 'Division', 'type' => 'string', 'value' => fn ($e) => $pos($e)?->division?->name],
             'location' => ['label' => 'Location', 'type' => 'string', 'value' => fn ($e) => $pos($e)?->location?->name],
             'department' => ['label' => 'Department', 'type' => 'string', 'value' => fn ($e) => $pos($e)?->department?->name],
+            'department_parent' => ['label' => 'Parent department', 'type' => 'string', 'value' => fn ($e) => $this->departmentParent($pos($e)?->department_id)],
             'team' => ['label' => 'Team', 'type' => 'string', 'value' => fn ($e) => $pos($e)?->team?->name],
             'designation' => ['label' => 'Designation', 'type' => 'string', 'value' => fn ($e) => $pos($e)?->designation?->name],
             'level' => ['label' => 'Level', 'type' => 'string', 'value' => fn ($e) => $pos($e)?->level?->name],

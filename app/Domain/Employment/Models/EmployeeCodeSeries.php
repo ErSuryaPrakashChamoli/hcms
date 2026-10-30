@@ -5,6 +5,7 @@ namespace App\Domain\Employment\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Services\EmployeeCodeGenerator;
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Models\EmploymentType;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -12,11 +13,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * How a company's employee codes are made: prefix + number padded to `digits` + suffix (MKT-00042-IN). One per company;
- * the one without a company is the tenant default for companies that have none. `next_number` is the counter, moved by
+ * the one without a company is the tenant default for companies that have none. HROne setup parity (code series by
+ * employee type): a series may also name an employment type; a hire takes company + type, then company, then type
+ * (all companies), then the default. `next_number` is the counter, moved by
  * EmployeeCodeGenerator under a row lock without an audit row per hire (the hire itself is audited); an admin's edit
  * is audited. A series never goes back: saving it moves next_number past the highest code already used in its pattern.
  */
-#[Fillable(['tenant_id', 'company_id', 'prefix', 'suffix', 'digits', 'next_number', 'allow_manual'])]
+#[Fillable(['tenant_id', 'company_id', 'employment_type_id', 'prefix', 'suffix', 'digits', 'next_number', 'allow_manual'])]
 class EmployeeCodeSeries extends Model
 {
     use Auditable, BelongsToTenant;
@@ -38,17 +41,22 @@ class EmployeeCodeSeries extends Model
 
     protected function casts(): array
     {
-        return ['digits' => 'integer', 'next_number' => 'integer', 'allow_manual' => 'boolean'];
+        return ['company_id' => 'integer', 'employment_type_id' => 'integer', 'digits' => 'integer', 'next_number' => 'integer', 'allow_manual' => 'boolean'];
     }
 
     public function auditLabel(): string
     {
-        return ($this->company?->name ?? 'All companies').' · '.$this->pattern();
+        return ($this->company?->name ?? 'All companies').($this->employmentType ? ' · '.$this->employmentType->name : '').' · '.$this->pattern();
     }
 
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function employmentType(): BelongsTo
+    {
+        return $this->belongsTo(EmploymentType::class);
     }
 
     public function format(int $number): string

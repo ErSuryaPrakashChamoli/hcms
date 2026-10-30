@@ -2,9 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Experience\Services\DirectorySections;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\PeopleVisibility;
 use App\Domain\Experience\Services\RoleLens;
+use App\Domain\Identity\Services\CurrentEmployee;
+use App\Domain\People\Actions\UpdatePersonAction;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -64,6 +67,39 @@ class Preferences extends Page
         $ids = $this->prefs['pinned_people'] ?? [];
 
         return $ids === [] ? collect() : app(PeopleVisibility::class)->query(auth()->user())->with('person')->whereKey($ids)->get();
+    }
+
+    /**
+     * HROne setup parity CA-6: the directory-card sections the organisation lets people hide, and whether I hide each.
+     *
+     * @return array<string, array{label: string, hidden: bool}>
+     */
+    #[Computed]
+    public function directoryCard(): array
+    {
+        $me = app(CurrentEmployee::class)->of(auth()->user());
+        $sections = app(DirectorySections::class);
+        if ($me === null) {
+            return [];
+        }
+        $hidden = $sections->hiddenBy($me);
+
+        return collect($sections->hideable())->mapWithKeys(fn (string $key) => [$key => ['label' => DirectorySections::options()[$key], 'hidden' => in_array($key, $hidden, true)]])->all();
+    }
+
+    /** Hide or show one directory-card section from colleagues (only sections the organisation lets employees hide). */
+    public function toggleDirectorySection(string $key): void
+    {
+        $me = app(CurrentEmployee::class)->of(auth()->user());
+        $sections = app(DirectorySections::class);
+        if ($me === null || ! in_array($key, $sections->hideable(), true)) {
+            return;
+        }
+        $hidden = $sections->hiddenBy($me);
+        $hidden = in_array($key, $hidden, true) ? array_values(array_diff($hidden, [$key])) : [...$hidden, $key];
+        app(UpdatePersonAction::class)->handle($me->person, ['directory_hidden' => $hidden === [] ? null : $hidden], 'Directory card changed by the employee');
+        unset($this->directoryCard);
+        Notification::make()->success()->title(in_array($key, $hidden, true) ? 'Hidden from colleagues' : 'Shown to colleagues')->send();
     }
 
     public function setDensity(string $density): void

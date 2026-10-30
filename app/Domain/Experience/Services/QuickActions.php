@@ -11,7 +11,9 @@ use App\Filament\Pages\ConfigurationFinder;
 use App\Filament\Pages\Home;
 use App\Filament\Pages\LeaveCalendar;
 use App\Filament\Pages\MyHr;
+use App\Filament\Pages\MyRequests as MyRequestsPage;
 use App\Filament\Pages\MyTeam;
+use App\Filament\Pages\NewRequest;
 use App\Filament\Pages\OrganisationMap;
 use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Pages\People;
@@ -43,6 +45,9 @@ use Throwable;
  */
 final class QuickActions
 {
+    /** HROne parity RQ-1: request types that already have their own action above (request_leave, regularise, ask_hr, services). */
+    private const LISTED_REQUEST_TYPES = ['leave', 'attendance_regularisation', 'helpdesk', 'hr_service'];
+
     public function __construct(private readonly RoleLens $lenses, private readonly ApprovalCenter $approvals) {}
 
     /**
@@ -160,7 +165,28 @@ final class QuickActions
         $add('integrations', 'Review', 'Integration hub', 'Connected systems, messages and failures', 'heroicon-o-link', ['integration', 'integrations', 'webhook', 'api', 'dead letter', 'sync'],
             fn () => IntegrationSystemResource::getUrl('index'), RoleLens::SYSTEM_ADMIN, IntegrationSystemResource::canAccess());
 
+        // HROne parity RQ-1: every request type the person can raise now (the request registry; each opens the module's own
+        // form), after all the actions above so Home's featured actions stay as they were. Leave, regularisation, Ask HR and
+        // the service catalogue are already listed above.
+        $add('new_request', 'Request', 'New request', 'Everything you can request, in one place', 'heroicon-o-plus-circle', ['new request', 'request', 'raise', 'apply'],
+            fn () => NewRequest::getUrl(), RoleLens::EMPLOYEE, NewRequest::canAccess());
+        $add('my_requests', 'Review', 'My requests', 'Pending, approved, rejected, withdrawn and drafts', 'heroicon-o-queue-list', ['my requests', 'requests', 'status', 'pending', 'track', 'history'],
+            fn () => MyRequestsPage::getUrl(), RoleLens::EMPLOYEE, MyRequestsPage::canAccess());
+        foreach (app(RequestRegistry::class)->available($user) as ['type' => $type, 'url' => $url]) {
+            if (in_array($type->key(), self::LISTED_REQUEST_TYPES, true)) {
+                continue;
+            }
+            $add('request.'.$type->key(), 'Request', $type->label(), $type->description(), $type->icon(), [...$type->keywords(), mb_strtolower($type->label()), 'request'],
+                fn () => $url, RoleLens::EMPLOYEE, true);
+        }
+
         return $actions;
+    }
+
+    /** HROne parity RQ-1: an action added from the request registry ("New request", "My requests", one per request type). */
+    public static function isRequestLauncher(string $key): bool
+    {
+        return in_array($key, ['new_request', 'my_requests'], true) || str_starts_with($key, 'request.');
     }
 
     /** The actions to feature for one lens (Home), keeping the launcher's order. */
@@ -168,7 +194,8 @@ final class QuickActions
     {
         // UX.16: match by experience, so the HR admin and system admin lenses share the administrator's actions.
         $experience = RoleLens::experienceOf($lens);
-        $own = array_values(array_filter($this->for($user), fn (array $a) => RoleLens::experienceOf($a['lens']) === $experience));
+        // HROne parity RQ-1: the request launcher's actions are found in the Command Center, never featured on Home.
+        $own = array_values(array_filter($this->for($user), fn (array $a) => RoleLens::experienceOf($a['lens']) === $experience && ! self::isRequestLauncher($a['key'])));
 
         return array_slice($own, 0, $limit);
     }

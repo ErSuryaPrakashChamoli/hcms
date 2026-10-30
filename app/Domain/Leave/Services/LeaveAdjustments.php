@@ -81,6 +81,14 @@ final class LeaveAdjustments
         if ($days <= 0 || $days > $this->balances->balance($employee, $type, $period)->available()) {
             throw new RuntimeException('Not enough balance to encash.');
         }
+        // HROne setup parity (TO-7): most days per request and the balance to keep.
+        if (($perRequest = (float) ($rule['max_encash_per_request'] ?? 0)) > 0 && $days > $perRequest) {
+            throw new RuntimeException("At most {$perRequest} day(s) can be encashed in one request.");
+        }
+        $keep = (float) ($rule['min_balance_after_encash'] ?? 0);
+        if ($keep > 0 && $this->balances->balance($employee, $type, $period)->available() - $days < $keep) {
+            throw new RuntimeException("Keep at least {$keep} day(s) after encashment.");
+        }
 
         $encashment = new LeaveEncashment(['employee_id' => $employee->id, 'leave_type_id' => $type->id, 'period_year' => $period, 'days' => $days, 'status' => 'pending', 'reason' => $reason, 'requested_by' => auth()->id()]);
         $encashment->withAuditReason($reason)->save();
@@ -115,7 +123,39 @@ final class LeaveAdjustments
 
         $encashment->withAuditReason($note)->update(['status' => 'rejected', 'reviewed_by' => auth()->id(), 'reviewed_at' => now(), 'review_note' => $note]);
         $this->audit->record(AuditAction::Rejected, 'leave', $encashment, reason: $note);
+        $encashment->loadMissing('employee');
+        LeaveEvent::dispatch('leave.encashment_rejected', $encashment->employee, $encashment, ['note' => $note]);
 
         return $encashment;
+    }
+
+    /**
+     * HP-1: withdraw a pending encashment, or cancel an approved one that has not been paid: the encashed days go
+     * back to the balance through a reversing ledger entry.
+     */
+    public function cancelEncashment(LeaveEncashment $encashment, string $reason): LeaveEncashment
+    {
+        if (trim($reason) === '') {
+            throw new RuntimeException('Give a reason for cancelling.');
+        }
+
+        return DB::transaction(function () use ($encashment, $reason) {
+            $locked = LeaveEncashment::query()->whereKey($encashment->getKey())->lockForUpdate()->firstOrFail();
+            $locked->load(['employee', 'leaveType']);
+
+            if (! in_array($locked->status, ['pending', 'approved'], true)) {
+                throw new RuntimeException($locked->status === 'paid' ? 'This encashment has already been paid.' : 'This encashment cannot be cancelled.');
+            }
+            if ($locked->status === 'approved') {
+                $this->balances->post($locked->employee, $locked->leaveType, $locked->period_year, 'encashment', (float) $locked->days, $locked, 'Encashment cancelled: '.$reason, "encashment-{$locked->id}-reversal");
+            }
+
+            $was = $locked->status;
+            $locked->withAuditReason($reason)->update(['status' => 'cancelled', 'cancelled_at' => now(), 'cancelled_by' => auth()->id(), 'cancel_reason' => $reason]);
+            $this->audit->record(AuditAction::Cancelled, 'leave', $locked, reason: $reason, metadata: ['was' => $was]);
+            LeaveEvent::dispatch('leave.encashment_cancelled', $locked->employee, $locked, ['days' => (float) $locked->days, 'was' => $was]);
+
+            return $locked;
+        });
     }
 }

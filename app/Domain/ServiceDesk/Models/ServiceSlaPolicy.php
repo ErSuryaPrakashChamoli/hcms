@@ -40,6 +40,10 @@ class ServiceSlaPolicy extends Model
                     throw new RuntimeException("SLA target for [{$priority}] needs a known priority and positive resolution hours.");
                 }
             }
+            $hours = self::serviceHours($policy->business_hours);
+            if ($hours !== $policy->business_hours) {
+                $policy->business_hours = $hours;
+            }
         });
         static::updating(function (self $policy): void {
             $content = array_intersect(array_keys($policy->getDirty()), self::CONTENT);
@@ -76,6 +80,36 @@ class ServiceSlaPolicy extends Model
         $target = $targets[$priority] ?? $targets['normal'] ?? reset($targets) ?: ['first_response_hours' => 8, 'resolution_hours' => 24];
 
         return ['first_response_hours' => (float) ($target['first_response_hours'] ?? 0), 'resolution_hours' => (float) $target['resolution_hours']];
+    }
+
+    /**
+     * HROne setup parity HD-B: the policy's own service days and working hours (the resolver's weekly offs and hours).
+     * Blank means the organisation default (peopleos.servicedesk.business_hours); otherwise at least one ISO weekday
+     * (1 = Monday … 7 = Sunday) and an end after the start, kept as {days, start, end}.
+     *
+     * @return array{days: list<int>, start: string, end: string}|null
+     */
+    public static function serviceHours(mixed $hours): ?array
+    {
+        $hours = (array) ($hours ?? []);
+        $days = array_values(array_unique(array_map('intval', array_filter((array) ($hours['days'] ?? []), fn ($d) => $d !== null && $d !== ''))));
+        $start = filled($hours['start'] ?? null) ? substr((string) $hours['start'], 0, 5) : null;
+        $end = filled($hours['end'] ?? null) ? substr((string) $hours['end'], 0, 5) : null;
+        if ($days === [] && $start === null && $end === null) {
+            return null;
+        }
+        sort($days);
+        $default = (array) config('peopleos.servicedesk.business_hours');
+        $start ??= (string) ($default['start'] ?? '09:00');
+        $end ??= (string) ($default['end'] ?? '18:00');
+        if ($days === [] || array_diff($days, [1, 2, 3, 4, 5, 6, 7]) !== []) {
+            throw new RuntimeException('Service hours need at least one working day (Monday to Sunday).');
+        }
+        if (! preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $start) || ! preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $end) || $end <= $start) {
+            throw new RuntimeException('Service hours need a start and an end time (HH:MM), the end after the start.');
+        }
+
+        return ['days' => $days, 'start' => $start, 'end' => $end];
     }
 
     /** @return list<string> */

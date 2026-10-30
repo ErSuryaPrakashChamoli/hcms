@@ -90,6 +90,28 @@ final class InvestmentCatalogue
                 'savings_interest' => ['label' => 'Interest on your savings accounts', 'help' => 'The total savings interest credited this year across your accounts.', 'proof' => 'Bank statement or interest certificate'],
             ],
         ],
+        // HROne parity PY-13: the other heads an employee may report to the employer (s.192(2B)).
+        '24B' => [
+            'title' => 'Home loan interest (Section 24(b))',
+            'step' => 'Home loan',
+            'code' => '24(b)',
+            'kind' => 'house_property',
+            'intro' => 'Interest (not the principal) on a loan taken to buy, build or repair the home you live in. The principal part goes under 80C. Payroll counts this only in the old regime and only up to the limit in the tax rule.',
+            'items' => [
+                'self_occupied' => ['label' => 'Interest on the home loan for the home you live in', 'help' => 'The interest part of this year’s EMIs. Your lender’s yearly certificate shows the split.', 'proof' => 'Interest certificate from the lender, with the lender’s name, address and PAN'],
+            ],
+        ],
+        'OTHER_INCOME' => [
+            'title' => 'Other income you want taxed through salary',
+            'step' => 'Other income',
+            'code' => 'Other income',
+            'kind' => 'income',
+            'intro' => 'Income other than this salary that you want payroll to tax with your salary, such as interest on fixed deposits, so you do not owe tax when you file your return. This increases the tax deducted each month. Leave it empty if you would rather pay that tax yourself.',
+            'items' => [
+                'deposit_interest' => ['label' => 'Interest on fixed and recurring deposits', 'help' => 'Interest you expect for the year from fixed or recurring deposits.', 'proof' => 'Interest certificate or statement'],
+                'other' => ['label' => 'Other income', 'help' => 'Another income to tax with your salary. Describe it.', 'proof' => 'Statement or certificate', 'other' => true],
+            ],
+        ],
     ];
 
     /** The form-safe key of a section ("80C" → "s_80C"): state paths must not start with a digit. */
@@ -104,6 +126,12 @@ final class InvestmentCatalogue
         [$section, $item] = array_pad(explode('.', $itemKey, 2), 2, null);
 
         return self::SECTIONS[$section]['items'][$item] ?? null;
+    }
+
+    /** deduction (default), house_property or income: how a section changes taxable income. */
+    public static function kind(string $section): string
+    {
+        return self::SECTIONS[$section]['kind'] ?? 'deduction';
     }
 
     public static function isOther(string $itemKey): bool

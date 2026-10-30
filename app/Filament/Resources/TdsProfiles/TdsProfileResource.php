@@ -14,6 +14,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -38,16 +39,20 @@ class TdsProfileResource extends Resource
         $registration = fn (string $type) => fn ($get) => StatutoryRegistration::query()->where('registration_type', $type)->where('legal_entity_id', $get('legal_entity_id'))->get()->mapWithKeys(fn ($r) => [$r->id => $r->typeLabel().' '.$r->maskedNumber()])->all();
 
         return $schema->columns(2)->components([
-            Select::make('legal_entity_id')->label('Legal entity')->required()->live()->disabledOn('edit')->options(fn () => LegalEntity::query()->orderBy('legal_name')->pluck('legal_name', 'id')->all()),
-            Select::make('deductor_category')->options(['company' => 'Company', 'government' => 'Government', 'others' => 'Others'])->default('company')->required(),
-            Select::make('tan_registration_id')->label('TAN')->options($registration('tan')),
-            Select::make('pan_registration_id')->label('Deductor PAN')->options($registration('pan')),
-            TextInput::make('responsible_person_name')->required()->maxLength(255),
-            TextInput::make('responsible_person_designation')->required()->maxLength(255),
-            TextInput::make('responsible_person_pan')->label('Responsible person PAN')->maxLength(10)->password()->revealable(false)->dehydrated(fn ($state) => filled($state))->helperText('Stored encrypted; leave blank to keep.'),
-            TextInput::make('email')->email(),
-            TextInput::make('phone')->maxLength(32),
-            Textarea::make('address')->rows(2)->columnSpanFull(),
+            Section::make('Deductor')->columns(2)->schema([
+                Select::make('legal_entity_id')->label('Legal entity')->required()->live()->disabledOn('edit')->options(fn () => LegalEntity::query()->orderBy('legal_name')->pluck('legal_name', 'id')->all()),
+                Select::make('deductor_category')->options(['company' => 'Company', 'government' => 'Government', 'others' => 'Others'])->default('company')->required(),
+                Select::make('tan_registration_id')->label('TAN')->options($registration('tan')),
+                Select::make('pan_registration_id')->label('Deductor PAN')->options($registration('pan')),
+            ]),
+            Section::make('Person responsible')->columns(2)->schema([
+                TextInput::make('responsible_person_name')->required()->maxLength(255),
+                TextInput::make('responsible_person_designation')->required()->maxLength(255),
+                TextInput::make('responsible_person_pan')->label('Responsible person PAN')->maxLength(10)->password()->revealable(false)->dehydrated(fn ($state) => filled($state))->helperText('Stored encrypted; leave blank to keep.'),
+                TextInput::make('email')->email(),
+                TextInput::make('phone')->maxLength(32),
+                Textarea::make('address')->rows(2)->columnSpanFull(),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

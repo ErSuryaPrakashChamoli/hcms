@@ -16,7 +16,7 @@ use RuntimeException;
 final class ReportLibrary
 {
     /** Display order of template categories. */
-    public const CATEGORIES = ['People', 'Attendance', 'Leave', 'Payroll & compensation', 'Statutory & income tax', 'Joining & exit', 'Performance & learning', 'Assets & service desk', 'Administration'];
+    public const CATEGORIES = ['People', 'Attendance', 'Leave', 'Payroll & compensation', 'Statutory & income tax', 'Expense & travel', 'Joining & exit', 'Performance & learning', 'Assets & service desk', 'Administration'];
 
     private const ACTIVE = 'joined,probation,confirmed,active,on_leave,notice_period';
 
@@ -105,10 +105,27 @@ final class ReportLibrary
                 self::rows(['employee_code', 'name', 'department', 'document_type', 'title', 'expires_on'], [self::when('is_expired', 'equals', '1'), self::when('status', 'not_equals', 'archived'), $active], 'expires_on')],
             ['documents_pending_verification', 'People', 'Documents pending verification', 'Uploaded documents waiting for HR verification.', 'employee_documents',
                 self::rows(['employee_code', 'name', 'document_type', 'title', 'uploaded_on'], [self::when('status', 'equals', 'pending')], 'uploaded_on')],
+            // HROne setup parity CA-4: mandatory document types not on file (pending or verified).
+            ['documents_missing', 'People', 'Missing documents', 'Active employees without a document every employee must have.', 'missing_documents',
+                self::rows(['employee_code', 'name', 'department', 'location', 'document_type', 'document_category'], [self::when('employee_status', 'in', self::ACTIVE), self::when('required_of_everyone', 'equals', '1')], 'employee_code')],
+            ['documents_missing_joiners', 'People', 'Missing joining documents', 'Upcoming joiners without a document needed before joining.', 'missing_documents',
+                self::rows(['employee_code', 'name', 'expected_joining_date', 'department', 'document_type'], [self::when('employee_status', 'in', 'pre_employee,preboarding,onboarding'), self::when('required_for_onboarding', 'equals', '1')], 'expected_joining_date')],
             ['letters_issued_this_month', 'People', 'Letters issued this month', 'Offer, appointment, confirmation, relieving and other letters issued this month.', 'letters',
                 self::rows(['number', 'employee_code', 'name', 'type', 'subject', 'issued_on', 'approved_by'], [self::when('issued_on', 'this_month')], 'issued_on', 'desc')],
             ['letters_pending', 'People', 'Letters awaiting approval or issue', 'Letters in draft or pending approval.', 'letters',
                 self::rows(['number', 'employee_code', 'name', 'type', 'subject', 'status', 'requested_on', 'requested_by'], [self::when('status', 'in', 'draft,pending_approval,approved')], 'requested_on')],
+            // HROne setup parity HP-9c: the badges ledger and who was recognised most.
+            ['badges_ledger_this_month', 'People', 'Badges ledger (this month)', 'Every badge given this month: badge, receiver, giver, reason and visibility.', 'badges_ledger',
+                self::rows(['given_on', 'badge', 'employee_code', 'name', 'department', 'given_by', 'reason', 'visibility', 'status'], [self::when('given_on', 'this_month')], 'given_on', 'desc')],
+            ['badges_by_employee', 'People', 'Badges received per employee (this financial year)', 'Badges received by each employee this financial year (withdrawn ones left out).', 'badges_ledger',
+                self::grouped('employee', [['fn' => 'count']], [self::when('given_on', 'this_financial_year'), self::when('status', 'equals', 'given')], 'table', 'count', 'desc')],
+            // HROne setup parity HP-9d / HP-9f: reward points and the happiness index.
+            ['reward_points_this_month', 'People', 'Reward points ledger (this month)', 'Every reward points movement this month: deposits, credits, awards, badge points, redemptions, lapses and expiry.', 'reward_points_ledger',
+                self::rows(['date', 'wallet', 'kind', 'points', 'employee_code', 'name', 'colleague', 'amount', 'paid_in_payroll'], [self::when('date', 'this_month')], 'date', 'desc')],
+            ['reward_points_redeemed', 'People', 'Reward points redeemed (this financial year)', 'Points redeemed through payroll this financial year, with the amount and whether payroll has paid it.', 'reward_points_ledger',
+                self::rows(['date', 'employee_code', 'name', 'department', 'points', 'amount', 'currency', 'paid_in_payroll'], [self::when('date', 'this_financial_year'), self::when('kind_code', 'equals', 'redeem')], 'date', 'desc')],
+            ['happiness_index_trend', 'People', 'Happiness index by period', 'Average mood and the share of happy check-ins per period and group (small groups suppressed).', 'happiness_index',
+                self::rows(['period', 'period_end', 'group', 'respondents', 'average_mood', 'happy_share', 'unhappy_share'], [], 'period_end', 'desc')],
 
             // Attendance --------------------------------------------------------------------------------
             ['attendance_today', 'Attendance', 'Daily attendance (today)', 'Status, shift, in/out time and hours for every employee today.', 'attendance',
@@ -185,8 +202,49 @@ final class ReportLibrary
                 self::rows(['entry_date', 'year', 'employee_code', 'name', 'leave_type', 'debit', 'note'], [self::when('type', 'in', 'lapse,expiry')], 'entry_date', 'desc')],
             ['leave_encashments', 'Leave', 'Leave encashment register', 'Encashment requests with days and decision.', 'leave_encashments',
                 self::rows(['year', 'employee_code', 'name', 'department', 'leave_type', 'days', 'status', 'requested_on', 'reviewed_by', 'reviewed_on'], [], 'requested_on', 'desc')],
+            // HROne parity HP-1 ------------------------------------------------------------------------------
+            ['leave_donations_register', 'Leave', 'Leave donation report', 'Leave given between colleagues, with the decision.', 'leave_donations',
+                self::rows(['employee_code', 'name', 'recipient', 'leave_type', 'year', 'days', 'reason', 'status', 'reviewed_by'], [], 'applied_on', 'desc')],
+            ['time_office_pending', 'Attendance', 'Time-office requests pending', 'Open short leave, on-duty, shift change, overtime, comp-off and restricted holiday requests, oldest first.', 'time_office_requests',
+                self::rows(['from_date', 'employee_code', 'name', 'department', 'type', 'part', 'minutes', 'reason', 'applied_on', 'pending_days'], [self::when('status', 'in', 'Pending,Cancellation requested')], 'pending_days', 'desc')],
+            ['attendance_reconciliation', 'Attendance', 'Attendance reconciliation (time-office requests this month)', 'Every time-office request raised this month with its decision.', 'time_office_requests',
+                self::rows(['from_date', 'to_date', 'employee_code', 'name', 'type', 'part', 'minutes', 'days', 'status', 'reviewed_by'], [self::when('from_date', 'this_month')], 'from_date', 'desc')],
+            ['short_leave_requests', 'Attendance', 'Short leave requests', 'Short leave taken, with times and decision.', 'time_office_requests',
+                self::rows(['from_date', 'employee_code', 'name', 'department', 'start_time', 'end_time', 'minutes', 'reason', 'status'], [self::when('type', 'equals', 'Short leave')], 'from_date', 'desc')],
+            ['on_duty_requests', 'Attendance', 'On duty requests', 'On-duty requests (full, half day and hours) with the decision.', 'time_office_requests',
+                self::rows(['from_date', 'to_date', 'employee_code', 'name', 'part', 'start_time', 'end_time', 'reason', 'status'], [self::when('type', 'equals', 'On duty')], 'from_date', 'desc')],
+            ['comp_off_requests', 'Attendance', 'Compensatory off requests', 'Comp-off claims for work on off days, with days and expiry.', 'time_office_requests',
+                self::rows(['from_date', 'employee_code', 'name', 'minutes', 'days', 'expires_on', 'status', 'reviewed_by'], [self::when('type', 'equals', 'Comp-off claim')], 'from_date', 'desc')],
+            ['overtime_claims', 'Attendance', 'Overtime requests', 'Overtime claimed by employees, with minutes and decision.', 'time_office_requests',
+                self::rows(['from_date', 'employee_code', 'name', 'department', 'minutes', 'reason', 'status', 'reviewed_by'], [self::when('type', 'equals', 'Overtime claim')], 'from_date', 'desc')],
+            ['restricted_holiday_requests', 'Attendance', 'Restricted holiday requests', 'Optional holidays chosen by employees.', 'time_office_requests',
+                self::rows(['from_date', 'employee_code', 'name', 'holiday', 'status', 'reviewed_by'], [self::when('type', 'equals', 'Restricted holiday')], 'from_date', 'desc')],
+            ['shift_change_requests', 'Attendance', 'Shift change requests', 'Shift changes asked for, with the shift and decision.', 'time_office_requests',
+                self::rows(['from_date', 'to_date', 'employee_code', 'name', 'shift', 'reason', 'status'], [self::when('type', 'equals', 'Shift change')], 'from_date', 'desc')],
+            ['late_penalties_month', 'Attendance', 'Attendance penalty detail (this month)', 'Late-mark penalties this month with the late marks counted and the days.', 'attendance_penalties',
+                self::rows(['date', 'employee_code', 'name', 'department', 'late_count', 'action', 'days', 'status'], [self::when('date', 'this_month')], 'date', 'desc')],
+            ['late_penalty_days_by_department', 'Attendance', 'Late-mark loss-of-pay days by department', 'Loss-of-pay days from late-mark penalties per department.', 'attendance_penalties',
+                self::grouped('department', [['fn' => 'sum', 'field' => 'days', 'label' => 'Days'], ['fn' => 'count', 'label' => 'Penalties']], [], 'bar')],
+            ['attendance_arrear_days', 'Attendance', 'Arrear days', 'Days corrected after the payroll lock, with the paid-day difference.', 'attendance_arrears',
+                self::rows(['date', 'employee_code', 'name', 'status_before', 'status_after', 'delta_days', 'status'], [], 'date', 'desc')],
+            ['checkin_devices_register', 'Attendance', 'Check-in devices (UUID details)', 'Phones and browsers employees check in from, and their approval.', 'checkin_devices',
+                self::rows(['employee_code', 'name', 'device', 'platform', 'status', 'first_seen', 'last_seen'], [], 'last_seen', 'desc')],
 
             // Payroll & compensation ------------------------------------------------------------------------
+            // HROne parity HP-3: perquisites, income outside payroll, override audit, VPF.
+            ['perquisite_register', 'Payroll & compensation', 'Perquisite register', 'Perquisites recorded for TDS this year with their taxable value.', 'tax_income_entries',
+                self::rows(['financial_year', 'employee_code', 'name', 'type', 'description', 'amount', 'recovered', 'taxable_amount', 'status'], [self::when('kind', 'equals', 'Perquisite')], 'employee_code')],
+            ['income_outside_payroll', 'Payroll & compensation', 'Out-of-salary payments and income outside payroll', 'Payments made outside the payroll run, with the tax, PF and PT deducted on them.', 'tax_income_entries',
+                self::rows(['paid_on', 'employee_code', 'name', 'description', 'amount', 'taxable_amount', 'tds_deducted', 'pf_employee', 'professional_tax', 'status'], [self::when('kind', 'equals', 'Paid outside payroll')], 'paid_on', 'desc')],
+            ['statutory_override_audit', 'Payroll & compensation', 'Statutory override audit', 'Every PF, ESI, PT, LWF and TDS amount set by hand, by whom and why.', 'statutory_overrides',
+                self::rows(['month', 'employee_code', 'name', 'line', 'amount', 'reason', 'set_by', 'set_on', 'status', 'cancel_reason'], [], 'set_on', 'desc')],
+            // HROne setup parity BP-13: pay modes.
+            ['cash_cheque_register', 'Payroll & compensation', 'Cash and cheque payments register', 'Salaries and reimbursements paid in cash or by cheque, per employee and pay month.', 'salary_payments',
+                self::rows(['period', 'payment_date', 'employee_code', 'name', 'department', 'salary_mode', 'reimbursement_mode', 'cash', 'cheque', 'net_pay', 'run_status'], [self::when('cash_cheque_amount', 'gt', '0')], 'period', 'desc')],
+            ['salary_by_pay_mode_last_month', 'Payroll & compensation', 'Salary paid by mode (last month)', 'How much of last month\'s salary went by bank transfer, in cash and by cheque.', 'salary_payments',
+                self::grouped('salary_mode', [['fn' => 'sum', 'field' => 'net_pay', 'label' => 'Net pay'], ['fn' => 'count', 'label' => 'Employees']], [self::when('period_start', 'last_month')], 'pie')],
+            ['vpf_register', 'Payroll & compensation', 'Voluntary PF register', 'Employees contributing voluntary PF, and PF wage-basis choices.', 'pf_options',
+                self::rows(['effective_from', 'employee_code', 'name', 'vpf_mode', 'vpf_value', 'wage_basis', 'reason'], [], 'effective_from', 'desc')],
             ['salary_register_last_month', 'Payroll & compensation', 'Salary register (last month)', 'Paid days, earnings, deductions and net pay per employee for last month.', 'payroll',
                 self::rows([...self::PAY_LINE, 'paid_days', 'lop_days', 'basic', 'hra', 'gross', 'pf_employee', 'esi_employee', 'professional_tax', 'tds', 'total_deductions', 'net_pay', 'employer_cost'], [self::when('period_start', 'last_month')], 'employee_code')],
             ['salary_register_this_month', 'Payroll & compensation', 'Salary register (this month)', 'This month\'s finalized or paid payroll per employee.', 'payroll',
@@ -221,6 +279,29 @@ final class ReportLibrary
             ['pending_salary_revisions', 'Payroll & compensation', 'Salary revisions awaiting approval', 'Proposed compensation changes not yet approved.', 'salary_revisions',
                 self::rows(['reference', 'employee_code', 'name', 'change_type', 'effective_from', 'previous_ctc', 'new_ctc', 'increase_percent', 'status'], [self::when('is_pending', 'equals', '1')], 'effective_from')],
             ['average_increase_by_department', 'Payroll & compensation', 'Average increase by department (this financial year)', 'Average % hike of approved revisions per department.', 'salary_revisions', self::grouped('department', [['fn' => 'avg', 'field' => 'increase_percent', 'label' => 'Average increase %'], ['fn' => 'count', 'label' => 'Revisions']], [self::when('status', 'in', 'approved,scheduled,effective'), self::when('effective_from', 'this_financial_year')], 'bar')],
+            // HROne parity AN-26: loans, reimbursements and variable pay (HROne Payroll reports #32–34, 47, 48, 50, 51, 60–62).
+            ['loan_ledger', 'Payroll & compensation', 'Loan ledger (this financial year)', 'Every EMI due this financial year, month by month: principal, interest and how it was recovered.', 'loan_installments',
+                self::rows(['due_month', 'loan_number', 'employee_code', 'name', 'department', 'loan_type', 'sequence', 'principal_part', 'interest_part', 'amount', 'status_label', 'recovered_on'], [self::when('due_on', 'this_financial_year')], 'due_month')],
+            ['loan_requests', 'Payroll & compensation', 'Loan requests', 'Loans and salary advances asked for, with the terms, any policy exception and the decision.', 'loans',
+                self::rows(['number', 'requested_on', 'employee_code', 'name', 'department', 'loan_type', 'principal', 'installments', 'emi', 'beyond_policy', 'status_label', 'reviewed_on', 'reviewed_by'], [], 'requested_on', 'desc')],
+            ['loan_summary', 'Payroll & compensation', 'Loan summary (disbursed loans)', 'Disbursed loans with what has been recovered, what is outstanding and the next recovery month.', 'loans',
+                self::rows(['number', 'employee_code', 'name', 'loan_type', 'disbursed_on', 'principal', 'emi', 'installments', 'installments_recovered', 'recovered', 'outstanding', 'next_due_month', 'status_label'], [self::when('status', 'in', 'active,closed')], 'disbursed_on', 'desc')],
+            ['loans_outstanding', 'Payroll & compensation', 'Loans outstanding (till date)', 'Outstanding amount of loans still being recovered, per loan type.', 'loans',
+                self::grouped('loan_type', [['fn' => 'sum', 'field' => 'outstanding', 'label' => 'Outstanding'], ['fn' => 'count', 'label' => 'Loans']], [self::when('status', 'equals', 'active')], 'bar', 'sum_outstanding', 'desc')],
+            ['reimbursement_audit', 'Payroll & compensation', 'Reimbursement audit (this financial year)', 'Per employee and reimbursement: credited this year, claimed and lapsed, and the balance.', 'reimbursement_ledger',
+                self::grouped('employee_component', [['fn' => 'sum', 'field' => 'credit', 'label' => 'Credited'], ['fn' => 'sum', 'field' => 'debit', 'label' => 'Claimed or lapsed'], ['fn' => 'sum', 'field' => 'amount', 'label' => 'Balance']], [self::when('month_start', 'this_financial_year')], 'table', 'employee_component')],
+            ['reimbursement_monthly_ledger', 'Payroll & compensation', 'Reimbursement monthly ledger (last month)', 'Every reimbursement credit and claim paid last month, per employee and component.', 'reimbursement_ledger',
+                self::rows(['month', 'employee_code', 'name', 'department', 'component', 'kind_label', 'credit', 'debit', 'note'], [self::when('month_start', 'last_month')], 'employee_code')],
+            ['reimbursement_requests', 'Payroll & compensation', 'Reimbursement requests', 'Reimbursement claims with their bills, the amount claimed and approved, and the status.', 'reimbursement_claims',
+                self::rows(['claim_date', 'employee_code', 'name', 'department', 'component', 'amount', 'bills', 'bills_total', 'approved_amount', 'status_label', 'reviewed_on'], [], 'claim_date', 'desc')],
+            ['reimbursement_summary', 'Payroll & compensation', 'Reimbursement summary by component (this financial year)', 'Credited, claimed or lapsed and balance per reimbursement component.', 'reimbursement_ledger',
+                self::grouped('component', [['fn' => 'sum', 'field' => 'credit', 'label' => 'Credited'], ['fn' => 'sum', 'field' => 'debit', 'label' => 'Claimed or lapsed'], ['fn' => 'sum', 'field' => 'amount', 'label' => 'Balance']], [self::when('month_start', 'this_financial_year')], 'bar')],
+            ['variable_paid', 'Payroll & compensation', 'Variable pay paid (this financial year)', 'Incentives, bonuses and plan payouts paid by payroll this financial year, by pay month.', 'variable_pay_requests',
+                self::rows(['pay_month', 'employee_code', 'name', 'department', 'component', 'plan', 'plan_month', 'amount'], [self::when('status', 'equals', 'paid'), self::when('pay_month_start', 'this_financial_year')], 'pay_month', 'desc')],
+            ['variable_pay_plan', 'Payroll & compensation', 'Variable pay plans (month-wise schedule)', 'Active variable pay plans with each month and its target, the payouts entered and paid, and the next month due.', 'variable_pay_plans',
+                self::rows(['employee_code', 'name', 'plan', 'component', 'schedule', 'total_target', 'payouts_entered', 'paid_total', 'months_without_payout', 'next_month'], [self::when('status', 'equals', 'active')], 'employee_code')],
+            ['variable_requests', 'Payroll & compensation', 'Variable pay requests', 'Variable pay asked for each pay month, against the plan target where there is one, with its status.', 'variable_pay_requests',
+                self::rows(['pay_month', 'employee_code', 'name', 'department', 'component', 'plan', 'plan_month', 'plan_target', 'amount', 'status_label', 'requested_on', 'reviewed_on'], [], 'pay_month', 'desc')],
 
             // Statutory & income tax ------------------------------------------------------------------------
             ['pf_register_last_month', 'Statutory & income tax', 'PF contribution register (last month)', 'UAN, wages and employee / employer PF per member.', 'payroll',
@@ -261,6 +342,47 @@ final class ReportLibrary
             ['exits_by_month', 'Joining & exit', 'Exits by month', 'Completed exits per month.', 'exits', self::grouped('month', [['fn' => 'count']], [self::when('status', 'equals', 'completed')], 'line', 'month')],
             ['exits_by_type', 'Joining & exit', 'Exits by type (this financial year)', 'Resignations, terminations, retirements and others.', 'exits', self::grouped('type', [['fn' => 'count']], [self::when('last_working_day', 'this_financial_year'), self::when('status', 'not_in', 'withdrawn,cancelled')], 'pie')],
             ['exits_by_department', 'Joining & exit', 'Exits by department (this financial year)', 'Exits per department this financial year.', 'exits', self::grouped('department', [['fn' => 'count']], [self::when('last_working_day', 'this_financial_year'), self::when('status', 'not_in', 'withdrawn,cancelled')], 'bar')],
+            // Expense & travel (HROne setup parity EX-G) -------------------------------------------------------
+            ['expense_advance_amount', 'Expense & travel', 'Expense advance (advance amount)', 'Every advance requested, with the amount asked for, approved, how it was paid and what is outstanding.', 'expense_advances',
+                self::rows(['number', 'requested_on', 'employee_code', 'name', 'department', 'purpose', 'currency', 'amount', 'amount_base', 'approved_amount', 'status', 'paid_channel', 'disbursed_on', 'outstanding'], [], 'requested_on', 'desc')],
+            ['expense_advance_recovery_register', 'Expense & travel', 'Expense advance recovery register', 'Advance amounts recovered through payroll or the full and final settlement, with the reference.', 'expense_advance_ledger',
+                self::rows(['entry_date', 'employee_code', 'name', 'department', 'advance', 'amount', 'through', 'reference'], [self::when('kind', 'equals', 'Recovered')], 'entry_date', 'desc')],
+            ['expense_payment_register', 'Expense & travel', 'Expense payment register', 'Approved expense reports with what is owed: waiting for payment, scheduled for payroll or paid, and how.', 'expense_reports',
+                self::rows(['number', 'employee_code', 'name', 'department', 'decided_on', 'total_approved', 'advance_adjusted', 'net_payable', 'payment_status', 'payment_channel', 'scheduled_on', 'paid_on', 'paid_month', 'payment_reference'],
+                    [self::when('status', 'in', 'Approved,Partly approved,Paid'), self::when('net_payable', 'gt', '0')], 'decided_on', 'desc')],
+            ['expense_receipts_by_amount', 'Expense & travel', 'Expense receipt by amount', 'Amount-type expense receipts with merchant, invoice, tax and decision.', 'expense_receipts',
+                self::rows(['number', 'expense_date', 'employee_code', 'name', 'department', 'category', 'merchant', 'invoice_number', 'currency', 'amount', 'base_amount', 'tax_amount', 'claimable_amount', 'approved_amount', 'is_exceptional', 'report_number', 'status'],
+                    [self::when('type', 'equals', 'Amount')], 'expense_date', 'desc')],
+            ['expense_receipts_by_mileage', 'Expense & travel', 'Expense receipt by mileage', 'Mileage-type expense receipts with the route, distance, rate and decision.', 'expense_receipts',
+                self::rows(['number', 'expense_date', 'employee_code', 'name', 'department', 'category', 'from_place', 'to_place', 'distance_km', 'rate_per_km', 'base_amount', 'claimable_amount', 'approved_amount', 'distance_edited', 'report_number', 'status'],
+                    [self::when('type', 'equals', 'Mileage')], 'expense_date', 'desc')],
+            ['expense_receipt_details', 'Expense & travel', 'Expense receipt details', 'Amount and mileage receipts together, with limits, flags and the report they went in.', 'expense_receipts',
+                self::rows(['number', 'expense_date', 'employee_code', 'name', 'department', 'category', 'expense_group', 'type', 'base_amount', 'distance_km', 'limit_amount', 'claimable_amount', 'over_limit_amount', 'approved_amount', 'is_exceptional', 'suspected_duplicate', 'report_number', 'status'], [], 'expense_date', 'desc')],
+            ['expense_report_details', 'Expense & travel', 'Expense report details', 'Each report with what was claimed, approved, settled against advances, payable and paid.', 'expense_reports',
+                self::rows(['number', 'title', 'employee_code', 'name', 'department', 'period_from', 'period_to', 'receipts', 'total_claimed', 'total_approved', 'advance_adjusted', 'net_payable', 'paid_amount', 'status', 'payment_status', 'paid_on'], [], 'submitted_on', 'desc')],
+            ['outstanding_expense_advances', 'Expense & travel', 'Outstanding expense advance', 'Dispensed advances not yet settled by reports, refunds or recovery, oldest settle-by date first.', 'expense_advances',
+                self::rows(['number', 'employee_code', 'name', 'department', 'disbursed_on', 'approved_amount', 'adjusted', 'refunded', 'recovered', 'outstanding', 'settle_by', 'days_overdue', 'recovery_due_on'],
+                    [self::when('status', 'equals', 'Dispensed'), self::when('outstanding', 'gt', '0')], 'settle_by')],
+            ['expense_reports_pending', 'Expense & travel', 'Expense reports waiting for approval', 'Submitted reports not yet decided, longest waiting first.', 'expense_reports',
+                self::rows(['number', 'submitted_on', 'employee_code', 'name', 'department', 'title', 'receipts', 'total_claimed', 'pending_days'], [self::when('status', 'equals', 'Submitted')], 'pending_days', 'desc')],
+            ['expense_by_category_this_year', 'Expense & travel', 'Expense by category (this financial year)', 'Approved expense per category this financial year.', 'expense_receipts',
+                self::grouped('category', [['fn' => 'sum', 'field' => 'approved_amount', 'label' => 'Approved'], ['fn' => 'count', 'label' => 'Receipts']], [self::when('status', 'in', 'Approved,Partly approved'), self::when('expense_date', 'this_financial_year')], 'bar', 'sum_approved_amount', 'desc')],
+            ['expense_by_department_this_year', 'Expense & travel', 'Expense by department (this financial year)', 'Approved expense per department this financial year.', 'expense_receipts',
+                self::grouped('department', [['fn' => 'sum', 'field' => 'approved_amount', 'label' => 'Approved'], ['fn' => 'count', 'label' => 'Receipts']], [self::when('status', 'in', 'Approved,Partly approved'), self::when('expense_date', 'this_financial_year')], 'bar', 'sum_approved_amount', 'desc')],
+            // HROne setup parity EX-F: HROne's travel templates.
+            ['live_trip', 'Expense & travel', 'Live trip', 'Employees travelling today on an approved trip, with where they are going and their bookings.', 'travel_requests',
+                self::rows(['number', 'employee_code', 'name', 'department', 'destinations', 'start_date', 'end_date', 'is_international', 'bookings_open', 'status'], [self::when('trip_state', 'equals', 'Live')], 'end_date')],
+            ['travel_details', 'Expense & travel', 'Travel details', 'Every journey of every trip: mode, from, to, dates, who books it and the booking.', 'travel_request_legs',
+                self::rows(['trip', 'employee_code', 'name', 'department', 'category', 'mode', 'from_city', 'to_city', 'starts_on', 'ends_on', 'preferred_time', 'booked_by', 'booking_status', 'booking_reference', 'provider', 'booking_cost', 'trip_status'],
+                    [self::when('kind', 'equals', 'Travel')], 'starts_on', 'desc')],
+            ['travel_summary', 'Expense & travel', 'Travel summary', 'Each trip with its dates, places, estimated cost, advance, bookings and what was claimed against it.', 'travel_requests',
+                self::rows(['number', 'employee_code', 'name', 'department', 'purpose', 'start_date', 'end_date', 'days', 'destinations', 'is_international', 'estimated_cost_base', 'advance', 'booked_cost', 'claimed_amount', 'approved_amount', 'status', 'trip_state'], [], 'start_date', 'desc')],
+            ['accommodation_details', 'Expense & travel', 'Accommodation details', 'Every stay of every trip: city, check-in, check-out, nights, who books it and the booking.', 'travel_request_legs',
+                self::rows(['trip', 'employee_code', 'name', 'department', 'category', 'to_city', 'to_state', 'starts_on', 'ends_on', 'nights', 'booked_by', 'booking_status', 'booking_reference', 'provider', 'booking_cost', 'trip_status'],
+                    [self::when('kind', 'equals', 'Accommodation')], 'starts_on', 'desc')],
+            ['expense_paid_by_month', 'Expense & travel', 'Expense paid by month (this financial year)', 'Reports paid each month, outside payroll, with payroll or at exit.', 'expense_reports',
+                self::grouped('paid_month', [['fn' => 'sum', 'field' => 'paid_amount', 'label' => 'Paid'], ['fn' => 'count', 'label' => 'Reports']], [self::when('status', 'equals', 'Paid'), self::when('paid_on', 'this_financial_year')], 'line', 'paid_month')],
+
             ['exit_reasons', 'Joining & exit', 'Reasons for leaving', 'Reasons given in exit interviews.', 'exits', self::grouped('reason_for_leaving', [['fn' => 'count']], [self::when('reason_for_leaving', 'not_empty')], 'pie')],
             ['notice_period_tracker', 'Joining & exit', 'Notice period tracker', 'Employees serving notice with their last working day.', 'exits',
                 self::rows(['employee_code', 'name', 'department', 'manager', 'resignation_date', 'notice_days', 'last_working_day', 'days_to_last_day', 'pending_clearances'], [self::when('status', 'in', 'initiated,notice,clearance')], 'last_working_day')],
@@ -280,6 +402,44 @@ final class ReportLibrary
             ['appraisal_status', 'Performance & learning', 'Appraisal status', 'Appraisals per status in each cycle.', 'performance', self::grouped('status', [['fn' => 'count']], [], 'bar')],
             ['active_pips', 'Performance & learning', 'Active improvement plans', 'Open PIPs with end dates and days left.', 'improvement_plans',
                 self::rows(['employee_code', 'name', 'department', 'manager', 'start_date', 'end_date', 'days_left', 'status'], [self::when('status', 'not_in', 'closed,cancelled,withdrawn')], 'end_date')],
+            // HROne setup parity HP-8j: initiatives (HROne "Initiative details").
+            ['initiative_details', 'Performance & learning', 'Initiative details', 'Every initiative with its type, linked goal, due date, completion and feedback.', 'initiatives',
+                self::rows(['employee_code', 'name', 'department', 'initiative_type', 'title', 'goal', 'assigned_by', 'due_date', 'progress', 'status', 'feedback_given'], [], 'due_date')],
+            // HROne parity AN-27: performance reports (HROne Performance reports #1–7, 9, 10, 12, 15, 17, 18, 20, 23, 24).
+            ['one_on_one_details', 'Performance & learning', '1-on-1 details', 'One-on-ones with who they were with, who asked for them, the agenda, status and follow-up actions.', 'one_on_ones',
+                self::rows(['scheduled_on', 'employee_code', 'name', 'department', 'with', 'initiated_by', 'agenda', 'status', 'held_on', 'action_items', 'action_items_open', 'feedback_given'], [], 'scheduled_on', 'desc')],
+            ['feedback_360_status', 'Performance & learning', '360 feedback status', 'Per employee and 360 round: the nomination status and how many reviewers were asked, have answered or declined.', 'feedback_360_status',
+                self::rows(['round', 'period_end', 'employee_code', 'name', 'department', 'nominator', 'nomination_status', 'asked', 'given', 'declined', 'pending', 'round_status'], [], 'round')],
+            ['feedback_360_nominations', 'Performance & learning', '360 nomination status', 'Where each employee\'s 360 nominations stand: to nominate, waiting for approval, approved or sent back.', 'feedback_360_status',
+                self::rows(['round', 'employee_code', 'name', 'department', 'nominator', 'nomination_status', 'nominated', 'submitted_on', 'decided_on'], [], 'nomination_status')],
+            ['feedback_360_details', 'Performance & learning', '360 feedback details', 'Per employee and source: asked, answered and the average score (anonymous sources only from the policy minimum; never single answers).', 'feedback_360_results',
+                self::rows(['round', 'employee_code', 'name', 'department', 'source', 'anonymous', 'asked', 'answered', 'declined', 'average_score', 'note'], [], 'employee_code')],
+            ['company_check_ins', 'Performance & learning', 'Company check-in report (this month)', 'Every goal check-in across the organisation this month, at every goal level.', 'check_ins',
+                self::rows(['checked_in_on', 'level_label', 'owner', 'goal', 'key_result', 'previous_progress', 'progress', 'confidence', 'note', 'by'], [self::when('checked_in_on', 'this_month')], 'checked_in_on', 'desc')],
+            ['employee_goal_check_ins', 'Performance & learning', 'Employee goal check-ins (this month)', 'Check-ins on employee goals this month, by employee, with the manager.', 'check_ins',
+                self::rows(['employee_code', 'name', 'department', 'manager', 'goal', 'checked_in_on', 'previous_progress', 'progress', 'change', 'confidence', 'note'], [self::when('level', 'equals', 'employee'), self::when('checked_in_on', 'this_month')], 'employee_code')],
+            ['team_check_ins', 'Performance & learning', 'Team check-in report (this month)', 'Check-ins on team goals this month.', 'check_ins',
+                self::rows(['checked_in_on', 'owner', 'goal', 'key_result', 'previous_progress', 'progress', 'confidence', 'note', 'by'], [self::when('level', 'equals', 'team'), self::when('checked_in_on', 'this_month')], 'checked_in_on', 'desc')],
+            ['check_in_conversations', 'Performance & learning', 'Check-in conversations', 'Employee and manager check-ins per period: submitted, reviewed, goals updated and actions agreed.', 'performance_check_ins',
+                self::rows(['period', 'employee_code', 'name', 'department', 'manager', 'cadence', 'status', 'submitted_on', 'reviewed_on', 'goals_updated', 'actions'], [], 'period', 'desc')],
+            ['continuous_feedback', 'Performance & learning', 'Continuous feedback', 'Praise and constructive feedback given, about whom, by whom (anonymous givers never named) and on which goal or competency.', 'continuous_feedback',
+                self::rows(['given_on', 'employee_code', 'name', 'department', 'type', 'author', 'visibility', 'goal', 'competency', 'message'], [self::when('type_code', 'in', 'praise,constructive')], 'given_on', 'desc')],
+            ['goal_sheet_status', 'Performance & learning', 'Goal status (goals not created or not approved)', 'Goal sheets that are not active yet: not created, draft, waiting for approval or sent back.', 'goal_plans',
+                self::rows(['cycle', 'employee_code', 'name', 'department', 'manager', 'sheet_status', 'goals', 'total_weight', 'versions', 'latest_plan_status', 'submitted_on', 'decided_on'], [self::when('sheet_status_key', 'not_equals', 'active')], 'sheet_status')],
+            ['goals_not_created', 'Performance & learning', 'Goals not created', 'Employees of a cycle who have no goal yet.', 'goal_plans',
+                self::rows(['cycle', 'employee_code', 'name', 'department', 'designation', 'manager'], [self::when('sheet_status_key', 'equals', 'not_created')], 'employee_code')],
+            ['pip_evaluations', 'Performance & learning', 'PIP evaluations', 'Checkpoints and checklist items of improvement plans: due, owner, status and review.', 'pip_checkpoints',
+                self::rows(['employee_code', 'name', 'department', 'manager', 'plan_status', 'checkpoint', 'kind', 'owner', 'due_date', 'status_label', 'reviewed_on', 'reviewed_by'], [], 'due_date')],
+            ['performance_feedback_details', 'Performance & learning', 'Performance feedback details', 'The strengths, areas to improve and comments written in each submitted review.', 'appraisal_reviews',
+                self::rows(['cycle', 'employee_code', 'name', 'level', 'reviewer', 'overall_rating', 'strengths', 'improvements', 'comments', 'submitted_on'], [self::when('status', 'equals', 'submitted'), self::when('has_comments', 'equals', '1')], 'employee_code')],
+            ['performance_review_details', 'Performance & learning', 'Performance review details', 'The final rating of every goal, KPI and competency per employee and cycle (the last review level).', 'appraisal_ratings',
+                self::rows(['cycle', 'employee_code', 'name', 'department', 'item_type', 'item', 'weight', 'rating', 'achievement_pct'], [self::when('is_final_level', 'equals', '1')], 'employee_code')],
+            ['performance_review_details_by_approver', 'Performance & learning', 'Performance review details by approver', 'Every goal, KPI and competency rating given at each review level, with the reviewer.', 'appraisal_ratings',
+                self::rows(['cycle', 'employee_code', 'name', 'level', 'reviewer', 'item_type', 'item', 'weight', 'rating', 'achievement_pct'], [], 'employee_code')],
+            ['performance_review_rating_by_approver', 'Performance & learning', 'Performance review rating by approver', 'The overall rating given at each review level of each appraisal, with the reviewer and status.', 'appraisal_reviews',
+                self::rows(['cycle', 'employee_code', 'name', 'department', 'level', 'reviewer', 'status', 'overall_rating', 'submitted_on'], [], 'employee_code')],
+            ['tni_details', 'Performance & learning', 'TNI details (training needs)', 'Open training and development needs per employee: competency or skill, levels, priority and target date.', 'development_needs',
+                self::rows(['employee_code', 'name', 'department', 'title', 'competency', 'skill', 'current_level', 'target_level', 'source', 'priority', 'status_label', 'target_date'], [self::when('status', 'in', 'open,in_progress')], 'target_date')],
             ['mandatory_learning', 'Performance & learning', 'Mandatory learning completion', 'Completion and overdue counts per mandatory course.', 'learning', self::grouped('course', [['fn' => 'count'], ['fn' => 'sum', 'field' => 'is_completed', 'label' => 'Completed'], ['fn' => 'sum', 'field' => 'is_overdue', 'label' => 'Overdue']], [self::when('is_mandatory', 'equals', '1')], 'table')],
             ['learning_overdue', 'Performance & learning', 'Overdue learning', 'Learning assignments past their due date.', 'learning',
                 self::rows(['employee_code', 'name', 'department', 'course', 'due_on', 'progress'], [self::when('is_overdue', 'equals', '1')], 'due_on')],
@@ -324,11 +484,18 @@ final class ReportLibrary
             ->map(fn (Collection $items) => $items->values()->all());
     }
 
+    /** HROne parity WO-1: operators a register may hand to a template (its own filters, see Filament\Support\RegisterReport::filtersFrom). */
+    public const REGISTER_OPERATORS = ['equals', 'not_equals', 'in', 'not_in', 'gte', 'lte', 'between'];
+
     /**
      * Save a template as the user's own report. $employeeCode narrows it to one employee (when the dataset
      * has an employee code); $shared publishes it to everyone who can read the dataset (analytics.manage).
+     * HROne parity WO-1: $filters are extra conditions from the register the report was opened from (its filters);
+     * only fields of the dataset and the REGISTER_OPERATORS are kept, the rest is dropped.
+     *
+     * @param  list<array{field: string, operator: string, value: string|null}>  $filters
      */
-    public function create(string $key, User $user, ?string $name = null, ?string $employeeCode = null, bool $shared = false): Report
+    public function create(string $key, User $user, ?string $name = null, ?string $employeeCode = null, bool $shared = false, array $filters = []): Report
     {
         $template = $this->find($key) ?? throw new RuntimeException('Unknown report template.');
         $dataset = $this->datasets->get($template['dataset']);
@@ -346,6 +513,13 @@ final class ReportLibrary
                 throw new RuntimeException('This report cannot be narrowed to one employee.');
             }
             $definition['filters'][] = self::when('employee_code', 'equals', $employeeCode);
+        }
+        foreach ($filters as $filter) {
+            $field = (string) ($filter['field'] ?? '');
+            $operator = (string) ($filter['operator'] ?? '');
+            if (isset($dataset->fieldsFor($user)[$field]) && in_array($operator, self::REGISTER_OPERATORS, true)) {
+                $definition['filters'][] = self::when($field, $operator, isset($filter['value']) ? mb_substr((string) $filter['value'], 0, 20000) : null);
+            }
         }
 
         return Report::create([

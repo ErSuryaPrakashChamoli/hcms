@@ -2,10 +2,13 @@
 
 namespace App\Providers\Filament;
 
+use App\Domain\Experience\Contracts\MySpaceItem;
 use App\Domain\Experience\Services\ExperienceNavigation;
-use App\Domain\Experience\Services\RoleLens;
+use App\Domain\Experience\Services\ExperiencePreferences;
+use App\Domain\Experience\Services\MySpace as MySpaceRegistry;
 use App\Domain\Platform\Services\PlatformTenantAccess;
 use App\Filament\Auth\AcceptInvitation;
+use App\Filament\Auth\ChangeExpiredPassword;
 use App\Filament\Auth\ConfirmMultiFactorAuthentication;
 use App\Filament\Auth\EditProfile;
 use App\Filament\Auth\Login;
@@ -17,8 +20,9 @@ use App\Filament\Pages\MyCompensation;
 use App\Filament\Pages\MyDay;
 use App\Filament\Pages\MyHr;
 use App\Filament\Pages\MyLearning;
+use App\Filament\Pages\MyProfile;
+use App\Filament\Pages\MySpace;
 use App\Filament\Pages\Preferences;
-use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Signup\SignupApplicationPage;
 use App\Filament\Signup\SignupConfirm;
 use App\Filament\Signup\SignupStart;
@@ -26,6 +30,7 @@ use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\PeopleOsText;
 use App\Filament\Support\PeopleOsUi;
+use App\Filament\Support\TenantBranding;
 use App\Filament\Widgets\PeopleControlCentre;
 use App\Filament\Widgets\TenantOverview;
 use App\Http\Middleware\EnforceAccountSecurity;
@@ -86,11 +91,15 @@ class AdminPanelProvider extends PanelProvider
                 Route::get('signup/confirm/{token}', SignupConfirm::class)->middleware('throttle:30,1')->where('token', '[A-Za-z0-9]{64}')->name('signup.confirm');
                 Route::get('signup/application', SignupApplicationPage::class)->middleware('throttle:60,1')->name('signup.application');
             })
-            ->authenticatedRoutes(fn () => Route::prefix('multi-factor-authentication')->name('auth.multi-factor-authentication.')->group(function (): void {
-                Route::get('set-up', SetUpRequiredMultiFactorAuthentication::class)->name('set-up-required');
-                Route::get('verify', ConfirmMultiFactorAuthentication::class)->name('challenge');
-            }))
-            ->livewireComponents([SetUpRequiredMultiFactorAuthentication::class, ConfirmMultiFactorAuthentication::class, AcceptInvitation::class,
+            ->authenticatedRoutes(function (): void {
+                Route::prefix('multi-factor-authentication')->name('auth.multi-factor-authentication.')->group(function (): void {
+                    Route::get('set-up', SetUpRequiredMultiFactorAuthentication::class)->name('set-up-required');
+                    Route::get('verify', ConfirmMultiFactorAuthentication::class)->name('challenge');
+                });
+                // HROne setup parity: an expired password is replaced here before anything else (EnforceAccountSecurity).
+                Route::get('password/expired', ChangeExpiredPassword::class)->name('auth.password-expired');
+            })
+            ->livewireComponents([SetUpRequiredMultiFactorAuthentication::class, ConfirmMultiFactorAuthentication::class, ChangeExpiredPassword::class, AcceptInvitation::class,
                 SignupStart::class, SignupConfirm::class, SignupApplicationPage::class])
             ->brandName('PeopleOS')
             ->brandLogo(fn () => view('filament.shell.brand'))
@@ -135,6 +144,9 @@ class AdminPanelProvider extends PanelProvider
             ->navigation(fn (NavigationBuilder $builder): NavigationBuilder => auth()->user() === null
                 ? $builder
                 : $builder->items(app(ExperienceNavigation::class)->items(auth()->user())))
+            // HROne setup parity CA-2: the organisation's theme rule (switcher off: the device setting applies).
+            ->renderHook(PanelsRenderHook::HEAD_START, fn () => TenantBranding::head())
+            ->themeSwitcher(fn () => TenantBranding::mayChangeTheme(auth()->user()))
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.shell.head-end'))
             ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.shell.body-start'))
             ->renderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn () => view('filament.shell.command-trigger'))
@@ -147,10 +159,15 @@ class AdminPanelProvider extends PanelProvider
             // UX.15 closure: the PeopleOS module experience. Lists get their context and lens above the table; record
             // forms get the review step. Both render inside the page component, from the page's own state.
             ->renderHook(PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_BEFORE, fn () => ($page = Livewire::current()) !== null && method_exists($page, 'moduleContextView') ? $page->moduleContextView() : '')
-            ->renderHook(PanelsRenderHook::PAGE_END, fn () => ($page = Livewire::current()) instanceof PeopleEditRecord || $page instanceof PeopleCreateRecord
+            // A record form followed as a wizard has the review as its last step instead.
+            ->renderHook(PanelsRenderHook::PAGE_END, fn () => (($page = Livewire::current()) instanceof PeopleEditRecord || $page instanceof PeopleCreateRecord) && ! $page->isFormWizard()
                 ? view('filament.shell.form-review', ['mode' => $page instanceof PeopleCreateRecord ? 'create' : 'edit', 'createLabel' => 'Create '.PeopleOsText::inline((string) $page::getResource()::getTitleCaseModelLabel())])
                 : '')
-            ->bootUsing(fn () => PeopleOsUi::register())
+            // HROne setup parity CA-2: the organisation's colour is read lazily, once the tenant is known.
+            ->bootUsing(function (): void {
+                PeopleOsUi::register();
+                TenantBranding::register();
+            })
             ->navigationGroups([
                 NavigationGroup::make('Me'),
                 NavigationGroup::make('Analytics'),
@@ -170,6 +187,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Compensation'),
                 NavigationGroup::make('Assets'),
                 NavigationGroup::make('Service Desk'),
+                NavigationGroup::make('Expense & travel'),
                 NavigationGroup::make('Grievances'),
                 NavigationGroup::make('Knowledge'),
                 NavigationGroup::make('Exit'),
@@ -197,14 +215,24 @@ class AdminPanelProvider extends PanelProvider
                 TenantOverview::class,
             ])
             ->userMenuItems([
+                // HROne parity MS-1: the person's My space favourites first (at most twelve, each still under its page's own
+                // access rule; none by default, so the menu starts exactly as before).
+                ...collect(range(0, ExperiencePreferences::MAX_PINNED - 1))->map(fn (int $i) => Action::make('myspace-favourite-'.$i)
+                    ->label(fn () => (self::mySpaceFavourite($i)['item'] ?? null)?->label() ?? '')
+                    ->icon(fn () => (self::mySpaceFavourite($i)['item'] ?? null)?->icon() ?? 'heroicon-o-heart')
+                    ->visible(fn () => self::mySpaceFavourite($i) !== null)
+                    ->url(fn () => self::mySpaceFavourite($i)['url'] ?? null))->all(),
                 // UX: personal pages live under the avatar ("You"), not in the primary navigation.
                 ...collect([
-                    ['my-profile', 'My profile', 'heroicon-o-identification', fn () => ($me = app(RoleLens::class)->employee(auth()->user())) && auth()->user()->can('view', $me) ? EmployeeResource::getUrl('view', ['record' => $me]) : null],
+                    // HROne parity MS-2: "My profile" opens the self profile by section; the Employee 360 stays for HR and managers.
+                    ['my-profile', 'My profile', 'heroicon-o-identification', fn () => MyProfile::canAccess() ? MyProfile::getUrl() : null],
                     ['my-hr', 'My HR', 'heroicon-o-sparkles', fn () => MyHr::canAccess() ? MyHr::getUrl() : null],
                     ['my-day', 'My day', 'heroicon-o-sun', fn () => MyDay::canAccess() ? MyDay::getUrl() : null],
                     ['my-career', 'My career', 'heroicon-o-arrow-trending-up', fn () => MyCareer::canAccess() ? MyCareer::getUrl() : null],
                     ['my-learning', 'My learning', 'heroicon-o-academic-cap', fn () => MyLearning::canAccess() ? MyLearning::getUrl() : null],
                     ['my-compensation', 'My compensation', 'heroicon-o-banknotes', fn () => MyCompensation::canAccess() ? MyCompensation::getUrl() : null],
+                    // HROne parity MS-1: every self page in one place ("View all" of HROne's My space).
+                    ['my-space', 'My space', 'heroicon-o-squares-2x2', fn () => MySpace::canAccess() ? MySpace::getUrl() : null],
                     ['preferences', 'Preferences', 'heroicon-o-adjustments-horizontal', fn () => Preferences::canAccess() ? Preferences::getUrl() : null],
                 ])->map(fn (array $i) => Action::make($i[0])->label($i[1])->icon($i[2])
                     ->visible(fn () => rescue(fn () => auth()->check() && app(TenantContext::class)->has() && $i[3]() !== null, false, false))
@@ -243,5 +271,17 @@ class AdminPanelProvider extends PanelProvider
             // EnforceAccountSecurity. Filament's own flag is evaluated once when routes are registered, with no
             // tenant bound, which is why the tenant setting never took effect.
             ->multiFactorAuthentication([AppAuthentication::make()->recoverable()]);
+    }
+
+    /**
+     * HROne parity MS-1: the signed-in person's n-th My space favourite they may still open (null: none, outside a tenant,
+     * without My space, or on any failure — the avatar menu never breaks a page).
+     *
+     * @return array{item: MySpaceItem, url: string}|null
+     */
+    private static function mySpaceFavourite(int $index): ?array
+    {
+        return rescue(fn () => auth()->check() && app(TenantContext::class)->has() && MySpace::canAccess()
+            ? (app(MySpaceRegistry::class)->favourites(auth()->user())[$index] ?? null) : null, null, false);
     }
 }

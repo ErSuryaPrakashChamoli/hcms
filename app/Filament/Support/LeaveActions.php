@@ -30,6 +30,8 @@ final class LeaveActions
     public static function applyForm(callable $employee): array
     {
         return [
+            // HROne parity RQ-2: whose request it is.
+            RequestChrome::header(fn () => $employee()),
             Select::make('leave_type_id')
                 ->label('Leave type')
                 ->options(function () use ($employee) {
@@ -62,6 +64,10 @@ final class LeaveActions
                 ->live(),
             Select::make('document_id')->label('Or attach an existing document')->options(fn () => $employee()->documents()->pluck('title', 'id')->all())->placeholder('Optional')
                 ->visible(fn (Get $get) => blank($get('document_upload')) && $employee()->documents()->exists()),
+            // HROne parity RQ-2: who approves it (a read-only preview), who is informed, and the leave policy.
+            RequestChrome::route('leave', fn () => $employee()),
+            // HROne parity RQ-1: the person's own open requests of the time-office family (hidden on an on-behalf form).
+            PendingRequestsPanel::make(fn () => $employee()),
         ];
     }
 
@@ -74,7 +80,8 @@ final class LeaveActions
                 ? $uploaded = self::storeUpload($employee, $type, $data['document_upload'])
                 : (isset($data['document_id']) ? EmployeeDocument::query()->find($data['document_id']) : null);
             $request = app(Leaves::class)->request($employee, $type, $data['from_date'], $data['to_date'], $data['reason'], $data['from_session'] ?? 'full', ($data['from_date'] === $data['to_date'] ? $data['from_session'] : $data['to_session']) ?? 'full', $document);
-            Notification::make()->success()->title(sprintf('Leave requested: %.1f day(s)', (float) $request->days))->send();
+            // HROne parity RQ-2: the same message, with "Follow this request" / "Raise another" / "View my requests" on one's own.
+            RequestChrome::confirmed('leave', $request, sprintf('Leave requested: %.1f day(s)', (float) $request->days));
         } catch (RuntimeException $e) {
             // A refused request leaves no orphan document behind.
             $uploaded && app(Documents::class)->delete($uploaded, 'Leave request not submitted');
@@ -120,6 +127,8 @@ final class LeaveActions
                 ->visible(fn (LeaveRequest $record) => $record->status === 'cancel_requested' && auth()->user()->can('approve', $record))
                 ->schema([Textarea::make('note')->required()->maxLength(255)])
                 ->action(fn (LeaveRequest $record, array $data) => self::run(fn () => app(Leaves::class)->rejectCancellation($record, $data['note']), 'Cancellation rejected; leave stays approved')),
+            // HROne setup parity P3: a request sent back to its requester is resubmitted here.
+            SendBackActions::resubmit(),
         ];
     }
 

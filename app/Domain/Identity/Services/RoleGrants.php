@@ -49,6 +49,31 @@ final class RoleGrants
     }
 
     /**
+     * HROne parity SV-7: whether a role membership rule written by $actor may grant $role. Stricter than a manual grant:
+     * never a locked role (peopleos.access.rule_locked_roles: Tenant Super Admin, Account Owner) nor a role carrying a
+     * platform permission (tenant.*), whoever writes the rule; and, below the unrestricted, only a role whose permissions
+     * the author holds every one of (no exception for system roles: a rule keeps granting to everyone who joins).
+     */
+    public function canAssignByRule(?User $actor, Role $role): bool
+    {
+        if ($this->ruleLocked($role)) {
+            return false;
+        }
+        if ($this->unrestricted($actor)) {
+            return true;
+        }
+
+        return $actor !== null && $this->beyond($actor, $role->permissions()->pluck('key')->all()) === [];
+    }
+
+    /** SV-7: roles no membership rule may grant (checked again every time the rules are applied). */
+    public function ruleLocked(Role $role): bool
+    {
+        return in_array($role->slug, (array) config('peopleos.access.rule_locked_roles', []), true) || $role->slug === self::SUPER_ADMIN
+            || $role->permissions()->where('key', 'like', 'tenant.%')->exists();
+    }
+
+    /**
      * Refuses the first role of $roles that $actor may not give.
      *
      * @param  iterable<Role>  $roles

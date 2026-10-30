@@ -4,6 +4,8 @@ namespace App\Domain\Configuration\Services;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Organisation\Models\Department;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
@@ -26,6 +28,10 @@ final class EmployeeRuleContext
         foreach (array_keys(EmployeePosition::DIMENSIONS) as $column) {
             $context[$column] = $position?->getAttribute($column);
         }
+        // HROne setup parity CA-2: policies can target the parent of the employee's department (sub-departments).
+        $departmentId = $position?->getAttribute('department_id');
+        $parent = $departmentId === null ? null : Department::query()->withoutGlobalScope(AccessScope::class)->whereKey($departmentId)->value('parent_department_id');
+        $context['parent_department_id'] = $parent === null ? null : (int) $parent;
 
         return $context;
     }

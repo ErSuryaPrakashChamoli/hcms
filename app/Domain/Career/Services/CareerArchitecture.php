@@ -75,7 +75,12 @@ final class CareerArchitecture
             if (! $version->has((float) $row['level'])) {
                 throw new RuntimeException("Level {$row['level']} is not on the scale of {$skill->name} (allowed: ".implode(', ', $version->values()).').');
             }
-            $skills[] = ['skill_id' => $skill->id, 'level' => (float) $row['level'], 'skill_scale_version_id' => $version->id, 'required' => (bool) ($row['required'] ?? true)];
+            $skills[] = ['skill_id' => $skill->id, 'level' => (float) $row['level'], 'skill_scale_version_id' => $version->id, 'required' => (bool) ($row['required'] ?? true)]
+                + (! empty($row['primary']) ? ['primary' => true] : []);
+        }
+        // HROne setup parity CA-2: a role names at most one primary skill.
+        if (count(array_filter($skills, fn (array $s) => ! empty($s['primary']))) > 1) {
+            throw new RuntimeException('Only one skill can be the primary skill.');
         }
         if (count(array_unique(array_column($skills, 'skill_id'))) !== count($skills)) {
             throw new RuntimeException('Each skill appears once in the requirements.');

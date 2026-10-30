@@ -8,6 +8,7 @@ use App\Domain\Entitlements\Enums\Capability;
 use App\Domain\Entitlements\Services\Entitlements;
 use App\Domain\Identity\Models\User;
 use App\Domain\Payroll\Services\FormulaEngine;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use RuntimeException;
@@ -21,18 +22,21 @@ final class ReportRunner
 {
     public function __construct(private readonly DatasetRegistry $datasets, private readonly FormulaEngine $formulas) {}
 
-    public function run(Report $report, ?User $user = null, ?int $limit = null, bool $unattended = false): ReportResult
+    public function run(Report $report, ?User $user = null, ?int $limit = null, bool $unattended = false, ?CarbonInterface $payrollAsOf = null): ReportResult
     {
-        return $this->execute($report->dataset, $report->definition ?? [], $user, $limit, $unattended);
+        return $this->execute($report->dataset, $report->definition ?? [], $user, $limit, $unattended, $payrollAsOf);
     }
 
     /**
      * $unattended: the result goes to no signed-in user (the read API runs a shared report as its owner), so only the
      * datasets and fields reviewed for that are used. A run without a user is always unattended.
      *
+     * $payrollAsOf (HROne parity CA-10, a shared view's payroll refresh day): rows of payroll runs finalized at or after it
+     * are left out of datasets that come from payroll runs (Dataset::payrollRunPath()); other datasets are unaffected.
+     *
      * @param  array<string, mixed>  $definition
      */
-    public function execute(string $datasetKey, array $definition, ?User $user = null, ?int $limit = null, bool $unattended = false): ReportResult
+    public function execute(string $datasetKey, array $definition, ?User $user = null, ?int $limit = null, bool $unattended = false, ?CarbonInterface $payrollAsOf = null): ReportResult
     {
         // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
         app(Entitlements::class)->observe(Capability::Analytics, 'analytics.report.run');
@@ -52,7 +56,11 @@ final class ReportRunner
         $max = (int) config('peopleos.analytics.max_rows', 10000);
         $rows = collect();
         $truncated = false;
-        foreach ($dataset->query()->lazy(500) as $model) {
+        $query = $dataset->query();
+        if ($payrollAsOf !== null && ($path = $dataset->payrollRunPath()) !== null) {
+            $query->whereHas($path, fn ($run) => $run->whereNotNull('finalized_at')->where('finalized_at', '<', $payrollAsOf));
+        }
+        foreach ($query->lazy(500) as $model) {
             $row = [];
             foreach ($needed as $field) {
                 $row[$field] = $dataset->value($field, $model);

@@ -71,6 +71,18 @@
                                 <div><dt>Employee ID</dt><dd class="pos-num">{{ $p['code'] }}</dd></div>
                             </dl>
 
+                            {{-- HROne setup parity CA-6: the directory-card sections the organisation shows (Setup → Core HR → Social profile access). --}}
+                            @foreach ($p['sections'] ?? [] as $section)
+                                <section class="mt-6" data-directory-section="{{ $section['key'] }}">
+                                    <p class="pos-caption pos-muted">{{ $section['label'] }}</p>
+                                    <ul class="mt-2 space-y-1">
+                                        @foreach ($section['items'] as $item)
+                                            <li class="pos-body-sm"><span class="font-medium">{{ $item['title'] }}</span>@if ($item['detail']) <span class="pos-muted">· {{ $item['detail'] }}</span>@endif</li>
+                                        @endforeach
+                                    </ul>
+                                </section>
+                            @endforeach
+
                             @if ($p['changes'] !== [])
                                 <button type="button" class="pos-inline-callout mt-6 w-full" wire:click="show('person-action', {{ $p['id'] }})">
                                     <x-filament::icon icon="heroicon-m-bolt" class="size-4" /> Start a change for {{ \Illuminate\Support\Str::before($p['name'], ' ') }}

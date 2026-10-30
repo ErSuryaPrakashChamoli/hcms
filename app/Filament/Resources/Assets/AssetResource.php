@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Assets;
 use App\Domain\Assets\Models\Asset;
 use App\Domain\Assets\Models\AssetCategory;
 use App\Domain\Assets\Models\AssetModel;
+use App\Domain\Assets\Models\AssetSubtype;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Location;
@@ -56,6 +57,14 @@ class AssetResource extends Resource
         return ['asset_tag', 'name', 'serial_number'];
     }
 
+    /** HROne parity XO-1: the register's HR side (the asset register rather than "My assets"). */
+    public static function oversees(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && ($user->can('asset.view') || $user->can('asset.manage') || $user->can('asset.assign'));
+    }
+
     public static function getNavigationLabel(): string
     {
         return auth()->user()?->can('asset.view') || auth()->user()?->can('asset.manage') || auth()->user()?->can('asset.assign') ? 'Asset register' : 'My assets';
@@ -63,7 +72,7 @@ class AssetResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['category', 'model', 'custodian.person', 'location']);
+        $query = parent::getEloquentQuery()->with(['category', 'subtype', 'model', 'custodian.person', 'location']);
         $user = auth()->user();
         if ($user->can('asset.view') || $user->can('asset.manage') || $user->can('asset.assign')) {
             return $query;
@@ -84,7 +93,12 @@ class AssetResource extends Resource
         return $schema->components([
             Section::make('Asset')->columns(3)->schema([
                 Select::make('asset_category_id')->label('Category')->required()->live()->options(fn () => AssetCategory::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all()),
-                Select::make('asset_model_id')->label('Model')->placeholder('—')->options(fn (Get $get) => AssetModel::query()->where('asset_category_id', $get('asset_category_id'))->get()->mapWithKeys(fn ($m) => [$m->id => $m->auditLabel()])->all()),
+                // HROne setup parity AS-A: the sub type (blank: the product's sub type).
+                Select::make('asset_subtype_id')->label('Sub type')->placeholder('—')->live()
+                    ->options(fn (Get $get) => AssetSubtype::query()->where('asset_category_id', $get('asset_category_id'))->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all()),
+                Select::make('asset_model_id')->label('Model')->placeholder('—')->options(fn (Get $get) => AssetModel::query()->where('asset_category_id', $get('asset_category_id'))
+                    ->when($get('asset_subtype_id'), fn ($q, $subtype) => $q->where(fn ($w) => $w->where('asset_subtype_id', $subtype)->orWhereNull('asset_subtype_id')))
+                    ->get()->mapWithKeys(fn ($m) => [$m->id => $m->auditLabel()])->all()),
                 TextInput::make('asset_tag')->label('Asset tag')->required()->maxLength(64)->disabled(fn (string $operation) => $operation === 'edit')->dehydrated()->unique(ignoreRecord: true, modifyRuleUsing: TenantUnique::rule()),
                 TextInput::make('name')->required()->maxLength(255)->columnSpan(2),
                 TextInput::make('serial_number')->maxLength(128)->required(fn (Get $get) => (bool) AssetCategory::query()->whereKey($get('asset_category_id'))->value('requires_serial')),
@@ -112,6 +126,7 @@ class AssetResource extends Resource
                 TextEntry::make('status')->badge()->color(fn (string $state) => self::statusColor($state))->formatStateUsing(fn (string $state) => config("peopleos.assets.statuses.{$state}", $state)),
                 TextEntry::make('condition')->badge()->color('gray')->formatStateUsing(fn (string $state) => config("peopleos.assets.conditions.{$state}", $state)),
                 TextEntry::make('category.name')->label('Category'),
+                TextEntry::make('subtype.name')->label('Sub type')->placeholder('—'),
                 TextEntry::make('model')->label('Model')->state(fn (Asset $record) => $record->model?->auditLabel())->placeholder('—'),
                 TextEntry::make('serial_number')->placeholder('—'),
                 TextEntry::make('custodian.person.full_name')->label('Custodian')->placeholder('In stock'),
@@ -145,6 +160,18 @@ class AssetResource extends Resource
             ->filters([
                 SelectFilter::make('status')->options(config('peopleos.assets.statuses')),
                 SelectFilter::make('asset_category_id')->label('Category')->relationship('category', 'name'),
+                SelectFilter::make('asset_subtype_id')->label('Sub type')->relationship('subtype', 'name'),
+                // HROne parity XO-1 (matrix 26 §26.1 #2, the Asset acknowledgement entry): assets in use whose custodian has
+                // or has not yet acknowledged them (sub types that ask for an acknowledgement) — HR side only.
+                SelectFilter::make('acknowledgement')->label('Acknowledgement')
+                    ->options(['pending' => 'Waiting for acknowledgement', 'acknowledged' => 'Acknowledged'])
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                        'pending' => $query->whereIn($query->getModel()->qualifyColumn('asset_subtype_id'), AssetSubtype::query()->select('id')->where('acknowledgement_required', true))
+                            ->whereHas('assignments', fn (Builder $a) => $a->where('status', 'active')->whereNull('acknowledged_at')),
+                        'acknowledged' => $query->whereHas('assignments', fn (Builder $a) => $a->where('status', 'active')->whereNotNull('acknowledged_at')),
+                        default => $query,
+                    })
+                    ->visible(fn () => static::oversees()),
             ])
             ->recordActions([ViewAction::make(), EditAction::make()->visible(fn () => auth()->user()->can('asset.manage'))]);
     }

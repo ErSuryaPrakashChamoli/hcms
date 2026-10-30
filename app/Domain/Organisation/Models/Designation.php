@@ -16,17 +16,37 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[UseFactory(DesignationFactory::class)]
-#[Fillable(['tenant_id', 'name', 'code', 'level_id', 'grade_id', 'job_family_id', 'department_id', 'default_reporting_level_id', 'description', 'status', 'effective_from', 'effective_to', 'metadata'])]
+#[Fillable(['tenant_id', 'name', 'code', 'level_id', 'grade_id', 'job_family_id', 'department_id', 'default_reporting_level_id', 'description', 'min_experience_years', 'max_experience_years', 'job_description', 'is_hazardous', 'wage_skill_category', 'status', 'effective_from', 'effective_to', 'metadata'])]
 class Designation extends Model
 {
     /** @use HasFactory<DesignationFactory> */
     use Auditable, BelongsToTenant, HasCustomFields, HasEffectiveDates, HasFactory;
+
+    protected static function booted(): void
+    {
+        // HROne setup parity CA-2: the experience range reads low to high; the wage skill class is one of the vocabulary's.
+        static::saving(function (Designation $designation): void {
+            $attributes = $designation->getAttributes();
+            $min = $attributes['min_experience_years'] ?? null;
+            $max = $attributes['max_experience_years'] ?? null;
+            if (($min !== null && (float) $min < 0) || ($max !== null && (float) $max < 0) || ($min !== null && $max !== null && (float) $max < (float) $min)) {
+                throw new \RuntimeException('The experience range runs from a minimum to a higher maximum, in years.');
+            }
+            $category = $attributes['wage_skill_category'] ?? null;
+            if ($category !== null && ! array_key_exists($category, (array) config('peopleos.compliance.wage_skill_categories', []))) {
+                throw new \RuntimeException('Unknown wage skill category.');
+            }
+        });
+    }
 
     protected function casts(): array
     {
         return [
             'status' => ActiveStatus::class,
             'metadata' => 'array',
+            'min_experience_years' => 'decimal:1',
+            'max_experience_years' => 'decimal:1',
+            'is_hazardous' => 'boolean',
             'effective_from' => 'date',
             'effective_to' => 'date',
         ];

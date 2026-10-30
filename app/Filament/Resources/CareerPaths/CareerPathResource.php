@@ -23,6 +23,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -45,16 +46,22 @@ class CareerPathResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
-            Select::make('job_family_id')->label('Job family')->options(fn () => JobFamily::query()->orderBy('name')->pluck('name', 'id')->all())->placeholder('Any'),
-            Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
-            Select::make('career_track_id')->label('Career track')->options(fn () => CareerTrack::query()->orderBy('name')->pluck('name', 'id')->all())->placeholder('None'),
-            Select::make('business_unit_id')->label('Business unit')->options(fn () => BusinessUnit::query()->orderBy('name')->pluck('name', 'id')->all())->placeholder('Any'),
-            Select::make('organisation_node_id')->label('Organisation unit')->options(fn () => TalentActions::nodeOptions())->searchable()->placeholder('Any'),
-            DatePicker::make('effective_from')->native(false),
-            DatePicker::make('effective_to')->native(false)->afterOrEqual('effective_from'),
-            Textarea::make('description')->rows(2)->columnSpanFull(),
+            Section::make('Career path')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
+                Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                Textarea::make('description')->rows(2)->columnSpanFull(),
+            ]),
+            Section::make('Where it applies')->columns(2)->schema([
+                Select::make('job_family_id')->label('Job family')->options(fn () => JobFamily::query()->orderBy('name')->pluck('name', 'id')->all())->placeholder('Any'),
+                Select::make('career_track_id')->label('Career track')->options(fn () => CareerTrack::query()->orderBy('name')->pluck('name', 'id')->all())->placeholder('None'),
+                Select::make('business_unit_id')->label('Business unit')->options(fn () => BusinessUnit::query()->orderBy('name')->pluck('name', 'id')->all())->placeholder('Any'),
+                Select::make('organisation_node_id')->label('Organisation unit')->options(fn () => TalentActions::nodeOptions())->searchable()->placeholder('Any'),
+            ]),
+            Section::make('Effective dates')->columns(2)->schema([
+                DatePicker::make('effective_from')->native(false),
+                DatePicker::make('effective_to')->native(false)->afterOrEqual('effective_from'),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

@@ -52,8 +52,9 @@ final class Payslips
                 'bank' => $bank ? ['name' => $bank->bank_name, 'account' => $bank->maskedAccountNumber()] : null,
             ],
             'days' => ['in_period' => $entry->days_in_period, 'paid' => (float) $entry->paid_days, 'lop' => (float) $entry->lop_days],
-            'earnings' => $entry->lines->whereIn('type', ['earning', 'reimbursement'])->values()->map(fn ($l) => ['code' => $l->code, 'name' => $l->name, 'amount' => (float) $l->amount])->all(),
-            'deductions' => $entry->lines->where('type', 'deduction')->values()->map(fn ($l) => ['code' => $l->code, 'name' => $l->name, 'amount' => (float) $l->amount])->all(),
+            // HROne setup parity (PS-1): components hidden from the payslip are paid but not printed.
+            'earnings' => $entry->lines->whereIn('type', ['earning', 'reimbursement'])->reject(fn ($l) => (bool) ($l->basis['hidden_on_payslip'] ?? false))->values()->map(fn ($l) => ['code' => $l->code, 'name' => $l->name, 'amount' => (float) $l->amount])->all(),
+            'deductions' => $entry->lines->where('type', 'deduction')->reject(fn ($l) => (bool) ($l->basis['hidden_on_payslip'] ?? false))->values()->map(fn ($l) => ['code' => $l->code, 'name' => $l->name, 'amount' => (float) $l->amount])->all(),
             'employer_contributions' => $entry->lines->where('type', 'employer_contribution')->values()->map(fn ($l) => ['code' => $l->code, 'name' => $l->name, 'amount' => (float) $l->amount])->all(),
             'totals' => ['gross' => (float) $entry->gross, 'earnings' => (float) $entry->total_earnings, 'deductions' => (float) $entry->total_deductions, 'net' => (float) $entry->net_pay, 'employer_cost' => (float) $entry->employer_cost],
             'tax' => data_get($entry->inputs, 'tax'),

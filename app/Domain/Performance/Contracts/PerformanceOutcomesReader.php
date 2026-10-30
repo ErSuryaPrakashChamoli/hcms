@@ -9,6 +9,11 @@ namespace App\Domain\Performance\Contracts;
  */
 interface PerformanceOutcomesReader
 {
-    /** @return array{cycle_code: string, period_end: string, final_rating: float, final_label: ?string, promotion_recommended: bool, finalized_at: string, template_version_id: ?int, rating_scale_checksum: ?string}|null */
+    /**
+     * HROne setup parity HP-8i: `recommendations` carries what the reviewers recommended under the performance policy
+     * (training needs, promotion, increment, variable pay) — read-only suggestions; null when there are none.
+     *
+     * @return array{cycle_code: string, period_end: string, final_rating: float, final_label: ?string, promotion_recommended: bool, finalized_at: string, template_version_id: ?int, rating_scale_checksum: ?string, recommendations: ?array{training: ?array, promotion: ?bool, increment: ?array{type: string, value: float}, variable: ?array{type: string, value: float}}}|null
+     */
     public function finalOutcome(int $employeeId, int $cycleId): ?array;
 }

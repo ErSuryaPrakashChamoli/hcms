@@ -4,8 +4,10 @@ namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Identity\Concerns\ScopedByOrganisation;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Concerns\HasRecordVerification;
 use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -38,6 +40,11 @@ class Establishment extends Model
             // The company always follows the legal entity; it is never taken from user input.
             $establishment->company_id = $entity->company_id;
             $establishment->country ??= $entity->country;
+            // HROne setup parity CA-2: a new establishment takes its company's industry, else the organisation's.
+            if (! $establishment->exists && blank($establishment->getAttributes()['industry'] ?? null)) {
+                $establishment->industry = Company::query()->withoutGlobalScope(AccessScope::class)->whereKey($entity->company_id)->value('industry')
+                    ?: (app(SettingsRepository::class)->get('organisation.industry') ?: null);
+            }
         });
     }
 

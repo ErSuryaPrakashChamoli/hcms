@@ -18,6 +18,8 @@ class ExperiencesRelationManager extends PersonSatelliteRelationManager
 {
     protected static string $relationship = 'experiences';
 
+    protected static string $profileSection = 'professional';
+
     protected static ?string $title = 'Previous employment';
 
     public function form(Schema $schema): Schema

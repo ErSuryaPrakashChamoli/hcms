@@ -30,12 +30,19 @@ final class AccessScope implements Scope
         $user = auth()->user();
 
         if (! $user instanceof User || $user->isPlatformAdmin()) {
+            // HROne parity CA-10: a shared view's slice applies to a signed-in tenant user only; without one it shows nothing.
+            if (app(AccessScopes::class)->slicing()) {
+                $builder->whereRaw('1 = 0');
+            }
+
             return;
         }
 
         $scopes = app(AccessScopes::class);
+        // HROne parity CA-9: the data-access groups of the model's module (Workforce groups always) count as a scope too.
+        $module = $scopes->moduleFor($model);
 
-        if (! $scopes->isScoped($user)) {
+        if (! $scopes->isScoped($user, $module)) {
             return;
         }
 
@@ -60,7 +67,7 @@ final class AccessScope implements Scope
             return;
         }
 
-        $scopes->constrainByEmployee($builder, $user);
+        $scopes->constrainByEmployee($builder, $user, 'employee_id', $module);
     }
 
     /** Whether scoping is suspended right now (inside withoutScoping()). Read-only; used to key request memos. */

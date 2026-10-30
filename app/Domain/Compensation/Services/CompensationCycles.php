@@ -192,7 +192,7 @@ final class CompensationCycles
                     'effective_from' => $date->toDateString(), 'salary_structure_id' => $row->salary_structure_id, 'ctc_annual' => $proposed,
                     'currency' => $row->currency, 'pay_frequency' => $row->pay_frequency, 'component_values' => $row->component_values ?? [],
                     'variable_target_annual' => $row->variable_target_annual,
-                    'reason' => "{$cycle->name}: ".($label !== null ? "rating {$label}, " : '').number_format($percent, 2).'%',
+                    'reason' => "{$cycle->name}: ".($label !== null ? "rating {$label}, " : '').number_format($percent, 2).'%'.$this->suggestion($cycle, $employee),
                 ], $actor, 'cycle');
                 $change->update(['compensation_cycle_id' => $cycle->id, 'compensation_budget_id' => $cycle->compensation_budget_id, 'performance_label' => $label, 'increase_percent' => $percent]);
                 $snapshot[] = $employee->id.':'.$row->id.':'.$proposed;
@@ -343,6 +343,24 @@ final class CompensationCycles
             ->whereIn('lifecycle_state', config('peopleos.compensation.lifecycle.cycles', []))
             ->when($this->scopes->isScoped($actor), fn ($q) => $q->whereIn('id', $this->scopes->employeeKeys($actor)))
             ->orderBy('id')->get()->keyBy('id');
+    }
+
+    /**
+     * HROne setup parity HP-8i: the increment the appraisal's reviewers recommended (performance policy), read through the
+     * performance contract and shown on the line as a suggestion only — it never changes the proposed amount.
+     */
+    private function suggestion(CompensationCycle $cycle, Employee $employee): string
+    {
+        if (! $cycle->performance_cycle_id) {
+            return '';
+        }
+        $increment = $this->performance->finalOutcome((int) $employee->id, (int) $cycle->performance_cycle_id)['recommendations']['increment'] ?? null;
+        if (! is_array($increment) || ! is_numeric($increment['value'] ?? null)) {
+            return '';
+        }
+        $value = rtrim(rtrim(number_format((float) $increment['value'], 2, '.', ''), '0'), '.');
+
+        return ' (appraisal suggests '.(($increment['type'] ?? 'percentage') === 'amount' ? $value.' as an amount' : $value.'%').')';
     }
 
     /** @return array{0: float, 1: ?string} percent and the finalized rating label it came from */

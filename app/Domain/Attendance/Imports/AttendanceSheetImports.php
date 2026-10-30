@@ -80,9 +80,10 @@ final class AttendanceSheetImports
 
     public function __construct(private readonly AuditRecorder $audit, private readonly LeaveDayResolver $leave) {}
 
+    /** HROne parity TX-2: day statuses need attendance.override, which attendance.manage also grants. */
     public static function allowed(?User $user): bool
     {
-        return $user !== null && $user->hasPermission('attendance.manage') && $user->hasPermission('employee.import');
+        return $user !== null && $user->hasPermission('attendance.override') && $user->hasPermission('employee.import');
     }
 
     /**
@@ -174,7 +175,7 @@ final class AttendanceSheetImports
     public function register(string $path, string $originalName, User $user, string $month, ImportMode $mode = ImportMode::Both, string $blankDays = 'calculate', ?string $reason = null): EmployeeImport
     {
         if (! self::allowed($user)) {
-            throw new RuntimeException('Uploading attendance needs attendance.manage and employee.import.');
+            throw new RuntimeException('Uploading attendance needs attendance.override (or attendance.manage) and employee.import.');
         }
         [$from, $to] = self::period($month);
         if (! isset(self::BLANK_DAYS[$blankDays])) {

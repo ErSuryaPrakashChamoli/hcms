@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use RuntimeException;
+use ZipArchive;
 
 /**
  * Document management core (§39, §83): private storage, versions per type, verification,
@@ -25,6 +26,9 @@ use RuntimeException;
  */
 final class Documents
 {
+    /** HROne parity MS-2: the most "Download all" puts in one ZIP (sum of the files' sizes). */
+    public const BUNDLE_MAX_BYTES = 200 * 1024 * 1024;
+
     public function __construct(
         private readonly AuditRecorder $audit,
         private readonly Timeline $timeline,
@@ -36,7 +40,7 @@ final class Documents
      * $generatedBySystem is for files PeopleOS itself produced (issued letters); every other file is a
      * user upload and passes the server-side file safety checks.
      */
-    public function store(Employee $employee, UploadedFile $file, ?DocumentType $type = null, ?string $title = null, ?string $expiresOn = null, ?string $issuedOn = null, ?string $reason = null, bool $generatedBySystem = false): EmployeeDocument
+    public function store(Employee $employee, UploadedFile $file, ?DocumentType $type = null, ?string $title = null, ?string $expiresOn = null, ?string $issuedOn = null, ?string $reason = null, bool $generatedBySystem = false, ?string $uploadComment = null): EmployeeDocument
     {
         $disk = config('peopleos.documents.disk');
         $tenantId = $employee->tenant_id;
@@ -63,6 +67,8 @@ final class Documents
             'issued_on' => $issuedOn,
             'expires_on' => $expiresOn,
             'uploaded_by' => auth()->id(),
+            // HROne parity MS-3 (22.2.9 #5): the uploader's own comment (My HR upload, a document attached to a profile change).
+            'upload_comment' => filled($uploadComment) ? mb_substr(trim(strip_tags($uploadComment)), 0, 500) : null,
         ]);
         $document->withAuditReason($reason)->save();
 
@@ -119,21 +125,84 @@ final class Documents
         $this->audit->record($purpose === 'download' ? AuditAction::Download : AuditAction::View, 'documents', $document, metadata: ['purpose' => $purpose, 'employee_id' => $document->employee_id, 'sensitive' => $document->isSensitive()], reason: $purpose);
     }
 
+    /**
+     * HROne parity MS-2 ("Download all"): one ZIP of the given documents, built on the fly in a temporary file that the
+     * caller sends and removes. Each document is checked again (the viewer may open it, it belongs to $employee and is
+     * current) and each file put in the ZIP is one DOWNLOAD audit entry (purpose download_all). Null when nothing can be
+     * included; refused above BUNDLE_MAX_BYTES.
+     *
+     * @param  iterable<EmployeeDocument>  $documents
+     * @return array{path: string, count: int}|null
+     */
+    public function bundle(User $viewer, Employee $employee, iterable $documents): ?array
+    {
+        $chosen = collect($documents)->filter(fn (EmployeeDocument $d) => (int) $d->employee_id === (int) $employee->getKey() && $d->status !== 'archived' && $viewer->can('view', $d))->values();
+        if ($chosen->isEmpty()) {
+            return null;
+        }
+        if ((int) $chosen->sum('size_bytes') > self::BUNDLE_MAX_BYTES) {
+            throw new RuntimeException('These documents are too large to download together. Download them one at a time.');
+        }
+        $path = (string) tempnam(sys_get_temp_dir(), 'peopleos-documents-');
+        $zip = new ZipArchive;
+        if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('The download could not be prepared.');
+        }
+        $names = [];
+        $count = 0;
+        foreach ($chosen as $document) {
+            $disk = Storage::disk($document->disk);
+            if (! $disk->exists($document->path)) {
+                continue;
+            }
+            $extension = strtolower(pathinfo((string) ($document->original_name ?: $document->path), PATHINFO_EXTENSION));
+            $base = trim(preg_replace('~[\\/:*?"<>|\x00-\x1F]+~', '-', (string) $document->title) ?? '', ' .-') ?: 'Document';
+            $name = $base.($document->version > 1 ? " (v{$document->version})" : '').($extension !== '' ? '.'.$extension : '');
+            for ($i = 2; isset($names[strtolower($name)]); $i++) {
+                $name = $base." ({$i})".($extension !== '' ? '.'.$extension : '');
+            }
+            $names[strtolower($name)] = true;
+            // A file on a local disk is read by ZipArchive when the archive is written (not held in memory).
+            $local = rescue(fn () => $disk->path($document->path), null, false);
+            is_string($local) && is_file($local) ? $zip->addFile($local, $name) : $zip->addFromString($name, (string) $disk->get($document->path));
+            $this->audit->record(AuditAction::Download, 'documents', $document, reason: 'download_all',
+                metadata: ['purpose' => 'download_all', 'employee_id' => $document->employee_id, 'sensitive' => $document->isSensitive()]);
+            $count++;
+        }
+        $zip->close();
+        if ($count === 0) {
+            @unlink($path);
+
+            return null;
+        }
+
+        return ['path' => $path, 'count' => $count];
+    }
+
     public function delete(EmployeeDocument $document, ?string $reason = null): void
     {
         Storage::disk($document->disk)->delete($document->path);
         $document->withAuditReason($reason)->delete();
     }
 
-    /** @return Collection<int, EmployeeDocument> */
+    /**
+     * Documents expiring within $days, or within their type's own alert days (HROne setup parity CA-4: a document type may
+     * set expiry_alert_days; without it the organisation's window applies).
+     *
+     * @return Collection<int, EmployeeDocument>
+     */
     public function expiringWithin(int $days)
     {
+        $longest = max($days, (int) DocumentType::query()->max('expiry_alert_days'));
+
         return EmployeeDocument::query()
             ->with(['employee.person', 'type'])
             ->whereIn('status', ['pending', 'verified'])
             ->whereNotNull('expires_on')
-            ->whereBetween('expires_on', [now()->toDateString(), now()->addDays($days)->toDateString()])
-            ->get();
+            ->whereBetween('expires_on', [now()->toDateString(), now()->addDays($longest)->toDateString()])
+            ->get()
+            ->filter(fn (EmployeeDocument $document) => $document->expires_on->lte(now()->addDays($document->type?->expiry_alert_days ?? $days)->endOfDay()))
+            ->values();
     }
 
     /** @return array<string, mixed> */

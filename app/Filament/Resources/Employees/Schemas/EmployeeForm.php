@@ -60,6 +60,7 @@ class EmployeeForm
             ...self::birthdayFields(),
             Select::make('gender')->options(config('peopleos.people.genders')),
             Select::make('marital_status')->options(config('peopleos.people.marital_statuses')),
+            ...self::weddingAnniversaryFields(),
             TextInput::make('nationality')->maxLength(64)->default('Indian'),
             Select::make('blood_group')->options(array_combine(config('peopleos.people.blood_groups'), config('peopleos.people.blood_groups'))),
             TextInput::make('personal_email')->email()->maxLength(255),
@@ -86,6 +87,28 @@ class EmployeeForm
                     ->required(fn (Get $get) => filled($get('birthday_month'))),
                 Toggle::make('birthday_shared')->label('Show to colleagues')->default(true)->inline(false)
                     ->helperText('Day and month only, never the year. HR always sees it.'),
+            ]),
+        ];
+    }
+
+    /**
+     * HROne setup parity HP-9a: the wedding anniversary (day and month only), celebrated when the organisation turns
+     * wedding anniversaries on, and whether colleagues see it (off unless the person chooses).
+     *
+     * @return array<int, Component>
+     */
+    public static function weddingAnniversaryFields(): array
+    {
+        return [
+            Fieldset::make('Wedding anniversary')->columns(3)->columnSpanFull()->schema([
+                Select::make('wedding_anniversary_month')->label('Month')->placeholder('Not recorded')
+                    ->options(Person::MONTHS)->live(),
+                Select::make('wedding_anniversary_day')->label('Day')
+                    ->options(fn (Get $get) => ($month = (int) $get('wedding_anniversary_month')) >= 1 && $month <= 12 ? array_combine($r = range(1, Person::daysIn($month)), $r) : [])
+                    ->disabled(fn (Get $get) => blank($get('wedding_anniversary_month')))
+                    ->required(fn (Get $get) => filled($get('wedding_anniversary_month'))),
+                Toggle::make('wedding_anniversary_shared')->label('Show to colleagues')->default(false)->inline(false)
+                    ->helperText('Day and month only. HR always sees it.'),
             ]),
         ];
     }

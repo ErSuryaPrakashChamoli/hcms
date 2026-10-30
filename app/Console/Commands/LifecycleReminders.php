@@ -5,17 +5,23 @@ namespace App\Console\Commands;
 use App\Domain\Documents\Events\DocumentExpiring;
 use App\Domain\Documents\Services\Documents;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Enterprise\Services\SecurityPolicy;
+use App\Domain\Identity\Enums\UserStatus;
+use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Events\EmployeeReminderDue;
+use App\Domain\Notifications\Services\Notifier;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Support\Tenancy\TenantContext;
 use App\Support\Tenancy\TenantRunner;
+use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
 
 /**
  * Daily lifecycle sweep (§114): joiners due, probations ending or overdue, documents expiring.
  * Emits events; tenants decide what happens through notification rules and workflows.
+ * HROne setup parity: also reminds people whose password is about to expire (security.password_expiry_warning_days).
  */
 class LifecycleReminders extends Command
 {
@@ -23,14 +29,14 @@ class LifecycleReminders extends Command
 
     protected $description = 'Emit joining, probation and document-expiry reminder events for every tenant';
 
-    public function handle(TenantContext $tenants, SettingsRepository $settings, Documents $documents): int
+    public function handle(TenantContext $tenants, SettingsRepository $settings, Documents $documents, SecurityPolicy $security, Notifier $notifier): int
     {
         $runner = TenantRunner::for($this);
         Tenant::query()
             ->when($this->option('tenant'), fn ($q, $t) => $q->where('slug', $t)->orWhere('id', $t))
             ->orderBy('id')
-            ->each($runner->isolate(function (Tenant $tenant) use ($tenants, $settings, $documents) {
-                $tenants->runAs($tenant, function () use ($tenant, $settings, $documents) {
+            ->each($runner->isolate(function (Tenant $tenant) use ($tenants, $settings, $documents, $security, $notifier) {
+                $tenants->runAs($tenant, function () use ($tenant, $settings, $documents, $security, $notifier) {
                     $today = now()->startOfDay();
                     // Phase 14: one sweep per tenant per day (a re-run or an overlapping server emits nothing twice).
                     if (! $this->option('force') && ! TenantRunner::claim('lifecycle.reminders', $today->toDateString())) {
@@ -71,9 +77,45 @@ class LifecycleReminders extends Command
                     }
 
                     $this->line(sprintf('%s: joining %d, probation ending %d, overdue %d, documents expiring %d', $tenant->slug, ...array_values($counts)));
+
+                    $warned = $this->warnPasswordsExpiring($security, $notifier, $today);
+                    if ($warned !== null) {
+                        $this->line("{$tenant->slug}: passwords expiring {$warned}");
+                    }
                 });
             }));
 
         return $runner->exitCode();
+    }
+
+    /**
+     * HROne setup parity (Password policy): while passwords expire, each active user whose password expires within the
+     * warning window is told once per expiry date (in-app and e-mail), with the date. Null when nothing is configured.
+     */
+    private function warnPasswordsExpiring(SecurityPolicy $security, Notifier $notifier, CarbonInterface $today): ?int
+    {
+        $days = $security->expiryDays();
+        $window = $security->expiryWarningDays();
+        if ($days === 0 || $window === 0) {
+            return null;
+        }
+        $warned = 0;
+        User::forCurrentTenant()->where('status', UserStatus::Active->value)->whereNotNull('password_changed_at')
+            ->where('password_changed_at', '>=', $today->copy()->subDays($days))
+            ->where('password_changed_at', '<', $today->copy()->subDays($days)->addDays($window + 1))
+            ->orderBy('id')
+            ->each(function (User $user) use ($security, $notifier, $today, &$warned): void {
+                $expires = $security->passwordExpiresAt($user->password_changed_at);
+                if ($expires === null || $expires->lt($today) || ! TenantRunner::claim("password_expiring:{$user->id}", $expires->toDateString())) {
+                    return;
+                }
+                $date = $expires->format('d M Y');
+                $notifier->send([$user], ['in_app', 'email'], "Your password expires on {$date}",
+                    "Your organisation asks for a new password every {$security->expiryDays()} days. Change it under Account security before {$date}; after that you will be asked for a new one when you sign in.",
+                    'security.password_expiring', $user);
+                $warned++;
+            });
+
+        return $warned;
     }
 }

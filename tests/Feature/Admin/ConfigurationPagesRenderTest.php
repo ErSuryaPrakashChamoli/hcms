@@ -8,6 +8,7 @@ use App\Domain\Organisation\Models\Department;
 use App\Domain\Platform\Services\FeatureFlags;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Pages\ConfigurationPacks;
+use App\Filament\Pages\PolicyWizard;
 use App\Filament\Resources\ConfigurationChanges\ConfigurationChangeResource;
 use App\Filament\Resources\ConfigurationChanges\Pages\ViewConfigurationChange;
 use App\Filament\Resources\CustomFields\CustomFieldResource;
@@ -31,7 +32,8 @@ it('renders the configuration platform pages', function () {
     $this->get(FormResource::getUrl('index'))->assertOk()->assertSee('IT asset handover');
     $this->get(FormResource::getUrl('create'))->assertOk();
     $this->get(PolicyResource::getUrl('index'))->assertOk()->assertSee('Standard leave');
-    $this->get(PolicyResource::getUrl('create'))->assertOk();
+    $this->get(PolicyResource::getUrl('create'))->assertRedirect(PolicyWizard::getUrl()); // new policies are drafted in the wizard
+    $this->get(PolicyWizard::getUrl(['type' => 'leave']))->assertOk()->assertSee('New Leave policy')->assertSee('Advance applicability');
     $this->get(ConfigurationChangeResource::getUrl('index'))->assertOk()->assertSee('Pending approval');
     $this->get(ConfigurationPacks::getUrl())->assertOk()->assertSee('IT Company')->assertSee('Enterprise');
 

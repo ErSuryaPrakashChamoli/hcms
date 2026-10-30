@@ -9,8 +9,13 @@ use App\Domain\Employment\Actions\AssignPositionAction;
 use App\Domain\Employment\Actions\ChangeManagerAction;
 use App\Domain\Employment\Actions\ChangeStatutoryApplicabilityAction;
 use App\Domain\Employment\Actions\ChangeStatutoryIdentityAction;
+use App\Domain\Employment\Actions\RehireEmployeeAction;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Employment\Services\EmployeeMessages;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
+use App\Domain\Exit\Models\ExitCase;
+use App\Domain\Experience\BulkOperations\InitiateExitOperation;
 use App\Domain\Experience\Services\ContextualIntelligence;
 use App\Domain\Experience\Services\PersonWorkspace;
 use App\Domain\Letters\Models\LetterTemplate;
@@ -34,6 +39,7 @@ use App\Filament\Support\Pages\PeopleViewRecord;
 use App\Filament\Support\ProfileChangeActions;
 use App\Filament\Support\SavesCustomFields;
 use App\Filament\Support\ServiceDeskActions;
+use App\Http\Controllers\EmployeeProfilePrintController;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -130,6 +136,7 @@ class ViewEmployee extends PeopleViewRecord
             ActionGroup::make([
                 $this->raiseRequestAction(),
                 $this->generateLetterAction(),
+                $this->sendEmailAction(),
             ])->label('Request')->icon(Heroicon::OutlinedPaperAirplane)->button()->color('gray'),
             ActionGroup::make([
                 $this->assignPositionAction(),
@@ -140,6 +147,8 @@ class ViewEmployee extends PeopleViewRecord
                 $this->initiateBgvAction(),
                 $this->assignScheduleAction(),
                 $this->startWorkflowAction(),
+                $this->initiateExitAction(),
+                $this->rehireAction(),
             ])->label('Action')->icon(Heroicon::OutlinedBolt)->button(),
             ActionGroup::make([
                 EditAction::make()->label('Edit profile'),
@@ -149,8 +158,77 @@ class ViewEmployee extends PeopleViewRecord
                     ->url(fn () => ChangeIntelligencePage::getUrl(['employee' => $this->getRecord()->getKey()])),
                 $this->viewStatutoryAction(),
                 $this->editStatutoryAction(),
+                $this->printProfileAction(),
             ])->label('More')->icon(Heroicon::OutlinedEllipsisHorizontal)->button()->color('gray'),
         ];
+    }
+
+    /** HROne parity WO-2 ("Send email"): write to the employee through EmployeeMessages (audited without the body). */
+    private function sendEmailAction(): Action
+    {
+        return Action::make('sendEmail')->label('Send e-mail')->icon(Heroicon::OutlinedEnvelope)
+            ->visible(fn () => auth()->user()?->hasPermission('employee.message') ?? false)
+            ->modalDescription('Sent from PeopleOS to the employee\'s e-mail and listed on the delivery log. The audit trail keeps the subject, not the message.')
+            ->fillForm(['to' => ['work']])
+            ->schema([
+                TextInput::make('subject')->required()->maxLength(200),
+                Textarea::make('body')->label('Message')->required()->rows(6)->maxLength(10000),
+                CheckboxList::make('to')->label('Send to')->required()
+                    ->options(fn () => auth()->user()?->hasPermission('employee.sensitive.view') ? EmployeeMessages::RECIPIENTS : ['work' => EmployeeMessages::RECIPIENTS['work']]),
+                Toggle::make('copy_to_me')->label('Send me a copy'),
+            ])
+            ->action(fn (Employee $record, array $data) => ServiceDeskActions::run(fn () => app(EmployeeMessages::class)->email($record, auth()->user(), (string) $data['subject'], (string) $data['body'], (array) ($data['to'] ?? ['work']), (bool) ($data['copy_to_me'] ?? false)),
+                fn (int $sent) => $sent === 1 ? 'E-mail queued' : "{$sent} e-mails queued"));
+    }
+
+    /**
+     * HROne parity WO-2 ("Reactivate employee" / rehire): an exited employee or an alumni comes back as the same employee
+     * (code, person and history kept) through RehireEmployeeAction — the lifecycle moves only through LifecycleEngine.
+     */
+    private function rehireAction(): Action
+    {
+        return Action::make('rehire')->label('Rehire / reactivate')->icon(Heroicon::OutlinedArrowUturnLeft)
+            ->authorize(fn () => auth()->user()->can('transition', $this->getRecord()) && auth()->user()->can('assignPosition', $this->getRecord()))
+            ->visible(fn (Employee $record) => in_array($record->lifecycle_state, [LifecycleState::Exited, LifecycleState::Alumni], true))
+            ->modalDescription('The same employee returns as active from the rejoining date: employee code, person, documents and history are kept. Blank position fields stay as they were. Their login stays as it is (invite them again from Users if needed).')
+            ->fillForm(fn () => ['rejoin_date' => now()->toDateString()])
+            ->schema([
+                DatePicker::make('rejoin_date')->label('Rejoining date')->native(false)->required(),
+                Grid::make(3)->schema(CreateEmployee::positionFields()),
+                Select::make('manager_id')->label('Line manager')->options(fn (Employee $record) => CreateEmployee::managerOptions($record->id))->searchable()->placeholder('Unchanged'),
+                AuditReasonField::make()->required(),
+            ])
+            ->action(function (Employee $record, array $data) {
+                $reason = AuditReasonField::extract($data);
+                try {
+                    app(RehireEmployeeAction::class)->handle($record, array_intersect_key($data, EmployeePosition::DIMENSIONS), $data['rejoin_date'], filled($data['manager_id'] ?? null) ? (int) $data['manager_id'] : null, $reason);
+                    Notification::make()->success()->title('Employee is active again')->send();
+                } catch (InvalidArgumentException|InvalidLifecycleTransitionException|\RuntimeException $e) {
+                    Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
+                }
+            });
+    }
+
+    /** HROne parity WO-1 (§23.2.2 #5 "Initiate separation" on the card): the same inputs and Exits::initiate as the bulk action. */
+    private function initiateExitAction(): Action
+    {
+        $operation = app(InitiateExitOperation::class);
+
+        return Action::make('initiateExit')->label('Initiate exit')->icon(Heroicon::OutlinedArrowRightStartOnRectangle)->color('danger')
+            ->authorize(fn () => auth()->user()->can('exit.manage'))
+            ->visible(fn (Employee $record) => $record->lifecycle_state->isEmployed() && $record->lifecycle_state !== LifecycleState::NoticePeriod
+                && $record->exitCases()->whereIn('status', ExitCase::OPEN)->doesntExist())
+            ->modalDescription('Opens an exit case for this employee (notice, clearance stages, exit interviews and letters as the exit policy says).')
+            ->schema(fn () => $operation->schema())
+            ->action(fn (Employee $record, array $data) => ServiceDeskActions::run(fn () => $operation->handle($record, $operation->prepare($data, auth()->user()), auth()->user()), fn (string $line) => $line));
+    }
+
+    /** HROne parity WO-2 ("Download profile data"): the printable profile (sensitive sections only with their permission; audited). */
+    private function printProfileAction(): Action
+    {
+        return Action::make('printProfile')->label('Print profile')->icon(Heroicon::OutlinedPrinter)
+            ->visible(fn (Employee $record) => EmployeeProfilePrintController::allows(auth()->user(), $record))
+            ->url(fn (Employee $record) => EmployeeProfilePrintController::url($record), shouldOpenInNewTab: true);
     }
 
     /** An HR agent raises a request on this person's behalf (the existing Ask HR action, pre-filled). */

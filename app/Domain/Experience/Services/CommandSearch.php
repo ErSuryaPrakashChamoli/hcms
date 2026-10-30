@@ -238,9 +238,27 @@ final class CommandSearch
                     'icon' => is_string($m['icon']) ? $m['icon'] : 'heroicon-m-squares-2x2', 'url' => $m['url']]];
             }
         }
+        // HROne parity MS-1: each My space item the person may open is a navigation result too (its label, group and keywords —
+        // HROne's names included). Modules win equal scores (sorting is stable) and a page already found is not repeated.
+        foreach (app(MySpace::class)->available($user) as $entry) {
+            $item = $entry['item'];
+            $group = MySpace::GROUPS[$item->group()] ?? '';
+            $score = $this->score($q, $item->label(), [...$item->keywords(), $group]);
+            if ($score > 0) {
+                $scored[] = [$score, ['id' => 'myspace:'.$item->key(), 'type' => 'module', 'title' => $item->label(), 'subtitle' => trim('My space · '.$group, ' ·'),
+                    'icon' => $item->icon(), 'url' => $entry['url']]];
+            }
+        }
         usort($scored, fn ($x, $y) => $y[0] <=> $x[0]);
+        $seen = [];
 
-        return array_map(fn ($s) => $s[1], $scored);
+        return array_values(array_filter(array_map(fn ($s) => $s[1], $scored), function (array $row) use (&$seen) {
+            if (isset($seen[$row['url']])) {
+                return false;
+            }
+
+            return $seen[$row['url']] = true;
+        }));
     }
 
     /** @return list<array<string, mixed>> */

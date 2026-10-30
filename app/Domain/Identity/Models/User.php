@@ -5,6 +5,8 @@ namespace App\Domain\Identity\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Services\MultiFactor;
+use App\Domain\Identity\Services\PasswordHistory;
+use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Database\Factories\UserFactory;
@@ -46,6 +48,9 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     /** @var Collection<int, string>|null */
     private ?Collection $permissionKeyCache = null;
 
+    /** Set while saving when the password changed, so the saved hook can keep its hash for the reuse rule. */
+    private bool $passwordSaved = false;
+
     protected function casts(): array
     {
         return [
@@ -57,18 +62,31 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
             'password' => 'hashed',
             'is_platform_admin' => 'boolean',
             'status' => UserStatus::class,
+            'disabled_by_rule' => 'boolean',
         ];
     }
 
     protected static function booted(): void
     {
         static::saving(function (self $user): void {
+            $user->passwordSaved = $user->isDirty('password');
             if ($user->isDirty('password')) {
                 $user->password_changed_at = now();
             }
             // SaaS.2: a changed address is unproven until its owner verifies it (unless the change itself proved it).
             if ($user->exists && $user->isDirty('email') && ! $user->isDirty('email_verified_at')) {
                 $user->email_verified_at = null;
+            }
+            // HROne setup parity (Disable login): the mark belongs to the status the rule set. Any other change of status
+            // (an administrator, an exit, an alumni portal) takes it over, so leaving the state never undoes that change.
+            if ($user->exists && $user->isDirty('status') && ! $user->isDirty('disabled_by_rule') && ($user->getAttributes()['disabled_by_rule'] ?? false)) {
+                $user->disabled_by_rule = false;
+            }
+        });
+        static::saved(function (self $user): void {
+            if ($user->passwordSaved) {
+                $user->passwordSaved = false;
+                app(PasswordHistory::class)->record($user);
             }
         });
     }
@@ -161,7 +179,8 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
 
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class)->withPivot('company_id')->withTimestamps();
+        // HROne parity SV-7: source = manual (the default) or rule (granted by a role membership rule, with the rule).
+        return $this->belongsToMany(Role::class)->withPivot('company_id', 'source', 'membership_rule_id')->withTimestamps();
     }
 
     #[Scope]
@@ -185,6 +204,9 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     /**
      * Exact-key permission check. Wildcards are expanded when roles are provisioned, so the
      * stored graph is always concrete.
+     *
+     * HROne parity TX-2: a key split out of a broader one (`peopleos.permission_splits`, e.g. attendance.roster out of
+     * attendance.manage) is also granted by that broader key, so roles holding only the broader key keep their access.
      */
     public function hasPermission(string $key, ?int $companyId = null): bool
     {
@@ -192,7 +214,14 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
             return true;
         }
 
-        return $this->permissionKeys($companyId)->contains($key);
+        $keys = $this->permissionKeys($companyId);
+        if ($keys->contains($key)) {
+            return true;
+        }
+        // Dotted keys are read from the parent array, never through config("a.{$key}").
+        $broader = ((array) config('peopleos.permission_splits', []))[$key] ?? null;
+
+        return is_string($broader) && $keys->contains($broader);
     }
 
     /** @return Collection<int, string> */
@@ -201,7 +230,9 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         // SaaS.2: platform keys (tenant.view/create/update/suspend) are never effective for a tenant user, even when a
         // role holds them (the Tenant Super Admin template is `*`); platform power comes only from being an operator.
         // Dropped once here, not on every check.
+        // HROne setup parity: an inactive role grants nothing.
         $this->permissionKeyCache ??= $this->roles()
+            ->where('roles.status', ActiveStatus::Active->value)
             ->with('permissions:id,key')
             ->get()
             ->flatMap(fn (Role $role) => $role->permissions->map(fn (Permission $p) => [
@@ -230,9 +261,10 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
             return ['platform-super-admin'];
         }
 
+        // HROne setup parity: an inactive role is as if not held.
         return $this->relationLoaded('roles')
-            ? $this->roles->pluck('slug')->all()
-            : $this->roles()->pluck('slug')->all();
+            ? $this->roles->reject(fn (Role $role) => $role->isInactive())->pluck('slug')->values()->all()
+            : $this->roles()->where('roles.status', ActiveStatus::Active->value)->pluck('slug')->all();
     }
 
     public function canAccessPanel(Panel $panel): bool

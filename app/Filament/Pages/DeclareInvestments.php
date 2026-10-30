@@ -6,6 +6,8 @@ use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Compliance\Models\TdsEmployeeInvestment;
 use App\Domain\Compliance\Services\FinancialYear;
 use App\Domain\Compliance\Services\InvestmentDeclarations;
+use App\Domain\Compliance\Services\TaxEstimator;
+use App\Domain\Compliance\Services\TaxSettings;
 use App\Domain\Compliance\Support\InvestmentCatalogue;
 use App\Domain\Employment\Models\Employee;
 use App\Support\Tenancy\TenantContext;
@@ -13,7 +15,9 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -65,7 +69,8 @@ class DeclareInvestments extends Page implements HasSchemas
 
     private const MAX_AMOUNT = 1_000_000_000;
 
-    private const STEP_ICONS = ['HRA_RENT' => Heroicon::OutlinedHome, '80C' => Heroicon::OutlinedBanknotes, '80CCD1B' => Heroicon::OutlinedBuildingLibrary, '80D' => Heroicon::OutlinedHeart, '80E' => Heroicon::OutlinedAcademicCap, '80G' => Heroicon::OutlinedGift, '80TTA' => Heroicon::OutlinedCurrencyRupee];
+    private const STEP_ICONS = ['HRA_RENT' => Heroicon::OutlinedHome, '80C' => Heroicon::OutlinedBanknotes, '80CCD1B' => Heroicon::OutlinedBuildingLibrary, '80D' => Heroicon::OutlinedHeart, '80E' => Heroicon::OutlinedAcademicCap, '80G' => Heroicon::OutlinedGift, '80TTA' => Heroicon::OutlinedCurrencyRupee,
+        '24B' => Heroicon::OutlinedHomeModern, 'OTHER_INCOME' => Heroicon::OutlinedPlusCircle];
 
     private const REGIMES = [
         'new' => 'Lower tax rates and a bigger standard deduction (₹75,000), but almost none of the deductions in the next steps count. Good if you have few investments, no rent or little insurance to declare.',
@@ -130,7 +135,10 @@ class DeclareInvestments extends Page implements HasSchemas
             ]),
             Callout::make('Payroll has verified this declaration')->success()
                 ->description('It can no longer be changed here. If something needs to change, contact your payroll team.')
-                ->visible(fn () => $this->employee() !== null && ! $this->editable()),
+                ->visible(fn () => $this->employee() !== null && ! $this->editable() && ($this->declaration()?->status === 'verified' || $this->declarations()->windowOpenFor(auth()->user()))),
+            Callout::make('The declaration window is closed')->warning()
+                ->description(fn () => 'Declarations can be changed '.app(TaxSettings::class)->declarationWindow().'. If something needs to change, contact your payroll team.')
+                ->visible(fn () => $this->employee() !== null && $this->declaration()?->status !== 'verified' && ! $this->declarations()->windowOpenFor(auth()->user())),
             Wizard::make($steps)->skippable()
                 ->visible(fn () => $this->employee() !== null)
                 ->submitAction(view('filament.pages.declare-investments.submit', ['page' => $this])), // rendered late: knows the current selection
@@ -174,8 +182,18 @@ class DeclareInvestments extends Page implements HasSchemas
                 TextInput::make('rent.landlord_name')->label('Landlord’s name')->maxLength(120),
                 TextInput::make('rent.landlord_pan')->label('Landlord’s PAN')->maxLength(10)
                     ->rule('regex:/^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/')->validationMessages(['regex' => 'A PAN looks like ABCDE1234F.'])
-                    ->helperText('Needed when your rent is more than ₹1,00,000 a year'),
+                    ->required(fn () => app(TaxSettings::class)->landlordPanRequired())
+                    ->helperText(fn () => app(TaxSettings::class)->landlordPanRequired() ? 'Your organisation asks for every landlord’s PAN' : 'Needed when your rent is more than ₹1,00,000 a year'),
                 TextInput::make('rent.address')->label('Address of the rented home')->maxLength(255)->columnSpanFull(),
+                // HROne parity PY-13: a home rented from more than one owner, when the organisation allows it.
+                Repeater::make('rent.landlords')->label('Other landlords of this home')->columnSpanFull()->defaultItems(0)
+                    ->visible(fn () => app(TaxSettings::class)->maxLandlords() > 1)
+                    ->maxItems(fn () => app(TaxSettings::class)->maxLandlords() - 1)->addActionLabel('Add a landlord')->columns(2)
+                    ->schema([
+                        TextInput::make('name')->label('Name')->required()->maxLength(120),
+                        TextInput::make('pan')->label('PAN')->maxLength(10)->required(fn () => app(TaxSettings::class)->landlordPanRequired())
+                            ->rule('regex:/^[A-Za-z]{5}[0-9]{4}[A-Za-z]$/')->validationMessages(['regex' => 'A PAN looks like ABCDE1234F.']),
+                    ]),
                 Text::make(fn (Get $get) => 'Rent for the year: '.self::inr($this->rentAnnual($get)))->columnSpanFull(),
             ]),
             Text::make('Proof needed later: '.$meta['items']['rent']['proof'])->visible($pays),
@@ -232,6 +250,14 @@ class DeclareInvestments extends Page implements HasSchemas
                 TextInput::make('previous.income')->label('Taxable salary from the previous employer')->prefix('₹')->numeric()->minValue(0)->maxValue(self::MAX_AMOUNT)->required(),
                 TextInput::make('previous.tds')->label('Income tax (TDS) they deducted')->prefix('₹')->numeric()->minValue(0)->maxValue(self::MAX_AMOUNT)->required(),
                 Text::make('Find both on the Form 16 or the final payslip from your previous employer. Proof needed later: Form 16, Form 12B or the payslips.')->columnSpanFull(),
+                // HROne parity PY-13: Form 12B details; PF and PT deducted there count like this employer's.
+                TextInput::make('previous.name')->label('Previous employer’s name')->maxLength(150),
+                TextInput::make('previous.tan')->label('Their TAN')->maxLength(10)
+                    ->rule('regex:/^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/')->validationMessages(['regex' => 'A TAN looks like ABCD12345E.']),
+                DatePicker::make('previous.from')->label('Worked there from')->native(false),
+                DatePicker::make('previous.to')->label('Until')->native(false),
+                TextInput::make('previous.pf')->label('PF deducted there')->prefix('₹')->numeric()->minValue(0)->maxValue(self::MAX_AMOUNT),
+                TextInput::make('previous.pt')->label('Professional tax deducted there')->prefix('₹')->numeric()->minValue(0)->maxValue(self::MAX_AMOUNT),
             ]),
         ]);
     }
@@ -247,9 +273,16 @@ class DeclareInvestments extends Page implements HasSchemas
 
     private function regimeCallout(string $section): Callout
     {
-        return Callout::make('You chose the new regime')->warning()
-            ->description('Under the new regime this section does not reduce your tax. You can still fill it in, or go back to Start to choose the old regime.')
-            ->visible(fn (Get $get) => ! ($this->declarations()->counting((string) $get('financial_year'), (string) ($get('regime') ?: 'new'))[$section]['allowed'] ?? false));
+        $notCounted = fn (Get $get) => ! ($this->declarations()->counting((string) $get('financial_year'), (string) ($get('regime') ?: 'new'))[$section]['allowed'] ?? false);
+
+        // HP-3: home-loan interest the old regime's rule carries no limit for is held for payroll, not counted.
+        return $section === '24B'
+            ? Callout::make('Payroll does not count this yet')->warning()
+                ->description('Under the new regime home-loan interest on the home you live in does not reduce tax. Under the old regime payroll counts it once the tax rule in force carries its limit; until then it is kept for your Form 12BB.')
+                ->visible($notCounted)
+            : Callout::make('You chose the new regime')->warning()
+                ->description('Under the new regime this section does not reduce your tax. You can still fill it in, or go back to Start to choose the old regime.')
+                ->visible(fn (Get $get) => ($get('regime') ?: 'new') === 'new' && $notCounted($get));
     }
 
     /** "Declared ₹62,000 of the ₹1,50,000 that counts" with what is over the limit. */
@@ -257,6 +290,12 @@ class DeclareInvestments extends Page implements HasSchemas
     {
         $declared = $this->sectionTotal($section, $get);
         $limit = $this->declarations()->counting((string) $get('financial_year'), 'old')[$section]['limit'];
+        if (InvestmentCatalogue::kind($section) === 'income') {
+            return 'Total other income: '.self::inr($declared).'. It is added to your taxable income, so more tax is deducted each month.';
+        }
+        if ($limit === null && InvestmentCatalogue::kind($section) === 'house_property') {
+            return 'Total for this section: '.self::inr($declared).'.';
+        }
         if ($limit === null) {
             return 'Total for this section: '.self::inr($declared).'. No upper limit.';
         }
@@ -284,9 +323,12 @@ class DeclareInvestments extends Page implements HasSchemas
             $rows[] = [
                 'title' => $meta['title'],
                 'declared' => self::inr($declared),
-                'counts' => $section === 'HRA_RENT'
-                    ? ($rule['allowed'] ? 'Payroll works out the tax-free part of your HRA from this' : 'Does not count in the new regime')
-                    : (! $rule['allowed'] ? 'Does not count in the new regime' : ($rule['limit'] === null ? self::inr($declared).' (no limit)' : self::inr(min($declared, $rule['limit'])).' (limit '.self::inr($rule['limit']).')')),
+                'counts' => match (true) {
+                    $section === 'HRA_RENT' => $rule['allowed'] ? 'Payroll works out the tax-free part of your HRA from this' : 'Does not count in the new regime',
+                    InvestmentCatalogue::kind($section) === 'income' => 'Added to your taxable income',
+                    ! $rule['allowed'] => $section === '24B' && $regime === 'old' ? 'Not counted until the tax rule carries its limit' : 'Does not count in the new regime',
+                    default => $rule['limit'] === null ? self::inr($declared).' (no limit)' : self::inr(min($declared, $rule['limit'])).' (limit '.self::inr($rule['limit']).')',
+                },
                 'over' => $rule['allowed'] && $rule['limit'] !== null && $declared > $rule['limit'],
             ];
             foreach ($this->chosenItems($section, $get) as $itemKey) {
@@ -317,7 +359,17 @@ class DeclareInvestments extends Page implements HasSchemas
             'proofs' => $proofs,
             'warnings' => $warnings,
             'previous' => $get('previous.worked') ? ['income' => self::inr((float) $get('previous.income')), 'tds' => self::inr((float) $get('previous.tds'))] : null,
+            // HROne setup parity (PS-2): a rough tax per regime from the declared amounts, when the organisation shows it.
+            'estimate' => app(TaxSettings::class)->showEstimator() && $this->employee() !== null
+                ? collect(app(TaxEstimator::class)->compare($this->employee(), (string) $get('financial_year'), $this->declaredTotals($get)))->map(fn (array $e, string $regime) => ['regime' => config("peopleos.compliance.tax_regimes.{$regime}", $regime), 'tax' => self::inr($e['tax'])])->values()->all()
+                : [],
         ];
+    }
+
+    /** @return array<string, float> section => declared total from the form, for the estimator */
+    private function declaredTotals(Get $get): array
+    {
+        return collect(array_keys(InvestmentCatalogue::SECTIONS))->mapWithKeys(fn (string $section) => [$section => $this->sectionTotal($section, $get)])->all();
     }
 
     public function saveDraft(): void
@@ -337,7 +389,11 @@ class DeclareInvestments extends Page implements HasSchemas
             return;
         }
         if (! $this->editable()) { // the steps are disabled, so the form has nothing to save
-            Notification::make()->danger()->title($this->declaration()?->status === 'verified' ? 'Payroll has verified this declaration. Ask payroll to make any change.' : 'You cannot change this declaration.')->send();
+            Notification::make()->danger()->title(match (true) {
+                $this->declaration()?->status === 'verified' => 'Payroll has verified this declaration. Ask payroll to make any change.',
+                ! $this->declarations()->windowOpenFor(auth()->user()) => 'Declarations can be changed '.app(TaxSettings::class)->declarationWindow().'. Ask payroll to make any change.',
+                default => 'You cannot change this declaration.',
+            })->send();
 
             return;
         }
@@ -379,6 +435,8 @@ class DeclareInvestments extends Page implements HasSchemas
                     $items['HRA_RENT.rent'] = ['amount' => round((float) ($rent['monthly'] ?? 0) * (int) ($rent['months'] ?? 0), 2), 'details' => [
                         'monthly_rent' => (float) ($rent['monthly'] ?? 0), 'months' => (int) ($rent['months'] ?? 0),
                         'landlord_name' => $rent['landlord_name'] ?? null, 'landlord_pan' => filled($rent['landlord_pan'] ?? null) ? strtoupper($rent['landlord_pan']) : null, 'address' => $rent['address'] ?? null,
+                        'landlords' => collect($rent['landlords'] ?? [])->filter(fn ($l) => filled($l['name'] ?? null))
+                            ->map(fn ($l) => ['name' => trim((string) $l['name']), 'pan' => filled($l['pan'] ?? null) ? strtoupper((string) $l['pan']) : null])->values()->all() ?: null,
                     ]];
                 }
 
@@ -396,6 +454,7 @@ class DeclareInvestments extends Page implements HasSchemas
             'metro' => (bool) ($state['rent']['metro'] ?? false),
             'previous_employer_income' => $worked ? ($state['previous']['income'] ?? 0) : 0,
             'previous_employer_tds' => $worked ? ($state['previous']['tds'] ?? 0) : 0,
+            'previous_employer' => $worked ? collect($state['previous'])->only(['name', 'tan', 'from', 'to', 'pf', 'pt'])->all() : null,
             'items' => $items,
         ];
     }
@@ -417,7 +476,7 @@ class DeclareInvestments extends Page implements HasSchemas
             $state['regime'] = $declaration?->regime ?? 'new';
             $income = (float) ($declaration?->previous_employer_income ?? 0);
             $tds = (float) ($declaration?->previous_employer_tds ?? 0);
-            $state['previous'] = ['worked' => $income > 0 || $tds > 0, 'income' => $income ?: null, 'tds' => $tds ?: null];
+            $state['previous'] = ['worked' => $income > 0 || $tds > 0, 'income' => $income ?: null, 'tds' => $tds ?: null] + (array) ($declaration?->previous_employer ?? []);
             foreach ($this->items() as $key => $row) {
                 $this->putItem($state, $key, (float) $row->declared_amount, $row->description, $row->details ?? []);
             }
@@ -444,7 +503,8 @@ class DeclareInvestments extends Page implements HasSchemas
         if ($section === 'HRA_RENT') {
             $months = max(1, min(12, (int) ($details['months'] ?? 12)));
             $state['rent'] = ['pays' => true, 'monthly' => $details['monthly_rent'] ?? round($amount / $months, 2), 'months' => $months, 'metro' => false,
-                'landlord_name' => $details['landlord_name'] ?? null, 'landlord_pan' => $details['landlord_pan'] ?? null, 'address' => $details['address'] ?? null];
+                'landlord_name' => $details['landlord_name'] ?? null, 'landlord_pan' => $details['landlord_pan'] ?? null, 'address' => $details['address'] ?? null,
+                'landlords' => $details['landlords'] ?? []];
 
             return;
         }
@@ -513,6 +573,10 @@ class DeclareInvestments extends Page implements HasSchemas
         $declaration = $this->declaration();
         if ($this->employee() === null) {
             return 'Choose the employee whose declaration you are filing.';
+        }
+
+        if ($declaration?->status !== 'verified' && ! $this->declarations()->windowOpenFor(auth()->user())) {
+            return 'Declarations can be changed '.app(TaxSettings::class)->declarationWindow().'. Ask payroll to make any change.';
         }
 
         return match ($declaration?->status) {

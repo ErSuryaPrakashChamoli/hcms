@@ -58,8 +58,12 @@ final class CustomFieldsSchema
 
     private static function formComponent(CustomField $field): Component
     {
-        $name = self::STATE.'.'.$field->key;
+        return self::component($field, self::STATE.'.'.$field->key);
+    }
 
+    /** One custom field's form component at any state path (HROne parity MS-3: My profile → Other details). */
+    public static function component(CustomField $field, string $name): Component
+    {
         $component = match ($field->type) {
             'textarea' => Textarea::make($name)->rows(3)->columnSpanFull(),
             'number' => TextInput::make($name)->numeric(),

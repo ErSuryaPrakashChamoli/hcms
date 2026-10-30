@@ -8,6 +8,8 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Services\CompensationDefaults;
 use App\Domain\Documents\Models\DocumentType;
+use App\Domain\Engagement\Services\MoodDefaults;
+use App\Domain\Expense\Services\ExpenseDefaults;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
@@ -28,6 +30,7 @@ use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
 use App\Domain\Platform\Services\TenantFirstAdministrator;
 use App\Domain\Platform\Support\PlatformOperator;
+use App\Domain\Recognition\Services\RecognitionDefaults;
 use App\Domain\ServiceDesk\Services\ServiceDeskDefaults;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
@@ -197,12 +200,25 @@ final class ProvisionTenantAction
                 ['slug' => $slug],
                 ['name' => $template['name'], 'description' => $template['description'] ?? null, 'is_system' => true],
             );
+            // HROne parity SV-7: a role the tenant made itself that happens to carry a template's slug (e.g. its own
+            // "external" role, added before the External user template existed) is never given template permissions.
+            if (! $role->is_system) {
+                continue;
+            }
             $templateKeys = collect($this->permissions->keysMatching($template['permissions'] ?? []))->sort()->values()->all();
             $given = $role->wasRecentlyCreated ? [] : ($role->template_keys ?? $templateKeys);
             $introduced = array_values(array_diff($templateKeys, $given));
+            $before = $introduced === [] || $role->wasRecentlyCreated ? null : app(RoleGrants::class)->permissionKeysOf($role);
+
+            // HROne parity TX-2: a key split out of a broader one (`peopleos.permission_splits`) goes only to a role that
+            // holds the broader key (or is given it now), so a role the tenant took the broader key from gains nothing.
+            if ($before !== null) {
+                $splits = (array) config('peopleos.permission_splits', []);
+                $introduced = array_values(array_filter($introduced, fn (string $key) => ! isset($splits[$key])
+                    || in_array($splits[$key], $before, true) || in_array($splits[$key], $introduced, true)));
+            }
 
             if ($introduced !== []) {
-                $before = $role->wasRecentlyCreated ? null : app(RoleGrants::class)->permissionKeysOf($role);
                 $role->permissions()->syncWithoutDetaching(Permission::query()->whereIn('key', $introduced)->pluck('id'));
 
                 if ($before !== null) {
@@ -255,9 +271,14 @@ final class ProvisionTenantAction
         app(CompensationDefaults::class)->seed();
         app(PerformanceDefaults::class)->seed();
         app(AssetDefaults::class)->seed();
+        app(ExpenseDefaults::class)->seed();
         app(ServiceDeskDefaults::class)->seed();
         app(LetterDefaults::class)->seed();
         app(AnalyticsDefaults::class)->seed();
+        // HROne setup parity HP-9c: HROne's nine system badges.
+        app(RecognitionDefaults::class)->seed();
+        // HROne setup parity HP-9f: HROne's fourteen mood bot reasons (the mood bot itself stays off).
+        app(MoodDefaults::class)->seed();
     }
 
     private function seedSettings(): void

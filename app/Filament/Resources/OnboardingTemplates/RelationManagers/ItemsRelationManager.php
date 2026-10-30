@@ -4,6 +4,7 @@ namespace App\Filament\Resources\OnboardingTemplates\RelationManagers;
 
 use App\Domain\Configuration\Models\Form;
 use App\Domain\Documents\Models\DocumentType;
+use App\Domain\Feedback\Services\FeedbackTemplates;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Onboarding\Models\OnboardingTemplateItem;
@@ -41,7 +42,17 @@ class ItemsRelationManager extends RelationManager
             Select::make('owner_user_id')->label('User')->options(fn () => User::query()->forCurrentTenant()->orderBy('name')->pluck('name', 'id')->all())->searchable()->visible(fn (Get $get) => $get('owner_type') === 'user')->required(fn (Get $get) => $get('owner_type') === 'user'),
             Select::make('document_type_id')->label('Document type')->options(fn () => DocumentType::query()->orderBy('name')->pluck('name', 'id')->all())->visible(fn (Get $get) => $get('type') === 'document'),
             Select::make('form_id')->label('Form')->options(fn () => Form::query()->orderBy('name')->pluck('name', 'id')->all())->visible(fn (Get $get) => $get('type') === 'form'),
+            // HROne setup parity P13: a profile section to complete, a feedback template to answer (e.g. the induction
+            // evaluation), a declaration the owner confirms.
+            Select::make('profile_section')->label('Profile section')->options(config('peopleos.onboarding.profile_sections'))->native(false)
+                ->visible(fn (Get $get) => $get('type') === 'profile_section')->required(fn (Get $get) => $get('type') === 'profile_section')
+                ->helperText('The item can be completed once this section of the profile is filled in.'),
+            Select::make('feedback_template_id')->label('Feedback template')->options(fn () => FeedbackTemplates::options())->native(false)
+                ->visible(fn (Get $get) => $get('type') === 'feedback')->required(fn (Get $get) => $get('type') === 'feedback')
+                ->helperText('The owner answers it (Feedback, My tasks); answering completes the item.'),
             Toggle::make('is_mandatory')->label('Mandatory')->default(true),
+            Textarea::make('declaration_text')->label('Declaration statement')->rows(2)->maxLength(2000)->columnSpanFull()->visible(fn (Get $get) => $get('type') !== 'feedback')
+                ->placeholder('Write declaration statement here…')->helperText('Optional. The owner confirms it ("I confirm …") to complete the item; the time and address are recorded.'),
         ]);
     }
 

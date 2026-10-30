@@ -16,6 +16,8 @@ final class LeaveEntitlements
         'encashment_allowed' => false, 'max_encash_days' => 0, 'probation_eligible' => true, 'negative_balance_limit' => 0,
         'half_day_allowed' => true, 'min_notice_days' => 0, 'max_consecutive_days' => 0, 'document_required_after_days' => 0,
         'proration' => 'monthly', 'eligible_after' => 'immediate', 'eligible_after_value' => 0,
+        // HROne parity CF-09: credit for the accrual period an employee joins in ('full' keeps the existing behaviour).
+        'joiner_credit' => 'full',
     ];
 
     public function __construct(private readonly PolicyResolver $policies) {}

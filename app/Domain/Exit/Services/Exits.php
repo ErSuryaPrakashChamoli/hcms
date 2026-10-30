@@ -6,17 +6,24 @@ use App\Domain\Alumni\Models\AlumniProfile;
 use App\Domain\Assets\Services\Assets;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\WorkforceReason;
 use App\Domain\Exit\Events\ExitEvent;
+use App\Domain\Exit\Models\ClearanceChecklist;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\ExitClearance;
+use App\Domain\Expense\Services\ExpenseReports;
+use App\Domain\Feedback\Services\FeedbackRequests;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Letters\Support\PolicyLetters;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Services\LifecycleEngine;
 use App\Domain\Lifecycle\Services\Timeline;
 use App\Domain\Platform\Services\SettingsRepository;
+use App\Support\Numbering\NumberSeries;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +57,14 @@ final class Exits
 
         $immediate = in_array($type, config('peopleos.exit.immediate_types', []), true);
         $resignation = $resignationDate ? Carbon::parse($resignationDate)->startOfDay() : now()->startOfDay();
-        $noticeDays = $immediate ? 0 : ($noticeDays ?? (int) $this->settings->get('exit.notice_days', 30));
+        // HROne setup parity: the exit policy limits how far HR or a manager may backdate, and sets the notice.
+        $policy = app(PolicyResolver::class)->resolve('exit', $employee, now());
+        $hrBack = $policy?->setting('hr_backdate_days');
+        if (is_numeric($hrBack) && $resignation->lt(now()->startOfDay()->subDays((int) $hrBack))) {
+            throw new RuntimeException("A resignation can be backdated by at most {$hrBack} day(s).");
+        }
+        [$separationReasonId, $rehireBlockId] = $this->reasons($extra, $reason);
+        $noticeDays = $immediate ? 0 : ($noticeDays ?? $this->noticeDays($employee));
         $noticeEnd = $resignation->copy()->addDays($noticeDays);
         $lwd = $lastWorkingDay ? Carbon::parse($lastWorkingDay)->startOfDay() : ($immediate ? now()->startOfDay() : $noticeEnd);
 
@@ -58,10 +72,13 @@ final class Exits
             throw new RuntimeException('The last working day cannot be before the resignation date.');
         }
 
-        return DB::transaction(function () use ($employee, $type, $reason, $resignation, $noticeDays, $noticeEnd, $lwd, $actor, $extra, $immediate) {
+        $company = NumberSeries::companyOf($employee);
+        app(NumberSeries::class)->prepare('exit_case', $company);
+
+        return DB::transaction(function () use ($employee, $type, $reason, $resignation, $noticeDays, $noticeEnd, $lwd, $actor, $extra, $immediate, $company, $separationReasonId, $rehireBlockId) {
             $employee->loadMissing('currentManager');
             $case = ExitCase::create([
-                'number' => $this->nextNumber(),
+                'number' => $this->nextNumber($company),
                 'employee_id' => $employee->id,
                 'type' => $type,
                 'reason' => $reason,
@@ -76,10 +93,15 @@ final class Exits
                 'knowledge_transfer_to' => $extra['knowledge_transfer_to'] ?? null,
                 'knowledge_transfer_notes' => $extra['knowledge_transfer_notes'] ?? null,
                 'is_rehire_eligible' => $extra['is_rehire_eligible'] ?? ! in_array($type, ['termination', 'absconding'], true),
+                'workforce_reason_id' => $separationReasonId,
+                'rehire_block_reason_id' => $rehireBlockId,
                 'notes' => $extra['notes'] ?? null,
             ]);
 
             $this->buildClearances($case, $employee);
+            // HROne setup parity P13: the separation policy's exit interviews (employee, manager, HR) as feedback tasks.
+            app(FeedbackRequests::class)->raiseForExit($case, $employee);
+            PolicyLetters::draft(app(PolicyResolver::class)->resolve('exit', $employee, now())?->setting('letter_on_exit'), $employee, $actor, $case);
 
             $this->lifecycle->transition($employee, LifecycleState::NoticePeriod, now(), $reason ?? config("peopleos.exit.types.{$type}"), ['exit_case_id' => $case->id, 'type' => $type]);
             $employee->update(['exit_date' => $lwd]);
@@ -96,24 +118,112 @@ final class Exits
         });
     }
 
-    /** Employee self-service resignation: type is fixed and the employee cannot pick their own last day beyond notice. */
-    public function resign(Employee $employee, string $reason, CarbonInterface|string|null $requestedLastDay = null, ?User $actor = null): ExitCase
+    /**
+     * Employee self-service resignation: type is fixed and the employee cannot pick their own last day beyond notice.
+     * HROne setup parity: the exit policy may let the employee backdate the resignation by a few days.
+     */
+    public function resign(Employee $employee, string $reason, CarbonInterface|string|null $requestedLastDay = null, ?User $actor = null, CarbonInterface|string|null $resignedOn = null, ?int $separationReasonId = null): ExitCase
     {
-        $notice = (int) $this->settings->get('exit.notice_days', 30);
+        $notice = $this->noticeDays($employee);
+        $resigned = $resignedOn ? Carbon::parse($resignedOn)->startOfDay() : now()->startOfDay();
+        $back = (int) (app(PolicyResolver::class)->resolve('exit', $employee, now())?->setting('employee_backdate_days') ?? 0);
+        if ($resigned->gt(now()->startOfDay()) || $resigned->lt(now()->startOfDay()->subDays($back))) {
+            throw new RuntimeException($back > 0 ? "The resignation date can be at most {$back} day(s) back." : 'The resignation date is today.');
+        }
         $requested = $requestedLastDay ? Carbon::parse($requestedLastDay)->startOfDay() : null;
-        $lwd = $requested && $requested->lt(now()->addDays($notice)) ? $requested : now()->addDays($notice);
+        $lwd = $requested && $requested->lt($resigned->copy()->addDays($notice)) ? $requested : $resigned->copy()->addDays($notice);
 
-        return $this->initiate($employee, 'resignation', $reason, now(), $lwd, $notice, $actor);
+        $case = $this->initiate($employee, 'resignation', $reason, $resigned, $lwd, $notice, $actor, ['workforce_reason_id' => $separationReasonId, 'by_employee' => true]);
+        // HROne setup parity P5: the employee's own resignation, for its approval workflow (Workflow → Resignation).
+        ExitEvent::dispatch('exit.resignation_submitted', $employee, $case, ['number' => $case->number, 'last_working_day' => $case->last_working_day->toDateString()]);
+
+        return $case;
+    }
+
+    /**
+     * HROne setup parity P5: the resignation is accepted (the outcome of its approval workflow, in the name of the person
+     * who completed the last step). Not accepted, a workflow withdraws it instead (withdraw()).
+     */
+    public function acceptResignation(ExitCase $case, User $actor, ?string $note = null): ExitCase
+    {
+        return DB::transaction(function () use ($case, $actor, $note) {
+            $locked = ExitCase::query()->whereKey($case->getKey())->lockForUpdate()->firstOrFail();
+            if ($locked->type !== 'resignation' || ! $locked->isOpen() || $locked->resignation_accepted_at !== null) {
+                throw new RuntimeException('Only an open resignation not yet accepted can be accepted.');
+            }
+            $employee = $locked->employee()->firstOrFail();
+            if ((int) $employee->user_id === (int) $actor->id) {
+                throw new RuntimeException('Nobody accepts their own resignation.');
+            }
+            $locked->withAuditReason($note ?: 'Resignation accepted')->update(['resignation_accepted_at' => now(), 'resignation_accepted_by' => $actor->id]);
+            $this->timeline->record($employee, 'exit', 'Resignation accepted', now(), null, $locked);
+            ExitEvent::dispatch('exit.resignation_accepted', $employee, $locked, ['number' => $locked->number, 'last_working_day' => $locked->last_working_day->toDateString()], array_filter([$employee->user_id]));
+
+            return $locked;
+        });
+    }
+
+    /**
+     * HROne setup parity CA-3: the separation reason (from the master: one offered to employees when they resign, to HR
+     * otherwise, with the remark each side must give) and, when HR marks the employee not eligible for rehire, the
+     * blacklist reason (required once the organisation keeps such reasons).
+     *
+     * @return array{0: ?int, 1: ?int}
+     */
+    private function reasons(array $extra, ?string $remark): array
+    {
+        $byEmployee = (bool) ($extra['by_employee'] ?? false);
+        $separation = null;
+        if (filled($extra['workforce_reason_id'] ?? null)) {
+            $separation = WorkforceReason::query()->whereKey($extra['workforce_reason_id'])->where('kind', 'separation')->where('status', 'active')->first()
+                ?? throw new RuntimeException('Choose an active separation reason.');
+            if ($byEmployee ? ! $separation->for_employee : ! $separation->for_approver) {
+                throw new RuntimeException($byEmployee ? 'That reason is not offered to employees.' : 'That reason is offered to employees resigning, not to HR.');
+            }
+            if (blank($remark) && ($byEmployee ? $separation->remark_required : $separation->approver_remark_required)) {
+                throw new RuntimeException("The reason \"{$separation->name}\" needs a remark.");
+            }
+        } elseif ($byEmployee && WorkforceReason::query()->ofKind('separation')->where('for_employee', true)->exists()) {
+            throw new RuntimeException('Choose the reason for leaving.');
+        }
+
+        $block = null;
+        if (array_key_exists('is_rehire_eligible', $extra) && $extra['is_rehire_eligible'] === false) {
+            if (filled($extra['rehire_block_reason_id'] ?? null)) {
+                $block = WorkforceReason::query()->whereKey($extra['rehire_block_reason_id'])->where('kind', 'blacklist')->where('status', 'active')->first()
+                    ?? throw new RuntimeException('Choose an active blacklist reason.');
+            } elseif (WorkforceReason::query()->ofKind('blacklist')->exists()) {
+                throw new RuntimeException('Say why the employee may not be rehired.');
+            }
+        }
+
+        return [$separation?->id, $block?->id];
+    }
+
+    /** Notice days: the exit policy (probation or confirmed), else the organisation setting. */
+    public function noticeDays(Employee $employee): int
+    {
+        $policy = app(PolicyResolver::class)->resolve('exit', $employee, now());
+        $probation = in_array($employee->lifecycle_state, [LifecycleState::Joined, LifecycleState::Probation], true);
+        $days = $probation && is_numeric($policy?->setting('notice_days_probation')) ? $policy->setting('notice_days_probation') : $policy?->setting('notice_period_days');
+
+        return is_numeric($days) ? (int) $days : (int) $this->settings->get('exit.notice_days', 30);
     }
 
     private function buildClearances(ExitCase $case, Employee $employee): void
     {
+        // HROne setup parity: the exit policy may map a clearance checklist whose items replace a stage's defaults.
+        $checklistId = app(PolicyResolver::class)->resolve('exit', $employee, now())?->setting('clearance_checklist_id');
+        $checklist = $checklistId ? ClearanceChecklist::query()->where('status', 'active')->find($checklistId) : null;
         $roleFor = fn (string $setting) => Role::query()->where('slug', $this->settings->get($setting))->value('id');
         $assets = $this->assets->clearanceFor($employee);
         $i = 0;
 
         foreach (config('peopleos.exit.clearance_stages', []) as $stage => $definition) {
             $items = collect($definition['items'])->map(fn ($item) => ['item' => $item, 'done' => false])->all();
+            if ($checklist !== null && ($own = $checklist->itemsFor($stage)) !== []) {
+                $items = $own;
+            }
             $owner = null;
             $role = null;
 
@@ -151,6 +261,10 @@ final class Exits
 
         foreach ($case->clearances()->with('ownerRole')->get() as $clearance) {
             $recipients = array_filter([$clearance->owner_user_id, ...($clearance->ownerRole?->users()->pluck('users.id')->all() ?? [])]);
+            if ($clearance->stage === 'asset') {
+                // HROne setup parity AS-A: the owner roles of the asset types the employee still holds hear about it too.
+                $recipients = [...$recipients, ...$this->assetOwnerUserIds($case->employee)];
+            }
             ExitEvent::dispatch('exit.clearance.pending', $case->employee, $clearance, ['number' => $case->number, 'stage' => $clearance->name, 'last_working_day' => $case->last_working_day->toDateString()], array_values(array_unique($recipients)));
         }
 
@@ -168,18 +282,34 @@ final class Exits
             throw new RuntimeException('This stage is already cleared.');
         }
 
+        $waived = [];
         if ($clearance->stage === 'asset') {
             $inCustody = $this->assets->clearanceFor($case->employee);
             if ($inCustody->isNotEmpty() && $recoverable <= 0) {
-                throw new RuntimeException('Assets still in custody: '.$inCustody->map(fn ($a) => $a->asset->asset_tag)->implode(', ').'. Take them back, or record a recoverable amount.');
+                $tags = $inCustody->map(fn ($a) => $a->asset->asset_tag)->implode(', ');
+                // HROne setup parity AS-A (asset.exit.recovery_required): recovery is mandatory unless the organisation
+                // lets the stage clear with a waiver, which then needs its reason (audited with the assets waived).
+                if ((bool) $this->settings->get('asset.exit.recovery_required', true)) {
+                    throw new RuntimeException('Assets still in custody: '.$tags.'. Take them back, or record a recoverable amount.');
+                }
+                if (blank($remarks)) {
+                    throw new RuntimeException('Assets still in custody: '.$tags.'. Give the reason for waiving their recovery in the remarks.');
+                }
+                $waived = $inCustody->map(fn ($a) => $a->asset->asset_tag)->values()->all();
             }
+        }
+        // HROne setup parity EX-E (expense.exit.pending_reports): expense reports still waiting for a decision may hold the
+        // finance clearance; approved ones are paid in the full and final settlement.
+        if ($clearance->stage === 'finance' && $this->settings->get('expense.exit.pending_reports', 'ignore') === 'block'
+            && ($waiting = app(ExpenseReports::class)->waitingForDecision($case->employee)) !== []) {
+            throw new RuntimeException('Expense reports still waiting for approval: '.implode(', ', $waiting).'. Decide them before clearing finance.');
         }
 
         $items = collect($clearance->items ?? [])->map(fn ($item, $i) => ['item' => $item['item'], 'done' => $itemsDone === null ? true : (bool) ($itemsDone[$i] ?? false)])->all();
 
-        return DB::transaction(function () use ($clearance, $case, $actor, $remarks, $recoverable, $items) {
+        return DB::transaction(function () use ($clearance, $case, $actor, $remarks, $recoverable, $items, $waived) {
             $clearance->update(['status' => 'cleared', 'remarks' => $remarks, 'recoverable_amount' => round($recoverable, 2), 'items' => $items, 'cleared_by' => $actor->id, 'cleared_at' => now()]);
-            $this->audit->record(AuditAction::Approved, 'exit', $clearance, [['field' => 'status', 'before' => 'pending', 'after' => 'cleared']], $remarks, actor: $actor, metadata: ['exit_case' => $case->number, 'recoverable' => $recoverable]);
+            $this->audit->record(AuditAction::Approved, 'exit', $clearance, [['field' => 'status', 'before' => 'pending', 'after' => 'cleared']], $remarks, actor: $actor, metadata: ['exit_case' => $case->number, 'recoverable' => $recoverable] + ($waived === [] ? [] : ['asset_recovery_waived' => $waived]));
             ExitEvent::dispatch('exit.clearance.cleared', $case->employee, $clearance, ['number' => $case->number, 'stage' => $clearance->name], array_filter([$case->initiated_by]));
 
             if ($case->refresh()->allCleared()) {
@@ -189,6 +319,14 @@ final class Exits
 
             return $clearance->refresh();
         });
+    }
+
+    /** @return list<int> users holding the owner roles of the asset types still in the employee's custody */
+    private function assetOwnerUserIds(Employee $employee): array
+    {
+        $roleIds = $this->assets->clearanceFor($employee)->map(fn ($a) => $a->asset->category?->owner_role_id)->filter()->unique()->values()->all();
+
+        return $roleIds === [] ? [] : Role::query()->whereIn('id', $roleIds)->get()->flatMap(fn (Role $role) => $role->users()->pluck('users.id')->all())->map(fn ($id) => (int) $id)->unique()->values()->all();
     }
 
     public function blockStage(ExitClearance $clearance, User $actor, string $remarks): ExitClearance
@@ -224,6 +362,7 @@ final class Exits
             $case->withAuditReason($reason)->update(['status' => 'withdrawn']);
             $this->lifecycle->transition($employee, LifecycleState::Active, now(), 'Resignation withdrawn: '.$reason, ['exit_case_id' => $case->id]);
             $employee->update(['exit_date' => null]);
+            app(FeedbackRequests::class)->cancelFor($case, 'Resignation withdrawn');
             $this->timeline->record($employee, 'exit', 'Resignation withdrawn', now(), $reason, $case);
             ExitEvent::dispatch('exit.withdrawn', $employee, $case, ['number' => $case->number], array_filter([$case->manager()->value('user_id'), $case->initiated_by]));
 
@@ -255,6 +394,7 @@ final class Exits
 
             $this->timeline->record($employee, 'exit', 'Exit completed', $case->last_working_day, null, $case);
             ExitEvent::dispatch('exit.completed', $employee, $case, ['number' => $case->number, 'last_working_day' => $case->last_working_day->toDateString()], array_filter([$case->manager()->value('user_id')]));
+            PolicyLetters::draft(app(PolicyResolver::class)->resolve('exit', $employee, $case->last_working_day)?->setting('letter_on_completion'), $employee, $actor, $case);
 
             return $case->refresh();
         });
@@ -316,12 +456,10 @@ final class Exits
         return $started;
     }
 
-    public function nextNumber(): string
+    /** HROne setup parity (Code series): the exit case code series of the company (built-in EXIT-YYYY-NNNNN), counted under a lock. */
+    public function nextNumber(?int $companyId = null): string
     {
-        $year = now()->format('Y');
-        $last = ExitCase::query()->where('number', 'like', "EXIT-{$year}-%")->orderByDesc('id')->value('number');
-
-        return sprintf('EXIT-%s-%05d', $year, $last ? ((int) substr($last, -5)) + 1 : 1);
+        return app(NumberSeries::class)->next('exit_case', $companyId);
     }
 
     private static function inactiveStatus(): UserStatus

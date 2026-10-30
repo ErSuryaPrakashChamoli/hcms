@@ -12,17 +12,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['tenant_id', 'name', 'key', 'description', 'trigger_event', 'subject_type', 'start_conditions', 'status'])]
+#[Fillable(['tenant_id', 'name', 'key', 'description', 'trigger_event', 'subject_type', 'start_conditions', 'status', 'priority'])]
 #[Hidden(['webhook_signing_secret'])]
 class Workflow extends Model
 {
     use Auditable, BelongsToTenant;
+
+    protected $attributes = ['priority' => 100];
 
     protected function casts(): array
     {
         return [
             'start_conditions' => 'array',
             'status' => ActiveStatus::class,
+            // HROne setup parity P5: the order of preference when only the first matching workflow starts (lower first).
+            'priority' => 'integer',
             // SaaS.2: the HMAC secret its webhook nodes sign with (WorkflowWebhookSigning); never mass-assigned.
             'webhook_signing_secret' => 'encrypted',
         ];

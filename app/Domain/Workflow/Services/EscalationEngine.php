@@ -13,8 +13,12 @@ use App\Domain\Workflow\Models\WorkflowAction;
 use App\Domain\Workflow\Models\WorkflowTask;
 
 /**
- * Escalation (§46): per node, steps [{after_hours, action: remind|escalate_to_manager|escalate_to_role, role_id?}]
- * measured from task creation. Without steps, overdue tasks get a reminder once a day.
+ * Escalation (§46): per node, steps [{after_hours, action: remind|escalate_to_manager|escalate_to_role|auto_decide,
+ * role_id?, decision?}] measured from task creation. Without steps, overdue tasks get a reminder once a day.
+ *
+ * HROne setup parity P5 (turnaround time at the last level): `auto_decide` approves or rejects the pending approval as a
+ * system decision, only on an approval step after which no other approval follows (WorkflowDefinition checks it on
+ * publish; anywhere else it only reminds).
  */
 final class EscalationEngine
 {
@@ -60,14 +64,33 @@ final class EscalationEngine
             match ($step['action'] ?? 'remind') {
                 'escalate_to_manager' => $this->escalateToManager($task),
                 'escalate_to_role' => $this->escalateToRole($task, (int) ($step['role_id'] ?? 0)),
+                'auto_decide' => $this->autoDecide($task, $step, $node),
                 default => $this->remind($task),
             };
 
             $task->forceFill(['escalation_level' => $index + 1])->save();
             $done++;
+            if ($task->status !== TaskStatus::Pending) {
+                break;
+            }
         }
 
         return $done;
+    }
+
+    /** HROne setup parity P5: decide a last-level approval nobody decided in time (a reminder anywhere else). */
+    private function autoDecide(WorkflowTask $task, array $step, array $node): void
+    {
+        $version = $task->instance?->version;
+        $decision = ($step['decision'] ?? 'approve') === 'reject' ? 'rejected' : 'approved';
+        if ($task->type !== 'approval' || $version === null || ! app(WorkflowDefinition::class)->isLastApproval($version->definition ?? [], $task->node_id)) {
+            $this->remind($task);
+
+            return;
+        }
+        $hours = (float) ($step['after_hours'] ?? 0);
+        app(WorkflowEngine::class)->autoDecide($task, $decision, 'Decided automatically: no decision within '.rtrim(rtrim(number_format($hours, 1), '0'), '.').' hour(s) at "'.($node['name'] ?? $task->node_id).'".');
+        $task->refresh();
     }
 
     private function remind(WorkflowTask $task): void

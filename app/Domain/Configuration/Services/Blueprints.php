@@ -9,6 +9,9 @@ use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\Form;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Models\PolicyAssignmentRule;
+use App\Domain\Feedback\Models\FeedbackTemplate;
+use App\Domain\Feedback\Models\QuestionBank;
+use App\Domain\Feedback\Models\QuestionBankQuestion;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Identity\Services\RoleGrants;
@@ -73,6 +76,13 @@ final class Blueprints
                     'settings' => $p->versionEffectiveOn()?->settings ?? $p->versions->first()?->settings ?? [],
                     'rules' => $p->assignmentRules->map(fn (PolicyAssignmentRule $r) => ['name' => $r->name, 'priority' => $r->priority, 'match' => $r->match, 'conditions' => $r->conditions])->all(),
                 ])->all(),
+            // HROne setup parity P13: question banks and feedback templates (matched by code).
+            'question_banks' => QuestionBank::query()->with('questions')->orderBy('code')->get()
+                ->map(fn (QuestionBank $b) => ['code' => $b->code, 'name' => $b->name, 'module' => $b->module, 'description' => $b->description, 'status' => $b->status,
+                    'questions' => $b->questions->map(fn (QuestionBankQuestion $q) => ['title' => $q->title, 'type' => $q->type, 'options' => $q->options, 'scale_max' => $q->scale_max, 'mandatory' => $q->is_mandatory, 'status' => $q->status])->all()])->all(),
+            'feedback_templates' => FeedbackTemplate::query()->orderBy('code')->get()
+                ->map(fn (FeedbackTemplate $t) => ['code' => $t->code, 'name' => $t->name, 'process' => $t->process, 'description' => $t->description, 'status' => $t->status,
+                    'questions' => array_map(fn (array $q) => array_diff_key($q, ['bank_question_id' => true]), (array) $t->questions)])->all(),
         ];
     }
 
@@ -186,6 +196,25 @@ final class Blueprints
                 }
 
                 $counts['policies'] = ($counts['policies'] ?? 0) + 1;
+            }
+
+            foreach ($blueprint['question_banks'] ?? [] as $row) {
+                $bank = QuestionBank::query()->firstOrNew(['code' => strtoupper((string) $row['code'])]);
+                $bank->fill(['name' => $row['name'], 'module' => $row['module'] ?? 'workforce', 'description' => $row['description'] ?? null, 'status' => $row['status'] ?? 'active']);
+                $bank->withAuditReason($reason)->save();
+                foreach (array_values($row['questions'] ?? []) as $i => $q) {
+                    $question = QuestionBankQuestion::query()->firstOrNew(['question_bank_id' => $bank->id, 'title' => $q['title']]);
+                    $question->fill(['type' => $q['type'], 'options' => $q['options'] ?? null, 'scale_max' => $q['scale_max'] ?? null, 'is_mandatory' => (bool) ($q['mandatory'] ?? true), 'sort_order' => $i + 1, 'status' => $q['status'] ?? 'active']);
+                    $question->withAuditReason($reason)->save();
+                }
+                $counts['question_banks'] = ($counts['question_banks'] ?? 0) + 1;
+            }
+
+            foreach ($blueprint['feedback_templates'] ?? [] as $row) {
+                $template = FeedbackTemplate::query()->firstOrNew(['code' => strtoupper((string) $row['code'])]);
+                $template->fill(['name' => $row['name'], 'process' => $row['process'], 'description' => $row['description'] ?? null, 'questions' => $row['questions'] ?? [], 'status' => $row['status'] ?? 'active']);
+                $template->withAuditReason($reason)->save();
+                $counts['feedback_templates'] = ($counts['feedback_templates'] ?? 0) + 1;
             }
 
             $this->audit->record(AuditAction::Import, 'configuration', null, reason: $reason, metadata: ['sections' => $counts, 'format' => self::FORMAT]);

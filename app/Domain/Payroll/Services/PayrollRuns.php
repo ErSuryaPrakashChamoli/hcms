@@ -20,6 +20,7 @@ use App\Domain\Payroll\Models\PayrollEntryLine;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\PayrollRun;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Context;
@@ -78,11 +79,20 @@ final class PayrollRuns
     {
         $period = $run->period;
 
+        return $this->populationIn((int) $run->company_id, $period->start_date, $period->end_date)
+            ->with(['person', 'statutoryDetail', 'bankAccounts']);
+    }
+
+    /**
+     * The same population for a company and pay period, without a run (HROne parity PO-3: the pre-run readiness checks
+     * look at exactly the people a run of that month would calculate). Read-only; the reader's access scope applies.
+     */
+    public function populationIn(int $companyId, CarbonInterface $start, CarbonInterface $end): Builder
+    {
         return Employee::query()
-            ->with(['person', 'statutoryDetail', 'bankAccounts'])
-            ->whereHas('positions', fn ($q) => $q->where('company_id', $run->company_id)->effectiveOn($period->end_date))
-            ->where(fn ($q) => $q->whereNull('joining_date')->orWhere('joining_date', '<=', $period->end_date->toDateString().' 23:59:59'))
-            ->where(fn ($q) => $q->whereNull('exit_date')->orWhere('exit_date', '>=', $period->start_date->toDateString()))
+            ->whereHas('positions', fn ($q) => $q->where('company_id', $companyId)->effectiveOn($end))
+            ->where(fn ($q) => $q->whereNull('joining_date')->orWhere('joining_date', '<=', $end->toDateString().' 23:59:59'))
+            ->where(fn ($q) => $q->whereNull('exit_date')->orWhere('exit_date', '>=', $start->toDateString()))
             ->whereIn('lifecycle_state', LifecycleState::payrollEligibleValues());
     }
 

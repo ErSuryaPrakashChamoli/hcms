@@ -72,6 +72,13 @@ final class LetterVariables
             'company.name' => ['Company legal name', 'Acme Technologies Private Limited'],
             'company.short_name' => ['Company short name', 'Acme'],
             'company.code' => ['Company code', 'ACME'],
+            // HROne setup parity CA-2: company contact details and the organisation's website.
+            'company.phone' => ['Company phone', '+91 80 4000 1000'],
+            'company.fax' => ['Company fax', '+91 80 4000 1001'],
+            'company.industry' => ['Company industry', 'IT / ITES'],
+            'company.contact_name' => ['Company contact person', 'Anita Desai'],
+            'organisation.name' => ['Organisation name shown to employees', 'Acme Group'],
+            'organisation.website' => ['Organisation website', 'https://www.acme.example'],
         ]],
         'dates' => ['Dates and service', 'Dates print as 14 Feb 2026.', [
             'employee.joining_date' => ['Date of joining', '01 Apr 2023'],
