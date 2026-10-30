@@ -17,6 +17,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -52,17 +53,23 @@ class TrainingSessionResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(3)->components([
-            Select::make('course_id')->label('Course')->required()->searchable()->options(fn () => Course::query()->where('status', 'published')->whereIn('type', ['classroom', 'virtual'])->orderBy('title')->pluck('title', 'id')->all()),
-            TextInput::make('title')->required()->maxLength(255),
-            Select::make('mode')->options(['classroom' => 'Classroom', 'virtual' => 'Virtual'])->default('classroom')->required()->live(),
-            Select::make('trainer_id')->label('Internal trainer')->searchable()->placeholder('—')->options(fn () => LearningActions::peopleOptions()),
-            TextInput::make('trainer_name')->label('External trainer')->maxLength(255),
-            TextInput::make('capacity')->numeric()->minValue(1)->placeholder('Unlimited'),
-            DateTimePicker::make('starts_at')->native(false)->required()->default(now()->addWeek()->setTime(10, 0)),
-            DateTimePicker::make('ends_at')->native(false)->required()->default(now()->addWeek()->setTime(13, 0))->after('starts_at'),
-            TextInput::make('venue')->maxLength(255)->visible(fn (Get $get) => $get('mode') === 'classroom'),
-            TextInput::make('meeting_url')->url()->maxLength(255)->visible(fn (Get $get) => $get('mode') === 'virtual'),
-            Select::make('status')->options(config('peopleos.learning.session_statuses'))->default('scheduled')->required(),
+            Section::make('Session')->columns(2)->schema([
+                Select::make('course_id')->label('Course')->required()->searchable()->options(fn () => Course::query()->where('status', 'published')->whereIn('type', ['classroom', 'virtual'])->orderBy('title')->pluck('title', 'id')->all()),
+                TextInput::make('title')->required()->maxLength(255),
+                Select::make('mode')->options(['classroom' => 'Classroom', 'virtual' => 'Virtual'])->default('classroom')->required()->live(),
+                Select::make('status')->options(config('peopleos.learning.session_statuses'))->default('scheduled')->required(),
+            ]),
+            Section::make('Trainer and seats')->columns(3)->schema([
+                Select::make('trainer_id')->label('Internal trainer')->searchable()->placeholder('—')->options(fn () => LearningActions::peopleOptions()),
+                TextInput::make('trainer_name')->label('External trainer')->maxLength(255),
+                TextInput::make('capacity')->numeric()->minValue(1)->placeholder('Unlimited'),
+            ]),
+            Section::make('When and where')->columns(2)->schema([
+                DateTimePicker::make('starts_at')->native(false)->required()->default(now()->addWeek()->setTime(10, 0)),
+                DateTimePicker::make('ends_at')->native(false)->required()->default(now()->addWeek()->setTime(13, 0))->after('starts_at'),
+                TextInput::make('venue')->maxLength(255)->visible(fn (Get $get) => $get('mode') === 'classroom'),
+                TextInput::make('meeting_url')->url()->maxLength(255)->visible(fn (Get $get) => $get('mode') === 'virtual'),
+            ]),
         ]);
     }
 

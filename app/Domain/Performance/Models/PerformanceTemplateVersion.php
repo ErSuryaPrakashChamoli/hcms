@@ -14,7 +14,7 @@ use RuntimeException;
  * as they were (snapshots), the workflow stages, weights and goal rules. Immutable: a change is a new
  * version. Cycles and appraisals pin the version they used, so history stays reproducible.
  */
-#[Fillable(['tenant_id', 'performance_template_id', 'version', 'sections', 'rating_scale_id', 'rating_scale_snapshot', 'competency_snapshot', 'workflow', 'weights', 'goal_rules', 'checksum', 'status', 'published_by', 'published_at'])]
+#[Fillable(['tenant_id', 'performance_template_id', 'version', 'sections', 'rating_scale_id', 'rating_scale_snapshot', 'competency_snapshot', 'workflow', 'weights', 'goal_rules', 'checksum', 'status', 'published_by', 'published_at', 'competency_rating_scale_id', 'competency_scale_snapshot'])]
 class PerformanceTemplateVersion extends Model
 {
     use Auditable, BelongsToTenant;
@@ -24,7 +24,12 @@ class PerformanceTemplateVersion extends Model
     protected static function booted(): void
     {
         static::creating(function (self $v) {
-            $v->checksum = hash('sha256', (string) json_encode([$v->sections, $v->rating_scale_snapshot, $v->competency_snapshot, $v->workflow, $v->weights, $v->goal_rules]));
+            // HP-8c: a separate competency scale joins the checksum only when there is one (earlier versions are unchanged).
+            $parts = [$v->sections, $v->rating_scale_snapshot, $v->competency_snapshot, $v->workflow, $v->weights, $v->goal_rules];
+            if ($v->competency_scale_snapshot !== null) {
+                $parts[] = $v->competency_scale_snapshot;
+            }
+            $v->checksum = hash('sha256', (string) json_encode($parts));
         });
         static::updating(function (self $v) {
             if (array_diff(array_keys($v->getDirty()), ['status', 'updated_at']) !== []) {
@@ -36,7 +41,7 @@ class PerformanceTemplateVersion extends Model
 
     protected function casts(): array
     {
-        return ['sections' => 'array', 'rating_scale_snapshot' => 'array', 'competency_snapshot' => 'array', 'workflow' => 'array', 'weights' => 'array', 'goal_rules' => 'array', 'published_at' => 'datetime', 'version' => 'integer'];
+        return ['sections' => 'array', 'rating_scale_snapshot' => 'array', 'competency_snapshot' => 'array', 'workflow' => 'array', 'weights' => 'array', 'goal_rules' => 'array', 'published_at' => 'datetime', 'version' => 'integer', 'competency_scale_snapshot' => 'array'];
     }
 
     public function auditModule(): string
@@ -58,6 +63,14 @@ class PerformanceTemplateVersion extends Model
     public function ratingScale(): RatingScale
     {
         return (new RatingScale)->forceFill(['name' => $this->rating_scale_snapshot['name'] ?? 'Pinned scale', 'code' => $this->rating_scale_snapshot['code'] ?? null, 'levels' => $this->rating_scale_snapshot['levels'] ?? []]);
+    }
+
+    /** HP-8c: the competency rating scale exactly as pinned, or null when competencies use the rating scale. */
+    public function competencyScale(): ?RatingScale
+    {
+        $snapshot = $this->competency_scale_snapshot;
+
+        return empty($snapshot) ? null : (new RatingScale)->forceFill(['name' => $snapshot['name'] ?? 'Pinned competency scale', 'code' => $snapshot['code'] ?? null, 'levels' => $snapshot['levels'] ?? []]);
     }
 
     public function requiredGoalWeight(): ?float

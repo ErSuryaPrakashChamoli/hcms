@@ -70,8 +70,12 @@ class PerformanceTemplateResource extends Resource
                     ->modalDescription('Publishing snapshots the rating scale and competencies as they are now. A published version never changes; publish a new one instead.')
                     ->schema([
                         Select::make('rating_scale_id')->label('Rating scale')->required()->options(fn () => RatingScale::query()->where('status', 'active')->pluck('name', 'id')->all())->default(fn () => RatingScale::default()?->id),
+                        // HROne setup parity HP-8c: competencies may be rated on their own scale (snapshotted too).
+                        Select::make('competency_rating_scale_id')->label('Competency rating scale')->placeholder('Same as the rating scale')->options(fn () => RatingScale::query()->where('status', 'active')->pluck('name', 'id')->all()),
                         CheckboxList::make('competency_ids')->label('Competencies')->options(fn () => Competency::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all())->columns(2),
-                        CheckboxList::make('stages')->label('Workflow stages (in this order)')->required()->options(config('peopleos.performance.stages'))->default(array_keys(config('peopleos.performance.stages')))->columns(3),
+                        CheckboxList::make('stages')->label('Workflow stages (in this order)')->required()->options(config('peopleos.performance.stages'))
+                            // HP-8d: the approver review (a third review level) is chosen deliberately, never by default.
+                            ->default(array_values(array_diff(array_keys(config('peopleos.performance.stages')), ['approver_review'])))->columns(3),
                         CheckboxList::make('sections')->required()->options(array_combine(PerformanceTemplateVersion::SECTIONS, array_map(fn ($s) => ucfirst(str_replace('_', ' ', $s)), PerformanceTemplateVersion::SECTIONS)))->default(PerformanceTemplateVersion::SECTIONS)->columns(3),
                         TextInput::make('weights.goals')->label('Goals weight')->numeric()->minValue(0)->required()->default(config('peopleos.performance.default_weights.goals')),
                         TextInput::make('weights.competencies')->label('Competencies weight')->numeric()->minValue(0)->required()->default(config('peopleos.performance.default_weights.competencies')),
@@ -79,6 +83,7 @@ class PerformanceTemplateResource extends Resource
                     ])
                     ->action(fn (PerformanceTemplate $record, array $data) => PerformanceActions::run(fn () => app(PerformanceTemplates::class)->publish($record, [
                         'rating_scale_id' => (int) $data['rating_scale_id'],
+                        'competency_rating_scale_id' => filled($data['competency_rating_scale_id'] ?? null) ? (int) $data['competency_rating_scale_id'] : null,
                         'competency_ids' => array_map('intval', $data['competency_ids'] ?? []),
                         // Keep the configured stage order regardless of click order.
                         'workflow' => collect(array_keys(config('peopleos.performance.stages')))->filter(fn ($k) => in_array($k, $data['stages'] ?? [], true))->map(fn ($k) => ['key' => $k])->values()->all(),
@@ -89,7 +94,7 @@ class PerformanceTemplateResource extends Resource
                 Action::make('versions')->label('Versions')->icon(Heroicon::OutlinedListBullet)->color('gray')
                     ->modalSubmitAction(false)
                     ->schema(fn (PerformanceTemplate $record) => $record->versions()->get()->map(fn (PerformanceTemplateVersion $v) => TextEntry::make("v{$v->id}")->label("v{$v->version} · {$v->published_at?->toDateTimeString()}")
-                        ->state(sprintf('Scale: %s · stages: %s · competencies: %d · weights: %s · checksum %s', $v->rating_scale_snapshot['name'] ?? '—', implode(' → ', array_column($v->workflow, 'key')), count($v->competency_snapshot), json_encode($v->weights), substr($v->checksum, 0, 16))))->all()),
+                        ->state(sprintf('Scale: %s'.($v->competency_scale_snapshot ? ' · competencies on '.$v->competency_scale_snapshot['name'] : '').' · stages: %s · competencies: %d · weights: %s · checksum %s', $v->rating_scale_snapshot['name'] ?? '—', implode(' → ', array_column($v->workflow, 'key')), count($v->competency_snapshot), json_encode($v->weights), substr($v->checksum, 0, 16))))->all()),
             ]);
     }
 

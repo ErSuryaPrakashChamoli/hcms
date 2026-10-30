@@ -5,14 +5,20 @@ namespace App\Domain\Assets\Services;
 use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Assets\Models\Asset;
 use App\Domain\Assets\Models\AssetAssignment;
+use App\Domain\Assets\Models\AssetCategory;
 use App\Domain\Assets\Models\AssetDisposal;
+use App\Domain\Assets\Models\AssetModel;
 use App\Domain\Assets\Models\AssetMovement;
 use App\Domain\Assets\Models\AssetRepair;
+use App\Domain\Assets\Models\AssetSubtype;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Lifecycle\Services\Timeline;
+use App\Domain\Platform\Services\SettingsRepository;
+use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -26,6 +32,12 @@ use RuntimeException;
 final class Assets
 {
     public function __construct(private readonly AuditRecorder $audit, private readonly Timeline $timeline) {}
+
+    /** HROne setup parity AS-A: where product (asset model) documents live on the private documents disk. */
+    public static function documentDirectory(): string
+    {
+        return 'tenants/'.app(TenantContext::class)->id().'/assets/models';
+    }
 
     /** @param  array<string, mixed>  $attributes */
     public function receive(array $attributes, ?User $actor = null): Asset
@@ -49,8 +61,14 @@ final class Assets
         if (! $employee->lifecycle_state->isEmployed()) {
             throw new RuntimeException('Assets can only be assigned to current employees.');
         }
+        // HROne setup parity AS-B: the employee's asset policy may refuse (mapped) or flag (warn) an asset outside the
+        // assets it maps to them; without a policy any asset may be assigned, as before.
+        $entitlement = app(AssetEntitlements::class)->assignmentCheck($employee, $asset);
+        if ($entitlement['outside'] && $entitlement['mode'] === 'mapped') {
+            throw new RuntimeException($entitlement['message'].' HR may assign only mapped assets.');
+        }
 
-        return DB::transaction(function () use ($asset, $employee, $on, $condition, $note, $expectedReturn, $actor) {
+        return DB::transaction(function () use ($asset, $employee, $on, $condition, $note, $expectedReturn, $actor, $entitlement) {
             $assignment = AssetAssignment::create([
                 'asset_id' => $asset->id, 'employee_id' => $employee->id, 'assigned_on' => Carbon::parse($on ?? now()),
                 'expected_return_on' => $expectedReturn ? Carbon::parse($expectedReturn) : null,
@@ -58,6 +76,9 @@ final class Assets
             ]);
             $asset->update(['status' => 'assigned', 'custodian_id' => $employee->id, 'condition' => $condition ?? $asset->condition]);
             $this->movement($asset, 'assigned', ['to_employee_id' => $employee->id, 'note' => $note], $actor);
+            if ($entitlement['outside']) {
+                $this->audit->record(AuditAction::Update, 'assets', $assignment, [], $entitlement['message'], actor: $actor, metadata: ['outside_entitlement' => true]);
+            }
             $this->timeline->record($employee, 'assets', "Asset assigned: {$asset->name} [{$asset->asset_tag}]", $assignment->assigned_on, $note, $asset);
             AssetEvent::dispatch('asset.assigned', $employee, $assignment, ['asset' => $asset->name, 'tag' => $asset->asset_tag]);
 
@@ -227,6 +248,76 @@ final class Assets
     public function clearanceFor(Employee $employee): Collection
     {
         return AssetAssignment::query()->with(['asset.category'])->where('employee_id', $employee->id)->where('status', 'active')->get();
+    }
+
+    /**
+     * HROne setup parity AS-A: an asset's book value on a date — its purchase cost depreciated in a straight line over
+     * the product's life (else the asset type's default life). No life: the cost; no cost: 0.
+     */
+    public function bookValue(Asset $asset, CarbonInterface|string|null $on = null): float
+    {
+        $cost = (float) ($asset->purchase_cost ?? 0);
+        $model = $asset->asset_model_id ? AssetModel::query()->find($asset->asset_model_id) : null;
+        $life = (int) ($model?->life_months ?: AssetCategory::query()->whereKey($asset->asset_category_id)->value('default_life_months'));
+        if ($cost <= 0 || $life <= 0 || $asset->purchase_date === null) {
+            return round(max(0, $cost), 2);
+        }
+        $used = max(0, (int) floor($asset->purchase_date->diffInMonths(Carbon::parse($on ?? now()), true)));
+
+        return round($cost * max(0, $life - $used) / $life, 2);
+    }
+
+    /** What the exit clearance suggests recovering for the assets still with the employee (asset.exit.recovery_basis). */
+    public function suggestedRecovery(Employee $employee, CarbonInterface|string|null $on = null): float
+    {
+        if (app(SettingsRepository::class)->get('asset.exit.recovery_basis', 'manual') !== 'book_value') {
+            return 0.0;
+        }
+
+        return round($this->clearanceFor($employee)->sum(fn (AssetAssignment $a) => $this->bookValue($a->asset, $on)), 2);
+    }
+
+    /**
+     * HROne setup parity AS-A: active custody not yet acknowledged, of sub types that need an acknowledgement.
+     *
+     * @return Collection<int, AssetAssignment>
+     */
+    public function pendingAcknowledgements(?Employee $employee = null): Collection
+    {
+        return AssetAssignment::query()->withoutGlobalScope(AccessScope::class)->with('asset')
+            ->when($employee, fn ($q) => $q->where('employee_id', $employee->id))
+            ->where('status', 'active')->whereNull('acknowledged_at')
+            ->whereHas('asset', fn ($q) => $q->whereIn('asset_subtype_id', AssetSubtype::query()->select('id')->where('acknowledgement_required', true)))
+            ->orderBy('assigned_on')->orderBy('id')->get();
+    }
+
+    /**
+     * Remind employees of assets they have not acknowledged: each assignment once every N days
+     * (asset.acknowledgement.reminder_days; 0 = never), counted from the assignment, stamped on the row.
+     */
+    public function remindAcknowledgements(): int
+    {
+        $days = (int) app(SettingsRepository::class)->get('asset.acknowledgement.reminder_days', 3);
+        if ($days <= 0) {
+            return 0;
+        }
+        $sent = 0;
+        foreach ($this->pendingAcknowledgements() as $assignment) {
+            $due = $assignment->assigned_on->copy()->addDays($days)->startOfDay();
+            $last = $assignment->acknowledgement_reminded_at;
+            if ($due->isFuture() || ($last !== null && $last->gt(now()->subDays($days)))) {
+                continue;
+            }
+            $employee = Employee::query()->withoutGlobalScope(AccessScope::class)->with('person')->find($assignment->employee_id);
+            if ($employee === null) {
+                continue;
+            }
+            AssetAssignment::query()->withoutGlobalScope(AccessScope::class)->whereKey($assignment->id)->update(['acknowledgement_reminded_at' => now()]);
+            AssetEvent::dispatch('asset.acknowledgement_due', $employee, $assignment, ['asset' => $assignment->asset->name, 'tag' => $assignment->asset->asset_tag]);
+            $sent++;
+        }
+
+        return $sent;
     }
 
     private function movement(Asset $asset, string $type, array $extra, ?User $actor): AssetMovement

@@ -64,6 +64,14 @@ final class AuditRecorder
         if (! $anonymous && ($accessId = Context::get('platform.access_id')) !== null && ! array_key_exists('platform_access_id', $metadata)) {
             $metadata['platform_access_id'] = $accessId;
         }
+        // HROne setup parity P4 (out of office): a delegate deciding in a delegator's stead acts with the delegator's
+        // authority; the trail names the delegate as the actor and the delegator they acted for (Workflow\Support\DelegatedDecision).
+        if (! $anonymous && is_array($delegation = Context::get('audit.delegation')) && ! array_key_exists('on_behalf_of', $metadata)) {
+            $metadata['on_behalf_of'] = ['user_id' => $delegation['delegator_id'], 'name' => $delegation['delegator_name'], 'delegation_id' => $delegation['delegation_id']];
+            if ($actor === null || (int) $actor->getKey() === (int) $delegation['delegator_id']) {
+                $actor = User::query()->find($delegation['delegate_id']) ?? $actor;
+            }
+        }
 
         $normalisedChanges = array_values(array_map(fn (array $change) => [
             'field' => $change['field'],

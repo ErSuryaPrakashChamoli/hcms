@@ -19,7 +19,9 @@ class AssetPolicy
         if ($user->hasPermission('asset.view') || $user->hasPermission('asset.manage') || $user->hasPermission('asset.assign')) {
             return true;
         }
-        $employeeId = $model->getAttribute('custodian_id') ?? $model->getAttribute('employee_id');
+        // Raw attributes: categories, sub types and models carry neither column (strict mode refuses missing attributes).
+        $attributes = $model->getAttributes();
+        $employeeId = $attributes['custodian_id'] ?? $attributes['employee_id'] ?? null;
 
         return $employeeId !== null && Employee::query()->where('user_id', $user->id)->where('id', $employeeId)->exists();
     }

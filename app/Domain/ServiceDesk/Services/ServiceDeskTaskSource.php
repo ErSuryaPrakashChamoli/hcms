@@ -24,7 +24,13 @@ final class ServiceDeskTaskSource implements ExperienceTaskSource
         $mine = $employee ? $this->access->visible(Ticket::query()->with(['service', 'category']), $user)->where('tickets.employee_id', $employee->id)->whereIn('tickets.status', ['waiting_employee', 'resolved'])->limit(20)->get() : collect();
         $assigned = $user->hasPermission('servicedesk.agent') ? $this->access->visible(Ticket::query()->with(['service', 'category']), $user)->where('tickets.assignee_id', $user->id)->whereIn('tickets.status', Ticket::OPEN)->orderBy('tickets.due_at')->limit(20)->get() : collect();
 
-        return $mine->map(fn (Ticket $t) => new ExperienceTask('servicedesk', $t->status === 'resolved' ? 'confirm' : 'respond', ($t->status === 'resolved' ? 'Confirm and close: ' : 'HR needs your input: ').$t->serviceName(), $t->number, null, TicketResource::getUrl('view', ['record' => $t])))
-            ->merge($assigned->map(fn (Ticket $t) => new ExperienceTask('servicedesk', 'case', 'Work case: '.$t->serviceName(), $t->number, $t->due_at, TicketResource::getUrl('view', ['record' => $t]))));
+        return $mine->map(fn (Ticket $t) => new ExperienceTask('servicedesk', $t->status === 'resolved' ? 'confirm' : 'respond', ($t->status === 'resolved' ? 'Confirm and close: ' : 'HR needs your input: ').$t->serviceName(), $t->number, null, TicketResource::getUrl('view', ['record' => $t]), $this->meta($t)))
+            ->merge($assigned->map(fn (Ticket $t) => new ExperienceTask('servicedesk', 'case', 'Work case: '.$t->serviceName(), $t->number, $t->due_at, TicketResource::getUrl('view', ['record' => $t]), $this->meta($t))));
+    }
+
+    /** HROne parity RQ-8: what the unified inbox filters a case on (its category, the employee it is for, when it was raised). */
+    private function meta(Ticket $ticket): array
+    {
+        return ['ticket_category_id' => $ticket->ticket_category_id, 'employee_id' => $ticket->employee_id, 'requested_at' => $ticket->submitted_at ?? $ticket->created_at];
     }
 }

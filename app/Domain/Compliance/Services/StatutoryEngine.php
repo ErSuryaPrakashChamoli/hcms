@@ -22,8 +22,13 @@ final class StatutoryEngine
     /** @var WeakMap<PayrollComputation, StatutoryContext> one resolution per computation */
     private WeakMap $resolved;
 
-    public function __construct(private readonly ComplianceRules $rules, private readonly TaxComputer $tax, private readonly StatutoryContexts $contexts)
-    {
+    public function __construct(
+        private readonly ComplianceRules $rules,
+        private readonly TaxComputer $tax,
+        private readonly StatutoryContexts $contexts,
+        private readonly StatutoryOverrides $overrides,
+        private readonly PfOptions $pfOptions,
+    ) {
         $this->resolved = new WeakMap;
     }
 
@@ -50,7 +55,9 @@ final class StatutoryEngine
         // --- EPF -----------------------------------------------------------------------------
         if ($context->applies('EPF') && ($detail?->pf_applicable ?? true) && ($rule = $this->rule($c, 'EPF', $on))) {
             $wages = $c->pfWages();
-            $base = $context->restrictPfToCeiling() ? min($wages, (float) $rule->param('wage_ceiling')) : $wages;
+            // HROne parity PY-15: the employee's own wage basis, when set, replaces the establishment's.
+            $pfOption = $this->pfOptions->for($c->employee->id, $on);
+            $base = $this->restrictPf($c, $context) ? min($wages, (float) $rule->param('wage_ceiling')) : $wages;
             $employee = $this->round($base * $rule->param('employee_rate'), $rule);
             $employer = $this->round($base * $rule->param('employer_rate'), $rule);
             $eps = $this->round(min($base, (float) $rule->param('eps_wage_ceiling')) * $rule->param('eps_rate'), $rule);
@@ -62,12 +69,23 @@ final class StatutoryEngine
                 $c->addLine('PF_EE', 'Provident fund (employee)', 'deduction', $employee, ['classification' => 'pf_employee', 'basis' => $basis + ['rate' => $rule->param('employee_rate')], 'sort_order' => 500]);
                 $c->addLine('PF_ER', 'Provident fund (employer)', 'employer_contribution', $employer, ['classification' => 'pf_employer', 'basis' => $basis + ['eps' => $eps, 'epf' => round($employer - $eps, 2)], 'sort_order' => 700]);
                 $c->addLine('PF_ADMIN', 'PF admin & EDLI charges', 'employer_contribution', $admin, ['classification' => 'pf_employer', 'basis' => $basis, 'sort_order' => 701]);
+
+                // Voluntary PF: the employee's own choice on top of the statutory share; it counts under 80C.
+                $vpf = match ($pfOption?->vpf_mode) {
+                    'percent' => round($wages * (float) $pfOption->vpf_value / 100, 2),
+                    'amount' => (float) $pfOption->vpf_value,
+                    default => 0.0,
+                };
+                if ($vpf > 0) {
+                    $c->addLine('VPF', 'Voluntary provident fund', 'deduction', $vpf, ['classification' => 'other_deduction', 'basis' => ['pf_option_id' => $pfOption->id, 'mode' => $pfOption->vpf_mode, 'value' => (float) $pfOption->vpf_value, 'wages' => $wages], 'sort_order' => 501]);
+                }
             }
         }
 
         // --- ESI -----------------------------------------------------------------------------
         if ($context->applies('ESI') && ($detail?->esic_applicable ?? true) && ($rule = $this->rule($c, 'ESI', $on))) {
-            $fullMonth = collect($c->lines)->filter(fn ($l) => $l['type'] === 'earning' && $l['esi_applicable'])->sum(fn ($l) => $l['basis']['full_month'] ?? $l['amount']);
+            // HROne setup parity (PS-1): a component may count for the ESI ceiling check without being ESI wages, or the reverse.
+            $fullMonth = collect($c->lines)->filter(fn ($l) => $l['type'] === 'earning' && ($l['esi_eligibility_wages'] ?? $l['esi_applicable']))->sum(fn ($l) => $l['basis']['full_month'] ?? $l['amount']);
             $wages = $c->esiWages();
 
             if ($fullMonth > 0 && $fullMonth <= (float) $rule->param('wage_ceiling')) {
@@ -85,7 +103,7 @@ final class StatutoryEngine
         }
 
         if ($context->applies('PT') && ($detail?->pt_applicable ?? true) && $ptState && ($rule = $this->rule($c, 'PT', $on, $ptState))) {
-            $gross = $c->gross();
+            $gross = $c->ptWages(); // HROne setup parity (PS-1): PT wages (part of gross unless flagged otherwise)
             $amount = $this->slab($rule->param('slabs', []), $gross);
             $month = (int) $c->period->month;
 
@@ -110,16 +128,16 @@ final class StatutoryEngine
         // --- Labour welfare fund -------------------------------------------------------------
         $lwfState = $context->lwfState;
 
-        if ($context->applies('LWF') && $lwfState && ($rule = $this->rule($c, 'LWF', $on, $lwfState)) && in_array((int) $c->period->month, $rule->param('months', []), true) && $c->gross() > 0) {
+        if ($context->applies('LWF') && $lwfState && ($rule = $this->rule($c, 'LWF', $on, $lwfState)) && in_array((int) $c->period->month, $rule->param('months', []), true) && $c->lwfWages() > 0) {
             $ceiling = $rule->param('wage_ceiling');
 
-            if ($ceiling === null || $c->gross() <= (float) $ceiling) {
+            if ($ceiling === null || $c->lwfWages() <= (float) $ceiling) {
                 $basis = [...$this->ruleRef($rule), 'state' => $lwfState, 'establishment_id' => $context->establishment?->getKey()];
                 // Flat amounts, or (Haryana from 2019) a rate of wages up to a cap with the employer paying a multiple.
                 if ($rule->param('employee_rate') !== null) {
-                    $employee = min(round($c->gross() * (float) $rule->param('employee_rate'), 2), (float) $rule->param('employee_cap', PHP_FLOAT_MAX));
+                    $employee = min(round($c->lwfWages() * (float) $rule->param('employee_rate'), 2), (float) $rule->param('employee_cap', PHP_FLOAT_MAX));
                     $employer = round($employee * (float) $rule->param('employer_multiplier', 1), 2);
-                    $basis += ['gross' => $c->gross(), 'rate' => $rule->param('employee_rate'), 'cap' => $rule->param('employee_cap')];
+                    $basis += ['gross' => $c->lwfWages(), 'rate' => $rule->param('employee_rate'), 'cap' => $rule->param('employee_cap')];
                 } else {
                     $employee = (float) $rule->param('employee_amount');
                     $employer = (float) $rule->param('employer_amount');
@@ -128,6 +146,9 @@ final class StatutoryEngine
                 $c->addLine('LWF_ER', 'Labour welfare fund (employer)', 'employer_contribution', $employer, ['classification' => 'lwf_employer', 'basis' => $basis, 'sort_order' => 720]);
             }
         }
+
+        // HROne parity PY-14: audited overrides of the lines above, before TDS reads PF and PT.
+        $this->overrides->apply($c, except: ['TDS']);
 
         // --- Income tax (TDS) ----------------------------------------------------------------
         // Phase 7: salary TDS follows the payment date, not the earning month.
@@ -144,6 +165,7 @@ final class StatutoryEngine
             // Phase 7 §12: the tax basis carries its rule reference even when nothing is deducted.
             $c->inputs['tax'] = [...$this->ruleRef($rule), ...$result['basis']];
         }
+        $this->overrides->apply($c, only: ['TDS']);
     }
 
     /**
@@ -191,7 +213,15 @@ final class StatutoryEngine
             return 0.0;
         }
 
-        return $this->employerPfOn($pfWagesFullMonth, $c->period->end_date, $context->restrictPfToCeiling());
+        return $this->employerPfOn($pfWagesFullMonth, $c->period->end_date, $this->restrictPf($c, $context));
+    }
+
+    /** Whether PF stops at the wage ceiling: the employee's own wage basis (HROne parity PY-15), else the establishment's. */
+    private function restrictPf(PayrollComputation $c, StatutoryContext $context): bool
+    {
+        return match ($this->pfOptions->for($c->employee->id, $c->period->end_date)?->wage_basis) {
+            'ceiling' => true, 'actual' => false, default => $context->restrictPfToCeiling(),
+        };
     }
 
     /** Employer PF on a month's PF wages under the EPF rule in force on a date (0 without one); the structure preview's `pf_employer`. */
@@ -288,6 +318,10 @@ final class StatutoryEngine
             'tds' => round($entries->sum(fn ($e) => $e->amount('TDS')), 2),
             'pf_employee' => round($entries->sum(fn ($e) => $e->amount('PF_EE')), 2),
             'pt' => round($entries->sum(fn ($e) => $e->amount('PT')), 2),
+            // HROne parity HP-3: voluntary PF and NPS count towards the employee's deductions.
+            'vpf' => round($entries->sum(fn ($e) => $e->amount('VPF')), 2),
+            'nps_employee' => round($entries->sum(fn ($e) => $e->lines->where('classification', 'nps_employee')->sum('amount')), 2),
+            'nps_employer' => round($entries->sum(fn ($e) => $e->lines->where('classification', 'nps_employer')->sum('amount')), 2),
             'hra' => round($entries->sum(fn ($e) => $e->lines->where('classification', 'hra')->sum('amount')), 2),
             'basic' => round($entries->sum(fn ($e) => $e->lines->whereIn('classification', ['basic', 'da'])->sum('amount')), 2),
             'months' => $entries->count(),

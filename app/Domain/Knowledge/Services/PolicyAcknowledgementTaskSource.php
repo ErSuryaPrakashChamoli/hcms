@@ -10,7 +10,7 @@ use App\Domain\Knowledge\Models\Article;
 use App\Filament\Resources\Articles\ArticleResource;
 use Illuminate\Support\Collection;
 
-/** Phase 12: policies whose current version the employee must acknowledge. */
+/** Phase 12: policies whose current version the employee must acknowledge (HP-9a: due by kb.acknowledgement.due_days when set). */
 final class PolicyAcknowledgementTaskSource implements ExperienceTaskSource
 {
     public function __construct(private readonly KnowledgeBase $kb) {}
@@ -21,6 +21,6 @@ final class PolicyAcknowledgementTaskSource implements ExperienceTaskSource
             return collect();
         }
 
-        return $this->kb->pendingAcknowledgements($employee)->map(fn (Article $a) => new ExperienceTask('knowledge', 'acknowledge', 'Acknowledge: '.$a->title, 'v'.$a->published_version, null, ArticleResource::getUrl('view', ['record' => $a])));
+        return $this->kb->pendingAcknowledgements($employee)->map(fn (Article $a) => new ExperienceTask('knowledge', 'acknowledge', 'Acknowledge: '.$a->title, 'v'.$a->published_version, $this->kb->acknowledgementDueOn($a), ArticleResource::getUrl('view', ['record' => $a])));
     }
 }

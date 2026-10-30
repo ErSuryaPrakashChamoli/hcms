@@ -43,6 +43,22 @@
             @endif
         </section>
 
+        {{-- HROne setup parity CA-6: the directory-card sections the organisation lets people hide from colleagues. --}}
+        @if (($directory = $this->directoryCard) !== [])
+            <section class="pos-card" aria-labelledby="pref-directory">
+                <h2 id="pref-directory" class="pos-h3">Directory card</h2>
+                <p class="pos-body-sm mt-1">What colleagues see about you when they open your card in the directory. You always see your own.</p>
+                <ul class="pos-list mt-2">
+                    @foreach ($directory as $key => $row)
+                        <li class="pos-list-row">
+                            <span class="flex-1 pos-body">{{ $row['label'] }}</span>
+                            <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" wire:click="toggleDirectorySection('{{ $key }}')" aria-pressed="{{ $row['hidden'] ? 'false' : 'true' }}" data-directory-toggle="{{ $key }}">{{ $row['hidden'] ? 'Hidden · show' : 'Shown · hide' }}</button>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
+
         <section class="pos-card" aria-labelledby="pref-more">
             <h2 id="pref-more" class="pos-h3">Home and history</h2>
             <div class="mt-3 flex flex-wrap gap-2">

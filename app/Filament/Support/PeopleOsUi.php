@@ -3,6 +3,8 @@
 namespace App\Filament\Support;
 
 use App\Domain\Employment\Models\Employee;
+use App\Filament\Support\Actions\PeopleCreateAction;
+use App\Filament\Support\Actions\PeopleEditAction;
 use App\Filament\Support\Forms\PeopleDatePicker;
 use App\Filament\Support\Forms\PeopleDateTimePicker;
 use App\Filament\Support\Forms\PeopleTimePicker;
@@ -50,11 +52,14 @@ final class PeopleOsUi
         });
 
         // Records open beside the list in a drawer, as everywhere else in PeopleOS, instead of a centred dialog.
-        // Drawer forms end in the same review step as record pages (shown once something is filled in or changed).
+        // Drawer forms end in the same review step as record pages (shown once something is filled in or changed);
+        // a drawer form with sections is a wizard instead, whose last step is that review (FormWizard).
+        app()->bind(CreateAction::class, PeopleCreateAction::class);
+        app()->bind(EditAction::class, PeopleEditAction::class);
         CreateAction::configureUsing(fn (CreateAction $action) => $action->slideOver()
-            ->modalContentFooter(fn () => view('filament.shell.form-review', ['mode' => 'create', 'createLabel' => 'Create'])));
+            ->modalContentFooter(fn (CreateAction $action) => $action->isWizard() ? null : view('filament.shell.form-review', ['mode' => 'create', 'createLabel' => 'Create'])));
         EditAction::configureUsing(fn (EditAction $action) => $action->slideOver()
-            ->modalContentFooter(fn () => view('filament.shell.form-review', ['mode' => 'edit', 'createLabel' => 'Create'])));
+            ->modalContentFooter(fn (EditAction $action) => $action->isWizard() ? null : view('filament.shell.form-review', ['mode' => 'edit', 'createLabel' => 'Create'])));
         ViewAction::configureUsing(fn (ViewAction $action) => $action->slideOver());
 
         // Date and time pickers keep Filament's behaviour with an accessible trigger (Filament builds fields

@@ -5,6 +5,7 @@ namespace App\Domain\Letters\Services;
 use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compensation\Support\CompensationComponentLine;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Letters\Models\LetterSignatory;
 use App\Domain\Letters\Support\LetterVariables;
 use App\Domain\Letters\Support\SalaryAnnexure;
@@ -14,6 +15,8 @@ use App\Domain\Payroll\Services\Payslips;
 use App\Domain\Payroll\Services\StructureFormulas;
 use App\Domain\Payroll\Support\FormulaVariables;
 use App\Domain\People\Models\PersonAddress;
+use App\Domain\Platform\Services\SettingsRepository;
+use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -76,7 +79,11 @@ final class LetterContext
             'location' => ['address' => self::line([$location?->address_line_1, $location?->address_line_2, $location?->city, trim($location?->state_code.' '.$location?->postal_code), $location?->country_code]),
                 'city' => $location?->city, 'state' => $location?->state_code],
             'manager' => ['name' => $manager?->person?->full_name, 'code' => $manager?->employee_code, 'designation' => $manager?->currentPosition?->designation?->name, 'email' => $manager?->work_email],
-            'company' => ['name' => $position?->company?->legal_name ?: $position?->company?->name, 'short_name' => $position?->company?->name, 'code' => $position?->company?->code],
+            'company' => ['name' => $position?->company?->legal_name ?: $position?->company?->name, 'short_name' => $position?->company?->name, 'code' => $position?->company?->code,
+                'phone' => $position?->company?->phone, 'fax' => $position?->company?->fax,
+                'industry' => $position?->company?->industry ? config('peopleos.organisation.industries.'.$position->company->industry, $position->company->industry) : null,
+                'contact_name' => $position?->company?->contact_employee_id ? Employee::query()->withoutGlobalScope(AccessScope::class)->with('person')->find($position->company->contact_employee_id)?->person?->full_name : null],
+            'organisation' => ['name' => app(SettingsRepository::class)->get('branding.display_name') ?: app(TenantContext::class)->current()?->name, 'website' => app(SettingsRepository::class)->get('branding.website')],
             'address' => ['current' => self::address($person?->addresses, 'current'), 'permanent' => self::address($person?->addresses, 'permanent')],
             'statutory' => [
                 'pan' => $statutory?->pan, 'uan' => $statutory?->uan, 'pf_number' => $statutory?->pf_number, 'esic_number' => $statutory?->esic_number,

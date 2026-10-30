@@ -25,7 +25,7 @@ final class ModuleCatalogue
         'People' => 'Lifecycle', 'Onboarding' => 'Lifecycle', 'Exit' => 'Lifecycle', 'Alumni' => 'Lifecycle', 'Letters' => 'Lifecycle',
         'Attendance' => 'Time & leave', 'Leave' => 'Time & leave',
         'Performance' => 'Growth', 'Learning' => 'Growth', 'Talent' => 'Growth',
-        'Compensation' => 'Pay', 'Payroll' => 'Pay', 'Compliance' => 'Pay',
+        'Compensation' => 'Pay', 'Payroll' => 'Pay', 'Compliance' => 'Pay', 'Expense & travel' => 'Pay',
         'Organisation' => 'Organisation', 'Workforce' => 'Organisation', 'Assets' => 'Organisation',
         'Service Desk' => 'Services', 'Grievances' => 'Services', 'Knowledge' => 'Services',
         'Engagement' => 'Communication', 'Communication' => 'Communication',

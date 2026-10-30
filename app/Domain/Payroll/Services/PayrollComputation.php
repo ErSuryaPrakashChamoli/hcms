@@ -47,7 +47,13 @@ final class PayrollComputation
             'pf_applicable' => (bool) ($extra['pf_applicable'] ?? false),
             'esi_applicable' => (bool) ($extra['esi_applicable'] ?? false),
             'include_in_gross' => (bool) ($extra['include_in_gross'] ?? false),
-        ];
+        ] + array_filter([
+            // HROne setup parity (PS-1): explicit wage flags; absent = derived as before.
+            'pt_wages' => $extra['pt_wages'] ?? null,
+            'lwf_wages' => $extra['lwf_wages'] ?? null,
+            'esi_eligibility_wages' => $extra['esi_eligibility_wages'] ?? null,
+            'exempt_in_regimes' => $extra['exempt_in_regimes'] ?? null,
+        ], fn ($v) => $v !== null);
     }
 
     public function fromComponent(SalaryComponent $component, float $amount, array $basis = [], ?float $fullMonthAmount = null): void
@@ -61,6 +67,10 @@ final class PayrollComputation
             'pf_applicable' => $component->pf_applicable,
             'esi_applicable' => $component->esi_applicable,
             'include_in_gross' => $component->include_in_gross,
+            'pt_wages' => $component->pt_wages,
+            'lwf_wages' => $component->lwf_wages,
+            'esi_eligibility_wages' => $component->esi_eligibility_wages,
+            'exempt_in_regimes' => $component->exempt_in_regimes,
         ]);
     }
 
@@ -93,6 +103,18 @@ final class PayrollComputation
     public function gross(): float
     {
         return $this->sum(fn ($l) => $l['type'] === 'earning' && $l['include_in_gross']);
+    }
+
+    /** HROne setup parity (PS-1): professional tax wages — earnings flagged for PT, else part of gross as before. */
+    public function ptWages(): float
+    {
+        return $this->sum(fn ($l) => $l['type'] === 'earning' && ($l['pt_wages'] ?? $l['include_in_gross']));
+    }
+
+    /** LWF wages — earnings flagged for LWF, else part of gross as before. */
+    public function lwfWages(): float
+    {
+        return $this->sum(fn ($l) => $l['type'] === 'earning' && ($l['lwf_wages'] ?? $l['include_in_gross']));
     }
 
     public function pfWages(): float

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\PayrollRuns\RelationManagers;
 
 use App\Domain\Payroll\Models\PayrollEntry;
+use App\Filament\Support\EmployeeFilters;
+use App\Filament\Support\PayrollRegisters;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -42,7 +44,15 @@ class EntriesRelationManager extends RelationManager
                 TextColumn::make('exceptions')->label('Issues')->state(fn (PayrollEntry $record) => collect($record->exceptions ?? [])->pluck('type')->map(fn ($t) => config("peopleos.payroll.exception_types.{$t}", $t))->implode(', '))->placeholder('—')->wrap(),
             ])
             ->defaultSort('employee_id')
-            ->filters([SelectFilter::make('status')->options(['ok' => 'OK', 'warning' => 'Warning', 'exception' => 'Exception'])])
+            ->filters([
+                SelectFilter::make('status')->options(['ok' => 'OK', 'warning' => 'Warning', 'exception' => 'Exception']),
+                // HROne parity PO-1 (matrix 25 §25.1 #3, #4): pay group on the run's period end, the WO-2 employee filters and
+                // "Exclude employees with pending resignation".
+                PayrollRegisters::structure('payroll.view', fn () => $this->getOwnerRecord()->period?->end_date),
+                EmployeeFilters::codes('employee'),
+                EmployeeFilters::organisation('employee'),
+                EmployeeFilters::excludePendingResignation('employee'),
+            ])
             ->recordActions([
                 Action::make('detail')->label('Breakdown')->icon('heroicon-m-eye')->modalSubmitAction(false)->modalCancelActionLabel('Close')
                     ->schema([

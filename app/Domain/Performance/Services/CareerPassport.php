@@ -10,6 +10,7 @@ use App\Domain\Performance\Models\CareerPath;
 use App\Domain\Performance\Models\CareerPathStep;
 use App\Domain\Performance\Models\FeedbackEntry;
 use App\Domain\Performance\Models\Goal;
+use App\Domain\Skills\Support\SkillProficiencies;
 
 /** The Career Passport (§36): one view of skills, credentials, performance, aspirations and the gap to the next step. */
 final class CareerPassport
@@ -36,7 +37,10 @@ final class CareerPassport
             'certifications' => $person->certifications->map(fn ($c) => ['name' => $c->name, 'issuer' => $c->issuing_body, 'expires_on' => $c->expires_on?->toDateString()])->all(),
             'qualifications' => $person->qualifications->map(fn ($q) => ['degree' => $q->qualification, 'institution' => $q->institution, 'year' => $q->year_of_completion])->all(),
             'experience' => $person->experiences->map(fn ($e) => ['employer' => $e->employer, 'title' => $e->designation, 'from' => $e->from_date?->toDateString(), 'to' => $e->to_date?->toDateString()])->all(),
-            'performance' => Appraisal::query()->with('cycle')->where('employee_id', $employee->id)->whereIn('status', ['finalized', 'acknowledged'])->get()
+            // HP-8b: published outcomes only (auto publishing publishes at finalization, as before).
+            'performance' => Appraisal::query()->with('cycle')->where('employee_id', $employee->id)->whereIn('status', ['finalized', 'acknowledged'])->whereNotNull('published_at')->get()
+                // HP-8i: a performance policy that keeps the final rating from anyone but HR or the reviewers keeps it off the passport.
+                ->filter(fn ($a) => app(PerformancePolicyRules::class)->visibility($a->setRelation('employee', $employee), 'final_rating') === 'all')
                 ->sortByDesc(fn ($a) => $a->cycle->period_end)->values()
                 ->map(fn ($a) => ['cycle' => $a->cycle->name, 'period_end' => $a->cycle->period_end->toDateString(), 'rating' => (float) $a->final_rating, 'label' => $a->final_label, 'promotion_recommended' => $a->promotion_recommended])->all(),
             'goals' => ['active' => Goal::query()->where('employee_id', $employee->id)->where('status', 'active')->count(), 'completed' => Goal::query()->where('employee_id', $employee->id)->where('status', 'completed')->count()],
@@ -80,7 +84,8 @@ final class CareerPassport
 
         return collect($step->required_skills ?? [])->map(function ($req) use ($have, $names) {
             $current = $have->get((int) $req['skill_id'])['proficiency'] ?? null;
-            $met = $current !== null && (self::PROFICIENCY_RANK[$current] ?? 0) >= (self::PROFICIENCY_RANK[$req['proficiency']] ?? 0);
+            // HROne setup parity CA-3: levels compare by rank, on the built-in list or the chosen proficiency scale.
+            $met = $current !== null && SkillProficiencies::rank((string) $current) >= SkillProficiencies::rank((string) $req['proficiency']);
 
             return ['skill' => $names[(int) $req['skill_id']] ?? ('#'.$req['skill_id']), 'required' => $req['proficiency'], 'current' => $current, 'met' => $met];
         })->values()->all();

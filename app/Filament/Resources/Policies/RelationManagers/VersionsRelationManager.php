@@ -11,7 +11,6 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -35,8 +34,9 @@ class VersionsRelationManager extends RelationManager
 
     public function infolist(Schema $schema): Schema
     {
+        // Labelled like the form, follow-up answers hidden when their parent says no.
         return $schema->components([
-            KeyValueEntry::make('settings')->columnSpanFull(),
+            Grid::make(2)->schema(PolicySettingsSchema::entries($this->getOwnerRecord()->type))->columnSpanFull(),
         ]);
     }
 

@@ -2,7 +2,7 @@
     $money = fn ($value) => $value === null ? '—' : number_format((float) $value, 2);
     $th = 'px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400';
     $td = 'px-3 py-2 align-top text-sm text-gray-700 dark:text-gray-200';
-    $sources = ['fixed' => 'Fixed', 'formula' => 'Formula', 'override' => 'Override', 'statutory' => 'Statutory', 'one_off' => 'One-off'];
+    $sources = ['fixed' => 'Fixed', 'formula' => 'Formula', 'override' => 'Override', 'statutory' => 'Statutory', 'one_off' => 'One-off', 'input' => 'Input'];
 @endphp
 <div class="space-y-4" aria-live="polite">
     @if ($failure)
@@ -54,7 +54,7 @@
         @php($t = $result['totals'])
         <dl class="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
             <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Gross earnings</dt><dd class="tabular-nums">{{ $money($t['gross']) }}</dd></div>
-            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Monthly CTC</dt><dd class="tabular-nums">{{ $money($t['ctc_monthly']) }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Monthly CTC{{ ($t['ctc_mode'] ?? 'ctc') === 'components' ? ' (worked out from the components)' : '' }}</dt><dd class="tabular-nums">{{ $money($t['ctc_monthly']) }}</dd></div>
             <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Other deductions (non-statutory)</dt><dd class="tabular-nums">{{ $money($t['deductions']) }}</dd></div>
             <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Employer PF (estimate{{ $t['pf_in_ctc'] ? ', inside CTC' : '' }})</dt><dd class="tabular-nums">{{ $money($t['pf_employer']) }}</dd></div>
             <div class="flex justify-between"><dt class="text-gray-500 dark:text-gray-400">Employer contributions in CTC</dt><dd class="tabular-nums">{{ $money($t['employer']) }}</dd></div>

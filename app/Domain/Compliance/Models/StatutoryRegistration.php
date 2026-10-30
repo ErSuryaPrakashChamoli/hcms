@@ -3,6 +3,7 @@
 namespace App\Domain\Compliance\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Compliance\Support\RegistrationNumberFormat;
 use App\Domain\Identity\Concerns\ScopedByOrganisation;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Establishment;
@@ -64,6 +65,10 @@ class StatutoryRegistration extends Model
                 $registration->registration_number = $number;
                 $registration->registration_number_hash = self::hashNumber($number);
                 $registration->registration_number_last4 = substr($number, -4);
+            }
+            // HROne setup parity CA-2: a number whose type declares a format (pattern, check character, state prefix) is checked.
+            if ((isset($type['pattern']) || isset($type['check']) || isset($type['state_prefixes'])) && ($registration->isDirty('registration_number') || $registration->isDirty('state_code'))) {
+                RegistrationNumberFormat::assertValid($type, (string) $registration->registration_number, $registration->state_code);
             }
         });
     }

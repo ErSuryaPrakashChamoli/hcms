@@ -3,6 +3,7 @@
 namespace App\Domain\Attendance\Services;
 
 use App\Domain\Attendance\Models\Shift;
+use App\Domain\Attendance\Models\ShiftOverride;
 use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Attendance\Models\WorkScheduleAssignment;
 use App\Domain\Attendance\Models\WorkScheduleRule;
@@ -12,9 +13,10 @@ use App\Domain\Employment\Models\Employee;
 use Illuminate\Support\Carbon;
 
 /**
- * Which shift does this employee work on this date? Individual assignment first, then the
- * highest-priority schedule rule. Returns ['schedule' => ?WorkSchedule, 'shift' => ?Shift,
- * 'weekly_off' => bool]. No schedule at all -> shift null and weekly_off false ("no shift").
+ * Which shift does this employee work on this date? A day-level override first (HP-1 roster or an
+ * approved shift change), then the individual assignment, then the highest-priority schedule rule.
+ * Returns ['schedule' => ?WorkSchedule, 'shift' => ?Shift, 'weekly_off' => bool]. No schedule at all
+ * -> shift null and weekly_off false ("no shift"); an override with no shift is a weekly off.
  */
 final class ShiftResolver
 {
@@ -23,10 +25,17 @@ final class ShiftResolver
         private readonly EmployeeRuleContext $context,
     ) {}
 
-    /** @return array{schedule: ?WorkSchedule, shift: ?Shift, weekly_off: bool, anchor: ?Carbon} */
+    /** @return array{schedule: ?WorkSchedule, shift: ?Shift, weekly_off: bool, anchor: ?Carbon, override?: ShiftOverride} */
     public function resolve(Employee $employee, Carbon $date): array
     {
         [$schedule, $anchor] = $this->scheduleFor($employee, $date);
+
+        $override = ShiftOverride::query()->where('employee_id', $employee->id)->whereDate('date', $date->toDateString())->first();
+        if ($override !== null) {
+            $shift = $override->shift_id ? Shift::query()->find($override->shift_id) : null;
+
+            return ['schedule' => $schedule, 'shift' => $shift, 'weekly_off' => $shift === null, 'anchor' => $anchor, 'override' => $override];
+        }
 
         if ($schedule === null) {
             return ['schedule' => null, 'shift' => null, 'weekly_off' => false, 'anchor' => null];

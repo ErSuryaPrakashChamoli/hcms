@@ -4,6 +4,7 @@ namespace App\Domain\Exit\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\WorkforceReason;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Workflow\Models\WorkflowInstance;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /** One separation (§59): initiated → notice → clearance → settlement → completed (→ alumni); or withdrawn / cancelled. */
-#[Fillable(['tenant_id', 'number', 'employee_id', 'type', 'reason', 'status', 'initiated_by', 'initiated_on', 'resignation_date', 'notice_days', 'notice_end_date', 'last_working_day', 'manager_id', 'knowledge_transfer_to', 'knowledge_transfer_notes', 'is_rehire_eligible', 'notes', 'workflow_instance_id', 'clearance_started_at', 'completed_at', 'completed_by', 'alumni_created_at'])]
+#[Fillable(['tenant_id', 'number', 'employee_id', 'type', 'reason', 'status', 'initiated_by', 'initiated_on', 'resignation_accepted_at', 'resignation_accepted_by', 'resignation_date', 'notice_days', 'notice_end_date', 'last_working_day', 'manager_id', 'knowledge_transfer_to', 'knowledge_transfer_notes', 'is_rehire_eligible', 'workforce_reason_id', 'rehire_block_reason_id', 'notes', 'workflow_instance_id', 'clearance_started_at', 'completed_at', 'completed_by', 'alumni_created_at'])]
 class ExitCase extends Model
 {
     use Auditable, BelongsToTenant;
@@ -30,6 +31,7 @@ class ExitCase extends Model
         return [
             'initiated_on' => 'date', 'resignation_date' => 'date', 'notice_days' => 'integer', 'notice_end_date' => 'date', 'last_working_day' => 'date',
             'is_rehire_eligible' => 'boolean', 'clearance_started_at' => 'datetime', 'completed_at' => 'datetime', 'alumni_created_at' => 'datetime',
+            'resignation_accepted_at' => 'datetime',
         ];
     }
 
@@ -51,6 +53,18 @@ class ExitCase extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    /** HROne setup parity CA-3: the separation reason chosen from the reason master. */
+    public function separationReason(): BelongsTo
+    {
+        return $this->belongsTo(WorkforceReason::class, 'workforce_reason_id');
+    }
+
+    /** HROne setup parity CA-3: why the employee may not be rehired (a blacklist reason). */
+    public function rehireBlockReason(): BelongsTo
+    {
+        return $this->belongsTo(WorkforceReason::class, 'rehire_block_reason_id');
     }
 
     public function manager(): BelongsTo

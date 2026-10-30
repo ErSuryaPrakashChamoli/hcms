@@ -2,7 +2,9 @@
 
 namespace App\Filament\Support;
 
+use App\Domain\Assets\Services\Assets;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Models\WorkforceReason;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\ExitClearance;
 use App\Domain\Exit\Models\FinalSettlement;
@@ -10,6 +12,8 @@ use App\Domain\Exit\Policies\ExitCasePolicy;
 use App\Domain\Exit\Services\ExitInterviews;
 use App\Domain\Exit\Services\Exits;
 use App\Domain\Exit\Services\FinalSettlements;
+use App\Domain\Feedback\Services\FeedbackRequests;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Letters\Models\LetterTemplate;
 use App\Domain\Letters\Services\Letters;
 use App\Domain\Platform\Services\SettingsRepository;
@@ -41,11 +45,19 @@ final class ExitActions
                 TextInput::make('notice_days')->numeric()->minValue(0)->default(fn () => app(SettingsRepository::class)->get('exit.notice_days', 30))->visible(fn (Get $get) => ! in_array($get('type'), config('peopleos.exit.immediate_types'), true)),
                 DatePicker::make('last_working_day')->native(false)->placeholder('Resignation date + notice'),
                 Select::make('knowledge_transfer_to')->label('Knowledge transfer to')->searchable()->placeholder('—')->options(fn () => Employee::query()->with('person')->employed()->get()->mapWithKeys(fn ($e) => [$e->id => "{$e->employee_code} · {$e->person?->full_name}"])->all()),
-                Toggle::make('is_rehire_eligible')->label('Eligible for rehire')->default(true),
+                // HROne setup parity CA-3: the separation reason (reasons offered to HR) and why a person may not be rehired.
+                Select::make('workforce_reason_id')->label('Separation reason')->placeholder('—')->native(false)
+                    ->options(fn () => WorkforceReason::query()->ofKind('separation')->where('for_approver', true)->get()->mapWithKeys(fn (WorkforceReason $r) => [$r->id => $r->name.($r->separation_kind ? ' ('.config("peopleos.people.separation_kinds.{$r->separation_kind}").')' : '')])->all())
+                    ->visible(fn () => WorkforceReason::query()->ofKind('separation')->where('for_approver', true)->exists()),
+                Toggle::make('is_rehire_eligible')->label('Eligible for rehire')->default(true)->live(),
+                Select::make('rehire_block_reason_id')->label('Why not eligible for rehire')->native(false)
+                    ->options(fn () => WorkforceReason::query()->ofKind('blacklist')->pluck('name', 'id')->all())
+                    ->visible(fn (Get $get) => ! $get('is_rehire_eligible') && WorkforceReason::query()->ofKind('blacklist')->exists())->required(fn (Get $get) => ! $get('is_rehire_eligible')),
                 Textarea::make('reason')->rows(3)->maxLength(2000),
             ])
             ->action(fn (array $data) => ServiceDeskActions::run(function () use ($data) {
-                $case = app(Exits::class)->initiate(Employee::query()->findOrFail($data['employee_id']), $data['type'], $data['reason'] ?? null, $data['resignation_date'], $data['last_working_day'] ?? null, isset($data['notice_days']) ? (int) $data['notice_days'] : null, auth()->user(), ['knowledge_transfer_to' => $data['knowledge_transfer_to'] ?? null, 'is_rehire_eligible' => (bool) ($data['is_rehire_eligible'] ?? true)]);
+                $case = app(Exits::class)->initiate(Employee::query()->findOrFail($data['employee_id']), $data['type'], $data['reason'] ?? null, $data['resignation_date'], $data['last_working_day'] ?? null, isset($data['notice_days']) ? (int) $data['notice_days'] : null, auth()->user(), ['knowledge_transfer_to' => $data['knowledge_transfer_to'] ?? null, 'is_rehire_eligible' => (bool) ($data['is_rehire_eligible'] ?? true),
+                    'workforce_reason_id' => $data['workforce_reason_id'] ?? null, 'rehire_block_reason_id' => $data['rehire_block_reason_id'] ?? null]);
 
                 return $case->number.' initiated; last working day '.$case->last_working_day->toDateString();
             }, fn ($m) => $m));
@@ -57,10 +69,19 @@ final class ExitActions
             ->visible(fn () => auth()->user()->can('exit.resign') && ($me = ServiceDeskActions::me()) && $me->lifecycle_state->isEmployed() && $me->lifecycle_state->value !== 'notice_period' && ExitCase::query()->where('employee_id', $me->id)->whereIn('status', ExitCase::OPEN)->doesntExist())
             ->requiresConfirmation()->modalDescription(fn () => 'Your notice period is '.app(SettingsRepository::class)->get('exit.notice_days', 30).' days from today. HR and your manager will be informed.')
             ->schema([
+                // HROne parity RQ-2: whose request it is.
+                RequestChrome::header(fn () => ServiceDeskActions::me()),
+                // HROne setup parity CA-3: the reasons the organisation offers employees, when it keeps a list.
+                Select::make('workforce_reason_id')->label('Reason')->native(false)->required()
+                    ->options(fn () => WorkforceReason::query()->ofKind('separation')->where('for_employee', true)->pluck('name', 'id')->all())
+                    ->visible(fn () => WorkforceReason::query()->ofKind('separation')->where('for_employee', true)->exists()),
                 Textarea::make('reason')->label('Reason for leaving')->required()->rows(4)->maxLength(2000),
                 DatePicker::make('requested_last_day')->label('Requested last working day')->native(false)->placeholder('End of notice period')->minDate(now()),
+                // HROne parity RQ-2: who accepts it (a read-only preview), who is informed, and the HR policies.
+                RequestChrome::route('resignation', fn () => ServiceDeskActions::me()),
             ])
-            ->action(fn (array $data) => ServiceDeskActions::run(fn () => app(Exits::class)->resign(ServiceDeskActions::me(), $data['reason'], $data['requested_last_day'] ?? null, auth()->user()), 'Resignation submitted'));
+            ->action(fn (array $data) => ServiceDeskActions::run(fn () => app(Exits::class)->resign(ServiceDeskActions::me(), $data['reason'], $data['requested_last_day'] ?? null, auth()->user(), separationReasonId: isset($data['workforce_reason_id']) ? (int) $data['workforce_reason_id'] : null), 'Resignation submitted',
+                fn ($case) => $case instanceof ExitCase ? RequestChrome::followUps('resignation', $case) : []));
     }
 
     /** @return array<int, Action> */
@@ -76,7 +97,9 @@ final class ExitActions
                 ->action(fn (ExitCase $record) => ServiceDeskActions::run(fn () => app(Exits::class)->startClearance($record, auth()->user()), 'Clearance started; owners notified')),
             Action::make('interview')->label(fn (ExitCase $record) => $own($record) ? 'My exit interview' : 'Record exit interview')->icon(Heroicon::OutlinedChatBubbleLeftRight)->color('gray')
                 ->visible(fn (ExitCase $record) => $record->isOpen() || $record->status === 'completed')
-                ->visible(fn (ExitCase $record) => ($record->isOpen() || $record->status === 'completed') && ($own($record) || auth()->user()->can('exit.interview')))
+                // HROne setup parity P13: when the separation policy asks the employee's exit interview on a feedback template,
+                // the employee answers that (Feedback, My tasks) instead of the standard questions; HR may still record one.
+                ->visible(fn (ExitCase $record) => ($record->isOpen() || $record->status === 'completed') && ($own($record) ? app(FeedbackRequests::class)->forSubject($record)->where('process', 'exit_interview')->where('status', '!=', 'cancelled')->isEmpty() : auth()->user()->can('exit.interview')))
                 ->schema(fn (ExitCase $record) => [
                     Select::make('reason_for_leaving')->options(config('peopleos.exit.interview_reasons'))->required()->default($record->interview?->reason_for_leaving),
                     Section::make('How would you rate…')->columns(2)->schema(collect(config('peopleos.exit.interview_dimensions'))->map(fn ($label, $key) => Radio::make("ratings.{$key}")->label($label)->options([1 => '1', 2 => '2', 3 => '3', 4 => '4', 5 => '5'])->inline()->default($record->interview?->ratings[$key] ?? null))->values()->all()),
@@ -125,7 +148,10 @@ final class ExitActions
                 ->visible($can)
                 ->schema(fn (ExitClearance $record) => [
                     Section::make('Checklist')->schema(collect($record->items ?? [])->map(fn ($item, $i) => Checkbox::make("items.{$i}")->label($item['item'])->default((bool) $item['done']))->values()->all())->visible(! empty($record->items)),
-                    TextInput::make('recoverable_amount')->label('Amount to recover in F&F')->numeric()->minValue(0)->default(0)->helperText('Unreturned property, pending advances, damages'),
+                    TextInput::make('recoverable_amount')->label('Amount to recover in F&F')->numeric()->minValue(0)
+                        ->default(fn () => $record->stage === 'asset' ? app(Assets::class)->suggestedRecovery(Employee::query()->withoutGlobalScope(AccessScope::class)->findOrFail($record->exitCase->employee_id)) : 0)
+                        ->helperText(fn () => $record->stage === 'asset' && app(SettingsRepository::class)->get('asset.exit.recovery_basis', 'manual') === 'book_value'
+                            ? 'Suggested: the book value of the assets still held.' : 'Unreturned property, pending advances, damages'),
                     Textarea::make('remarks')->maxLength(1000),
                 ])
                 ->action(fn (ExitClearance $record, array $data) => ServiceDeskActions::run(fn () => app(Exits::class)->clearStage($record, auth()->user(), $data['remarks'] ?? null, (float) ($data['recoverable_amount'] ?? 0), array_map(fn ($v) => (bool) $v, $data['items'] ?? [])), 'Stage cleared')),

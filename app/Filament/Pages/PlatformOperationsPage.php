@@ -2,10 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Organisation\Models\OrganisationContact;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Services\PlatformOperationsOverview;
 use App\Domain\Platform\Services\TenantDeferredWork;
 use App\Filament\Resources\Tenants\TenantResource;
+use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
@@ -71,6 +73,18 @@ class PlatformOperationsPage extends Page
     public function selected(): ?array
     {
         return collect($this->tenantRows())->first(fn (array $row) => $row['tenant']->id === $this->tenant);
+    }
+
+    /**
+     * HROne setup parity CA-2: whom the selected organisation names for HR, decisions and technical administration, so
+     * operators know whom to notify (security and release notices go to the technical administrator).
+     *
+     * @return list<array{type: string, name: string, email: ?string, mobile: ?string, company: ?string}>
+     */
+    public function contacts(Tenant $tenant): array
+    {
+        return app(TenantContext::class)->runAs($tenant, fn () => OrganisationContact::query()->with('company')->where('status', 'active')->orderBy('type')->orderBy('name')->get()
+            ->map(fn (OrganisationContact $c) => ['type' => (string) config("peopleos.organisation.contact_types.{$c->type}", $c->type), 'name' => $c->name, 'email' => $c->email, 'mobile' => $c->mobile, 'company' => $c->company?->name])->all());
     }
 
     public function tenantUrl(Tenant $tenant): string

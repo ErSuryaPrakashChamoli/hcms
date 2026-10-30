@@ -7,6 +7,7 @@ use App\Domain\Attendance\Services\AttendanceProcessor;
 use App\Domain\Attendance\Services\Regularisations;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -31,10 +32,11 @@ final class AttendanceActions
                     DateTimePicker::make('requested_in')->label('In')->seconds(false)->native(false),
                     DateTimePicker::make('requested_out')->label('Out')->seconds(false)->native(false)->after('requested_in'),
                     Textarea::make('reason')->required()->maxLength(255),
+                    self::attachmentsField(),
                 ])
                 ->action(function (AttendanceRecord $record, array $data) {
                     try {
-                        $request = app(Regularisations::class)->request($record->employee, $record->date, $data['type'], $data['reason'], $data['requested_in'] ?? null, $data['requested_out'] ?? null);
+                        $request = app(Regularisations::class)->request($record->employee, $record->date, $data['type'], $data['reason'], $data['requested_in'] ?? null, $data['requested_out'] ?? null, null, array_values((array) ($data['attachments'] ?? [])));
 
                         if (auth()->user()->can('attendance.manage')) {
                             app(Regularisations::class)->approve($request, 'Applied by HR');
@@ -72,8 +74,9 @@ final class AttendanceActions
                         Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
                     }
                 }),
+            // HROne parity TX-2: attendance.process on the record (attendance.manage also grants it).
             Action::make('reprocess')->label('Reprocess')->icon('heroicon-m-arrow-path')->color('gray')
-                ->visible(fn (AttendanceRecord $record) => ! $record->is_locked && auth()->user()->can('attendance.manage'))
+                ->visible(fn (AttendanceRecord $record) => ! $record->is_locked && auth()->user()->can('process', $record))
                 ->action(function (AttendanceRecord $record) {
                     app(AttendanceProcessor::class)->process($record->employee, $record->date);
                     Notification::make()->success()->title('Reprocessed')->send();
@@ -87,7 +90,8 @@ final class AttendanceActions
         $columns = [];
 
         if ($withEmployee) {
-            $columns[] = TextColumn::make('employee.person.display_name')->label('Employee')->searchable(['people.first_name', 'people.last_name'])->description(fn (AttendanceRecord $record) => $record->employee?->employee_code);
+            // HROne parity TX-1: the WO-2 employee search (code, names, work e-mail, designation).
+            $columns[] = TextColumn::make('employee.person.display_name')->label('Employee')->searchable(query: EmployeeFilters::search('employee'))->description(fn (AttendanceRecord $record) => $record->employee?->employee_code);
         }
 
         return [
@@ -105,5 +109,13 @@ final class AttendanceActions
             TextColumn::make('exceptions')->badge()->color('danger')->formatStateUsing(fn (string $state) => config("peopleos.attendance.exception_types.{$state}", $state))->placeholder('—'),
             IconColumn::make('is_regularised')->label('Reg.')->boolean()->toggleable(),
         ];
+    }
+
+    /** HROne setup parity (TO-3): documents supporting a regularisation (required when the attendance policy says so). */
+    public static function attachmentsField(): FileUpload
+    {
+        return FileUpload::make('attachments')->label('Supporting documents')->multiple()->maxFiles(5)->disk(config('peopleos.documents.disk', 'local'))
+            ->directory('regularisations')->visibility('private')->acceptedFileTypes(['image/jpeg', 'image/png', 'application/pdf'])
+            ->maxSize((int) config('peopleos.documents.max_kb', 10240));
     }
 }

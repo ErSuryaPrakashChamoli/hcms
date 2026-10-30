@@ -15,6 +15,6 @@ class EditWebhookEndpoint extends PeopleEditRecord
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [WebhookEndpointResource::testAction(), WebhookEndpointResource::rotateSecretAction(), DeleteAction::make()];
     }
 }

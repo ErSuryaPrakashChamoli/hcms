@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 final class ApprovalItem
 {
     /**
-     * @param  list<string>  $decisions  approve | reject | request_change | complete
+     * @param  list<string>  $decisions  approve | reject | request_change | complete | send_back
      * @param  array<string, string>  $decisionLabels
      * @param  list<array{label: string, before: ?string, after: string}>  $changes  Before → After rows
      * @param  list<string>  $facts
@@ -46,6 +46,10 @@ final class ApprovalItem
         public readonly ?string $status = null,
         public readonly ?CarbonInterface $decidedAt = null,
         private readonly ?Closure $changesUsing = null,
+        // HROne setup parity P4: set when the item reaches the viewer through an out-of-office delegation.
+        public readonly ?int $onBehalfOfUserId = null,
+        public readonly ?string $onBehalfOfName = null,
+        public readonly ?int $delegationId = null,
     ) {}
 
     /** @var list<array{label: string, before: ?string, after: string}>|null */
@@ -97,6 +101,43 @@ final class ApprovalItem
         return 'upcoming';
     }
 
+    /** HROne setup parity P3: the same item offering one more decision (e.g. send_back, when switched on for its type). */
+    public function withDecision(string $decision, ?string $label = null): self
+    {
+        if ($this->can($decision)) {
+            return $this;
+        }
+
+        return new self(
+            $this->id, $this->type, $this->typeLabel, $this->title, $this->subject, $this->subjectEmployeeId, $this->reason, $this->impact,
+            $this->effectiveOn, $this->dueAt, $this->requestedAt, $this->requestedBy, $this->risk, $this->riskReason,
+            [...$this->decisions, $decision], $this->url, $this->record, $this->changes, $this->facts,
+            $label === null ? $this->decisionLabels : [...$this->decisionLabels, $decision => $label], $this->status, $this->decidedAt, $this->changesUsing,
+            $this->onBehalfOfUserId, $this->onBehalfOfName, $this->delegationId,
+        );
+    }
+
+    /**
+     * HROne setup parity P4: the same item, reaching a delegate through an out-of-office delegation. Deciding it acts in
+     * the delegator's stead (ApprovalDecisions); the card says so.
+     */
+    public function delegatedBy(int $delegationId, int $delegatorId, string $delegatorName, ?CarbonInterface $until): self
+    {
+        return new self(
+            $this->id, $this->type, $this->typeLabel, $this->title, $this->subject, $this->subjectEmployeeId, $this->reason, $this->impact,
+            $this->effectiveOn, $this->dueAt, $this->requestedAt, $this->requestedBy, $this->risk, $this->riskReason,
+            $this->decisions, $this->url, $this->record, $this->changes,
+            ['On behalf of '.$delegatorName.' (out of office'.($until !== null ? ' until '.$until->format('D j M') : '').')', ...$this->facts],
+            $this->decisionLabels, $this->status, $this->decidedAt, $this->changesUsing,
+            $delegatorId, $delegatorName, $delegationId,
+        );
+    }
+
+    public function isDelegated(): bool
+    {
+        return $this->delegationId !== null;
+    }
+
     public function can(string $decision): bool
     {
         return in_array($decision, $this->decisions, true);
@@ -105,13 +146,13 @@ final class ApprovalItem
     public function label(string $decision): string
     {
         return $this->decisionLabels[$decision] ?? match ($decision) {
-            'approve' => 'Approve', 'reject' => 'Reject', 'request_change' => 'Request change', 'complete' => 'Mark done', default => ucfirst($decision),
+            'approve' => 'Approve', 'reject' => 'Reject', 'request_change' => 'Request change', 'complete' => 'Mark done', 'send_back' => 'Send back', default => ucfirst($decision),
         };
     }
 
     /** Decisions that must carry a reason. */
     public function needsNote(string $decision): bool
     {
-        return in_array($decision, ['reject', 'request_change'], true);
+        return in_array($decision, ['reject', 'request_change', 'send_back'], true);
     }
 }

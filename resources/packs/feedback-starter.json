@@ -1,0 +1,377 @@
+{
+  "name": "Feedback templates (starter)",
+  "description": "Question banks and feedback templates for exit interviews (employee, manager, HR), confirmation, probation self-review and induction evaluation.",
+  "question_banks": [
+    {
+      "code": "EXIT",
+      "name": "Exit interview questions",
+      "module": "workforce",
+      "description": "Questions for exit interviews by the employee, the manager and HR.",
+      "questions": [
+        {
+          "title": "What is the main reason you are leaving?",
+          "type": "single_choice",
+          "mandatory": true,
+          "options": [
+            "Better role or pay",
+            "Career growth",
+            "Manager or team",
+            "Work-life balance",
+            "Relocation",
+            "Higher studies",
+            "Personal reasons",
+            "Other"
+          ]
+        },
+        {
+          "title": "How would you rate your role overall?",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "How would you rate the support from your manager?",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Would you consider rejoining in the future?",
+          "type": "yes_no",
+          "mandatory": true
+        },
+        {
+          "title": "What should we improve?",
+          "type": "text",
+          "mandatory": false
+        }
+      ]
+    },
+    {
+      "code": "PROBATION",
+      "name": "Probation and confirmation questions",
+      "module": "workforce",
+      "description": "Questions for confirmation feedback and probation self-reviews.",
+      "questions": [
+        {
+          "title": "Job knowledge and skills",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Quality of work",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Attendance and punctuality",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Teamwork and communication",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Comments",
+          "type": "text",
+          "mandatory": true
+        }
+      ]
+    },
+    {
+      "code": "INDUCTION",
+      "name": "Induction questions",
+      "module": "workforce",
+      "description": "Questions for induction evaluations.",
+      "questions": [
+        {
+          "title": "Rate the induction sessions overall",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "I know whom to approach for help",
+          "type": "likert",
+          "mandatory": true
+        },
+        {
+          "title": "What would have made the induction better?",
+          "type": "text",
+          "mandatory": false
+        }
+      ]
+    }
+  ],
+  "feedback_templates": [
+    {
+      "code": "EXIT_EMPLOYEE",
+      "name": "Exit interview",
+      "process": "exit_interview",
+      "description": "The employee's own exit interview: why they leave, how they rate their time here, what to improve.",
+      "questions": [
+        {
+          "title": "What is the main reason you are leaving?",
+          "type": "single_choice",
+          "mandatory": true,
+          "options": [
+            "Better role or pay",
+            "Career growth",
+            "Manager or team",
+            "Work-life balance",
+            "Relocation",
+            "Higher studies",
+            "Personal reasons",
+            "Other"
+          ]
+        },
+        {
+          "title": "How would you rate your role overall?",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "How would you rate the support from your manager?",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "I would recommend this organisation as a place to work",
+          "type": "likert",
+          "mandatory": true
+        },
+        {
+          "title": "Would you consider rejoining in the future?",
+          "type": "yes_no",
+          "mandatory": true
+        },
+        {
+          "title": "What did you value most here?",
+          "type": "text",
+          "mandatory": false
+        },
+        {
+          "title": "What should we improve?",
+          "type": "text",
+          "mandatory": false
+        }
+      ]
+    },
+    {
+      "code": "EXIT_MANAGER",
+      "name": "Exit interview by the manager",
+      "process": "exit_interview_manager",
+      "description": "The manager's view of the exit: the reason, the handover and whether to rehire.",
+      "questions": [
+        {
+          "title": "In your view, what is the main reason the employee is leaving?",
+          "type": "single_choice",
+          "mandatory": true,
+          "options": [
+            "Better role or pay",
+            "Career growth",
+            "Manager or team",
+            "Work-life balance",
+            "Relocation",
+            "Higher studies",
+            "Personal reasons",
+            "Other"
+          ]
+        },
+        {
+          "title": "Was the resignation expected?",
+          "type": "yes_no",
+          "mandatory": true
+        },
+        {
+          "title": "Rate the employee's overall performance",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Would you rehire this employee?",
+          "type": "yes_no",
+          "mandatory": true
+        },
+        {
+          "title": "Knowledge transfer and handover plan",
+          "type": "text",
+          "mandatory": true
+        },
+        {
+          "title": "Could the exit have been prevented? How?",
+          "type": "text",
+          "mandatory": false
+        }
+      ]
+    },
+    {
+      "code": "EXIT_HR",
+      "name": "Exit interview by HR",
+      "process": "exit_interview_hr",
+      "description": "HR's exit conversation: the reason, concerns raised, retention and rehire.",
+      "questions": [
+        {
+          "title": "Reason for leaving, as discussed",
+          "type": "single_choice",
+          "mandatory": true,
+          "options": [
+            "Better role or pay",
+            "Career growth",
+            "Manager or team",
+            "Work-life balance",
+            "Relocation",
+            "Higher studies",
+            "Personal reasons",
+            "Other"
+          ]
+        },
+        {
+          "title": "Was a retention offer made?",
+          "type": "single_choice",
+          "mandatory": true,
+          "options": [
+            "Not attempted",
+            "Attempted, declined",
+            "Attempted, not possible"
+          ]
+        },
+        {
+          "title": "Did the employee raise a concern (conduct, harassment, policy)?",
+          "type": "yes_no",
+          "mandatory": true
+        },
+        {
+          "title": "Is the employee eligible for rehire?",
+          "type": "yes_no",
+          "mandatory": true
+        },
+        {
+          "title": "Notes from the conversation",
+          "type": "text",
+          "mandatory": true
+        }
+      ]
+    },
+    {
+      "code": "CONFIRMATION",
+      "name": "Confirmation feedback",
+      "process": "confirmation",
+      "description": "The manager's assessment at the end of the probation, before the confirmation decision.",
+      "questions": [
+        {
+          "title": "Job knowledge and skills",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Quality of work",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Attendance and punctuality",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Teamwork and communication",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "Your recommendation",
+          "type": "single_choice",
+          "mandatory": true,
+          "options": [
+            "Confirm",
+            "Extend the probation",
+            "Do not confirm"
+          ]
+        },
+        {
+          "title": "Comments",
+          "type": "text",
+          "mandatory": true
+        }
+      ]
+    },
+    {
+      "code": "PROBATION_SELF",
+      "name": "Probation self-review",
+      "process": "probation",
+      "description": "The employee's own review of the probation period.",
+      "questions": [
+        {
+          "title": "How well do you understand what is expected in your role?",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "I have the training and tools I need",
+          "type": "likert",
+          "mandatory": true
+        },
+        {
+          "title": "Your main achievements during the probation",
+          "type": "text",
+          "mandatory": true
+        },
+        {
+          "title": "Where would you like more support?",
+          "type": "text",
+          "mandatory": false
+        }
+      ]
+    },
+    {
+      "code": "INDUCTION_EVAL",
+      "name": "Induction evaluation",
+      "process": "induction",
+      "description": "How the new joiner's induction went (given by the joiner or the manager).",
+      "questions": [
+        {
+          "title": "The induction explained the organisation, its policies and my role clearly",
+          "type": "likert",
+          "mandatory": true
+        },
+        {
+          "title": "Rate the induction sessions overall",
+          "type": "rating",
+          "mandatory": true,
+          "scale_max": 5
+        },
+        {
+          "title": "I know whom to approach for help",
+          "type": "likert",
+          "mandatory": true
+        },
+        {
+          "title": "Was everything ready on day one (laptop, access, workplace)?",
+          "type": "yes_no",
+          "mandatory": true
+        },
+        {
+          "title": "What would have made the induction better?",
+          "type": "text",
+          "mandatory": false
+        }
+      ]
+    }
+  ],
+  "format": "peopleos.blueprint/1"
+}

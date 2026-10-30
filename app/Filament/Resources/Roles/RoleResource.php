@@ -7,6 +7,8 @@ use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\Roles\Pages\CreateRole;
 use App\Filament\Resources\Roles\Pages\EditRole;
 use App\Filament\Resources\Roles\Pages\ListRoles;
+use App\Filament\Resources\Roles\RelationManagers\MembershipRulesRelationManager;
+use App\Filament\Resources\Roles\RelationManagers\MembersRelationManager;
 use App\Filament\Resources\Roles\Schemas\RoleForm;
 use App\Filament\Resources\Roles\Tables\RolesTable;
 use BackedEnum;
@@ -14,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class RoleResource extends Resource
@@ -28,6 +31,11 @@ class RoleResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with('reliever');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return RoleForm::configure($schema);
@@ -41,6 +49,9 @@ class RoleResource extends Resource
     public static function getRelations(): array
     {
         return [
+            MembersRelationManager::class,
+            // HROne parity SV-7: who holds the role by rule.
+            MembershipRulesRelationManager::class,
             AuditHistoryRelationManager::class,
         ];
     }

@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Services\PerformanceAnalytics;
+use App\Domain\Performance\Support\PerformancePeriods;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -41,7 +42,8 @@ class PerformanceAnalyticsPage extends Page
 
     public function mount(): void
     {
-        $this->cycle ??= PerformanceCycle::query()->whereIn('status', ['active', 'closed'])->orderByDesc('period_start')->value('id');
+        // HP-8b: with a performance year set, the cycle of the current period first.
+        $this->cycle ??= PerformancePeriods::currentCycleId(['active', 'closed']) ?? PerformanceCycle::query()->whereIn('status', ['active', 'closed'])->orderByDesc('period_start')->value('id');
     }
 
     /** @return array<string, mixed> */

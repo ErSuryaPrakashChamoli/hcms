@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Metadata only; the file itself is on a private disk and served through signed, authorised URLs. */
-#[Fillable(['tenant_id', 'employee_id', 'document_type_id', 'title', 'disk', 'path', 'original_name', 'mime_type', 'size_bytes', 'version', 'status', 'issued_on', 'expires_on', 'uploaded_by', 'verified_by', 'verified_at', 'review_note'])]
+#[Fillable(['tenant_id', 'employee_id', 'document_type_id', 'title', 'disk', 'path', 'original_name', 'mime_type', 'size_bytes', 'version', 'status', 'issued_on', 'expires_on', 'uploaded_by', 'verified_by', 'verified_at', 'review_note', 'upload_comment'])]
 class EmployeeDocument extends Model
 {
     use Auditable, BelongsToTenant;

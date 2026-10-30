@@ -215,7 +215,7 @@ final class Birthdays
         if (! in_array($employee->person->birthday_key, self::keysOn($today), true)) {
             throw new RuntimeException('Wishes can be sent on the birthday itself.');
         }
-        if (BirthdayWish::query()->where('employee_id', $employee->id)->where('sender_user_id', $sender->getKey())->where('year', $today->year)->exists()) {
+        if (BirthdayWish::query()->where('employee_id', $employee->id)->where('sender_user_id', $sender->getKey())->where('year', $today->year)->where('kind', 'birthday')->exists()) {
             throw new RuntimeException('You have already wished '.$employee->person->display_name.' this year.');
         }
 
@@ -224,6 +224,7 @@ final class Birthdays
                 'employee_id' => $employee->id,
                 'sender_user_id' => $sender->getKey(),
                 'sender_employee_id' => app(RoleLens::class)->employee($sender)?->id,
+                'kind' => 'birthday',
                 'year' => $today->year,
                 'message' => $message,
             ]);
@@ -242,13 +243,13 @@ final class Birthdays
     /** @return Collection<int, BirthdayWish> the wishes $employee received in $year, newest first. */
     public function wishesFor(Employee $employee, int $year): Collection
     {
-        return BirthdayWish::query()->with(['sender', 'senderEmployee.person'])->where('employee_id', $employee->id)->where('year', $year)->latest('id')->get();
+        return BirthdayWish::query()->with(['sender', 'senderEmployee.person'])->where('employee_id', $employee->id)->where('year', $year)->where('kind', 'birthday')->latest('id')->get();
     }
 
     /** @return list<int> recipients $sender already wished this year */
     public function wishedBy(User $sender, int $year): array
     {
-        return BirthdayWish::query()->where('sender_user_id', $sender->getKey())->where('year', $year)->pluck('employee_id')->map(fn ($id) => (int) $id)->all();
+        return BirthdayWish::query()->where('sender_user_id', $sender->getKey())->where('year', $year)->where('kind', 'birthday')->pluck('employee_id')->map(fn ($id) => (int) $id)->all();
     }
 
     /**
@@ -268,6 +269,34 @@ final class Birthdays
         return User::forCurrentTenant()->where('status', UserStatus::Active)
             ->whereHas('roles.permissions', fn (Builder $q) => $q->where('key', 'celebration.manage'))
             ->get()->filter(fn (User $u) => $u->hasPermission('celebration.manage'))->values();
+    }
+
+    /**
+     * HROne setup parity HP-9a: active users holding any of the role slugs (celebration notify_roles settings).
+     *
+     * @param  list<string>  $roles
+     * @return Collection<int, User>
+     */
+    public function roleHolders(array $roles): Collection
+    {
+        $roles = array_values(array_filter(array_map('strval', $roles)));
+        if ($roles === []) {
+            return collect();
+        }
+
+        return User::forCurrentTenant()->where('status', UserStatus::Active)
+            ->whereHas('roles', fn (Builder $q) => $q->whereIn('slug', $roles))->orderBy('id')->get();
+    }
+
+    /** A greeting as the employee receives it: {name} is the first name, {organisation} the organisation's name (HP-9a preview). */
+    public function render(string $message, string $firstName, array $extra = []): string
+    {
+        return strtr($message, ['{name}' => $firstName, '{organisation}' => (string) $this->organisationName(), ...$extra]);
+    }
+
+    public function organisationName(): ?string
+    {
+        return $this->settings->get('branding.display_name') ?: $this->tenants->current()?->name;
     }
 
     /** The monthly list: to every celebration manager, the birthdays of $month in their access scope. Returns the number sent. */
@@ -303,7 +332,7 @@ final class Birthdays
             return $counts;
         }
 
-        $organisation = $this->settings->get('branding.display_name') ?: $this->tenants->current()?->name;
+        $organisation = $this->organisationName();
         foreach ($celebrants as $employee) {
             EmployeeReminderDue::dispatch($employee, 'employee.birthday', ['day' => $employee->person->birthdayLabel()]);
 
@@ -326,8 +355,10 @@ final class Birthdays
             $counts['nudges'] += $users->count();
         }
 
+        $listed = [];
         if ($this->setting('notify_admins_on_day')) {
             foreach ($this->managers() as $user) {
+                $listed[] = $user->id;
                 $people = $this->on($day, $user);
                 if ($people->isEmpty()) {
                     continue;
@@ -336,6 +367,18 @@ final class Birthdays
                 $this->sendList($user, ['in_app'], $subject, $people, $day->year, false, 'celebration.birthday.today');
                 $counts['lists']++;
             }
+        }
+
+        // HROne setup parity HP-9a: holders of the notify_roles get the day's list too, of the birthdays they may see
+        // (never their own, never private ones unless they manage celebrations), in-app only.
+        foreach ($this->roleHolders((array) $this->setting('notify_roles'))->reject(fn (User $u) => in_array($u->id, $listed, true)) as $user) {
+            $people = $this->on($day, $user)->reject(fn (Employee $e) => (int) $e->user_id === (int) $user->id)->values();
+            if ($people->isEmpty()) {
+                continue;
+            }
+            $subject = $people->count() === 1 ? 'Birthday today: '.$people->first()->person->display_name : 'Birthdays today: '.$people->count().' people';
+            $this->sendList($user, ['in_app'], $subject, $people, $day->year, false, 'celebration.birthday.today');
+            $counts['lists']++;
         }
 
         return $counts;

@@ -10,6 +10,7 @@ use App\Domain\Compensation\Support\PayrollCompensation;
 use App\Domain\Compliance\Services\StatutoryEngine;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Leave\Services\LeaveOutput;
+use App\Domain\Payroll\Inputs\PayrollInputs;
 use App\Domain\Payroll\Models\PayrollAdjustment;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\SalaryComponent;
@@ -139,13 +140,18 @@ class PayrollCalculator
             $segmentInputs[] = ['assignment_id' => $pay->assignmentId, 'structure' => $pay->structureCode, 'ctc_annual' => $pay->ctcAnnual, 'from' => $segment->from->toDateString(), 'to' => $segment->to->toDateString(), 'units' => $units, 'lop' => round($segLop, 2), 'paid_units' => round($segPaid, 2), 'proration' => round($proration, 6)];
 
             $full = [];
-            $variables = function (string $name) use (&$full, &$attributes, $pay, $segment, $items, $c, $employee, $end, $overtimeMinutes, &$overtimeUsed) {
+            // HROne setup parity BP-2: input components (CTC formula tags) are values on the compensation that formulas
+            // read by their lowercase code wherever they sit in the structure; they are never paid. None = as before.
+            $inputValues = $items->filter(fn ($line) => $line->component->isInput())
+                ->mapWithKeys(fn ($line) => [$line->component->variableName() => $pay->valueFor($line->component->code)])->all();
+            $variables = function (string $name) use (&$full, &$attributes, $pay, $segment, $items, $c, $employee, $end, $overtimeMinutes, &$overtimeUsed, $inputValues) {
                 if (str_starts_with($name, 'overtime_')) {
                     $overtimeUsed = true;
                 }
 
                 return match (true) {
                     isset($full[$name]) => $full[$name],
+                    array_key_exists($name, $inputValues) => $inputValues[$name],
                     $name === 'ctc_annual' => $pay->ctcAnnual,
                     $name === 'ctc_monthly' => $pay->monthlyCtc(),
                     $name === 'paid_days' => $c->paidDays,
@@ -164,8 +170,8 @@ class PayrollCalculator
             foreach ($items as $item) {
                 /** @var SalaryComponent $component */
                 $component = $item->component;
-                if ($component->is_statutory || $component->calculation_method === 'statutory' || ! $component->is_recurring) {
-                    continue; // statutory lines come from the compliance engine; one-offs from adjustments
+                if ($component->is_statutory || $component->calculation_method === 'statutory' || ! $component->is_recurring || $component->isInput()) {
+                    continue; // statutory lines come from the compliance engine; one-offs from adjustments; inputs are never paid
                 }
                 if (! in_array($component->type, SalaryComponent::TYPES, true)) {
                     $c->exception('invalid_component', "{$component->code}: unknown component type [{$component->type}].");
@@ -196,8 +202,29 @@ class PayrollCalculator
             }
         }
 
+        // HROne setup parity (PS-1): components not paid in the joining or the exit month, and per-component rounding.
+        $joiningMonth = $employee->joining_date !== null && $employee->joining_date->between($period->start_date, $period->end_date);
+        $exitMonth = $employee->exit_date !== null && $employee->exit_date->between($period->start_date, $period->end_date);
+        foreach ($perComponent as $id => $row) {
+            if (($joiningMonth && $row['component']->pay_in_joining_month === false) || ($exitMonth && $row['component']->pay_in_exit_month === false)) {
+                unset($perComponent[$id]);
+
+                continue;
+            }
+            $perComponent[$id]['paid'] = match ($row['component']->rounding) {
+                'nearest_1' => round($row['paid']), 'up_1' => ceil(round($row['paid'], 2)), 'nearest_10' => round($row['paid'] / 10) * 10, default => $row['paid'],
+            };
+        }
+
         foreach ($perComponent as $row) {
-            $c->fromComponent($row['component'], round($row['paid'], 2), ['formula' => $row['formula'], 'prorated' => $row['component']->is_proratable, 'divisor' => $divisor, 'proration_basis' => $basis, 'segments' => $row['segments']], $row['full']);
+            // HROne parity PY-02: a reimbursement paid on claim is not paid each month; its amount builds the claim balance.
+            if ($row['component']->type === 'reimbursement' && $row['component']->pay_on_claim) {
+                $c->inputs['claim_accruals'][$row['component']->id] = round($row['paid'], 2);
+
+                continue;
+            }
+            $c->fromComponent($row['component'], round($row['paid'], 2), ['formula' => $row['formula'], 'prorated' => $row['component']->is_proratable, 'divisor' => $divisor, 'proration_basis' => $basis, 'segments' => $row['segments']]
+                + array_filter(['hidden_on_payslip' => $row['component']->show_on_payslip === false ?: null, 'hidden_in_register' => $row['component']->show_in_register === false ?: null, 'rounding' => $row['component']->rounding]), $row['full']);
         }
 
         $c->inputs['segments'] = $segmentInputs;
@@ -211,12 +238,14 @@ class PayrollCalculator
 
         // 6. Adjustments, statutory, net, checks.
         $this->adjustments($c);
+        $this->inputSources($c);
         $this->statutory->apply($c);
 
         if ($c->net() < 0 && $this->settings->get('payroll.negative_net_policy', 'block') !== 'allow') {
             $c->exception('negative_net', 'Deductions exceed earnings; net pay is negative.');
         }
-        if ($employee->bankAccounts->where('is_primary', true)->isEmpty()) {
+        // HROne setup parity BP-13: an employee paid in cash or by cheque needs no bank account (looked up only when none is on file).
+        if ($employee->bankAccounts->where('is_primary', true)->isEmpty() && ! app(PaymentModes::class)->paidOutsideBank($employee->id, $period->end_date)) {
             $c->exception('no_bank', 'No primary bank account on file.');
         }
 
@@ -227,7 +256,7 @@ class PayrollCalculator
     private function segments(PayrollCompensation $compensation, Carbon $start, Carbon $end): Collection
     {
         return $compensation->segments
-            ->map(fn (CompensationSegment $s) => new CompensationSegment($s->compensation, $s->from->copy()->max($start)->copy(), $s->to->copy()->min($end)->copy(), $s->components, $s->parameters))
+            ->map(fn (CompensationSegment $s) => new CompensationSegment($s->compensation, $s->from->copy()->max($start)->copy(), $s->to->copy()->min($end)->copy(), $s->components, $s->parameters, $s->ctcMode))
             ->filter(fn (CompensationSegment $s) => $s->from->lte($s->to))
             ->values();
     }
@@ -260,6 +289,8 @@ class PayrollCalculator
                 in_array($day->status, ['leave', 'unpaid_leave'], true) && $halfDayLeave => 0.5,
                 default => 0.0,
             };
+            // HP-1: a late-mark penalty adds its loss-of-pay days to the day (never more than the whole day).
+            $quantity = min(1.0, $quantity + $day->penaltyDays);
             if ($quantity > 0) {
                 $lop[$date] = $quantity;
             }
@@ -307,6 +338,30 @@ class PayrollCalculator
     private function pfVariables($items): array
     {
         return $items->filter(fn ($i) => $i->component?->pf_applicable && $i->component->type === 'earning')->map(fn ($i) => $i->component->variableName())->values()->all();
+    }
+
+    /**
+     * HROne parity: lines from the tagged payroll input sources (leave encashment, attendance arrears, loans,
+     * claims …). Each line carries its source key and record ids so finalization settles exactly what was paid.
+     * Without such records nothing is added.
+     */
+    private function inputSources(PayrollComputation $c): void
+    {
+        $order = 0;
+        foreach (PayrollInputs::sources() as $source) {
+            foreach ($source->inputsFor($c) as $line) {
+                if (round((float) $line['amount'], 2) == 0.0) {
+                    continue;
+                }
+                $c->addLine($line['code'], $line['name'], $line['type'], (float) $line['amount'], [
+                    'taxable' => (bool) ($line['taxable'] ?? false), 'classification' => $line['classification'] ?? 'other',
+                    'basis' => ($line['basis'] ?? []) + ['source' => ['key' => $source->key(), 'ids' => array_values($line['ids'])]],
+                    'sort_order' => 300 + ++$order, 'pf_applicable' => (bool) ($line['pf_applicable'] ?? false), 'esi_applicable' => (bool) ($line['esi_applicable'] ?? false),
+                    'include_in_gross' => (bool) ($line['include_in_gross'] ?? false),
+                ]);
+                $c->inputs['input_sources'][$source->key()] = array_merge($c->inputs['input_sources'][$source->key()] ?? [], array_values($line['ids']));
+            }
+        }
     }
 
     private function adjustments(PayrollComputation $c): void

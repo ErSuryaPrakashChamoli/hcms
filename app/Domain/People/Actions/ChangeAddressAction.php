@@ -36,4 +36,9 @@ final class ChangeAddressAction extends ChangePersonRecordAction
     {
         return 'Address';
     }
+
+    protected function linkedDocumentField(): ?string
+    {
+        return 'address';
+    }
 }

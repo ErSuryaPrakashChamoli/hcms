@@ -1,5 +1,10 @@
 {{-- PeopleOS wordmark: an iris monogram with a champagne arc, the name in the display serif, and the tagline. --}}
+{{-- HROne setup parity CA-2: an organisation's own logo (Setup → Core HR → Logo) takes the monogram's place. --}}
+@php($tenantLogo = \App\Filament\Support\TenantBranding::logoUrl())
 <span class="pos-brand" aria-label="PeopleOS">
+    @if ($tenantLogo)
+    <img class="pos-brand-mark" src="{{ $tenantLogo }}" alt="" style="object-fit: contain; border-radius: 8px;" />
+    @else
     <svg class="pos-brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
         <defs>
             <linearGradient id="pos-brand-grad" x1="0" y1="0" x2="1" y2="1">
@@ -11,6 +16,7 @@
         <circle cx="16" cy="12" r="4.2" fill="#ffffff" />
         <path d="M8.5 24.5c1.1-4.1 4-6.4 7.5-6.4s6.4 2.3 7.5 6.4" fill="none" stroke="#e2c48c" stroke-width="2.4" stroke-linecap="round" />
     </svg>
+    @endif
     <span class="pos-brand-text">
         <span class="pos-brand-word">People<span>OS</span></span>
         <span class="pos-brand-tag">Employee operating system</span>

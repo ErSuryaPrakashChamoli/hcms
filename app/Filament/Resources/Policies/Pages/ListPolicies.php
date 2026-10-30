@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Policies\Pages;
 
+use App\Filament\Pages\PolicyWizard;
 use App\Filament\Resources\Policies\PolicyResource;
 use App\Filament\Support\Pages\PeopleListRecords;
-use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
+use Filament\Support\Icons\Heroicon;
 
 class ListPolicies extends PeopleListRecords
 {
@@ -12,6 +14,10 @@ class ListPolicies extends PeopleListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()];
+        return [
+            Action::make('create')->label('New policy')->icon(Heroicon::OutlinedPlus)
+                ->url(PolicyWizard::getUrl())
+                ->visible(fn () => auth()->user()->can('policy.create')),
+        ];
     }
 }

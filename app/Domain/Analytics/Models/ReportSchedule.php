@@ -49,19 +49,28 @@ class ReportSchedule extends Model
     /** Next occurrence strictly after $from. */
     public function computeNextRun(Carbon $from): Carbon
     {
-        [$h, $m] = array_map('intval', explode(':', $this->time ?: '07:00'));
+        return self::nextOccurrence((string) $this->frequency, $this->day_of_week, $this->day_of_month, $this->time, $from);
+    }
+
+    /**
+     * The cadence rule shared with the e-mailed dashboard views (HROne parity CA-10): daily at the time; weekly on an ISO
+     * day (1 = Monday, the default); monthly on a day 1–28 (default 1); the time defaults to 07:00. Strictly after $from.
+     */
+    public static function nextOccurrence(string $frequency, ?int $dayOfWeek, ?int $dayOfMonth, ?string $time, Carbon $from): Carbon
+    {
+        [$h, $m] = array_map('intval', explode(':', $time ?: '07:00'));
         $candidate = $from->copy()->setTime($h, $m, 0);
 
-        return match ($this->frequency) {
+        return match ($frequency) {
             'daily' => $candidate->lte($from) ? $candidate->addDay() : $candidate,
-            'monthly' => (function () use ($candidate, $from) {
-                $day = max(1, min(28, (int) ($this->day_of_month ?: 1)));
+            'monthly' => (function () use ($candidate, $from, $dayOfMonth) {
+                $day = max(1, min(28, (int) ($dayOfMonth ?: 1)));
                 $c = $candidate->copy()->day($day);
 
                 return $c->lte($from) ? $c->addMonthNoOverflow()->day($day) : $c;
             })(),
-            default => (function () use ($candidate, $from) {
-                $dow = (int) ($this->day_of_week ?? 1); // 1 = Monday
+            default => (function () use ($candidate, $from, $dayOfWeek) {
+                $dow = (int) ($dayOfWeek ?? 1); // 1 = Monday
                 $c = $candidate->copy();
                 while ($c->dayOfWeekIso !== $dow || $c->lte($from)) {
                     $c->addDay();

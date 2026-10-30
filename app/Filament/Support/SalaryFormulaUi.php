@@ -66,9 +66,10 @@ final class SalaryFormulaUi
      * @param  Closure(Get): list<array<string, mixed>>  $lines
      * @param  Closure(Get): array<string, float>  $parameters
      * @param  Closure(Get): mixed  $on  the date whose statutory rules the employer-PF estimate uses
+     * @param  (Closure(Get): array{ctc_mode?: ?string, balancing_component_id?: mixed})|null  $options  the version's CTC mode and balancing component (BP-2)
      * @return list<mixed>
      */
-    public static function preview(Closure $lines, Closure $parameters, Closure $on): array
+    public static function preview(Closure $lines, Closure $parameters, Closure $on, ?Closure $options = null): array
     {
         return [
             Grid::make(['default' => 1, 'md' => 5])->schema([
@@ -79,15 +80,15 @@ final class SalaryFormulaUi
                 Toggle::make('preview_pf_ceiling')->label('PF on the wage ceiling only')->default(true)->live()->dehydrated(false)->inline(false),
             ])->columnSpanFull(),
             Grid::make(['default' => 1, 'md' => 2])->schema([
-                KeyValue::make('preview_values')->label('Fixed amounts (monthly)')->keyLabel('Component code')->valueLabel('Amount')->addActionLabel('Add amount')
-                    ->helperText('Fixed components take their amount from each employee’s compensation; try CONV = 1600.')->live(onBlur: true)->dehydrated(false),
+                KeyValue::make('preview_values')->label('Fixed amounts and inputs (monthly)')->keyLabel('Component code')->valueLabel('Amount')->addActionLabel('Add amount')
+                    ->helperText('Fixed and input components take their value from each employee’s compensation; try CONV = 1600.')->live(onBlur: true)->dehydrated(false),
                 KeyValue::make('preview_attributes')->label('Employee values')->keyLabel('Name')->valueLabel('Value')->addActionLabel('Add value')
                     ->helperText('For formulas that use employee values; try grade = G2, work_city = Mumbai, years_of_service = 3.')->live(onBlur: true)->dehydrated(false),
             ])->columnSpanFull(),
             View::make('filament.payroll.structure-preview')->columnSpanFull()
-                ->viewData(function (Get $get) use ($lines, $parameters, $on) {
+                ->viewData(function (Get $get) use ($lines, $parameters, $on, $options) {
                     try {
-                        return ['result' => app(StructureFormulas::class)->preview($lines($get), $parameters($get), [
+                        return ['result' => app(StructureFormulas::class)->preview($lines($get), $parameters($get), ($options ? (array) $options($get) : []) + [
                             'ctc_annual' => $get('preview_ctc') ?? 600000, 'variable_target_annual' => $get('preview_variable'), 'days' => $get('preview_days') ?: 30,
                             'values' => (array) $get('preview_values'), 'attributes' => (array) $get('preview_attributes'),
                             // Today's statutory rules for a version already in force; its own date for a later one.
@@ -133,6 +134,7 @@ final class SalaryFormulaUi
 
         return match (true) {
             $component === null => 'Optional: a formula for this structure only',
+            $component->isInput() => 'Input from each employee’s compensation (no formula)',
             $component->formulaFor(null) !== null => $component->formulaFor(null),
             default => 'Fixed amount from each employee’s compensation',
         };

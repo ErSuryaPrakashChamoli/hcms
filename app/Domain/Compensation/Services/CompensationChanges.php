@@ -17,10 +17,13 @@ use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Organisation\Models\Grade;
+use App\Domain\Payroll\Services\StructureFormulas;
+use App\Domain\Payroll\Support\FormulaVariables;
 use App\Domain\Workforce\Models\Position;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -367,8 +370,10 @@ final class CompensationChanges
             throw new CompensationRuleViolation("Structure {$structure->code} v{$version->version} does not apply to this employee's {$dimension}.");
         }
 
+        // HROne setup parity BP-2: a structure built from component amounts has its CTC worked out from them (below).
+        $componentsMode = $version->formulaOptions()['ctc_mode'] === 'components';
         $ctc = $data['ctc_annual'] ?? null;
-        if (! is_numeric($ctc) || (float) $ctc <= 0 || (float) $ctc >= 1e12) {
+        if (! $componentsMode && (! is_numeric($ctc) || (float) $ctc <= 0 || (float) $ctc >= 1e12)) {
             throw new CompensationRuleViolation('Annual CTC must be positive.');
         }
         $variable = $data['variable_target_annual'] ?? null;
@@ -399,6 +404,17 @@ final class CompensationChanges
                 throw new CompensationRuleViolation("The amount for component [{$code}] must be zero or more.");
             }
             $values[$code] = round((float) $amount, 2);
+        }
+        if ($componentsMode) {
+            try {
+                $ctc = app(StructureFormulas::class)->componentsCtc($version->formulaLines(), (array) ($version->parameters ?? []), $values,
+                    FormulaVariables::employeeAttributes($employee, $from), $from, (bool) ($employee->statutoryDetail?->pf_applicable ?? true));
+            } catch (RuntimeException $e) {
+                throw new CompensationRuleViolation("The CTC cannot be worked out from structure {$structure->code}'s components: {$e->getMessage()}");
+            }
+            if ($ctc <= 0 || $ctc >= 1e12) {
+                throw new CompensationRuleViolation("Structure {$structure->code} works out its CTC from component amounts; enter the amounts.");
+            }
         }
 
         $reason = trim((string) ($data['reason'] ?? ''));

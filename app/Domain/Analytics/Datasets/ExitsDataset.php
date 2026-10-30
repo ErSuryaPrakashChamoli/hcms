@@ -52,6 +52,10 @@ class ExitsDataset extends Dataset
             'month' => ['label' => 'Exit month', 'type' => 'string', 'value' => fn ($c) => $c->last_working_day?->format('Y-m')],
             'tenure_months' => ['label' => 'Tenure at exit (months)', 'type' => 'number', 'value' => fn ($c) => $c->employee?->joining_date ? (int) $c->employee->joining_date->diffInMonths($c->last_working_day) : null],
             'reason_for_leaving' => ['label' => 'Reason (exit interview)', 'type' => 'string', 'value' => fn ($c) => $c->interview?->reason_for_leaving],
+            // HROne setup parity CA-3: the separation reason from the master, its kind, and why rehire is barred.
+            'separation_reason' => ['label' => 'Separation reason', 'type' => 'string', 'value' => fn ($c) => $c->separationReason?->name],
+            'separation_kind' => ['label' => 'Voluntary / involuntary', 'type' => 'string', 'value' => fn ($c) => $c->separationReason?->separation_kind ? config('peopleos.people.separation_kinds.'.$c->separationReason->separation_kind) : null],
+            'rehire_block_reason' => ['label' => 'Not eligible for rehire because', 'type' => 'string', 'value' => fn ($c) => $c->rehireBlockReason?->name],
             'rehire_eligible' => ['label' => 'Rehire eligible', 'type' => 'boolean', 'value' => fn ($c) => (bool) $c->is_rehire_eligible],
             'pending_clearances' => ['label' => 'Clearances pending', 'type' => 'number', 'value' => fn ($c) => $c->clearances->whereIn('status', ['pending', 'blocked'])->count()],
             'settlement_status' => ['label' => 'F&F status', 'type' => 'string', 'value' => fn ($c) => $c->settlement?->status],
@@ -63,6 +67,6 @@ class ExitsDataset extends Dataset
 
     public function query(): Builder
     {
-        return ExitCase::query()->with(['employee.person', 'employee.positions.department', 'employee.positions.designation', 'employee.positions.location', 'manager.person', 'interview', 'settlement', 'clearances'])->orderByDesc('last_working_day');
+        return ExitCase::query()->with(['employee.person', 'employee.positions.department', 'employee.positions.designation', 'employee.positions.location', 'manager.person', 'interview', 'settlement', 'clearances', 'separationReason', 'rehireBlockReason'])->orderByDesc('last_working_day');
     }
 }

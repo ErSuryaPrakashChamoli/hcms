@@ -32,7 +32,8 @@ class PunchImportResource extends Resource
 
     public static function canAccess(): bool
     {
-        return (auth()->user()?->can('attendance.manage') ?? false) && (auth()->user()?->can('employee.import') ?? false);
+        // HROne parity TX-2: attendance.punch (attendance.manage also grants it).
+        return (auth()->user()?->can('attendance.punch') ?? false) && (auth()->user()?->can('employee.import') ?? false);
     }
 
     public static function getEloquentQuery(): Builder

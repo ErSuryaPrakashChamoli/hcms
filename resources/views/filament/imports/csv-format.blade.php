@@ -31,7 +31,7 @@
 
     @if (! empty($codes))
         <section class="space-y-2">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Day codes</h3>
+            <h3 class="text-base font-semibold text-gray-950 dark:text-white">{{ $codesTitle ?? 'Day codes' }}</h3>
             <ul class="grid gap-x-6 gap-y-1 sm:grid-cols-2">
                 @foreach ($codes as $dayCode => $meaning)
                     <li><code class="{{ $code }}">{{ $dayCode }}</code> {{ $meaning }}</li>

@@ -180,6 +180,7 @@ use App\Domain\Experience\Services\ExperienceNavigation;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\ModuleCatalogue;
 use App\Domain\Experience\Services\PeopleVisibility;
+use App\Domain\Experience\Services\ProfileSectionVisibility;
 use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Grievance\Models\GrievanceCategory;
@@ -201,9 +202,11 @@ use App\Domain\Identity\Services\PermissionRegistry;
 use App\Domain\Integration\Models\ApiKey;
 use App\Domain\Integration\Models\ExternalReference;
 use App\Domain\Integration\Models\InboundEvent;
+use App\Domain\Integration\Models\IntegrationLogExport;
 use App\Domain\Integration\Models\IntegrationMapping;
 use App\Domain\Integration\Models\IntegrationSystem;
 use App\Domain\Integration\Policies\ApiKeyPolicy;
+use App\Domain\Integration\Policies\IntegrationLogExportPolicy;
 use App\Domain\Integration\Policies\IntegrationPolicy;
 use App\Domain\Integration\Services\ApiKeys;
 use App\Domain\Knowledge\Models\Article;
@@ -436,6 +439,8 @@ class AppServiceProvider extends ServiceProvider
         CurrentEmployee::class, FeatureFlags::class,
         // SaaS.3: one tenant entitlement state per request (memo keyed by tenant), never carried into the next.
         EntitlementStateStore::class,
+        // HROne setup parity CA-6: the profile-section matrix (memoises "manages" per viewer and employee for the request).
+        ProfileSectionVisibility::class,
     ];
 
     public function register(): void
@@ -566,10 +571,16 @@ class AppServiceProvider extends ServiceProvider
         // check, so anyone who saw a prefix could exhaust that tenant's limit with garbage secrets, and every new random
         // token got a fresh bucket (unlimited failed attempts). Unverified, invalid or absent keys now share the caller's
         // IP bucket.
+        // HROne parity CA-11: a key's own limit when it has one (else the API-wide limit, as before); a verified key used
+        // from an address outside its IP allowlist is refused by AuthenticateApiKey and limited by the caller's IP, so a
+        // leaked key used elsewhere cannot exhaust the owner's bucket.
         RateLimiter::for('api', function (Request $request) {
             $key = app(ApiKeys::class)->resolveFor($request);
+            if ($key !== null && $key->allowsIp($request->ip())) {
+                return Limit::perMinute($key->rateLimitPerMinute())->by('key:'.$key->prefix);
+            }
 
-            return Limit::perMinute((int) config('peopleos.api.rate_limit_per_minute'))->by($key !== null ? 'key:'.$key->prefix : 'ip:'.$request->ip());
+            return Limit::perMinute((int) config('peopleos.api.rate_limit_per_minute'))->by('ip:'.$request->ip());
         });
         // SaaS.2: AI questions are limited per user inside AiGateway (peopleos.ai.rate_limit_per_minute); the
         // named `ai` limiter registered here was never attached to a route and has been removed.
@@ -766,6 +777,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BgvCase::class, BgvPolicy::class);
         Gate::policy(BgvCheck::class, BgvPolicy::class);
         Gate::policy(ApiKey::class, ApiKeyPolicy::class);
+        // HROne parity SV-26: queued webhook / API call log exports (own exports only).
+        Gate::policy(IntegrationLogExport::class, IntegrationLogExportPolicy::class);
 
         foreach ([Shift::class, ShiftBreak::class, WorkSchedule::class, WorkScheduleAssignment::class, WorkScheduleRule::class, HolidayCalendar::class, Holiday::class, HolidayCalendarRule::class, AttendanceDevice::class, AttendancePunch::class] as $model) {
             Gate::policy($model, AttendanceConfigPolicy::class);

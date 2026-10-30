@@ -17,6 +17,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -47,25 +48,33 @@ class EstablishmentResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
-            Select::make('legal_entity_id')->label('Legal entity')->required()->disabledOn('edit')
-                ->options(fn () => LegalEntity::query()->orderBy('legal_name')->pluck('legal_name', 'id')->all()),
-            TextInput::make('code')->required()->maxLength(32)->disabledOn('edit'),
-            TextInput::make('name')->required()->maxLength(255),
-            Select::make('establishment_type')->options(config('peopleos.organisation.establishment_types'))->default('office')->required(),
-            Select::make('appropriate_government')->label('Appropriate government (Code on Wages, OSH Code)')->options(config('peopleos.organisation.appropriate_governments'))
-                ->helperText('Decides which rules and register forms apply. Usually the State Government for private shops, offices and factories; compliance reports ask for it rather than assume it.'),
-            Select::make('ss_appropriate_government')->label('Appropriate government (Code on Social Security)')->options(config('peopleos.organisation.appropriate_governments'))
-                ->helperText('Can differ: the Central Government where the establishment has departments or branches in more than one state (s.2(3)). Governs gratuity, maternity and employment information.'),
-            Select::make('industry')->options(config('peopleos.organisation.industries'))->searchable(),
-            Textarea::make('address')->rows(2)->columnSpanFull(),
-            TextInput::make('country')->required()->length(2)->default('IN'),
-            Select::make('state')->options(config('peopleos.compliance.states'))->searchable()->helperText('Selects the state rules: professional tax, labour welfare fund, shops and establishments.'),
-            TextInput::make('district')->maxLength(128),
-            TextInput::make('postal_code')->maxLength(16),
-            Select::make('status')->options(ActiveStatus::class)->default('active')->required(),
-            DatePicker::make('effective_from')->required()->default(now()),
-            DatePicker::make('effective_to')->afterOrEqual('effective_from'),
-            Toggle::make('is_primary')->label('Principal establishment of the legal entity'),
+            Section::make('Establishment')->columns(2)->schema([
+                Select::make('legal_entity_id')->label('Legal entity')->required()->disabledOn('edit')
+                    ->options(fn () => LegalEntity::query()->orderBy('legal_name')->pluck('legal_name', 'id')->all()),
+                TextInput::make('code')->required()->maxLength(32)->disabledOn('edit'),
+                TextInput::make('name')->required()->maxLength(255),
+                Select::make('establishment_type')->options(config('peopleos.organisation.establishment_types'))->default('office')->required(),
+            ]),
+            Section::make('Law and industry')->columns(2)->schema([
+                Select::make('appropriate_government')->label('Appropriate government (Code on Wages, OSH Code)')->options(config('peopleos.organisation.appropriate_governments'))
+                    ->helperText('Decides which rules and register forms apply. Usually the State Government for private shops, offices and factories; compliance reports ask for it rather than assume it.'),
+                Select::make('ss_appropriate_government')->label('Appropriate government (Code on Social Security)')->options(config('peopleos.organisation.appropriate_governments'))
+                    ->helperText('Can differ: the Central Government where the establishment has departments or branches in more than one state (s.2(3)). Governs gratuity, maternity and employment information.'),
+                Select::make('industry')->options(config('peopleos.organisation.industries'))->searchable(),
+            ]),
+            Section::make('Address')->columns(2)->schema([
+                Textarea::make('address')->rows(2)->columnSpanFull(),
+                TextInput::make('country')->required()->length(2)->default('IN'),
+                Select::make('state')->options(config('peopleos.compliance.states'))->searchable()->helperText('Selects the state rules: professional tax, labour welfare fund, shops and establishments.'),
+                TextInput::make('district')->maxLength(128),
+                TextInput::make('postal_code')->maxLength(16),
+            ]),
+            Section::make('Status and dates')->columns(2)->schema([
+                Select::make('status')->options(ActiveStatus::class)->default('active')->required(),
+                DatePicker::make('effective_from')->required()->default(now()),
+                DatePicker::make('effective_to')->afterOrEqual('effective_from'),
+                Toggle::make('is_primary')->label('Principal establishment of the legal entity'),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

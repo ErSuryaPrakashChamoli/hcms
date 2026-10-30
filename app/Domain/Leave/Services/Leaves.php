@@ -4,17 +4,21 @@ namespace App\Domain\Leave\Services;
 
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Attendance\Services\AttendanceProcessor;
+use App\Domain\Attendance\Support\RequestRules;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Entitlements\Enums\Capability;
 use App\Domain\Entitlements\Services\Entitlements;
+use App\Domain\Exit\Models\ExitCase;
+use App\Domain\Experience\Services\SelfServiceLock;
 use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Events\LeaveEvent;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Lifecycle\Services\Timeline;
+use App\Domain\Platform\Services\SettingsRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +53,11 @@ final class Leaves
         if ($to->lt($from)) {
             throw new RuntimeException('The end date must not be before the start date.');
         }
+        // HROne setup parity P4: the employee request lock (overdue tasks / lock period) refuses the employee's own request.
+        app(SelfServiceLock::class)->assertOpen($employee, 'leave', $requester);
+        // HROne setup parity (TO-4): the attendance policy's request lock during attendance and payroll processing.
+        app(RequestRules::class)->assertNotLocked($employee, $from, 'Leave');
+        app(RequestRules::class)->assertShiftAllows($employee, $from, $to, 'leave', 'Leave');
 
         if ($type->unit === 'hours') {
             throw new RuntimeException("{$type->name} is configured in hours; hourly leave requests are not available yet.");
@@ -90,6 +99,8 @@ final class Leaves
         }
 
         $this->assertLockedDays($employee, $dates);
+        $this->assertNotPresent($employee, $dates);
+        $this->assertTypeRules($employee, $type, $rule, $from, $to, $days, $requester ?? auth()->user());
 
         return DB::transaction(function () use ($employee, $type, $from, $to, $fromSession, $toSession, $dates, $days, $reason, $document, $requester, $rule, $idempotencyKey, $contact) {
             // Serialise concurrent requests for this employee, then re-check overlap and balance under the lock.
@@ -299,6 +310,60 @@ final class Leaves
     }
 
     /** Approved leave covering a date, with its session. */
+    /**
+     * HROne setup parity (TO-7): the leave type's request rules in the policy — how often and how much (per month, year
+     * and tenure), backdated days per role, future dates, a pending resignation, the birthday window and leave types
+     * it cannot be taken next to. Each rule applies only when the policy sets it.
+     *
+     * @param  array<string, mixed>  $rule
+     */
+    private function assertTypeRules(Employee $employee, LeaveType $type, array $rule, Carbon $from, Carbon $to, float $days, ?User $requester): void
+    {
+        $role = RequestRules::role($employee, $requester);
+        $back = $rule["{$role}_backdated_days"] ?? null;
+        $back = is_numeric($back) && $role !== 'employee' ? (int) $back : (is_numeric($rule['backdated_days'] ?? null) ? (int) $rule['backdated_days'] : null);
+        if ($back !== null && $from->lt(now()->startOfDay()->subDays($back))) {
+            throw new RuntimeException($back > 0 ? "{$type->name} can be applied at most {$back} day(s) back." : "{$type->name} cannot be applied for past days.");
+        }
+        if (($rule['future_allowed'] ?? 'yes') === 'no' && $to->gt(now()->startOfDay())) {
+            throw new RuntimeException("{$type->name} cannot be applied for future days.");
+        }
+        if (! empty($rule['not_while_resigning']) && ExitCase::query()->where('employee_id', $employee->id)->where('type', 'resignation')->whereIn('status', ['initiated', 'notice'])->exists()) {
+            throw new RuntimeException("{$type->name} cannot be applied while a resignation is pending.");
+        }
+        if (is_numeric($rule['birthday_window_before'] ?? null) || is_numeric($rule['birthday_window_after'] ?? null)) {
+            $born = $employee->person?->date_of_birth ?? throw new RuntimeException('Your date of birth is not on record.');
+            $birthday = Carbon::parse($born)->setYear($from->year)->startOfDay();
+            $windowFrom = $birthday->copy()->subDays((int) ($rule['birthday_window_before'] ?? 0));
+            $windowTo = $birthday->copy()->addDays((int) ($rule['birthday_window_after'] ?? 0));
+            if ($from->lt($windowFrom) || $to->gt($windowTo)) {
+                throw new RuntimeException("{$type->name} can be taken from {$windowFrom->format('d M')} to {$windowTo->format('d M')}.");
+            }
+        }
+        $active = fn () => LeaveRequest::query()->where('employee_id', $employee->id)->where('leave_type_id', $type->id)->whereIn('status', ['pending', 'approved', 'cancel_requested']);
+        foreach (['year' => [$from->copy()->startOfYear(), $from->copy()->endOfYear()], 'month' => [$from->copy()->startOfMonth(), $from->copy()->endOfMonth()]] as $span => [$start, $end]) {
+            $inSpan = $active()->whereDate('from_date', '>=', $start->toDateString())->whereDate('from_date', '<=', $end->toDateString());
+            if (($max = (int) ($rule["max_requests_per_{$span}"] ?? 0)) > 0 && (clone $inSpan)->count() >= $max) {
+                throw new RuntimeException("{$type->name} can be requested at most {$max} time(s) a {$span}.");
+            }
+            if (($maxDays = (float) ($rule["max_days_per_{$span}"] ?? 0)) > 0 && (float) (clone $inSpan)->sum('days') + $days > $maxDays) {
+                throw new RuntimeException("{$type->name} allows at most {$maxDays} day(s) a {$span}.");
+            }
+        }
+        if (($tenure = (int) ($rule['max_requests_in_tenure'] ?? 0)) > 0 && $active()->count() >= $tenure) {
+            throw new RuntimeException("{$type->name} can be requested at most {$tenure} time(s) in all.");
+        }
+        $codes = array_values(array_filter((array) ($rule['not_clubbed_with'] ?? [])));
+        if ($codes !== []) {
+            $next = LeaveRequest::query()->where('employee_id', $employee->id)->whereIn('status', ['pending', 'approved', 'cancel_requested'])
+                ->whereHas('leaveType', fn ($q) => $q->whereIn('code', $codes))
+                ->where(fn ($q) => $q->whereDate('to_date', $from->copy()->subDay()->toDateString())->orWhereDate('from_date', $to->copy()->addDay()->toDateString()))->first();
+            if ($next !== null) {
+                throw new RuntimeException("{$type->name} cannot be taken next to {$next->leaveType?->name}.");
+            }
+        }
+    }
+
     public function approvedOn(Employee $employee, Carbon $date): ?LeaveRequest
     {
         return LeaveRequest::query()
@@ -399,8 +464,34 @@ final class Leaves
     }
 
     /** @param  list<array{date: string}>  $dates */
+    /** HP-1b: under leave.block_on_present_day, a full day of leave cannot fall on a day attendance shows as present. */
+    private function assertNotPresent(Employee $employee, array $dates): void
+    {
+        if (! (bool) app(SettingsRepository::class)->get('leave.block_on_present_day', false)) {
+            return;
+        }
+        $full = array_column(array_filter($dates, fn (array $d) => (float) $d['days'] >= 1.0), 'date');
+        if ($full === []) {
+            return;
+        }
+        $present = AttendanceRecord::query()->where('employee_id', $employee->id)->where('status', 'present')
+            ->where(function ($q) use ($full) {
+                foreach ($full as $day) {
+                    $q->orWhereDate('date', $day);
+                }
+            })->value('date');
+        if ($present !== null) {
+            throw new RuntimeException('You were present on '.Carbon::parse($present)->format('d M Y').'; leave cannot be taken for that day.');
+        }
+    }
+
     private function assertLockedDays(Employee $employee, array $dates): void
     {
+        // HP-1: with corrections after lock allowed, the locked day stays as paid and the change becomes an attendance arrear.
+        if ((bool) app(SettingsRepository::class)->get('attendance.allow_corrections_after_lock', false)) {
+            return;
+        }
+
         $locked = AttendanceRecord::query()
             ->where('employee_id', $employee->id)->where('is_locked', true)
             ->whereIn('date', array_column($dates, 'date'))

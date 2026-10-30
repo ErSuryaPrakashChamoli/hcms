@@ -9,13 +9,16 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** Phase 7: a dated review point in an improvement plan. Reviewed checkpoints are read-only. */
-#[Fillable(['tenant_id', 'improvement_plan_id', 'title', 'due_date', 'notes', 'outcome', 'status', 'reviewed_by', 'reviewed_at'])]
+/**
+ * Phase 7: a dated review point in an improvement plan. Reviewed checkpoints are read-only. HP-8f: `kind` start / close =
+ * an item of the PIP policy's start or close checklist (with its owner); close items are reviewed after the outcome.
+ */
+#[Fillable(['tenant_id', 'improvement_plan_id', 'title', 'due_date', 'notes', 'outcome', 'status', 'reviewed_by', 'reviewed_at', 'kind', 'owner'])]
 class ImprovementPlanCheckpoint extends Model
 {
     use Auditable, BelongsToTenant;
 
-    protected $attributes = ['status' => 'pending'];
+    protected $attributes = ['status' => 'pending', 'kind' => 'checkpoint'];
 
     protected static function booted(): void
     {

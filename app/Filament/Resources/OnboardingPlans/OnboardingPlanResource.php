@@ -5,6 +5,7 @@ namespace App\Filament\Resources\OnboardingPlans;
 use App\Domain\Onboarding\Models\OnboardingPlan;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\OnboardingPlans\Pages\ListOnboardingPlans;
+use App\Filament\Support\EmployeeFilters;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Resources\Resource;
@@ -45,8 +46,9 @@ class OnboardingPlanResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('employee.employee_code')->label('ID')->searchable(),
-                TextColumn::make('employee.person.display_name')->label('Employee')->weight('medium'),
+                TextColumn::make('employee.person.display_name')->label('Employee')->weight('medium')->searchable(query: EmployeeFilters::search('employee')),
                 TextColumn::make('template.name')->label('Template')->placeholder('—'),
+                TextColumn::make('kind')->badge()->color('gray')->formatStateUsing(fn (?string $state) => config("peopleos.onboarding.plan_kinds.{$state}", $state)),
                 TextColumn::make('anchor_date')->label('Joining')->date()->sortable(),
                 TextColumn::make('progress')->suffix('%')->sortable()->color(fn (int $state) => $state === 100 ? 'success' : ($state < 50 ? 'warning' : null)),
                 TextColumn::make('open_tasks_count')->label('Open tasks'),
@@ -55,7 +57,9 @@ class OnboardingPlanResource extends Resource
                     'completed' => 'success', 'cancelled' => 'gray', default => 'info',
                 }),
             ])
-            ->filters([SelectFilter::make('status')->options(OnboardingPlan::STATUSES)->default('in_progress')])
+            ->filters([SelectFilter::make('status')->options(OnboardingPlan::STATUSES)->default('in_progress'), SelectFilter::make('kind')->options(config('peopleos.onboarding.plan_kinds')),
+                // HROne parity WO-2: the shared employee filters and the joining (anchor) date.
+                ...EmployeeFilters::forRegister('employee', 'anchor_date', 'Joining date')])
             ->defaultSort('anchor_date', 'desc')
             ->recordActions([
                 // UX.19: offered only when the Employee 360 opens for this person (its own record check).

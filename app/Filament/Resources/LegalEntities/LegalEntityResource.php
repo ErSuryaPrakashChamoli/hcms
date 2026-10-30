@@ -17,6 +17,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -47,18 +48,24 @@ class LegalEntityResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
-            Select::make('company_id')->label('Company')->required()->disabledOn('edit')
-                ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all()),
-            TextInput::make('code')->required()->maxLength(32)->disabledOn('edit')->unique(ignoreRecord: true, modifyRuleUsing: TenantUnique::rule()),
-            TextInput::make('legal_name')->required()->maxLength(255),
-            TextInput::make('trade_name')->maxLength(255),
-            Select::make('legal_form')->options(config('peopleos.organisation.legal_forms')),
-            TextInput::make('country')->required()->length(2)->default('IN')->helperText('ISO 3166-1 alpha-2'),
-            TextInput::make('incorporation_identifier')->label('Incorporation identifier (e.g. CIN / LLPIN)')->maxLength(64),
-            Select::make('status')->options(ActiveStatus::class)->default('active')->required(),
-            DatePicker::make('effective_from')->required()->default(now()),
-            DatePicker::make('effective_to')->afterOrEqual('effective_from'),
-            Toggle::make('is_primary')->label('Primary legal entity of the company'),
+            Section::make('Legal entity')->columns(2)->schema([
+                Select::make('company_id')->label('Company')->required()->disabledOn('edit')
+                    ->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all()),
+                TextInput::make('code')->required()->maxLength(32)->disabledOn('edit')->unique(ignoreRecord: true, modifyRuleUsing: TenantUnique::rule()),
+                TextInput::make('legal_name')->required()->maxLength(255),
+                TextInput::make('trade_name')->maxLength(255),
+            ]),
+            Section::make('Registration')->columns(2)->schema([
+                Select::make('legal_form')->options(config('peopleos.organisation.legal_forms')),
+                TextInput::make('country')->required()->length(2)->default('IN')->helperText('ISO 3166-1 alpha-2'),
+                TextInput::make('incorporation_identifier')->label('Incorporation identifier (e.g. CIN / LLPIN)')->maxLength(64),
+            ]),
+            Section::make('Status and dates')->columns(2)->schema([
+                Select::make('status')->options(ActiveStatus::class)->default('active')->required(),
+                DatePicker::make('effective_from')->required()->default(now()),
+                DatePicker::make('effective_to')->afterOrEqual('effective_from'),
+                Toggle::make('is_primary')->label('Primary legal entity of the company'),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

@@ -29,9 +29,28 @@ final class AttendanceDay
         public readonly bool $isLocked,
         public readonly ?string $calculationVersion,
         public readonly array $adjustments,
+        // HP-1: loss-of-pay days a late-mark penalty puts on this day (0, 0.5 or 1). A quantity, never money.
+        public readonly float $penaltyDays = 0.0,
     ) {}
 
-    public static function fromRecord(AttendanceRecord $record): self
+    /**
+     * How much of the day is paid by attendance alone (1, 0.5 or 0), the same reading payroll makes of a status:
+     * absent and full unpaid leave are unpaid, a half day is half paid unless half-day leave covers the other half.
+     */
+    /** @param  list<string>  $exceptions  an unpaid weekly off (HROne setup parity) counts nothing */
+    public static function paidQuantity(string $status, bool $halfDayLeave, array $exceptions = []): float
+    {
+        return match (true) {
+            $status === 'weekly_off' && in_array('unpaid_off', $exceptions, true) => 0.0,
+            in_array($status, ['absent', 'unpaid_leave'], true) && ! $halfDayLeave => 0.0,
+            $status === 'half_day' => $halfDayLeave ? 1.0 : 0.5,
+            in_array($status, ['leave', 'unpaid_leave', 'absent'], true) && $halfDayLeave => 0.5,
+            $status === 'not_processed' => 0.0,
+            default => 1.0,
+        };
+    }
+
+    public static function fromRecord(AttendanceRecord $record, float $penaltyDays = 0.0): self
     {
         $status = (string) $record->status;
         $paidStatuses = ['present', 'half_day', 'weekly_off', 'holiday', 'leave', 'wfh', 'on_duty', 'field_duty'];
@@ -48,12 +67,13 @@ final class AttendanceDay
             overtimeMinutes: (int) $record->overtime_minutes,
             approvedOvertimeMinutes: (int) $record->overtime_approved_minutes,
             overtimeStatus: (string) ($record->overtime_status ?? 'none'),
-            isPaidDay: in_array($status, $paidStatuses, true),
+            isPaidDay: in_array($status, $paidStatuses, true) && ! ($status === 'weekly_off' && in_array('unpaid_off', $record->exceptions ?? [], true)),
             isHalfDay: $status === 'half_day' || (bool) $record->is_half_day_leave,
             isRegularised: (bool) $record->is_regularised,
             isLocked: (bool) $record->is_locked,
             calculationVersion: $record->calculation_version,
-            adjustments: array_filter(['leave_request_id' => $record->leave_request_id, 'half_day_leave' => $record->is_half_day_leave ?: null, 'regularised' => $record->is_regularised ?: null, 'holiday' => $record->holiday_name]),
+            adjustments: array_filter(['leave_request_id' => $record->leave_request_id, 'half_day_leave' => $record->is_half_day_leave ?: null, 'regularised' => $record->is_regularised ?: null, 'holiday' => $record->holiday_name, 'penalty_days' => $penaltyDays ?: null]),
+            penaltyDays: $penaltyDays,
         );
     }
 
@@ -66,7 +86,7 @@ final class AttendanceDay
             'late_minutes' => $this->lateMinutes, 'early_minutes' => $this->earlyMinutes,
             'overtime_minutes' => $this->overtimeMinutes, 'approved_overtime_minutes' => $this->approvedOvertimeMinutes, 'overtime_status' => $this->overtimeStatus,
             'is_paid_day' => $this->isPaidDay, 'is_half_day' => $this->isHalfDay, 'is_regularised' => $this->isRegularised, 'is_locked' => $this->isLocked,
-            'calculation_version' => $this->calculationVersion, 'adjustments' => $this->adjustments,
+            'calculation_version' => $this->calculationVersion, 'adjustments' => $this->adjustments, 'penalty_days' => $this->penaltyDays,
         ];
     }
 }

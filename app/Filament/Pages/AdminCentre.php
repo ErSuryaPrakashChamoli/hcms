@@ -77,7 +77,7 @@ class AdminCentre extends Page
         'people' => ['People data and forms', 'Designations, grades, categories, document types, custom fields and forms.', 'heroicon-o-identification', ['People Setup', 'Customisation']],
         'lifecycle' => ['Joining, letters and exit', 'Onboarding templates, letter templates, exit and alumni settings.', 'heroicon-o-arrow-path', ['People', 'Exit', 'Letters', 'Alumni']],
         'time' => ['Time and leave rules', 'Leave types, holidays, shifts, schedules and attendance devices.', 'heroicon-o-calendar-days', ['Attendance', 'Leave']],
-        'pay' => ['Pay, compensation and compliance', 'Salary components and structures, pay ranges, statutory rules and returns.', 'heroicon-o-banknotes', ['Payroll', 'Compensation', 'Compliance']],
+        'pay' => ['Pay, compensation and compliance', 'Salary components and structures, pay ranges, statutory rules and returns, expense categories and forms.', 'heroicon-o-banknotes', ['Payroll', 'Compensation', 'Compliance', 'Expense & travel']],
         'growth' => ['Growth programmes', 'Performance cycles and templates, learning, skills and talent.', 'heroicon-o-arrow-trending-up', ['Performance', 'Learning', 'Talent']],
         'workflows' => ['Workflows and policies', 'Approval workflows and the policies employees acknowledge.', 'heroicon-o-arrows-right-left', ['Workflows', 'Policies']],
         'service' => ['Service and communication', 'The HR service catalogue, knowledge, grievances, announcements and surveys.', 'heroicon-o-lifebuoy', ['Service Desk', 'Knowledge', 'Grievances', 'Communication', 'Engagement']],

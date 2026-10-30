@@ -17,6 +17,8 @@ final class ExperienceTask
         public readonly ?string $reference = null,
         public readonly ?CarbonInterface $dueAt = null,
         public readonly ?string $url = null,
+        // HROne parity RQ-8: optional facts the unified inbox filters on (e.g. ticket_category_id, employee_id); never shown.
+        public readonly array $meta = [],
     ) {}
 
     public function isOverdue(): bool

@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** A tenant-defined field on a core entity (§41). */
-#[Fillable(['tenant_id', 'entity', 'key', 'label', 'type', 'options', 'help_text', 'is_required', 'visible_to_employee', 'visible_to_manager', 'visible_to_hr', 'is_searchable', 'is_reportable', 'sort_order', 'status', 'effective_from', 'effective_to', 'validation'])]
+#[Fillable(['tenant_id', 'entity', 'key', 'label', 'type', 'options', 'help_text', 'is_required', 'visible_to_employee', 'editable_by_employee', 'visible_to_manager', 'visible_to_hr', 'is_searchable', 'is_reportable', 'sort_order', 'status', 'effective_from', 'effective_to', 'validation'])]
 class CustomField extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
@@ -25,6 +25,8 @@ class CustomField extends Model
             'validation' => 'array',
             'is_required' => 'boolean',
             'visible_to_employee' => 'boolean',
+            // HROne parity MS-3: the employee may change it on My profile (section "Other details"; default false).
+            'editable_by_employee' => 'boolean',
             'visible_to_manager' => 'boolean',
             'visible_to_hr' => 'boolean',
             'is_searchable' => 'boolean',

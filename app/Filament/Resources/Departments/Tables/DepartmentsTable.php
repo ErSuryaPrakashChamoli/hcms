@@ -17,6 +17,7 @@ class DepartmentsTable
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code')->searchable()->sortable(),
                 TextColumn::make('company.name')->label('Company')->sortable()->toggleable()->placeholder('—'),
+                TextColumn::make('parentDepartment.name')->label('Parent department')->toggleable()->placeholder('—'),
                 TextColumn::make('costCentre.name')->label('Cost centre')->sortable()->toggleable()->placeholder('—'),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('effective_from')->date()->sortable()->placeholder('Open')->toggleable(),
@@ -25,6 +26,7 @@ class DepartmentsTable
             ])
             ->filters([
                 SelectFilter::make('status')->options(ActiveStatus::class),
+                SelectFilter::make('parent_department_id')->label('Parent department')->relationship('parentDepartment', 'name'),
             ])
             ->defaultSort('name')
             ->recordActions([

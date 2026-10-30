@@ -6,7 +6,10 @@ use App\Domain\Analytics\Services\WorkforceMetrics;
 use App\Domain\Attendance\Models\AttendancePunch;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Attendance\Models\AttendanceRegularisation;
+use App\Domain\Attendance\Services\CheckInGuard;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Engagement\Services\MissionStatements;
+use App\Domain\Engagement\Services\MoodCheckIns;
 use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
@@ -15,13 +18,19 @@ use App\Domain\Leave\Services\LeaveEntitlements;
 use App\Domain\Leave\Services\LeaveYear;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
+use App\Domain\People\Services\Anniversaries;
 use App\Domain\People\Services\Birthdays;
+use App\Domain\Platform\Services\SettingsRepository;
+use App\Domain\Recognition\Services\Recognitions;
+use App\Domain\Recognition\Services\SocialWall;
 use App\Filament\Pages\Approvals;
 use App\Filament\Pages\Birthdays as BirthdaysPage;
 use App\Filament\Pages\LeaveCalendar;
 use App\Filament\Pages\MyTeam;
 use App\Filament\Pages\PayrollControlRoom;
+use App\Filament\Pages\SocialWall as SocialWallPage;
 use App\Filament\Resources\Payslips\PayslipResource;
+use App\Filament\Resources\Recognitions\RecognitionResource;
 use Carbon\CarbonInterface;
 use Throwable;
 
@@ -46,13 +55,17 @@ final class HomeComposer
         'admin' => ['governance', 'decisions', 'foryou'],
     ];
 
+    /**
+     * HROne setup parity HP-9b / HP-9c: the mission card and the wall of fame show only when there is something to show.
+     * HP-9e / HP-9f: so do the social wall (while it is on) and the mood question (while the mood bot asks this person).
+     */
     public const SIDE = [
-        'employee' => ['intelligence', 'birthdays', 'circle', 'momentum', 'actions'],
-        'manager' => ['intelligence', 'team_pulse', 'birthdays', 'actions'],
-        'hr' => ['intelligence', 'birthdays', 'actions'],
-        'payroll' => ['intelligence', 'birthdays', 'actions'],
-        'executive' => ['intelligence', 'birthdays', 'actions'],
-        'admin' => ['intelligence', 'birthdays', 'actions'],
+        'employee' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'circle', 'momentum', 'actions'],
+        'manager' => ['intelligence', 'mood', 'team_pulse', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
+        'hr' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
+        'payroll' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
+        'executive' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
+        'admin' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
     ];
 
     public function __construct(
@@ -70,7 +83,9 @@ final class HomeComposer
         $primary = $this->lenses->primary($user, $lens ?? $prefs['lens'] ?? null);
         $employee = $this->lenses->employee($user);
         $work = $this->inbox->for($user);
-        $hidden = $prefs['home_hidden'] ?? [];
+        // HROne parity CA-9 (Widget access): cards the organisation switched off for everyone join the person's own hidden ones.
+        $organisation = self::organisationHidden();
+        $hidden = array_values(array_unique([...($prefs['home_hidden'] ?? []), ...$organisation, ...(in_array('changes', $organisation, true) ? ['feed'] : [])]));
         $blocks = app(HomeBlocks::class);
         $me = $employee !== null && in_array($primary, [RoleLens::EMPLOYEE, RoleLens::MANAGER], true) ? $this->me($user, $employee) : null;
         // Balances feed the employee and manager views only (the leave ring); other experiences skip the leave queries.
@@ -111,8 +126,8 @@ final class HomeComposer
             'lenses' => $lenses,
             'experience' => $experience,
             'experiences' => $this->lenses->experiences($user),
-            'main' => self::MAIN[$experience],
-            'side' => self::SIDE[$experience],
+            'main' => self::arrange(self::MAIN[$experience], $organisation),
+            'side' => self::arrange(self::SIDE[$experience], $organisation),
             'employee' => $employee,
             'focus' => $this->focus($work),
             'next' => $this->nextActions($work, $prefs['snoozed'] ?? []),
@@ -136,6 +151,105 @@ final class HomeComposer
             'feed' => $changes !== null,
             'hidden' => $hidden,
             'birthdays' => in_array('birthdays', $hidden, true) ? null : $safe(fn () => $this->birthdays($user)),
+            'mission' => $employee === null || in_array('mission', $hidden, true) ? null : $safe(fn () => $this->mission($employee)),
+            'wall_of_fame' => in_array('wall_of_fame', $hidden, true) ? null : $safe(fn () => $this->wallOfFame($user)),
+            // HROne setup parity HP-9e / HP-9f: the latest wall posts and the mood question.
+            'wall' => in_array('wall', $hidden, true) ? null : $safe(fn () => $this->wall($user)),
+            'mood' => in_array('mood', $hidden, true) ? null : $safe(fn () => app(MoodCheckIns::class)->prompt($user)),
+        ];
+    }
+
+    /**
+     * HROne parity CA-9 (Access rights → Widget access): every Home card, by key, for the setting `home.hidden_blocks` and
+     * `home.block_order` (HROne's widget names in brackets where they differ).
+     *
+     * @return array<string, string>
+     */
+    public static function blockOptions(): array
+    {
+        $labels = [
+            'personal' => 'For you: leave balance and my numbers (Leave balance)', 'decisions' => 'Decisions waiting for you (Inbox)',
+            'attention' => 'Needs attention', 'day' => 'My day (Task for today, Yesterday attendance)', 'requests' => 'My requests',
+            'changes' => 'What changed since your last visit', 'team' => 'Your team (Team leave, People on leave today)',
+            'foryou' => 'For you (compact, for managers and administrators)', 'operations' => 'People operations', 'payroll' => 'Payroll',
+            'workforce' => 'Workforce (Open position)', 'governance' => 'Governance', 'intelligence' => 'Intelligence',
+            'mood' => 'Mood question (Happiness index)', 'team_pulse' => 'Team pulse', 'birthdays' => 'Birthdays and anniversaries (Wish)',
+            'wall_of_fame' => 'Wall of fame', 'wall' => 'Social wall', 'mission' => 'Mission statement (Core values)', 'circle' => 'Your circle',
+            'momentum' => 'Momentum (Goal)', 'actions' => 'Quick actions',
+        ];
+        $keys = array_values(array_unique(array_merge(...array_values(self::MAIN), ...array_values(self::SIDE))));
+
+        return array_combine($keys, array_map(fn (string $key) => $labels[$key] ?? $key, $keys));
+    }
+
+    /**
+     * The cards switched off for everyone (`home.hidden_blocks`). Fail closed: a stored value that is not a list switches
+     * every card off; a key no card has is ignored.
+     *
+     * @return list<string>
+     */
+    public static function organisationHidden(): array
+    {
+        $keys = array_keys(self::blockOptions());
+        $value = app(SettingsRepository::class)->get('home.hidden_blocks', []);
+        if (! is_array($value)) {
+            return $keys;
+        }
+
+        return array_values(array_intersect($keys, array_map('strval', array_filter($value, 'is_scalar'))));
+    }
+
+    /**
+     * A lens's cards without the switched-off ones, those named in `home.block_order` first (in that order), the rest in
+     * the built-in order. Ordering only moves cards; it never adds one the lens does not have.
+     *
+     * @param  list<string>  $blocks
+     * @param  list<string>  $hidden
+     * @return list<string>
+     */
+    public static function arrange(array $blocks, array $hidden): array
+    {
+        $blocks = array_values(array_diff($blocks, $hidden));
+        $order = array_values(array_filter(array_map('trim', explode(',', (string) app(SettingsRepository::class)->get('home.block_order', '')))));
+        $first = array_values(array_intersect($order, $blocks));
+
+        return array_values(array_unique([...$first, ...array_diff($blocks, $first)]));
+    }
+
+    /** HROne setup parity HP-9e: the latest posts of the social wall the viewer may see (null while the wall is off). */
+    private function wall(User $user): ?array
+    {
+        $wall = app(SocialWall::class);
+        if (! $wall->canView($user)) {
+            return null;
+        }
+        $posts = $wall->feed($user, 3);
+
+        return $posts->isEmpty() ? null : ['posts' => $posts, 'url' => SocialWallPage::getUrl(), 'festive' => $wall->festiveHoliday($user)];
+    }
+
+    /** HROne setup parity HP-9b: the mission statement meant for this employee, when it is shown on Home. */
+    private function mission(Employee $employee): ?array
+    {
+        $statement = app(MissionStatements::class)->forEmployee($employee, homeOnly: true);
+
+        return $statement === null ? null : [
+            'name' => $statement->name,
+            'mission' => $statement->mission,
+            'vision' => $statement->vision,
+            'purpose' => $statement->purpose,
+            'values' => array_values(array_map(fn (array $v) => ['title' => (string) $v['title'], 'description' => $v['description'] ?? null, 'icon' => $v['icon'] ?? 'heroicon-o-star'], (array) $statement->core_values)),
+        ];
+    }
+
+    /** HROne setup parity HP-9c: the wall of fame (most public badges this month), with "Give a badge". */
+    private function wallOfFame(User $user): ?array
+    {
+        $people = app(Recognitions::class)->wallOfFame($user, 5);
+
+        return $people === [] ? null : [
+            'people' => $people,
+            'url' => RecognitionResource::canAccess() ? RecognitionResource::getUrl('index') : null,
         ];
     }
 
@@ -149,11 +263,23 @@ final class HomeComposer
         $today = $service->today();
         $people = $service->on($today, $user);
 
-        return $people->isEmpty() ? null : [
+        // HROne setup parity HP-9a: work and wedding anniversaries the organisation celebrates join the card.
+        $anniversaries = [];
+        $celebrations = app(Anniversaries::class);
+        foreach ($celebrations->enabledKinds() as $kind) {
+            $wished = $celebrations->wishedBy($kind, $user, $today->year);
+            foreach ($celebrations->on($kind, $today, $user)->take(6) as $employee) {
+                $anniversaries[] = ['employee' => $employee, 'kind' => $kind, 'wished' => in_array($employee->id, $wished, true),
+                    'label' => $kind === 'work_anniversary' ? Anniversaries::yearsLabel(Anniversaries::years($employee, $today)).' work anniversary' : 'Wedding anniversary'];
+            }
+        }
+
+        return $people->isEmpty() && $anniversaries === [] ? null : [
             'people' => $people->take(6)->values(),
             'count' => $people->count(),
             'wished' => $service->wishedBy($user, $today->year),
             'url' => BirthdaysPage::getUrl(),
+            'anniversaries' => $anniversaries,
         ];
     }
 
@@ -295,7 +421,7 @@ final class HomeComposer
     private function me(User $user, Employee $employee): array
     {
         $today = now()->toDateString();
-        $punches = AttendancePunch::query()->where('employee_id', $employee->id)->whereDate('punched_at', $today)->orderBy('punched_at')->get();
+        $punches = AttendancePunch::query()->where('employee_id', $employee->id)->where('processing_status', '!=', 'rejected')->whereDate('punched_at', $today)->orderBy('punched_at')->get();
         $record = AttendanceRecord::query()->where('employee_id', $employee->id)->whereDate('date', $today)->first();
         $last = $punches->last();
         $balances = [];
@@ -321,6 +447,7 @@ final class HomeComposer
             'first_in' => $punches->first()?->punched_at,
             'last_out' => $last?->direction === 'out' ? $last->punched_at : null,
             'can_punch' => $user->can('attendance.regularise') || $user->can('leave.apply'),
+            'needs_location' => app(CheckInGuard::class)->needsLocation($employee),
             'status' => $record ? config("peopleos.attendance.statuses.{$record->status}", $record->status) : null,
             'balances' => array_slice($balances, 0, 4),
             'payslip' => $payslip && $user->can('view', $payslip) ? ['label' => $payslip->period?->label() ?? $payslip->generated_at?->format('M Y'), 'url' => PayslipResource::getUrl('view', ['record' => $payslip])] : null,

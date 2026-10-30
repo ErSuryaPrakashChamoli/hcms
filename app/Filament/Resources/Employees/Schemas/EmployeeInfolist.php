@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\Employees\Schemas;
 
+use App\Domain\Configuration\Services\CustomFields;
 use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Experience\Services\PersonWorkspace;
+use App\Domain\Experience\Services\ProfileSectionVisibility;
 use App\Filament\Support\CustomFieldsSchema;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
@@ -41,6 +43,11 @@ class EmployeeInfolist
                         TextEntry::make('birthday')->label('Birthday')->placeholder('—')
                             ->state(fn (Employee $record) => $record->person?->birthdayLabel())
                             ->formatStateUsing(fn (string $state, Employee $record) => $state.($record->person->celebratesOtherDay() ? ' (celebrated; differs from date of birth)' : '').($record->person->birthday_shared ? '' : ' · private')),
+                        // HROne setup parity HP-9a: shown only when recorded.
+                        TextEntry::make('wedding_anniversary')->label('Wedding anniversary')
+                            ->state(fn (Employee $record) => $record->person?->weddingAnniversaryLabel())
+                            ->formatStateUsing(fn (string $state, Employee $record) => $state.($record->person->wedding_anniversary_shared ? '' : ' · private'))
+                            ->visible(fn (Employee $record) => $record->person?->weddingAnniversaryLabel() !== null),
                         TextEntry::make('source')->badge()->color('gray')->formatStateUsing(fn (?string $state) => strtoupper((string) $state)),
                         TextEntry::make('person.gender')->label('Gender')->formatStateUsing(fn (?string $state) => config("peopleos.people.genders.{$state}", $state))->placeholder('—'),
                         TextEntry::make('currentPosition.company.name')->label('Company')->placeholder('—'),
@@ -53,7 +60,10 @@ class EmployeeInfolist
                         TextEntry::make('probation_end_date')->date()->placeholder('—'),
                         TextEntry::make('confirmation_date')->date()->placeholder('Not confirmed'),
                     ]),
-                CustomFieldsSchema::infolistSection(Employee::class)->extraAttributes(['class' => 'pos-360-deep']),
+                // HROne setup parity CA-6: "Other details" follows the profile-section matrix (it can only hide the section).
+                CustomFieldsSchema::infolistSection(Employee::class)->extraAttributes(['class' => 'pos-360-deep'])
+                    ->visible(fn (Employee $record) => app(CustomFields::class)->definitionsFor(Employee::class)->isNotEmpty()
+                        && app(ProfileSectionVisibility::class)->allows(auth()->user(), $record, 'other_details')),
                 Section::make('Applicable policies')
                     ->description('Resolved today from the tenant\'s assignment rules.')
                     ->extraAttributes(['class' => 'pos-360-deep'])

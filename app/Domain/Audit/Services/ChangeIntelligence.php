@@ -3,6 +3,7 @@
 namespace App\Domain\Audit\Services;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
@@ -10,6 +11,13 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\People\Models\Person;
+use App\Domain\People\Models\PersonAddress;
+use App\Domain\People\Models\PersonEmergencyContact;
+use App\Domain\People\Models\PersonExperience;
+use App\Domain\People\Models\PersonFamilyMember;
+use App\Domain\People\Models\PersonQualification;
+use App\Domain\People\Models\PersonSkill;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -136,6 +144,47 @@ final class ChangeIntelligence
                     ->whereIn($table.'.person_id', Employee::query()->withoutGlobalScope(AccessScope::class)->select('person_id')->whereIn('id', clone $employeeIds))));
             }
         });
+    }
+
+    /**
+     * HROne parity MS-2 ("My changes"): the audited changes to the signed-in person's own profile, with earlier and new
+     * values, for their own record only and without audit.view. Only the person's employee record, person record and
+     * person satellites (addresses, family, emergency contacts, education, experience, profile skills) count; classified
+     * records (bank, statutory, pay) never do, sensitive fields are left out entirely, and technical fields (ids, keys,
+     * metadata) are skipped.
+     *
+     * @return list<array{when: ?CarbonInterface, record: string, by: string, fields: list<array{field: string, before: ?string, after: ?string}>}>
+     */
+    public function ownProfileChanges(User $viewer, Employee $employee, int $limit = 30): array
+    {
+        if ($employee->getAttribute('user_id') === null || (int) $employee->getAttribute('user_id') !== (int) $viewer->getKey()
+            || (int) $employee->getAttribute('tenant_id') !== (int) $viewer->getAttribute('tenant_id')) {
+            return [];
+        }
+        $satellites = array_values(array_filter([PersonAddress::class, PersonFamilyMember::class, PersonEmergencyContact::class, PersonQualification::class, PersonExperience::class, PersonSkill::class],
+            fn (string $class) => ! $this->classified($class)));
+        $personId = (int) $employee->getAttribute('person_id');
+        $events = AuditEvent::query()->with('fieldChanges')->whereIn('action', [AuditAction::Create->value, AuditAction::Update->value])
+            ->where(function (Builder $w) use ($employee, $personId, $satellites) {
+                $w->where(fn (Builder $x) => $x->where('entity_type', Employee::class)->where('entity_id', (string) $employee->getKey()))
+                    ->orWhere(fn (Builder $x) => $x->where('entity_type', Person::class)->where('entity_id', (string) $personId));
+                foreach ($satellites as $class) {
+                    $table = (new $class)->getTable();
+                    $w->orWhere(fn (Builder $x) => $x->where('entity_type', $class)->whereIn('entity_id', $class::query()->withoutGlobalScopes([AccessScope::class])->select($table.'.id')->where($table.'.person_id', $personId)));
+                }
+            })
+            ->orderByDesc('occurred_at')->limit($limit * 2)->get();
+        $technical = fn (string $field) => str_ends_with($field, '_id') || str_ends_with($field, '_key') || in_array($field, ['metadata', 'lock_version', 'directory_hidden'], true);
+
+        return $events->map(fn (AuditEvent $event) => [
+            'when' => $event->occurred_at,
+            'record' => (string) ($event->entity_label ?: class_basename((string) $event->entity_type)),
+            'by' => (string) ($event->actor_name ?? 'System'),
+            // HROne parity MS-3: the request that caused it (e.g. a self-service profile change "PCR-000012").
+            'reference' => $event->approval_reference,
+            'fields' => $event->fieldChanges->reject(fn ($c) => $c->is_sensitive || $technical((string) $c->field))
+                ->map(fn ($c) => ['field' => ucfirst(str_replace('_', ' ', (string) $c->field)), 'before' => $c->before, 'after' => $c->after])->values()->all(),
+        ])->filter(fn (array $row) => $row['fields'] !== [])->take($limit)->values()->all();
     }
 
     /** @return array{employee: array<class-string, string>, person: array<class-string, string>} audited models carrying employee_id / person_id */

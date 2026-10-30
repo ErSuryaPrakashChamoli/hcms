@@ -12,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -35,16 +36,20 @@ class LearningProviderResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->columns(2)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
-            Select::make('provider_type')->label('Type')->options(config('peopleos.learning.provider_types'))->default('external')->required(),
-            Select::make('status')->options(['active' => 'Active', 'inactive' => 'Inactive'])->default('active')->required(),
-            TextInput::make('website')->url()->maxLength(255),
-            TextInput::make('contact_name')->maxLength(255),
-            TextInput::make('contact_email')->email()->maxLength(255),
-            TextInput::make('contact_phone')->tel()->maxLength(32),
-            Textarea::make('address')->rows(2)->columnSpanFull(),
-            Textarea::make('description')->rows(2)->columnSpanFull(),
+            Section::make('Provider')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
+                Select::make('provider_type')->label('Type')->options(config('peopleos.learning.provider_types'))->default('external')->required(),
+                Select::make('status')->options(['active' => 'Active', 'inactive' => 'Inactive'])->default('active')->required(),
+                Textarea::make('description')->rows(2)->columnSpanFull(),
+            ]),
+            Section::make('Contact details')->columns(2)->schema([
+                TextInput::make('website')->url()->maxLength(255),
+                TextInput::make('contact_name')->maxLength(255),
+                TextInput::make('contact_email')->email()->maxLength(255),
+                TextInput::make('contact_phone')->tel()->maxLength(32),
+                Textarea::make('address')->rows(2)->columnSpanFull(),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
     }

@@ -25,6 +25,8 @@ final class PerformanceOutcomes implements PerformanceOutcomesReader
             'finalized_at' => $appraisal->finalized_at?->toIso8601String(),
             'template_version_id' => $appraisal->performance_template_version_id,
             'rating_scale_checksum' => $appraisal->templateVersion?->checksum,
+            // HP-8i: reviewers' recommendations (performance policy), offered as suggestions only.
+            'recommendations' => PerformanceRecommendations::forOutcome($appraisal),
         ];
     }
 }

@@ -141,7 +141,7 @@ it('generates, approves and issues letters as documents, and serves alumni reque
     expect(LetterTemplate::query()->count())->toBe(9);
 
     $cert = $letters->generate('employment_certificate', $this->employee, [], $this->hr);
-    expect($cert->status)->toBe('approved')->and($cert->number)->toBe('LTR-2026-00001')->and($cert->body)->toContain($this->employee->person->full_name)->toContain($this->employee->employee_code);
+    expect($cert->status)->toBe('approved')->and($cert->number)->toBe('LTR-2026-00001')->and($cert->body)->toContain(e($this->employee->person->full_name))->toContain($this->employee->employee_code);
 
     $experience = $letters->generate('experience', $this->employee, [], $this->hr);
     expect($experience->status)->toBe('pending_approval');

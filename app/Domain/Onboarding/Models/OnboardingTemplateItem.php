@@ -5,6 +5,7 @@ namespace App\Domain\Onboarding\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Configuration\Models\Form;
 use App\Domain\Documents\Models\DocumentType;
+use App\Domain\Feedback\Models\FeedbackTemplate;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\BelongsToTenant;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'onboarding_template_id', 'phase', 'type', 'title', 'description', 'owner_type', 'owner_role_id', 'owner_user_id', 'document_type_id', 'form_id', 'due_offset_days', 'is_mandatory', 'sort_order'])]
+#[Fillable(['tenant_id', 'onboarding_template_id', 'phase', 'type', 'title', 'description', 'owner_type', 'owner_role_id', 'owner_user_id', 'document_type_id', 'form_id', 'profile_section', 'feedback_template_id', 'declaration_text', 'due_offset_days', 'is_mandatory', 'sort_order'])]
 class OnboardingTemplateItem extends Model
 {
     use Auditable, BelongsToTenant;
@@ -59,5 +60,10 @@ class OnboardingTemplateItem extends Model
     public function form(): BelongsTo
     {
         return $this->belongsTo(Form::class);
+    }
+
+    public function feedbackTemplate(): BelongsTo
+    {
+        return $this->belongsTo(FeedbackTemplate::class);
     }
 }

@@ -11,6 +11,6 @@ class ManageApiKeys extends PeopleManageRecords
 
     protected function getHeaderActions(): array
     {
-        return [ApiKeyResource::issueAction()];
+        return [ApiKeyResource::apiReferenceAction(), ApiKeyResource::issueAction()];
     }
 }

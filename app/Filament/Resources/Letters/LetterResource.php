@@ -11,6 +11,7 @@ use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\Letters\Pages\ListLetters;
 use App\Filament\Resources\Letters\Pages\ViewLetter;
 use App\Filament\Resources\LetterTemplates\LetterTemplateResource;
+use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\ServiceDeskActions;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -151,7 +152,7 @@ class LetterResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('number')->searchable()->sortable(),
-                TextColumn::make('employee.person.full_name')->label('Employee')->searchable(['first_name', 'last_name']),
+                TextColumn::make('employee.person.full_name')->label('Employee')->searchable(query: EmployeeFilters::search('employee')),
                 TextColumn::make('type')->badge()->color('gray')->formatStateUsing(fn (string $state) => config("peopleos.letters.types.{$state}", $state)),
                 TextColumn::make('subject')->limit(50),
                 TextColumn::make('status')->badge()->color(fn (string $state) => self::statusColor($state))->formatStateUsing(fn (string $state) => config("peopleos.letters.statuses.{$state}", $state)),
@@ -159,7 +160,9 @@ class LetterResource extends Resource
                 TextColumn::make('issued_at')->dateTime()->placeholder('—'),
             ])
             ->defaultSort('id', 'desc')
-            ->filters([SelectFilter::make('status')->options(config('peopleos.letters.statuses')), SelectFilter::make('type')->options(config('peopleos.letters.types'))])
+            ->filters([SelectFilter::make('status')->options(config('peopleos.letters.statuses')), SelectFilter::make('type')->options(config('peopleos.letters.types')),
+                // HROne parity WO-2: the shared employee filters and the date the letter was generated.
+                ...EmployeeFilters::forRegister('employee', 'created_at', 'Generated', excludeLeavers: false)])
             ->recordActions([ViewAction::make()->label('Open')]);
     }
 

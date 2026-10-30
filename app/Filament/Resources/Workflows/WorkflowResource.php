@@ -55,6 +55,9 @@ class WorkflowResource extends Resource
                         ->helperText('Restrict to one record type. Manual workflows on employees appear on the Employee 360.'),
                     Textarea::make('description')->rows(2)->columnSpanFull(),
                     Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                    // HROne setup parity P5: the order of preference when only the first matching workflow starts.
+                    TextInput::make('priority')->numeric()->integer()->minValue(1)->maxValue(999)->default(100)->required()
+                        ->helperText('When only the first matching workflow of a trigger starts (Setup → Automation), lower numbers are tried first.'),
                 ]),
             Section::make('Start only when')
                 ->description('Optional employee-based conditions checked before an automatic start.')
@@ -76,9 +79,12 @@ class WorkflowResource extends Resource
                 IconColumn::make('draft')->label('Draft')->boolean()->state(fn (Workflow $record) => $record->draft()->exists()),
                 TextColumn::make('instances_count')->counts('instances')->label('Runs'),
                 TextColumn::make('status')->badge(),
+                TextColumn::make('priority')->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('trigger_event')->options(config('peopleos.workflows.trigger_events')),
+                // HROne setup parity P5: workflows by request type.
+                SelectFilter::make('subject_type')->label('Runs on')->options(config('peopleos.workflows.subject_types')),
                 SelectFilter::make('status')->options(ActiveStatus::class),
             ])
             ->defaultSort('name')

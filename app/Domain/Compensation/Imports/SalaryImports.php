@@ -13,6 +13,7 @@ use App\Domain\Compensation\Services\CompensationCycles;
 use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImportRow;
+use App\Domain\Employment\Imports\ImportGovernance;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Identity\Models\User;
@@ -70,10 +71,10 @@ final class SalaryImports
         return $user !== null && $user->hasPermission('compensation.cycles') && $user->hasPermission('compensation.propose');
     }
 
-    /** @return array<string, array{0: string, 1: bool}> the fixed fields plus one column per fixed-amount component (monthly) */
+    /** @return array<string, array{0: string, 1: bool}> the fixed fields plus one column per fixed-amount or input component (monthly; inputs: HROne setup parity BP-2) */
     public static function fields(): array
     {
-        $components = SalaryComponent::query()->where('calculation_method', 'fixed')->where('is_statutory', false)->where('status', 'active')
+        $components = SalaryComponent::query()->whereIn('calculation_method', ['fixed', 'input'])->where('is_statutory', false)->where('status', 'active')
             ->orderBy('sort_order')->pluck('name', 'code');
 
         return self::FIELDS + $components->mapWithKeys(fn ($name, $code) => ["component.{$code}" => ["{$name} ({$code}), monthly", false]])->all();
@@ -292,7 +293,7 @@ final class SalaryImports
     public function approve(EmployeeImport $import, User $user, ?string $reason = null): EmployeeImport
     {
         $this->assert($import, ['validated']);
-        $this->assertUploader($import, $user);
+        $this->assertApprover($import, $user);
         if ($import->create_count === 0) {
             throw new RuntimeException('Nothing to import: no row would add a line to the compensation cycle.');
         }
@@ -563,6 +564,23 @@ final class SalaryImports
         $code = 'UPLOAD-'.$import->getKey();
 
         return CompensationCycle::query()->withoutGlobalScope(AccessScope::class)->where('code', $code)->exists() ? $code.'-'.now()->format('YmdHis') : $code;
+    }
+
+    /**
+     * HROne setup parity P2: the uploader approves their own file, unless the upload type is under maker-checker or
+     * workflow approval (ImportGovernance); then another person allowed to make such uploads approves it (the upload
+     * model refuses the uploader).
+     */
+    private function assertApprover(EmployeeImport $import, User $user): void
+    {
+        if (! ImportGovernance::checkedByAnother((string) $import->type)) {
+            $this->assertUploader($import, $user);
+
+            return;
+        }
+        if (! self::allowed($user)) {
+            throw new RuntimeException('Uploading salaries needs compensation.cycles and compensation.propose.');
+        }
     }
 
     private function assertUploader(EmployeeImport $import, User $user): void

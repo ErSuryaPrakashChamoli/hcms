@@ -2480,3 +2480,53 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 .pos-state-filter .fi-select-input-option:not(.fi-disabled) > span::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-inline-end: 8px; border-radius: 50%; background: var(--pos-success); vertical-align: 1px; }
 .pos-state-filter .fi-select-input-option-group:has(.fi-select-input-option.fi-disabled) > .fi-dropdown-header { color: var(--pos-text-muted); background: var(--pos-surface-muted); }
 .pos-state-filter .fi-select-input-option.fi-disabled { color: var(--pos-text-disabled); background: var(--pos-surface-sunken); opacity: 1; }
+
+/* ------------------------------------------------------------------ J. Record forms followed as wizards (FormWizard)
+   Every record form is filled in step by step, as the policy wizard is: on record pages the numbered steps sit in a
+   rail beside the step being filled in (one section at a time, Previous / Next under it, Create or Save on Review); in
+   drawers the steps wrap above the step and the buttons stay in view. Built on Filament's wizard markup, so its
+   keyboard, focus and validation behaviour (a step with an error opens) stay as they are. */
+.pos-wizard .fi-sc-wizard-header-step-separator { display: none; }
+.pos-wizard .fi-sc-wizard-header-step-text { width: auto; max-width: none; }
+.pos-wizard .fi-sc-wizard-header-step-number { font-size: var(--pos-fs-caption); }
+.pos-wizard .fi-sc-wizard-header-step-btn:disabled { cursor: default; }
+.pos-wizard .fi-sc-wizard-header-step-btn:not(:disabled):hover .fi-sc-wizard-header-step-label { text-decoration: underline; text-underline-offset: 3px; }
+.pos-wizard .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-label { font-weight: var(--pos-fw-semibold); }
+.pos-wizard > .fi-sc-wizard-footer { padding-top: var(--pos-space-4); }
+
+@media (min-width: 1024px) {
+    .pos-wizard-page { display: grid; grid-template-columns: 15rem minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: var(--pos-space-6); align-items: start; }
+    .pos-wizard-page > .fi-sc-wizard-header { grid-column: 1; grid-row: 1 / span 2; position: sticky; top: calc(var(--pos-sticky-top, 0px) + var(--pos-space-4)); display: flex; flex-direction: column; gap: var(--pos-space-1); overflow: visible; padding: var(--pos-space-2); background: var(--pos-surface); border-radius: var(--pos-radius-lg); box-shadow: var(--pos-shadow-soft); }
+    .pos-wizard-page > .fi-sc-wizard-step { grid-column: 2; grid-row: 1; }
+    .pos-wizard-page > .fi-sc-wizard-step.fi-active { margin-top: 0; }
+    .pos-wizard-page > .fi-sc-wizard-footer { grid-column: 2; grid-row: 2; }
+    .pos-wizard-page .fi-sc-wizard-header-step { display: flex; }
+    .pos-wizard-page .fi-sc-wizard-header-step-btn { width: 100%; height: auto; gap: var(--pos-space-3); padding: var(--pos-space-2) var(--pos-space-3); border-radius: var(--pos-radius-md); }
+    .pos-wizard-page .fi-sc-wizard-header-step-icon-ctn { width: 28px; height: 28px; }
+    .pos-wizard-page .fi-sc-wizard-header-step-icon-ctn .fi-icon { width: 16px; height: 16px; }
+    .pos-wizard-page .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-btn { background: var(--pos-primary-soft); }
+}
+
+.pos-wizard-drawer > .fi-sc-wizard-header { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: var(--pos-space-1); overflow: visible; padding-bottom: var(--pos-space-3); background: none; border-radius: 0; box-shadow: inset 0 -1px 0 var(--pos-border); }
+.pos-wizard-drawer .fi-sc-wizard-header-step-btn { gap: var(--pos-space-2); padding: var(--pos-space-2); }
+.pos-wizard-drawer .fi-sc-wizard-header-step-icon-ctn { width: 24px; height: 24px; }
+.pos-wizard-drawer .fi-sc-wizard-header-step-icon-ctn .fi-icon { width: 14px; height: 14px; }
+.pos-wizard-drawer > .fi-sc-wizard-step.fi-active { margin-top: var(--pos-space-4); }
+.pos-wizard-drawer > .fi-sc-wizard-footer { position: sticky; bottom: 0; z-index: 1; padding-block: var(--pos-space-3); background: var(--pos-surface-elevated); box-shadow: 0 -1px 0 var(--pos-border); }
+
+/* Phones: every step as a numbered dot, the current one named, so the way ahead stays visible (names stay for screen readers) */
+@media (max-width: 767px) {
+    .pos-wizard > .fi-sc-wizard-header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-1); padding: var(--pos-space-2); }
+    .pos-wizard .fi-sc-wizard-header-step { display: flex; }
+    .pos-wizard .fi-sc-wizard-header-step-btn { gap: var(--pos-space-2); padding: var(--pos-space-1); }
+    .pos-wizard .fi-sc-wizard-header-step-icon-ctn { width: 28px; height: 28px; }
+    .pos-wizard .fi-sc-wizard-header-step-icon-ctn .fi-icon { width: 16px; height: 16px; }
+    .pos-wizard .fi-sc-wizard-header-step:not(.fi-active) .fi-sc-wizard-header-step-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* Review: what was filled in or changed, step by step */
+.pos-wizard-review { display: grid; gap: var(--pos-space-4); }
+.pos-wizard-review .pos-form-review-list { max-height: none; overflow: visible; }
+.pos-wizard-review-group { display: grid; gap: var(--pos-space-2); }
+.pos-wizard-review-group + .pos-wizard-review-group { padding-top: var(--pos-space-4); box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-wizard-review-heading { margin: 0; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }

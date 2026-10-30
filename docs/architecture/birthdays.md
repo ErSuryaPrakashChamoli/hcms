@@ -50,4 +50,4 @@ For: engineers changing how PeopleOS handles birthdays. Extends the person recor
 ## Not done
 
 - Employee import and the API do not carry the celebrated birthday yet (date of birth only).
-- Work anniversaries are not celebrated.
+- Work and wedding anniversaries are celebrated since HROne setup parity HP-9a (off until switched on; `Anniversaries`, see `hrone-parity.md`).

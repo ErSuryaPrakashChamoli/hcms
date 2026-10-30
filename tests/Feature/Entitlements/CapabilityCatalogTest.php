@@ -31,7 +31,7 @@ it('distinguishes modules, features and limits, and keeps features and limits in
         }
         expect($capability->type() === CapabilityType::Limit)->toBe($capability->unit() !== null);
     }
-    expect(collect(Capability::cases())->countBy(fn (Capability $c) => $c->type()->value)->all())->toBe(['module' => 19, 'feature' => 4, 'limit' => 8]);
+    expect(collect(Capability::cases())->countBy(fn (Capability $c) => $c->type()->value)->all())->toBe(['module' => 20, 'feature' => 4, 'limit' => 8]); // HROne setup parity EX-A added the Expense module
 });
 
 it('never makes security or the HCM core commercial, and marks statutory and lifecycle-critical capabilities protected', function () {

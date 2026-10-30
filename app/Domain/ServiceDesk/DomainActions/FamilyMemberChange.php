@@ -2,6 +2,7 @@
 
 namespace App\Domain\ServiceDesk\DomainActions;
 
+use App\Domain\Configuration\Services\OptionLists;
 use App\Domain\People\Actions\ChangeFamilyMemberAction;
 use App\Domain\People\Actions\ChangePersonRecordAction;
 use App\Domain\People\Models\PersonFamilyMember;
@@ -29,7 +30,7 @@ final class FamilyMemberChange extends PersonRecordChange
     {
         return [
             'name' => ['label' => 'Name', 'type' => 'text', 'required' => true],
-            'relation' => ['label' => 'Relation', 'type' => 'dropdown', 'required' => true, 'options' => config('peopleos.people.family_relations', [])],
+            'relation' => ['label' => 'Relation', 'type' => 'dropdown', 'required' => true, 'options' => app(OptionLists::class)->options('family_relations')],
             'date_of_birth' => ['label' => 'Date of birth', 'type' => 'date'],
             'gender' => ['label' => 'Gender', 'type' => 'dropdown', 'options' => config('peopleos.people.genders', [])],
             'phone' => ['label' => 'Phone', 'type' => 'text'],
@@ -41,6 +42,6 @@ final class FamilyMemberChange extends PersonRecordChange
 
     protected function recordLabel(Model $record): string
     {
-        return config('peopleos.people.family_relations.'.$record->getAttribute('relation'), 'Family member');
+        return app(OptionLists::class)->label('family_relations', $record->getAttribute('relation')) ?? 'Family member';
     }
 }

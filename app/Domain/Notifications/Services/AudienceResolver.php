@@ -8,8 +8,9 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 /**
- * Audience spec: [{type: subject|manager|initiator|role|user|assignee, role_id?, user_id?}] resolved
- * against a notification context into concrete users.
+ * Audience spec: [{type: subject|manager|initiator|role|user|assignee|named, role_id?, user_id?}] resolved
+ * against a notification context into concrete users. HROne parity RQ-2: `named` = the people an event names itself
+ * (context `named_user_ids`: the approvers a requester reminds, the colleagues they inform).
  */
 final class AudienceResolver
 {
@@ -28,6 +29,7 @@ final class AudienceResolver
                 'manager' => [Arr::get($context, 'employee.manager_user_id')],
                 'initiator' => [Arr::get($context, 'initiator.id')],
                 'assignee' => (array) Arr::get($context, 'task.assignee_user_ids', []),
+                'named' => (array) Arr::get($context, 'named_user_ids', []),
                 'user' => [$spec['user_id'] ?? null],
                 'role' => $this->roleUserIds($spec),
                 default => [],

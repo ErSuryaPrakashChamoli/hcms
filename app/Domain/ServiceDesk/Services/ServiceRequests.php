@@ -5,6 +5,7 @@ namespace App\Domain\ServiceDesk\Services;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Experience\Services\SelfServiceLock;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
@@ -21,7 +22,7 @@ use App\Domain\ServiceDesk\Models\TicketComment;
 use App\Domain\ServiceDesk\Models\TicketTransition;
 use App\Domain\Workflow\Models\Workflow;
 use App\Domain\Workflow\Services\WorkflowEngine;
-use App\Support\Numbering\NumberSequences;
+use App\Support\Numbering\NumberSeries;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -59,11 +60,13 @@ final class ServiceRequests
         private readonly CaseAssignment $assignment,
         private readonly CaseAttachments $attachments,
         private readonly SlaClock $sla,
-        private readonly NumberSequences $numbers,
+        private readonly NumberSeries $numbers,
         private readonly AuditRecorder $audit,
         private readonly WorkflowEngine $workflows,
         private readonly RequestLifecycle $lifecycle,
         private readonly AccessScopes $scopes,
+        private readonly ResolverRules $rules,
+        private readonly HelpdeskAccess $helpdesk,
     ) {}
 
     /**
@@ -79,9 +82,14 @@ final class ServiceRequests
         }
         $handler = $this->actions->find($version->domain_action);
         $this->authorise($requester, $employee, $source, $version, $handler);
+        // HROne setup parity P4: the employee request lock refuses the employee's own request (a saved draft is not a request yet).
+        if (! ($options['draft'] ?? false)) {
+            app(SelfServiceLock::class)->assertOpen($employee, 'service_desk', $requester, ServiceDeskRuleViolation::class);
+        }
         if (! $this->catalogue->eligible($version, $employee)) {
             throw new ServiceDeskRuleViolation('This service is not available for this employee.');
         }
+        $this->helpdesk->assertService($requester, $employee, $service, $source);
         $clean = $this->forms->validate($version, $employee, $data);
         $attachment = $options['attachment'] ?? null;
         if ($version->attachment_rule === 'required' && blank($attachment)) {
@@ -124,12 +132,57 @@ final class ServiceRequests
         if ($source === 'hr' && ! ($raiser->hasPermission('servicedesk.agent') && $this->scopes->allows($raiser, $employee))) {
             throw new ServiceDeskRuleViolation('That employee is outside your service desk scope.');
         }
+        if ($source === 'web' && ! $this->helpdesk->allowsCategory($employee, (int) $category->id)) {
+            throw new ServiceDeskRuleViolation('That request type is not available to you (helpdesk policy).');
+        }
+        if ($source === 'web') {
+            app(SelfServiceLock::class)->assertOpen($employee, 'service_desk', $raiser, ServiceDeskRuleViolation::class);
+        }
 
         return $this->create($employee, $raiser, [
             'ticket_category_id' => $category->id, 'source' => $source, 'subject' => Str::limit($subject, 250, ''), 'description' => $description,
             'priority' => array_key_exists($priority, config('peopleos.servicedesk.priorities')) ? $priority : 'normal', 'confidentiality' => 'standard',
             'visible_to_employee' => true,
         ], null, null, ['idempotency_key' => $idempotencyKey], $category);
+    }
+
+    /**
+     * HROne setup parity EX-F: a request raised by an approved business process for an employee — a trip's company
+     * bookings for the travel desk — in a catalogue service (its version's routing, SLA and approval apply; no form, no
+     * domain action) or a request category. The approved process is the authority, so the raiser's own permissions, the
+     * service's audiences and the helpdesk access policy do not apply. Source `system`; idempotent by key (a retry returns
+     * the request already raised).
+     */
+    public function raiseForProcess(Employee $employee, User $raiser, ServiceDefinition|TicketCategory $target, string $subject, string $description, string $idempotencyKey): Ticket
+    {
+        if ($target instanceof TicketCategory) {
+            if ($target->status->value !== 'active') {
+                throw new ServiceDeskRuleViolation('That request category is not available.');
+            }
+
+            return $this->create($employee, $raiser, [
+                'ticket_category_id' => $target->id, 'source' => 'system', 'subject' => Str::limit($subject, 250, ''), 'description' => $description,
+                'priority' => 'normal', 'confidentiality' => 'standard', 'visible_to_employee' => true,
+            ], null, null, ['idempotency_key' => $idempotencyKey], $target);
+        }
+        $version = $target->isActive() ? $this->catalogue->versionOn($target) : null;
+        if ($version === null) {
+            throw new ServiceDeskRuleViolation('This service is not available now.');
+        }
+
+        return $this->create($employee, $raiser, [
+            'ticket_category_id' => $target->ticket_category_id ?? $this->fallbackCategory()->id,
+            'service_definition_id' => $target->id,
+            'service_definition_version_id' => $version->id,
+            'source' => 'system',
+            'subject' => Str::limit($subject, 250, ''),
+            'description' => $description,
+            'form_data' => [],
+            'priority' => $version->default_priority,
+            'confidentiality' => $version->confidentiality,
+            'visible_to_employee' => $version->visible_to_employee,
+            'domain_action' => null,
+        ], $version, null, ['idempotency_key' => $idempotencyKey]);
     }
 
     /** Submit a saved draft (re-validated against the version it was drafted under). */
@@ -146,6 +199,8 @@ final class ServiceRequests
         $employee = Employee::query()->withoutGlobalScope(AccessScope::class)->findOrFail($draft->employee_id);
         $handler = $this->actions->find($version->domain_action);
         $this->authorise($requester, $employee, $draft->source, $version, $handler);
+        app(SelfServiceLock::class)->assertOpen($employee, 'service_desk', $requester, ServiceDeskRuleViolation::class);
+        $this->helpdesk->assertService($requester, $employee, $version->service, $draft->source);
         $clean = $this->forms->validate($version, $employee, (array) $draft->form_data);
 
         return DB::transaction(function () use ($draft, $requester, $expectedVersion, $version, $handler, $employee, $clean) {
@@ -156,8 +211,9 @@ final class ServiceRequests
             }
             $ticket->forceFill(['status' => 'submitted', 'submitted_at' => now(), 'form_data' => $clean, 'lock_version' => $ticket->lock_version + 1]);
             $steps = [['draft', 'submitted']];
-            $this->sla->start($ticket, $version->slaPolicy, null);
-            $this->assignment->initial($ticket, $version, $ticket->loaded('category'));
+            $rule = $this->rules->match($ticket);
+            $this->sla->start($ticket, $rule?->activeSlaPolicy() ?? $version->slaPolicy, null);
+            $this->assignment->initial($ticket, $version, $ticket->loaded('category'), $rule);
             if ($ticket->assignee_id) {
                 $ticket->status = 'assigned';
                 $steps[] = ['submitted', 'assigned'];
@@ -178,7 +234,8 @@ final class ServiceRequests
             return $existing;
         }
         $draft = (bool) ($options['draft'] ?? false);
-        $this->numbers->ensure('TKT', NumberSequences::highest(Ticket::class));
+        // HROne setup parity: ticket numbers follow the tenant's ticket code series (built-in TKT-YYYY-NNNNN).
+        $this->numbers->prepare('ticket');
 
         try {
             return DB::transaction(function () use ($employee, $requester, $attributes, $version, $handler, $options, $category, $key, $draft) {
@@ -188,7 +245,7 @@ final class ServiceRequests
                 }
                 $id = (string) Str::ulid();
                 $ticket = new Ticket($attributes + [
-                    'number' => $this->numbers->next('TKT', NumberSequences::highest(Ticket::class)),
+                    'number' => $this->numbers->next('ticket'),
                     'employee_id' => $employee->id, 'raised_by' => $requester->id, 'status' => $draft ? 'draft' : 'submitted',
                     'submitted_at' => $draft ? null : now(), 'status_changed_at' => now(), 'idempotency_key' => $key,
                     'correlation_id' => $id, 'operation_id' => (string) Str::ulid(),
@@ -201,8 +258,10 @@ final class ServiceRequests
                 }
                 $steps = [[null, $ticket->status]];
                 if (! $draft) {
-                    $this->sla->start($ticket, $version?->slaPolicy, $category);
-                    $this->assignment->initial($ticket, $version, $ticket->category);
+                    // HROne setup parity HD-B: a matching resolver rule routes the request and may bring its SLA policy.
+                    $rule = $this->rules->match($ticket);
+                    $this->sla->start($ticket, $rule?->activeSlaPolicy() ?? $version?->slaPolicy, $category);
+                    $this->assignment->initial($ticket, $version, $ticket->category, $rule);
                     if ($ticket->assignee_id) {
                         $ticket->status = 'assigned';
                         $steps[] = ['submitted', 'assigned'];
@@ -308,6 +367,10 @@ final class ServiceRequests
         }
         $recipients = $ticket->assignee_id ? [$ticket->assignee_id] : [];
         ServiceDeskEvent::dispatch('servicedesk.ticket.created', $ticket, $this->lifecycle->context($ticket), $recipients);
+        $intimate = $this->rules->intimationRecipients($ticket, [...$recipients, $requester->id]);
+        if ($intimate !== []) {
+            ServiceDeskEvent::dispatch('servicedesk.ticket.intimated', $ticket, $this->lifecycle->context($ticket), $intimate);
+        }
         if ($ticket->status === 'awaiting_approval' && $ticket->workflow_instance_id) {
             ServiceDeskEvent::dispatch('servicedesk.ticket.approval_required', $ticket, $this->lifecycle->context($ticket), []);
         }

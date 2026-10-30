@@ -28,6 +28,9 @@ use Throwable;
  */
 final class WorkInbox
 {
+    /** HROne parity RQ-1: request types "waiting on others" already lists from their own queries below. */
+    private const LISTED_REQUEST_TYPES = ['leave', 'attendance_regularisation', 'helpdesk'];
+
     /** NeedsAttention keys already represented by Approval Center items. */
     private const DUPLICATES = ['tasks', 'leave', 'regularisation'];
 
@@ -123,6 +126,12 @@ final class WorkInbox
                 ->each(fn (CompensationChange $c) => $rows->push($this->row(key: 'mine-comp:'.$c->id, kind: 'request', domain: 'Compensation',
                     title: $c->typeLabel().' · '.$c->employee?->display_name, detail: CompensationChange::STATUSES[$c->status] ?? $c->status, due: $c->effective_from,
                     url: $this->url(fn () => CompensationChangeResource::getUrl('index')), severity: 'normal')));
+        }
+        // HROne parity RQ-1: the person's other pending requests, from the request registry (types not already listed above).
+        if ($employeeId !== null) {
+            app(MyRequests::class)->pending($user, except: self::LISTED_REQUEST_TYPES)
+                ->each(fn (array $r) => $rows->push($this->row(key: 'mine-'.$r['key'], kind: 'request', domain: $r['type_label'], title: $r['title'],
+                    detail: $r['status_label'].($r['requested'] ? ' since '.$r['requested']->diffForHumans() : ''), due: $r['effective'], url: $r['url'], severity: 'normal')));
         }
 
         return $rows->values();

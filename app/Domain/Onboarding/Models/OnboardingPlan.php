@@ -12,13 +12,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['tenant_id', 'employee_id', 'onboarding_template_id', 'status', 'anchor_date', 'progress', 'started_by', 'started_at', 'completed_at'])]
+#[Fillable(['tenant_id', 'employee_id', 'onboarding_template_id', 'kind', 'status', 'anchor_date', 'progress', 'started_by', 'started_at', 'completed_at'])]
 class OnboardingPlan extends Model
 {
     use Auditable, BelongsToTenant;
     use ScopedByEmployee;
 
     public const STATUSES = ['in_progress' => 'In progress', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
+
+    protected $attributes = ['kind' => 'onboarding'];
 
     protected function casts(): array
     {

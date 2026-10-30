@@ -6,6 +6,7 @@ use App\Domain\Employment\Concerns\ChangesProfileData;
 use App\Domain\Employment\Exceptions\ProfileChangeRefused;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
+use App\Domain\Employment\Services\BankAccountRules;
 use App\Domain\Employment\Services\ProfileChangeGuard;
 use App\Domain\Employment\Support\ChangeOrigin;
 use App\Domain\Identity\Models\User;
@@ -32,6 +33,8 @@ final class ChangeBankAccountAction
     {
         $this->guard->authorize($actor, $employee, self::PERMISSION);
         $clean = $this->validated($data, $this->rules(true));
+        $this->assertBankRule($clean['account_number'] ?? null, $clean['ifsc'] ?? null, $clean['bank_name'] ?? null);
+        $this->guard->requireLinkedDocument($employee, 'bank_account');
 
         return DB::transaction(function () use ($employee, $clean, $reason, $origin) {
             $employee = $this->lockEmployee($employee);
@@ -52,6 +55,14 @@ final class ChangeBankAccountAction
         $clean = $this->validated($data, $this->rules(false));
         if (blank($clean['account_number'] ?? null)) {
             unset($clean['account_number']);
+        } elseif ((string) $clean['account_number'] !== (string) $account->account_number) {
+            $this->guard->requireLinkedDocument($employee, 'bank_account');
+        }
+        // HROne setup parity CA-5: a new number, or a number moved to another bank, follows that bank's account number rule.
+        $ifsc = array_key_exists('ifsc', $clean) ? $clean['ifsc'] : $account->ifsc;
+        $bankName = $clean['bank_name'] ?? $account->bank_name;
+        if ((isset($clean['account_number']) && (string) $clean['account_number'] !== (string) $account->account_number) || (string) $ifsc !== (string) $account->ifsc || (string) $bankName !== (string) $account->bank_name) {
+            $this->assertBankRule($clean['account_number'] ?? $account->account_number, $ifsc, $bankName);
         }
 
         return DB::transaction(function () use ($account, $employee, $clean, $reason, $origin) {
@@ -90,6 +101,14 @@ final class ChangeBankAccountAction
             'account_type' => ['nullable', 'in:savings,current,salary'],
             'is_primary' => ['nullable', 'boolean'],
         ];
+    }
+
+    /** HROne setup parity CA-5: the account number fits its bank's rule (length, characters), when the bank has one. */
+    private function assertBankRule(?string $number, ?string $ifsc, ?string $bankName): void
+    {
+        if (($problem = app(BankAccountRules::class)->problem($number, $ifsc, $bankName)) !== null) {
+            throw new ProfileChangeRefused($problem);
+        }
     }
 
     private function assertNotDuplicate(Employee $employee, string $number, ?int $except = null): void

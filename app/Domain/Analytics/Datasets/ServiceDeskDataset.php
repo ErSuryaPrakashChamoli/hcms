@@ -42,6 +42,8 @@ class ServiceDeskDataset extends Dataset
             'resolution_hours' => ['label' => 'Resolution time (hours)', 'type' => 'number', 'value' => fn ($t) => $t->resolved_at ? round($t->created_at->diffInMinutes($t->resolved_at) / 60, 1) : null],
             'breached' => ['label' => 'SLA breached (1/0)', 'type' => 'number', 'value' => fn ($t) => $t->escalated_at || ($t->resolved_at && $t->due_at && $t->resolved_at->gt($t->due_at)) ? 1 : 0],
             'satisfaction' => ['label' => 'Satisfaction (1–5)', 'type' => 'number', 'value' => fn ($t) => $t->satisfaction],
+            // HROne setup parity HD-A: the coded root cause (the free-text analysis stays on the case).
+            'root_cause' => ['label' => 'Root cause', 'type' => 'string', 'value' => fn ($t) => $t->root_cause_code ? (string) config("peopleos.servicedesk.root_causes.{$t->root_cause_code}", $t->root_cause_code) : null],
             'count' => ['label' => 'Tickets (1 per row)', 'type' => 'number', 'value' => fn ($t) => 1],
         ];
     }

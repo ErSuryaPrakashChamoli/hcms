@@ -3,6 +3,7 @@
 namespace App\Domain\Lifecycle\Services;
 
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Documents\Services\DocumentRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Entitlements\Enums\Capability;
 use App\Domain\Entitlements\Services\BillableUnits;
@@ -55,6 +56,11 @@ final class LifecycleEngine
 
         if (! $from->canTransitionTo($to)) {
             throw InvalidLifecycleTransitionException::between($from, $to);
+        }
+        // HROne setup parity CA-4: a joiner (pre-employee, pre-boarding, onboarding) cannot join while a document mandatory
+        // for onboarding is missing, when the organisation asks for it (documents.block_joining_without_mandatory).
+        if (in_array($from, [LifecycleState::PreEmployee, LifecycleState::Preboarding, LifecycleState::Onboarding], true) && $to->isEmployed()) {
+            app(DocumentRules::class)->assertCanJoin($employee);
         }
         // SaaS.3: shadow observation of the active-employee limit whenever someone becomes employed. The count runs
         // only for a tenant with a finite limit configured, and nothing here can refuse the transition.

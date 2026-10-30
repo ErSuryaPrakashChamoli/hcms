@@ -6,6 +6,7 @@ use App\Domain\Configuration\Models\Form;
 use App\Domain\Configuration\Models\FormSubmission;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
+use App\Domain\Feedback\Models\FeedbackTemplate;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\BelongsToTenant;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'onboarding_plan_id', 'onboarding_template_item_id', 'phase', 'type', 'title', 'description', 'owner_user_id', 'owner_role_id', 'document_type_id', 'form_id', 'employee_document_id', 'form_submission_id', 'due_on', 'is_mandatory', 'status', 'note', 'completed_by', 'completed_at', 'sort_order'])]
+#[Fillable(['tenant_id', 'onboarding_plan_id', 'onboarding_template_item_id', 'phase', 'type', 'title', 'description', 'owner_user_id', 'owner_role_id', 'document_type_id', 'form_id', 'profile_section', 'feedback_template_id', 'declaration_text', 'declared_at', 'declared_ip', 'employee_document_id', 'form_submission_id', 'due_on', 'is_mandatory', 'status', 'note', 'completed_by', 'completed_at', 'sort_order'])]
 class OnboardingTask extends Model
 {
     use BelongsToTenant;
@@ -28,6 +29,7 @@ class OnboardingTask extends Model
             'due_on' => 'date',
             'is_mandatory' => 'boolean',
             'completed_at' => 'datetime',
+            'declared_at' => 'datetime',
             'sort_order' => 'integer',
         ];
     }
@@ -55,6 +57,11 @@ class OnboardingTask extends Model
     public function form(): BelongsTo
     {
         return $this->belongsTo(Form::class);
+    }
+
+    public function feedbackTemplate(): BelongsTo
+    {
+        return $this->belongsTo(FeedbackTemplate::class);
     }
 
     public function document(): BelongsTo

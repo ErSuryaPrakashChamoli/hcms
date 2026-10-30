@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Employment\Actions\CreatePreEmployeeAction;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Exit\Models\ExitCase;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,6 +56,14 @@ class PreEmployeeController extends Controller
         return response()->json(['data' => $this->present($employee)]);
     }
 
+    /** @return array{rehire_eligible: ?bool, rehire_block_reason: ?string} */
+    private function rehire(Employee $employee): array
+    {
+        $exit = ExitCase::query()->with('rehireBlockReason')->where('employee_id', $employee->id)->whereNotIn('status', ['withdrawn', 'cancelled'])->latest('id')->first();
+
+        return ['rehire_eligible' => $exit === null ? null : (bool) $exit->is_rehire_eligible, 'rehire_block_reason' => $exit?->rehireBlockReason?->name];
+    }
+
     /** @return array<string, mixed> */
     private function present(Employee $employee): array
     {
@@ -69,6 +78,9 @@ class PreEmployeeController extends Controller
             'expected_joining_date' => $employee->expected_joining_date?->toDateString(),
             'joining_date' => $employee->joining_date?->toDateString(),
             'onboarding_progress' => $employee->onboardingPlan?->progress,
+            // HROne setup parity CA-3: whether a returning person may be re-hired, from their latest exit (null = never exited),
+            // and the organisation's blacklist reason when not, so the recruitment system can stop a rehire.
+            ...$this->rehire($employee),
         ];
     }
 }

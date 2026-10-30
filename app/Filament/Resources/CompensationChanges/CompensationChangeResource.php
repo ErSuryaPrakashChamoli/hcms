@@ -6,6 +6,8 @@ use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Employment\Models\Employee;
 use App\Filament\Resources\CompensationChanges\Pages\ManageCompensationChanges;
 use App\Filament\Support\CompensationActions;
+use App\Filament\Support\EmployeeFilters;
+use App\Filament\Support\PayrollRegisters;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -58,7 +60,7 @@ class CompensationChangeResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('employee.employee_code')->label('Employee')->description(fn (CompensationChange $record) => $record->employee?->person?->full_name)->searchable(),
+                TextColumn::make('employee.employee_code')->label('Employee')->description(fn (CompensationChange $record) => $record->employee?->person?->full_name)->searchable(query: EmployeeFilters::search('employee')),
                 TextColumn::make('status')->badge()->formatStateUsing(fn (string $state) => CompensationChange::STATUSES[$state] ?? $state)
                     ->color(fn (string $state) => match ($state) {
                         'effective' => 'success', 'scheduled', 'approved' => 'info', 'rejected', 'cancelled' => 'danger', default => 'warning'
@@ -76,6 +78,9 @@ class CompensationChangeResource extends Resource
             ->filters([
                 SelectFilter::make('status')->options(CompensationChange::STATUSES),
                 SelectFilter::make('change_type')->label('Type')->options(config('peopleos.compensation.change_types')),
+                // HROne parity PO-1: HROne's "Salary Revision (On) month" and the WO-2 employee filters.
+                PayrollRegisters::revisionMonth(),
+                ...PayrollRegisters::filters('compensation.view'),
             ])
             ->defaultSort('id', 'desc')
             ->recordActions([CompensationActions::changeSteps()])

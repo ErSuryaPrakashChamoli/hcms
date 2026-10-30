@@ -63,6 +63,28 @@ final class LeaveEligibility
             }
         }
 
+        // HROne setup parity (TO-7): ESI membership, age range and marital status.
+        $esi = (string) ($rule['esi_applicability'] ?? 'any');
+        if ($esi !== 'any') {
+            $member = (bool) ($employee->statutoryDetail?->esic_applicable ?? false);
+            if (($esi === 'esi') !== $member) {
+                return Eligibility::no("{$type->name} is only for ".($esi === 'esi' ? 'ESI members' : 'employees outside ESI').'.', $rule);
+            }
+        }
+        $born = $employee->person?->date_of_birth;
+        foreach (['min_age' => 'at least', 'max_age' => 'at most'] as $key => $words) {
+            $limit = (int) ($rule[$key] ?? 0);
+            if ($limit > 0) {
+                $age = $born ? Carbon::parse($born)->diffInYears($on) : null;
+                if ($age === null || ($key === 'min_age' ? $age < $limit : $age > $limit)) {
+                    return Eligibility::no("{$type->name} is for employees {$words} {$limit} years old.", $rule);
+                }
+            }
+        }
+        if (($rule['marital_status'] ?? 'any') === 'married' && $employee->person?->marital_status !== 'married') {
+            return Eligibility::no("{$type->name} is for married employees.", $rule);
+        }
+
         return Eligibility::yes($rule);
     }
 }

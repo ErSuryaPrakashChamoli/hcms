@@ -31,6 +31,61 @@
                             @empty
                                 <div class="text-sm text-gray-500">Nothing needs attention.</div>
                             @endforelse
+                        @elseif ($w['type'] === 'payroll')
+                            {{-- HROne parity CA-10: the last finalized payroll month (aggregates only). --}}
+                            @if ($w['payroll'] === null)
+                                <div class="text-sm text-gray-500">No finalized payroll yet.</div>
+                            @elseif ($w['payroll']['suppressed'])
+                                <div class="text-sm text-gray-500">{{ $w['payroll']['period'] }}: suppressed (fewer than {{ $w['payroll']['min_group'] }} people paid in this view).</div>
+                            @else
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    @foreach (['net_pay' => 'Net paid', 'total_deductions' => 'Deductions', 'gross' => 'Gross', 'employer_cost' => 'Employer cost (effective)'] as $key => $label)
+                                        <div><div class="text-xs text-gray-500">{{ $label }}</div><div class="text-xl font-semibold tabular-nums">{{ \App\Filament\Pages\DashboardViewer::formatValue($w['payroll'][$key], 'currency') }}</div></div>
+                                    @endforeach
+                                </div>
+                                <div class="text-xs text-gray-500 mt-2">{{ $w['payroll']['period'] }} · {{ $w['payroll']['employees'] }} people paid{{ $w['payroll']['as_of'] ? ' · as of '.$w['payroll']['as_of'] : '' }}</div>
+                            @endif
+                        @elseif ($w['type'] === 'nine_box')
+                            {{-- HROne parity CA-10: counts per box, never names; small boxes suppressed. --}}
+                            @if ($w['nine_box'] === null)
+                                <div class="text-sm text-gray-500">No performance cycle yet.</div>
+                            @elseif ($w['nine_box']['suppressed'])
+                                <div class="text-sm text-gray-500">{{ $w['nine_box']['cycle'] }}: suppressed (fewer than {{ $w['nine_box']['min_group'] }} placed).</div>
+                            @else
+                                <div class="grid grid-cols-3 gap-1">
+                                    @foreach (['high', 'moderate', 'low'] as $potential)
+                                        @foreach (['low', 'moderate', 'high'] as $performance)
+                                            @php($box = $w['nine_box']['boxes'][$potential.'_'.$performance] ?? null)
+                                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-center">
+                                                <div class="text-xs text-gray-500">{{ $box['label'] ?? '' }}</div>
+                                                <div class="text-lg font-semibold tabular-nums">{{ ($box['count'] ?? null) === null ? '<'.$w['nine_box']['min_group'] : $box['count'] }}</div>
+                                            </div>
+                                        @endforeach
+                                    @endforeach
+                                </div>
+                                <div class="text-xs text-gray-500 mt-2">{{ $w['nine_box']['cycle'] }} · {{ $w['nine_box']['placed'] }} placed · rows: potential high → low; columns: performance low → high</div>
+                            @endif
+                        @elseif ($w['type'] === 'survey')
+                            {{-- HROne parity CA-10: the latest released results the viewer may read, under the survey's own suppression. --}}
+                            @if ($w['survey'] === null)
+                                <div class="text-sm text-gray-500">No released survey results you may see in this view.</div>
+                            @else
+                                <div class="text-sm font-medium">{{ $w['survey']['name'] }} (version {{ $w['survey']['version'] }}, closed {{ $w['survey']['closed_on'] }})</div>
+                                @if ($w['survey']['suppressed'])
+                                    <div class="text-sm text-gray-500">{{ $w['survey']['message'] ?? 'Suppressed to protect respondents.' }}</div>
+                                @else
+                                    <div class="text-xs text-gray-500 mb-2">{{ $w['survey']['respondents'] }} responses{{ $w['survey']['response_rate'] !== null ? ' · '.$w['survey']['response_rate'].'% response rate' : '' }}</div>
+                                    <table class="w-full text-sm">
+                                        <tbody>
+                                            @forelse ($w['survey']['questions'] as $question)
+                                                <tr class="border-t border-gray-100 dark:border-gray-800"><td class="py-1 pr-2">{{ $question['prompt'] }}</td><td class="py-1 pr-2 text-right tabular-nums">{{ $question['average'] }}</td></tr>
+                                            @empty
+                                                <tr><td class="py-2 text-gray-500">No rated questions.</td></tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                @endif
+                            @endif
                         @else
                             @php($r = $w['result'])
                             @if ($w['type'] === 'chart' && ! empty($r->chart['labels']))

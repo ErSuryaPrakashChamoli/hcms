@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Payslips;
 use App\Domain\Payroll\Models\Payslip;
 use App\Filament\Resources\Payslips\Pages\ListPayslips;
 use App\Filament\Resources\Payslips\Pages\ViewPayslip;
+use App\Filament\Support\PayrollRegisters;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -97,6 +98,8 @@ class PayslipResource extends Resource
                 TextColumn::make('snapshot.totals.net')->label('Net pay')->numeric(2),
                 TextColumn::make('generated_at')->dateTime()->sortable(),
             ])
+            // HROne parity PO-1: the WO-2 employee filters, for payroll only (an employee's own payslips look as before).
+            ->filters(PayrollRegisters::filters('payroll.view'))
             ->defaultSort('generated_at', 'desc')
             ->recordActions([ViewAction::make()]);
     }

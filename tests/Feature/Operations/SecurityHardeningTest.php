@@ -24,7 +24,7 @@ it('sends the security headers on panel, API and health responses, and HSTS only
             ->assertHeader('Content-Security-Policy', "frame-ancestors 'self'")
             ->assertHeader('X-Content-Type-Options', 'nosniff')
             ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-            ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+            ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)')
             ->assertHeaderMissing('Strict-Transport-Security');
     }
 

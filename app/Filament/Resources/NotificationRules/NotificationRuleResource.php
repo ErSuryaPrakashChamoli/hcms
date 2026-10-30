@@ -16,6 +16,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -40,21 +41,27 @@ class NotificationRuleResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('name')->required()->maxLength(255),
-            Select::make('event')->options(array_combine(config('peopleos.notifications.events'), config('peopleos.notifications.events')))->required()->searchable(),
-            Select::make('notification_template_id')->label('Template')->relationship('template', 'name')->required()->preload()->searchable(),
-            Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
-            Repeater::make('audience')->schema([
-                Select::make('type')->options(config('peopleos.notifications.audience_types'))->required()->live(),
-                Select::make('role_id')->options(fn () => Role::query()->orderBy('name')->pluck('name', 'id')->all())->visible(fn (Get $get) => $get('type') === 'role')->required(fn (Get $get) => $get('type') === 'role'),
-                Select::make('user_id')->options(fn () => User::query()->forCurrentTenant()->orderBy('name')->pluck('name', 'id')->all())->searchable()->visible(fn (Get $get) => $get('type') === 'user')->required(fn (Get $get) => $get('type') === 'user'),
-            ])->columns(3)->minItems(1)->columnSpanFull(),
-            CheckboxList::make('channels')->options(collect(config('peopleos.notifications.channels'))->map(fn ($c) => $c['label'])->all())->default(['in_app'])->columns(5)->required()->columnSpanFull(),
-            Repeater::make('conditions')->label('Only when')->schema([
-                TextInput::make('field')->required()->placeholder('employee.department, lifecycle.to, change.risk'),
-                Select::make('operator')->options(config('peopleos.rules.operators'))->required()->default('equals'),
-                TextInput::make('value'),
-            ])->columns(3)->defaultItems(0)->columnSpanFull(),
+            Section::make('Rule')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                Select::make('event')->options(array_combine(config('peopleos.notifications.events'), config('peopleos.notifications.events')))->required()->searchable(),
+                Select::make('notification_template_id')->label('Template')->relationship('template', 'name')->required()->preload()->searchable(),
+                Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+            ]),
+            Section::make('Who is told, and how')->columns(2)->schema([
+                Repeater::make('audience')->schema([
+                    Select::make('type')->options(config('peopleos.notifications.audience_types'))->required()->live(),
+                    Select::make('role_id')->options(fn () => Role::query()->orderBy('name')->pluck('name', 'id')->all())->visible(fn (Get $get) => $get('type') === 'role')->required(fn (Get $get) => $get('type') === 'role'),
+                    Select::make('user_id')->options(fn () => User::query()->forCurrentTenant()->orderBy('name')->pluck('name', 'id')->all())->searchable()->visible(fn (Get $get) => $get('type') === 'user')->required(fn (Get $get) => $get('type') === 'user'),
+                ])->columns(3)->minItems(1)->columnSpanFull(),
+                CheckboxList::make('channels')->options(collect(config('peopleos.notifications.channels'))->map(fn ($c) => $c['label'])->all())->default(['in_app'])->columns(5)->required()->columnSpanFull(),
+            ]),
+            Section::make('Conditions')->description('Leave empty to notify on every such event.')->columns(2)->schema([
+                Repeater::make('conditions')->label('Only when')->schema([
+                    TextInput::make('field')->required()->placeholder('employee.department, lifecycle.to, change.risk'),
+                    Select::make('operator')->options(config('peopleos.rules.operators'))->required()->default('equals'),
+                    TextInput::make('value'),
+                ])->columns(3)->defaultItems(0)->columnSpanFull(),
+            ]),
             AuditReasonField::make()->visibleOn('edit'),
         ])->columns(2);
     }

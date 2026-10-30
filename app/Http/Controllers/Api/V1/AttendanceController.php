@@ -4,16 +4,21 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Attendance\Models\AttendanceRegularisation;
+use App\Domain\Attendance\Models\LocationPing;
 use App\Domain\Attendance\Models\Shift;
 use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Attendance\Services\PunchIngestion;
 use App\Domain\Attendance\Services\Regularisations;
 use App\Domain\Attendance\Support\AttendanceDay;
+use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use RuntimeException;
 
@@ -71,12 +76,21 @@ class AttendanceController extends Controller
             'external_id' => ['nullable', 'string', 'max:128'],
             'latitude' => ['nullable', 'numeric'], 'longitude' => ['nullable', 'numeric'],
             'correlation_id' => ['nullable', 'string', 'max:64'],
+            'device_identifier' => ['nullable', 'string', 'max:128'], 'device_platform' => ['nullable', 'string', 'max:32'],
+            // HROne setup parity (check-in policy): photos, app-side face verification and the WiFi network.
+            'photos' => ['nullable', 'array', 'max:5'], 'photos.*' => ['file', 'mimes:jpg,jpeg,png', 'max:4096'],
+            'photos_base64' => ['nullable', 'array', 'max:5'], 'photos_base64.*' => ['string', 'max:6000000'],
+            'face_verified' => ['nullable', 'boolean'],
+            'wifi_ssid' => ['nullable', 'string', 'max:64'], 'wifi_bssid' => ['nullable', 'string', 'max:32'],
         ]);
 
         $employee = Employee::query()->where('employee_code', $data['employee_code'])->first();
+        $photos = $employee ? $this->storePhotos($request, $employee) : [];
         $punch = $ingestion->record($employee, $data['punched_at'], $data['direction'] ?? 'auto', 'api', null, $data['external_id'] ?? null, [
             'source_timezone' => $data['timezone'] ?? null, 'source_type' => $data['source_type'] ?? 'api', 'employee_code' => $data['employee_code'],
             'latitude' => $data['latitude'] ?? null, 'longitude' => $data['longitude'] ?? null, 'correlation_id' => $data['correlation_id'] ?? null,
+            'device_identifier' => $data['device_identifier'] ?? null, 'device_platform' => $data['device_platform'] ?? null,
+            'photos' => $photos, 'face_verified' => $data['face_verified'] ?? null, 'wifi_ssid' => $data['wifi_ssid'] ?? null, 'wifi_bssid' => $data['wifi_bssid'] ?? null,
             'payload' => ['employee_code' => $data['employee_code'], 'external_id' => $data['external_id'] ?? null, 'key' => $request->attributes->get('api_key')?->name],
         ]);
 
@@ -86,7 +100,59 @@ class AttendanceController extends Controller
 
         $punch->refresh();
 
-        return response()->json(['data' => ['id' => $punch->id, 'status' => $punch->processing_status, 'punched_at' => $punch->punched_at->toIso8601String(), 'error' => $punch->processing_error]], $punch->processing_status === 'failed' ? 202 : 201);
+        return response()->json(['data' => ['id' => $punch->id, 'status' => $punch->processing_status, 'punched_at' => $punch->punched_at->toIso8601String(), 'error' => $punch->processing_error, 'geo_status' => $punch->geo_status]], match ($punch->processing_status) {
+            'failed' => 202, 'rejected' => 422, default => 201,
+        });
+    }
+
+    /**
+     * POST attendance/locations — location pings from the mobile app during the working day, accepted only for
+     * employees whose check-in policy turns continuous location tracking on.
+     */
+    public function locations(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'employee_code' => ['required', 'string', 'max:32'],
+            'device_identifier' => ['nullable', 'string', 'max:128'],
+            'pings' => ['required', 'array', 'min:1', 'max:500'],
+            'pings.*.recorded_at' => ['required', 'date'],
+            'pings.*.latitude' => ['required', 'numeric', 'between:-90,90'], 'pings.*.longitude' => ['required', 'numeric', 'between:-180,180'],
+            'pings.*.accuracy_m' => ['nullable', 'integer', 'min:0', 'max:100000'],
+        ]);
+        $employee = Employee::query()->where('employee_code', $data['employee_code'])->firstOrFail();
+        $policy = app(PolicyResolver::class)->resolve('checkin', $employee, now());
+        if (! in_array($policy?->setting('continuous_tracking'), [true, 1, '1'], true)) {
+            return response()->json(['message' => 'Continuous location tracking is off for this employee.'], 422);
+        }
+        foreach ($data['pings'] as $ping) {
+            LocationPing::create(['employee_id' => $employee->id, 'recorded_at' => Carbon::parse($ping['recorded_at'])->setTimezone(config('app.timezone')), 'latitude' => $ping['latitude'], 'longitude' => $ping['longitude'],
+                'accuracy_m' => $ping['accuracy_m'] ?? null, 'device_identifier' => $data['device_identifier'] ?? null]);
+        }
+
+        return response()->json(['data' => ['stored' => count($data['pings'])]], 201);
+    }
+
+    /** Photos sent with a punch (files or base64 data), stored privately; the paths go on the punch. @return list<string> */
+    private function storePhotos(Request $request, Employee $employee): array
+    {
+        $disk = Storage::disk(config('peopleos.documents.disk', 'local'));
+        $directory = 'attendance-photos/'.$employee->id.'/'.now()->format('Y-m');
+        $paths = [];
+        foreach ((array) $request->file('photos', []) as $file) {
+            $paths[] = $file->store($directory, ['disk' => config('peopleos.documents.disk', 'local'), 'visibility' => 'private']);
+        }
+        foreach ((array) $request->input('photos_base64', []) as $encoded) {
+            $binary = base64_decode((string) preg_replace('#^data:image/[a-z]+;base64,#i', '', (string) $encoded), true);
+            $type = $binary !== false ? (new \finfo(FILEINFO_MIME_TYPE))->buffer($binary) : null;
+            if (! in_array($type, ['image/jpeg', 'image/png'], true)) {
+                continue; // not an image: ignored, so the policy's photo count is not met
+            }
+            $path = $directory.'/'.Str::uuid().($type === 'image/png' ? '.png' : '.jpg');
+            $disk->put($path, $binary, 'private');
+            $paths[] = $path;
+        }
+
+        return $paths;
     }
 
     /** GET attendance/regularisations */

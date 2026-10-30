@@ -49,7 +49,13 @@ final class ExperienceNavigation
      */
     public const MODULE_SECTION = [
         'TaskInbox' => 'work', 'TeamRequests' => 'work', 'Approvals' => 'work', 'MyWork' => 'work',
+        // HROne parity RQ-1: the request tracker and launcher sit with the inbox (HROne's rail "Request").
+        'MyRequests' => 'work', 'NewRequest' => 'work',
+        // HROne parity RQ-8: the unified inbox sits with Approvals and the task inbox it reads from.
+        'Inbox' => 'work',
         'MyTeam' => 'people', 'TeamCareer' => 'people', 'TeamLearning' => 'people', 'TeamWorkforce' => 'people', 'People' => 'people',
+        // HROne parity CA-9: the team / HR event calendar sits with the team pages.
+        'TeamCalendar' => 'people',
         'OrganisationMap' => 'organisation',
         'AnnouncementsFeed' => 'communication',
         'MyHr' => 'services',
@@ -61,6 +67,17 @@ final class ExperienceNavigation
     /** Modules that form their own area in a section's context rail (class basename → area label). */
     public const MODULE_AREA = [
         'People' => 'Directory', 'MyTeam' => 'My team', 'TeamCareer' => 'My team', 'TeamLearning' => 'My team', 'TeamWorkforce' => 'My team',
+        'TeamCalendar' => 'My team',
+        // HROne parity WO-1: the workforce registers in journey order (HR operators only).
+        'WorkforceDesk' => 'Workforce desk',
+        // HROne parity TX-1: the time-office and leave registers in HROne's order (time-office operators only).
+        'TimeOfficeDesk' => 'Time office desk',
+        // HROne parity GO-1: the performance and engage registers in HROne's panel order (performance / engagement operators only).
+        'PerformanceDesk' => 'Performance desk', 'EngageDesk' => 'Engage desk',
+        // HROne parity XO-1: the expense and asset registers in HROne's panel order (expense / asset operators only).
+        'ExpenseDesk' => 'Expense desk', 'AssetDesk' => 'Asset desk',
+        // HROne parity PO-1: the payroll registers in HROne's panel order (payroll operators only).
+        'PayrollDesk' => 'Payroll desk',
         'OrganisationMap' => 'Org map', 'AnnouncementsFeed' => 'Announcements', 'MyHr' => 'My HR', 'AdminCentre' => 'All modules',
     ];
 
@@ -294,7 +311,7 @@ final class ExperienceNavigation
             return [];
         }
         if ($section === 'work') {
-            $order = ['MyWork' => 0, 'Approvals' => 1, 'TaskInbox' => 2, 'TeamRequests' => 3];
+            $order = ['MyWork' => 0, 'Inbox' => 1, 'Approvals' => 2, 'TaskInbox' => 3, 'TeamRequests' => 4, 'MyRequests' => 5, 'NewRequest' => 6];
             usort($modules, fn ($a, $b) => ($order[class_basename($a['key'])] ?? 9) <=> ($order[class_basename($b['key'])] ?? 9));
 
             return array_map(fn (array $m) => ['label' => class_basename($m['key']) === 'MyWork' ? 'Inbox' : $m['label'], 'url' => $m['url'],

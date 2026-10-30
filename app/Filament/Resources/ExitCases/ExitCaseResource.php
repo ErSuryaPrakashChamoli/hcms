@@ -5,12 +5,15 @@ namespace App\Filament\Resources\ExitCases;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Policies\ExitCasePolicy;
+use App\Domain\Feedback\Services\FeedbackRequests;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\ExitCases\Pages\ListExitCases;
 use App\Filament\Resources\ExitCases\Pages\ViewExitCase;
 use App\Filament\Resources\ExitCases\RelationManagers\ClearancesRelationManager;
 use App\Filament\Resources\ExitCases\RelationManagers\LettersRelationManager;
 use App\Filament\Resources\ExitCases\RelationManagers\SettlementRelationManager;
+use App\Filament\Support\BulkRecordActions;
+use App\Filament\Support\EmployeeFilters;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\TextEntry;
@@ -82,11 +85,16 @@ class ExitCaseResource extends Resource
                 TextEntry::make('notice_days')->suffix(' days'),
                 TextEntry::make('manager.person.full_name')->label('Manager')->placeholder('—'),
                 TextEntry::make('knowledgeTransferTo.person.full_name')->label('Knowledge transfer to')->placeholder('—'),
-                TextEntry::make('is_rehire_eligible')->label('Rehire')->formatStateUsing(fn ($state) => $state ? 'Eligible' : 'Not eligible'),
+                TextEntry::make('is_rehire_eligible')->label('Rehire')->formatStateUsing(fn ($state, ExitCase $record) => $state ? 'Eligible' : 'Not eligible'.($record->rehireBlockReason ? ' — '.$record->rehireBlockReason->name : '')),
+                TextEntry::make('separationReason.name')->label('Separation reason')->placeholder('—')
+                    ->formatStateUsing(fn ($state, ExitCase $record) => $state.($record->separationReason?->separation_kind ? ' ('.config('peopleos.people.separation_kinds.'.$record->separationReason->separation_kind).')' : '')),
                 TextEntry::make('clearance')->label('Clearance')->state(fn (ExitCase $record) => $record->clearances->where('status', 'cleared')->count().' / '.$record->clearances->count().' cleared'.($record->clearances->where('status', 'blocked')->count() ? ' · '.$record->clearances->where('status', 'blocked')->count().' blocked' : '')),
                 TextEntry::make('settlement.status')->label('Settlement')->badge()->color('gray')->placeholder('Not started')->formatStateUsing(fn (?string $state) => config("peopleos.exit.settlement_statuses.{$state}", $state)),
                 TextEntry::make('settlement.net_amount')->label('Net F&F')->numeric(2)->placeholder('—')->visible(fn () => auth()->user()->can('exit.settle') || auth()->user()->can('exit.view')),
                 TextEntry::make('interview.status')->label('Exit interview')->badge()->color('gray')->placeholder('Not done'),
+                // HROne setup parity P13: exit interviews on feedback templates (statuses; answers are read on Feedback).
+                TextEntry::make('feedback')->label('Exit interviews (feedback)')->state(fn (ExitCase $record) => app(FeedbackRequests::class)->summary($record))
+                    ->visible(fn (ExitCase $record) => app(FeedbackRequests::class)->summary($record) !== null)->columnSpan(2),
                 TextEntry::make('reason')->placeholder('—')->columnSpanFull()->visible(fn (ExitCase $record) => auth()->user()->can('exit.view') || auth()->user()->can('exit.manage') || ExitCasePolicy::isOwn(auth()->user(), $record)),
                 TextEntry::make('knowledge_transfer_notes')->placeholder('—')->columnSpanFull(),
             ]),
@@ -98,7 +106,7 @@ class ExitCaseResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('number')->searchable()->sortable(),
-                TextColumn::make('employee.person.full_name')->label('Employee')->searchable(['first_name', 'last_name']),
+                TextColumn::make('employee.person.full_name')->label('Employee')->searchable(query: EmployeeFilters::search('employee'))->description(fn (ExitCase $record) => $record->employee?->employee_code),
                 TextColumn::make('type')->badge()->color('gray')->formatStateUsing(fn (string $state) => config("peopleos.exit.types.{$state}", $state)),
                 TextColumn::make('last_working_day')->date()->sortable()->color(fn (ExitCase $record) => $record->isOpen() && $record->last_working_day->lte(now()->addDays(7)) ? 'danger' : null),
                 TextColumn::make('status')->badge()->color(fn (string $state) => self::statusColor($state))->formatStateUsing(fn (string $state) => config("peopleos.exit.statuses.{$state}", $state)),
@@ -107,8 +115,13 @@ class ExitCaseResource extends Resource
                 TextColumn::make('manager.person.full_name')->label('Manager')->placeholder('—')->toggleable(),
             ])
             ->defaultSort('id', 'desc')
-            ->filters([SelectFilter::make('status')->options(config('peopleos.exit.statuses'))->multiple()->default(ExitCase::OPEN), SelectFilter::make('type')->options(config('peopleos.exit.types'))])
-            ->recordActions([ViewAction::make()->label('Open')]);
+            ->filters([SelectFilter::make('status')->options(config('peopleos.exit.statuses'))->multiple()->default(ExitCase::OPEN), SelectFilter::make('type')->options(config('peopleos.exit.types')),
+                // HROne parity WO-2: the shared employee filters, the resignation date and the last working day.
+                ...EmployeeFilters::forRegister('employee', 'resignation_date', 'Resignation date', excludeLeavers: false),
+                EmployeeFilters::dateRange('last_working_days', 'Last working day', 'last_working_day')])
+            ->recordActions([ViewAction::make()->label('Open')])
+            // HROne parity WO-1: start clearance or complete the selected exits (each through Exits).
+            ->toolbarActions([BulkRecordActions::selected('exit_cases', ['exit_cases.start_clearance', 'exit_cases.complete'])]);
     }
 
     public static function getRelations(): array

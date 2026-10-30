@@ -20,6 +20,8 @@ class CompaniesTable
                 TextColumn::make('legal_name')->searchable()->toggleable(),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('country_code')->label('Country')->toggleable(),
+                TextColumn::make('industry')->formatStateUsing(fn (?string $state) => config("peopleos.organisation.industries.{$state}", $state))->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('phone')->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('effective_from')->date()->sortable()->placeholder('Open'),
                 TextColumn::make('effective_to')->date()->sortable()->placeholder('Open'),
                 TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),

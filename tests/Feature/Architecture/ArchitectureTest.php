@@ -188,6 +188,12 @@ it('audits every domain model except the documented append-only or derived table
         'Engagement\Models\SurveyResponse', 'Engagement\Models\SurveyAnswer', 'Engagement\Models\SurveyParticipation',
         'Engagement\Models\EngagementIdentity', 'Engagement\Models\EmployeeFeedback', 'Engagement\Models\EngagementReminderLog',
         'Communication\Models\CommunicationRecipient',
+        // HROne setup parity HP-9f: mood bot check-ins and participations are the same anonymity boundary (audited
+        // explicitly by MoodCheckIns, anonymously unless the organisation chose identified check-ins).
+        'Engagement\Models\MoodCheckIn', 'Engagement\Models\MoodParticipation',
+        // HROne setup parity HP-8h: 360 feedback answers are the content side of the same anonymity boundary (random key,
+        // no timestamps, no link to an anonymous reviewer); the nomination's status change is audited instead.
+        'Performance\Models\FeedbackResponse',
         // Phase 14: inbound integration events are an event log whose every state change is audited
         // explicitly (INTEGRATION_EVENT_*); automatic auditing would copy the payload into the trail.
         'Integration\Models\InboundEvent',
@@ -195,9 +201,22 @@ it('audits every domain model except the documented append-only or derived table
         // upload is one audited bulk operation whose rows keep what they marked, and each day the engine recalculates
         // from a mark is audited on the attendance record.
         'Attendance\Models\AttendanceMark',
+        // HROne parity WO-1: a bulk run's per-record outcomes are derived rows. What each record's owning service changed
+        // is audited on the record (under the run's audit operation id) and the run closes with a BULK_OPERATION summary.
+        'Experience\Models\BulkRunItem',
+        // HROne parity RQ-8: the inbox decision log is derived from decisions the owning services already audit (one row per
+        // Approval Center decision with the due time shown, read only by the approver's Insight).
+        'Experience\Models\InboxDecision',
+        // HROne parity CA-11 / SV-26: the API call log and each webhook delivery's attempts are high-volume append-only
+        // operational logs (like WebhookDelivery); queued log exports are audited explicitly by IntegrationLogExports
+        // (EXPORT when asked for, DOWNLOAD when fetched), and their status moves are derived from the job.
+        'Integration\Models\ApiRequestLog', 'Enterprise\Models\WebhookDeliveryAttempt', 'Integration\Models\IntegrationLogExport',
         // Phase 14: API idempotency keys are a short-lived replay cache (request fingerprint plus an
         // encrypted response); the domain action they guard is audited by its own service.
         'Integration\Models\ApiIdempotencyKey',
+        // HROne setup parity: location pings for continuous tracking are a high-volume append-only stream from the app,
+        // like raw punches; the check-in policy that turns them on is audited.
+        'Attendance\Models\LocationPing',
         // Experience Transformation: personal display preferences (density, lens, pins, recents) are not
         // business records; UX metrics are anonymous per-tenant daily counters, and automatic auditing
         // would stamp the user on them and undo the anonymity.

@@ -113,9 +113,11 @@ final class CompensationLedger implements CompensationOutput
             ->values();
     }
 
-    public function coveredEmployeeIds(CarbonInterface|string|null $date = null): QueryBuilder
+    public function coveredEmployeeIds(CarbonInterface|string|null $date = null, ?array $structureIds = null): QueryBuilder
     {
-        return EmployeeSalaryAssignment::query()->active()->effectiveOn($date)->select('employee_id')->toBase();
+        return EmployeeSalaryAssignment::query()->active()->effectiveOn($date)
+            ->when($structureIds !== null, fn (Builder $q) => $q->whereIn('salary_structure_id', array_values(array_map('intval', $structureIds))))
+            ->select('employee_id')->toBase();
     }
 
     public function annualCtcOn(?array $employeeIds = null, CarbonInterface|string|null $date = null): array
@@ -186,6 +188,6 @@ final class CompensationLedger implements CompensationOutput
             ->map(fn ($item) => new CompensationComponentLine($item->component, $item->formula_override, (int) $item->sort_order))
             ->values();
 
-        return new CompensationSegment(CompensationSnapshot::fromRow($row, $row->structure?->code, $version?->id), $from->copy(), $to->copy(), $components, array_map('floatval', (array) ($version?->parameters ?? [])));
+        return new CompensationSegment(CompensationSnapshot::fromRow($row, $row->structure?->code, $version?->id), $from->copy(), $to->copy(), $components, array_map('floatval', (array) ($version?->parameters ?? [])), $version?->formulaOptions()['ctc_mode'] ?? 'ctc');
     }
 }

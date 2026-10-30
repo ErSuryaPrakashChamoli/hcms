@@ -3,10 +3,13 @@
 namespace App\Filament\Resources\Assets\Pages;
 
 use App\Filament\Resources\Assets\AssetResource;
+use App\Filament\Support\AssetActions;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\SavesCustomFields;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
+use RuntimeException;
 
 class EditAsset extends PeopleEditRecord
 {
@@ -19,7 +22,15 @@ class EditAsset extends PeopleEditRecord
         $reason = AuditReasonField::extract($data);
         $this->extractCustomFields($data);
         unset($data['status'], $data['custodian_id']); // lifecycle changes go through the actions
-        $record->withAuditReason($reason)->update($data);
+        try {
+            $record->withAuditReason($reason)->update($data);
+        } catch (RuntimeException $e) {
+            // e.g. a serial number already used in a sub type that does not allow duplicates (HROne setup parity AS-A).
+            $record->refresh();
+            AssetActions::refuse($e->getMessage());
+
+            throw new Halt;
+        }
         $this->persistCustomFields($record, $reason);
 
         return $record;

@@ -7,6 +7,8 @@ use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Leave\Services\LeaveAdjustments;
 use App\Domain\Leave\Services\LeaveYear;
 use App\Filament\Resources\LeaveBalances\Pages\ListLeaveBalances;
+use App\Filament\Support\EmployeeFilters;
+use App\Filament\Support\TimeOfficeRegisters;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
@@ -53,7 +55,8 @@ class LeaveBalanceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('employee.person.display_name')->label('Employee')->searchable(['people.first_name', 'people.last_name'])->description(fn (LeaveBalance $record) => $record->employee?->employee_code),
+                // HROne parity TX-1: the WO-2 employee search (code, names, work e-mail, designation).
+                TextColumn::make('employee.person.display_name')->label('Employee')->searchable(query: EmployeeFilters::search('employee'))->description(fn (LeaveBalance $record) => $record->employee?->employee_code),
                 TextColumn::make('leaveType.name')->label('Type')->badge()->color('info'),
                 TextColumn::make('period_year')->label('Year')->sortable(),
                 TextColumn::make('opening')->numeric(1),
@@ -69,11 +72,14 @@ class LeaveBalanceResource extends Resource
             ->filters([
                 SelectFilter::make('leave_type_id')->label('Type')->relationship('leaveType', 'name')->preload(),
                 SelectFilter::make('period_year')->label('Year')->options(fn () => LeaveBalance::query()->distinct()->orderByDesc('period_year')->pluck('period_year', 'period_year')->all())->default(app(LeaveYear::class)->periodFor(now())),
+                // HROne parity TX-1 (§24.6.3 #2): the WO-2 employee filters (HR side only; an employee's own balances are unchanged).
+                ...TimeOfficeRegisters::filters('leave.view'),
             ])
             ->defaultSort('id', 'desc')
             ->recordActions([
+                // HROne parity TX-2: leave.adjust on the balance (leave.manage also grants it).
                 Action::make('adjust')->label('Adjust')->icon('heroicon-m-adjustments-horizontal')
-                    ->authorize(fn () => auth()->user()->can('leave.manage'))
+                    ->authorize(fn (LeaveBalance $record) => auth()->user()->can('adjust', $record))
                     ->schema([
                         TextInput::make('days')->numeric()->required()->helperText('Positive credits, negative debits (halves allowed).'),
                         Textarea::make('note')->required()->maxLength(255),
