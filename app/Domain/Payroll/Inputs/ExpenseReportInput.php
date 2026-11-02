@@ -17,6 +17,10 @@ use App\Domain\Payroll\Services\PayrollComputation;
  * run marks exactly those reports paid. A report another run not yet finalized or an unpaid final settlement already
  * carries is left to it. The rows are read with a shared lock, so Pay expenses waits for a calculation that is paying
  * the same report and then refuses it.
+ *
+ * HROne parity XO-4 (owner decision D-XO1): a report scheduled for a chosen payroll month (`payment_scheduled_for`) is
+ * repaid only by a run of that month — never earlier, never later; a report without one follows the rule above (the next
+ * payroll), exactly as before.
  */
 final class ExpenseReportInput implements PayrollInputSource
 {
@@ -27,9 +31,12 @@ final class ExpenseReportInput implements PayrollInputSource
 
     public function inputsFor(PayrollComputation $c): array
     {
+        $month = sprintf('%04d-%02d-01', (int) $c->period->year, (int) $c->period->month);
         $reports = ExpenseReport::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $c->employee->id)->whereIn('status', ['approved', 'partly_approved'])
             ->where('payment_channel', 'payroll')->whereNull('paid_on')->where('net_payable', '>', 0)
-            ->where('payment_scheduled_at', '<=', $c->period->end_date->copy()->endOfDay())->orderBy('id')->sharedLock()->get();
+            ->where(fn ($q) => $q->where(fn ($next) => $next->whereNull('payment_scheduled_for')->where('payment_scheduled_at', '<=', $c->period->end_date->copy()->endOfDay()))
+                ->orWhereDate('payment_scheduled_for', $month))
+            ->orderBy('id')->sharedLock()->get();
         if ($reports->isEmpty()) {
             return [];
         }

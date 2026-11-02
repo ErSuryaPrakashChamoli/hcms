@@ -8,6 +8,7 @@ use App\Domain\Analytics\Datasets\AssetsDataset;
 use App\Domain\Analytics\Datasets\AttendanceArrearsDataset;
 use App\Domain\Analytics\Datasets\AttendanceDataset;
 use App\Domain\Analytics\Datasets\AttendanceMonthlyDataset;
+use App\Domain\Analytics\Datasets\AttendancePaidDaysDataset;
 use App\Domain\Analytics\Datasets\AttendancePenaltiesDataset;
 use App\Domain\Analytics\Datasets\AttendancePunchesDataset;
 use App\Domain\Analytics\Datasets\BadgesLedgerDataset;
@@ -16,12 +17,15 @@ use App\Domain\Analytics\Datasets\CheckInsDataset;
 use App\Domain\Analytics\Datasets\ContinuousFeedbackDataset;
 use App\Domain\Analytics\Datasets\CtcRegisterDataset;
 use App\Domain\Analytics\Datasets\Dataset;
+use App\Domain\Analytics\Datasets\DayRosterDataset;
 use App\Domain\Analytics\Datasets\DevelopmentNeedsDataset;
+use App\Domain\Analytics\Datasets\DocumentSharesDataset;
 use App\Domain\Analytics\Datasets\EmergencyContactsDataset;
 use App\Domain\Analytics\Datasets\EmployeeDevicesDataset;
 use App\Domain\Analytics\Datasets\EmployeeDocumentsDataset;
 use App\Domain\Analytics\Datasets\EmployeeMovementsDataset;
 use App\Domain\Analytics\Datasets\EmployeesDataset;
+use App\Domain\Analytics\Datasets\EventParticipantsDataset;
 use App\Domain\Analytics\Datasets\ExitClearancesDataset;
 use App\Domain\Analytics\Datasets\ExitsDataset;
 use App\Domain\Analytics\Datasets\ExpenseAdvanceLedgerDataset;
@@ -38,6 +42,7 @@ use App\Domain\Analytics\Datasets\HappinessIndexDataset;
 use App\Domain\Analytics\Datasets\HolidaysDataset;
 use App\Domain\Analytics\Datasets\ImprovementPlansDataset;
 use App\Domain\Analytics\Datasets\InitiativesDataset;
+use App\Domain\Analytics\Datasets\InsuranceMembersDataset;
 use App\Domain\Analytics\Datasets\LearningDataset;
 use App\Domain\Analytics\Datasets\LeaveBalancesDataset;
 use App\Domain\Analytics\Datasets\LeaveDataset;
@@ -53,6 +58,7 @@ use App\Domain\Analytics\Datasets\MissingDocumentsDataset;
 use App\Domain\Analytics\Datasets\OnboardingDataset;
 use App\Domain\Analytics\Datasets\OnboardingTasksDataset;
 use App\Domain\Analytics\Datasets\OneOnOnesDataset;
+use App\Domain\Analytics\Datasets\PartnersDataset;
 use App\Domain\Analytics\Datasets\PayrollAdjustmentsDataset;
 use App\Domain\Analytics\Datasets\PayrollComponentsDataset;
 use App\Domain\Analytics\Datasets\PayrollDataset;
@@ -96,6 +102,10 @@ final class DatasetRegistry
         'qualifications' => QualificationsDataset::class, 'employee_documents' => EmployeeDocumentsDataset::class, 'letters' => LettersDataset::class,
         // HROne setup parity CA-4: mandatory documents not on file.
         'missing_documents' => MissingDocumentsDataset::class,
+        // HROne parity WO-14: bulk document shares per employee (the "Shared letter/document report").
+        'document_shares' => DocumentSharesDataset::class,
+        // HROne parity MS-5: the people each health insurance policy covers (never the member id).
+        'insurance_members' => InsuranceMembersDataset::class,
         // HROne setup parity HP-9c: the badges ledger.
         'badges_ledger' => BadgesLedgerDataset::class,
         // HROne setup parity HP-9d / HP-9f: the reward points ledger and the happiness index (suppressed aggregates only).
@@ -107,6 +117,10 @@ final class DatasetRegistry
         // HROne parity HP-1: time-office requests, penalties, arrears, check-in devices, leave donations.
         'time_office_requests' => TimeOfficeRequestsDataset::class, 'attendance_penalties' => AttendancePenaltiesDataset::class, 'attendance_arrears' => AttendanceArrearsDataset::class,
         'checkin_devices' => EmployeeDevicesDataset::class, 'leave_donations' => LeaveDonationsDataset::class,
+        // HROne parity TX-4: paid days per employee and attendance month before payroll (with paid-day adjustments when on).
+        'attendance_paid_days' => AttendancePaidDaysDataset::class,
+        // HROne parity TX-5: the day-level roster (rostered days with shift, times, source, changed by / on).
+        'day_roster' => DayRosterDataset::class,
         // HROne parity HP-3: perquisites and outside income, statutory overrides, PF options.
         'tax_income_entries' => TaxIncomeEntriesDataset::class, 'statutory_overrides' => StatutoryOverridesDataset::class, 'pf_options' => PfOptionsDataset::class,
         // Payroll, compensation and income tax
@@ -138,6 +152,10 @@ final class DatasetRegistry
         'check_ins' => CheckInsDataset::class, 'performance_check_ins' => PerformanceCheckInsDataset::class, 'goal_plans' => GoalPlansDataset::class,
         'pip_checkpoints' => PipCheckpointsDataset::class, 'appraisal_reviews' => AppraisalReviewsDataset::class, 'appraisal_ratings' => AppraisalRatingsDataset::class,
         'development_needs' => DevelopmentNeedsDataset::class,
+        // HROne parity WO-15: business partners (type, vendor, contact, sign-in).
+        'partners' => PartnersDataset::class,
+        // HROne parity GO-15: company event invitations, answers and attendance (HROne "Event details", "Event attendance").
+        'event_participants' => EventParticipantsDataset::class,
     ];
 
     /** Display order of dataset categories. */

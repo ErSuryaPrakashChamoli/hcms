@@ -1,86 +1,108 @@
-{{-- The upload format guide every import screen shows, built from the import service so it matches what the upload accepts. --}}
+{{-- The upload format guide every import screen shows, built from the import service so it matches what the upload accepts:
+     the columns with Required / Optional badges, the codes or choices the upload takes, the example as a spreadsheet, and notes. --}}
 @php
-    $code = 'rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[0.8rem] [font-variant-ligatures:none] text-gray-900 dark:bg-white/10 dark:text-gray-100';
-    $th = 'px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400';
-    $td = 'px-3 py-2 align-top text-sm text-gray-700 dark:text-gray-200';
-    // The example is the file as a spreadsheet shows it: its own header row, not upper-cased, one cell per column.
-    $sampleHead = 'whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400';
-    $sampleCell = 'whitespace-nowrap px-3 py-1.5 font-mono text-[0.8rem] text-gray-900 dark:text-gray-100';
+    $letter = function (int $i): string {
+        $s = '';
+        for ($n = $i + 1; $n > 0; $n = intdiv($n - 1, 26)) {
+            $s = chr(65 + (($n - 1) % 26)).$s;
+        }
+
+        return $s;
+    };
+    $badge = fn (string $required): array => match (mb_strtolower(trim($required))) {
+        'yes' => ['required', 'Required'],
+        'no', '' => ['optional', 'Optional'],
+        default => ['conditional', $required],
+    };
+    $width = max(array_map('count', $sampleRows ?: [[]]));
 @endphp
-<div class="space-y-4 text-sm text-gray-700 dark:text-gray-200">
-    <section class="space-y-2">
-        <h3 class="text-base font-semibold text-gray-950 dark:text-white">Columns</h3>
-        <p>A CSV file whose first row is the header; columns may come in any order and you confirm the match on the next step. Save from Excel as <strong>CSV UTF-8 (comma delimited)</strong>.</p>
-        <div class="overflow-x-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10" tabindex="0" role="region" aria-label="{{ $title }} columns">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-white/5">
-                <caption class="sr-only">{{ $title }} columns</caption>
-                <thead><tr><th scope="col" class="{{ $th }}">Column</th><th scope="col" class="{{ $th }}">Required</th><th scope="col" class="{{ $th }}">What to enter</th><th scope="col" class="{{ $th }}">Example</th></tr></thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-white/5">
-                    @foreach ($columns as [$column, $required, $what, $example])
-                        <tr>
-                            <td class="{{ $td }} whitespace-nowrap"><code class="{{ $code }}">{{ $column }}</code></td>
-                            <td class="{{ $td }} whitespace-nowrap">{{ $required }}</td>
-                            <td class="{{ $td }}">{{ $what }}</td>
-                            <td class="{{ $td }} whitespace-nowrap font-mono text-[0.8rem]">{{ $example }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </section>
+<div class="pos-fmt-wrap">
+    <div class="pos-fmt">
+        <section class="pos-fmt-sec" aria-labelledby="fmt-columns-{{ md5($title) }}">
+            <h3 class="pos-fmt-h" id="fmt-columns-{{ md5($title) }}">Columns <small>{{ count($columns) }}</small></h3>
+            <p class="pos-fmt-lead">The first row of the file is the header. Columns may come in any order; they are matched by name and you can confirm the match. Save from Excel as <strong>CSV UTF-8 (comma delimited)</strong>.</p>
+            <div class="pos-fmt-scroll" tabindex="0" role="region" aria-label="{{ $title }} columns">
+                <table class="pos-fmt-table">
+                    <caption class="sr-only">{{ $title }} columns</caption>
+                    <thead><tr><th scope="col">Column</th><th scope="col">Required</th><th scope="col">What to enter</th><th scope="col">Example</th></tr></thead>
+                    <tbody>
+                        @foreach ($columns as [$column, $required, $what, $example])
+                            @php([$kind, $label] = $badge((string) $required))
+                            <tr>
+                                <td><span class="pos-fmt-name">{{ $column }}</span></td>
+                                <td><span class="pos-fmt-badge" data-kind="{{ $kind }}">{{ $label }}</span></td>
+                                <td>{{ $what }}</td>
+                                <td><span class="pos-fmt-example">{{ $example }}</span></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-    @if (! empty($codes))
-        <section class="space-y-2">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">{{ $codesTitle ?? 'Day codes' }}</h3>
-            <ul class="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-                @foreach ($codes as $dayCode => $meaning)
-                    <li><code class="{{ $code }}">{{ $dayCode }}</code> {{ $meaning }}</li>
+        @if (! empty($codes))
+            <section class="pos-fmt-sec" aria-label="{{ $codesTitle ?? 'Day codes' }}">
+                <h3 class="pos-fmt-h">{{ $codesTitle ?? 'Day codes' }}</h3>
+                <div class="pos-fmt-codes">
+                    @foreach ($codes as $dayCode => $meaning)
+                        <div class="pos-fmt-code"><span class="pos-fmt-name">{{ $dayCode }}</span><span>{{ $meaning }}</span></div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
+        @if (! empty($modes))
+            <section class="pos-fmt-sec" aria-label="New or existing">
+                <h3 class="pos-fmt-h">New or existing</h3>
+                <p class="pos-fmt-lead">When you upload, choose what the file is for. The same file format serves every choice.</p>
+                <div class="pos-fmt-modes">
+                    @foreach ($modes as [$label, $description])
+                        <div class="pos-fmt-mode"><strong>{{ $label }}</strong>{{ $description }}</div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
+        <section class="pos-fmt-sec" aria-label="Example file">
+            <h3 class="pos-fmt-h">Example file <small>as it looks in a spreadsheet</small></h3>
+            <div class="pos-fmt-scroll" tabindex="0" role="region" aria-label="Example {{ $title }} file">
+                <table class="pos-fmt-sheet">
+                    <caption class="sr-only">Example {{ $title }} file</caption>
+                    <thead>
+                        <tr class="pos-fmt-letters" aria-hidden="true">
+                            <td class="pos-fmt-gutter"></td>
+                            @for ($i = 0; $i < $width; $i++)
+                                <td>{{ $letter($i) }}</td>
+                            @endfor
+                        </tr>
+                        {{-- Row 1 of the file is its header row. --}}
+                        <tr data-header>
+                            <td class="pos-fmt-gutter">1</td>
+                            @for ($i = 0; $i < $width; $i++)
+                                <th scope="col">{{ $sampleRows[0][$i] ?? '' }}</th>
+                            @endfor
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (array_slice($sampleRows, 1) as $n => $row)
+                            <tr>
+                                <td class="pos-fmt-gutter">{{ $n + 2 }}</td>
+                                @for ($i = 0; $i < $width; $i++)
+                                    <td>{{ $row[$i] ?? '' }}</td>
+                                @endfor
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        @if (! empty($notes))
+            <ul class="pos-fmt-notes" aria-label="Good to know">
+                @foreach ($notes as $note)
+                    <li><x-filament::icon icon="heroicon-m-information-circle" />{{ $note }}</li>
                 @endforeach
             </ul>
-        </section>
-    @endif
-
-    @if (! empty($modes))
-        <section class="space-y-2">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">New or existing</h3>
-            <p>When you upload, choose what the file is for. The same file format serves all three.</p>
-            <ul class="list-disc space-y-1 pl-5">
-                @foreach ($modes as [$label, $description])
-                    <li><strong>{{ $label }}:</strong> {{ $description }}</li>
-                @endforeach
-            </ul>
-        </section>
-    @endif
-
-    <section class="space-y-2">
-        <h3 class="text-base font-semibold text-gray-950 dark:text-white">Example file</h3>
-        <p>How the file looks in a spreadsheet, header row first. Download template gives you a file to start from.</p>
-        <div class="overflow-x-auto rounded-lg bg-gray-50 ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10" tabindex="0" role="region" aria-label="Example {{ $title }} file">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-white/5">
-                <caption class="sr-only">Example {{ $title }} file</caption>
-                <thead><tr>
-                    @foreach ($sampleRows[0] ?? [] as $cell)
-                        <th scope="col" class="{{ $sampleHead }}">{{ $cell }}</th>
-                    @endforeach
-                </tr></thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-white/5">
-                    @foreach (array_slice($sampleRows, 1) as $row)
-                        <tr>
-                            @foreach ($row as $cell)
-                                <td class="{{ $sampleCell }}">{{ $cell }}</td>
-                            @endforeach
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    @if (! empty($notes))
-        <ul class="list-disc space-y-1 pl-5">
-            @foreach ($notes as $note)
-                <li>{{ $note }}</li>
-            @endforeach
-        </ul>
-    @endif
+        @endif
+    </div>
 </div>

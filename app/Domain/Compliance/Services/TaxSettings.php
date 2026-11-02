@@ -77,6 +77,15 @@ final class TaxSettings
         return $this->date('payroll.tax.verified_proofs_from');
     }
 
+    /**
+     * Data import DI-4 (decision): from this payment date, salary TDS treats what pay-by-default reimbursements pay beyond
+     * the bills on file as taxable (ReimbursementBills). Blank: never (as before).
+     */
+    public function reimbursementBillsFrom(): ?string
+    {
+        return $this->date('payroll.reimbursement.bills_from');
+    }
+
     public function regimeLockedAfterSubmit(): bool
     {
         return (bool) $this->settings->get('payroll.tax.regime_locked_after_submit', false);

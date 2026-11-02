@@ -10,6 +10,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Models\LearningCertificate;
 use App\Domain\Learning\Models\LearningEnrolment;
 use App\Domain\Leave\Models\LeaveRequest;
+use App\Domain\Leave\Services\LeavePrivacy;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Services\CaseAccess;
@@ -134,7 +135,8 @@ final class IntentSearch
         $count = (clone $query)->count();
 
         return ['title' => 'On leave today', 'answer' => $count.' '.($count === 1 ? 'person' : 'people'),
-            'rows' => $query->limit(5)->get()->map(fn (LeaveRequest $r) => ['label' => $r->employee?->display_name ?? '—', 'meta' => ($r->leaveType?->name ?? 'Leave').' · until '.$r->to_date->format('d M'), 'person_id' => $r->employee_id])->all(),
+            // HROne parity RQ-4: a private leave reads "Away" for a viewer who may not see it in full.
+            'rows' => $query->limit(5)->get()->map(fn (LeaveRequest $r) => ['label' => $r->employee?->display_name ?? '—', 'meta' => app(LeavePrivacy::class)->typeLabel($r, $u).' · until '.$r->to_date->format('d M'), 'person_id' => $r->employee_id])->all(),
             'url' => LeaveCalendar::canAccess() ? LeaveCalendar::getUrl() : null];
     }
 

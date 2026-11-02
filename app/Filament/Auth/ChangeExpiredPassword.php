@@ -6,6 +6,7 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Services\PasswordPolicy;
+use App\Domain\Identity\Services\TemporaryPasswords;
 use App\Http\Middleware\EnforceAccountSecurity;
 use Closure;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
@@ -29,6 +30,8 @@ use SensitiveParameter;
  * a password session to once the tenant's password expiry has passed. The person proves the current password and
  * chooses a new one under the tenant's rules (length, mix, symbol, personal details, recent passwords), which must
  * differ from the current one. Other sessions end through the session password check; this one carries on.
+ * The same page replaces a temporary password (TemporaryPasswords) at the first sign-in with it: the person proves the
+ * temporary password and chooses their own; an invited account becomes active (TemporaryPasswords::replace).
  */
 class ChangeExpiredPassword extends SimplePage
 {
@@ -39,7 +42,7 @@ class ChangeExpiredPassword extends SimplePage
 
     public function mount(): void
     {
-        if (! EnforceAccountSecurity::passwordExpiredFor($this->user(), session()->driver())) {
+        if (! $this->temporary() && ! EnforceAccountSecurity::passwordExpiredFor($this->user(), session()->driver())) {
             redirect()->intended(Filament::getUrl());
 
             return;
@@ -49,19 +52,21 @@ class ChangeExpiredPassword extends SimplePage
 
     public function getTitle(): string|Htmlable
     {
-        return 'Choose a new password';
+        return $this->temporary() ? 'Choose your own password' : 'Choose a new password';
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Your password has expired under your organisation’s security policy. Choose a new one to continue.';
+        return $this->temporary()
+            ? 'You signed in with a temporary password. Choose your own password to continue.'
+            : 'Your password has expired under your organisation’s security policy. Choose a new one to continue.';
     }
 
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextInput::make('currentPassword')->label('Current password')->password()->revealable(filament()->arePasswordsRevealable())
+                TextInput::make('currentPassword')->label(fn () => $this->temporary() ? 'Temporary password' : 'Current password')->password()->revealable(filament()->arePasswordsRevealable())
                     ->autocomplete('current-password')->required()->currentPassword(guard: Filament::getAuthGuard()),
                 TextInput::make('password')->label('New password')->password()->revealable(filament()->arePasswordsRevealable())
                     ->autocomplete('new-password')->required()->same('passwordConfirmation')
@@ -97,9 +102,14 @@ class ChangeExpiredPassword extends SimplePage
         $data = $this->form->getState();
         $user = $this->user();
 
-        DB::transaction(function () use ($user, $data): void {
-            $user->forceFill(['password' => (string) $data['password']])->withAuditReason('Password expired')->save();
-            app(AuditRecorder::class)->record(AuditAction::PasswordChanged, 'identity', $user, [], null, tenantId: $user->tenant_id, actor: $user, metadata: ['method' => 'expired']);
+        $temporary = $this->temporary();
+        DB::transaction(function () use ($user, $data, $temporary): void {
+            if ($temporary) {
+                app(TemporaryPasswords::class)->replace($user, (string) $data['password']);
+            } else {
+                $user->forceFill(['password' => (string) $data['password']])->withAuditReason('Password expired')->save();
+            }
+            app(AuditRecorder::class)->record(AuditAction::PasswordChanged, 'identity', $user, [], null, tenantId: $user->tenant_id, actor: $user, metadata: ['method' => $temporary ? 'temporary' : 'expired']);
         });
         // The session password check signs out every other session; this one is updated so it continues.
         session()->put(['password_hash_'.Filament::getAuthGuard() => $user->getAuthPassword()]);
@@ -133,6 +143,12 @@ class ChangeExpiredPassword extends SimplePage
                 Action::make('signOut')->label('Sign out')->link()->color('gray')->action(fn () => $this->signOut()),
             ])->alignCenter(),
         ]);
+    }
+
+    /** Replacing a temporary password (else an expired one). */
+    private function temporary(): bool
+    {
+        return EnforceAccountSecurity::mustReplacePasswordFor($this->user(), session()->driver());
     }
 
     private function user(): User

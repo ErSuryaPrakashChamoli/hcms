@@ -8,6 +8,14 @@
     </button>
     @if (app(\App\Support\Tenancy\TenantContext::class)->has())
         @livewire(\App\Livewire\Experience\DrawerHost::class)
+        {{-- HROne parity AC-1: the Actions panel, opened from the top bar's "Actions" (pos-actions-open). --}}
+        @if (app(\App\Domain\Experience\Services\ActionCatalogue::class)->hasAny(auth()->user()))
+            @livewire(\App\Livewire\Experience\ActionCentre::class, [], key('pos-action-centre'))
+        @endif
+        {{-- HROne parity TX-7: the attendance day drawer, opened from records, calendars, the roster board and paid days. --}}
+        @if (\App\Livewire\Attendance\DayDrawer::available())
+            @livewire(\App\Livewire\Attendance\DayDrawer::class)
+        @endif
         @livewire(\App\Livewire\Experience\PeekHost::class)
         @if (\App\Filament\Pages\AssistantPage::canAccess())
             @livewire(\App\Livewire\Experience\AiAssistant::class)

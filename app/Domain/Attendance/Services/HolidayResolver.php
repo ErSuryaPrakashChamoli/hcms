@@ -2,6 +2,7 @@
 
 namespace App\Domain\Attendance\Services;
 
+use App\Domain\Attendance\Models\EmployeeHolidayChange;
 use App\Domain\Attendance\Models\Holiday;
 use App\Domain\Attendance\Models\HolidayCalendar;
 use App\Domain\Attendance\Models\HolidayCalendarRule;
@@ -38,8 +39,33 @@ final class HolidayResolver
     /**
      * The holiday on the date. On a calendar whose optional holidays need choosing (HP-1 restricted holidays),
      * an optional holiday is a holiday only for employees with an approved restricted-holiday request for it.
+     * HROne parity TX-12: HR's holiday change for the employee on the date wins over the calendar (dayOn()).
      */
     public function holidayOn(Employee $employee, Carbon $date): ?Holiday
+    {
+        return $this->dayOn($employee, $date)['holiday'];
+    }
+
+    /**
+     * HROne parity TX-12 (owner decision D-TX3): the employee's holiday on the date and the holiday change that decided it.
+     * A live change of the employee's day (EmployeeHolidayChange) comes on top of the calendar and wins — an `add` row
+     * makes the day that holiday, a `remove` row makes it an ordinary day (the calendar is then not asked). Without a change (every day by default) this is
+     * the calendar's answer exactly as before, and the change is null.
+     *
+     * @return array{holiday: ?Holiday, change: ?EmployeeHolidayChange}
+     */
+    public function dayOn(Employee $employee, Carbon $date): array
+    {
+        $change = EmployeeHolidayChange::query()->where('employee_id', $employee->id)->live()->onDay($date)->orderByDesc('id')->first();
+        if ($change !== null) {
+            return ['holiday' => $change->adds() ? $change->asHoliday() : null, 'change' => $change];
+        }
+
+        return ['holiday' => $this->calendarHolidayOn($employee, $date), 'change' => null];
+    }
+
+    /** The holiday the employee's calendar gives on the date (restricted holidays only when chosen), before any change. */
+    public function calendarHolidayOn(Employee $employee, Carbon $date): ?Holiday
     {
         $calendar = $this->calendarFor($employee, $date);
         $holiday = $calendar?->holidays()->whereDate('date', $date->toDateString())->first();

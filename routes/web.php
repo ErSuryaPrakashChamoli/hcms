@@ -2,12 +2,16 @@
 
 use App\Http\Controllers\AnnouncementAttachmentController;
 use App\Http\Controllers\DocumentDownloadController;
+use App\Http\Controllers\EmployeeDocumentDownloadController;
 use App\Http\Controllers\EmployeeProfilePrintController;
 use App\Http\Controllers\ExitTenantController;
+use App\Http\Controllers\ExpenseDocumentDownloadController;
+use App\Http\Controllers\ExpenseReportPrintController;
 use App\Http\Controllers\Feedback360ExternalController;
 use App\Http\Controllers\Form12bbController;
 use App\Http\Controllers\GrievanceAttachmentController;
 use App\Http\Controllers\LearningCertificateDownloadController;
+use App\Http\Controllers\LetterDownloadController;
 use App\Http\Controllers\MyDocumentsZipController;
 use App\Http\Controllers\Offboarding\ExportDownloadController;
 use App\Http\Controllers\ParityFileController;
@@ -67,6 +71,30 @@ Route::get('/employees/{employee}/profile-print', EmployeeProfilePrintController
     ->middleware($protected)
     ->whereNumber('employee')
     ->name('employees.profile-print');
+
+// HROne parity WO-13: a prepared bulk download of issued letters (signed link; only the person who asked for it; audited).
+Route::get('/letters/downloads/{download}', LetterDownloadController::class)
+    ->middleware($protected)
+    ->whereNumber('download')
+    ->name('letters.downloads.zip');
+
+// HROne parity WO-4: a prepared "Download all documents" zip of one employee (signed link; only the person who asked; audited).
+Route::get('/employees/documents/downloads/{download}', EmployeeDocumentDownloadController::class)
+    ->middleware($protected)
+    ->whereNumber('download')
+    ->name('employees.documents.zip');
+
+// HROne parity XO-3: a prepared bulk download of expense documents (signed link; only the person who asked for it; audited).
+Route::get('/expense/downloads/{download}', ExpenseDocumentDownloadController::class)
+    ->middleware($protected)
+    ->whereNumber('download')
+    ->name('expense.documents.zip');
+
+// HROne parity XO-3: an expense report as a printable summary (signed link; the report's view policy; audited).
+Route::get('/expense/reports/{report}/print', ExpenseReportPrintController::class)
+    ->middleware($protected)
+    ->whereNumber('report')
+    ->name('expense.reports.print');
 
 // HROne parity: investment proofs and reimbursement bills.
 Route::get('/files/{type}/{id}/{index}', ParityFileController::class)

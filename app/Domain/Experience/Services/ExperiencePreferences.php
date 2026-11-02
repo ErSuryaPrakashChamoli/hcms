@@ -37,14 +37,30 @@ final class ExperiencePreferences
         'favourite_pages' => [],
         // HROne parity RQ-8: unified inbox items the person has opened (item ids, newest first), for the "Unread" view.
         'inbox_read' => [],
+        // HROne parity XO-3: the extra receipt fields the person shows on the lines of an expense report (field keys, at most
+        // peopleos.expense.review_columns_max; ExpenseReviewColumns names them). Presentation only.
+        'expense_review_columns' => [],
+        // Area bar favourites: module keys (the page or resource class) the person starred; they lead the area bar of their
+        // area and have their own row under "All in {area}". Presentation only: the bar shows only modules the person can open.
+        'favourite_modules' => [],
+        // HROne parity AC-1: the Actions panel's pinned actions (catalogue keys, newest first) and the actions the person
+        // started last (newest first). Presentation only: the panel shows only actions the person may run now.
+        'pinned_actions' => [],
+        'recent_actions' => [],
     ];
 
     public const MAX_RECENT = 12;
 
     public const MAX_PINNED = 12;
 
+    /** HROne parity AC-1: actions the Actions panel remembers as recent (the oldest drops off first). */
+    public const MAX_RECENT_ACTIONS = 5;
+
     /** HROne parity RQ-1: requests a person may keep hidden from "My requests" (the oldest hide drops off first). */
     public const MAX_HIDDEN_REQUESTS = 500;
+
+    /** Area bar favourites kept across all areas (the oldest star drops off first). */
+    public const MAX_FAVOURITE_MODULES = 30;
 
     /** HROne parity RQ-8: opened inbox items remembered for "Unread" (the oldest drops off first). */
     public const MAX_INBOX_READ = 1000;
@@ -83,9 +99,12 @@ final class ExperiencePreferences
                 'snoozed' => collect((array) $value)->filter(fn ($until) => is_string($until) && strtotime($until) > now()->getTimestamp())->all(),
                 'welcomed_at', 'home_seen_at', 'home_prev_seen_at' => is_string($value) && strtotime($value) !== false ? $value : null,
                 'saved_views' => SavedViews::normalise($value),
-                'favourite_requests', 'favourite_pages' => array_values(array_slice(array_unique(array_filter((array) $value, fn ($k) => is_string($k) && preg_match('/^[a-z0-9_.]{1,64}$/', $k) === 1)), 0, self::MAX_PINNED)),
+                'favourite_requests', 'favourite_pages', 'pinned_actions' => array_values(array_slice(array_unique(array_filter((array) $value, fn ($k) => is_string($k) && preg_match('/^[a-z0-9_.]{1,64}$/', $k) === 1)), 0, self::MAX_PINNED)),
+                'recent_actions' => array_values(array_slice(array_unique(array_filter((array) $value, fn ($k) => is_string($k) && preg_match('/^[a-z0-9_.]{1,64}$/', $k) === 1)), 0, self::MAX_RECENT_ACTIONS)),
                 'hidden_requests' => array_values(array_slice(array_unique(array_filter((array) $value, fn ($k) => is_string($k) && preg_match('/^[a-z0-9_.]{1,64}:\d{1,20}$/', $k) === 1)), 0, self::MAX_HIDDEN_REQUESTS)),
                 'inbox_read' => array_values(array_slice(array_unique(array_filter((array) $value, fn ($k) => is_string($k) && preg_match('/^[a-z0-9_.]{1,64}:[A-Za-z0-9_.-]{1,64}$/', $k) === 1)), 0, self::MAX_INBOX_READ)),
+                'favourite_modules' => array_values(array_slice(array_unique(array_filter((array) $value, fn ($k) => is_string($k) && preg_match('/^[A-Za-z0-9_\\\\]{1,190}$/', $k) === 1)), 0, self::MAX_FAVOURITE_MODULES)),
+                'expense_review_columns' => array_values(array_slice(array_unique(array_filter((array) $value, fn ($k) => is_string($k) && preg_match('/^[a-z0-9_]{1,40}(:[a-z0-9_]{1,64})?$/', $k) === 1)), 0, max(1, (int) config('peopleos.expense.review_columns_max', 5)))),
                 default => $value,
             };
         }
@@ -130,6 +149,36 @@ final class ExperiencePreferences
         $this->update($user, ['favourite_pages' => $isFavourite ? array_values(array_diff($favourites, [$key])) : [$key, ...$favourites]]);
 
         return ! $isFavourite;
+    }
+
+    /** Star or unstar a module for the area bar (newest first, at most MAX_FAVOURITE_MODULES; the oldest drops off). */
+    public function toggleFavouriteModule(User $user, string $key): bool
+    {
+        $favourites = $this->for($user)['favourite_modules'];
+        $isFavourite = in_array($key, $favourites, true);
+        $this->update($user, ['favourite_modules' => $isFavourite ? array_values(array_diff($favourites, [$key])) : [$key, ...$favourites]]);
+
+        return ! $isFavourite;
+    }
+
+    /** HROne parity AC-1: pin or unpin an action in the Actions panel (newest first, at most MAX_PINNED; the oldest drops off). */
+    public function togglePinnedAction(User $user, string $key): bool
+    {
+        $pinned = $this->for($user)['pinned_actions'];
+        $isPinned = in_array($key, $pinned, true);
+        $this->update($user, ['pinned_actions' => $isPinned ? array_values(array_diff($pinned, [$key])) : [$key, ...$pinned]]);
+
+        return ! $isPinned;
+    }
+
+    /** HROne parity AC-1: remember an action the person started from the Actions panel (newest first). */
+    public function pushRecentAction(User $user, string $key): void
+    {
+        $recent = $this->for($user)['recent_actions'];
+        if (($recent[0] ?? null) === $key) {
+            return;
+        }
+        $this->update($user, ['recent_actions' => [$key, ...array_values(array_diff($recent, [$key]))]]);
     }
 
     /** HROne parity RQ-1: hide or show again one of the person's requests in "My requests" ("type:id"). */

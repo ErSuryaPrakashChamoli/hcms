@@ -13,8 +13,10 @@ use App\Domain\Lifecycle\Services\LifecycleEngine;
 use App\Domain\People\Models\Person;
 use App\Domain\People\Services\PersonMatcher;
 use App\Domain\Platform\Services\SettingsRepository;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 /**
  * Person + Employee + first position + line manager + lifecycle "joined/probation" in one
@@ -23,6 +25,14 @@ use Illuminate\Support\Facades\DB;
  */
 final class HireEmployeeAction
 {
+    /**
+     * HROne parity WO-3 (§23.2.3 #12): the states a historic load may start in instead of the default (a future joining date
+     * → pre-boarding, otherwise joined → probation). Each is reached through the lifecycle engine from joined, exactly as
+     * "Change lifecycle state" would: confirmed = joined → probation → confirmed on the confirmation date; active = joined →
+     * active (no probation). Other states (notice, exited, …) have their own records and are refused here.
+     */
+    public const HISTORIC_START_STATES = [LifecycleState::Confirmed, LifecycleState::Active];
+
     public function __construct(
         private readonly EmployeeCodeGenerator $codes,
         private readonly AssignPositionAction $positions,
@@ -34,12 +44,17 @@ final class HireEmployeeAction
 
     /**
      * @param  array<string, mixed>  $person  Person attributes, or ['id' => existing person id]
-     * @param  array<string, mixed>  $employee  joining_date, probation_end_date?, work_email?, work_phone?, employee_code?
+     * @param  array<string, mixed>  $employee  joining_date, probation_end_date?, work_email?, work_phone?, employee_code?,
+     *                                          work_phone_country_code?, device_user_id? (HROne parity MS-4)
      * @param  array<string, mixed>  $position  dimension ids
+     * @param  LifecycleState|null  $startState  HROne parity WO-3: null = as before; or one of HISTORIC_START_STATES
+     * @param  CarbonInterface|string|null  $confirmationDate  with $startState confirmed: the day they were confirmed
      */
-    public function handle(array $person, array $employee, array $position, ?int $managerId = null, ?string $reason = null): Employee
+    public function handle(array $person, array $employee, array $position, ?int $managerId = null, ?string $reason = null, ?LifecycleState $startState = null, CarbonInterface|string|null $confirmationDate = null): Employee
     {
-        return DB::transaction(function () use ($person, $employee, $position, $managerId, $reason) {
+        $confirmedOn = $this->assertStartState($startState, $employee['joining_date'] ?? null, $confirmationDate);
+
+        return DB::transaction(function () use ($person, $employee, $position, $managerId, $reason, $startState, $confirmedOn) {
             if (isset($employee['employee_code']) && $this->codes->isTaken($employee['employee_code'])) {
                 throw new EmployeeCodeTakenException($employee['employee_code']);
             }
@@ -66,6 +81,12 @@ final class HireEmployeeAction
                 ? Carbon::parse($employee['probation_end_date'])
                 : $joiningDate->copy()->addMonths((int) $this->settings->get('employee.probation.default_months', 6));
             $probationGiven = isset($employee['probation_end_date']);
+            // HROne parity WO-3: someone loaded as already confirmed ended their probation on the confirmation date; someone
+            // active without probation has none (unless a probation end date was given).
+            if ($startState !== null && ! $probationGiven) {
+                $probationEnd = $startState === LifecycleState::Confirmed ? $confirmedOn : null;
+                $probationGiven = true;
+            }
 
             $record = new Employee([
                 'person_id' => $personModel->getKey(),
@@ -75,6 +96,9 @@ final class HireEmployeeAction
                 'probation_end_date' => $probationEnd,
                 'work_email' => $employee['work_email'] ?? null,
                 'work_phone' => $employee['work_phone'] ?? null,
+                // HROne parity MS-4: the work phone's country code (E.164 when given) and the attendance device user id.
+                'work_phone_country_code' => $employee['work_phone_country_code'] ?? null,
+                'device_user_id' => $employee['device_user_id'] ?? null,
                 'user_id' => $employee['user_id'] ?? null,
             ]);
             $record->withAuditReason($reason)->save();
@@ -93,14 +117,52 @@ final class HireEmployeeAction
 
             if ($joiningDate->isFuture()) {
                 $this->lifecycle->transition($record, LifecycleState::Preboarding, now(), $reason);
+            } elseif ($startState === LifecycleState::Active) {
+                // HROne parity WO-3: a historic load without probation (joined → active, as "Change lifecycle state" allows).
+                $this->lifecycle->transition($record, LifecycleState::Joined, $joiningDate, $reason);
+                $this->lifecycle->transition($record, LifecycleState::Active, $joiningDate, $reason, ['start_state' => 'active']);
             } else {
                 $this->lifecycle->transition($record, LifecycleState::Joined, $joiningDate, $reason);
                 $this->lifecycle->transition($record, LifecycleState::Probation, $joiningDate, $reason);
+                if ($startState === LifecycleState::Confirmed) {
+                    // HROne parity WO-3: a historic load of someone already confirmed (probation → confirmed on that day).
+                    $this->lifecycle->transition($record, LifecycleState::Confirmed, $confirmedOn, $reason, ['start_state' => 'confirmed']);
+                }
             }
 
             EmploymentEvent::dispatch('employee.created', $record, $record, ['employee_code' => $record->employee_code, 'joining_date' => $joiningDate->toDateString(), 'source' => $record->source]);
 
             return $record->refresh();
         });
+    }
+
+    /**
+     * HROne parity WO-3: a starting state other than the default only for someone who has already joined; confirmed needs
+     * the confirmation date, on or after joining and not in the future. Returns the confirmation day (confirmed only).
+     */
+    private function assertStartState(?LifecycleState $startState, mixed $joining, CarbonInterface|string|null $confirmationDate): ?Carbon
+    {
+        if ($startState === null) {
+            return null;
+        }
+        if (! in_array($startState, self::HISTORIC_START_STATES, true)) {
+            throw new InvalidArgumentException('A hire can start as confirmed or as active without probation; '.$startState->getLabel().' has its own steps.');
+        }
+        $joiningDate = Carbon::parse($joining ?? now())->startOfDay();
+        if ($joiningDate->isFuture()) {
+            throw new InvalidArgumentException('Only someone who has already joined can start as '.mb_strtolower($startState->getLabel()).': a future joining date starts in pre-boarding.');
+        }
+        if ($startState !== LifecycleState::Confirmed) {
+            return null;
+        }
+        if (blank($confirmationDate)) {
+            throw new InvalidArgumentException('Give the date the employee was confirmed.');
+        }
+        $confirmedOn = Carbon::parse($confirmationDate)->startOfDay();
+        if ($confirmedOn->lt($joiningDate) || $confirmedOn->isFuture()) {
+            throw new InvalidArgumentException('The confirmation date must be on or after the joining date and not in the future.');
+        }
+
+        return $confirmedOn;
     }
 }

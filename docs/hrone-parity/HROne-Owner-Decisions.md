@@ -47,6 +47,14 @@ matrix. Package IDs (BP-, CA-, P, SV-, XC-, HP-, RQ-, AN-, MS-, WO-, TX-, PO-, X
 | PRV-13 | May a role membership rule reach people outside its author's own access scope? | Yes, as a hand grant does · only inside the author's scope | Yes (built, SV-7); the units and employees a rule names must be ones the author can see. | None | D-CA9-4 |
 | PRV-14 | Should HR see today's check-ins with their location on the Geo dashboard by default (HROne's default)? | Nobody until chosen · HR by default | Nobody until the organisation chooses (built, CA-9): no screen showed check-in coordinates before. | None | D-CA9-5 |
 | PRV-15 | May holders of `task.view_all` or `audit.view` see a colleague's inbox Insight (decided count, on-time %, delayed %), within their access scope? | Yes, within scope · own Insight only | Yes, within their access scope (as built with RQ-8, 2026-10-30). | RQ-8 (built) | RQ-8 report |
+| PRV-16 | When letters may be e-mailed (`letters.email.enabled`), may HR send copies to typed outside addresses, and who may send to an employee's personal e-mail? | Organisation people and typed addresses; personal e-mail only with `employee.sensitive.view` (as built) · organisation people only | As built with WO-13 (2026-10-30). The switch is off by default, so nothing is e-mailed until it is turned on. | WO-13 (built) | WO-13 report |
+| PRV-17 | Should the free-text remarks of an exit (approver remark, rehire comment, withdrawal reason) be available in the exits analytics dataset? | Kept out (as built) · included for HR analysts | Kept out (as built with WO-11, 2026-10-30). They stay on the exit case for people who may see it. | WO-11 (built) | WO-11 report |
+| PRV-18 | What may employees see of how their expense report was paid (with `expense.payment.show_to_employee` on)? | Mode and cheque details, never the paying account or the payment note (as built) · also the paying account · mode only | As built with XO-4 (2026-10-30). | XO-4 (built) | XO-4 report |
+| PRV-19 | Who still sees the leave type of a leave marked private? | The employee, the people who decided or are deciding it, and anyone with `leave.view` / `leave.approve` in scope (as built) · only the employee, its approvers and HR leave administrators | As built with RQ-4 (2026-10-30). Note: the shipped Manager template holds `leave.view`, and a manager without scope rows sees the whole organisation, so today most people who can open the leave calendar see private leave in full. Recommended: narrow it to the employee, the request's approvers and HR leave administrators. | RQ-4 (built) | RQ-4 report |
+| PRV-20 | Should every employee see who in their team is away (the "Who else is away" panel and team planned leaves), as in HROne? | Only people who can open the leave calendar (as built) · every employee, showing "Away" only | As built with RQ-4 (2026-10-30). | RQ-4 (built) | RQ-4 report |
+| PRV-21 | Should notifications about a private leave hide the leave type from colleagues (notification rules can name it today)? | Unchanged (as built) · hide it from anyone but the employee, its approvers and HR | Unchanged (as built with RQ-4, 2026-10-30). Recommended: hide it. | RQ-4 (built) | RQ-4 report |
+| PRV-22 | At hire, a not-eligible-for-rehire match that the HR user may not see still asks them to confirm, which tells them such a person exists (without naming them). Is that acceptable? | Yes, the minimum needed to enforce the rehire rule (as built) · only users who may see the match are asked; others are refused and told to ask HR | As built with WO-3 (2026-10-30). Aadhaar references shorter than 12 characters are never compared. | WO-3 (built) | WO-3 report |
+| PRV-23 | Who may see check-in photos (and IP / Wi-Fi details) on a punch? | The same audience as check-in coordinates (`geo_dashboard.checkins_visible_to`: nobody until chosen; then HR in scope and managers for direct reports) (as built) · a separate audience for photos | As built with TX-7 (2026-10-30); photos are served through a 30-minute signed, audited link. | TX-7 (built) | TX-7 report; PRV-14 |
 
 ### 2. Self-service editing
 
@@ -56,6 +64,10 @@ matrix. Package IDs (BP-, CA-, P, SV-, XC-, HP-, RQ-, AN-, MS-, WO-, TX-, PO-, X
 | SSE-2 | May employees change their legal name or date of birth themselves? | Never · with approval and a supporting document | Never (today). Recommended: only with approval and a linked document. | MS-3 | D-MS11 |
 | SSE-3 | Should the system store the full date of marriage, or only day and month? | Day / month · full date | Day / month (today), unless a benefit rule needs the year. | MS-4 | D-MS8 |
 | SSE-4 | May any self-service change to bank details or statutory identifiers (PAN, Aadhaar reference, UAN, PF / ESIC) apply without approval? | Always needs approval (whatever `profile.self_edit.sections` says) · follow the setting | Always needs approval (as built with MS-3, 2026-10-30); legal name / date of birth also always need a document. | MS-3 (built) | MS-3 report |
+| SSE-5 | Nomination rules: from what age is a nominee no longer a minor (a guardian is required below it), and which benefits can be nominated for? | 18, and PF, EPS, gratuity, group insurance, ESI, superannuation, other (as built) · another age or list, or a tenant setting | As built with MS-4 (2026-10-30): age in config (`nominee_majority_age` = 18), benefits in the option list `nomination_benefits` (tenants may edit the list). | MS-4 (built) | MS-4 report |
+| SSE-6 | When employees may edit their nominations themselves (`profile.self_edit.sections` → nominations), should changes need approval by default? | Off until the tenant turns it on, then as the tenant's matrix says (as built) · always with approval, like bank details | As built with MS-4 (2026-10-30). Recommended: with approval, since nominations decide who is paid benefits. | MS-4 (built) | MS-4 report; SSE-1, SSE-4 |
+| SSE-7 | When employees may edit their health insurance details themselves, must every change be approved (as SSE-4 requires for bank details and identifiers)? | Tenant's matrix decides, approval on by default (as built) · always approved | As built with MS-5 (2026-10-30). Recommended: always approved, since member ids are sensitive. | MS-5 (built) | MS-5 report; SSE-4 |
+| SSE-8 | May employees upload their own insurance e-card? | HR only (as built) · employees too, with approval | HR only (as built with MS-5, 2026-10-30). | MS-5 (built) | MS-5 report |
 
 ### 3. Payroll and statutory
 
@@ -80,6 +92,14 @@ Rows PAY-10 to PAY-14 are rule checks that only the owner, with legal or payroll
 | PAY-15 | May the GST state-code list (used to check GSTINs) stay in config as reference data, outside the verified statutory rules? | Config reference data · verified rule data | Config reference data (as built). It is a list of codes, not a rate. | None | Report §8 (Core HR) |
 | PAY-16 | Please confirm that GST on consultants' pay stays out of payroll, with accounts payable handling it. | Out of scope · build it in payroll | Out of scope. | None | setup 08 §10.9 #14 |
 | PAY-17 | Which right may download the pre-run readiness CSV (employees missing PAN / UAN / structure etc., never the values)? | `payroll.view` (matrix 25 §25.6.2 #17) · `payroll.manage` | `payroll.view` (as built, 2026-10-30), like the other payroll exports; the export is audited. | PO-3 (built) | PO-3 report |
+| PAY-18 | Should a draft compensation change count as "pending" on the salary structure register, and block a second proposal for that employee? | Yes (as built) · only submitted changes | Yes (as built with PO-2, 2026-10-30): one open change per employee at a time. | PO-2 (built) | PO-2 report |
+| PAY-19 | Which roles may download the salary structure register as CSV? | `compensation.export` (as built; today only Tenant HR Admin holds it) · also give it to the HR Manager and Payroll Admin templates | As built with PO-2 (2026-10-30). Recommended: add `compensation.export` to the Payroll Admin template. | PO-2 (built) | PO-2 report; matrix 25 §25.2.1 #3 |
+| PAY-20 | The employee's tax regime is held in two places: the year's tax declaration (what TDS uses, shown on the salary structure register) and the statutory details field (edited in the Assign salary wizard, not read by payroll). How should they relate? | Keep both (as built) · the declaration is the source and the statutory field shows it read-only · the statutory field sets the default for a new year's declaration | Keep both (as built with PO-2, 2026-10-30). Recommended: the declaration is the source; the statutory field shows it read-only. | PO-2 (built) | PO-2 report |
+| PAY-21 | The printed salary breakup (letters' salary annexure) works out PF on the wage ceiling, while the Assign salary preview uses the employee's own PF wage basis. Should the annexure follow the employee's basis? | Annexure on the ceiling (as built) · annexure follows the employee's PF wage basis | As built with PO-2 (2026-10-30). Recommended: follow the employee's basis (this changes letter output for people on actual wages). | PO-2 (built); WO-13 | PO-2 report |
+| PAY-22 | Should health insurance premiums (employee share, parents' cover) be recovered through payroll, and how are they treated for tax (e.g. 80D)? | Not handled (as built) · a payroll deduction and tax treatment from verified rules | Not handled (as built with MS-5, 2026-10-30); needs the owner's and a statutory adviser's input before anything is built. | MS-5 (built); BP packages | MS-5 report |
+| PAY-23 | When the automatic calculation day (`payroll.auto_calculate_day`) recalculates open runs, who should be told? | Nobody (as built) · the run's preparer · the payroll team | Nobody (as built with PO-4, 2026-10-31); the setting is 0 (off) by default. Recommended: the run's preparer. | PO-4 (built) | PO-4 report |
+| PAY-24 | Should the automatic calculation also recalculate validated runs (which then drop back to calculated)? | Yes: draft, calculated and validated runs (as built) · draft and calculated only | As built with PO-4 (2026-10-31); approved, finalized and paid runs are never touched. Recommended: leave validated runs alone. | PO-4 (built) | PO-4 report; PAY-1 |
+| PAY-25 | Who may tick a payroll entry as checked? | `payroll.calculate` or `payroll.approve` (as built) · approvers only | As built with PO-4 (2026-10-31); the tick never blocks finalizing and is cleared when the entry is recalculated. | PO-4 (built) | PO-4 report |
 
 ### 4. Time office
 
@@ -92,6 +112,18 @@ Rows PAY-10 to PAY-14 are rule checks that only the owner, with legal or payroll
 | TIM-5 | May HR apply leave in bulk on absent days? | No · yes, on behalf of the employee and approved by HR | No (today). When built: HR applies on the employee's behalf with a reason. Balances and limits apply, and refused rows are listed, never forced. | TX-3 | D-TX7 |
 | TIM-6 | Should overtime plans be built (overtime allowed only when planned in advance)? | Not built · policy switch "overtime needs a plan" | Not built until asked. If built, the switch is off by default. | TX-11, TX-13 | D-TX8 |
 | TIM-7 | May managers upload data for their own team (time office, variable pay, performance)? | HR only · managers too, limited to their scope | HR only (`team.uploads` off). | TX-13; RQ-15 (team uploads); PO-6 (manager variable upload); GO-10 (team use) | D-TX9; matrix 20 §20.3.1 #17, R.4.6, RQ-15; matrix 27 reuse (§27.10 #13) |
+| TIM-8 | Should the Attendance Admin role template get `bulk.run`, so attendance admins can use the bulk actions on the attendance month desk (Mark present, Hold / Release arrears)? | HR Admin and HR Manager only (today) · also Attendance Admin | HR Admin and HR Manager only (as built with TX-3, 2026-10-30). An attendance admin can still close, reopen and process one month at a time. | TX-3 (built) | TX-3 report |
+| TIM-9 | When month close is on, should "no pending requests" count the whole company, or only the people the closer can see? | Whole company (as built) · the closer's access scope | Whole company (as built with TX-3, 2026-10-30): a month is closed for everyone, so every pending request on its days stops the close. The refusal shows counts by kind, not names. | TX-3 (built) | TX-3 report |
+| TIM-10 | If the pay cycle changes after a month was closed, should the closed month keep the dates it was closed with? | Keep the dates at close (as built) · follow the new cycle (reopen first) | Keep the dates at close (as built with TX-3, 2026-10-30). To use the new cycle's dates, HR reopens the month (refused once a finalized payroll covers it). | TX-3 (built) | TX-3 report |
+| TIM-11 | Attendance's month summary counts a day with half-day leave as half a paid day whatever the other half (a worked day with half-day leave counts 0.5; a half day of unpaid leave −0.5). Fix the summary? | Keep (as built) · count the worked half and paid leave half in full | Keep (as built with TX-4, 2026-10-30): the Paid days register shows the summary's figure so both agree; fixing it changes the attendance calendar's paid days (payroll is not affected: it reads days, not the summary). | TX-4 (built) | TX-4 report |
+| TIM-12 | With paid-day adjustments on, should payroll take the attendance adjustment as loss-of-pay days, or only show it next to its own loss-of-pay adjustment? | Take it (as built) · show only | Take it (as built with TX-4, 2026-10-30): payroll adds the change in paid days to loss of pay, records it on the entry and warns when its own loss-of-pay adjustment touches the same month. Off by default (TIM-2). | TX-4 (built) | TX-4 report |
+| TIM-13 | When HR sets a month's counts ("Manually set paid days"), should late-mark penalty days still reduce the paid days? | Yes, penalties stay separate (as built) · the set counts are final | Penalties stay separate (as built with TX-4, 2026-10-30): HR waives a penalty on the penalties register if the set counts should be final. | TX-4 (built) | TX-4 report |
+| TIM-14 | On a rostered day flagged for auto shift correction, which shifts may the correction choose from? | The schedule's correction list plus the rostered shift, which wins a tie (as built) · the schedule's list only | As built with TX-5 (2026-10-30). If the schedule lists no shifts, the flag does nothing. | TX-5 (built) | TX-5 report |
+| TIM-15 | When an approved shift-change request lands on a rostered day flagged for auto correction, should the flag be cleared (and restored if the request is cancelled)? | Cleared and restored (as built) · kept | Cleared and restored (as built with TX-5, 2026-10-30): the employee's requested shift stands. | TX-5 (built) | TX-5 report |
+| TIM-16 | How long a date range may HR change in one go with "Change attendance status"? | Up to 31 days (as built) · longer | Up to 31 days (as built with TX-6, 2026-10-30); 25 employees × 31 days run at once, larger selections go through a bulk run. | TX-6 (built) | TX-6 report |
+| TIM-17 | When the two halves of a day have different statuses that both count (e.g. holiday + weekly off), which status does the day show? | The upload's precedence: present, work from home, on duty, holiday, weekly off (as built) · another order | As built with TX-6 (2026-10-30); paid-day categories still count each half separately. | TX-6 (built) | TX-6 report |
+| TIM-18 | With `team.punch_edit` on, whose punches may a manager add, exclude or restore? | Direct reports of any reporting type (as built) · line reports only · all levels below | As built with TX-7 (2026-10-30); never their own. The switch is off by default. | TX-7 (built); RQ-11 | TX-7 report |
+| TIM-19 | Should a punch HR excluded still count toward the employee's daily punch limit? | No, so the employee can punch again (as built) · yes | Not counted (as built with TX-7, 2026-10-30). Cancelling one day of a multi-day leave from the day drawer is not built; the whole request is cancelled, as on Leave requests. | TX-7 (built) | TX-7 report |
 
 ### 5. Workforce lifecycle
 
@@ -104,6 +136,22 @@ Rows PAY-10 to PAY-14 are rule checks that only the owner, with legal or payroll
 | WRK-5 | On a transfer, should the employee's approved check-in locations end? | Off, but the approver may tick it · always | Off; the approver may tick it. | WO-10, SV-6 | D-WO9 |
 | WRK-6 | At exit, who takes over the leaver's approver and admin roles and their reportees? | They move to the leaver's manager automatically · HR chooses on the exit case | HR chooses. Anything unresolved is listed before "Complete exit" as a warning, not a block. | WO-11 | D-WO10 |
 | WRK-7 | How may joiners fill in their own details before day one? Which sections, and what consent text? | No access · signed one-time links per section · time-limited sign-in | No access (today). Recommended: signed one-time links per section, valid until the joining date, with consent captured first and no portal account. The owner names the sections and the consent text. | WO-4, WO-8 | D-WO11; gap WF-13 |
+| WRK-8 | Should revoking an issued letter need its own right (HROne has a separate "Unpublish" right)? | Same right as issuing (`letter.issue`, as built) · a separate `letter.revoke` | Same right as issuing (as built with WO-13, 2026-10-30). Revoking asks for a reason, is audited and keeps the file. | WO-13 (built) | WO-13 report |
+| WRK-9 | When an issued letter is generated again, when does the employee stop seeing the old one? | When the new letter is issued (as built) · at once | When the new letter is issued (as built with WO-13, 2026-10-30), so the employee always has one valid letter. A letter not yet issued is revoked at once. | WO-13 (built) | WO-13 report; WRK-2 |
+| WRK-10 | Should clearance stages and exits ready to complete appear in My tasks (`exit.clearance.my_tasks`)? | Off (as built) · on | Off (as built with WO-11, 2026-10-30): owners find their stages on the exit case and the Clearances register. Recommended: on, as HROne lists clearance tasks in the inbox. | WO-11 (built) | WO-11 report; matrix 23 §23.11 #10–11 |
+| WRK-11 | With resignation acceptance switched on, may the HR person who initiated a resignation on the employee's behalf also accept it? | Yes (as built) · someone else must accept | Yes (as built with WO-11, 2026-10-30). The employee can never decide their own resignation. | WO-11 (built) | WO-11 report |
+| WRK-12 | When HR changes a leaver's last working day, should asset-return requests and the exit-interview due date move with it? | Not moved (as built) · moved | Not moved (as built with WO-11, 2026-10-30). Clearance due dates and the notice shortfall are recalculated. | WO-11 (built) | WO-11 report |
+| WRK-13 | With resignation acceptance switched on, may HR complete an exit whose resignation was never accepted? | No (as built) · yes, with a warning | No (as built with WO-11, 2026-10-30). Accept or reject it first. | WO-11 (built) | WO-11 report |
+| WRK-14 | When a team's manager change is dated in the future, should their open approvals move to the new manager on that date? | Not moved; ticking "move approvals" is refused for a future date (as built) · moved automatically on the effective date | Not moved (as built with WO-16, 2026-10-30): until that date today's manager is still the manager. | WO-16 (built) | WO-16 report |
+| WRK-15 | May HR invite pre-joiners (not yet joined) to sign in, in bulk? | Yes, as the single-user Users → New flow allows (as built) · refused until the joining date | Yes (as built with WO-16, 2026-10-30); only leavers and suspended people are refused. Recommended: refuse until the joining date, in line with WRK-7 (no access before day one). | WO-16 (built); WO-4, WO-8 | WO-16 report; WRK-7 |
+| WRK-16 | When a team moves to a new manager and "move approvals" is ticked, should HR business partner steps move as well? | Line and functional manager steps only (as built) · also HR business partner steps | Line and functional manager steps only (as built with WO-16, 2026-10-30). | WO-16 (built) | WO-16 report |
+| WRK-17 | When HR saves an employee's insurance policy form, should a covered member left out of the form be removed from the policy? | Yes, the form is the full member list (as built) · no, members are removed only one at a time | As built with MS-5 (2026-10-30); uploads and self-service never remove anyone. Removals are audited. | MS-5 (built) | MS-5 report |
+| WRK-18 | At hire, should a PAN or Aadhaar match with someone still employed here need a ticked confirmation (it is likely a duplicate)? | Shown, no confirmation (as built) · confirmation with a reason | Shown only (as built with WO-3, 2026-10-30). A match with someone marked not eligible for rehire already needs a confirmation and a reason. | WO-3 (built) | WO-3 report |
+| WRK-19 | Should the hire wizard accept documents, so fields that need a supporting document (CA-4) can be filled at hire? | No: add them on the Employee 360 after uploading (as built) · upload in the wizard | As built with WO-3 (2026-10-30). | WO-3 (built); CA-4 | WO-3 report |
+| WRK-20 | Should HR with a limited access scope see a future joiner in their area before the joining date? | Not until the planned start date, because scope reads positions in force today (as built, existing behaviour) · yes, count the planned position in scope | As built (unchanged by WO-4, 2026-10-31). Recommended: count the planned position, so HR can prepare the joiner. | WO-4 (built); CA-9 | WO-4 report |
+| WRK-21 | May a person marked "not joining" be brought back if they accept a new offer? | No: `not_joined` is final; a new hire of the same person meets the duplicate-person check, which HR may override (as built) · a "reinstate offer" step back to preboarding | As built with WO-4 (2026-10-31). | WO-4 (built); WRK-1 | WO-4 report |
+| WRK-22 | When HR changes an upcoming joiner's expected joining date, should the salary (compensation) effective date move too? | No (as built) · yes, when it starts on the old date | Not moved (as built with WO-4, 2026-10-31); onboarding, probation, position and reporting line move. Recommended: move it when it starts on the old date. | WO-4 (built) | WO-4 report |
+| WRK-23 | When someone is marked "not joining", should open background-check cases be closed and people set to report to them be moved? | Left as they are, with a warning for reportees (as built) · closed and moved automatically | As built with WO-4 (2026-10-31). | WO-4 (built) | WO-4 report |
 
 ### 6. Expense and travel (including assets and helpdesk)
 
@@ -123,6 +171,20 @@ Rows PAY-10 to PAY-14 are rule checks that only the owner, with legal or payroll
 | EXP-12 | Should there be an asset status "Reserved", for an asset held for a named employee or request? | No · yes | Add it, unused by default. Only that employee, or that request's fulfilment, can receive the asset. | XO-8 | D-XO6 |
 | EXP-13 | When an approver marks an expense line "Suspected", does that block the decision, or is the line held out and decided later? | Block · hold out (approved at 0 for now) | Setting off (today). Recommended: hold the line out with a note and clear it later with a "Clear suspicion" decision. | XO-3 | D-XO7 |
 | EXP-14 | May finance pay out less than the approved advance, and what happens to the rest? | Full amount only · several payouts up to the approved amount | Full amount only (today). Recommended: allow several payouts. The settle-by date counts from the first, and the rest lapses when the advance is settled or cancelled. | XO-5 | D-XO8 |
+| EXP-15 | Once an expense report is paid (or carried by a payroll run or a final settlement), how is a line held as "Suspected" released? | It can only be rejected (as built) · approved and paid in a supplementary payment | Only rejected (as built with XO-3, 2026-10-30; kept by XO-4). A later release needs a second payment per report: a payments table, its own payroll input with the never-twice guards, the final-settlement source and advance settlement — a follow-up package if the owner wants it. | XO-3 (built); XO-4 | XO-3 report; EXP-13 |
+| EXP-16 | Who may clear a line held as "Suspected"? | Anyone who may decide that part of the report (as built) · only the approver who held it | Anyone who may decide the part (as built with XO-3, 2026-10-30); never on one's own report; a note is required and audited. | XO-3 (built) | XO-3 report |
+| EXP-17 | Does a line held as "Suspected" count against expense limits and frequencies? | Yes, like a reported line (as built) · not until cleared | Yes (as built with XO-3, 2026-10-30). | XO-3 (built) | XO-3 report |
+| EXP-18 | Should lines held as "Suspected" appear as items in the Approval Center? | No; approvers find them with the register filter and on the report (as built) · yes, as their own item kind | No (as built with XO-3, 2026-10-30). | XO-3 (built); RQ packages | XO-3 report |
+| EXP-19 | When an expense report's chosen payroll month is finalized without it, what happens? | It stays on that month, flagged, until finance moves it (as built) · it rolls to the next open month automatically | Stays and is flagged (as built with XO-4, 2026-10-30); no other month picks it up on its own. | XO-4 (built) | XO-4 report; EXP-7 |
+| EXP-20 | May finance choose a payroll month whose run is already calculated or approved (it then needs reopening and recalculating)? | Yes, with a note in the month's label (as built) · only months with no run or a draft run | Yes, with the note (as built with XO-4, 2026-10-30). Finalized months are never offered. | XO-4 (built) | XO-4 report |
+| EXP-21 | When finance records an outside payment, must the payment mode and (for bank transfer and cheque) the paying account be filled in? | Optional, as today (as built) · required | Optional (as built with XO-4, 2026-10-30); a reference is still required, even for cash. | XO-4 (built) | XO-4 report |
+| EXP-22 | With partial dispense on, may the employee or finance cancel the unpaid rest of an advance at once, even where the policy needs approval to cancel an advance? | Yes, at once, audited (as built) · only with the policy's cancellation approval | As built with XO-5 (2026-10-30); the switch `expense.advance.partial_dispense` is off by default. | XO-5 (built) | XO-5 report; EXP-14 |
+| EXP-23 | When HR files an advance or an expense report on an employee's behalf, may the same person approve it? | Yes, as for receipts and trips filed on behalf today (as built) · a different approver is required | As built with XO-5 (2026-10-30). Recommended: a different approver. | XO-5 (built) | XO-5 report |
+| EXP-24 | Should the employee be told when the unpaid rest of a partly dispensed advance lapses? | Audit only (as built) · a notification | Audit only (as built with XO-5, 2026-10-30): the existing "advance cancelled" message would wrongly say the whole advance was cancelled. | XO-5 (built) | XO-5 report |
+| EXP-25 | Should a recovery finance scheduled for a payroll month wait while the employee has an expense report waiting for a decision (as the automatic recovery does)? | No: finance chose the month and amount (as built) · yes, wait like the automatic recovery | As built with XO-6 (2026-10-30). | XO-6 (built) | XO-6 report; EXP-8 |
+| EXP-26 | Should the employee be told when a recovery of their advance is scheduled? | Audit only (as built) · a notification with the month and amount | Audit only (as built with XO-6, 2026-10-30). Recommended: notify the employee. | XO-6 (built) | XO-6 report |
+| EXP-27 | When a payroll month is finalized without a scheduled recovery, what happens? | It stays scheduled, flagged, and holds back the advance's automatic recovery until finance moves or cancels it (as built) · it falls back to the automatic recovery date | As built with XO-6 (2026-10-30), like EXP-19 for expense reports. | XO-6 (built) | XO-6 report; EXP-19 |
+| EXP-28 | May finance schedule a payroll recovery for an advance whose policy says recovery `none` or `exit_only`? | Yes, HR overrides the policy (as built) · no, the policy's recovery rule applies | As built with XO-6 (2026-10-30). | XO-6 (built) | XO-6 report |
 
 ### 7. Performance and engage
 
@@ -141,6 +203,16 @@ Rows PAY-10 to PAY-14 are rule checks that only the owner, with legal or payroll
 | PER-11 | Should colleagues be able to endorse each other's skills? | Off · on without wall posts · on with wall posts | Off; a tenant switch. | MS-6, GO-15 | D-MS4; matrix 20 R.3.1 #5 |
 | PER-12 | Should the seeded badge keep the name "Super Woman"? | Keep · rename | Keep (as seeded). | None | Report §8 (Engage) |
 | PER-13 | Should handbook acknowledgements have a due date by default? | No due date (`kb.acknowledgement.due_days` = 0) · N days | No due date (today). | None | Report §8 (Engage) |
+| PER-14 | May a person withdrawn from a performance cycle be added back to it? | No, a withdrawal is final (as built) · yes, reinstated with their history | No (as built with GO-2, 2026-10-30). Adding them again is refused with the reason; nothing is deleted. | GO-2 (built) | GO-2 report; PER-10 |
+| PER-15 | When someone is withdrawn from a cycle, should 360 nominations and feedback forms already sent about them be cancelled? | Left as they are (as built) · cancelled with the withdrawal | Left as they are (as built with GO-2, 2026-10-30). Their appraisal is read-only and out of every rating view. | GO-2 (built) | GO-2 report |
+| PER-16 | Should people be told when their goal-setting, review or 360 window is extended? | No notice; the new date shows in reminders, review requests and My tasks (as built) · a notification | No notice (as built with GO-2, 2026-10-30). | GO-2 (built) | GO-2 report |
+| PER-17 | When the employee request lock counts overdue "performance" tasks, should it include the new task kinds (reviews, goal sheets, goal check-ins, PIP evaluations)? | Yes (as built) · one-on-one and 360 feedback only, as before | Yes (as built with GO-9, 2026-10-30). The lock itself stays off by default. | GO-9 (built) | GO-9 report |
+| PER-18 | Should the existing per-row "Calibrate" action refuse HR's own appraisal, as the new normalisation does? | Allowed, as today · refused | Allowed (today; unchanged by GO-3, 2026-10-30). Recommended: refuse it, so nobody changes their own rating. The new normalisation grid already refuses one's own appraisal. | GO-3 (built) | GO-3 report |
+| PER-19 | With manager normalisation on (`performance.normalise.by_managers`), may managers also normalise their team's periodic review ratings? | HR only (as built) · managers too, for their own reports | HR only (as built with GO-3, 2026-10-30); the manager setting covers performance ratings only. | GO-3 (built); GO-19 | GO-3 report; PER-2 |
+| PER-20 | Who should get the scheduled check-in reminders for an organisation goal that has an owner person? | The goal's creator (as built) · the owner person · both | The creator (as built with GO-4, 2026-10-30). Recommended: the owner person. | GO-4 (built) | GO-4 report |
+| PER-21 | Who can be put on a private goal's visible-to list? | Named employees only (as built) · also organisation units or rule-based audiences | Named employees (as built with GO-4, 2026-10-30). | GO-4 (built); PER-5 | GO-4 report |
+| PER-22 | May HR with a limited scope see a private organisation goal that has no owner person (so it belongs to nobody in their scope)? | No, it fails closed (as built) · yes, every performance HR user sees it | Hidden (as built with GO-4, 2026-10-30); creators, the visible-to list and HR without a scope limit still see it. | GO-4 (built); PER-5 | GO-4 report |
+| PER-23 | With achievement override on, should a parent goal's progress roll up from its children's overridden (final) achievement or their system achievement? | System achievement (as built) · final achievement | System (as built with GO-4, 2026-10-30). | GO-4 (built); PER-6 | GO-4 report |
 
 ### 8. Analytics and AI
 
@@ -201,22 +273,23 @@ Rows PAY-10 to PAY-14 are rule checks that only the owner, with legal or payroll
 | PLT-18 | Who may mark system to-dos "Not relevant" in the inbox (`task.ignore`)? | Tenant HR Admin and HR Manager (through `task.*`) · also managers · named roles | Tenant HR Admin and HR Manager (as built with RQ-8, 2026-10-30); reason required, audited, reversible. | RQ-8 (built) | RQ-8 report |
 | PLT-19 | Which to-dos count as "system tasks" that may be marked not relevant? | To-dos of runs started by an event trigger or by the system (never approvals, never hand-started runs) · wider | As built with RQ-8 (2026-10-30). | RQ-8 (built) | RQ-8 report |
 | PLT-20 | Should the inbox Insight also count decisions made on a module's own screen (they have no due time)? | Workflow steps and Approval Center decisions only · all decisions | Workflow steps and Approval Center decisions only (as built with RQ-8, 2026-10-30). | RQ-8 (built) | RQ-8 report |
+| PLT-21 | When bulk invitations copy someone (CC), should they get one notice per invited person or one summary per run? | One per person (as built) · one summary per run | One per person (as built with WO-16, 2026-10-30). The copy never carries the sign-in or reset link. | WO-16 (built) | WO-16 report |
 
 ## Count by theme (after merging duplicates)
 
 | Theme | Open decisions |
 |---|---|
-| 1. Data visibility and privacy | 15 |
-| 2. Self-service editing | 4 |
-| 3. Payroll and statutory (5 are owner / legal rule checks) | 17 |
-| 4. Time office | 7 |
-| 5. Workforce lifecycle | 7 |
-| 6. Expense and travel (including assets and helpdesk) | 14 |
-| 7. Performance and engage | 13 |
+| 1. Data visibility and privacy | 23 |
+| 2. Self-service editing | 8 |
+| 3. Payroll and statutory (5 are owner / legal rule checks) | 25 |
+| 4. Time office | 19 |
+| 5. Workforce lifecycle | 23 |
+| 6. Expense and travel (including assets and helpdesk) | 28 |
+| 7. Performance and engage | 23 |
 | 8. Analytics and AI | 10 |
 | 9. External providers | 15 |
-| 10. Platform / SaaS | 20 |
-| **Total** | **122** |
+| 10. Platform / SaaS | 21 |
+| **Total** | **195** |
 
 Merged rows: PAY-1 (D-PO1 + D-TX6), PAY-5 / VEN-5 (D-PO9 split into method and library), WRK-2 (D-WO5 + D-WO6),
 TIM-7 (D-TX9 + matrix 27 reuse), PER-10 (HP-8k + P17), PLT-1 (D-WO3 + D-WO4 + D-TX5 + D-PO8), ANA-1 (five ranking
@@ -349,3 +422,76 @@ Write "default", "recommended" or your own choice.
 120. PLT-18 who may mark to-dos not relevant. Answer: ______
 121. PLT-19 what counts as a system to-do. Answer: ______
 122. PLT-20 Insight over module-screen decisions. Answer: ______
+123. TIM-8 bulk actions for Attendance Admin. Answer: ______
+124. TIM-9 pending requests counted company-wide at month close. Answer: ______
+125. TIM-10 closed month keeps its dates when the pay cycle changes. Answer: ______
+126. PRV-16 who may receive e-mailed letters. Answer: ______
+127. WRK-8 separate right to revoke letters. Answer: ______
+128. WRK-9 when a re-generated letter replaces the old one. Answer: ______
+129. PER-14 re-adding a withdrawn person. Answer: ______
+130. PER-15 360 requests after a withdrawal. Answer: ______
+131. PER-16 notice of a window extension. Answer: ______
+132. PER-17 request lock counts the new performance tasks. Answer: ______
+133. PRV-17 exit remarks in the exits dataset. Answer: ______
+134. WRK-10 clearance tasks in My tasks. Answer: ______
+135. WRK-11 initiator accepts the resignation. Answer: ______
+136. WRK-12 last working day change moves asset and interview dates. Answer: ______
+137. WRK-13 completing an unaccepted resignation. Answer: ______
+138. TIM-11 half-day leave in the attendance month summary. Answer: ______
+139. TIM-12 payroll takes attendance paid-day adjustments as loss of pay. Answer: ______
+140. TIM-13 penalty days after set counts. Answer: ______
+141. WRK-14 approvals with a future-dated manager change. Answer: ______
+142. WRK-15 inviting pre-joiners. Answer: ______
+143. WRK-16 HR business partner steps on a team move. Answer: ______
+144. PLT-21 CC notices per person or per run. Answer: ______
+145. PAY-18 drafts block a second proposal. Answer: ______
+146. PAY-19 who may export the salary structure register. Answer: ______
+147. PAY-20 one source for the tax regime. Answer: ______
+148. PAY-21 printed breakup follows the PF wage basis. Answer: ______
+149. EXP-15 releasing a held line after payment. Answer: ______
+150. EXP-16 who clears a suspicion. Answer: ______
+151. EXP-17 held lines and expense limits. Answer: ______
+152. EXP-18 held lines in the Approval Center. Answer: ______
+153. PER-18 calibrating one's own appraisal. Answer: ______
+154. PER-19 managers normalise review ratings. Answer: ______
+155. EXP-19 a chosen month finalized without the report. Answer: ______
+156. EXP-20 choosing a month whose run is calculated or approved. Answer: ______
+157. EXP-21 payment mode and account required. Answer: ______
+158. PRV-18 what employees see of an expense payment. Answer: ______
+159. TIM-14 auto correction shifts on a rostered day. Answer: ______
+160. TIM-15 a shift change clears the roster's auto flag. Answer: ______
+161. SSE-5 nominee majority age and benefit list. Answer: ______
+162. SSE-6 approval for self-edited nominations. Answer: ______
+163. TIM-16 longest range for a status change. Answer: ______
+164. TIM-17 day status from two different halves. Answer: ______
+165. SSE-7 approval for self-edited insurance. Answer: ______
+166. SSE-8 employees upload their e-card. Answer: ______
+167. WRK-17 HR form removes left-out insured members. Answer: ______
+168. PAY-22 insurance premiums in payroll and tax. Answer: ______
+169. PRV-19 who sees the type of a private leave. Answer: ______
+170. PRV-20 team away for every employee. Answer: ______
+171. PRV-21 private leave in notifications. Answer: ______
+172. WRK-18 confirming a match with a current employee. Answer: ______
+173. WRK-19 documents in the hire wizard. Answer: ______
+174. PRV-22 hidden not-eligible match at hire. Answer: ______
+175. EXP-22 cancelling the unpaid rest of an advance. Answer: ______
+176. EXP-23 approving one's own on-behalf filing. Answer: ______
+177. EXP-24 notice when an advance's rest lapses. Answer: ______
+178. PRV-23 who sees check-in photos. Answer: ______
+179. TIM-18 a manager's team for punch edits. Answer: ______
+180. TIM-19 excluded punches and the daily limit. Answer: ______
+181. EXP-25 scheduled recovery and pending reports. Answer: ______
+182. EXP-26 notify the employee of a scheduled recovery. Answer: ______
+183. EXP-27 a finalized month without the scheduled recovery. Answer: ______
+184. EXP-28 scheduling against the advance policy. Answer: ______
+185. PER-20 check-in reminders for owned goals. Answer: ______
+186. PER-21 visible-to audiences for private goals. Answer: ______
+187. PER-22 scoped HR and private goals with no owner. Answer: ______
+188. PER-23 roll-ups from overridden achievement. Answer: ______
+189. PAY-23 who hears about the automatic calculation. Answer: ______
+190. PAY-24 automatic calculation of validated runs. Answer: ______
+191. PAY-25 who may tick payroll entries. Answer: ______
+192. WRK-20 scoped HR and future joiners. Answer: ______
+193. WRK-21 bringing back a not-joined person. Answer: ______
+194. WRK-22 joining date change moves salary dates. Answer: ______
+195. WRK-23 background checks and reportees of a not-joiner. Answer: ______

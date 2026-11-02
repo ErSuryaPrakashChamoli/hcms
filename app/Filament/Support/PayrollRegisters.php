@@ -12,11 +12,16 @@ use App\Domain\Compliance\Imports\StatutoryOverrideImports;
 use App\Domain\Employment\Imports\RowImportTypes;
 use App\Filament\Pages\ComplianceReportsPage;
 use App\Filament\Pages\DeclareInvestments;
+use App\Filament\Pages\IncrementCalculator;
 use App\Filament\Pages\PayrollControlRoom;
+use App\Filament\Pages\StatutoryChallansPage;
+use App\Filament\Resources\LeaveEncashmentBatches\LeaveEncashmentBatchResource;
 use App\Filament\Resources\Loans\LoanResource;
 use App\Filament\Resources\PayrollUploads\PayrollUploadResource;
+use App\Filament\Resources\ReimbursementClaims\ReimbursementClaimResource;
 use App\Filament\Resources\SalaryHolds\SalaryHoldResource;
 use App\Filament\Resources\SalaryImports\SalaryImportResource;
+use App\Filament\Resources\TaxDeclarations\TaxDeclarationResource;
 use App\Filament\Resources\TaxIncomeEntries\TaxIncomeEntryResource;
 use App\Filament\Resources\VariablePayRequests\VariablePayRequestResource;
 use Closure;
@@ -244,24 +249,40 @@ final class PayrollRegisters
             Action::make('posPaySalaryUpload')->label('Assign salary structures (upload)')->icon(Heroicon::OutlinedArrowUpTray)
                 ->visible($opens(fn () => SalaryImportResource::canCreate()))
                 ->url(fn () => SalaryImportResource::getUrl('index', ['action' => 'create'])),
+            // HROne parity AC-2: the on-behalf forms open directly (?action=).
+            Action::make('posPayClaim')->label('Reimbursement claim for an employee')->icon(Heroicon::OutlinedReceiptPercent)
+                ->visible($opens(fn () => ReimbursementClaimResource::canAccess() && $can('payroll.manage')))
+                ->url(fn () => ReimbursementClaimResource::getUrl('index', ['action' => 'claimForEmployee'])),
             Action::make('posPayInvestments')->label('Declare investments for an employee')->icon(Heroicon::OutlinedClipboardDocumentCheck)
                 ->visible($opens(fn () => DeclareInvestments::canAccess() && $can('payroll.manage')))
-                ->url(fn () => DeclareInvestments::getUrl()),
+                ->url(fn () => DeclareInvestments::getUrl(['action' => 'declareForEmployee'])),
+            Action::make('posPayProof')->label('Investment proof for an employee')->icon(Heroicon::OutlinedPaperClip)
+                ->visible($opens(fn () => TaxDeclarationResource::canAccess() && $can('payroll.manage')))
+                ->url(fn () => TaxDeclarationResource::getUrl('index', ['action' => 'submitProofForEmployee'])),
             Action::make('posPayVariable')->label('Variable pay request')->icon(Heroicon::OutlinedSparkles)
                 ->visible($opens(fn () => VariablePayRequestResource::canAccess() && $can('payroll.manage')))
                 ->url(fn () => VariablePayRequestResource::getUrl('index', ['action' => 'forEmployee'])),
             Action::make('posPayLoan')->label('Loan request')->icon(Heroicon::OutlinedCreditCard)
                 ->visible($opens(fn () => LoanResource::canAccess() && $can('payroll.manage')))
                 ->url(fn () => LoanResource::getUrl('index', ['action' => 'onBehalf'])),
+            // HROne parity PO-8: "Encash leaves" (HR batch) for people who manage leave.
+            Action::make('posPayEncashLeaves')->label('Encash leaves')->icon(Heroicon::OutlinedBanknotes)
+                ->visible($opens(fn () => LeaveEncashmentBatchResource::canAccess() && $can('leave.manage')))
+                ->url(fn () => LeaveEncashmentBatchResource::getUrl('index', ['action' => 'encashLeaves'])),
             Action::make('posPayHold')->label('Hold salary')->icon(Heroicon::OutlinedPauseCircle)
                 ->visible($opens(fn () => SalaryHoldResource::canAccess()))
                 ->url(fn () => SalaryHoldResource::getUrl('index', ['action' => 'hold'])),
             Action::make('posPayPerquisite')->label('Record a perquisite')->icon(Heroicon::OutlinedGiftTop)
                 ->visible($opens(fn () => TaxIncomeEntryResource::canAccess()))
                 ->url(fn () => TaxIncomeEntryResource::getUrl('index', ['action' => 'perquisite'])),
+            // HROne parity PO-17: Actions → Payroll → "Increment calculator".
+            Action::make('posPayIncrement')->label('Increment calculator')->icon(Heroicon::OutlinedCalculator)
+                ->visible($opens(fn () => IncrementCalculator::canAccess()))
+                ->url(fn () => IncrementCalculator::getUrl(['action' => 'create'])),
+            // HROne parity PO-13: the challan grid; people who only see compliance reports keep that page.
             Action::make('posPayChallan')->label('Generate challan')->icon(Heroicon::OutlinedDocumentText)
-                ->visible($opens(fn () => ComplianceReportsPage::canAccess()))
-                ->url(fn () => ComplianceReportsPage::getUrl()),
+                ->visible($opens(fn () => StatutoryChallansPage::canAccess() || ComplianceReportsPage::canAccess()))
+                ->url(fn () => StatutoryChallansPage::canAccess() ? StatutoryChallansPage::getUrl() : ComplianceReportsPage::getUrl()),
         ])->label('Payroll actions')->icon(Heroicon::OutlinedSquares2x2)->button()->color('gray')
             ->visible(fn () => self::hrSide('payroll.view') && (self::hrSide('payroll.manage') || self::hrSide('payroll.calculate')));
     }

@@ -20,17 +20,18 @@ class ListSalaryImports extends PeopleListRecords
         return [
             ImportActions::formatAction(SalaryImports::TYPE),
             Action::make('downloadTemplate')
-                ->label('Download template')
-                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->label('Download sample file')
+                ->icon(Heroicon::OutlinedTableCells)
                 ->color('gray')
                 ->action(fn () => response()->streamDownload(fn () => print (app(SalaryImports::class)->template()), 'salary-upload-template.csv', ['Content-Type' => 'text/csv'])),
             CreateAction::make()
                 ->label('Upload salaries CSV')
+                ->modalWidth('4xl')->modalSubmitActionLabel('Upload and continue')->createAnother(false)->modalContentFooter(null)
                 ->modalHeading('Upload a salary file')
-                ->modalDescription('CSV with a header row: employee code, salary structure code and annual CTC, optionally effective date, currency, variable target, change type and fixed monthly component amounts. Start from Download template. Running the upload prepares a draft compensation cycle; pay changes only after that cycle is reviewed, approved and executed by other people.')
+                ->modalDescription('CSV with a header row: employee code, salary structure code and annual CTC, optionally effective date, currency, variable target, change type and fixed monthly component amounts. Start from Download sample file. Running the upload prepares a draft compensation cycle; pay changes only after that cycle is reviewed, approved and executed by other people.')
                 ->schema([
-                    ImportActions::modeField(SalaryImports::MODES),
                     ImportActions::fileField(),
+                    ImportActions::modeField(SalaryImports::MODES),
                     ImportActions::formatSection(SalaryImports::TYPE),
                 ])
                 ->using(fn (array $data) => app(SalaryImports::class)->register($data['file'], ImportActions::originalName($data), auth()->user(), mode: ImportMode::from($data['mode'])))

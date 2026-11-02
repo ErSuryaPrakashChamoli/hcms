@@ -3,6 +3,7 @@
 namespace App\Domain\Leave\Services;
 
 use App\Domain\Attendance\Models\AttendanceRecord;
+use App\Domain\Attendance\Services\AttendanceMonthCloses;
 use App\Domain\Attendance\Services\AttendanceProcessor;
 use App\Domain\Attendance\Support\RequestRules;
 use App\Domain\Audit\Enums\AuditAction;
@@ -38,7 +39,12 @@ final class Leaves
         private readonly LeaveEligibility $eligibility,
     ) {}
 
-    public function request(Employee $employee, LeaveType $type, Carbon|string $from, Carbon|string $to, string $reason, string $fromSession = 'full', string $toSession = 'full', ?EmployeeDocument $document = null, ?User $requester = null, ?string $idempotencyKey = null, ?string $contact = null): LeaveRequest
+    /**
+     * @param  bool|null  $private  HROne parity RQ-4: the employee's answer to "Make this leave visible to colleagues?" (true =
+     *                              not visible); the leave type's privacy rule decides when the policy fixes it, and null
+     *                              keeps the request visible, as before (LeavePrivacy::decide).
+     */
+    public function request(Employee $employee, LeaveType $type, Carbon|string $from, Carbon|string $to, string $reason, string $fromSession = 'full', string $toSession = 'full', ?EmployeeDocument $document = null, ?User $requester = null, ?string $idempotencyKey = null, ?string $contact = null, ?bool $private = null): LeaveRequest
     {
         // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
         app(Entitlements::class)->observe(Capability::Leave, 'leave.request');
@@ -101,8 +107,11 @@ final class Leaves
         $this->assertLockedDays($employee, $dates);
         $this->assertNotPresent($employee, $dates);
         $this->assertTypeRules($employee, $type, $rule, $from, $to, $days, $requester ?? auth()->user());
+        // HROne parity RQ-4: a private leave shows as "Away" to colleagues. Set only when private, so a visible request
+        // is stored (and audited) exactly as before.
+        $private = LeavePrivacy::decide($rule, $private);
 
-        return DB::transaction(function () use ($employee, $type, $from, $to, $fromSession, $toSession, $dates, $days, $reason, $document, $requester, $rule, $idempotencyKey, $contact) {
+        return DB::transaction(function () use ($employee, $type, $from, $to, $fromSession, $toSession, $dates, $days, $reason, $document, $requester, $rule, $idempotencyKey, $contact, $private) {
             // Serialise concurrent requests for this employee, then re-check overlap and balance under the lock.
             $this->balances->lockEmployee($employee);
             $this->assertNoOverlap($employee, $dates);
@@ -123,7 +132,7 @@ final class Leaves
                 'document_id' => $document?->id,
                 'requested_by' => ($requester ?? auth()->user())?->id,
                 'idempotency_key' => $idempotencyKey,
-            ]);
+            ] + ($private ? ['is_private' => true] : []));
             $request->withAuditReason($reason)->save();
 
             foreach ($this->periods($request) as $period) {
@@ -499,6 +508,11 @@ final class Leaves
 
         if ($locked) {
             throw new RuntimeException('One or more of these days are locked for payroll.');
+        }
+        // HROne parity TX-3: days of a closed attendance month are refused the same way.
+        $dates = array_column($dates, 'date');
+        if ($dates !== []) {
+            app(AttendanceMonthCloses::class)->assertOpen($employee, min($dates), max($dates), 'One or more of these days are in a closed attendance month.');
         }
     }
 

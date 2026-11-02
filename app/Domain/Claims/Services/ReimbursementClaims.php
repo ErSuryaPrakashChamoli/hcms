@@ -12,6 +12,7 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Experience\Services\SelfServiceLock;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\SalaryComponent;
@@ -48,9 +49,24 @@ final class ReimbursementClaims
     /**
      * @param  list<array{number?: string, date?: string, amount?: float|string, vendor?: string}>  $bills
      * @param  list<string>  $attachments
+     * @param  bool  $billsHeldByPayroll  Data import DI-4 (decision): payroll raises the claim on the employee's behalf and holds
+     *                                    the bills itself, so no attachment is asked for; the bills must then be listed
      */
-    public function claim(Employee $employee, SalaryComponent $component, float $amount, Carbon|string $claimDate, string $description, array $bills = [], array $attachments = [], ?User $requester = null): ReimbursementClaim
+    public function claim(Employee $employee, SalaryComponent $component, float $amount, Carbon|string $claimDate, string $description, array $bills = [], array $attachments = [], ?User $requester = null, bool $billsHeldByPayroll = false): ReimbursementClaim
     {
+        // HROne parity AC-2: a claim filed by someone other than the employee (HR's "Claim for an employee") needs
+        // payroll.manage over the employee in the payroll access scope; it is then checked and approved like their own.
+        $filer = $requester ?? auth()->user();
+        $onBehalf = $filer !== null && ($employee->user_id === null || (int) $employee->user_id !== (int) $filer->getKey());
+        if ($onBehalf && (! $filer->hasPermission('payroll.manage') || ! app(AccessScopes::class)->allowsEmployeeId($filer, (int) $employee->getKey(), 'payroll'))) {
+            throw new RuntimeException('You cannot claim a reimbursement for this employee.');
+        }
+        if ($billsHeldByPayroll) {
+            $by = $requester ?? auth()->user();
+            if ($by === null || ! $by->hasPermission('payroll.manage') || ($employee->user_id !== null && (int) $employee->user_id === (int) $by->id)) {
+                throw new RuntimeException('Only payroll, for someone else, raises a claim with the bills held by payroll.');
+            }
+        }
         // HROne setup parity P4: the employee request lock refuses the employee's own claim while it applies.
         app(SelfServiceLock::class)->assertOpen($employee, 'reimbursement_claim', $requester);
         if ($component->type !== 'reimbursement' || ! $component->pay_on_claim) {
@@ -82,7 +98,12 @@ final class ReimbursementClaims
         }
         // HROne setup parity (PS-1): the component may override the organisation's attachment rule, and limit the claim.
         if ((bool) ($component->claim_attachment_required ?? $this->settings->get('payroll.claims.attachment_required', true)) && $attachments === []) {
-            throw new RuntimeException('Attach the bills.');
+            if (! $billsHeldByPayroll) {
+                throw new RuntimeException('Attach the bills.');
+            }
+            if ($bills === []) {
+                throw new RuntimeException('List the bills payroll holds (number and amount): no attachment is asked for on a claim raised by payroll.');
+            }
         }
         if ($component->claim_limit_per_claim !== null && (float) $component->claim_limit_per_claim > 0 && $amount > (float) $component->claim_limit_per_claim) {
             throw new RuntimeException("{$component->name} can be claimed up to ".number_format((float) $component->claim_limit_per_claim, 2).' at a time.');
@@ -92,7 +113,7 @@ final class ReimbursementClaims
         }
         $fy = $this->financialYear($claimDate);
 
-        return DB::transaction(function () use ($employee, $component, $amount, $claimDate, $description, $bills, $attachments, $requester, $fy) {
+        return DB::transaction(function () use ($employee, $component, $amount, $claimDate, $description, $bills, $attachments, $requester, $fy, $billsHeldByPayroll, $onBehalf) {
             Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($employee->getKey())->lockForUpdate()->value('id');
             // HROne setup parity BP-9 (payroll.claims.one_open_per_component): one claim at a time per reimbursement.
             if ((bool) $this->settings->get('payroll.claims.one_open_per_component', false)
@@ -106,7 +127,9 @@ final class ReimbursementClaims
             $claim = new ReimbursementClaim(['employee_id' => $employee->id, 'salary_component_id' => $component->id, 'financial_year' => $fy, 'claim_date' => Carbon::parse($claimDate)->toDateString(),
                 'amount' => round($amount, 2), 'description' => $description, 'bills' => $bills ?: null, 'attachments' => $attachments ?: null, 'status' => 'pending', 'requested_by' => ($requester ?? auth()->user())?->id]);
             $claim->withAuditReason($description)->save();
-            $this->audit->record(AuditAction::Submitted, 'payroll', $claim, reason: $description, metadata: ['component' => $component->code]);
+            // HROne parity AC-2: filed for the employee — `requested_by` names who; the event says so (only then).
+            $this->audit->record(AuditAction::Submitted, 'payroll', $claim, reason: $description,
+                metadata: ['component' => $component->code] + ($billsHeldByPayroll ? ['bills_held_by_payroll' => true] : []) + ($onBehalf ? ['on_behalf' => true, 'employee_id' => (int) $employee->getKey()] : []));
             $this->event('payroll.claim_submitted', $claim);
 
             return $claim;
@@ -269,6 +292,11 @@ final class ReimbursementClaims
         }
         if (Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($locked->employee_id)->value('user_id') === $actor->id) {
             throw new RuntimeException('You cannot decide your own claim.');
+        }
+        // HROne parity AC-2, maker-checker (decided 2026-11-01 by common HCM practice): whoever filed a claim on the
+        // employee's behalf does not also decide it.
+        if ($locked->requested_by !== null && (int) $locked->requested_by === (int) $actor->id) {
+            throw new RuntimeException('You filed this claim for the employee, so someone else decides it.');
         }
 
         return $locked;

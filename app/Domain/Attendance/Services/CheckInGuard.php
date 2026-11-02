@@ -120,7 +120,7 @@ final class CheckInGuard
         if ($on("{$channel}_max_punches_enabled") && ($max = (int) $policy->setting("{$channel}_max_punches")) > 0) {
             $sources = $channel === 'web' ? ['web'] : ['mobile', 'api'];
             $today = AttendancePunch::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)
-                ->whereIn('source_type', $sources)->where('processing_status', '!=', 'rejected')
+                ->whereIn('source_type', $sources)->whereNotIn('processing_status', AttendancePunch::NOT_COUNTED)
                 ->whereBetween('punched_at', [$at->copy()->startOfDay(), $at->copy()->endOfDay()])->count();
             if ($today >= $max) {
                 return "You can mark attendance at most {$max} time(s) a day from ".($channel === 'web' ? 'the web' : 'the app').'.';

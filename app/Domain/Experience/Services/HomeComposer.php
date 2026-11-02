@@ -8,6 +8,9 @@ use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Attendance\Services\CheckInGuard;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Engagement\Models\CompanyEventInvitation;
+use App\Domain\Engagement\Services\CompanyEvents;
+use App\Domain\Engagement\Services\Fundraisers;
 use App\Domain\Engagement\Services\MissionStatements;
 use App\Domain\Engagement\Services\MoodCheckIns;
 use App\Domain\Identity\Models\User;
@@ -15,6 +18,7 @@ use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Leave\Services\LeaveBalances;
 use App\Domain\Leave\Services\LeaveEntitlements;
+use App\Domain\Leave\Services\LeavePrivacy;
 use App\Domain\Leave\Services\LeaveYear;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
@@ -26,9 +30,11 @@ use App\Domain\Recognition\Services\SocialWall;
 use App\Filament\Pages\Approvals;
 use App\Filament\Pages\Birthdays as BirthdaysPage;
 use App\Filament\Pages\LeaveCalendar;
+use App\Filament\Pages\MyEvents as MyEventsPage;
 use App\Filament\Pages\MyTeam;
 use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Pages\SocialWall as SocialWallPage;
+use App\Filament\Resources\FundraiserCampaigns\FundraiserCampaignResource;
 use App\Filament\Resources\Payslips\PayslipResource;
 use App\Filament\Resources\Recognitions\RecognitionResource;
 use Carbon\CarbonInterface;
@@ -42,6 +48,11 @@ use Throwable;
  */
 final class HomeComposer
 {
+    /** HROne parity RQ-4: the team card's planned leave — how far ahead, and how many rows. */
+    public const PLANNED_DAYS = 30;
+
+    public const PLANNED_LIMIT = 5;
+
     /**
      * UX.16: one Home, composed per experience. The main column leads with what that person is here for; personal
      * items stay one compact "For you" block away for everyone who is also an employee.
@@ -58,14 +69,16 @@ final class HomeComposer
     /**
      * HROne setup parity HP-9b / HP-9c: the mission card and the wall of fame show only when there is something to show.
      * HP-9e / HP-9f: so do the social wall (while it is on) and the mood question (while the mood bot asks this person).
+     * GO-15: and "Upcoming events" (the person's invitations to events that have not ended).
+     * HROne parity GO-18: and the fundraisers open to this person (HROne's wall card: Collected, Target, Donate now).
      */
     public const SIDE = [
-        'employee' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'circle', 'momentum', 'actions'],
-        'manager' => ['intelligence', 'mood', 'team_pulse', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
-        'hr' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
-        'payroll' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
-        'executive' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
-        'admin' => ['intelligence', 'mood', 'birthdays', 'wall_of_fame', 'wall', 'mission', 'actions'],
+        'employee' => ['intelligence', 'mood', 'birthdays', 'events', 'wall_of_fame', 'wall', 'fundraisers', 'mission', 'circle', 'momentum', 'actions'],
+        'manager' => ['intelligence', 'mood', 'team_pulse', 'birthdays', 'events', 'wall_of_fame', 'wall', 'fundraisers', 'mission', 'actions'],
+        'hr' => ['intelligence', 'mood', 'birthdays', 'events', 'wall_of_fame', 'wall', 'fundraisers', 'mission', 'actions'],
+        'payroll' => ['intelligence', 'mood', 'birthdays', 'events', 'wall_of_fame', 'wall', 'fundraisers', 'mission', 'actions'],
+        'executive' => ['intelligence', 'mood', 'birthdays', 'events', 'wall_of_fame', 'wall', 'fundraisers', 'mission', 'actions'],
+        'admin' => ['intelligence', 'mood', 'birthdays', 'events', 'wall_of_fame', 'wall', 'fundraisers', 'mission', 'actions'],
     ];
 
     public function __construct(
@@ -156,6 +169,10 @@ final class HomeComposer
             // HROne setup parity HP-9e / HP-9f: the latest wall posts and the mood question.
             'wall' => in_array('wall', $hidden, true) ? null : $safe(fn () => $this->wall($user)),
             'mood' => in_array('mood', $hidden, true) ? null : $safe(fn () => app(MoodCheckIns::class)->prompt($user)),
+            // HROne parity GO-15 (wall card "Upcoming Events"): the person's next event invitations, with accept / decline.
+            'events' => $employee === null || in_array('events', $hidden, true) ? null : $safe(fn () => $this->events($employee)),
+            // HROne parity GO-18: the fundraisers open to this person.
+            'fundraisers' => in_array('fundraisers', $hidden, true) ? null : $safe(fn () => $this->fundraisers($user)),
         ];
     }
 
@@ -174,7 +191,7 @@ final class HomeComposer
             'foryou' => 'For you (compact, for managers and administrators)', 'operations' => 'People operations', 'payroll' => 'Payroll',
             'workforce' => 'Workforce (Open position)', 'governance' => 'Governance', 'intelligence' => 'Intelligence',
             'mood' => 'Mood question (Happiness index)', 'team_pulse' => 'Team pulse', 'birthdays' => 'Birthdays and anniversaries (Wish)',
-            'wall_of_fame' => 'Wall of fame', 'wall' => 'Social wall', 'mission' => 'Mission statement (Core values)', 'circle' => 'Your circle',
+            'wall_of_fame' => 'Wall of fame', 'wall' => 'Social wall', 'events' => 'Upcoming events', 'fundraisers' => 'Fundraisers (Donate now)', 'mission' => 'Mission statement (Core values)', 'circle' => 'Your circle',
             'momentum' => 'Momentum (Goal)', 'actions' => 'Quick actions',
         ];
         $keys = array_values(array_unique(array_merge(...array_values(self::MAIN), ...array_values(self::SIDE))));
@@ -226,6 +243,41 @@ final class HomeComposer
         $posts = $wall->feed($user, 3);
 
         return $posts->isEmpty() ? null : ['posts' => $posts, 'url' => SocialWallPage::getUrl(), 'festive' => $wall->festiveHoliday($user)];
+    }
+
+    /** HROne parity GO-15: the employee's next invitations to events that have not ended (declined ones left out). */
+    private function events(Employee $employee): ?array
+    {
+        $events = app(CompanyEvents::class);
+        $rows = $events->upcomingFor($employee, 3)->map(function (CompanyEventInvitation $invitation) use ($events) {
+            $event = $invitation->event;
+            $next = $events->nextSession($event);
+
+            return ['invitation' => $invitation, 'event' => $event, 'when' => $next?->label($event->timezone), 'place' => $event->placeLabel(),
+                'stats' => $event->limitsSeats() ? $events->stats($event) : null];
+        })->all();
+
+        return $rows === [] ? null : ['rows' => $rows, 'url' => MyEventsPage::getUrl()];
+    }
+
+    /**
+     * HROne parity GO-18: the fundraisers this person may pledge to today (at most three, the soonest to end first) with
+     * collected against target; null when there is none.
+     */
+    private function fundraisers(User $user): ?array
+    {
+        $fundraisers = app(Fundraisers::class);
+        $open = $fundraisers->openFor($user, 3);
+        if ($open->isEmpty()) {
+            return null;
+        }
+        $totals = $fundraisers->totalsFor($open->pluck('id')->all());
+
+        return [
+            'url' => FundraiserCampaignResource::getUrl('index'),
+            'campaigns' => $open->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name, 'purpose' => str($c->purpose)->limit(120)->toString(), 'currency' => $c->currency,
+                'ends_on' => $c->ends_on->format('d M Y'), 'url' => FundraiserCampaignResource::getUrl('view', ['record' => $c])] + $totals[(int) $c->id])->all(),
+        ];
     }
 
     /** HROne setup parity HP-9b: the mission statement meant for this employee, when it is shown on Home. */
@@ -421,7 +473,7 @@ final class HomeComposer
     private function me(User $user, Employee $employee): array
     {
         $today = now()->toDateString();
-        $punches = AttendancePunch::query()->where('employee_id', $employee->id)->where('processing_status', '!=', 'rejected')->whereDate('punched_at', $today)->orderBy('punched_at')->get();
+        $punches = AttendancePunch::query()->where('employee_id', $employee->id)->whereNotIn('processing_status', AttendancePunch::NOT_COUNTED)->whereDate('punched_at', $today)->orderBy('punched_at')->get();
         $record = AttendanceRecord::query()->where('employee_id', $employee->id)->whereDate('date', $today)->first();
         $last = $punches->last();
         $balances = [];
@@ -469,11 +521,19 @@ final class HomeComposer
         $away = LeaveRequest::query()->with(['employee.person', 'leaveType'])->whereIn('employee_id', $reports)->where('status', 'approved')
             ->whereDate('from_date', '<=', $today)->whereDate('to_date', '>=', $today)->get();
         $people = Employee::query()->with('person')->whereKey($reports)->get();
+        // HROne parity RQ-4: a private leave reads "Away" for a viewer who may not see it in full (LeavePrivacy).
+        $privacy = app(LeavePrivacy::class);
+        // HROne parity RQ-4 (§20.4.2 #6 "Team planned leaves"): the team's approved leave from today, soonest first.
+        $planned = LeaveRequest::query()->with(['employee.person', 'leaveType'])->whereIn('employee_id', $reports)->whereIn('status', LeaveRequest::TAKEN)
+            ->whereDate('to_date', '>=', $today)->whereDate('from_date', '<=', now()->addDays(self::PLANNED_DAYS)->toDateString())
+            ->orderBy('from_date')->orderBy('id')->limit(self::PLANNED_LIMIT)->get();
 
         return [
             'size' => $people->count(),
             'people' => $people->take(8)->map(fn (Employee $e) => ['id' => $e->id, 'name' => $e->display_name, 'away' => $away->contains('employee_id', $e->id)])->all(),
-            'away' => $away->map(fn ($r) => ['name' => $r->employee?->display_name, 'type' => $r->leaveType?->name, 'until' => $r->to_date->format('d M')])->all(),
+            'away' => $away->map(fn ($r) => ['name' => $r->employee?->display_name, 'type' => $privacy->showsDetails($r, $user) ? $r->leaveType?->name : LeavePrivacy::AWAY, 'until' => $r->to_date->format('d M')])->all(),
+            'planned' => $planned->map(fn (LeaveRequest $r) => ['id' => $r->employee_id, 'name' => $r->employee?->display_name, 'type' => $privacy->typeLabel($r, $user),
+                'dates' => $r->from_date->isSameDay($r->to_date) ? $r->from_date->format('D, d M') : $r->from_date->format('d M').' – '.$r->to_date->format('d M')])->all(),
             'pending' => LeaveRequest::query()->whereIn('employee_id', $reports)->where('status', 'pending')->count()
                 + AttendanceRegularisation::query()->whereIn('employee_id', $reports)->where('status', 'pending')->count(),
             'links' => array_filter([

@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** One employee's appraisal in a cycle (§34): reviews, computed and calibrated scores, final rating. */
-#[Fillable(['tenant_id', 'performance_cycle_id', 'employee_id', 'manager_id', 'status', 'goal_score', 'competency_score', 'self_rating', 'manager_rating', 'peer_rating', 'computed_rating', 'calibrated_rating', 'final_rating', 'final_label', 'calibration_note', 'manager_summary', 'promotion_recommended', 'pip_recommended', 'finalized_by', 'finalized_at', 'acknowledged_at', 'employee_comment', 'performance_template_version_id', 'locked_at', 'lock_version', 'published_at', 'published_by', 'recommendations'])]
+#[Fillable(['tenant_id', 'performance_cycle_id', 'employee_id', 'manager_id', 'status', 'goal_score', 'competency_score', 'self_rating', 'manager_rating', 'peer_rating', 'computed_rating', 'calibrated_rating', 'final_rating', 'final_label', 'calibration_note', 'manager_summary', 'promotion_recommended', 'pip_recommended', 'finalized_by', 'finalized_at', 'acknowledged_at', 'employee_comment', 'performance_template_version_id', 'locked_at', 'lock_version', 'published_at', 'published_by', 'recommendations', 'withdrawn_at', 'withdrawn_by', 'withdrawal_reason'])]
 class Appraisal extends Model
 {
     use Auditable, BelongsToTenant;
@@ -26,10 +26,17 @@ class Appraisal extends Model
             if ($a->getRawOriginal('locked_at') !== null) {
                 throw new \RuntimeException('This appraisal is locked: its cycle is closed.');
             }
+            // HROne parity GO-2: an appraisal withdrawn from its cycle is kept as it was when it left.
+            if ($a->getRawOriginal('status') === 'withdrawn') {
+                throw new \RuntimeException('This appraisal was withdrawn from its cycle.');
+            }
         });
         static::deleting(function (self $a) {
             if ($a->locked_at !== null) {
                 throw new \RuntimeException('This appraisal is locked: its cycle is closed.');
+            }
+            if ($a->getRawOriginal('status') === 'withdrawn') {
+                throw new \RuntimeException('This appraisal was withdrawn from its cycle; it is kept as history.');
             }
         });
     }
@@ -52,7 +59,7 @@ class Appraisal extends Model
             'self_rating' => 'decimal:2', 'manager_rating' => 'decimal:2', 'peer_rating' => 'decimal:2',
             'computed_rating' => 'decimal:2', 'calibrated_rating' => 'decimal:2', 'final_rating' => 'decimal:2',
             'promotion_recommended' => 'boolean', 'pip_recommended' => 'boolean',
-            'finalized_at' => 'datetime', 'acknowledged_at' => 'datetime', 'published_at' => 'datetime',
+            'finalized_at' => 'datetime', 'acknowledged_at' => 'datetime', 'published_at' => 'datetime', 'withdrawn_at' => 'datetime',
             // HROne setup parity HP-8i: reviewers' recommendations (training needs, promotion, increment, variable pay).
             'recommendations' => 'array',
         ];
@@ -72,7 +79,7 @@ class Appraisal extends Model
 
     public function auditSensitiveAttributes(): array
     {
-        return ['calibration_note', 'manager_summary', 'recommendations'];
+        return ['calibration_note', 'manager_summary', 'recommendations', 'withdrawal_reason'];
     }
 
     public function cycle(): BelongsTo
@@ -122,6 +129,17 @@ class Appraisal extends Model
     public function publisher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'published_by');
+    }
+
+    /** HROne parity GO-2: withdrawn from its cycle ("Withdraw from cycle"; nothing is deleted). */
+    public function isWithdrawn(): bool
+    {
+        return $this->status === 'withdrawn';
+    }
+
+    public function withdrawer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'withdrawn_by');
     }
 
     public function isFinal(): bool

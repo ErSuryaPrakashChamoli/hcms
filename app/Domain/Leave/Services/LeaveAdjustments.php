@@ -9,12 +9,24 @@ use App\Domain\Leave\Events\LeaveEvent;
 use App\Domain\Leave\Models\LeaveEncashment;
 use App\Domain\Leave\Models\LeaveLedgerEntry;
 use App\Domain\Leave\Models\LeaveType;
+use App\Domain\Leave\Support\PayMonth;
+use App\Support\Storage\FileSafety;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 /** Manual adjustments, comp-off credits and encashment (§25). */
 final class LeaveAdjustments
 {
+    /** Files kept per encashment request. */
+    public const MAX_FILES = 5;
+
+    /** The documents disk's upload area of the encashment form (files move to the tenant's folder when the request is made). */
+    public const UPLOAD_AREA = 'leave-encashments/';
+
     public function __construct(
         private readonly LeaveBalances $balances,
         private readonly LeaveEntitlements $entitlements,
@@ -63,7 +75,44 @@ final class LeaveAdjustments
         return $this->adjust($employee, $type, $days, $note, null, 'comp_off_credit');
     }
 
-    public function requestEncashment(Employee $employee, LeaveType $type, float $days, ?string $reason = null, ?int $period = null): LeaveEncashment
+    /**
+     * @param  list<string>  $attachments  HROne parity RQ-4: supporting files uploaded to the documents disk's `leave-encashments/`
+     *                                     upload area (required when the leave type's rule `encash_document_required` says so)
+     * @param  array<string, string>  $names  upload path => the file's original name (its extension is checked)
+     * @param  string|null  $payMonth  HROne parity PO-8: 'YYYY-MM' of the pay run that pays it (null = the next one, as before)
+     */
+    public function requestEncashment(Employee $employee, LeaveType $type, float $days, ?string $reason = null, ?int $period = null, array $attachments = [], array $names = [], ?string $payMonth = null): LeaveEncashment
+    {
+        $uploads = array_values(array_filter(array_map('strval', $attachments), fn (string $p) => $p !== ''));
+        try {
+            $payMonth = PayMonth::parse($payMonth);
+            [$period, $files] = $this->checkEncashment($employee, $type, $days, $period, $uploads, $names);
+        } catch (RuntimeException $e) {
+            $this->discardUploads($uploads); // a refused request leaves no file behind
+            throw $e;
+        }
+
+        try {
+            $encashment = new LeaveEncashment(['employee_id' => $employee->id, 'leave_type_id' => $type->id, 'period_year' => $period, 'days' => $days, 'status' => 'pending', 'reason' => $reason, 'requested_by' => auth()->id()]
+                + ($files !== [] ? ['attachments' => $files] : []) + ($payMonth !== null ? ['pay_month' => $payMonth] : []));
+            $encashment->withAuditReason($reason)->save();
+        } catch (Throwable $e) {
+            $this->documentsDisk()->delete($files);
+            throw $e;
+        }
+        LeaveEvent::dispatch('leave.encashment_requested', $employee, $encashment, ['leave_type' => $type->code, 'days' => $days]);
+
+        return $encashment;
+    }
+
+    /**
+     * The checks of requestEncashment(), then the supporting files moved into the tenant's folder.
+     *
+     * @param  list<string>  $uploads
+     * @param  array<string, string>  $names
+     * @return array{0: int, 1: list<string>}
+     */
+    private function checkEncashment(Employee $employee, LeaveType $type, float $days, ?int $period, array $uploads, array $names): array
     {
         $period ??= $this->years->periodFor(now());
         $rule = $this->entitlements->forType($employee, $type) ?? throw new RuntimeException("No leave policy grants {$type->name}.");
@@ -89,24 +138,107 @@ final class LeaveAdjustments
         if ($keep > 0 && $this->balances->balance($employee, $type, $period)->available() - $days < $keep) {
             throw new RuntimeException("Keep at least {$keep} day(s) after encashment.");
         }
+        // HROne parity RQ-4: a supporting file when the leave type's encashment rule asks for one.
+        if (! empty($rule['encash_document_required']) && $uploads === []) {
+            throw new RuntimeException("Attach a supporting file to encash {$type->name}.");
+        }
 
-        $encashment = new LeaveEncashment(['employee_id' => $employee->id, 'leave_type_id' => $type->id, 'period_year' => $period, 'days' => $days, 'status' => 'pending', 'reason' => $reason, 'requested_by' => auth()->id()]);
-        $encashment->withAuditReason($reason)->save();
-        LeaveEvent::dispatch('leave.encashment_requested', $employee, $encashment, ['leave_type' => $type->code, 'days' => $days]);
-
-        return $encashment;
+        return [$period, $this->storeFiles($employee, $uploads, $names)];
     }
 
-    public function approveEncashment(LeaveEncashment $encashment, ?string $note = null): LeaveEncashment
+    /**
+     * HROne parity RQ-4 (matrix 20 §20.1.18 Encashment #3, #5): what the encashment form shows before anything is asked
+     * for — the balance available now, the leave type's encashment rule (TO-7: days a year and how many are already asked
+     * for this year, most days in one request, the balance to keep, whether a supporting file is required) and the most
+     * that can be asked for now, in half days. Read only: requestEncashment() still decides.
+     *
+     * @return array{allowed: bool, reason: ?string, available: float, year_limit: ?float, already: float, per_request: ?float, keep: float, max_now: float, needs_file: bool}
+     */
+    public function encashmentAllowance(Employee $employee, LeaveType $type, ?int $period = null): array
+    {
+        $period ??= $this->years->periodFor(now());
+        $rule = $this->entitlements->forType($employee, $type);
+        $available = round($this->balances->balance($employee, $type, $period)->available(), 2);
+        $already = round((float) LeaveEncashment::query()->where('employee_id', $employee->id)->where('leave_type_id', $type->id)->where('period_year', $period)->whereIn('status', ['pending', 'approved', 'paid'])->sum('days'), 2);
+        $yearLimit = $rule !== null && (int) $rule['max_encash_days'] > 0 ? (float) (int) $rule['max_encash_days'] : null;
+        $perRequest = $rule !== null && ($p = (float) ($rule['max_encash_per_request'] ?? 0)) > 0 ? $p : null;
+        $keep = $rule !== null ? max(0.0, (float) ($rule['min_balance_after_encash'] ?? 0)) : 0.0;
+        $reason = match (true) {
+            $rule === null => "No leave policy grants {$type->name}.",
+            ! $type->is_encashable || ! $rule['encashment_allowed'] => "{$type->name} cannot be encashed.",
+            default => null,
+        };
+        $max = $reason !== null ? 0.0 : min($available - $keep, $yearLimit !== null ? $yearLimit - $already : INF, $perRequest ?? INF);
+
+        return [
+            'allowed' => $reason === null, 'reason' => $reason, 'available' => $available, 'year_limit' => $yearLimit, 'already' => $already,
+            'per_request' => $perRequest, 'keep' => $keep, 'max_now' => max(0.0, floor($max * 2) / 2),
+            'needs_file' => $rule !== null && ! empty($rule['encash_document_required']),
+        ];
+    }
+
+    /**
+     * Check every upload (in the upload area, on the document allowlist, within the size limit, not active content), then
+     * move them to tenants/{tenant}/leave-encashments/{employee}/.
+     *
+     * @param  list<string>  $uploads
+     * @param  array<string, string>  $names
+     * @return list<string>
+     */
+    private function storeFiles(Employee $employee, array $uploads, array $names): array
+    {
+        if (count($uploads) > self::MAX_FILES) {
+            throw new RuntimeException('Attach at most '.self::MAX_FILES.' files.');
+        }
+        $disk = $this->documentsDisk();
+        $checked = [];
+        foreach ($uploads as $upload) {
+            $source = ltrim(str_replace(['\\', '..'], ['/', ''], $upload), '/');
+            if (! str_starts_with($source, self::UPLOAD_AREA) || ! $disk->exists($source)) {
+                throw new RuntimeException('The supporting file was not found. Upload it again.');
+            }
+            $checked[$source] = FileSafety::assertAllowed((string) ($names[$upload] ?? basename($source)), (int) $disk->size($source), FileSafety::sniff((string) $disk->get($source)));
+        }
+        $files = [];
+        foreach ($checked as $source => $extension) {
+            $path = "tenants/{$employee->tenant_id}/leave-encashments/{$employee->id}/".Str::ulid().'.'.$extension;
+            $disk->move($source, $path);
+            $files[] = $path;
+        }
+
+        return $files;
+    }
+
+    /** @param  list<string>  $uploads  only files still in the upload area are removed */
+    private function discardUploads(array $uploads): void
+    {
+        $disk = $this->documentsDisk();
+        foreach ($uploads as $upload) {
+            $source = ltrim(str_replace(['\\', '..'], ['/', ''], $upload), '/');
+            if (str_starts_with($source, self::UPLOAD_AREA)) {
+                $disk->delete($source);
+            }
+        }
+    }
+
+    private function documentsDisk(): Filesystem
+    {
+        return Storage::disk(config('peopleos.documents.disk', 'local'));
+    }
+
+    /** @param  string|null  $payMonth  HROne parity PO-8: 'YYYY-MM' of the pay run that pays it (null = as requested, else the next run) */
+    public function approveEncashment(LeaveEncashment $encashment, ?string $note = null, ?string $payMonth = null): LeaveEncashment
     {
         if ($encashment->status !== 'pending') {
             throw new RuntimeException('This encashment has already been decided.');
         }
+        $payMonth = PayMonth::parse($payMonth);
 
         $encashment->loadMissing(['employee', 'leaveType']);
 
-        return DB::transaction(function () use ($encashment, $note) {
-            $encashment->withAuditReason($note)->update(['status' => 'approved', 'reviewed_by' => auth()->id(), 'reviewed_at' => now(), 'review_note' => $note]);
+        return DB::transaction(function () use ($encashment, $note, $payMonth) {
+            $encashment->withAuditReason($note)->update(['status' => 'approved', 'reviewed_by' => auth()->id(), 'reviewed_at' => now(), 'review_note' => $note]
+                + ($payMonth !== null ? ['pay_month' => $payMonth] : []));
             $this->balances->post($encashment->employee, $encashment->leaveType, $encashment->period_year, 'encashment', -(float) $encashment->days, $encashment, $note ?? 'Encashment approved');
             $this->audit->record(AuditAction::Approved, 'leave', $encashment, reason: $note);
             LeaveEvent::dispatch('leave.encashment_approved', $encashment->employee, $encashment, ['leave_type' => $encashment->leaveType->code, 'days' => (float) $encashment->days]);

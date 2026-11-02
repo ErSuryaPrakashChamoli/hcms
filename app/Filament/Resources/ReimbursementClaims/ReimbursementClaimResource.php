@@ -54,7 +54,7 @@ class ReimbursementClaimResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['employee.person', 'component', 'reviewer']);
+        $query = parent::getEloquentQuery()->with(['employee.person', 'component', 'reviewer', 'requester']);
 
         return auth()->user()?->can('payroll.manage') ? $query : $query->whereIn('employee_id', Employee::query()->select('id')->where('user_id', auth()->id()));
     }
@@ -74,6 +74,9 @@ class ReimbursementClaimResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('employee.person.display_name')->label('Employee')->searchable(query: EmployeeFilters::search('employee')),
+                // HROne parity AC-2: who filed a claim made for the employee ("Claim for an employee"); blank for their own.
+                TextColumn::make('filed_by')->label('Filed on their behalf by')->placeholder('—')->toggleable(isToggledHiddenByDefault: true)
+                    ->state(fn (ReimbursementClaim $r) => $r->requested_by !== null && (int) $r->requested_by !== (int) $r->employee?->user_id ? $r->requester?->name : null),
                 TextColumn::make('component.name')->label('Reimbursement')->badge(),
                 TextColumn::make('claim_date')->date()->sortable(),
                 TextColumn::make('amount')->numeric(2),

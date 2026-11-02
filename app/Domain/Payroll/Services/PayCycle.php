@@ -20,6 +20,9 @@ use Throwable;
  * day before it starts (the changeover month: 1–24 Nov after a calendar October, 25 Oct – 30 Nov when going back to
  * calendar months), so no day is paid twice or left out.
  *
+ * A change runs from its first month to a last month, or until changed. A change with a last month is stored as two
+ * changes, the second taking the month after it back to the cycle it had.
+ *
  * A month's dates are provisional until a payroll run is opened for it (or it closes): until then they follow the
  * cycle as it is now. Once fixed they never move: a change must start after the last fixed month, and the months
  * either side of a fixed month start and end against it.
@@ -46,39 +49,51 @@ final class PayCycle implements PayCycleReader
     }
 
     /**
-     * The changes with one more starting on $from: it replaces every change whose first month is not before its own.
+     * The changes with one more starting on $from and running to the month $until (year * 12 + month - 1). Until changed
+     * (null), it replaces every change whose first month is not before its own. With a last month, it replaces the
+     * changes during its months, and the month after the last goes back to the cycle it had; later changes stay.
      *
      * @return list<array{from: CarbonImmutable, day: int, first: int}>
      */
-    public function withChange(CarbonInterface $from): array
+    public function withChange(CarbonInterface $from, ?int $until = null): array
     {
         $from = CarbonImmutable::parse($from->toDateString());
         $first = self::firstMonth($from);
-        $kept = array_filter($this->changes(), fn (array $c) => $c['first'] < $first);
+        $last = $until !== null ? max($first, $until) : null;
+        $changes = $this->changes();
+        $kept = array_filter($changes, fn (array $c) => $c['first'] < $first || ($last !== null && $c['first'] > $last + 1));
+        $rows = [...array_map(fn (array $c) => ['from' => $c['from']->toDateString()], $kept), ['from' => $from->toDateString()]];
+        if ($last !== null) {
+            $rows[] = ['from' => self::startOf($last + 1, self::dayAt($changes, $last + 1))->toDateString()];
+        }
 
-        return self::normalise([...array_map(fn (array $c) => ['from' => $c['from']->toDateString()], $kept), ['from' => $from->toDateString()]]);
+        return self::normalise($rows);
     }
 
     /**
-     * Start a new cycle on $from (audited as a setting change) and bring every month not yet fixed up to it. Returns
-     * false when the months would not change.
+     * Start a new cycle on $from, to the month $until or until changed (audited as a setting change), and bring every
+     * month not yet fixed up to it. Returns false when the months would not change.
      */
-    public function change(CarbonInterface $from, ?string $reason = null): bool
+    public function change(CarbonInterface $from, ?string $reason = null, ?int $until = null): bool
     {
         $from = CarbonImmutable::parse($from->toDateString());
         if ($from->day > self::MAX_DAY) {
             throw new RuntimeException('A pay cycle starts on a day from the 1st to the '.self::ordinal(self::MAX_DAY).', so every month has the day before it.');
+        }
+        if ($until !== null && $until < self::firstMonth($from)) {
+            throw new RuntimeException('The last month on a pay cycle cannot be before its first month.');
         }
         $fixedUntil = $this->fixedUntil();
         if ($fixedUntil !== null && $from->lte($fixedUntil)) {
             throw new RuntimeException("Choose a date after {$fixedUntil->format('j M Y')}: the payroll months up to then already have a payroll run, and their dates stay as they are.");
         }
 
-        $changes = $this->withChange($from);
+        $changes = $this->withChange($from, $until);
         if (self::stored($changes) === self::stored($this->changes())) {
             return false;
         }
-        $this->save($changes, $reason ?? 'Pay cycle from '.$from->format('j M Y').': '.self::describe($from->day));
+        $this->save($changes, $reason ?? 'Pay cycle from '.$from->format('j M Y').': '.self::describe($from->day)
+            .($until !== null ? ', to '.CarbonImmutable::create(intdiv($until, 12), $until % 12 + 1, 1)->format('M Y') : ''));
 
         return true;
     }
@@ -128,6 +143,26 @@ final class PayCycle implements PayCycleReader
     public static function ordinal(int $day): string
     {
         return $day.(in_array($day % 100, [11, 12, 13], true) ? 'th' : (['th', 'st', 'nd', 'rd'][$day % 10] ?? 'th'));
+    }
+
+    /** The day the months start on for a month (year * 12 + month - 1) under the changes: 1 for calendar months. */
+    public static function dayAt(array $changes, int $at): int
+    {
+        return collect($changes)->filter(fn (array $c) => $c['first'] <= $at)->last()['day'] ?? 1;
+    }
+
+    /** The last month of the financial year a month (year * 12 + month - 1) is named in (peopleos.compliance.financial_year_start_month). */
+    public static function financialYearEnd(int $at): int
+    {
+        $fyStart = max(1, min(12, (int) config('peopleos.compliance.financial_year_start_month', 4))) - 1;
+
+        return $at + 11 - ($at % 12 - $fyStart + 12) % 12;
+    }
+
+    /** The first day of a month (year * 12 + month - 1) on a cycle starting on $day: where a change to it from that month starts. */
+    public static function startOf(int $at, int $day): CarbonImmutable
+    {
+        return self::cycleWindow(intdiv($at, 12), $at % 12 + 1, $day)[0];
     }
 
     /** The days a month starting on $day covers, ignoring changes: day 25 gives November 25 Oct – 24 Nov. */
@@ -252,7 +287,7 @@ final class PayCycle implements PayCycleReader
         $changes ??= $this->changes();
         $firsts = array_column($changes, 'first');
         $rows = [];
-        $dayOf = fn (CarbonImmutable $m) => collect($changes)->filter(fn (array $c) => $c['first'] <= self::monthIndex($m->year, $m->month))->last()['day'] ?? 1;
+        $dayOf = fn (CarbonImmutable $m) => self::dayAt($changes, self::monthIndex($m->year, $m->month));
         for ($i = 0, $first = CarbonImmutable::create($year, $month, 1); $i < $months; $i++, $first = $first->addMonthNoOverflow()) {
             $existing = PayrollPeriod::query()->where('company_id', $companyId)->where('year', $first->year)->where('month', $first->month)->first();
             $fixed = $existing?->isFixed() ?? false;
@@ -262,6 +297,7 @@ final class PayCycle implements PayCycleReader
             [$state, $note] = match (true) {
                 $existing?->status === 'closed' => ['closed', 'Payroll finalized'],
                 $fixed => ['fixed', 'Payroll run open: dates stay as they are'],
+                in_array(self::monthIndex($first->year, $first->month), $firsts, true) && ! $end->isSameDay($cycleEnd) => ['first', 'Only month on the new cycle ('.self::describe($dayOf($first)).'): it ends the day before the next cycle starts'],
                 in_array(self::monthIndex($first->year, $first->month), $firsts, true) => ['first', 'First month on the new cycle: '.self::describe($dayOf($first))],
                 ! $start->isSameDay($cycleStart) || ! $end->isSameDay($cycleEnd) => ['changeover', ($days > $cycleStart->diffInDays($cycleEnd) + 1 ? 'Longer' : 'Shorter').' month: the changeover to the next cycle'],
                 default => [null, null],

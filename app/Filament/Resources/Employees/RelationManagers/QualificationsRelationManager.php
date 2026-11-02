@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\Configuration\Services\OptionLists;
 use App\Domain\People\Models\Qualification;
 use App\Domain\People\Models\QualificationSpecialisation;
 use Filament\Actions\CreateAction;
@@ -39,8 +40,17 @@ class QualificationsRelationManager extends PersonSatelliteRelationManager
             TextInput::make('specialisation')->maxLength(255)->hidden(fn (Get $get) => filled($get('specialisation_id'))),
             TextInput::make('institution')->maxLength(255),
             TextInput::make('board_or_university')->maxLength(255),
-            TextInput::make('year_of_completion')->numeric()->minValue(1950)->maxValue((int) now()->addYears(6)->format('Y')),
+            // HROne parity MS-4: the study period, how it was studied and the highest qualification (one per person).
+            TextInput::make('year_started')->label('Year of starting')->numeric()->minValue(1940)->maxValue((int) now()->addYear()->format('Y'))
+                ->rule(fn (Get $get) => function (string $attribute, mixed $value, \Closure $fail) use ($get): void {
+                    if (filled($value) && filled($get('year_of_completion')) && (int) $value > (int) $get('year_of_completion')) {
+                        $fail('The year of starting is after the year of passing.');
+                    }
+                }),
+            TextInput::make('year_of_completion')->label('Year of passing')->numeric()->minValue(1950)->maxValue((int) now()->addYears(6)->format('Y')),
+            Select::make('mode')->label('Mode of study')->options(fn () => app(OptionLists::class)->options('qualification_modes')),
             TextInput::make('grade_or_score')->maxLength(32),
+            Toggle::make('is_highest')->label('This is the highest qualification')->helperText('Marking it moves the mark from any other qualification.'),
             Toggle::make('is_verified')->label('Verified'),
         ]);
     }
@@ -52,7 +62,11 @@ class QualificationsRelationManager extends PersonSatelliteRelationManager
                 TextColumn::make('qualification')->description(fn ($record) => $record->specialisation),
                 TextColumn::make('institution')->placeholder('—'),
                 TextColumn::make('board_or_university')->label('Board / University')->placeholder('—')->toggleable(),
-                TextColumn::make('year_of_completion')->label('Year')->placeholder('—'),
+                TextColumn::make('year_of_completion')->label('Year')->placeholder('—')
+                    ->description(fn ($record) => $record->year_started ? 'from '.$record->year_started : null),
+                TextColumn::make('mode')->label('Mode')->placeholder('—')->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(fn (?string $state) => app(OptionLists::class)->label('qualification_modes', $state)),
+                IconColumn::make('is_highest')->label('Highest')->boolean(),
                 TextColumn::make('grade_or_score')->label('Grade')->placeholder('—'),
                 IconColumn::make('is_verified')->label('Verified')->boolean(),
             ])

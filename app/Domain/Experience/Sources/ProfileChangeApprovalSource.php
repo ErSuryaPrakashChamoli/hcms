@@ -58,8 +58,8 @@ final class ProfileChangeApprovalSource implements ApprovalSource, DescribesAppr
                 title: ProfileEditSections::label((string) $r->section).' · '.$r->reference(), subject: $r->employee?->display_name, subjectEmployeeId: $r->employee_id,
                 reason: $r->comment, impact: count((array) ($r->fields ?? [])).' field(s) change on the employee\'s profile once approved'.(($r->document_ids ?? []) !== [] ? '; a supporting document is attached (pending verification)' : ''),
                 effectiveOn: null, dueAt: $r->created_at?->copy()->addDays(3), requestedAt: $r->created_at, requestedBy: $r->requester?->name,
-                risk: in_array($r->section, ['bank', 'identifiers', 'legal_identity'], true) ? 'high' : 'normal',
-                riskReason: in_array($r->section, ['bank', 'identifiers', 'legal_identity'], true) ? 'Identity or salary account: check the attached proof' : null,
+                risk: in_array($r->section, ['bank', 'identifiers', 'legal_identity', 'identity_documents'], true) ? 'high' : 'normal',
+                riskReason: in_array($r->section, ['bank', 'identifiers', 'legal_identity', 'identity_documents'], true) ? 'Identity or salary account: check the attached proof' : null,
                 decisions: ['approve', 'reject'], url: $this->url($r), record: $r,
                 changesUsing: fn () => $changes->diff($r, $user),
             ))->values()->all();

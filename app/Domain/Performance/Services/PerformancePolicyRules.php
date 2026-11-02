@@ -170,8 +170,10 @@ final class PerformancePolicyRules
         if (! in_array($basis, ['average', 'last', 'custom'], true)) {
             return $computed;
         }
+        // HROne parity GO-3: a periodic review HR normalised counts with its normalised rating (the reviewer's otherwise).
         $rated = PerformancePeriodReview::query()->withoutGlobalScope(AccessScope::class)->where('appraisal_id', $appraisal->id)
-            ->where('status', 'submitted')->whereNotNull('rating')->orderBy('sequence')->get(['sequence', 'rating']);
+            ->where('status', 'submitted')->whereNotNull('rating')->orderBy('sequence')->get(['sequence', 'rating', 'normalised_rating'])
+            ->each(fn (PerformancePeriodReview $review) => $review->setAttribute('rating', $review->effectiveRating()));
         if ($rated->isEmpty()) {
             return $computed;
         }

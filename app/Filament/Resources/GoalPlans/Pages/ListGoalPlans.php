@@ -5,6 +5,7 @@ namespace App\Filament\Resources\GoalPlans\Pages;
 use App\Filament\Resources\GoalPlans\GoalPlanResource;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
+use App\Filament\Support\PerformanceCycleActions;
 use App\Filament\Support\PerformanceRegisters;
 
 /** HROne parity GO-1: Goal requests — saved views and presets over the goal sheet submissions. */
@@ -35,6 +36,7 @@ class ListGoalPlans extends PeopleListRecords
 
     protected function getHeaderActions(): array
     {
-        return [...$this->registerToolActions(), PerformanceRegisters::actionsMenu()];
+        // HROne parity GO-2: the header "Extend goal" of HROne's Goal requests (§27.2.4 #4).
+        return [...$this->registerToolActions(), PerformanceCycleActions::extendWindow('goal_setting'), PerformanceRegisters::actionsMenu()];
     }
 }

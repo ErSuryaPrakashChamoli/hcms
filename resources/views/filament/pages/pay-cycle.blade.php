@@ -27,6 +27,13 @@
                     @endif
                     <ol class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" aria-label="{{ $row['company'] }}: payroll months">
                         @foreach ($row['months'] as $month)
+                            @if ($month['state'] === 'gap')
+                                <li class="flex flex-col justify-center rounded-xl border border-dashed border-gray-950/10 p-3 dark:border-white/10">
+                                    <span class="text-sm font-semibold">{{ $month['label'] }}</span>
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $month['note'] }}</p>
+                                </li>
+                                @continue
+                            @endif
                             <li @class([
                                 'rounded-xl p-3 ring-1',
                                 'bg-primary-50 ring-primary-500/40 dark:bg-primary-400/10 dark:ring-primary-400/40' => $month['state'] === 'first',

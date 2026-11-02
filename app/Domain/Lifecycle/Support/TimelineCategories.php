@@ -31,6 +31,10 @@ final class TimelineCategories
         'lifecycle' => ['Lifecycle', 'lifecycle'], 'onboarding' => ['Onboarding', 'lifecycle'], 'exit' => ['Exit', 'lifecycle'],
         'position' => ['Position', 'employment'], 'reporting' => ['Reporting', 'employment'], 'compensation' => ['Compensation', 'employment'],
         'bank' => ['Bank account', 'employment'], 'statutory' => ['Statutory', 'employment'], 'personal' => ['Personal details', 'employment'], 'bgv' => ['Verification', 'employment'],
+        // Data import DI-2: an employee code changed (ChangeEmployeeCodeAction).
+        'employee_code' => ['Employee code', 'employment'],
+        // Data import: a contract of contract staff recorded (EmployeeContracts).
+        'contract' => ['Contract', 'employment'],
         'service_request' => ['HR request', 'service'], 'communication' => ['Communication', 'communication'],
         'leave' => ['Leave', 'domain'], 'performance' => ['Performance', 'domain'], 'learning' => ['Learning', 'domain'], 'document' => ['Document', 'domain'], 'assets' => ['Assets', 'domain'],
     ];

@@ -59,6 +59,11 @@ class EmployeeInfolist
                         TextEntry::make('currentPosition.effective_from')->label('In role since')->date()->placeholder('—'),
                         TextEntry::make('probation_end_date')->date()->placeholder('—'),
                         TextEntry::make('confirmation_date')->date()->placeholder('Not confirmed'),
+                        // HROne parity MS-4: shown only when recorded.
+                        TextEntry::make('salutation')->label('Salutation')->state(fn (Employee $record) => $record->person?->salutationLabel())
+                            ->visible(fn (Employee $record) => $record->person?->salutationLabel() !== null),
+                        TextEntry::make('device_user_id')->label('Device user id')->copyable()->visible(fn (Employee $record) => filled($record->getAttributes()['device_user_id'] ?? null)),
+                        TextEntry::make('fresher')->label('Earlier employment')->state('None (fresher)')->visible(fn (Employee $record) => (bool) $record->person?->isFresher()),
                     ]),
                 // HROne setup parity CA-6: "Other details" follows the profile-section matrix (it can only hide the section).
                 CustomFieldsSchema::infolistSection(Employee::class)->extraAttributes(['class' => 'pos-360-deep'])

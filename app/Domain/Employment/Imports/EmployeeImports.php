@@ -4,6 +4,7 @@ namespace App\Domain\Employment\Imports;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Services\OptionLists;
 use App\Domain\Employment\Actions\HireEmployeeAction;
 use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Models\Employee;
@@ -13,6 +14,7 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
+use App\Domain\Organisation\Models\DimensionValue;
 use App\Domain\Organisation\Models\Division;
 use App\Domain\Organisation\Models\EmployeeCategory;
 use App\Domain\Organisation\Models\EmploymentType;
@@ -24,6 +26,7 @@ use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\Organisation\Services\OrganisationCodes;
 use App\Domain\People\Actions\UpdatePersonAction;
 use App\Domain\People\Services\PersonMatcher;
+use App\Domain\People\Support\PhoneNumbers;
 use App\Domain\Platform\Services\FeatureFlags;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
@@ -59,6 +62,12 @@ final class EmployeeImports
         'position.employment_type_code' => ['Employment type code', false], 'position.employee_category_code' => ['Employee category code', false],
         'position.work_mode_code' => ['Work mode code', false], 'position.cost_centre_code' => ['Cost centre code', false],
         'manager_code' => ['Manager employee code', false],
+        // HROne parity MS-4 (appended, so earlier files and exports keep their columns in place).
+        'person.salutation' => ['Salutation', false], 'person.is_fresher' => ['Fresher', false],
+        'person.personal_phone_country_code' => ['Personal phone country code', false], 'employee.work_phone_country_code' => ['Work phone country code', false],
+        'employee.device_user_id' => ['Device user id', false],
+        // Data import DI-1 (decision D1): the organisation's own dimension on the position (appended, as above).
+        'position.dimension_code' => ['Dimension code', false],
     ];
 
     /** What a file can be for: mode => [label, description]. */
@@ -74,6 +83,7 @@ final class EmployeeImports
         'designation_code' => ['designation_id', Designation::class], 'level_code' => ['level_id', Level::class], 'grade_code' => ['grade_id', Grade::class],
         'employment_type_code' => ['employment_type_id', EmploymentType::class], 'employee_category_code' => ['employee_category_id', EmployeeCategory::class],
         'work_mode_code' => ['work_mode_id', WorkMode::class], 'cost_centre_code' => ['cost_centre_id', CostCentre::class],
+        'dimension_code' => ['dimension_value_id', DimensionValue::class],
     ];
 
     public function __construct(
@@ -238,6 +248,11 @@ final class EmployeeImports
             'employee.joining_date' => ['YYYY-MM-DD.', now()->toDateString()], 'employee.probation_end_date' => ['YYYY-MM-DD.', ''],
             'employee.work_email' => ['Official email.', 'asha.rao@example.com'], 'employee.work_phone' => ['', ''],
             'employee.external_reference' => ['An id from another system (ATS, old HRMS).', 'ATS-1042'],
+            'person.salutation' => ['One of: '.implode(', ', array_keys(app(OptionLists::class)->options('salutations'))).' (or its name). Blank: letters use Mr / Ms / Mx from the gender.', 'ms'],
+            'person.is_fresher' => ['yes when the person has no earlier employment (then no work experience can be recorded).', 'no'],
+            'person.personal_phone_country_code' => ['International dialling code without + (91 for India). With a code the phone is checked and stored as +91…; blank keeps the phone as typed.', '91'],
+            'employee.work_phone_country_code' => ['As for the personal phone.', ''],
+            'employee.device_user_id' => ['The id the attendance device knows the person by, if it is not the employee code. Unique.', ''],
             'position.company_code' => ['The company\'s code (Organisation › Companies).', 'ALPHA'],
             'manager_code' => ['Employee code of the reporting manager.', 'EMP0002'],
         ];
@@ -252,7 +267,7 @@ final class EmployeeImports
             ], array_keys(self::FIELDS)),
             'notes' => [
                 'To add people, fill the columns marked "To add". To update people, the employee code is enough; add only the columns you want to change.',
-                'Updating changes names, date of birth, gender, marital status, nationality, emails, phones and external reference. Joining date, position and manager changes are made on the employee\'s record.',
+                'Updating changes names, date of birth, gender, marital status, nationality, emails, phones and external reference (and salutation, fresher, phone country codes and the device user id). Joining date, position and manager changes are made on the employee\'s record.',
                 'Employees › Export gives your current employees in this format: edit it and upload it with Update existing employees.',
                 'Nothing changes until the file is mapped, validated, approved and run. Rows that may be someone already on file wait for you to decide.',
             ],
@@ -328,7 +343,7 @@ final class EmployeeImports
         $mapping = $import->mapping ?? [];
         $mode = ImportMode::of($import);
         $counts = ['valid' => 0, 'error' => 0, 'review' => 0, 'create' => 0, 'update' => 0, 'skip' => 0];
-        $seen = ['employee_code' => [], 'work_email' => [], 'personal_email' => [], 'external_reference' => []];
+        $seen = ['employee_code' => [], 'work_email' => [], 'personal_email' => [], 'external_reference' => [], 'device_user_id' => []];
         $lookups = [];
 
         DB::transaction(function () use ($import, $mapping, $mode, &$counts, &$seen, &$lookups) {
@@ -505,7 +520,68 @@ final class EmployeeImports
             $record[$group][$key] = $value;
         }
 
+        return $this->normaliseAdditions($record);
+    }
+
+    /**
+     * HROne parity MS-4: the new columns in the form the records take — yes / no for "Fresher" (anything else stays as
+     * text and is reported), a salutation given by name becomes its code, dialling codes lose a leading "+".
+     *
+     * @param  array{person: array<string, mixed>, employee: array<string, mixed>, position: array<string, mixed>, manager_code: ?string}  $record
+     * @return array{person: array<string, mixed>, employee: array<string, mixed>, position: array<string, mixed>, manager_code: ?string}
+     */
+    private function normaliseAdditions(array $record): array
+    {
+        if (isset($record['person']['is_fresher'])) {
+            $flag = filter_var($record['person']['is_fresher'], FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+            $record['person']['is_fresher'] = $flag ?? $record['person']['is_fresher'];
+        }
+        if (isset($record['person']['salutation'])) {
+            $given = mb_strtolower(trim((string) $record['person']['salutation'], ' .'));
+            foreach (app(OptionLists::class)->options('salutations') as $code => $label) {
+                if ($given === mb_strtolower((string) $code) || $given === mb_strtolower(rtrim((string) $label, '.'))) {
+                    $record['person']['salutation'] = (string) $code;
+                }
+            }
+        }
+        foreach ([['person', 'personal_phone_country_code'], ['employee', 'work_phone_country_code']] as [$group, $key]) {
+            if (isset($record[$group][$key])) {
+                $record[$group][$key] = ltrim(trim((string) $record[$group][$key]), '+');
+            }
+        }
+
         return $record;
+    }
+
+    /** @return list<string> HROne parity MS-4: problems with the new columns */
+    private function additionErrors(array $record): array
+    {
+        $errors = [];
+        if (isset($record['person']['is_fresher']) && ! is_bool($record['person']['is_fresher'])) {
+            $errors[] = 'Fresher must be yes or no.';
+        }
+        if (isset($record['person']['salutation']) && ! array_key_exists((string) $record['person']['salutation'], app(OptionLists::class)->options('salutations'))) {
+            $errors[] = 'Salutation must be one of: '.implode(', ', array_keys(app(OptionLists::class)->options('salutations'))).'.';
+        }
+        foreach ([['person', 'personal_phone', 'personal_phone_country_code'], ['employee', 'work_phone', 'work_phone_country_code']] as [$group, $phone, $code]) {
+            $codeValue = $record[$group][$code] ?? null;
+            if ($codeValue !== null && ! PhoneNumbers::validCode((string) $codeValue)) {
+                $errors[] = self::FIELDS["{$group}.{$code}"][0].' must be one to three digits (for example 91).';
+            } elseif ($codeValue !== null && isset($record[$group][$phone]) && ($problem = PhoneNumbers::problem((string) $codeValue, (string) $record[$group][$phone])) !== null) {
+                $errors[] = self::FIELDS["{$group}.{$phone}"][0].': '.$problem;
+            }
+        }
+        $device = $record['employee']['device_user_id'] ?? null;
+        if ($device !== null) {
+            if (mb_strlen((string) $device) > 64) {
+                $errors[] = 'Device user id is longer than 64 characters.';
+            } elseif (($holder = Employee::query()->where('device_user_id', (string) $device)->value('employee_code')) !== null
+                && $holder !== ($record['employee']['employee_code'] ?? null)) {
+                $errors[] = "Device user id '{$device}' is already used by employee {$holder}.";
+            }
+        }
+
+        return $errors;
     }
 
     /** @return list<string> */
@@ -562,14 +638,14 @@ final class EmployeeImports
             $errors[] = 'Employee code may only contain letters, digits, dashes and underscores.';
         }
 
-        return $errors;
+        return [...$errors, ...$this->additionErrors($record)];
     }
 
     private function create(array $record, EmployeeImport $import): Employee
     {
         $position = app(OrganisationCodes::class)->resolvePosition($record['position']);
         $managerId = $record['manager_code'] ? Employee::query()->where('employee_code', $record['manager_code'])->value('id') : null;
-        $employee = $this->hire->handle($record['person'], array_intersect_key($record['employee'], array_flip(['joining_date', 'probation_end_date', 'employee_code', 'work_email', 'work_phone'])), $position, $managerId, "Import #{$import->getKey()}");
+        $employee = $this->hire->handle($record['person'], array_intersect_key($record['employee'], array_flip(['joining_date', 'probation_end_date', 'employee_code', 'work_email', 'work_phone', 'work_phone_country_code', 'device_user_id'])), $position, $managerId, "Import #{$import->getKey()}");
         $employee->withAuditReason("Import #{$import->getKey()}")->update(['source' => 'import', 'external_reference' => $record['employee']['external_reference'] ?? $employee->external_reference]);
 
         return $employee;
@@ -579,7 +655,7 @@ final class EmployeeImports
     {
         $employee = Employee::query()->with('person')->findOrFail($row->employee_id);
         $this->updatePerson->handle($employee->person, $record['person'], "Import #{$import->getKey()}");
-        $employeeFields = array_intersect_key($record['employee'], array_flip(['work_email', 'work_phone', 'external_reference']));
+        $employeeFields = array_intersect_key($record['employee'], array_flip(['work_email', 'work_phone', 'external_reference', 'work_phone_country_code', 'device_user_id']));
         if ($employeeFields !== []) {
             $employee->withAuditReason("Import #{$import->getKey()}")->update($employeeFields);
         }

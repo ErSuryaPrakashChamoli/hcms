@@ -31,6 +31,9 @@ class ListExitCases extends PeopleListRecords
             // HROne parity PO-1 (matrix 25 §25.7): the Payroll panel's Settlement and Settlement requests registers.
             'settlement' => ['label' => 'Full and final settlement', 'filters' => ['status' => ['values' => ['settlement']]]],
             'settled' => ['label' => 'Settled (completed exits)', 'filters' => ['status' => ['values' => ['completed']]]],
+            // HROne parity WO-11 (§23.6.4 #1, §23.6.2 #1): final clearance proper — every stage cleared — and withdrawals waiting.
+            'ready_to_complete' => ['label' => 'Ready to complete (all stages cleared)', 'filters' => ['status' => ['values' => ['clearance', 'settlement']], 'ready' => ['isActive' => true]]],
+            'withdrawal_requests' => ['label' => 'Withdrawal requests waiting', 'filters' => ['type' => ['value' => 'resignation'], 'status' => ['values' => ExitCase::OPEN], 'withdrawal' => ['value' => 'pending']]],
         ];
     }
 

@@ -7,6 +7,7 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Expense\Contracts\PayrollCommitments;
+use App\Domain\Expense\Contracts\PayrollMonths;
 use App\Domain\Expense\Events\ExpenseEvent;
 use App\Domain\Expense\Exceptions\ExpenseRuleViolation;
 use App\Domain\Expense\Models\ExpenseCategory;
@@ -54,9 +55,23 @@ use Illuminate\Support\Facades\DB;
  *   report (ExpenseCommitments), it is not paid any other way.
  * - EX-F trips: a report covers the trips of its expenses (expense_report_travel, kept in step as expenses come and go);
  *   with expense.report.multiple_travel off its expenses belong to one trip.
+ * - HROne parity XO-3 (owner decision D-XO7 / EXP-13): with expense.review.suspect_button on, an approver may hold a line
+ *   out as suspected (approved at 0 for now, with a note); clearSuspicion() decides it later and the report follows. A
+ *   returned report discards every line decision, suspicions included (EXP-1, as built).
+ * - HROne parity XO-4 (owner decision D-XO1 / EXP-7): Pay with payroll may name the payroll month (an open, not finalized
+ *   month of the employee's company, read through PayrollMonths); blank = the next payroll, as before. A scheduled report
+ *   may move to another month or leave payroll while no run carries it. An outside payment may record its mode (bank
+ *   transfer, cheque with number and date, cash), the company's paying account and a note. A report is paid once: by
+ *   exactly one finalized payroll run of its month, outside payroll, or in the final settlement.
+ * - HROne parity XO-5: HR (or a manager) creates a report for an employee in scope (never their own) through create()
+ *   with the actor — "Created on behalf of the employee" in the audit trail, `created_by` names who — and may submit it
+ *   for them (filed on behalf: exempt from the submission windows, as before).
  */
 final class ExpenseReports
 {
+    /** A line's suspicion, cleared when the line leaves its decision (returned, resubmitted, removed, cancelled). */
+    private const NO_SUSPICION = ['suspected_at' => null, 'suspected_by' => null, 'suspicion_note' => null, 'suspicion_cleared_at' => null, 'suspicion_cleared_by' => null];
+
     public function __construct(
         private readonly ExpenseReceipts $receipts,
         private readonly ExpenseAdvances $advances,
@@ -81,7 +96,9 @@ final class ExpenseReports
         return DB::transaction(function () use ($employee, $title, $receiptIds, $actor) {
             $report = new ExpenseReport(['number' => $this->numbers->next('expense_report', NumberSeries::companyOf($employee)), 'employee_id' => $employee->id,
                 'title' => $title, 'status' => 'draft', 'currency' => $this->rates->baseCurrency(), 'created_by' => $actor->id]);
-            $report->save();
+            // HROne parity XO-5: a report HR (or a manager) creates for the employee says so in its audit trail.
+            $onBehalf = $employee->user_id === null || (int) $employee->user_id !== (int) $actor->id;
+            $report->withAuditReason($onBehalf ? 'Created on behalf of the employee' : null)->save();
             if ($receiptIds !== []) {
                 $this->attach($report, $receiptIds);
             }
@@ -113,7 +130,7 @@ final class ExpenseReports
             $this->assertEditable($locked);
             $line = ExpenseReceipt::query()->withoutGlobalScope(AccessScope::class)->whereKey($receipt->getKey())->where('expense_report_id', $locked->id)->lockForUpdate()->first()
                 ?? throw new ExpenseRuleViolation('That expense is not in this report.');
-            $line->withAuditReason('Removed from report '.$locked->number)->update(['expense_report_id' => null, 'expense_report_part_id' => null, 'workflow_group' => null, 'status' => 'unreported', 'approved_amount' => null, 'approver_note' => null]);
+            $line->withAuditReason('Removed from report '.$locked->number)->update(['expense_report_id' => null, 'expense_report_part_id' => null, 'workflow_group' => null, 'status' => 'unreported', 'approved_amount' => null, 'approver_note' => null] + self::NO_SUSPICION);
             $this->totals($locked);
             $this->syncTrips($locked);
 
@@ -156,7 +173,7 @@ final class ExpenseReports
                     'kind' => $group === ExpenseSettings::EXCEPTIONAL ? 'exceptional' : 'standard', 'label' => $this->groupLabel($group, $receipts->first()->category),
                     'status' => 'pending', 'total_claimed' => round((float) $receipts->sum(fn (ExpenseReceipt $r) => (float) $r->claimable_amount), 2)]);
                 foreach ($receipts as $receipt) {
-                    $receipt->withAuditReason('Submitted in report '.$locked->number)->update(['expense_report_part_id' => $part->id, 'workflow_group' => $group, 'status' => 'reported', 'approved_amount' => null, 'approver_note' => null]);
+                    $receipt->withAuditReason('Submitted in report '.$locked->number)->update(['expense_report_part_id' => $part->id, 'workflow_group' => $group, 'status' => 'reported', 'approved_amount' => null, 'approver_note' => null] + self::NO_SUSPICION);
                 }
                 $parts[] = $part;
             }
@@ -185,41 +202,134 @@ final class ExpenseReports
      * Approves a part line by line: $lines maps a receipt id to the amount approved (or [amount, note]); a line left out
      * is approved as claimed, 0 rejects it. Every line set to 0 is a rejection and needs the reason.
      *
-     * @param  array<int, float|int|string|array{amount?: float|int|string|null, note?: ?string}>|null  $lines
+     * HROne parity XO-3 (D-XO7): with expense.review.suspect_button on, a line given as [suspected => true, note] is held
+     * out as suspected — approved at 0 for now, its note required — and decided later by clearSuspicion(). With the setting
+     * off the flag is ignored (as before). A part whose only approved lines are held is partly approved, not rejected.
+     *
+     * @param  array<int, float|int|string|array{amount?: float|int|string|null, note?: ?string, suspected?: bool}>|null  $lines
      */
     public function approvePart(ExpenseReportPart $part, ?array $lines = null, ?string $note = null, ?User $actor = null): ExpenseReportPart
     {
         return DB::transaction(function () use ($part, $lines, $note, $actor) {
             [$report, $locked, $actor] = $this->decidable($part, $actor);
+            $suspicion = $this->suspicionOffered();
             $total = 0.0;
             $full = true;
             $decided = [];
+            $held = 0;
             foreach ($this->partLines($locked) as $receipt) {
                 $claimable = (float) $receipt->claimable_amount;
                 $line = $lines[$receipt->id] ?? null;
+                $lineNote = is_array($line) && filled($line['note'] ?? null) ? mb_substr(trim((string) $line['note']), 0, 500) : null;
+                if ($suspicion && is_array($line) && filter_var($line['suspected'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                    if ($lineNote === null) {
+                        throw new ExpenseRuleViolation("{$receipt->number}: say why the expense is suspected.");
+                    }
+                    $decided[] = [$receipt, 0.0, $lineNote, true];
+                    $full = false;
+                    $held++;
+
+                    continue;
+                }
                 $value = is_array($line) ? ($line['amount'] ?? null) : $line;
                 $amount = $value === null || $value === '' ? $claimable : (is_numeric($value) ? round((float) $value, 2) : -1);
                 if ($amount < 0 || $amount > $claimable + 0.004) {
                     throw new ExpenseRuleViolation("{$receipt->number}: approve between 0 and the claimable ".number_format($claimable, 2).'.');
                 }
-                $lineNote = is_array($line) && filled($line['note'] ?? null) ? mb_substr(trim((string) $line['note']), 0, 500) : null;
-                $decided[] = [$receipt, $amount, $lineNote];
+                $decided[] = [$receipt, $amount, $lineNote, false];
                 $total += $amount;
                 $full = $full && abs($amount - $claimable) < 0.005;
             }
-            if ($total <= 0 && blank($note)) {
+            if ($total <= 0 && blank($note) && ($held === 0 || $held < count($decided))) {
                 throw new ExpenseRuleViolation('Every line is set to 0: give the reason, as for a rejection.');
             }
-            foreach ($decided as [$receipt, $amount, $lineNote]) {
+            foreach ($decided as [$receipt, $amount, $lineNote, $suspected]) {
+                if ($suspected) {
+                    $receipt->withAuditReason('Held as suspected: '.$lineNote)->update(['approved_amount' => 0, 'approver_note' => $lineNote, 'status' => 'suspected',
+                        'suspected_at' => now(), 'suspected_by' => $actor->id, 'suspicion_note' => $lineNote, 'suspicion_cleared_at' => null, 'suspicion_cleared_by' => null]);
+
+                    continue;
+                }
                 $receipt->withAuditReason($lineNote ?? $note)->update(['approved_amount' => $amount, 'approver_note' => $lineNote,
                     'status' => $amount <= 0 ? 'rejected' : (abs($amount - (float) $receipt->claimable_amount) < 0.005 ? 'approved' : 'partly_approved')]);
             }
-            $status = $total <= 0 ? 'rejected' : ($full ? 'approved' : 'partly_approved');
+            $status = $total <= 0 ? ($held > 0 ? 'partly_approved' : 'rejected') : ($full ? 'approved' : 'partly_approved');
             $locked->withAuditReason($note)->update(['status' => $status, 'total_approved' => round($total, 2), 'decided_at' => now(), 'decided_by' => $actor->id, 'decision_note' => self::short($note)]);
-            $this->audit->record($status === 'rejected' ? AuditAction::Rejected : AuditAction::Approved, 'expense', $locked, reason: $note, actor: $actor, metadata: ['report' => $report->number, 'approved' => round($total, 2)]);
+            $this->audit->record($status === 'rejected' ? AuditAction::Rejected : AuditAction::Approved, 'expense', $locked, reason: $note, actor: $actor,
+                metadata: ['report' => $report->number, 'approved' => round($total, 2)] + ($held > 0 ? ['held_as_suspected' => $held] : []));
             $this->settle($report, $actor);
 
             return $locked->refresh();
+        });
+    }
+
+    /** HROne parity XO-3 (D-XO7): whether approvers are offered the "Suspected" decision (Setup centre, off by default). */
+    public function suspicionOffered(): bool
+    {
+        return (bool) $this->settings->get('expense.review.suspect_button', false);
+    }
+
+    /**
+     * HROne parity XO-3 (owner decision D-XO7 / EXP-13): decides a line an approver held out as suspected — approved up to
+     * its claimable amount (blank = in full) or rejected (0) — with a note, by someone who may decide the line's part (never
+     * their own report). The part's totals follow; a report already decided follows too (totals, advances settled against
+     * what it now repays, net payable, the payroll schedule when there is no payment step). Releasing an amount needs a report
+     * not yet paid and not carried by a payroll run or a final settlement; rejecting is always possible. Clearing works
+     * whether or not the setting is still on, so nothing stays held when it is switched off.
+     */
+    public function clearSuspicion(ExpenseReceipt $receipt, float|int|string|null $amount, string $note, ?User $actor = null): ExpenseReceipt
+    {
+        $note = trim($note);
+        if ($note === '') {
+            throw new ExpenseRuleViolation('Say how the suspicion was cleared.');
+        }
+        $actor ??= auth()->user();
+        if ($actor === null) {
+            throw new ExpenseRuleViolation('A suspicion is cleared by a person.');
+        }
+
+        return DB::transaction(function () use ($receipt, $amount, $note, $actor) {
+            $reportId = ExpenseReceipt::query()->withoutGlobalScope(AccessScope::class)->whereKey($receipt->getKey())->value('expense_report_id')
+                ?? throw new ExpenseRuleViolation('That expense is not in a report.');
+            $report = $this->lockReport(ExpenseReport::query()->withoutGlobalScope(AccessScope::class)->findOrFail($reportId));
+            $line = ExpenseReceipt::query()->withoutGlobalScope(AccessScope::class)->whereKey($receipt->getKey())->where('expense_report_id', $report->id)->lockForUpdate()->first()
+                ?? throw new ExpenseRuleViolation('That expense is not in this report.');
+            if (! $line->isHeldAsSuspected() || $line->expense_report_part_id === null) {
+                throw new ExpenseRuleViolation("{$line->number} is not held as suspected.");
+            }
+            if (! in_array($report->status, ['submitted', 'paid', ...ExpenseReport::DECIDED], true)) {
+                throw new ExpenseRuleViolation('This report is '.strtolower(ExpenseReport::STATUSES[$report->status] ?? $report->status).': its expenses are not decided now.');
+            }
+            $part = ExpenseReportPart::query()->withoutGlobalScope(AccessScope::class)->whereKey($line->expense_report_part_id)->lockForUpdate()->firstOrFail();
+            if (! app(ExpensePolicy::class)->approve($actor, $part)) {
+                throw new ExpenseRuleViolation((int) $this->employee($report)->user_id === (int) $actor->id ? 'You cannot decide your own expense report.' : 'You cannot decide this expense report.');
+            }
+            $claimable = (float) $line->claimable_amount;
+            $value = $amount === null || $amount === '' ? $claimable : (is_numeric($amount) ? round((float) $amount, 2) : -1);
+            if ($value < 0 || $value > $claimable + 0.004) {
+                throw new ExpenseRuleViolation("{$line->number}: approve between 0 and the claimable ".number_format($claimable, 2).'.');
+            }
+            if ($value > 0 && $report->paid_on !== null) {
+                throw new ExpenseRuleViolation("{$report->number} is already paid: the held expense can only be rejected now.");
+            }
+            // EX-E: a report a payroll run or a final settlement already carries is paid as it was calculated, never changed under it.
+            if ($value > 0 && ($where = $this->commitments->of(PayrollCommitments::REPORT, (int) $report->employee_id, (int) $report->id)) !== null) {
+                throw new ExpenseRuleViolation("{$report->number} is being paid in {$where}: release the held expense once that is finished, or reject it.");
+            }
+            $line->withAuditReason('Suspicion cleared: '.$note)->update(['approved_amount' => $value, 'approver_note' => self::short($note),
+                'status' => $value <= 0 ? 'rejected' : (abs($value - $claimable) < 0.005 ? 'approved' : 'partly_approved'),
+                'suspicion_cleared_at' => now(), 'suspicion_cleared_by' => $actor->id]);
+            $partLines = $this->partLines($part);
+            $partTotal = round((float) $partLines->sum(fn (ExpenseReceipt $r) => (float) $r->approved_amount), 2);
+            $part->withAuditReason('Suspicion cleared on '.$line->number)->update(['total_approved' => $partTotal,
+                'status' => $this->decision($partTotal, $partLines)]);
+            $this->audit->record($value > 0 ? AuditAction::Approved : AuditAction::Rejected, 'expense', $report, reason: $note, actor: $actor,
+                metadata: ['report' => $report->number, 'receipt' => $line->number, 'suspicion' => 'cleared', 'approved' => $value]);
+            if (in_array($report->status, ExpenseReport::DECIDED, true)) {
+                $this->resettle($report, $actor, $line);
+            }
+
+            return $line->refresh();
         });
     }
 
@@ -262,7 +372,7 @@ final class ExpenseReports
             }
             $this->closeParts($report, 'returned', 'Report returned to the employee');
             foreach ($this->lines($report) as $receipt) {
-                $receipt->withAuditReason($note)->update(['expense_report_part_id' => null, 'approved_amount' => null, 'approver_note' => null, 'status' => 'reported']);
+                $receipt->withAuditReason($note)->update(['expense_report_part_id' => null, 'approved_amount' => null, 'approver_note' => null, 'status' => 'reported'] + self::NO_SUSPICION);
             }
             $report->withAuditReason($note)->update(['status' => 'returned', 'returned_at' => now(), 'return_note' => mb_substr($note, 0, 500), 'total_approved' => 0, 'reimbursable_approved' => 0]);
             $this->audit->record(AuditAction::StatusChange, 'expense', $report, [['field' => 'status', 'before' => 'submitted', 'after' => 'returned', 'sensitive' => false]], $note, actor: $actor);
@@ -289,7 +399,7 @@ final class ExpenseReports
             }
             $this->closeParts($locked, 'cancelled', 'Report cancelled');
             foreach ($this->lines($locked) as $receipt) {
-                $receipt->withAuditReason($reason)->update(['expense_report_id' => null, 'expense_report_part_id' => null, 'workflow_group' => null, 'approved_amount' => null, 'approver_note' => null, 'status' => 'unreported']);
+                $receipt->withAuditReason($reason)->update(['expense_report_id' => null, 'expense_report_part_id' => null, 'workflow_group' => null, 'approved_amount' => null, 'approver_note' => null, 'status' => 'unreported'] + self::NO_SUSPICION);
             }
             $this->syncTrips($locked);
             $before = $locked->status;
@@ -303,8 +413,16 @@ final class ExpenseReports
         });
     }
 
-    /** Pay expenses: an approved report's net payable was paid outside payroll; its reference and date are recorded. */
-    public function markPaid(ExpenseReport $report, string $reference, CarbonInterface|string $on, ?User $actor = null): ExpenseReport
+    /**
+     * Pay expenses: an approved report's net payable was paid outside payroll; its reference and date are recorded.
+     *
+     * HROne parity XO-4 (§26.4.4 #18, #19): `$payment` may add how it was paid — `mode` (bank_transfer, cheque, cash),
+     * `account_id` (an active paying bank account of the employee's company; not for cash), `cheque_number` and
+     * `cheque_date` (required for a cheque, only for a cheque) and `note`. Nothing given = recorded as before.
+     *
+     * @param  array{mode?: ?string, account_id?: int|string|null, cheque_number?: ?string, cheque_date?: CarbonInterface|string|null, note?: ?string}  $payment
+     */
+    public function markPaid(ExpenseReport $report, string $reference, CarbonInterface|string $on, ?User $actor = null, array $payment = []): ExpenseReport
     {
         $actor ??= auth()->user();
         $reference = trim($reference);
@@ -316,7 +434,7 @@ final class ExpenseReports
             throw new ExpenseRuleViolation('A payment is recorded on or before today.');
         }
 
-        return DB::transaction(function () use ($report, $reference, $on, $actor) {
+        return DB::transaction(function () use ($report, $reference, $on, $actor, $payment) {
             $locked = $this->lockReport($report);
             if ($actor === null || ! app(ExpensePolicy::class)->pay($actor, $locked)) {
                 throw new ExpenseRuleViolation('You cannot record payments for this report.');
@@ -324,6 +442,7 @@ final class ExpenseReports
             if (! $locked->isPayable()) {
                 throw new ExpenseRuleViolation('Only an approved report with an amount to pay, not yet paid, can be marked paid.');
             }
+            $details = $this->paymentDetails($locked, $payment);
             if ($locked->decided_at !== null && $on->lt($locked->decided_at->copy()->startOfDay())) {
                 throw new ExpenseRuleViolation('A report is paid on or after its approval.');
             }
@@ -332,8 +451,9 @@ final class ExpenseReports
                 throw new ExpenseRuleViolation("{$locked->number} is already being paid in {$where}: it cannot be paid outside payroll as well.");
             }
             $locked->withAuditReason('Paid outside payroll: '.$reference)->update(['status' => 'paid', 'payment_channel' => 'bank', 'payment_scheduled_at' => null, 'payment_scheduled_by' => null,
-                'paid_on' => $on->toDateString(), 'payment_reference' => $reference, 'paid_by' => $actor->id]);
-            $this->tell('expense.report_paid', $locked, ['amount' => (float) $locked->net_payable, 'reference' => $reference, 'paid_on' => $on->toDateString()]);
+                'paid_on' => $on->toDateString(), 'payment_reference' => $reference, 'paid_by' => $actor->id] + ($locked->payment_scheduled_for !== null ? ['payment_scheduled_for' => null] : []) + $details);
+            $this->tell('expense.report_paid', $locked, ['amount' => (float) $locked->net_payable, 'reference' => $reference, 'paid_on' => $on->toDateString()]
+                + (isset($details['payment_mode']) ? ['mode' => ExpenseReport::PAYMENT_MODES[$details['payment_mode']]] : []));
 
             return $locked->refresh();
         });
@@ -342,12 +462,17 @@ final class ExpenseReports
     /**
      * EX-E (Pay expenses → Pay with payroll): an approved report waiting for payment is scheduled for payroll; the run whose
      * period covers today pays it when it is finalized. Pay expenses may still pay it outside payroll until a run carries it.
+     *
+     * HROne parity XO-4 (D-XO1): `$month` ("Y-m") names the payroll month instead — an open month of the employee's company
+     * that is not finalized; only that month's payroll pays it. Blank = the next payroll, as before. `$note` is kept with
+     * the payment.
      */
-    public function scheduleForPayroll(ExpenseReport $report, ?User $actor = null): ExpenseReport
+    public function scheduleForPayroll(ExpenseReport $report, ?User $actor = null, ?string $month = null, ?string $note = null): ExpenseReport
     {
         $actor ??= auth()->user();
+        $note = self::paymentNote($note);
 
-        return DB::transaction(function () use ($report, $actor) {
+        return DB::transaction(function () use ($report, $actor, $month, $note) {
             $locked = $this->lockReport($report);
             if ($actor === null || ! app(ExpensePolicy::class)->pay($actor, $locked)) {
                 throw new ExpenseRuleViolation('You cannot record payments for this report.');
@@ -361,11 +486,67 @@ final class ExpenseReports
             if (($where = $this->commitments->of(PayrollCommitments::REPORT, (int) $locked->employee_id, (int) $locked->id)) !== null) {
                 throw new ExpenseRuleViolation("{$locked->number} is already being paid in {$where}.");
             }
-            $locked->withAuditReason('Scheduled for payroll')->update(['payment_channel' => 'payroll', 'payment_scheduled_at' => now(), 'payment_scheduled_by' => $actor->id]);
-            $this->tell('expense.report_scheduled', $locked, ['amount' => (float) $locked->net_payable, 'channel' => 'payroll']);
+            $for = $this->payMonth($locked, $month);
+            $locked->withAuditReason('Scheduled for payroll'.($for !== null ? ' of '.CarbonImmutable::parse($for)->format('M Y') : ''))
+                ->update(['payment_channel' => 'payroll', 'payment_scheduled_at' => now(), 'payment_scheduled_by' => $actor->id]
+                    + ($for !== null ? ['payment_scheduled_for' => $for] : []) + ($note !== null ? ['payment_note' => $note] : []));
+            $this->tell('expense.report_scheduled', $locked, ['amount' => (float) $locked->net_payable, 'channel' => 'payroll']
+                + ($for !== null ? ['month' => CarbonImmutable::parse($for)->format('M Y')] : []));
 
             return $locked->refresh();
         });
+    }
+
+    /**
+     * HROne parity XO-4 (D-XO1): moves a report scheduled for payroll to another payroll month (blank = the next payroll).
+     * Refused once a payroll run carries it — it is paid by that run when it is finalized, never in a second month.
+     */
+    public function reschedulePayroll(ExpenseReport $report, ?string $month, ?User $actor = null, ?string $note = null): ExpenseReport
+    {
+        $actor ??= auth()->user();
+        $note = self::paymentNote($note);
+
+        return DB::transaction(function () use ($report, $month, $actor, $note) {
+            $locked = $this->lockScheduled($report, $actor);
+            $for = $this->payMonth($locked, $month);
+            $before = $locked->payMonthLabel();
+            if ($for === ($locked->payment_scheduled_for?->toDateString())) {
+                throw new ExpenseRuleViolation("{$locked->number} is already scheduled for ".($for === null ? 'the next payroll' : CarbonImmutable::parse($for)->format('M Y')).'.');
+            }
+            $after = $for === null ? 'Next payroll' : CarbonImmutable::parse($for)->format('M Y');
+            $locked->withAuditReason("Payroll month changed: {$before} → {$after}")->update(['payment_scheduled_for' => $for, 'payment_scheduled_at' => now(), 'payment_scheduled_by' => $actor->id]
+                + ($note !== null ? ['payment_note' => $note] : []));
+            $this->tell('expense.report_scheduled', $locked, ['amount' => (float) $locked->net_payable, 'channel' => 'payroll'] + ($for !== null ? ['month' => $after] : []));
+
+            return $locked->refresh();
+        });
+    }
+
+    /**
+     * HROne parity XO-4: takes a report off payroll (back to waiting on Pay expenses). Refused once a payroll run carries it.
+     */
+    public function cancelPayrollSchedule(ExpenseReport $report, ?string $reason = null, ?User $actor = null): ExpenseReport
+    {
+        $actor ??= auth()->user();
+        $reason = filled($reason) ? trim((string) $reason) : null;
+
+        return DB::transaction(function () use ($report, $reason, $actor) {
+            $locked = $this->lockScheduled($report, $actor);
+            $locked->withAuditReason('Payroll schedule cancelled'.($reason !== null ? ': '.$reason : ''))
+                ->update(['payment_channel' => null, 'payment_scheduled_at' => null, 'payment_scheduled_by' => null, 'payment_scheduled_for' => null]);
+
+            return $locked->refresh();
+        });
+    }
+
+    /**
+     * HROne parity XO-4: whether the payroll month chosen for a scheduled report was finalized without it (its run was
+     * calculated before it was scheduled, or the employee was not paid that month). It stays scheduled for that month —
+     * no other month takes it — until it is moved to another month, paid outside payroll or taken off payroll.
+     */
+    public function payMonthMissed(ExpenseReport $report): bool
+    {
+        return $report->isScheduledForPayroll() && ($month = $report->payMonth()) !== null && app(PayrollMonths::class)->isFinalized((int) $report->employee_id, $month);
     }
 
     /**
@@ -416,11 +597,7 @@ final class ExpenseReports
         $lines = $this->lines($report);
         $approved = round((float) $lines->sum(fn (ExpenseReceipt $r) => (float) $r->approved_amount), 2);
         $reimbursable = round((float) $lines->filter(fn (ExpenseReceipt $r) => $r->reimbursable)->sum(fn (ExpenseReceipt $r) => (float) $r->approved_amount), 2);
-        $status = match (true) {
-            $approved <= 0 => 'rejected',
-            $lines->every(fn (ExpenseReceipt $r) => $r->status === 'approved') => 'approved',
-            default => 'partly_approved',
-        };
+        $status = $this->decision($approved, $lines);
         $adjusted = $status === 'rejected' ? 0.0 : $this->advances->adjustForReport($report, $reimbursable, $actor);
         $net = round($reimbursable - $adjusted, 2);
         // EX-E: without a payment step an approved report goes straight to the next payroll.
@@ -429,6 +606,45 @@ final class ExpenseReports
             'advance_adjusted' => $adjusted, 'net_payable' => $net, 'decided_at' => now(), 'decided_by' => $actor->id]
             + ($toPayroll ? ['payment_channel' => 'payroll', 'payment_scheduled_at' => now(), 'payment_scheduled_by' => null] : []));
         $this->tell('expense.report_'.$status, $report, ['approved' => $approved, 'advance_adjusted' => $adjusted, 'net_payable' => round($reimbursable - $adjusted, 2)]);
+    }
+
+    /**
+     * The decision its lines make: nothing approved is a rejection — unless a line is held as suspected (XO-3), which
+     * leaves it partly approved until the suspicion is cleared; every line approved in full is approved; else partly.
+     */
+    private function decision(float $approved, BaseCollection $lines): string
+    {
+        return match (true) {
+            $approved <= 0 && ! $lines->contains(fn (ExpenseReceipt $r) => $r->isHeldAsSuspected()) => 'rejected',
+            $approved <= 0 => 'partly_approved',
+            $lines->every(fn (ExpenseReceipt $r) => $r->status === 'approved') => 'approved',
+            default => 'partly_approved',
+        };
+    }
+
+    /**
+     * HROne parity XO-3: a decided report follows a line decided after it (a suspicion cleared) — its totals and status, the
+     * employee's dispensed advances settled against what it now repays (oldest first, once per line), its net payable and,
+     * without a payment step, the payroll schedule. The caller made sure no payment carries it.
+     */
+    private function resettle(ExpenseReport $report, User $actor, ExpenseReceipt $line): void
+    {
+        $lines = $this->lines($report);
+        $approved = round((float) $lines->sum(fn (ExpenseReceipt $r) => (float) $r->approved_amount), 2);
+        $reimbursable = round((float) $lines->filter(fn (ExpenseReceipt $r) => $r->reimbursable)->sum(fn (ExpenseReceipt $r) => (float) $r->approved_amount), 2);
+        $status = $this->decision($approved, $lines);
+        $more = round($reimbursable - (float) $report->reimbursable_approved, 2);
+        $adjusted = round((float) $report->advance_adjusted + ($status !== 'rejected' && $more > 0 && $report->paid_on === null
+            ? $this->advances->adjustForReport($report, $more, $actor, 'report-'.$report->id.'-receipt-'.$line->id) : 0.0), 2);
+        $net = round($reimbursable - $adjusted, 2);
+        $toPayroll = $status !== 'rejected' && $net > 0 && $report->payment_channel === null && ! (bool) $this->settings->get('expense.payment.step_required', true);
+        $before = $report->status;
+        $report->withAuditReason('Suspicion cleared on '.$line->number)->update(['status' => $status, 'total_approved' => $approved, 'reimbursable_approved' => $reimbursable,
+            'advance_adjusted' => $adjusted, 'net_payable' => $net]
+            + ($toPayroll ? ['payment_channel' => 'payroll', 'payment_scheduled_at' => now(), 'payment_scheduled_by' => null] : []));
+        if ($before !== $status || $more > 0) {
+            $this->tell('expense.report_'.$status, $report, ['approved' => $approved, 'advance_adjusted' => $adjusted, 'net_payable' => $net]);
+        }
     }
 
     /** @param  list<int>  $receiptIds */
@@ -588,6 +804,118 @@ final class ExpenseReports
     private function managerUsers(Employee $employee): array
     {
         return array_values(array_filter([$employee->currentManager()->with('manager')->first()?->manager?->user_id]));
+    }
+
+    /** XO-4: the report, locked, scheduled for payroll and not yet carried by a run or a final settlement. */
+    private function lockScheduled(ExpenseReport $report, ?User $actor): ExpenseReport
+    {
+        $locked = $this->lockReport($report);
+        if ($actor === null || ! app(ExpensePolicy::class)->pay($actor, $locked)) {
+            throw new ExpenseRuleViolation('You cannot record payments for this report.');
+        }
+        if (! $locked->isScheduledForPayroll()) {
+            throw new ExpenseRuleViolation("{$locked->number} is not scheduled for payroll.");
+        }
+        if (($where = $this->commitments->of(PayrollCommitments::REPORT, (int) $locked->employee_id, (int) $locked->id)) !== null) {
+            throw new ExpenseRuleViolation("{$locked->number} is already being paid in {$where}: it stays with that payroll.");
+        }
+
+        return $locked;
+    }
+
+    /**
+     * XO-4 (D-XO1): the payroll month chosen ("Y-m") as the first day of the month, or null for the next payroll. Only an
+     * open month of the employee's company that is not finalized may be chosen.
+     */
+    private function payMonth(ExpenseReport $report, ?string $month): ?string
+    {
+        $month = trim((string) $month);
+        if ($month === '') {
+            return null;
+        }
+        if (preg_match('/^(\d{4})-(\d{2})$/', $month, $m) !== 1 || (int) $m[2] < 1 || (int) $m[2] > 12) {
+            throw new ExpenseRuleViolation('Choose the payroll month that pays it.');
+        }
+        $label = CarbonImmutable::create((int) $m[1], (int) $m[2], 1)->format('M Y');
+        $months = app(PayrollMonths::class);
+        if ($months->isFinalized((int) $report->employee_id, $month)) {
+            throw new ExpenseRuleViolation("The payroll of {$label} is finalized: choose a month not yet finalized.");
+        }
+        $open = $months->openFor((int) $report->employee_id);
+        if ($open === []) {
+            throw new ExpenseRuleViolation("{$report->number}: the employee has no company to run payroll for; pay it with the next payroll or outside payroll.");
+        }
+        if (! array_key_exists($month, $open)) {
+            $keys = array_keys($open);
+            $range = CarbonImmutable::parse(reset($keys).'-01')->format('M Y').' to '.CarbonImmutable::parse(end($keys).'-01')->format('M Y');
+
+            throw new ExpenseRuleViolation("{$label} is not an open payroll month for {$report->number}: choose from {$range}.");
+        }
+
+        return sprintf('%04d-%02d-01', (int) $m[1], (int) $m[2]);
+    }
+
+    /**
+     * XO-4 (§26.4.4 #18, #19): an outside payment's mode, paying account, cheque details and note, checked; only the
+     * columns given are returned (nothing given = nothing recorded, as before).
+     *
+     * @return array<string, mixed>
+     */
+    private function paymentDetails(ExpenseReport $report, array $payment): array
+    {
+        $mode = filled($payment['mode'] ?? null) ? (string) $payment['mode'] : null;
+        if ($mode !== null && ! array_key_exists($mode, ExpenseReport::PAYMENT_MODES)) {
+            throw new ExpenseRuleViolation('Choose how it was paid: bank transfer, cheque or cash.');
+        }
+        $account = filled($payment['account_id'] ?? null) ? (is_numeric($payment['account_id']) ? (int) $payment['account_id'] : -1) : null;
+        $chequeNumber = filled($payment['cheque_number'] ?? null) ? trim((string) $payment['cheque_number']) : null;
+        $chequeDate = $payment['cheque_date'] ?? null;
+        $chequeDate = filled($chequeDate) ? $chequeDate : null;
+        $details = [];
+        if ($mode !== null) {
+            $details['payment_mode'] = $mode;
+        }
+        if ($account !== null) {
+            if ($mode === null || $mode === 'cash') {
+                throw new ExpenseRuleViolation($mode === 'cash' ? 'A cash payment has no paying bank account.' : 'Say how it was paid before naming the paying account.');
+            }
+            if (! array_key_exists($account, app(PayrollMonths::class)->payingAccounts((int) $report->employee_id))) {
+                throw new ExpenseRuleViolation('Choose an active paying bank account of the employee\'s company.');
+            }
+            $details['paid_from_account_id'] = $account;
+        }
+        if ($mode === 'cheque') {
+            if ($chequeNumber === null || mb_strlen($chequeNumber) > 30) {
+                throw new ExpenseRuleViolation('Give the cheque number (at most 30 characters).');
+            }
+            if ($chequeDate === null) {
+                throw new ExpenseRuleViolation('Give the cheque date.');
+            }
+            try {
+                $details['cheque_date'] = CarbonImmutable::parse($chequeDate)->toDateString();
+            } catch (\Throwable) {
+                throw new ExpenseRuleViolation('Give the cheque date.');
+            }
+            $details['cheque_number'] = $chequeNumber;
+        } elseif ($chequeNumber !== null || $chequeDate !== null) {
+            throw new ExpenseRuleViolation('Cheque number and date go with a payment by cheque.');
+        }
+        if (($note = self::paymentNote($payment['note'] ?? null)) !== null) {
+            $details['payment_note'] = $note;
+        }
+
+        return $details;
+    }
+
+    /** XO-4: the payment note, trimmed (at most 500 characters), or null. */
+    private static function paymentNote(?string $note): ?string
+    {
+        $note = trim((string) $note);
+        if (mb_strlen($note) > 500) {
+            throw new ExpenseRuleViolation('Keep the payment note to 500 characters.');
+        }
+
+        return $note === '' ? null : $note;
     }
 
     /** Notes are kept to their column (500 characters); the audit trail keeps the full text. */

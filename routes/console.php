@@ -52,6 +52,8 @@ Schedule::command('peopleos:compensation:send-reminders')->dailyAt('08:15')->wit
 // HROne setup parity BP-9: reminders to claim reimbursements, and managers asked for planned variable pay.
 Schedule::command('peopleos:payroll:claim-reminders')->dailyAt('08:40')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:payroll:variable-pay-tasks')->dailyAt('08:45')->withoutOverlapping()->onOneServer();
+// HROne parity PO-4: open payroll runs recalculated in the background on payroll.auto_calculate_day (0 = never, the default).
+Schedule::command('peopleos:payroll:auto-calculate')->dailyAt('05:15')->withoutOverlapping()->onOneServer();
 // HROne setup parity HP-9d: reward points credited per the reward points policies (cycle credits, lapses, expiry; off by default).
 Schedule::command('peopleos:engage:credit-points')->dailyAt('01:30')->withoutOverlapping()->onOneServer();
 // Phase 12: SLA warnings / escalations, reminders, auto-close, catalogue promotion (idempotent reminder log).
@@ -60,6 +62,8 @@ Schedule::command('peopleos:service-desk:process')->hourly()->withoutOverlapping
 Schedule::command('peopleos:engagement:process')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:communication:process')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:exit:tick')->dailyAt('04:00')->withoutOverlapping()->onOneServer();
+// HROne parity WO-13: letter schedules due today, transfer letters on the effective date, expired bulk letter downloads.
+Schedule::command('peopleos:letters:tick')->dailyAt('06:50')->withoutOverlapping()->onOneServer();
 Schedule::command('peopleos:reports:run-due')->hourly()->withoutOverlapping()->onOneServer();
 // Phase 14: inbound integration events (the queue applies them at once; this run picks up retries and expired leases).
 Schedule::command('peopleos:integrations:process')->everyMinute()->withoutOverlapping()->onOneServer();

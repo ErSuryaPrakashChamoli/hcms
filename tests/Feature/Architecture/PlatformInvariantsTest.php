@@ -91,7 +91,10 @@ it('2. keeps Employee the one canonical employment identity (one per person per 
 
 it('3. keeps Person the one canonical natural person', function () {
     $tables = collect(Schema::getTables())->pluck('name')->filter(fn ($t) => Schema::hasColumns($t, ['first_name', 'date_of_birth']))->values()->all();
-    expect($tables)->toBe(['people']);
+    // HROne parity WO-15 (documented exception): business partners are people outside the workforce who may be given a
+    // sign-in (customers, BGV agents, vendors' staff, consultants). They are never employees, never matched or merged with a
+    // Person, and hold no employment data; a partner who is later hired becomes a Person through the hire as anyone else.
+    expect($tables)->toBe(['business_partners', 'people']);
 });
 
 it('4. keeps the Employee 360 a read surface, never a system of record', function () {

@@ -14,20 +14,30 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * An arrear day (HP-1): a day already locked by a finalised payroll whose attendance would now be different
  * (a late regularisation, leave or override). The locked record is never rewritten; the difference in paid
  * days is kept here as a quantity for the next payroll (`delta_days` > 0 gives back, < 0 takes away).
+ *
+ * HROne parity TX-3: HR may hold a pending arrear (`held`: left for a later month) and release it again (back to
+ * `pending`) through AttendanceArrears; a settled arrear never changes.
+ *
+ * Data import DI-35: `source` says whether the calculation recorded it or HR set the days of an earlier month by upload
+ * (AttendanceArrears::setForMonth, covering `covers_from` … `date`); while HR's figure covers a month the calculation records
+ * no arrears for its days. `overtime_minutes` is approved overtime added or taken back on a locked day, for a later month.
  */
-#[Fillable(['tenant_id', 'employee_id', 'date', 'status_before', 'status_after', 'paid_before', 'paid_after', 'delta_days', 'status', 'settled_period_id', 'settled_at', 'note'])]
+#[Fillable(['tenant_id', 'employee_id', 'date', 'status_before', 'status_after', 'paid_before', 'paid_after', 'delta_days', 'source', 'covers_from', 'overtime_minutes', 'status', 'settled_period_id', 'settled_at', 'note'])]
 class AttendanceArrear extends Model
 {
     use Auditable, BelongsToTenant;
     use ScopedByEmployee;
 
-    public const STATUSES = ['pending' => 'Pending', 'settled' => 'Settled', 'void' => 'Void'];
+    public const STATUSES = ['pending' => 'Pending', 'held' => 'Held', 'settled' => 'Settled', 'void' => 'Void'];
 
-    protected $attributes = ['status' => 'pending'];
+    /** Data import DI-35: worked out by the calculation, or set by HR for an earlier month (Override arrear days upload). */
+    public const SOURCES = ['calculation' => 'Calculated', 'upload' => 'Set by HR (upload)'];
+
+    protected $attributes = ['status' => 'pending', 'source' => 'calculation', 'overtime_minutes' => 0];
 
     protected function casts(): array
     {
-        return ['date' => 'date', 'paid_before' => 'decimal:2', 'paid_after' => 'decimal:2', 'delta_days' => 'decimal:2', 'settled_at' => 'datetime'];
+        return ['date' => 'date', 'paid_before' => 'decimal:2', 'paid_after' => 'decimal:2', 'delta_days' => 'decimal:2', 'settled_at' => 'datetime', 'covers_from' => 'date', 'overtime_minutes' => 'integer'];
     }
 
     public function auditModule(): string

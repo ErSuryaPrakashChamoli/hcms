@@ -25,6 +25,12 @@ final class ChangeFamilyMemberAction extends ChangePersonRecordAction
             'is_dependent' => ['nullable', 'boolean'],
             'is_nominee' => ['nullable', 'boolean'],
             'nominee_share' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            // HROne parity MS-4: a child at school / in a hostel (for allowance rules that may read them; no amount here), remarks.
+            'in_school' => ['nullable', 'boolean'],
+            'in_hostel' => ['nullable', 'boolean'],
+            'remarks' => ['nullable', 'string', 'max:255'],
+            // Data import DI-2: what the family member does (HROne's family details carry it).
+            'occupation' => ['nullable', 'string', 'max:120'],
         ];
     }
 

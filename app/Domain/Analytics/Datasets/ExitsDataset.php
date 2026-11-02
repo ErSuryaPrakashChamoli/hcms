@@ -3,6 +3,7 @@
 namespace App\Domain\Analytics\Datasets;
 
 use App\Domain\Exit\Models\ExitCase;
+use App\Domain\Exit\Support\NoticeShortfall;
 use Illuminate\Database\Eloquent\Builder;
 
 class ExitsDataset extends Dataset
@@ -57,6 +58,16 @@ class ExitsDataset extends Dataset
             'separation_kind' => ['label' => 'Voluntary / involuntary', 'type' => 'string', 'value' => fn ($c) => $c->separationReason?->separation_kind ? config('peopleos.people.separation_kinds.'.$c->separationReason->separation_kind) : null],
             'rehire_block_reason' => ['label' => 'Not eligible for rehire because', 'type' => 'string', 'value' => fn ($c) => $c->rehireBlockReason?->name],
             'rehire_eligible' => ['label' => 'Rehire eligible', 'type' => 'boolean', 'value' => fn ($c) => (bool) $c->is_rehire_eligible],
+            // HROne parity WO-11 (§23.6.1 #17–18, §23.6.2 #4): the approver's reason kept apart from the employee's, notice
+            // relaxation and shortfall, the settlement month and the latest withdrawal request (free-text remarks stay on the case).
+            'approver_separation_reason' => ['label' => 'Approver\'s separation reason', 'type' => 'string', 'value' => fn ($c) => $c->approverReason?->name],
+            'approver_separation_kind' => ['label' => 'Approver: voluntary / involuntary', 'type' => 'string', 'value' => fn ($c) => $c->approverReason?->separation_kind ? config('peopleos.people.separation_kinds.'.$c->approverReason->separation_kind) : null],
+            'resignation_accepted_on' => ['label' => 'Resignation accepted on', 'type' => 'date', 'value' => fn ($c) => $c->resignation_accepted_at],
+            'notice_relaxation_days' => ['label' => 'Notice relaxation (days)', 'type' => 'number', 'value' => fn ($c) => (int) ($c->getAttributes()['notice_relaxation_days'] ?? 0)],
+            'notice_shortfall_days' => ['label' => 'Notice shortfall (days)', 'type' => 'number', 'value' => fn ($c) => NoticeShortfall::for($c)['shortfall_days'] ?? null],
+            'settlement_month' => ['label' => 'Settlement month', 'type' => 'string', 'value' => fn ($c) => ($c->settlement_month ?? $c->last_working_day)?->format('Y-m')],
+            'withdrawal_status' => ['label' => 'Withdrawal request', 'type' => 'string', 'value' => fn ($c) => $c->withdrawalRequests->first()?->status],
+            'withdrawal_requested_on' => ['label' => 'Withdrawal requested on', 'type' => 'date', 'value' => fn ($c) => $c->withdrawalRequests->first()?->created_at],
             'pending_clearances' => ['label' => 'Clearances pending', 'type' => 'number', 'value' => fn ($c) => $c->clearances->whereIn('status', ['pending', 'blocked'])->count()],
             'settlement_status' => ['label' => 'F&F status', 'type' => 'string', 'value' => fn ($c) => $c->settlement?->status],
             'net_settlement' => ['label' => 'Net F&F', 'type' => 'number', 'value' => fn ($c) => $c->settlement ? (float) $c->settlement->net_amount : null],
@@ -67,6 +78,6 @@ class ExitsDataset extends Dataset
 
     public function query(): Builder
     {
-        return ExitCase::query()->with(['employee.person', 'employee.positions.department', 'employee.positions.designation', 'employee.positions.location', 'manager.person', 'interview', 'settlement', 'clearances', 'separationReason', 'rehireBlockReason'])->orderByDesc('last_working_day');
+        return ExitCase::query()->with(['employee.person', 'employee.positions.department', 'employee.positions.designation', 'employee.positions.location', 'manager.person', 'interview', 'settlement', 'clearances', 'separationReason', 'rehireBlockReason', 'approverReason', 'withdrawalRequests'])->orderByDesc('last_working_day');
     }
 }

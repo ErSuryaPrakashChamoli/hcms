@@ -267,6 +267,7 @@ PeopleOS components, mapped to the brief's component names. One component per jo
 | PeopleMetric | `<x-pos.figure value label delta meaning>` | One figure primitive; replaces KPI tiles |
 | PeopleActivity | `.pos-stream` | Divided rows of things to read or act on |
 | PeopleSection | `<x-pos.section title count>` | A titled region, not a card |
+| PeopleBrowse | `<x-pos.browse groups label remember>` + `posBrowse` | Areas down the left, the open area's screens beside them in two or three columns; an accordion when narrow. Replaces grids of area cards (Admin Centre, configuration finder, operations desks) |
 | PeopleEmptyState / PeopleSkeleton | `<x-pos.state>` (`<x-pos.empty>` kept), `.pos-skeleton` | Empty, caught up, filtered, loading, error + retry, denied, stale, partial failure |
 | PeopleToast | Filament notifications (restyled) | Short result text |
 | PeopleModal | Filament modals (restyled) | For existing domain action forms |

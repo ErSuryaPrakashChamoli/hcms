@@ -27,6 +27,9 @@ final class PunchIngestion
 {
     public const SOURCE_TYPES = ['biometric_device', 'mobile', 'web', 'api', 'manual', 'import'];
 
+    /** MS-4: whether any employee of the tenant has a device user id (memoised per ingestion run). */
+    private ?bool $deviceIds = null;
+
     public function __construct(private readonly TenantContext $tenants, private readonly SettingsRepository $settings) {}
 
     /**
@@ -112,12 +115,13 @@ final class PunchIngestion
     public function ingest(AttendanceDevice $device, array $payload): array
     {
         $adapter = $this->adapter($device->adapter);
+        $this->deviceIds = null;
         $result = ['accepted' => 0, 'duplicates' => 0, 'failed' => 0, 'unknown' => [], 'dates' => []];
         $timezone = $device->settings['timezone'] ?? null;
 
         foreach ($adapter->normalise($payload) as $punch) {
             $code = $punch['employee_code'] ?? '';
-            $employee = $code !== '' ? Employee::query()->where('employee_code', $code)->first() : null;
+            $employee = $this->resolveEmployee((string) $code);
 
             if (empty($punch['punched_at'])) {
                 $result['failed']++;
@@ -163,9 +167,10 @@ final class PunchIngestion
             throw new InvalidArgumentException('Only failed punches can be retried.');
         }
 
+        $this->deviceIds = null;
         $employee = $punch->employee_id
             ? Employee::query()->find($punch->employee_id)
-            : Employee::query()->where('employee_code', $punch->payload['employee_code'] ?? '')->first();
+            : $this->resolveEmployee((string) ($punch->payload['employee_code'] ?? ''));
 
         if ($employee === null) {
             $punch->update(['processing_error' => 'Unknown employee code ['.($punch->payload['employee_code'] ?? '?').'] (retry).']);
@@ -179,11 +184,30 @@ final class PunchIngestion
         return $punch->refresh();
     }
 
+    /**
+     * HROne parity MS-4 (matrix 22 §22.2.1 #10): the employee a device knows by $code — first by the device user id HR
+     * recorded on the employee (employees.device_user_id, unique per tenant), then by the employee code exactly as before.
+     * While no employee has a device user id, this is the earlier lookup by code alone (no extra query per punch).
+     */
+    public function resolveEmployee(string $code): ?Employee
+    {
+        if ($code === '') {
+            return null;
+        }
+        $this->deviceIds ??= Employee::query()->whereNotNull('device_user_id')->exists();
+        if ($this->deviceIds && ($employee = Employee::query()->where('device_user_id', $code)->first()) !== null) {
+            return $employee;
+        }
+
+        return Employee::query()->where('employee_code', $code)->first();
+    }
+
+    /** The punches processing counts: refused check-ins and (HROne parity TX-7) excluded punches are left out. */
     public function punchesBetween(Employee $employee, Carbon $from, Carbon $to): Collection
     {
         return AttendancePunch::query()
             ->where('employee_id', $employee->id)
-            ->where('processing_status', '!=', 'rejected')
+            ->whereNotIn('processing_status', AttendancePunch::NOT_COUNTED)
             ->whereBetween('punched_at', [$from, $to])
             ->orderBy('punched_at')->orderBy('id')
             ->get();

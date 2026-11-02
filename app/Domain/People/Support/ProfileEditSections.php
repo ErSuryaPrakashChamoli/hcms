@@ -31,6 +31,13 @@ final class ProfileEditSections
         'skills' => ['tab' => 'skills', 'visible_in' => 'skills', 'always_approval' => false, 'document' => null],
         'other_details' => ['tab' => 'other_details', 'visible_in' => 'other_details', 'always_approval' => false, 'document' => null],
         'bank' => ['tab' => 'bank', 'visible_in' => 'bank', 'always_approval' => true, 'document' => 'linked'],
+        // HROne parity MS-4: passport / driving licence always with approval (owner decision SSE-4, like bank and
+        // identifiers) and the CA-4 linked document; nominations per benefit as the tenant's matrix says.
+        'identity_documents' => ['tab' => 'personal', 'visible_in' => 'personal', 'always_approval' => true, 'document' => 'linked'],
+        'nominations' => ['tab' => 'family', 'visible_in' => 'family', 'always_approval' => false, 'document' => null],
+        // HROne parity MS-5: a health insurance policy and its insured members (own tab and CA-6 section), as the tenant's
+        // matrix says (default: not editable; when editable, with approval unless the organisation unticks it).
+        'health_insurance' => ['tab' => 'health_insurance', 'visible_in' => 'health_insurance', 'always_approval' => false, 'document' => null],
     ];
 
     public const LEGAL_IDENTITY = 'legal_identity';

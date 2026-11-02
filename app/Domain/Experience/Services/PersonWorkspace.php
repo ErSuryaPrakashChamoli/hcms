@@ -13,6 +13,7 @@ use App\Domain\Identity\Models\UserAccessScope;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Learning\Models\LearningEnrolment;
 use App\Domain\Leave\Models\LeaveRequest;
+use App\Domain\Leave\Services\LeavePrivacy;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Lifecycle\Models\EmployeeTimelineEntry;
 use App\Domain\Lifecycle\Support\TimelineCategories;
@@ -183,8 +184,9 @@ final class PersonWorkspace
         if (in_array('leave', $visible, true)) {
             LeaveRequest::query()->withoutGlobalScope(AccessScope::class)->with('leaveType')->where('employee_id', $e->id)->whereIn('status', ['approved', 'pending'])
                 ->whereDate('to_date', '>=', now()->toDateString())->orderBy('from_date')->limit(3)->get()
-                ->each(function (LeaveRequest $r) use (&$items) {
-                    $items[] = ['date' => $r->from_date, 'title' => ($r->leaveType?->name ?? 'Leave').($r->status === 'pending' ? ' (waiting for approval)' : ''),
+                ->each(function (LeaveRequest $r) use (&$items, $viewer) {
+                    // HROne parity RQ-4: a private leave reads "Away" for a viewer who may not see it in full.
+                    $items[] = ['date' => $r->from_date, 'title' => app(LeavePrivacy::class)->typeLabel($r, $viewer).($r->status === 'pending' ? ' (waiting for approval)' : ''),
                         'detail' => $r->from_date->format('j M').($r->to_date->isSameDay($r->from_date) ? '' : ' to '.$r->to_date->format('j M')), 'tone' => $r->status === 'pending' ? 'warning' : 'info'];
                 });
         }

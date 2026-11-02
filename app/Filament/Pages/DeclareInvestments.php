@@ -6,10 +6,13 @@ use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Compliance\Models\TdsEmployeeInvestment;
 use App\Domain\Compliance\Services\FinancialYear;
 use App\Domain\Compliance\Services\InvestmentDeclarations;
+use App\Domain\Compliance\Services\PriorExemptions;
 use App\Domain\Compliance\Services\TaxEstimator;
 use App\Domain\Compliance\Services\TaxSettings;
 use App\Domain\Compliance\Support\InvestmentCatalogue;
 use App\Domain\Employment\Models\Employee;
+use App\Filament\Support\OnBehalfPicker;
+use App\Filament\Support\RequestChrome;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -44,7 +47,8 @@ use UnitEnum;
  * Guided investment declaration (§32 TDS) for someone filing for the first time: choose the regime, then one step per
  * section listing every option that counts there (what it is, what proof is needed), tick what applies and enter the
  * amount; the last step totals each section against what payroll counts. InvestmentDeclarations saves the declaration
- * and one proof row per item. Employees file their own; payroll.manage files for anyone in scope (?employee=&year=).
+ * and one proof row per item. Employees file their own; payroll.manage files for anyone in scope (?employee=&year=, or
+ * HROne parity AC-2: ?action=declareForEmployee — choose the employee, never oneself).
  */
 class DeclareInvestments extends Page implements HasSchemas
 {
@@ -132,6 +136,8 @@ class DeclareInvestments extends Page implements HasSchemas
                     ->helperText('April to March')
                     ->live()->afterStateUpdated(fn ($state, Get $get) => $this->fillFor($get('employee_id') ? (int) $get('employee_id') : null, (string) $state)),
                 Text::make(fn () => $this->statusLine())->columnSpan(fn () => auth()->user()->hasPermission('payroll.manage') ? 1 : 2),
+                // HROne parity AC-2: whose declaration payroll is filing (hidden on one's own).
+                RequestChrome::header(fn () => ($e = $this->employee()) !== null && ($e->user_id === null || (int) $e->user_id !== (int) auth()->id()) ? $e : null)->columnSpanFull(),
             ]),
             Callout::make('Payroll has verified this declaration')->success()
                 ->description('It can no longer be changed here. If something needs to change, contact your payroll team.')
@@ -258,8 +264,26 @@ class DeclareInvestments extends Page implements HasSchemas
                 DatePicker::make('previous.to')->label('Until')->native(false),
                 TextInput::make('previous.pf')->label('PF deducted there')->prefix('₹')->numeric()->minValue(0)->maxValue(self::MAX_AMOUNT),
                 TextInput::make('previous.pt')->label('Professional tax deducted there')->prefix('₹')->numeric()->minValue(0)->maxValue(self::MAX_AMOUNT),
+                // HROne parity MS-4: exemptions already used there (Form 12B). Read by tax only through a verified rule's limits.
+                TextInput::make('previous.gratuity_exempt')->label('Gratuity exemption used there')->prefix('₹')->numeric()->minValue(0)->maxValue(self::MAX_AMOUNT)
+                    ->helperText('Tax-free gratuity your previous employer already gave you, if any.'),
+                TextInput::make('previous.leave_encashment_exempt')->label('Leave encashment exemption used there')->prefix('₹')->numeric()->minValue(0)->maxValue(self::MAX_AMOUNT)
+                    ->helperText('Tax-free leave encashment they already gave you, if any.'),
+                Callout::make('These two do not change your tax')->warning()->columnSpanFull()
+                    ->description('They are kept with your declaration (Form 12BB) and shown on your profile. Payroll counts them against the exemption limits only once a verified tax rule carries those limits; no such rule is verified yet, so your tax is worked out without them.')
+                    ->visible(fn () => ! $this->priorExemptionsCounted()),
+                Text::make('Payroll counts these against the exemption limits of the verified tax rule, for any gratuity or leave encashment paid here. They do not change the monthly tax on your salary.')->columnSpanFull()
+                    ->visible(fn () => $this->priorExemptionsCounted()),
             ]),
         ]);
+    }
+
+    /** HROne parity MS-4: whether a verified tax rule carries both exemption limits (PriorExemptions); never a number in code. */
+    private function priorExemptionsCounted(): bool
+    {
+        $prior = app(PriorExemptions::class);
+
+        return $prior->counted('gratuity', now()) && $prior->counted('leave_encashment', now());
     }
 
     private function reviewStep(): Step
@@ -358,7 +382,11 @@ class DeclareInvestments extends Page implements HasSchemas
             'rows' => $rows,
             'proofs' => $proofs,
             'warnings' => $warnings,
-            'previous' => $get('previous.worked') ? ['income' => self::inr((float) $get('previous.income')), 'tds' => self::inr((float) $get('previous.tds'))] : null,
+            'previous' => $get('previous.worked') ? ['income' => self::inr((float) $get('previous.income')), 'tds' => self::inr((float) $get('previous.tds')),
+                // HROne parity MS-4: exemptions used there (shown; counted only through a verified rule).
+                'gratuity_exempt' => (float) $get('previous.gratuity_exempt') > 0 ? self::inr((float) $get('previous.gratuity_exempt')) : null,
+                'leave_encashment_exempt' => (float) $get('previous.leave_encashment_exempt') > 0 ? self::inr((float) $get('previous.leave_encashment_exempt')) : null,
+                'exemptions_counted' => $this->priorExemptionsCounted()] : null,
             // HROne setup parity (PS-2): a rough tax per regime from the declared amounts, when the organisation shows it.
             'estimate' => app(TaxSettings::class)->showEstimator() && $this->employee() !== null
                 ? collect(app(TaxEstimator::class)->compare($this->employee(), (string) $get('financial_year'), $this->declaredTotals($get)))->map(fn (array $e, string $regime) => ['regime' => config("peopleos.compliance.tax_regimes.{$regime}", $regime), 'tax' => self::inr($e['tax'])])->values()->all()
@@ -454,7 +482,7 @@ class DeclareInvestments extends Page implements HasSchemas
             'metro' => (bool) ($state['rent']['metro'] ?? false),
             'previous_employer_income' => $worked ? ($state['previous']['income'] ?? 0) : 0,
             'previous_employer_tds' => $worked ? ($state['previous']['tds'] ?? 0) : 0,
-            'previous_employer' => $worked ? collect($state['previous'])->only(['name', 'tan', 'from', 'to', 'pf', 'pt'])->all() : null,
+            'previous_employer' => $worked ? collect($state['previous'])->only(['name', 'tan', 'from', 'to', 'pf', 'pt', 'gratuity_exempt', 'leave_encashment_exempt'])->all() : null,
             'items' => $items,
         ];
     }
@@ -522,7 +550,41 @@ class DeclareInvestments extends Page implements HasSchemas
             Action::make('draft')->label('Save and finish later')->icon(Heroicon::OutlinedBookmark)->color('gray')
                 ->visible(fn () => $this->employee() !== null && $this->editable())
                 ->action(fn () => $this->saveDraft()),
+            $this->declareForEmployee(),
         ];
+    }
+
+    /**
+     * HROne parity AC-2 (matrix 25 §25.3.2 #3, HROne's global "Propose investment request" / right "Request on behalf"):
+     * payroll opens this wizard on an employee in its access scope — never its own (that is the wizard itself) — for a
+     * financial year. The declaration is then filled and submitted exactly as the employee would (InvestmentDeclarations;
+     * payroll may change it outside the declaration window, as before) and is recorded as filed on the employee's behalf.
+     */
+    private function declareForEmployee(): Action
+    {
+        $employed = fn () => $this->declarations()->employeesFor(auth()->user());
+
+        return Action::make('declareForEmployee')->label('Declare for an employee')->icon(Heroicon::OutlinedUserPlus)->color('gray')
+            ->visible(fn () => OnBehalfPicker::offered('payroll.manage'))
+            ->modalHeading('Declare investments for an employee')
+            ->modalDescription('Opens the employee\'s declaration for the year in the steps below. It is saved in their name and records that you filed it.')
+            ->modalSubmitActionLabel('Open their declaration')
+            ->fillForm(fn () => ['financial_year' => app(FinancialYear::class)->label(now())])
+            ->schema([
+                OnBehalfPicker::select('payroll', $employed),
+                Select::make('financial_year')->label('Financial year')->options(fn () => $this->declarations()->years())->required()->selectablePlaceholder(false),
+            ])
+            ->action(function (array $data) use ($employed) {
+                try {
+                    $for = OnBehalfPicker::resolve($data['employee_id'] ?? null, 'payroll.manage', 'payroll', 'Declare investments', $employed);
+                } catch (RuntimeException $e) {
+                    Notification::make()->danger()->title('Not opened')->body($e->getMessage())->send();
+
+                    return;
+                }
+                $year = (string) ($data['financial_year'] ?? '');
+                $this->fillFor($for->id, array_key_exists($year, $this->declarations()->years()) ? $year : app(FinancialYear::class)->label(now()));
+            });
     }
 
     public function employee(): ?Employee

@@ -91,6 +91,8 @@ final class ExpenseReceiptRequestType extends BaseRequestType
         return [
             'unreported' => RequestStatus::Draft,
             'reported' => RequestStatus::Pending,
+            // HROne parity XO-3 (D-XO7): held out by an approver as suspected, decided later.
+            'suspected' => RequestStatus::Pending,
             'approved' => RequestStatus::Approved,
             'partly_approved' => RequestStatus::Approved,
             'rejected' => RequestStatus::Rejected,

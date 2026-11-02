@@ -53,6 +53,10 @@ class CheckInsDataset extends Dataset
             'change' => ['label' => 'Change (points)', 'type' => 'number', 'value' => fn (GoalCheckIn $c) => $c->progress === null ? null : round((float) $c->progress - (float) $c->previous_progress, 2)],
             'value' => ['label' => 'Value reached', 'type' => 'number', 'value' => fn (GoalCheckIn $c) => $c->value === null ? null : (float) $c->value],
             'confidence' => ['label' => 'Confidence', 'type' => 'string', 'value' => fn (GoalCheckIn $c) => $c->confidence === null ? null : (GoalCheckIn::CONFIDENCE[$c->confidence] ?? $c->confidence)],
+            // HROne parity GO-4: the goal status chosen at check-in and the period it covers ("Task period").
+            'health' => ['label' => 'Goal status', 'type' => 'string', 'value' => fn (GoalCheckIn $c) => $c->healthLabel()],
+            'period_start' => ['label' => 'Period from', 'type' => 'date', 'value' => fn (GoalCheckIn $c) => $c->period_start],
+            'period_end' => ['label' => 'Period to', 'type' => 'date', 'value' => fn (GoalCheckIn $c) => $c->period_end],
             'source' => ['label' => 'Source', 'type' => 'string', 'value' => fn (GoalCheckIn $c) => $c->source],
             'note' => ['label' => 'Note', 'type' => 'string', 'value' => fn (GoalCheckIn $c) => $c->note],
             'by' => ['label' => 'Checked in by', 'type' => 'string', 'value' => fn (GoalCheckIn $c) => $c->author?->name],

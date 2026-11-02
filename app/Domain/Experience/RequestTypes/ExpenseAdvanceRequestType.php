@@ -8,9 +8,10 @@ use App\Domain\Expense\Services\ExpensePolicies;
 use App\Domain\Experience\Enums\RequestStatus;
 use App\Domain\Identity\Models\User;
 use App\Filament\Resources\ExpenseAdvances\ExpenseAdvanceResource;
+use App\Filament\Support\ExpenseOnBehalf;
 use Illuminate\Database\Eloquent\Model;
 
-/** HROne parity RQ-1: expense advance (Expense advances → "Request an advance"). */
+/** HROne parity RQ-1: expense advance (Expense advances → "Request an advance"; AC-2 on behalf: "Request an advance for an employee"). */
 final class ExpenseAdvanceRequestType extends BaseRequestType
 {
     public function key(): string
@@ -58,6 +59,18 @@ final class ExpenseAdvanceRequestType extends BaseRequestType
     public function formUrl(User $user, ?Employee $employee): ?string
     {
         return $this->withAction(ExpenseAdvanceResource::getUrl('index'), 'requestAdvance');
+    }
+
+    /** HROne parity AC-2: XO-5's "Request an advance for an employee" (expense.approve in scope, never one's own). */
+    public function onBehalfPermission(): ?string
+    {
+        return 'expense.approve';
+    }
+
+    public function onBehalfUrl(User $user): ?string
+    {
+        return $this->signedIn($user) && ExpenseOnBehalf::offered() && ExpenseAdvanceResource::canAccess()
+            ? $this->withAction(ExpenseAdvanceResource::getUrl('index'), 'requestForEmployee') : null;
     }
 
     public function model(): ?string

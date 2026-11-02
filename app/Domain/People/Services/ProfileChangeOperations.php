@@ -20,6 +20,8 @@ use App\Domain\People\Actions\ChangeAddressAction;
 use App\Domain\People\Actions\ChangeEmergencyContactAction;
 use App\Domain\People\Actions\ChangeExperienceAction;
 use App\Domain\People\Actions\ChangeFamilyMemberAction;
+use App\Domain\People\Actions\ChangeIdentityDocumentAction;
+use App\Domain\People\Actions\ChangeNominationsAction;
 use App\Domain\People\Actions\ChangePersonRecordAction;
 use App\Domain\People\Actions\ChangeProfileSkillAction;
 use App\Domain\People\Actions\ChangeQualificationAction;
@@ -29,11 +31,14 @@ use App\Domain\People\Models\PersonAddress;
 use App\Domain\People\Models\PersonEmergencyContact;
 use App\Domain\People\Models\PersonExperience;
 use App\Domain\People\Models\PersonFamilyMember;
+use App\Domain\People\Models\PersonIdentityDocument;
+use App\Domain\People\Models\PersonNomination;
 use App\Domain\People\Models\PersonQualification;
 use App\Domain\People\Models\PersonSkill;
 use App\Domain\People\Models\Qualification;
 use App\Domain\People\Models\QualificationSpecialisation;
 use App\Domain\People\Models\Skill;
+use App\Domain\People\Support\E164Phone;
 use App\Domain\Skills\Support\SkillProficiencies;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -74,7 +79,7 @@ final class ProfileChangeOperations
     /** Person fields per section (UpdatePersonAction). */
     public const PERSON_FIELDS = [
         'blood_group' => ['blood_group'],
-        'contact' => ['personal_email', 'personal_phone'],
+        'contact' => ['personal_email', 'personal_phone', 'personal_phone_country_code'],
         'family' => ['marital_status'],
         'legal_identity' => ['first_name', 'middle_name', 'last_name', 'date_of_birth'],
     ];
@@ -83,7 +88,7 @@ final class ProfileChangeOperations
     public const IDENTIFIERS = ['pan', 'aadhaar_reference', 'uan'];
 
     /** Fields whose values are masked for anyone without employee.sensitive.view. */
-    public const SENSITIVE = ['statutory' => ['pan', 'aadhaar_reference', 'uan'], 'bank_account' => ['account_number']];
+    public const SENSITIVE = ['statutory' => ['pan', 'aadhaar_reference', 'uan'], 'bank_account' => ['account_number'], 'identity_document' => ['number']];
 
     private const LABELS = [
         'blood_group' => 'Blood group', 'personal_email' => 'Personal e-mail', 'personal_phone' => 'Personal phone', 'marital_status' => 'Marital status',
@@ -98,6 +103,14 @@ final class ProfileChangeOperations
         'skill_id' => 'Skill', 'proficiency' => 'Proficiency', 'years_of_experience' => 'Years of experience', 'last_used_on' => 'Last used on',
         'pan' => 'PAN', 'aadhaar_reference' => 'Aadhaar reference', 'uan' => 'UAN', 'account_holder_name' => 'Account holder', 'bank_name' => 'Bank',
         'branch_name' => 'Branch', 'ifsc' => 'IFSC', 'account_number' => 'Account number', 'account_type' => 'Account type', 'is_primary' => 'Salary account',
+        // HROne parity MS-4.
+        'personal_phone_country_code' => 'Personal phone country code', 'phone_country_code' => 'Phone country code', 'in_school' => 'In school',
+        'in_hostel' => 'In a hostel', 'remarks' => 'Remarks', 'occupation' => 'Occupation', 'year_started' => 'Year of starting', 'mode' => 'Mode of study', 'is_highest' => 'Highest qualification',
+        'kind' => 'Document', 'number' => 'Number', 'issued_on' => 'Issued on', 'expires_on' => 'Expires on', 'issuing_country' => 'Issuing country',
+        'place_of_issue' => 'Place of issue', 'nominees' => 'Nominees',
+        // HROne parity MS-5.
+        'insurer_name' => 'Insurance company', 'insurer_code' => 'Company code', 'policy_number' => 'Policy number', 'sum_assured' => 'Sum assured',
+        'valid_until' => 'Valid until', 'members' => 'Insured members',
     ];
 
     /** Self-declared entries that HR verifies: stored unverified. */
@@ -127,8 +140,106 @@ final class ProfileChangeOperations
             'skills' => $this->records($employee, 'skill', (array) ($input['entries'] ?? [])),
             'other_details' => $this->customFields($employee, (array) ($input['values'] ?? [])),
             'bank' => $this->bank($employee, $input),
+            // HROne parity MS-4.
+            'identity_documents' => $this->identityDocuments($employee, (array) ($input['entries'] ?? [])),
+            'nominations' => $this->nominations($employee, $input),
+            // HROne parity MS-5: one policy and its insured members (InsuranceRecords checks them as HR's own edit does).
+            'health_insurance' => app(InsuranceRecords::class)->operations($employee, $input),
             default => throw new ProfileChangeRefused('That part of the profile cannot be changed here.'),
         };
+    }
+
+    /**
+     * HROne parity MS-4: passport / driving licence rows — a row with `record_id` changes that (own) document (a blank
+     * number keeps the one on file), a row without one adds a kind not on file yet.
+     *
+     * @param  list<array<string, mixed>>  $entries
+     */
+    private function identityDocuments(Employee $employee, array $entries): array
+    {
+        $action = app(ChangeIdentityDocumentAction::class);
+        $keys = ['kind', 'number', 'issued_on', 'expires_on', 'issuing_country', 'place_of_issue'];
+        $ops = [];
+        $seen = [];
+        foreach (array_values($entries) as $entry) {
+            $entry = (array) $entry;
+            $recordId = filled($entry['record_id'] ?? null) ? (int) $entry['record_id'] : null;
+            $values = $this->clean(array_intersect_key($entry, array_flip($keys)));
+            if (isset($values['number'])) {
+                $values['number'] = mb_strtoupper((string) preg_replace('/\s+/', '', (string) $values['number']));
+            }
+            if (isset($values['issuing_country'])) {
+                $values['issuing_country'] = mb_strtoupper((string) $values['issuing_country']);
+            }
+            if ($recordId === null) {
+                if (array_filter(array_diff_key($values, ['kind' => true]), fn ($v) => $v !== null) === []) {
+                    continue; // an empty new row
+                }
+                $this->validate($values, $action->rules(true), $keys);
+                $this->assertIssuedBeforeExpiry($values);
+                if (isset($seen[$values['kind']]) || PersonIdentityDocument::query()->where('person_id', $employee->person_id)->where('kind', $values['kind'])->exists()) {
+                    throw new ProfileChangeRefused('Your '.mb_strtolower((string) (PersonIdentityDocument::kinds()[$values['kind']] ?? $values['kind'])).' is already on file: change that one instead.');
+                }
+                $seen[$values['kind']] = true;
+                $ops[] = ['kind' => 'identity_document', 'record_id' => null, 'values' => $values, 'changed' => array_keys(array_filter($values, fn ($v) => $v !== null))];
+
+                continue;
+            }
+            $record = PersonIdentityDocument::query()->whereKey($recordId)->where('person_id', $employee->person_id)->first()
+                ?? throw new ProfileChangeRefused('That document is not on your profile.');
+            $values['kind'] = $record->kind;
+            if (($values['number'] ?? null) === null) {
+                unset($values['number']); // blank keeps the number on file
+            }
+            $current = ['kind' => $record->kind, 'issued_on' => $record->issued_on?->toDateString(), 'expires_on' => $record->expires_on?->toDateString(),
+                'issuing_country' => $record->issuing_country, 'place_of_issue' => $record->place_of_issue];
+            $merged = $values + $current;
+            $this->validate($merged, $action->rules(false), $keys);
+            $this->assertIssuedBeforeExpiry($merged);
+            $changed = array_values(array_filter(array_keys($values), fn (string $f) => $f !== 'kind' && ($f === 'number'
+                ? (string) $values[$f] !== (string) $record->number
+                : $this->norm($values[$f]) !== $this->norm($current[$f] ?? null))));
+            if ($changed !== []) {
+                $ops[] = ['kind' => 'identity_document', 'record_id' => $recordId, 'values' => $merged, 'changed' => $changed];
+            }
+        }
+
+        return $ops;
+    }
+
+    private function assertIssuedBeforeExpiry(array $values): void
+    {
+        if (filled($values['issued_on'] ?? null) && filled($values['expires_on'] ?? null) && strtotime((string) $values['expires_on']) < strtotime((string) $values['issued_on'])) {
+            throw new ProfileChangeRefused('The expiry date is before the date of issue.');
+        }
+    }
+
+    /** HROne parity MS-4: the nominations of one benefit, checked as a set (shares total 100, guardians for minors). */
+    private function nominations(Employee $employee, array $input): array
+    {
+        $benefit = (string) ($input['benefit'] ?? '');
+        $rows = app(ChangeNominationsAction::class)->check($employee, $benefit, array_values((array) ($input['rows'] ?? [])));
+        $summary = fn (array $list) => self::nomineeSummary($employee, $list);
+        $current = PersonNomination::query()->where('person_id', $employee->person_id)->where('benefit', $benefit)->orderBy('id')->get()
+            ->map(fn (PersonNomination $n) => ['family_member_id' => $n->family_member_id, 'share' => round((float) $n->share, 2), 'address' => $n->address, 'remarks' => $n->remarks,
+                'guardian_name' => $n->guardian_name, 'guardian_relation' => $n->guardian_relation])->all();
+        $key = fn (array $list) => json_encode(collect($list)->map(fn ($r) => array_map(fn ($v) => $v === null ? null : (string) $v, array_replace(array_fill_keys(['family_member_id', 'share', 'address', 'remarks', 'guardian_name', 'guardian_relation'], null), $r)))->sortBy('family_member_id')->values()->all());
+        if ($key($rows) === $key($current)) {
+            return [];
+        }
+
+        return [['kind' => 'nominations', 'record_id' => null, 'values' => ['benefit' => $benefit, 'rows' => $rows, 'nominees' => $summary($rows) ?? 'None'], 'changed' => ['nominees']]];
+    }
+
+    /** "Kiran Rao 60%, Meena Rao 40%" for nomination rows. */
+    public static function nomineeSummary(Employee $employee, array $rows): ?string
+    {
+        if ($rows === []) {
+            return null;
+        }
+        $names = PersonFamilyMember::query()->where('person_id', $employee->person_id)->pluck('name', 'id');
+
+        return collect($rows)->map(fn (array $r) => ($names[(int) $r['family_member_id']] ?? '?').' '.rtrim(rtrim(number_format((float) $r['share'], 2, '.', ''), '0'), '.').'%')->implode(', ');
     }
 
     /** @return list<array{kind: string, record_id: ?int, values: array<string, mixed>, changed: list<string>}> */
@@ -140,14 +251,18 @@ final class ProfileChangeOperations
         $rules = [
             'blood_group' => ['nullable', 'in:'.implode(',', (array) config('peopleos.people.blood_groups', []))],
             'personal_email' => ['nullable', 'email', 'max:255'],
-            'personal_phone' => ['nullable', 'string', 'max:32'],
+            'personal_phone' => ['nullable', 'string', 'max:32', new E164Phone('personal_phone_country_code')],
+            'personal_phone_country_code' => ['nullable', 'string', 'regex:/^\+?[1-9]\d{0,2}$/'],
             'marital_status' => ['nullable', 'in:'.implode(',', array_keys((array) config('peopleos.people.marital_statuses', [])))],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['nullable', 'string', 'max:255'],
             'date_of_birth' => ['required', 'date', 'before:today'],
         ];
-        $this->validate($values, array_intersect_key($rules, array_flip($fields)), $section === 'legal_identity' ? $fields : array_keys($values));
+        // HROne parity MS-4: a phone given without its code is checked against the code already on file.
+        $check = $values + (array_key_exists('personal_phone', $values) && ! array_key_exists('personal_phone_country_code', $values) && in_array('personal_phone_country_code', $fields, true)
+            ? ['personal_phone_country_code' => $person->getAttributes()['personal_phone_country_code'] ?? null] : []);
+        $this->validate($check, array_intersect_key($rules, array_flip($fields)), $section === 'legal_identity' ? $fields : array_keys($values));
         $changed = array_values(array_filter(array_keys($values), fn (string $f) => $this->norm($values[$f]) !== $this->norm($person->getAttribute($f))));
 
         return $changed === [] ? [] : [['kind' => 'person', 'record_id' => null, 'values' => array_intersect_key($values, array_flip($changed)), 'changed' => $changed]];
@@ -316,6 +431,9 @@ final class ProfileChangeOperations
             $out[] = match ($op['kind']) {
                 'statutory' => 'employee.sensitive.update',
                 'bank_account' => ChangeBankAccountAction::PERMISSION,
+                'identity_document' => ChangeIdentityDocumentAction::PERMISSION,
+                'nominations' => ChangeNominationsAction::PERMISSION,
+                'insurance' => InsuranceRecords::PERMISSION,
                 'person', 'custom_fields' => 'employee.update',
                 default => $op['record_id'] === null ? 'employee.create' : 'employee.update',
             };
@@ -339,6 +457,13 @@ final class ProfileChangeOperations
                 ? app(ChangeBankAccountAction::class)->add($employee, $values, $actor, $reason, $origin)
                 : app(ChangeBankAccountAction::class)->update($this->ownAccount($employee, (int) $recordId), $values, $actor, $reason, $origin),
             'custom_fields' => $this->applyCustomFields($employee, $values, $actor, $reason, $origin),
+            // HROne parity MS-4.
+            'identity_document' => $recordId === null
+                ? app(ChangeIdentityDocumentAction::class)->add($employee, $values, $actor, $reason, $origin)
+                : app(ChangeIdentityDocumentAction::class)->update($employee, $this->ownIdentityDocument($employee, (int) $recordId), $values, $actor, $reason, $origin),
+            'nominations' => $this->applyNominations($employee, $values, $actor, $reason, $origin),
+            // HROne parity MS-5.
+            'insurance' => app(InsuranceRecords::class)->apply($op, $employee, $actor, $reason, $origin),
             default => $this->applyRecord($op['kind'], $employee, $recordId === null ? null : (int) $recordId, $values, $actor, $reason, $origin),
         };
     }
@@ -376,6 +501,19 @@ final class ProfileChangeOperations
             ?? throw new ProfileChangeRefused('That entry is no longer on the profile.');
 
         return $action->update($employee, $record, $values, $actor, $reason, $origin);
+    }
+
+    private function ownIdentityDocument(Employee $employee, int $id): PersonIdentityDocument
+    {
+        return PersonIdentityDocument::query()->whereKey($id)->where('person_id', $employee->person_id)->first()
+            ?? throw new ProfileChangeRefused('That document is no longer on the profile.');
+    }
+
+    private function applyNominations(Employee $employee, array $values, User $actor, string $reason, ChangeOrigin $origin): Person
+    {
+        app(ChangeNominationsAction::class)->replace($employee, (string) $values['benefit'], (array) ($values['rows'] ?? []), $actor, $reason, $origin);
+
+        return Person::query()->findOrFail($employee->person_id);
     }
 
     private function ownAccount(Employee $employee, int $id): EmployeeBankAccount
@@ -440,6 +578,9 @@ final class ProfileChangeOperations
             'person', 'statutory', 'custom_fields' => '',
             'address' => 'Address ('.mb_strtolower((string) (config('peopleos.people.address_types.'.($op['values']['type'] ?? ''), $op['values']['type'] ?? ''))).') · ',
             'bank_account' => $op['record_id'] === null ? 'New bank account · ' : 'Bank account · ',
+            'identity_document' => (PersonIdentityDocument::kinds()[$op['values']['kind'] ?? ''] ?? 'Document').($op['record_id'] === null ? ' (new)' : '').' · ',
+            'nominations' => 'Nominations for '.mb_strtolower((string) app(OptionLists::class)->label('nomination_benefits', (string) ($op['values']['benefit'] ?? ''))).' · ',
+            'insurance' => 'Health insurance'.($op['record_id'] === null ? ' (new policy)' : '').' · ',
             default => (self::RECORDS[$op['kind']][2] ?? 'Entry').($op['record_id'] === null ? ' (new)' : '').' · ',
         };
     }
@@ -462,6 +603,9 @@ final class ProfileChangeOperations
                 'statutory' => EmployeeStatutoryDetail::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->getKey())->first(),
                 'bank_account' => $op['record_id'] === null ? null : EmployeeBankAccount::query()->withoutGlobalScope(AccessScope::class)->whereKey($op['record_id'])->where('employee_id', $employee->getKey())->first(),
                 'custom_fields' => app(CustomFields::class)->valuesFor($employee),
+                'identity_document' => $op['record_id'] === null ? null : PersonIdentityDocument::query()->whereKey($op['record_id'])->where('person_id', $employee->person_id)->first(),
+                'insurance' => $op['record_id'] === null ? null : app(InsuranceRecords::class)->current($employee, (int) $op['record_id']),
+                'nominations' => ['nominees' => self::nomineeSummary($employee, PersonNomination::query()->where('person_id', $employee->person_id)->where('benefit', (string) ($op['values']['benefit'] ?? ''))->orderBy('id')->get(['family_member_id', 'share'])->map(fn ($n) => ['family_member_id' => $n->family_member_id, 'share' => (float) $n->share])->all())],
                 default => $op['record_id'] === null ? null : self::RECORDS[$op['kind']][1]::query()->withoutGlobalScopes([AccessScope::class])->whereKey($op['record_id'])->where('person_id', $employee->person_id)->first(),
             };
         } catch (Throwable $e) {
@@ -479,10 +623,10 @@ final class ProfileChangeOperations
         if ($value instanceof CarbonInterface) {
             return $value->format('j M Y');
         }
-        if (is_bool($value) || in_array($field, ['is_dependent', 'is_nominee', 'is_primary'], true)) {
+        if (is_bool($value) || in_array($field, ['is_dependent', 'is_nominee', 'is_primary', 'in_school', 'in_hostel', 'is_highest'], true)) {
             return (bool) $value ? 'Yes' : 'No';
         }
-        if (in_array($field, ['date_of_birth', 'from_date', 'to_date', 'last_used_on'], true)) {
+        if (in_array($field, ['date_of_birth', 'from_date', 'to_date', 'last_used_on', 'issued_on', 'expires_on', 'valid_until'], true)) {
             try {
                 return Carbon::parse((string) $value)->format('j M Y');
             } catch (Throwable) {
@@ -506,6 +650,8 @@ final class ProfileChangeOperations
             'qualification_id' => (string) (Qualification::query()->whereKey((int) $value)->value('name') ?? $value),
             'specialisation_id' => (string) (QualificationSpecialisation::query()->whereKey((int) $value)->value('name') ?? $value),
             'proficiency' => (string) (SkillProficiencies::label((string) $value) ?? $value),
+            'mode' => (string) (app(OptionLists::class)->label('qualification_modes', (string) $value) ?? $value),
+            'kind' => $kind === 'identity_document' ? (string) (PersonIdentityDocument::kinds()[$value] ?? $value) : (string) $value,
             default => is_array($value) ? implode(', ', $value) : (string) $value,
         };
     }

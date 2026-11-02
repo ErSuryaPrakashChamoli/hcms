@@ -47,6 +47,10 @@
 
     @if ($previous)
         <p>Previous employer this year: salary {{ $previous['income'] }}, tax deducted {{ $previous['tds'] }}.</p>
+        @if (($previous['gratuity_exempt'] ?? null) || ($previous['leave_encashment_exempt'] ?? null))
+            <p>Exemptions used there: @if ($previous['gratuity_exempt'] ?? null)gratuity {{ $previous['gratuity_exempt'] }}@endif @if (($previous['gratuity_exempt'] ?? null) && ($previous['leave_encashment_exempt'] ?? null)) · @endif @if ($previous['leave_encashment_exempt'] ?? null)leave encashment {{ $previous['leave_encashment_exempt'] }}@endif.
+                {{ ($previous['exemptions_counted'] ?? false) ? 'Counted against the verified tax rule’s limits; the monthly tax on your salary does not change.' : 'Kept for your Form 12BB; they do not change your tax until a verified tax rule carries the limits.' }}</p>
+        @endif
     @endif
 
     @foreach ($warnings as $warning)

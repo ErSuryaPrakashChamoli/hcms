@@ -2,6 +2,7 @@
 
 namespace App\Domain\Attendance\Services;
 
+use App\Domain\Attendance\Contracts\LeaveDay;
 use App\Domain\Attendance\Contracts\LeaveDayResolver;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Attendance\Models\AttendanceArrear;
@@ -56,7 +57,8 @@ final class AttendanceProcessor
             $record = AttendanceRecord::query()->where('employee_id', $employee->id)->whereDate('date', $date->toDateString())->lockForUpdate()->first()
                 ?? new AttendanceRecord(['employee_id' => $employee->id, 'date' => $date]);
 
-            if ($record->exists && $record->is_locked) {
+            // HROne parity TX-3: a day of a closed attendance month keeps its values like a locked day (month close is off by default).
+            if ($record->exists && ($record->is_locked || app(AttendanceMonthCloses::class)->isClosedDay($employee, $date))) {
                 $this->recordArrear($employee, $date, $record);
 
                 return $record;
@@ -103,7 +105,8 @@ final class AttendanceProcessor
         }
         $shift?->loadMissing('breaks');
         $timezone = $this->timezones->for($employee, $shift, $date);
-        $holiday = $this->holidays->holidayOn($employee, $date);
+        // HROne parity TX-12: HR's holiday change of the employee's day wins over the calendar (none by default).
+        ['holiday' => $holiday, 'change' => $holidayChange] = $this->holidays->dayOn($employee, $date);
         $attendancePolicy = $this->policies->resolve('attendance', $employee, $date);
         $overtimePolicy = $this->policies->resolve('overtime', $employee, $date);
         $regularisations = AttendanceRegularisation::query()->where('employee_id', $employee->id)->whereDate('date', $date->toDateString())->where('status', 'approved')->orderBy('id')->get();
@@ -267,8 +270,8 @@ final class AttendanceProcessor
         }
 
         if ($override !== null && ! $leave?->isFullDay()) {
-            [$status, $worked, $exceptions] = $this->applyOverride($override, $status, $worked, $fullDay, $exceptions);
-            if (! in_array($status, ['present', 'half_day'], true) || $override->status !== null) {
+            [$status, $worked, $exceptions] = $this->applyOverride($override, $status, $worked, $fullDay, $exceptions, $leave);
+            if (! in_array($status, ['present', 'half_day'], true) || $override->status !== null || $override->hasHalves()) {
                 $late = $early = 0;
             }
         }
@@ -330,9 +333,13 @@ final class AttendanceProcessor
                   'short_leave_minutes' => $shortLeaveMinutes ?: null,
                   'on_duty_minutes' => $onDutyMinutes ?: null,
                   'attendance_override_id' => $override?->id,
+                  // HROne parity TX-6: the statuses HR gave each half (only when the override has them).
+                  'half_statuses' => $override !== null && $override->hasHalves() && ! $leave?->isFullDay() ? ['first_half' => $override->first_half_status, 'second_half' => $override->second_half_status] : null,
                   'punch_mode' => $punchMode !== 'double' ? $punchMode : null,
                   'auto_shift' => $autoShift?->code,
                   'timing' => $flexi ? 'flexi' : null,
+                  // HROne parity TX-12: the holiday change that decided the day (only when there is one).
+                  'holiday_change_id' => $holidayChange?->id,
               ]),
             'processed_at' => now(),
         ]);
@@ -397,10 +404,15 @@ final class AttendanceProcessor
      * @param  list<string>  $exceptions
      * @return array{0: string, 1: int, 2: list<string>}
      */
-    private function applyOverride(AttendanceOverride $override, string $status, int $worked, int $fullDay, array $exceptions): array
+    private function applyOverride(AttendanceOverride $override, string $status, int $worked, int $fullDay, array $exceptions, ?LeaveDay $leave = null): array
     {
         if ($override->worked_minutes !== null) {
             $worked = (int) $override->worked_minutes;
+        }
+
+        // HROne parity TX-6: a status per half wins outright, like a whole-day status.
+        if ($override->hasHalves()) {
+            return [$this->halvesStatus((string) $override->first_half_status, (string) $override->second_half_status, $leave), $worked, []];
         }
 
         if ($override->status !== null) {
@@ -419,6 +431,24 @@ final class AttendanceProcessor
     }
 
     /**
+     * HROne parity TX-6: the day's status from the status HR gave each half, read the way the monthly attendance upload
+     * reads a split mark (AttendanceMark::combine / statusOn): an absent half beside a counted one is a half day, two
+     * counted halves are the half that says the most about the day (present, then work from home, on duty, holiday, weekly
+     * off). With approved half-day leave the leave keeps its half and the other half decides: absent there leaves the day
+     * as leave, anything else names the day (and the half-day leave flag stays on the record).
+     */
+    private function halvesStatus(string $first, string $second, ?LeaveDay $leave): string
+    {
+        if ($leave !== null && ! $leave->isFullDay()) {
+            $other = $leave->session === 'first_half' ? $second : $first;
+
+            return $other === 'absent' ? ($leave->isPaid ? 'leave' : 'unpaid_leave') : $other;
+        }
+
+        return AttendanceMark::combine($first, $second);
+    }
+
+    /**
      * HP-1 arrears: a locked day is never rewritten. When corrections after lock are allowed, the day is worked
      * out again on a scratch record and a change in its paid quantity is kept (or updated, or voided) as a
      * pending attendance arrear for the next payroll.
@@ -428,25 +458,39 @@ final class AttendanceProcessor
         if (! (bool) $this->settings->get('attendance.allow_corrections_after_lock', false)) {
             return;
         }
+        // Data import DI-35 ("Override arrear days"): a month whose arrear days HR set stays HR's — its days record none.
+        if (AttendanceArrear::query()->where('employee_id', $employee->id)->where('source', 'upload')
+            ->whereDate('covers_from', '<=', $date->toDateString())->whereDate('date', '>=', $date->toDateString())->exists()) {
+            return;
+        }
 
         $scratch = new AttendanceRecord(['employee_id' => $employee->id, 'date' => $date]);
         ['status' => $status] = $this->calculate($employee, $date, $scratch);
 
         $before = AttendanceDay::paidQuantity((string) $locked->status, (bool) $locked->is_half_day_leave, $locked->exceptions ?? []);
         $after = AttendanceDay::paidQuantity($status, (bool) $scratch->is_half_day_leave, $scratch->exceptions ?? []);
-        $pending = AttendanceArrear::query()->where('employee_id', $employee->id)->whereDate('date', $date->toDateString())->where('status', 'pending')->lockForUpdate()->first();
+        // Data import DI-35 ("Override previous month overtime"): overtime approved (or taken back) after the day was locked.
+        $overtime = (int) $scratch->overtime_approved_minutes - (int) $locked->overtime_approved_minutes;
+        // HROne parity TX-3: an arrear HR held stays held when the day changes again (it is updated, not duplicated).
+        // Data import DI-35: only the calculation's own arrears; days HR set for the month by upload stay as set.
+        $pending = AttendanceArrear::query()->where('employee_id', $employee->id)->whereDate('date', $date->toDateString())->whereIn('status', ['pending', 'held'])->where('source', 'calculation')->lockForUpdate()->first();
 
-        if (abs($after - $before) < 0.001) {
+        if (abs($after - $before) < 0.001 && $overtime === 0) {
             $pending?->withAuditReason('The day is back to what payroll paid')->update(['status' => 'void']);
 
             return;
         }
 
         $values = ['status_before' => (string) $locked->status, 'status_after' => $status, 'paid_before' => $before, 'paid_after' => $after, 'delta_days' => round($after - $before, 2), 'note' => 'Corrected after the payroll lock'];
+        if (! $locked->is_locked) {
+            $values['note'] = 'Corrected after the attendance month was closed'; // HROne parity TX-3: a closed, not locked, day
+        }
+        $values['overtime_minutes'] = $overtime;
         $arrear = $pending ?? new AttendanceArrear(['employee_id' => $employee->id, 'date' => $date]);
-        $arrear->fill($values)->withAuditReason('Attendance corrected after the payroll lock')->save();
+        $arrear->fill($values)->withAuditReason('Attendance '.lcfirst($values['note']))->save();
 
-        AttendanceEvent::dispatch('attendance.arrear_recorded', $employee, $arrear, ['date' => $date->toDateString(), 'from' => $locked->status, 'to' => $status, 'delta_days' => $values['delta_days']]);
+        AttendanceEvent::dispatch('attendance.arrear_recorded', $employee, $arrear, ['date' => $date->toDateString(), 'from' => $locked->status, 'to' => $status, 'delta_days' => $values['delta_days']]
+            + ($overtime !== 0 ? ['overtime_minutes' => $overtime] : []));
     }
 
     /** @return Collection<int, AttendanceRecord> */
@@ -502,6 +546,8 @@ final class AttendanceProcessor
      * HROne setup parity (TO-5): when the employee's work schedule lists shifts for automatic correction, the day takes
      * the listed shift whose start is nearest the day's first punch (on weekly offs and holidays only when the schedule
      * says so). Null keeps the scheduled shift.
+     * HROne parity TX-5: a rostered day takes part only when its roster allows automatic shift correction
+     * (ShiftResolver's 'auto_shift'); the rostered shift is then one of the shifts to choose from (and wins a tie).
      *
      * @param  array<string, mixed>  $resolved
      */
@@ -509,10 +555,18 @@ final class AttendanceProcessor
     {
         $schedule = $resolved['schedule'] ?? null;
         $ids = array_values(array_filter((array) ($schedule?->auto_shift_ids ?? [])));
-        if ($ids === [] || isset($resolved['override']) || ($resolved['weekly_off'] && ! $schedule->auto_shift_on_off_days)) {
+        $rostered = isset($resolved['override']);
+        if ($ids === [] || ($rostered && empty($resolved['auto_shift'])) || ($resolved['weekly_off'] && ! $schedule->auto_shift_on_off_days)) {
             return null;
         }
+        $rosteredShiftId = $rostered ? $resolved['shift']?->id : null;
+        if ($rosteredShiftId !== null) {
+            $ids[] = (int) $rosteredShiftId;
+        }
         $candidates = Shift::query()->whereIn('id', $ids)->get()->filter(fn (Shift $s) => ! $s->isFlexible());
+        if ($rosteredShiftId !== null) {
+            $candidates = $candidates->sortBy(fn (Shift $s) => (int) $s->id === (int) $rosteredShiftId ? 0 : 1)->values();
+        }
         $timezone = $this->timezones->for($employee, $resolved['shift'] ?? $candidates->first(), $date);
         $dayStart = Carbon::parse($date->toDateString().' 00:00:00', $timezone)->setTimezone(config('app.timezone'));
         $first = $this->punches->punchesBetween($employee, $dayStart->copy()->subHours(4), $dayStart->copy()->addDay())->first();

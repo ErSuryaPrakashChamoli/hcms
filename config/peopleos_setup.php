@@ -32,6 +32,8 @@ return [
                 // HROne setup parity CA-2 (Organization → Enterprise, Company → Theme).
                 ['key' => 'branding.website', 'label' => 'Website', 'type' => 'text', 'max' => 255, 'group' => 'Enterprise', 'help' => 'Printed in letters as {{ organisation.website }}.'],
                 ['key' => 'organisation.industry', 'label' => 'Nature of industry', 'type' => 'select', 'options_from' => 'industries', 'nullable' => true, 'group' => 'Enterprise', 'help' => 'The default for new companies and establishments.'],
+                // Data import DI-1 (decision D5): the organisation's own dimension, named as the organisation calls it.
+                ['key' => 'organisation.dimension_label', 'label' => 'Name of your own organisation dimension', 'type' => 'text', 'max' => 40, 'group' => 'Enterprise', 'help' => 'e.g. Vertical, Practice or Programme: the screen, the employee position field and its values use this name. Blank: "Dimension".'],
                 ['key' => 'branding.logo_path', 'label' => 'Logo', 'type' => 'file', 'accept' => 'image', 'max_kb' => 5120, 'public' => true, 'group' => 'Enterprise', 'help' => 'PNG or JPEG up to 5 MB, shown in the workspace beside the PeopleOS name. Blank shows the PeopleOS mark.'],
                 ['key' => 'branding.theme_colour', 'label' => 'Workspace colour (hex, e.g. #0f766e)', 'type' => 'text', 'max' => 7, 'pattern' => '/^#[0-9a-fA-F]{6}$/', 'group' => 'Enterprise', 'help' => 'Buttons, links and highlights. Blank keeps the PeopleOS colour.'],
                 ['key' => 'branding.employee_may_change_theme', 'label' => 'Employees may switch between light and dark themes', 'type' => 'boolean', 'group' => 'Enterprise', 'help' => 'Off: everyone follows the device setting; people who change settings keep the switcher.'],
@@ -60,6 +62,11 @@ return [
                 ['label' => 'Departments', 'target' => 'App\\Filament\\Resources\\Departments\\DepartmentResource'],
                 ['label' => 'Teams', 'target' => 'App\\Filament\\Resources\\Teams\\TeamResource'],
                 ['label' => 'Locations', 'target' => 'App\\Filament\\Resources\\Locations\\LocationResource'],
+                // Data import DI-1: branch groupings, places, the organisation's own dimension and customers.
+                ['label' => 'Regions', 'target' => 'App\\Filament\\Resources\\Regions\\RegionResource'],
+                ['label' => 'Business regions', 'target' => 'App\\Filament\\Resources\\BusinessRegions\\BusinessRegionResource'],
+                ['label' => 'Places (states, districts, cities)', 'target' => 'App\\Filament\\Resources\\GeoPlaces\\GeoPlaceResource'],
+                ['label' => 'Dimension values', 'target' => 'App\\Filament\\Resources\\DimensionValues\\DimensionValueResource'],
                 ['label' => 'Designations', 'target' => 'App\\Filament\\Resources\\Designations\\DesignationResource'],
                 ['label' => 'Grades', 'target' => 'App\\Filament\\Resources\\Grades\\GradeResource'],
                 ['label' => 'Levels', 'target' => 'App\\Filament\\Resources\\Levels\\LevelResource'],
@@ -73,6 +80,8 @@ return [
                 ['label' => 'Number series (loans, letters, tickets, exits, alumni)', 'target' => 'App\\Filament\\Resources\\NumberSeries\\NumberSeriesResource'],
                 ['label' => 'Document types', 'target' => 'App\\Filament\\Resources\\DocumentTypes\\DocumentTypeResource'],
                 ['label' => 'Organisation contacts (HR, decision maker, technical admin)', 'target' => 'App\\Filament\\Resources\\OrganisationContacts\\OrganisationContactResource'],
+                // HROne parity WO-15 (setup matrix 01 §1.33): the vendor master (suppliers, agencies, consultants).
+                ['label' => 'Vendors', 'target' => 'App\\Filament\\Resources\\Vendors\\VendorResource'],
                 ['label' => 'Qualifications and specialisations', 'target' => 'App\\Filament\\Resources\\Qualifications\\QualificationResource'],
                 ['label' => 'Option lists (relationships, document categories)', 'target' => 'App\\Filament\\Resources\\OptionLists\\OptionListResource'],
                 ['label' => 'Separation, transfer and blacklist reasons', 'target' => 'App\\Filament\\Resources\\WorkforceReasons\\WorkforceReasonResource'],
@@ -90,6 +99,11 @@ return [
             'icon' => 'heroicon-o-user-group',
             'settings' => [
                 ['key' => 'employee.joining.reminder_days', 'label' => 'Remind about joiners (days before joining)', 'type' => 'number', 'min' => 0, 'max' => 60],
+                // HROne parity WO-4 (matrix 23 §23.3.1, §23.11 #18): upcoming joiners (each off = as before).
+                ['key' => 'employee.joining.day_task', 'label' => 'List upcoming joiners in My tasks of HR on their joining day', 'type' => 'boolean',
+                    'help' => 'On: "X joins today" appears in My tasks of people who move employees through the lifecycle or run onboarding (inside their access), until the joiner is marked as joined, given a new date or marked as not joining. Off: joiners are found on the Upcoming joiners register.'],
+                ['key' => 'employee.joining.profile_completion_mail', 'label' => 'HR may send upcoming joiners a profile-completion mail', 'type' => 'boolean',
+                    'help' => 'On: "Send profile-completion mail" on the Upcoming joiners register writes to the joiner\'s personal e-mail (from the notification template "employee_profile_completion_requested" when there is one) listing the details and documents still missing. It is sent only by hand and never carries a sign-in link: joiners have no access before day one.'],
                 ['key' => 'employee.probation.default_months', 'label' => 'Default probation (months)', 'type' => 'number', 'min' => 0, 'max' => 24],
                 ['key' => 'employee.probation.reminder_days', 'label' => 'Remind before probation ends (days)', 'type' => 'number', 'min' => 0, 'max' => 90],
                 ['key' => 'exit.notice_days', 'label' => 'Notice period (days)', 'type' => 'number', 'min' => 0, 'max' => 365],
@@ -99,6 +113,18 @@ return [
                 ['key' => 'exit.it_clearance_role', 'label' => 'IT clearance by', 'type' => 'roles'],
                 ['key' => 'exit.finance_clearance_role', 'label' => 'Finance clearance by', 'type' => 'roles'],
                 ['key' => 'exit.hr_clearance_role', 'label' => 'HR clearance by', 'type' => 'roles'],
+                // HROne parity WO-13 (§23.7.1 #14, §23.11 letter tasks).
+                ['key' => 'letters.email.enabled', 'label' => 'Issued letters can be e-mailed to the employee (the letter attached)', 'type' => 'boolean',
+                    'help' => 'Off: letters reach employees only in their documents, as before. On: people who issue letters may e-mail an issued letter to the work e-mail (or the personal e-mail, if they may see it), with copies to colleagues or typed addresses. The message body is never kept in the audit trail.'],
+                ['key' => 'letters.tasks.issue_queue', 'label' => 'List letters ready to issue in My tasks of people who issue letters', 'type' => 'boolean',
+                    'help' => 'Approved letters not yet issued (confirmation, extension, termination, relieving, resignation acceptance, transfer and other letters) appear as tasks. Off: they are found on the Letters register only.'],
+                // HROne parity WO-11 (matrix 23 §23.6): the separation desk's switches (each off = as before).
+                ['key' => 'exit.resignation.requires_acceptance', 'label' => 'Resignations are accepted (or not) by HR', 'type' => 'boolean', 'group' => 'Separation',
+                    'help' => 'Off: a resignation runs to its last working day without an acceptance step, unless an approval workflow decides it. On: HR accepts or does not accept each resignation (the exit case, or the Approval Center), may set the approver\'s reason, the last working day and notice relaxation when accepting; not accepted, the resignation is withdrawn; an exit is completed only once its resignation is accepted.'],
+                ['key' => 'exit.withdrawal.requires_approval', 'label' => 'Withdrawing a resignation needs approval', 'type' => 'boolean', 'group' => 'Separation',
+                    'help' => 'Off: "Withdraw resignation" takes effect at once. On: it becomes a request that HR approves or rejects in the Approval Center (or an approval workflow on "Resignation withdrawal requested" decides); approved, the employee is active again.'],
+                ['key' => 'exit.clearance.my_tasks', 'label' => 'List clearance stages and exits ready to complete in My tasks', 'type' => 'boolean', 'group' => 'Separation',
+                    'help' => 'On: each open clearance stage is a task for its owner (and their out-of-office delegate), due on the stage\'s due date, and HR sees the exits whose stages are all cleared. Off: they are found on the exit case and the Clearances register.'],
             ],
             'policy_types' => ['exit', 'confirmation', 'transfer'],
             'links' => [
@@ -106,6 +132,8 @@ return [
                 ['label' => 'Transfer requests', 'target' => 'App\\Filament\\Resources\\TransferRequests\\TransferRequestResource'],
                 ['label' => 'Workforce reasons', 'target' => 'App\\Filament\\Resources\\WorkforceReasons\\WorkforceReasonResource'],
                 ['label' => 'Clearance checklists', 'target' => 'App\\Filament\\Resources\\ClearanceChecklists\\ClearanceChecklistResource'],
+                // HROne parity WO-11: one row per clearance stage of every leaver.
+                ['label' => 'Clearances (stages of every leaver)', 'target' => 'App\\Filament\\Resources\\ExitClearances\\ExitClearanceResource'],
                 ['label' => 'Onboarding templates and induction programmes', 'target' => 'App\\Filament\\Resources\\OnboardingTemplates\\OnboardingTemplateResource'],
                 // HROne setup parity P13 / 08.6: feedback templates and question banks, transfer allowances.
                 ['label' => 'Feedback templates (exit interviews, confirmation, probation, induction)', 'target' => 'App\\Filament\\Resources\\FeedbackTemplates\\FeedbackTemplateResource'],
@@ -113,7 +141,10 @@ return [
                 ['label' => 'Transfer allowances (pay components marked as transfer allowance)', 'target' => 'App\\Filament\\Resources\\SalaryComponents\\SalaryComponentResource'],
                 ['label' => 'Letter templates', 'target' => 'App\\Filament\\Resources\\LetterTemplates\\LetterTemplateResource'],
                 ['label' => 'Letter signatories', 'target' => 'App\\Filament\\Resources\\LetterSignatories\\LetterSignatoryResource'],
+                ['label' => 'Letter schedules', 'target' => 'App\\Filament\\Resources\\LetterSchedules\\LetterScheduleResource'],
                 ['label' => 'Positions', 'target' => 'App\\Filament\\Resources\\Positions\\PositionResource'],
+                // HROne parity WO-15: people outside the workforce who may sign in.
+                ['label' => 'Business partners', 'target' => 'App\\Filament\\Resources\\BusinessPartners\\BusinessPartnerResource'],
             ],
         ],
 
@@ -129,12 +160,31 @@ return [
                 ['key' => 'attendance.holiday_year_basis', 'label' => 'Holiday calendar year (restricted-holiday quotas)', 'type' => 'select', 'options' => ['calendar' => 'Calendar year', 'financial' => 'Financial year']],
                 ['key' => 'attendance.requests_after_benefits', 'label' => 'Employees can apply AR, on duty and short leave after overtime or comp-off is generated for the day', 'type' => 'boolean'],
                 ['key' => 'attendance.sandwich_rule', 'label' => 'Sandwich rule: off days between two absent days are absent', 'type' => 'select', 'options' => ['none' => 'Not applied', 'weekly_off' => 'Weekly offs', 'weekly_off_and_holiday' => 'Weekly offs and holidays'], 'help' => 'Absent includes leave without pay. Days with punches are never sandwiched.'],
+                // HROne parity TX-3: Run attendance — close and reopen attendance months, bulk apply leave on absences.
+                ['key' => 'attendance.month_close.enabled', 'label' => 'HR closes attendance months (Run attendance)', 'type' => 'boolean', 'help' => 'Off: days lock only when payroll is finalized. On: a closed month\'s days refuse requests, overrides and uploads like locked days; payroll warns about a month not closed but does not wait for it. A month can be reopened until a finalized payroll covers it.'],
+                ['key' => 'attendance.close_requires_no_pending', 'label' => 'A month closes only when no request on its days is waiting for a decision', 'type' => 'boolean', 'help' => 'Regularisations, leave, on duty, restricted holidays, short leave and other time-office requests.'],
+                ['key' => 'attendance.bulk_apply_leave', 'label' => 'HR may apply leave in bulk on absent days (Run attendance)', 'type' => 'boolean', 'help' => 'Applied for each employee and approved by HR with a reason; balances, eligibility and limits apply, and refused days are listed.'],
+                // HROne parity TX-4 (TIM-2): paid-day adjustments on the Paid days screen.
+                ['key' => 'attendance.paid_day_adjustments.enabled', 'label' => 'HR may adjust paid days for an attendance month (Paid days)', 'type' => 'boolean', 'help' => 'Off: paid days are what attendance processing gives, and loss of pay is adjusted in payroll only. On: HR sets the month\'s counts or reduces chosen days (present, paid leave, holidays, weekly offs) with a reason; payroll reads the adjusted paid days and warns when it also has a loss-of-pay adjustment for the same month. Not possible on a finalized or closed month.'],
+                // HROne parity TX-7: the team option for punches (team profile "Add punch" / "Delete punch").
+                ['key' => 'team.punch_edit', 'label' => 'Managers may add and exclude punches of their team (day details)', 'type' => 'boolean', 'help' => 'Off: only HR with the punch right adds, excludes and restores punches. On: a manager may also do it for the people who report to them, with a reason — never for their own punches; locked days follow the corrections-after-lock setting. Punches are never deleted: an excluded punch is kept and can be restored.'],
+                // HROne parity TX-12: holiday changes for chosen employees (Manage holiday) — back-dating limit and the team option.
+                ['key' => 'attendance.holiday_change_backdate_months', 'label' => 'Holiday changes for chosen employees: months back HR may still change', 'type' => 'number', 'min' => 0, 'max' => 24, 'help' => 'Assign, remove or replace holiday reaches back to the first day of the month this many months before the current one (0 = from this month). Older days stay as they are; ask your administrator. Locked days follow the corrections-after-lock setting.'],
+                ['key' => 'team.holiday_assign', 'label' => 'Managers may change holidays of their team (Holiday changes)', 'type' => 'boolean', 'help' => 'Off: only HR with the holiday change right assigns, removes or replaces holidays for employees. On: a manager may also do it for the people who report to them, with a reason — never for their own holidays.'],
             ],
             'policy_types' => ['attendance', 'work_schedule', 'overtime', 'short_leave', 'time_office', 'checkin'],
             'links' => [
                 ['label' => 'Shifts', 'target' => 'App\\Filament\\Resources\\Shifts\\ShiftResource'],
                 ['label' => 'Work schedules and weekly offs', 'target' => 'App\\Filament\\Resources\\WorkSchedules\\WorkScheduleResource'],
                 ['label' => 'Shift roster', 'target' => 'App\\Filament\\Resources\\ShiftOverrides\\ShiftOverrideResource'],
+                // HROne parity TX-5: employees × days of the resolved shift; assign a shift for a range.
+                ['label' => 'Roster board (assign shifts and weekly offs)', 'target' => 'App\\Filament\\Pages\\RosterBoard'],
+                ['label' => 'Run attendance (attendance month desk)', 'target' => 'App\\Filament\\Pages\\RunAttendance'],
+                // HROne parity TX-6: a range of days for chosen employees, the whole day or each half.
+                ['label' => 'Change attendance status (range of days, by half)', 'target' => 'App\\Filament\\Pages\\AttendanceStatusChange'],
+                ['label' => 'Paid days (register and paid-day adjustments)', 'target' => 'App\\Filament\\Pages\\PaidDays'],
+                // HROne parity TX-12: Manage holiday — assign, remove or replace holidays for chosen employees.
+                ['label' => 'Holiday changes (assign, remove or replace for chosen employees)', 'target' => 'App\\Filament\\Pages\\HolidayChanges'],
                 ['label' => 'Holiday calendars', 'target' => 'App\\Filament\\Resources\\HolidayCalendars\\HolidayCalendarResource'],
                 ['label' => 'Geo work locations', 'target' => 'App\\Filament\\Resources\\GeoFences\\GeoFenceResource'],
                 ['label' => 'Check-in devices', 'target' => 'App\\Filament\\Resources\\EmployeeDevices\\EmployeeDeviceResource'],
@@ -152,10 +202,13 @@ return [
                 ['key' => 'leave.year_start_month', 'label' => 'Leave year starts in', 'type' => 'select', 'options' => [1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April', 5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August', 9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December']],
                 ['key' => 'leave.donation.allowed_types', 'label' => 'Leave types colleagues may donate', 'type' => 'multiselect', 'options_from' => 'leave_types'],
                 ['key' => 'leave.donation.max_days_per_year', 'label' => 'Most a donor gives per year (days, 0 = no limit)', 'type' => 'number', 'min' => 0, 'max' => 365],
+                // HROne parity TX-8a: the time office desk's carry-forward reminder.
+                ['key' => 'leave.carry_forward_alert_days', 'label' => 'Remind HR to carry forward leaves this many days before the leave year ends (0 = no reminder)', 'type' => 'number', 'min' => 0, 'max' => 90],
             ],
             'policy_types' => ['leave'],
             'links' => [
                 ['label' => 'Leave types', 'target' => 'App\\Filament\\Resources\\LeaveTypes\\LeaveTypeResource'],
+                ['label' => 'Carry forward leaves (year end)', 'target' => 'App\\Filament\\Pages\\LeaveCarryForward'],
                 ['label' => 'Leave uploads (opening balances, history)', 'target' => 'App\\Filament\\Resources\\TimeOfficeImports\\TimeOfficeImportResource'],
             ],
         ],
@@ -166,6 +219,9 @@ return [
             'icon' => 'heroicon-o-banknotes',
             'settings' => [
                 ['key' => 'payroll.lop_from_attendance', 'label' => 'Take loss of pay from attendance', 'type' => 'boolean'],
+                // Data import DI-1 (decision D2): the journal voucher (JV) of a finalized run; ledgers are the JV codes.
+                ['key' => 'payroll.jv.segment', 'label' => 'Split the payroll journal voucher by', 'type' => 'select', 'options' => ['none' => 'No split', 'company' => 'Company', 'location' => 'Branch (or sub branch)', 'business_unit' => 'Business unit', 'department' => 'Department (or sub department)', 'designation' => 'Designation', 'grade' => 'Grade', 'level' => 'Level', 'region' => 'Region of the branch', 'dimension' => "The organisation's own dimension", 'employee' => 'Employee'], 'help' => 'Pay is debited to each pay component\'s ledger with this segment\'s JV code (Integrations → JV codes), or its code when it has none.'],
+                ['key' => 'payroll.jv.net_pay_account', 'label' => 'Account net pay is credited to', 'type' => 'text', 'max' => 64, 'help' => 'The salary payable ledger in your books. Blank: NET_PAY.'],
                 ['key' => 'payroll.proration_basis', 'label' => 'Prorate pay on', 'type' => 'select', 'options' => ['calendar_days' => 'Calendar days', 'working_days' => 'Working days', 'fixed_days' => 'A fixed number of days']],
                 ['key' => 'payroll.proration_fixed_days', 'label' => 'Fixed days in a month (when prorating on fixed days)', 'type' => 'number', 'min' => 1, 'max' => 31],
                 ['key' => 'payroll.negative_net_policy', 'label' => 'When net pay comes out negative', 'type' => 'select', 'options' => ['block' => 'Stop the entry for review', 'allow' => 'Allow it']],
@@ -173,6 +229,8 @@ return [
                 ['key' => 'payroll.payslip.prefix', 'label' => 'Payslip number prefix', 'type' => 'text', 'max' => 10],
                 ['key' => 'payroll.encashment_basis', 'label' => 'Leave encashment is paid on', 'type' => 'select', 'options' => ['basic' => 'Basic', 'basic_da' => 'Basic + DA', 'gross' => 'Gross']],
                 ['key' => 'payroll.encashment_divisor', 'label' => 'Days in a month for a day of encashment', 'type' => 'number', 'min' => 1, 'max' => 31],
+                // HROne parity PO-8: "Encash leaves" batches made by HR.
+                ['key' => 'payroll.encashment.batch_approval', 'label' => 'Leave encashment batches need another person\'s approval', 'type' => 'boolean', 'help' => 'On: a batch made in Encash leaves waits until someone else who manages leave approves it (on the batch or in the Approval Center); only then are the encashments created. Off: the batch is processed at once.'],
                 ['key' => 'payroll.claims.attachment_required', 'label' => 'Reimbursement claims need bill attachments', 'type' => 'boolean'],
                 ['key' => 'payroll.claims.allow_beyond_balance', 'label' => 'Allow claims beyond the balance built up so far', 'type' => 'boolean'],
                 ['key' => 'compensation.self_service', 'label' => 'Employees see their own approved compensation', 'type' => 'boolean'],
@@ -181,11 +239,18 @@ return [
                 ['key' => 'compensation.self_service.show_wage_split', 'label' => 'My compensation: show wages and exclusions', 'type' => 'boolean'],
                 ['key' => 'compensation.self_service.show_perquisites', 'label' => 'My compensation: show perquisites', 'type' => 'boolean'],
                 ['key' => 'compensation.self_service.show_insight', 'label' => 'My compensation: show the change at each revision', 'type' => 'boolean'],
+                // HROne parity MS-9: statutory details and pay mode on My compensation; the password asked before pay pages.
+                ['key' => 'compensation.self_service.show_statutory', 'label' => 'My compensation: show statutory details (PF, ESI, professional tax, LWF, tax regime)', 'type' => 'boolean'],
+                ['key' => 'compensation.self_service.show_pay_mode', 'label' => 'My compensation: show how salary is paid (bank transfer, cash, cheque)', 'type' => 'boolean', 'help' => 'Follows Profile access: hidden when the Bank section is not shown to employees.'],
+                ['key' => 'compensation.self_service.confirm_password', 'label' => 'Ask for the password again before My compensation, My payslips and My salary YTD', 'type' => 'boolean', 'help' => 'Off: the pages open directly. On: employees enter their login password again; it is remembered for 15 minutes. People who sign in only with single sign-on have no PeopleOS password to enter.'],
+                ['key' => 'payroll.payslip.password_help', 'label' => 'Help text on My payslips (e.g. how to open a protected payslip file)', 'type' => 'textarea', 'max' => 500, 'help' => 'Blank: no help text. Password-protected payslip files come with the payslip PDF.'],
                 ['key' => 'payroll.tax.declaration_from', 'label' => 'Employees can change tax declarations from', 'type' => 'date', 'help' => 'Blank: no start date. Payroll can always change them.'],
                 ['key' => 'payroll.tax.declaration_to', 'label' => 'Employees can change tax declarations until', 'type' => 'date', 'help' => 'Blank: no end date.'],
                 ['key' => 'payroll.tax.proof_from', 'label' => 'Employees can submit investment proofs from', 'type' => 'date'],
                 ['key' => 'payroll.tax.proof_to', 'label' => 'Employees can submit investment proofs until', 'type' => 'date'],
                 ['key' => 'payroll.tax.verified_proofs_from', 'label' => 'From salaries paid on, TDS counts only verified proofs', 'type' => 'date', 'help' => 'Blank: TDS keeps using declared amounts all year.'],
+                // Data import DI-4 (decision): bills behind reimbursements paid with salary every month.
+                ['key' => 'payroll.reimbursement.bills_from', 'label' => 'From salaries paid on, monthly reimbursements are taxable beyond their bills', 'type' => 'date', 'help' => 'Blank: reimbursements paid with salary stay tax-free whatever the bills (as before). Bills are recorded on Payroll → Reimbursement bills or uploaded.'],
                 ['key' => 'payroll.tax.regime_locked_after_submit', 'label' => 'Employees cannot change the tax regime once submitted', 'type' => 'boolean'],
                 ['key' => 'payroll.tax.landlord_pan_required', 'label' => 'Every landlord’s PAN is required for rent', 'type' => 'boolean'],
                 ['key' => 'payroll.tax.declaration_day_from', 'label' => 'Employees can change declarations from day (of each month)', 'type' => 'number', 'min' => 1, 'max' => 31, 'help' => 'With the day below; blank means every day.'],
@@ -201,6 +266,11 @@ return [
                 ['key' => 'payroll.claims.not_above_bills', 'label' => 'A claim can never be more than its bills', 'type' => 'boolean', 'help' => 'Bills must be listed, and the claim is at most their total.'],
                 ['key' => 'payroll.claims.reminder_task', 'label' => 'Remind employees to claim their reimbursement balance', 'type' => 'select', 'options' => ['off' => 'Never', 'monthly' => 'Every month', 'quarter_end' => 'In the last month of each quarter', 'year_end' => 'In the last month of the financial year']],
                 ['key' => 'payroll.variable.task_day', 'label' => 'Day of the month managers are asked for planned variable pay', 'type' => 'number', 'min' => 0, 'max' => 28, 'help' => '0: never. Uses the variable pay plans.'],
+                // HROne parity PO-4: HROne's payroll scheduler ("Schedule payroll for … on").
+                // HROne parity PO-22: the employer's bonus percentage (HROne "Bonus percentage"); every statutory bonus figure
+                // (ceilings, minimum and maximum rate, minimum amount, minimum days) comes from the BONUS rule version.
+                ['key' => 'payroll.bonus.percent', 'label' => 'Statutory bonus percentage paid by the organisation', 'type' => 'number', 'min' => 0, 'max' => 100, 'nullable' => true, 'help' => 'Blank: the minimum rate of the BONUS statutory rule. A bonus run refuses a percentage outside the rule\'s minimum and maximum rate. Used by Payroll → Process bonus.'],
+                ['key' => 'payroll.auto_calculate_day', 'label' => 'Day of the month open payroll runs are recalculated automatically', 'type' => 'number', 'min' => 0, 'max' => 31, 'help' => '0: never. Recalculates runs not yet approved (draft, calculated or validated) in the background; never validates, approves or finalizes, and never opens a run. A day past the month\'s end runs on its last day.'],
                 ['key' => 'compensation.self_service.show_variable_plan', 'label' => 'My compensation: show the variable pay schedule', 'type' => 'boolean'],
                 // HROne setup parity BP-13: salary bank and pay modes.
                 ['key' => 'payroll.pay_modes', 'label' => 'Pay modes in use', 'type' => 'multiselect', 'options' => ['online_transfer' => 'Bank transfer', 'cash' => 'Cash', 'cheque' => 'Cheque'], 'help' => 'Employees without a payment mode are paid by bank transfer.'],
@@ -219,6 +289,7 @@ return [
                 ['label' => 'Bank account number rules', 'target' => 'App\\Filament\\Resources\\BankAccountRules\\BankAccountRuleResource'],
                 ['label' => 'Reimbursement claims', 'target' => 'App\\Filament\\Resources\\ReimbursementClaims\\ReimbursementClaimResource'],
                 ['label' => 'Perquisites and other income', 'target' => 'App\\Filament\\Resources\\TaxIncomeEntries\\TaxIncomeEntryResource'],
+                ['label' => 'Reimbursement bills (pay by default)', 'target' => 'App\\Filament\\Resources\\ReimbursementBills\\ReimbursementBillResource'],
                 ['label' => 'Statutory overrides', 'target' => 'App\\Filament\\Resources\\StatutoryOverrides\\StatutoryOverrideResource'],
                 ['label' => 'PF options (VPF)', 'target' => 'App\\Filament\\Resources\\PfOptions\\PfOptionResource'],
                 ['label' => 'Tax declarations', 'target' => 'App\\Filament\\Resources\\TaxDeclarations\\TaxDeclarationResource'],
@@ -271,6 +342,12 @@ return [
                 ['key' => 'expense.payment.show_to_employee', 'group' => 'Expense', 'label' => 'Show expense payment details to the employee?', 'type' => 'boolean'],
                 ['key' => 'expense.report.cover_letter', 'group' => 'Expense', 'label' => 'Allow expense cover letter download?', 'type' => 'boolean',
                     'help' => 'Uses an active letter template of type "Expense cover letter" when there is one, else a standard sheet.'],
+                // HROne parity XO-3 (owner decision D-XO7).
+                ['key' => 'expense.review.suspect_button', 'group' => 'Expense', 'label' => 'Show the "Suspected" decision to expense approvers?', 'type' => 'boolean',
+                    'help' => 'Yes: an approver may hold an expense out of a report as suspected, with a note (approved at 0 for now); it is decided later with "Clear suspicion" (approved up to its claimable amount, or rejected). No: approvers approve or reject each expense.'],
+                // HROne parity XO-5 (owner decision D-XO8 / EXP-14).
+                ['key' => 'expense.advance.partial_dispense', 'group' => 'Expense', 'label' => 'Allow dispensing an expense advance in several payouts?', 'type' => 'boolean',
+                    'help' => 'Yes: finance may pay out less than the approved amount and the rest later, up to the approved amount; the settle-by date counts from the first payout, and what is never paid out lapses once the advance is settled, recovered or written off, or its rest is cancelled. No: an advance is dispensed in full.'],
                 ['key' => 'expense.payment.step_required', 'group' => 'Expense', 'label' => 'Is a payment step required after final approval?', 'type' => 'boolean',
                     'help' => 'Yes: approved reports wait on Pay expenses, where finance pays them outside payroll or schedules them for the next payroll. No: an approved report goes straight to the next payroll (non-taxable, paid when that payroll is finalized).'],
                 ['key' => 'expense.exit.pending_reports', 'group' => 'Expense', 'label' => 'Expense reports still waiting for approval when an employee leaves', 'type' => 'select',
@@ -322,6 +399,7 @@ return [
                 ['label' => 'Travel requests (and travel desk bookings)', 'target' => 'App\\Filament\\Resources\\TravelRequests\\TravelRequestResource'],
                 ['label' => 'Pay expenses', 'target' => 'App\\Filament\\Pages\\PayExpenses'],
                 ['label' => 'Dispense advances', 'target' => 'App\\Filament\\Pages\\DispenseAdvances'],
+                ['label' => 'Advance recovery', 'target' => 'App\\Filament\\Pages\\AdvanceRecovery'],
                 ['label' => 'Expense reports (report library: Expense & travel)', 'target' => 'App\\Filament\\Pages\\ReportLibraryPage'],
                 ['label' => 'Expense dashboard (Dashboards → Add the expense dashboard)', 'target' => 'App\\Filament\\Resources\\Dashboards\\DashboardResource'],
                 ['label' => 'Expense cover letter templates', 'target' => 'App\\Filament\\Resources\\LetterTemplates\\LetterTemplateResource'],
@@ -363,6 +441,10 @@ return [
                 ['key' => 'performance.review.copy_previous_level', 'label' => 'Copy last level review inputs (ratings, achievement, comments) to the next level', 'type' => 'boolean', 'help' => 'The manager\'s review form starts from the submitted self review (unless the cycle hides it from managers), the approver\'s from the manager\'s.'],
                 // GO-1 (owner decision PER-1 / D-GO1, off until decided): HR reopens a submitted review (Review requests, appraisal Reviews tab).
                 ['key' => 'performance.review.hr_reopen', 'label' => 'HR may reopen a submitted review (review reinitiate)', 'type' => 'boolean', 'help' => 'Performance administrators send a submitted self, manager or approver review back to its reviewer, with a reason, until the appraisal is finalized. The earlier submission stays in the audit trail and the reviewer is told; HR never fills in the review.'],
+                // GO-3 (owner decision PER-2 / D-GO2, off until decided): managers normalise their own reports' ratings (Team distribution).
+                ['key' => 'performance.normalise.by_managers', 'label' => 'Managers may normalise their own team\'s performance ratings', 'type' => 'boolean', 'help' => 'Managers (performance.team) set normalised ratings for the people they manage, with a reason, on Performance → Team distribution — never their own, never a finalized appraisal, only where the performance policy shows them the rating. HR sees each change on the calibration board and in the audit trail, and the distribution check still applies. Off: normalising stays with performance HR.'],
+                // GO-4 (owner decision PER-6 / D-GO7, off until decided): actual achievement overriding the system-calculated one.
+                ['key' => 'performance.goals.achievement_override', 'label' => 'Managers and HR may override the achievement the system calculates for a goal', 'type' => 'boolean', 'help' => 'The goal owner\'s performance manager or performance HR enters the actual achievement with a reason — never on their own goal. The system-calculated achievement is kept beside it, every change is audited, and the final achievement (and the KPI formula rating of reviews) reads the override only while this is on. Off: the final achievement is the system\'s.'],
                 // HP-8g: bell curve (distribution targets on the calibration board) and the 9-box.
                 ['key' => 'performance.distribution.check', 'label' => 'Check the rating distribution against the bell curve targets', 'type' => 'select', 'options' => ['off' => 'Off (no check)', 'warn' => 'Warn (show the gap; the cycle still closes)', 'block' => 'Block closing a cycle outside the tolerance'], 'help' => 'Targets are set per cycle (or as the default) on the calibration board. Warn shows the gap when an appraisal is finalized and when the cycle closes.'],
                 ['key' => 'performance.distribution.tolerance_pct', 'label' => 'Tolerance (percentage points a level may differ from its target)', 'type' => 'number', 'min' => 0, 'max' => 100],
@@ -460,6 +542,9 @@ return [
                     'help' => 'The question appears from this day until the end of the week (fortnight).'],
                 ['key' => 'engage.mood.privacy', 'label' => 'Privacy control', 'type' => 'select', 'options' => ['anonymous' => 'Anonymous: check-ins are never linked to the person', 'confidential' => 'Confidential: only a named reviewer may identify one, with a reason (audited)', 'identified' => 'Identified: HR sees who checked in'], 'group' => 'Happiness index',
                     'help' => 'Results are shown only for groups of at least the privacy threshold, and comments only above the comment threshold.'],
+                // HROne parity GO-18 (Engage → Fundraisers; owner decision D-GO3).
+                ['key' => 'engagement.fundraisers.payroll_deduction', 'label' => 'May fundraiser pledges be deducted from salary?', 'type' => 'boolean', 'group' => 'Fundraisers',
+                    'help' => 'Off: employees pay their pledges outside payroll and HR records the payments. On: a fundraiser may collect through payroll — each pledge is deducted once, in the payroll month chosen, at the amount pledged, and only with the employee\'s consent recorded on the pledge.'],
             ],
             'policy_types' => ['reward_points'],
             'links' => [
@@ -471,6 +556,7 @@ return [
                 ['label' => 'Social wall', 'target' => 'App\\Filament\\Pages\\SocialWall'],
                 ['label' => 'Mood reasons', 'target' => 'App\\Filament\\Resources\\MoodReasons\\MoodReasonResource'],
                 ['label' => 'Happiness index', 'target' => 'App\\Filament\\Pages\\HappinessIndex'],
+                ['label' => 'Fundraisers', 'target' => 'App\\Filament\\Resources\\FundraiserCampaigns\\FundraiserCampaignResource'],
                 ['label' => 'Announcements', 'target' => 'App\\Filament\\Resources\\Announcements\\AnnouncementResource'],
                 ['label' => 'Audiences', 'target' => 'App\\Filament\\Resources\\Audiences\\AudienceResource'],
                 ['label' => 'Surveys', 'target' => 'App\\Filament\\Resources\\Surveys\\SurveyResource'],

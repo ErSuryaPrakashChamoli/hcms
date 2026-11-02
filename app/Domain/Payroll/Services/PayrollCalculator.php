@@ -87,11 +87,18 @@ class PayrollCalculator
         $days = $this->attendance->forEmployee($employee, $period->start_date, $period->end_date)->keyBy('date');
         $lopByDate = $this->lossOfPay($c, $employee, $days, $start, $end);
         $manualLop = (float) PayrollAdjustment::query()->where('employee_id', $employee->id)->where('payroll_period_id', $period->id)->where('type', 'lop')->approved()->sum('amount');
+        // HROne parity TX-4 (owner decision TIM-2 / D-TX2): HR's attendance-side paid-day adjustment of the month, read through
+        // the attendance contract as days (fewer paid days = more loss of pay). Null while switched off: nothing changes.
+        $attendanceAdjustment = app(AttendancePaidDayBasis::class)->forPeriod($employee, $period);
+        $attendanceLop = $attendanceAdjustment !== null ? AttendancePaidDayBasis::lossOfPay($attendanceAdjustment) : 0.0;
 
         // 4. Divisor.
         [$basis, $divisor] = $this->divisor($c, $days);
         $eligibleUnits = $end->lt($start) ? 0.0 : $this->units($basis, $days, $start, $end);
         $lop = min($eligibleUnits, round(array_sum($lopByDate) + $manualLop, 2));
+        if ($attendanceAdjustment !== null) {
+            $lop = min($eligibleUnits, max(0.0, round(array_sum($lopByDate) + $manualLop + $attendanceLop, 2)));
+        }
 
         $c->lopDays = round($lop, 2);
         $c->paidDays = round(max(0, $eligibleUnits - $lop), 2);
@@ -105,6 +112,12 @@ class PayrollCalculator
             'leave' => $this->leave->forEmployee($employee, $period->start_date, $period->end_date),
             'paid_days' => $c->paidDays, 'lop_days' => $c->lopDays, 'days_in_period' => $c->daysInPeriod,
         ];
+        if ($attendanceAdjustment !== null) {
+            $c->inputs['attendance_paid_day_adjustment'] = $attendanceAdjustment + ['lop_days' => $attendanceLop];
+            if (round($manualLop, 2) != 0.0) {
+                $c->exception(AttendancePaidDayBasis::EXCEPTION, AttendancePaidDayBasis::overlapMessage($manualLop, $attendanceAdjustment));
+            }
+        }
 
         if ($segments->isEmpty()) {
             $c->exception('no_salary', 'No salary assignment is effective in this period.');
@@ -112,8 +125,17 @@ class PayrollCalculator
             return $c;
         }
 
-        // 5. Earnings, segment by segment; manual LOP is taken from the last segment.
+        // 5. Earnings, segment by segment; manual LOP is taken from the last segment. HROne parity TX-4: with an attendance
+        //    paid-day adjustment, each segment's loss of pay is worked out up front so the segments add up to the month's.
+        $segmentLop = $attendanceAdjustment !== null ? $this->segmentLossOfPay($segments, $lopByDate, $manualLop, $attendanceLop) : null;
         $overtimeMinutes = (int) $days->sum('approvedOvertimeMinutes');
+        // Data import DI-35 (previous month overtime, decision D35-2): overtime approved after its day was locked waits as an
+        // attendance arrear and is paid with this month's overtime; the lines that pay it settle it. None = as before.
+        $overtimeArrears = $this->attendance->overtimeArrears($employee, $period->start_date);
+        if ($overtimeArrears['minutes'] !== 0) {
+            $overtimeMinutes += $overtimeArrears['minutes'];
+            $c->inputs['attendance']['overtime_arrear_minutes'] = $overtimeArrears['minutes'];
+        }
         $overtimeUsed = false;
         $attributes = null; // employee values for formulas, read once, on first use
         $perComponent = [];
@@ -133,6 +155,9 @@ class PayrollCalculator
             $segLop = array_sum(array_filter($lopByDate, fn ($date) => $date >= $segment->from->toDateString() && $date <= $segment->to->toDateString(), ARRAY_FILTER_USE_KEY));
             if ($i === $segments->count() - 1) {
                 $segLop += $manualLop;
+            }
+            if ($segmentLop !== null) {
+                $segLop = $segmentLop[$i];
             }
             $units = $this->units($basis, $days, $segment->from, $segment->to);
             $segPaid = max(0, $units - $segLop);
@@ -224,7 +249,10 @@ class PayrollCalculator
                 continue;
             }
             $c->fromComponent($row['component'], round($row['paid'], 2), ['formula' => $row['formula'], 'prorated' => $row['component']->is_proratable, 'divisor' => $divisor, 'proration_basis' => $basis, 'segments' => $row['segments']]
-                + array_filter(['hidden_on_payslip' => $row['component']->show_on_payslip === false ?: null, 'hidden_in_register' => $row['component']->show_in_register === false ?: null, 'rounding' => $row['component']->rounding]), $row['full']);
+                + array_filter(['hidden_on_payslip' => $row['component']->show_on_payslip === false ?: null, 'hidden_in_register' => $row['component']->show_in_register === false ?: null, 'rounding' => $row['component']->rounding])
+                // DI-35: an overtime line carries the previous-month overtime arrears it pays, so finalization settles them.
+                + ($overtimeArrears['ids'] !== [] && $row['formula'] && str_contains((string) $row['formula'], 'overtime_')
+                    ? ['source' => ['key' => 'attendance_arrear', 'ids' => $overtimeArrears['ids']], 'overtime_arrear_minutes' => $overtimeArrears['minutes']] : []), $row['full']);
         }
 
         $c->inputs['segments'] = $segmentInputs;
@@ -259,6 +287,42 @@ class PayrollCalculator
             ->map(fn (CompensationSegment $s) => new CompensationSegment($s->compensation, $s->from->copy()->max($start)->copy(), $s->to->copy()->min($end)->copy(), $s->components, $s->parameters, $s->ctcMode))
             ->filter(fn (CompensationSegment $s) => $s->from->lte($s->to))
             ->values();
+    }
+
+    /**
+     * HROne parity TX-4: loss of pay per salary segment when an attendance paid-day adjustment counts — each segment's own
+     * dates' loss of pay, manual LOP on the last segment; more loss of pay from the adjustment goes on the last segment too,
+     * while days it gives back (paid days raised) come off the last segment first and then the earlier ones, never taking a
+     * segment below 0. The segments then add up to the month's loss of pay.
+     *
+     * @param  Collection<int, CompensationSegment>  $segments
+     * @param  array<string, float>  $lopByDate
+     * @return array<int, float> segment index => loss-of-pay days
+     */
+    private function segmentLossOfPay(Collection $segments, array $lopByDate, float $manualLop, float $attendanceLop): array
+    {
+        $last = $segments->count() - 1;
+        $lops = [];
+        foreach ($segments as $i => $segment) {
+            $lops[$i] = array_sum(array_filter($lopByDate, fn ($date) => $date >= $segment->from->toDateString() && $date <= $segment->to->toDateString(), ARRAY_FILTER_USE_KEY))
+                + ($i === $last ? $manualLop : 0.0);
+        }
+        if ($lops === []) {
+            return [];
+        }
+        if ($attendanceLop >= 0) {
+            $lops[$last] = max(0.0, $lops[$last] + $attendanceLop);
+
+            return $lops;
+        }
+        $giveBack = round(-$attendanceLop, 2);
+        for ($i = $last; $i >= 0 && $giveBack > 0; $i--) {
+            $take = min($giveBack, max(0.0, $lops[$i]));
+            $lops[$i] = round($lops[$i] - $take, 2);
+            $giveBack = round($giveBack - $take, 2);
+        }
+
+        return $lops;
     }
 
     /** @return array<string, float> date => LOP days inside the eligibility window */

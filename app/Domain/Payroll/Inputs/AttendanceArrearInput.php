@@ -11,6 +11,13 @@ use App\Domain\Payroll\Services\PayrollComputation;
  * HROne parity TO-15 / PY-09: attendance arrears — days of earlier, payroll-locked months corrected afterwards — are
  * paid back (or recovered) in the next payroll at the current month's day rate on gross, and settled when the run
  * is finalized. Attendance supplies the days; this source prices them.
+ *
+ * Data import DI-35: previous-month overtime (attendance_arrears.overtime_minutes) is paid by the run's overtime component
+ * (PayrollCalculator adds the minutes to overtime_minutes and the overtime line settles them through this source's key).
+ *
+ * HROne parity TX-3: only `pending` arrears are taken; one HR held (status `held`) waits until it is released. An arrear
+ * held after a run was calculated is still settled with that run when it is finalized (the run paid it); recalculating
+ * the run first leaves it out.
  */
 final class AttendanceArrearInput implements PayrollInputSource
 {
@@ -21,7 +28,8 @@ final class AttendanceArrearInput implements PayrollInputSource
 
     public function inputsFor(PayrollComputation $c): array
     {
-        $pending = AttendanceArrear::query()->where('employee_id', $c->employee->id)->where('status', 'pending')
+        // Data import DI-35: an arrear of overtime only (no paid-day difference) is paid and settled by the overtime line.
+        $pending = AttendanceArrear::query()->where('employee_id', $c->employee->id)->where('status', 'pending')->where('delta_days', '!=', 0)
             ->whereDate('date', '<', $c->period->start_date->toDateString())->orderBy('date')->get(['id', 'date', 'delta_days']);
         if ($pending->isEmpty()) {
             return [];
@@ -44,7 +52,7 @@ final class AttendanceArrearInput implements PayrollInputSource
     public function settle(PayrollRun $run, array $idsByEmployee): void
     {
         foreach ($idsByEmployee as $employeeId => $ids) {
-            AttendanceArrear::query()->where('employee_id', $employeeId)->whereIn('id', $ids)->where('status', 'pending')->get()
+            AttendanceArrear::query()->where('employee_id', $employeeId)->whereIn('id', $ids)->whereIn('status', ['pending', 'held'])->get()
                 ->each(fn (AttendanceArrear $a) => $a->withAuditReason('Settled in payroll '.$run->period?->label())->update(['status' => 'settled', 'settled_period_id' => $run->payroll_period_id, 'settled_at' => now()]));
         }
     }

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Attendance\Services;
 
+use App\Domain\Attendance\Models\AttendanceArrear;
 use App\Domain\Attendance\Models\AttendancePenalty;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Attendance\Support\AttendanceDay;
@@ -34,6 +35,21 @@ final class AttendanceOutput
             ->orderBy('date')
             ->get()
             ->map(fn (AttendanceRecord $r) => AttendanceDay::fromRecord($r, (float) ($penalties[$r->date->toDateString()] ?? 0)));
+    }
+
+    /**
+     * Data import DI-35 ("Override previous month overtime", decision D35-2): approved overtime minutes added (or taken back)
+     * on days already locked or closed, dated before $before and waiting (pending, not held) — the quantity a later month
+     * takes with its own overtime — and the arrears that carry them. Nothing waiting gives 0 minutes.
+     *
+     * @return array{minutes: int, ids: list<int>}
+     */
+    public function overtimeArrears(Employee $employee, Carbon|string $before): array
+    {
+        $rows = AttendanceArrear::query()->where('employee_id', $employee->getKey())->where('status', 'pending')->where('overtime_minutes', '!=', 0)
+            ->whereDate('date', '<', Carbon::parse($before)->toDateString())->orderBy('date')->get(['id', 'overtime_minutes']);
+
+        return ['minutes' => (int) $rows->sum('overtime_minutes'), 'ids' => $rows->pluck('id')->map(fn ($id) => (int) $id)->values()->all()];
     }
 
     /**
@@ -84,13 +100,20 @@ final class AttendanceOutput
             });
     }
 
-    /** @return array{days: int, paid_days: int, half_days: int, absent_days: int, worked_minutes: int, scheduled_minutes: int, late_minutes: int, early_minutes: int, approved_overtime_minutes: int, unprocessed_days: int, penalty_days: float} */
+    /**
+     * HROne parity TX-4 (owner decision TIM-2 / D-TX2): with attendance.paid_day_adjustments.enabled on, HR's paid-day
+     * adjustments of the months lying inside [from, to] are applied to paid_days, as quantities only, and two keys are
+     * added — paid_days_by_attendance (as processed) and paid_day_adjustment (the change). Switched off (the default), the
+     * summary is exactly what it was.
+     *
+     * @return array{days: int, paid_days: int, half_days: int, absent_days: int, worked_minutes: int, scheduled_minutes: int, late_minutes: int, early_minutes: int, approved_overtime_minutes: int, unprocessed_days: int, penalty_days: float}
+     */
     public function summary(Employee $employee, Carbon|string $from, Carbon|string $to): array
     {
         $days = $this->forEmployee($employee, $from, $to);
         $span = Carbon::parse($from)->diffInDays(Carbon::parse($to)) + 1;
 
-        return [
+        $summary = [
             'days' => $days->count(),
             'paid_days' => $days->where('isPaidDay', true)->count() - $days->where('isHalfDay', true)->count() * 0.5,
             'half_days' => $days->where('isHalfDay', true)->count(),
@@ -103,5 +126,14 @@ final class AttendanceOutput
             'unprocessed_days' => max(0, $span - $days->count()),
             'penalty_days' => (float) $days->sum('penaltyDays'),
         ];
+
+        $change = app(PaidDayAdjustments::class)->changeWithin($employee, Carbon::parse($from)->toDateString(), Carbon::parse($to)->toDateString(), $days);
+        if ($change === null) {
+            return $summary;
+        }
+        $processed = $summary['paid_days'];
+        $summary['paid_days'] = max(0.0, round($processed + $change, 2));
+
+        return $summary + ['paid_days_by_attendance' => $processed, 'paid_day_adjustment' => $change];
     }
 }

@@ -19,12 +19,13 @@ class ListPunchImports extends PeopleListRecords
         return [
             ImportActions::formatAction(PunchImports::TYPE),
             Action::make('downloadTemplate')
-                ->label('Download template')
-                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->label('Download sample file')
+                ->icon(Heroicon::OutlinedTableCells)
                 ->color('gray')
                 ->action(fn () => response()->streamDownload(fn () => print (app(PunchImports::class)->template()), 'punch-import-template.csv', ['Content-Type' => 'text/csv'])),
             CreateAction::make()
                 ->label('Upload punches CSV')
+                ->modalWidth('4xl')->modalSubmitActionLabel('Upload and continue')->createAnother(false)->modalContentFooter(null)
                 ->modalHeading('Upload a raw punch file')
                 ->modalDescription('CSV with a header row (employee code, timestamp, optional timezone/direction/external id/device). Rows become raw punches only after mapping, validation and approval; attendance is recalculated from them.')
                 ->schema([ImportActions::fileField(), ImportActions::formatSection(PunchImports::TYPE)])

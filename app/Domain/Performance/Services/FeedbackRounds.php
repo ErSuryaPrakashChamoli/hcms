@@ -215,6 +215,8 @@ final class FeedbackRounds
         $closed = 0;
         $launched = 0;
         FeedbackRound::query()->where('status', 'open')->where('window_closes_on', '<', today()->toDateString())->orderBy('id')->get()
+            // HROne parity GO-2: a round stays open while an extension for one of its employees still runs.
+            ->filter(fn (FeedbackRound $round) => app(PerformanceWindows::class)->roundLastDay($round)->toDateString() < today()->toDateString())
             ->each(function (FeedbackRound $round) use (&$closed) {
                 $this->close($round, null, 'The window has passed');
                 $closed++;
@@ -279,7 +281,7 @@ final class FeedbackRounds
         $participants = FeedbackParticipant::query()->withoutGlobalScope(AccessScope::class)->with('employee')->where('feedback_round_id', $round->id)->get();
         if ($round->performance_cycle_id !== null) {
             Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $round->performance_cycle_id)
-                ->whereIn('employee_id', $participants->pluck('employee_id')->all() ?: [0])->whereNotIn('status', ['finalized', 'acknowledged'])->whereNull('locked_at')
+                ->whereIn('employee_id', $participants->pluck('employee_id')->all() ?: [0])->whereNotIn('status', ['finalized', 'acknowledged', 'withdrawn'])->whereNull('locked_at')
                 ->get()->each(function (Appraisal $appraisal) {
                     try {
                         app(Appraisals::class)->score($appraisal);

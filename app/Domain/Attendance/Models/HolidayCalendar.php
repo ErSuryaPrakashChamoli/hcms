@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['tenant_id', 'name', 'code', 'year', 'status', 'optional_requires_selection', 'restricted_holiday_quota', 'rh_prorate_rules', 'rh_cancel_locked_for', 'rh_without_shift'])]
+#[Fillable(['tenant_id', 'name', 'code', 'year', 'status', 'optional_requires_selection', 'restricted_holiday_quota', 'rh_prorate_rules', 'rh_cancel_locked_for', 'rh_without_shift', 'employee_note'])]
 class HolidayCalendar extends Model
 {
     use Auditable, BelongsToTenant;

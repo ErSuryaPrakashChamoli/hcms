@@ -15,7 +15,9 @@ use Illuminate\Foundation\Events\Dispatchable;
  * employee.address_changed, employee.emergency_contact_changed, employee.family_member_changed;
  * HROne parity MS-3: employee.qualification_changed, employee.experience_changed, employee.profile_skill_changed (the
  * new People actions) and profile.change_requested / _approved / _rejected (self-service profile change requests; the
- * first starts approval workflows). Emitted only by the authoritative actions and ProfileChanges.
+ * first starts approval workflows); HROne parity MS-4: employee.identity_document_changed, employee.nomination_changed;
+ * HROne parity MS-5: employee.insurance_changed.
+ * Emitted only by the authoritative actions and ProfileChanges.
  *
  * @property array<string, mixed> $context
  */
@@ -34,6 +36,10 @@ final class EmploymentEvent
         // HROne parity MS-3: the new profile actions and self-service profile change requests (references only).
         'employee.qualification_changed', 'employee.experience_changed', 'employee.profile_skill_changed',
         'profile.change_requested', 'profile.change_approved', 'profile.change_rejected',
+        // HROne parity MS-4: identity documents and nominations (references only; never a number).
+        'employee.identity_document_changed', 'employee.nomination_changed',
+        // HROne parity MS-5: health insurance policies and insured members (references only; never a member id).
+        'employee.insurance_changed',
     ];
 
     /** @param  array<string, mixed>  $context */

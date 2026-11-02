@@ -9,6 +9,7 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
+use App\Domain\Organisation\Models\DimensionValue;
 use App\Domain\Organisation\Models\Division;
 use App\Domain\Organisation\Models\EmployeeCategory;
 use App\Domain\Organisation\Models\EmploymentType;
@@ -25,7 +26,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Effective-dated organisational assignment. See AssignPositionAction for how rows are opened/closed. */
-#[Fillable(['tenant_id', 'employee_id', 'company_id', 'location_id', 'business_unit_id', 'division_id', 'department_id', 'team_id', 'designation_id', 'level_id', 'grade_id', 'employment_type_id', 'employee_category_id', 'work_mode_id', 'cost_centre_id', 'position_id', 'fte', 'change_type', 'effective_from', 'effective_to', 'reason'])]
+#[Fillable(['tenant_id', 'employee_id', 'company_id', 'location_id', 'business_unit_id', 'division_id', 'department_id', 'team_id', 'designation_id', 'level_id', 'grade_id', 'employment_type_id', 'employee_category_id', 'work_mode_id', 'cost_centre_id', 'dimension_value_id', 'position_id', 'fte', 'change_type', 'effective_from', 'effective_to', 'reason'])]
 class EmployeePosition extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
@@ -46,6 +47,8 @@ class EmployeePosition extends Model
         'employee_category_id' => ['employeeCategory', 'Employee category'],
         'work_mode_id' => ['workMode', 'Work mode'],
         'cost_centre_id' => ['costCentre', 'Cost centre'],
+        // Data import DI-1 (decision D1): the organisation's own dimension (named in Setup → Core HR).
+        'dimension_value_id' => ['dimensionValue', 'Dimension'],
     ];
 
     protected function casts(): array
@@ -136,6 +139,12 @@ class EmployeePosition extends Model
     public function costCentre(): BelongsTo
     {
         return $this->belongsTo(CostCentre::class);
+    }
+
+    /** Data import DI-1: the value of the organisation's own dimension this position sits in. */
+    public function dimensionValue(): BelongsTo
+    {
+        return $this->belongsTo(DimensionValue::class);
     }
 
     /** @return list<string> relation names */

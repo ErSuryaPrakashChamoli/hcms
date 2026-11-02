@@ -9,8 +9,10 @@ use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Models\PerformanceDistributionTarget;
 use App\Domain\Performance\Models\RatingScale;
+use App\Domain\Performance\Support\AppraisalVisibility;
 use App\Domain\Performance\Support\RatingRules;
 use App\Domain\Platform\Services\SettingsRepository;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -161,13 +163,18 @@ final class PerformanceDistribution
      * computed), placed at the level whose label they take. $appraisals defaults to every appraisal of the cycle the
      * caller may see.
      *
-     * @param  Collection<int, Appraisal>|null  $appraisals
+     * HROne parity GO-3: $rating picks another rating of each item (e.g. the system-calculated rating of an appraisal, or a
+     * periodic review's rating) for the same comparison; null = the rating that stands (as before).
+     *
+     * @param  Collection<int, Appraisal>|Collection<int, Model>|null  $appraisals
+     * @param  (callable(Model): ?float)|null  $rating
      * @return array{rows: list<array{value: float, label: string, target: ?float, count: int, actual: float, gap: ?float, outside: bool}>, rated: int, total: int, has_targets: bool, outside: bool, tolerance: float, mode: string, source: ?string}
      */
-    public function compare(PerformanceCycle $cycle, ?Collection $appraisals = null): array
+    public function compare(PerformanceCycle $cycle, ?Collection $appraisals = null, ?callable $rating = null): array
     {
         $scale = $cycle->ratingScale();
-        $appraisals ??= Appraisal::query()->where('performance_cycle_id', $cycle->id)->get();
+        // HROne parity GO-2: appraisals withdrawn from the cycle are not part of its distribution.
+        $appraisals ??= Appraisal::query()->where('performance_cycle_id', $cycle->id)->where('status', '!=', 'withdrawn')->get();
         $resolved = $this->resolved($cycle);
         $targets = $resolved['targets'];
         $tolerance = $this->tolerance();
@@ -175,7 +182,7 @@ final class PerformanceDistribution
         $counts = [];
         $rated = 0;
         foreach ($appraisals as $appraisal) {
-            $level = $this->levelOf($scale, $appraisal->effectiveRating());
+            $level = $this->levelOf($scale, $rating === null ? $appraisal->effectiveRating() : $rating($appraisal));
             if ($level !== null) {
                 $counts[$level] = ($counts[$level] ?? 0) + 1;
                 $rated++;
@@ -197,6 +204,56 @@ final class PerformanceDistribution
             'tolerance' => $tolerance, 'mode' => $this->mode(), 'source' => $resolved['source']];
     }
 
+    /** HROne parity GO-3: a curve over fewer ratings than this is not shown (performance.analytics_min_group, as analytics). */
+    public static function minGroup(): int
+    {
+        return max(1, (int) config('peopleos.performance.analytics_min_group', 5));
+    }
+
+    /**
+     * HROne parity GO-3 (matrix 27 §27.12 #3, HROne Team → Analytics → Performance): the rating distribution of a manager's
+     * own team in a cycle, read-only — the system-calculated rating and the rating that stands, each per level against the
+     * targets (compare()). Only the people the viewer manages (performance.team, PerformanceRelationships::teamOf), never
+     * the viewer; withdrawn appraisals are left out. Only appraisals whose ratings the performance policy lets the viewer
+     * see (AppraisalVisibility::ratingsVisible) are counted, so a rating kept from the manager cannot be worked out from a
+     * curve. A curve over fewer than performance.analytics_min_group ratings is suppressed (counts and shares hidden), as
+     * analytics does. Names are given only for the people counted, in alphabetical order and never with a rating or a level
+     * (no rankings or named top / bottom lists, owner decision ANA-1).
+     *
+     * @return array{members: int, counted: int, hidden: int, min_group: int, system: array<string, mixed>, final: array<string, mixed>, names: list<array{name: ?string, code: ?string}>}
+     */
+    public function team(PerformanceCycle $cycle, User $viewer): array
+    {
+        $relationships = app(PerformanceRelationships::class);
+        $me = $relationships->forUser($viewer);
+        $reports = $relationships->teamOf($viewer)->map(fn ($id) => (int) $id)->reject(fn (int $id) => $me !== null && $id === (int) $me->id)->values()->all();
+        $appraisals = $reports === [] ? collect() : Appraisal::query()->with(['employee.person', 'reviews', 'cycle'])
+            ->where('performance_cycle_id', $cycle->id)->where('status', '!=', 'withdrawn')->whereIn('employee_id', $reports)->get();
+        $counted = $appraisals->filter(fn (Appraisal $a) => AppraisalVisibility::ratingsVisible($a, $viewer))->values();
+        $min = self::minGroup();
+        $curve = function (?callable $rating) use ($cycle, $counted, $min): array {
+            $comparison = $this->compare($cycle, $counted, $rating);
+            $suppressed = $comparison['rated'] < $min;
+            if ($suppressed) {
+                $comparison['rows'] = array_map(fn (array $row) => ['count' => null, 'actual' => null, 'gap' => null, 'outside' => false] + $row, $comparison['rows']);
+                $comparison['outside'] = false;
+            }
+
+            return $comparison + ['suppressed' => $suppressed];
+        };
+
+        return [
+            'members' => $appraisals->count(),
+            'counted' => $counted->count(),
+            'hidden' => $appraisals->count() - $counted->count(),
+            'min_group' => $min,
+            'system' => $curve(fn (Appraisal $a) => $a->computed_rating === null ? null : (float) $a->computed_rating),
+            'final' => $curve(null),
+            'names' => $counted->map(fn (Appraisal $a) => ['name' => $a->employee?->person?->full_name, 'code' => $a->employee?->employee_code])
+                ->sortBy(fn (array $n) => mb_strtolower((string) $n['name']))->values()->all(),
+        ];
+    }
+
     /**
      * The gap message for a cycle, when the check is on (warn or block), the cycle has targets and a level is outside the
      * tolerance; null otherwise. Read over every appraisal of the cycle (not the caller's scope).
@@ -206,7 +263,7 @@ final class PerformanceDistribution
         if ($this->mode() === 'off') {
             return null;
         }
-        $comparison = $this->compare($cycle, Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id)->get());
+        $comparison = $this->compare($cycle, Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id)->where('status', '!=', 'withdrawn')->get());
         if (! $comparison['has_targets'] || ! $comparison['outside']) {
             return null;
         }

@@ -56,10 +56,16 @@ final class ExperienceNavigation
         'MyTeam' => 'people', 'TeamCareer' => 'people', 'TeamLearning' => 'people', 'TeamWorkforce' => 'people', 'People' => 'people',
         // HROne parity CA-9: the team / HR event calendar sits with the team pages.
         'TeamCalendar' => 'people',
+        // HROne parity PO-17: increment plans HR shared with a manager (Team → Action → "Increment calculator").
+        'TeamIncrements' => 'people',
         'OrganisationMap' => 'organisation',
         'AnnouncementsFeed' => 'communication',
+        // HROne parity GO-15: an employee's event invitations sit with the announcements they read.
+        'MyEvents' => 'communication',
         'MyHr' => 'services',
         'AdminCentre' => 'admin',
+        // Data import: every upload by module, and the uploads made, in the Admin section next to All modules.
+        'DataImport' => 'admin', 'RecentUploads' => 'admin',
         'Home' => 'home', 'Dashboard' => 'home',
         'NotificationCenter' => 'work',
     ];
@@ -67,19 +73,24 @@ final class ExperienceNavigation
     /** Modules that form their own area in a section's context rail (class basename → area label). */
     public const MODULE_AREA = [
         'People' => 'Directory', 'MyTeam' => 'My team', 'TeamCareer' => 'My team', 'TeamLearning' => 'My team', 'TeamWorkforce' => 'My team',
-        'TeamCalendar' => 'My team',
-        // HROne parity WO-1: the workforce registers in journey order (HR operators only).
-        'WorkforceDesk' => 'Workforce desk',
-        // HROne parity TX-1: the time-office and leave registers in HROne's order (time-office operators only).
-        'TimeOfficeDesk' => 'Time office desk',
-        // HROne parity GO-1: the performance and engage registers in HROne's panel order (performance / engagement operators only).
-        'PerformanceDesk' => 'Performance desk', 'EngageDesk' => 'Engage desk',
-        // HROne parity XO-1: the expense and asset registers in HROne's panel order (expense / asset operators only).
-        'ExpenseDesk' => 'Expense desk', 'AssetDesk' => 'Asset desk',
-        // HROne parity PO-1: the payroll registers in HROne's panel order (payroll operators only).
-        'PayrollDesk' => 'Payroll desk',
+        'TeamCalendar' => 'My team', 'TeamIncrements' => 'My team',
         'OrganisationMap' => 'Org map', 'AnnouncementsFeed' => 'Announcements', 'MyHr' => 'My HR', 'AdminCentre' => 'All modules',
+        // HROne parity GO-15: the employee's events (invitations, answers, details) form their own area, like Announcements.
+        'MyEvents' => 'My events',
+        'DataImport' => 'Data import', 'RecentUploads' => 'Data import',
+        // HROne parity GO-18: fundraisers are an area of the Communication section beside the announcements feed (employees
+        // reach it only while a fundraiser is open to them, or they pledged to one; HR also from the Engage desk).
+        'FundraiserCampaignResource' => 'Fundraisers',
     ];
+
+    /**
+     * The operations desks (HROne parity WO-1, TX-1, PO-1, GO-1, XO-1), in the order they lead an area. A desk orders the
+     * registers of the area it sits in (its space, or its group in a one-space section) by the journey they serve, so it
+     * is that area's front page: the area opens on it and it leads the area bar after the favourites. It is not an area
+     * of its own, which listed the same registers twice in the rail (Time & leave and "Time office desk", Pay and
+     * "Payroll desk"). Only operators can open a desk; everyone else opens the area as before.
+     */
+    public const DESKS = ['WorkforceDesk', 'TimeOfficeDesk', 'PayrollDesk', 'ExpenseDesk', 'PerformanceDesk', 'EngageDesk', 'AssetDesk'];
 
     /** Preferred landing per section, by class basename; the first one the viewer can open wins. */
     public const LANDING = [
@@ -116,7 +127,9 @@ final class ExperienceNavigation
     /** Preferred landing per space or group (the context rail opens it). */
     private const AREA_LANDING = [
         'Lifecycle' => ['EmployeeResource', 'OnboardingPlanResource'],
-        'Time & leave' => ['LeaveRequestResource', 'AttendanceRecordResource', 'LeaveCalendar'],
+        // An employee's Time & leave opens on My attendance (their month, leave balance, regularise and apply leave); HR
+        // opens it on the time-office desk, which comes first.
+        'Time & leave' => ['AttendanceCalendar', 'LeaveRequestResource', 'AttendanceRecordResource', 'LeaveCalendar'],
         'Growth' => ['AppraisalResource', 'GoalResource', 'LearningDashboard', 'TalentDashboard'],
         'Pay' => ['PayrollControlRoom', 'PayrollRunResource', 'CompensationChangeResource', 'PayslipResource'],
         'Organisation' => ['OrganisationDesigner', 'DepartmentResource'],
@@ -128,6 +141,7 @@ final class ExperienceNavigation
         'Setup' => ['ConfigurationFinder', 'TenantSettingResource'],
         'Platform' => ['IntegrationSystemResource', 'SecurityPolicyPage'],
         'My team' => ['MyTeam'],
+        'Data import' => ['DataImport', 'RecentUploads'],
     ];
 
     /**
@@ -154,7 +168,7 @@ final class ExperienceNavigation
         'Analytics' => ['WorkforceCommandCentre', 'PeopleAnalyticsPage', 'ReportResource', 'DashboardViewer'],
         'Audit' => ['ChangeIntelligencePage', 'AuditEventResource'],
         'Service Desk' => ['TicketResource', 'ServiceDeskAnalyticsPage'],
-        'Engagement' => ['SurveyResource', 'EmployeeFeedbackResource', 'EngagementCampaignResource'],
+        'Engagement' => ['SurveyResource', 'CompanyEventResource', 'EmployeeFeedbackResource', 'EngagementCampaignResource'],
         'Communication' => ['AnnouncementResource'],
         'Grievances' => ['GrievanceResource'],
         'Assets' => ['AssetResource'],
@@ -376,10 +390,12 @@ final class ExperienceNavigation
     }
 
     /**
-     * UX.15: the area bar of a module page: where you are, the area's everyday modules (plus the current one),
-     * and the rest of the area grouped by purpose behind "All in {area}".
+     * UX.15: the area bar of a module page: where you are, then the area's modules in one row: the page you are on
+     * first, then the person's favourites, the area's desk, then its everyday modules. "All in {area}" holds the favourites in a
+     * row of their own and every module of the area grouped by purpose. On a module's own page (landing) the bar
+     * names the page, so the page header drops its title and its buttons join the table's toolbar.
      *
-     * @return array{section: string, label: string, primary: list<array<string, mixed>>, more: array<string, list<array<string, mixed>>>, count: int, current: ?string}|null
+     * @return array{section: string, label: string, primary: list<array<string, mixed>>, favourites: list<array<string, mixed>>, groups: array<string, list<array<string, mixed>>>, count: int, current: ?string, current_label: ?string, landing: bool}|null
      */
     public function areaBar(User $user): ?array
     {
@@ -388,34 +404,55 @@ final class ExperienceNavigation
             return null;
         }
         $modules = $area['modules'];
+        $byKey = array_column($modules, null, 'key');
+        $byBase = [];
+        foreach ($modules as $m) {
+            $byBase[class_basename($m['key'])] = $m;
+        }
         $current = $this->currentModule($user);
+        $current = $current !== null ? ($byKey[$current['key']] ?? null) : null;
         $everyday = self::EVERYDAY[$area['label']] ?? null;
         if ($everyday === null || count($modules) <= 6) {
             $primary = $modules;
         } else {
-            $byBase = [];
-            foreach ($modules as $m) {
-                $byBase[class_basename($m['key'])] = $m;
-            }
             $primary = array_values(array_filter(array_map(fn (string $b) => $byBase[$b] ?? null, $everyday)));
             if ($primary === []) {
                 $primary = array_slice($modules, 0, 6);
             }
         }
-        $primaryKeys = array_column($primary, 'key');
-        if ($current !== null && ! in_array($current['key'], $primaryKeys, true) && in_array($current['key'], array_column($modules, 'key'), true)) {
-            $primary[] = $current;
-            $primaryKeys[] = $current['key'];
+        $desks = array_values(array_filter(array_map(fn (string $b) => $byBase[$b] ?? null, self::DESKS)));
+        $starred = (array) app(ExperiencePreferences::class)->for($user)['favourite_modules'];
+        $favourites = array_values(array_filter($modules, fn (array $m) => in_array($m['key'], $starred, true)));
+        $row = [];
+        foreach ([...($current !== null ? [$current] : []), ...$favourites, ...$desks, ...$primary] as $m) {
+            $row[$m['key']] ??= $m;
         }
-        $more = [];
+        $groups = [];
         foreach ($modules as $m) {
-            if (! in_array($m['key'], $primaryKeys, true)) {
-                $more[(string) $m['group']][] = $m;
-            }
+            $groups[(string) $m['group']][] = $m;
         }
+        $landing = $current !== null && $this->currentRoute() === ($current['kind'] === 'page' ? $current['route'] : $current['route'].'index');
 
-        return ['section' => $area['section'], 'label' => $area['label'], 'primary' => $primary, 'more' => $more,
-            'count' => count($modules), 'current' => $current['key'] ?? null];
+        return ['section' => $area['section'], 'label' => $area['label'], 'primary' => array_values($row), 'favourites' => $favourites,
+            'groups' => $groups, 'count' => count($modules), 'current' => $current['key'] ?? null, 'current_label' => $current['label'] ?? null,
+            'landing' => $landing];
+    }
+
+    /** Is this a module's own page, opened from the area bar (the bar names it, so the page header steps back)? */
+    public function onAreaLanding(User $user): bool
+    {
+        return (bool) ($this->areaBar($user)['landing'] ?? false);
+    }
+
+    /** Star or unstar a module of the person's catalogue for the area bar (false: not a module they can open). */
+    public function toggleFavouriteModule(User $user, string $key): bool
+    {
+        if (! in_array($key, array_column($this->catalogue->for($user), 'key'), true)) {
+            return false;
+        }
+        app(ExperiencePreferences::class)->toggleFavouriteModule($user, $key);
+
+        return true;
     }
 
     /** Items waiting for the viewer: workflow tasks plus approvals (cheap counts only). */
@@ -432,7 +469,7 @@ final class ExperienceNavigation
 
     /**
      * An area of several modules opens a module page, never a workspace: a workspace has no area bar, so the
-     * area would open on a page that does not show it.
+     * area would open on a page that does not show it. An area opens on its desk for the people who can open it.
      *
      * @param  list<array<string, mixed>>  $modules
      */
@@ -440,7 +477,7 @@ final class ExperienceNavigation
     {
         $pages = array_values(array_filter($modules, fn (array $m) => ! in_array(class_basename($m['key']), self::WORKSPACES, true)));
         $modules = count($modules) > 1 && $pages !== [] ? $pages : $modules;
-        foreach (self::AREA_LANDING[$area] ?? [] as $basename) {
+        foreach ([...self::DESKS, ...(self::AREA_LANDING[$area] ?? [])] as $basename) {
             foreach ($modules as $module) {
                 if (class_basename($module['key']) === $basename) {
                     return $module;

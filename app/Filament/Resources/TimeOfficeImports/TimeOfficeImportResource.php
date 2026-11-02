@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TimeOfficeImports;
 
 use App\Domain\Employment\Imports\EmployeeImport;
+use App\Domain\Employment\Imports\ImportGovernance;
 use App\Domain\Employment\Imports\RowImportTypes;
 use App\Filament\Resources\EmployeeImports\EmployeeImportResource;
 use App\Filament\Resources\EmployeeImports\RelationManagers\RowsRelationManager;
@@ -42,6 +43,16 @@ class TimeOfficeImportResource extends Resource
         return 'time_office';
     }
 
+    /**
+     * The upload types this screen lists and offers to the signed-in person (its area's types they may run).
+     *
+     * @return list<string>
+     */
+    public static function types(): array
+    {
+        return RowImportTypes::allowedTypes(auth()->user(), static::area());
+    }
+
     public static function uploadHeading(): string
     {
         return 'Upload a time office file';
@@ -49,7 +60,7 @@ class TimeOfficeImportResource extends Resource
 
     public static function canAccess(): bool
     {
-        return RowImportTypes::allowedTypes(auth()->user(), static::area()) !== [];
+        return static::types() !== [];
     }
 
     public static function canCreate(): bool
@@ -59,7 +70,16 @@ class TimeOfficeImportResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->whereIn('type', RowImportTypes::allowedTypes(auth()->user(), static::area()));
+        // Data import DI-4: an upload that holds pay (RowImportTypes::UPLOADER_ONLY) is listed to its uploader (or checker) only.
+        $types = static::types();
+        $open = array_values(array_filter($types, fn (string $type) => ! RowImportTypes::uploaderOnly($type)));
+
+        return parent::getEloquentQuery()->where(function (Builder $query) use ($types, $open) {
+            $query->whereIn('type', $open);
+            foreach (array_diff($types, $open) as $type) {
+                $query->orWhere(fn (Builder $q) => ImportGovernance::ownOrChecked($q->where('type', $type), $type, auth()->user()));
+            }
+        });
     }
 
     public static function infolist(Schema $schema): Schema

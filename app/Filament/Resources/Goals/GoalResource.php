@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Goals;
 
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\OrganisationNode;
 use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\KeyResult;
@@ -17,20 +18,24 @@ use App\Domain\Performance\Services\GoalSheetRules;
 use App\Domain\Performance\Services\PerformanceMasters;
 use App\Domain\Performance\Services\PerformanceRelationships;
 use App\Domain\Performance\Support\GoalFieldRules;
+use App\Domain\Performance\Support\GoalVisibility;
 use App\Domain\Performance\Support\PerformanceLabels;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\Goals\Pages\CreateGoal;
 use App\Filament\Resources\Goals\Pages\EditGoal;
 use App\Filament\Resources\Goals\Pages\ListGoals;
+use App\Filament\Resources\Goals\RelationManagers\LinkedGoalsRelationManager;
 use App\Filament\Support\PerformanceActions;
 use BackedEnum;
 use Closure;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Field;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -42,6 +47,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
@@ -49,6 +55,8 @@ use UnitEnum;
 /**
  * Goals, OKRs, KRAs (§34) with cascade and key results. HROne setup parity: perspective, unit of measurement and key
  * result due dates (HP-8a), reverse KPIs and the KPI rating formula (HP-8c); labels follow the performance terminology.
+ * HROne parity GO-4: owner person, visibility (private + visible-to, D-GO5) and tags on the form; health, final
+ * achievement (D-GO7), visibility and tags as columns and filters; the linked (aligned) goals of a goal.
  */
 class GoalResource extends Resource
 {
@@ -64,17 +72,25 @@ class GoalResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['employee.person', 'organisationNode.nodeable', 'parent', 'cycle', 'keyResults', 'perspective']);
-        $user = auth()->user();
+        return self::restrictToViewer(parent::getEloquentQuery()->with(['employee.person', 'organisationNode.nodeable', 'parent', 'cycle', 'keyResults', 'perspective', 'ownerEmployee.person']));
+    }
 
+    /**
+     * The goals the signed-in user may list: HR all; others organisation goals and their own and their reports' goals.
+     * GO-4: private goals are further limited by GoalVisibilityScope on every query.
+     */
+    public static function restrictToViewer(Builder $query): Builder
+    {
+        $user = auth()->user();
         if ($user->can('performance.view')) {
             return $query;
         }
         $me = EmployeeOwnedPolicy::employeeOf($user);
         $reports = $me && $user->can('performance.team') ? app(PerformanceRelationships::class)->reportIds($me) : collect();
+        $table = $query->getModel()->getTable();
 
         // Organisation-level goals are visible to everyone; personal goals to owner and manager.
-        return $query->where(fn (Builder $q) => $q->whereNull('employee_id')->orWhere('employee_id', $me?->id ?? 0)->orWhereIn('employee_id', $reports));
+        return $query->where(fn (Builder $q) => $q->whereNull("{$table}.employee_id")->orWhere("{$table}.employee_id", $me?->id ?? 0)->orWhereIn("{$table}.employee_id", $reports));
     }
 
     public static function form(Schema $schema): Schema
@@ -152,7 +168,9 @@ class GoalResource extends Resource
                     ->visible(fn (Get $get) => $get('level') !== 'employee')
                     ->options(fn () => OrganisationNode::query()->with('nodeable')->get()->mapWithKeys(fn ($n) => [$n->id => $n->auditLabel()])->all()),
                 Select::make('parent_id')->label('Aligned to')->searchable()->placeholder('None')
-                    ->options(fn () => Goal::query()->with('employee.person')->whereIn('status', ['draft', 'active'])->orderBy('level')->get()->mapWithKeys(fn ($g) => [$g->id => (config("peopleos.performance.goal_levels.{$g->level}") ?? $g->level).': '.$g->title.($g->employee ? ' ('.$g->employee->person?->full_name.')' : '')])->all()),
+                    // GO-4: only goals the person may see; a goal already aligned to a private goal keeps it, by title only.
+                    ->options(fn (?Goal $record) => Goal::query()->with('employee.person')->whereIn('status', ['draft', 'active'])->orderBy('level')->get()->mapWithKeys(fn ($g) => [$g->id => (config("peopleos.performance.goal_levels.{$g->level}") ?? $g->level).': '.$g->title.($g->employee ? ' ('.$g->employee->person?->full_name.')' : '')])
+                        ->union($record?->parent_id ? [$record->parent_id => GoalVisibility::parentTitleFor($record, $user) ?? '—'] : [])->all()),
                 Select::make('performance_cycle_id')->label('Cycle')->placeholder('Not tied to a cycle')
                     ->options(fn () => PerformanceCycle::query()->where('status', '!=', 'closed')->orderByDesc('period_start')->pluck('name', 'id')->all())
                     ->default(fn () => PerformanceCycle::query()->where('status', 'active')->orderByDesc('period_start')->value('id')),
@@ -220,6 +238,22 @@ class GoalResource extends Resource
                     ->options(fn (?Goal $record) => KpiRatingFormula::query()->where(fn ($q) => $q->where('status', 'active')->orWhere('id', $record?->kpi_rating_formula_id ?? 0))->orderBy('name')->pluck('name', 'id')->all())
                     ->visible($hasFormulas),
             ]),
+            // HROne parity GO-4: who owns an organisation goal, who sees it (D-GO5) and how it is grouped.
+            Section::make('Owner, visibility and tags')->columns(2)->schema([
+                Select::make('owner_employee_id')->label('Owner')->searchable()->placeholder('No owner person')
+                    ->helperText('The person accountable for this organisation goal: they see it and check in on it.')
+                    ->visible(fn (Get $get) => ($get('level') ?? 'employee') !== 'employee')
+                    ->options(fn (?Goal $record) => self::employeeOptions($record?->owner_employee_id ? [$record->owner_employee_id] : [])),
+                Radio::make('visibility')->label('Visibility')->options(config('peopleos.performance.goal_visibility'))->default('public')->required()->live()
+                    ->visible(fn (Get $get) => ($get('level') ?? 'employee') !== 'employee'),
+                Select::make('visible_to')->label('Visible to')->multiple()->searchable()->columnSpanFull()
+                    ->helperText('Besides these people, the owner, the creator and performance HR in scope always see a private goal. Owners of goals aligned to it see only its title.')
+                    ->visible(fn (Get $get) => ($get('level') ?? 'employee') !== 'employee' && $get('visibility') === 'private')
+                    ->afterStateHydrated(fn (Select $component, ?Goal $record) => $component->state($record === null ? [] : $record->viewers()->withoutGlobalScope(AccessScope::class)->pluck('employee_id')->map(fn ($id) => (int) $id)->all()))
+                    ->options(fn (?Goal $record) => self::employeeOptions($record === null ? [] : $record->viewers()->withoutGlobalScope(AccessScope::class)->pluck('employee_id')->all())),
+                TagsInput::make('tags')->label('Tags')->columnSpanFull()->placeholder('Add a tag')
+                    ->suggestions(fn () => array_values(self::tagOptions())),
+            ]),
             Section::make(PerformanceLabels::plural('kpi', 'Key results'))->description('For objectives: progress rolls up from the key results by weight.')
                 ->visible(fn (Get $get, ?Goal $record) => $rights($get, $record)->visible('key_results'))->schema([
                     Repeater::make('keyResults')->relationship()->hiddenLabel()->columns(5)->default([])->reorderable()
@@ -269,18 +303,52 @@ class GoalResource extends Resource
         return $data + ['progress' => Goal::progressFor($data['measure_type'] ?? 'percentage', (float) ($data['start_value'] ?? 0), (float) ($data['target_value'] ?? 100), (float) ($data['current_value'] ?? 0))];
     }
 
+    /**
+     * GO-4: employed employees in the person's reach, as "code · name" (plus the ids given, e.g. a saved owner who left).
+     *
+     * @param  array<int, int|string>  $keep
+     * @return array<int, string>
+     */
+    private static function employeeOptions(array $keep = []): array
+    {
+        return Employee::query()->with('person')->where(fn (Builder $q) => $q->employed()->orWhereIn('id', $keep ?: [0]))->orderBy('employee_code')->limit(2000)->get()
+            ->mapWithKeys(fn (Employee $e) => [$e->id => "{$e->employee_code} · {$e->person?->full_name}"])->all();
+    }
+
+    /** GO-4: the tags used on goals the person may see, for suggestions and the tag filter. @return array<string, string> */
+    public static function tagOptions(): array
+    {
+        return self::restrictToViewer(Goal::query())->whereNotNull('tags')->latest('id')->limit(2000)->pluck('tags')
+            ->flatten()->filter(fn ($t) => is_string($t) && $t !== '')->reverse()->keyBy(fn ($t) => mb_strtolower($t))->sort()->mapWithKeys(fn ($t) => [$t => $t])->all();
+    }
+
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
                 TextColumn::make('level')->badge()->color('gray')->formatStateUsing(fn (string $state) => config("peopleos.performance.goal_levels.{$state}", $state)),
-                TextColumn::make('title')->searchable()->wrap()->description(fn (Goal $record) => $record->parent ? '↳ '.$record->parent->title : null),
-                TextColumn::make('owner')->label('Owner')->state(fn (Goal $record) => $record->employee?->person?->full_name ?? $record->organisationNode?->auditLabel() ?? '—'),
+                // GO-4: the goal it is aligned to — by title only when that goal is private and this one is the viewer's.
+                TextColumn::make('title')->searchable()->wrap()->description(fn (Goal $record) => ($parent = GoalVisibility::parentTitleFor($record, auth()->user())) !== null ? '↳ '.$parent : null),
+                TextColumn::make('owner')->label('Owner')->state(fn (Goal $record) => $record->employee?->person?->full_name ?? $record->ownerEmployee?->person?->full_name ?? $record->organisationNode?->auditLabel() ?? '—')
+                    ->description(fn (Goal $record) => $record->employee_id === null && $record->ownerEmployee !== null ? $record->organisationNode?->auditLabel() : null),
                 TextColumn::make('type')->badge()->color('info')->formatStateUsing(fn (string $state) => PerformanceLabels::goalTypes()[$state] ?? $state),
                 TextColumn::make('perspective.name')->label(PerformanceLabels::get('perspective'))->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('cycle.name')->label('Cycle')->placeholder('—')->toggleable(),
                 TextColumn::make('weight')->suffix('%'),
                 TextColumn::make('progress')->suffix('%')->color(fn ($state) => $state >= 70 ? 'success' : ($state >= 40 ? 'warning' : 'danger')),
+                // GO-4 (D-GO7): the final achievement next to the system's, while overriding is switched on.
+                TextColumn::make('final_achievement')->label('Final achievement')->suffix('%')->toggleable()
+                    ->state(fn (Goal $record) => number_format($record->finalAchievement(), 2))
+                    ->description(fn (Goal $record) => $record->achievementOverridden() ? 'System: '.number_format($record->systemAchievement(), 2).' %' : null)
+                    ->visible(fn () => GoalVisibility::overrideEnabled()),
+                TextColumn::make('health')->label('Goal status')->badge()->toggleable()
+                    ->state(fn (Goal $record) => $record->healthLabel())
+                    ->color(fn (Goal $record) => match ($record->healthKey()) {
+                        'on_track' => 'success', 'behind' => 'warning', 'at_risk' => 'danger', default => 'gray'
+                    }),
+                TextColumn::make('visibility')->label('Visibility')->badge()->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(fn (string $state) => $state === 'private' ? 'Private' : 'Public')->color(fn (string $state) => $state === 'private' ? 'warning' : 'gray'),
+                TextColumn::make('tags')->label('Tags')->badge()->color('gray')->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('keyResults')->label(PerformanceLabels::custom('kpi') !== null ? PerformanceLabels::plural('kpi') : 'KRs')->state(fn (Goal $record) => $record->keyResults->count()),
                 TextColumn::make('due_date')->date()->placeholder('—'),
                 TextColumn::make('status')->badge()->color(fn (string $state) => match ($state) {
@@ -292,6 +360,23 @@ class GoalResource extends Resource
                 SelectFilter::make('level')->options(config('peopleos.performance.goal_levels')),
                 SelectFilter::make('status')->options(config('peopleos.performance.goal_statuses')),
                 SelectFilter::make('performance_cycle_id')->label('Cycle')->relationship('cycle', 'name'),
+                // HROne parity GO-4: owner person (organisation goals), goal status (health; closed = completed / cancelled),
+                // tags, visibility and overridden achievement.
+                SelectFilter::make('owner_employee_id')->label('Owner')->searchable()
+                    ->options(fn () => Employee::query()->with('person')->whereIn('id', self::restrictToViewer(Goal::query())->whereNotNull('owner_employee_id')->select('owner_employee_id'))
+                        ->orderBy('employee_code')->limit(1000)->get()->mapWithKeys(fn (Employee $e) => [$e->id => "{$e->employee_code} · {$e->person?->full_name}"])->all()),
+                SelectFilter::make('health')->label('Goal status')->options([...config('peopleos.performance.goal_health'), 'closed' => 'Closed'])
+                    ->query(fn (Builder $query, array $data) => self::whereHealth($query, $data['value'] ?? null)),
+                SelectFilter::make('tags')->label('Tags')->multiple()->options(fn () => self::tagOptions())
+                    ->query(fn (Builder $query, array $data) => $query->when(array_filter((array) ($data['values'] ?? [])), fn (Builder $q, array $tags) => $q->where(function (Builder $w) use ($tags) {
+                        foreach ($tags as $tag) {
+                            $w->orWhereJsonContains('tags', $tag);
+                        }
+                    }))),
+                SelectFilter::make('visibility')->label('Visibility')->options(['public' => 'Public', 'private' => 'Private']),
+                TernaryFilter::make('achievement_overridden')->label('Actual achievement entered')
+                    ->queries(true: fn (Builder $q) => $q->whereNotNull('achievement_override'), false: fn (Builder $q) => $q->whereNull('achievement_override'))
+                    ->visible(fn () => GoalVisibility::overrideEnabled()),
                 // HROne parity GO-1: one employee's goal sheet (the Goal sheets / Goal requests registers open the list on it);
                 // for HR and managers, whose list holds other people's goals. The options stay within the goals they may see.
                 SelectFilter::make('employee_id')->label('Employee')->searchable()
@@ -302,9 +387,22 @@ class GoalResource extends Resource
             ->recordActions([EditAction::make()->visible(fn (Goal $record) => ! $record->is_locked || auth()->user()->can('performance.manage')), ...PerformanceActions::forGoal()]);
     }
 
+    /** GO-4: goals of one health; "not started" includes open goals nobody has reported on yet, "closed" the closed ones. */
+    public static function whereHealth(Builder $query, ?string $health): Builder
+    {
+        $table = $query->getModel()->getTable();
+
+        return match (true) {
+            blank($health) => $query,
+            $health === 'closed' => $query->whereIn("{$table}.status", ['completed', 'cancelled']),
+            $health === 'not_started' => $query->whereNotIn("{$table}.status", ['completed', 'cancelled'])->where(fn (Builder $q) => $q->whereNull("{$table}.health")->orWhere("{$table}.health", 'not_started')),
+            default => $query->whereNotIn("{$table}.status", ['completed', 'cancelled'])->where("{$table}.health", $health),
+        };
+    }
+
     public static function getRelations(): array
     {
-        return [AuditHistoryRelationManager::class];
+        return [LinkedGoalsRelationManager::class, AuditHistoryRelationManager::class];
     }
 
     public static function getPages(): array

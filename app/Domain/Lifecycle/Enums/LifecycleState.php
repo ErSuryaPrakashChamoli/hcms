@@ -21,6 +21,10 @@ enum LifecycleState: string implements HasColor, HasLabel
     case NoticePeriod = 'notice_period';
     case Exited = 'exited';
     case Alumni = 'alumni';
+    // HROne parity WO-4 (owner decision WRK-1 / D-WO1): an upcoming joiner who did not join. An end state reached only from
+    // the pre-joining states, through UpcomingJoiners::markNotJoining (a reason from the not-joining reasons); the record is
+    // kept for retention and rehire checks and is treated like someone never employed.
+    case NotJoined = 'not_joined';
 
     public function getLabel(): string
     {
@@ -35,13 +39,19 @@ enum LifecycleState: string implements HasColor, HasLabel
             self::Confirmed, self::Active => 'success',
             self::OnLeave => 'gray',
             self::Suspended, self::NoticePeriod => 'danger',
-            self::Exited, self::Alumni => 'gray',
+            self::Exited, self::Alumni, self::NotJoined => 'gray',
         };
     }
 
     public function isEmployed(): bool
     {
-        return ! in_array($this, [self::PreEmployee, self::Preboarding, self::Exited, self::Alumni], true);
+        return ! in_array($this, [self::PreEmployee, self::Preboarding, self::Exited, self::Alumni, self::NotJoined], true);
+    }
+
+    /** HROne parity WO-4: someone who has not joined yet (an upcoming joiner); "Mark as not joining" is offered from these. */
+    public function isPreJoining(): bool
+    {
+        return in_array($this, [self::PreEmployee, self::Preboarding], true);
     }
 
     /**

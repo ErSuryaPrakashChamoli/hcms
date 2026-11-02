@@ -416,6 +416,8 @@ final class ProfileChanges
                 'address' => $fields[] = 'address',
                 'statutory' => array_push($fields, ...array_values(array_intersect_key(['pan' => 'statutory.pan', 'aadhaar_reference' => 'statutory.aadhaar', 'uan' => 'statutory.uan'], array_flip($changed)))),
                 'bank_account' => $op['record_id'] === null || in_array('account_number', $changed, true) ? $fields[] = 'bank_account' : null,
+                // HROne parity MS-4: a new passport / driving licence, or a changed number, needs its CA-4 linked document.
+                'identity_document' => $op['record_id'] === null || in_array('number', $changed, true) ? $fields[] = (string) ($op['values']['kind'] ?? '') : null,
                 default => null,
             };
         }

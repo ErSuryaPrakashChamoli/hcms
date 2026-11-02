@@ -19,6 +19,7 @@ use App\Domain\Development\Models\DevelopmentPlan;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
+use App\Domain\Identity\Enums\UserKind;
 use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Models\LearningCertificate;
 use App\Domain\Learning\Models\LearningEnrolment;
@@ -33,7 +34,9 @@ use App\Domain\Lifecycle\Services\LifecycleEngine;
 use App\Domain\Onboarding\Models\OnboardingPlan;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\Payslip;
+use App\Domain\People\Models\InsurancePolicy;
 use App\Domain\People\Models\Person;
+use App\Domain\People\Support\PhoneNumbers;
 use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\FeedbackEntry;
 use App\Domain\Performance\Models\Goal;
@@ -61,7 +64,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * effective-dated EmployeePosition history; reporting lines are ReportingRelationships.
  */
 #[UseFactory(EmployeeFactory::class)]
-#[Fillable(['tenant_id', 'person_id', 'user_id', 'employee_code', 'lifecycle_state', 'source', 'external_reference', 'joining_date', 'expected_joining_date', 'offer_accepted_at', 'probation_end_date', 'confirmation_date', 'exit_date', 'work_email', 'work_phone', 'metadata'])]
+#[Fillable(['tenant_id', 'person_id', 'user_id', 'employee_code', 'device_user_id', 'lifecycle_state', 'source', 'external_reference', 'joining_date', 'expected_joining_date', 'offer_accepted_at', 'probation_end_date', 'confirmation_date', 'exit_date', 'work_email', 'work_phone_country_code', 'work_phone', 'metadata'])]
 class Employee extends Model
 {
     use Auditable, BelongsToTenant, HasCustomFields, HasFactory;
@@ -75,6 +78,22 @@ class Employee extends Model
         static::updating(function (self $employee): void {
             if ($employee->isDirty('lifecycle_state') && ! LifecycleEngine::isMutating()) {
                 throw InvalidLifecycleTransitionException::directMutation($employee);
+            }
+        });
+
+        // HROne parity MS-4: the work phone in E.164 when it has a country code (as typed without one, as before); a blank
+        // device user id is no id (several employees may have none; an id is unique per tenant).
+        static::saving(function (self $employee): void {
+            PhoneNumbers::normaliseOn($employee, 'work_phone', 'work_phone_country_code');
+            $device = $employee->getAttributes()['device_user_id'] ?? null;
+            if ($device !== null && $employee->isDirty('device_user_id')) {
+                $employee->device_user_id = trim((string) $device) === '' ? null : trim((string) $device);
+            }
+            // HROne parity WO-15 (D-WO2): a business partner's sign-in never belongs to an employee.
+            $userId = $employee->getAttributes()['user_id'] ?? null;
+            if ($userId !== null && $employee->isDirty('user_id')
+                && User::query()->whereKey($userId)->where('kind', UserKind::Partner->value)->exists()) {
+                throw new \RuntimeException('A business partner\'s sign-in cannot be linked to an employee.');
             }
         });
     }
@@ -154,6 +173,12 @@ class Employee extends Model
     public function bankAccounts(): HasMany
     {
         return $this->hasMany(EmployeeBankAccount::class)->orderByDesc('is_primary');
+    }
+
+    /** HROne parity MS-5: the health insurance policies the employee is covered by (written only through InsuranceRecords). */
+    public function insurancePolicies(): HasMany
+    {
+        return $this->hasMany(InsurancePolicy::class);
     }
 
     public function lifecycleTransitions(): HasMany

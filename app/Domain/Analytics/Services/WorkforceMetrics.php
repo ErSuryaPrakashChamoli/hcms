@@ -89,7 +89,7 @@ final class WorkforceMetrics
         }
         [$value, $format, $hint] = match ($key) {
             'headcount' => [$this->headcount(), 'number', null],
-            'joiners_30d' => [Employee::query()->whereDate('joining_date', '>=', now()->subDays(30))->whereDate('joining_date', '<=', now())->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])->count(), 'number', null],
+            'joiners_30d' => [Employee::query()->whereDate('joining_date', '>=', now()->subDays(30))->whereDate('joining_date', '<=', now())->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding', 'not_joined'])->count(), 'number', null],
             'exits_30d' => [ExitCase::query()->where('status', 'completed')->whereDate('last_working_day', '>=', now()->subDays(30))->whereDate('last_working_day', '<=', now())->count(), 'number', null],
             'attrition_rate' => [$this->attritionRate(), 'percent', 'Exits in the last 12 months ÷ average headcount'],
             'absenteeism_rate' => [$this->absenteeismRate(), 'percent', 'Absent days ÷ scheduled working days, last 30 days'],
@@ -163,7 +163,7 @@ final class WorkforceMetrics
             return $this->headcounts[$day];
         }
         $count = Employee::query()
-            ->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])
+            ->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding', 'not_joined'])
             ->where(fn ($q) => $q->whereNull('joining_date')->orWhereDate('joining_date', '<=', $day))
             ->where(fn ($q) => $q->whereNull('exit_date')->orWhereDate('exit_date', '>=', $day)->orWhere(fn ($s) => $s->whereDate('exit_date', '<', $day)->whereNotIn('lifecycle_state', ['exited', 'alumni'])))
             ->count();
@@ -200,7 +200,7 @@ final class WorkforceMetrics
                 $columns[] = "SUM(CASE WHEN (joining_date IS NULL OR DATE(joining_date) <= ?) AND (exit_date IS NULL OR DATE(exit_date) >= ? OR (DATE(exit_date) < ? AND lifecycle_state NOT IN ('exited', 'alumni'))) THEN 1 ELSE 0 END) AS h{$i}";
                 array_push($bindings, $day, $day, $day);
             }
-            $row = (array) Employee::query()->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])
+            $row = (array) Employee::query()->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding', 'not_joined'])
                 ->selectRaw(implode(', ', $columns), $bindings)->toBase()->first();
             foreach ($missing as $i => $day) {
                 $this->headcounts[$day] = (int) ($row["h{$i}"] ?? 0);
@@ -230,7 +230,7 @@ final class WorkforceMetrics
             $labels[] = $month->format('M y');
             $values[] = (float) match ($key) {
                 'headcount' => $this->headcount($month->copy()->endOfMonth()),
-                'joiners' => Employee::query()->whereDate('joining_date', '>=', $month)->whereDate('joining_date', '<=', $month->copy()->endOfMonth())->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])->count(),
+                'joiners' => Employee::query()->whereDate('joining_date', '>=', $month)->whereDate('joining_date', '<=', $month->copy()->endOfMonth())->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding', 'not_joined'])->count(),
                 'exits' => ExitCase::query()->where('status', 'completed')->whereDate('last_working_day', '>=', $month)->whereDate('last_working_day', '<=', $month->copy()->endOfMonth())->count(),
                 'people_cost' => PayrollRun::query()->whereIn('status', ['finalized', 'paid'])->whereHas('period', fn ($q) => $q->where('year', $month->year)->where('month', $month->month))->get()->sum(fn ($r) => $r->total('employer_cost')),
                 'absenteeism' => $this->absenteeismRate($month, $month->copy()->endOfMonth()) ?? 0,

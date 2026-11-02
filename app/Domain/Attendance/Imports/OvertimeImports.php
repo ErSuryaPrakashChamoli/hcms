@@ -4,6 +4,7 @@ namespace App\Domain\Attendance\Imports;
 
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Attendance\Models\TimeOfficeRequest;
+use App\Domain\Attendance\Services\AttendanceMonthCloses;
 use App\Domain\Attendance\Services\TimeOfficeRequests;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImportRow;
@@ -15,8 +16,11 @@ use App\Domain\Platform\Services\SettingsRepository;
 /**
  * HROne parity HP-1b: approved overtime from a file. Each row becomes an overtime claim approved in the importer's
  * name (the day's approved overtime), so the minutes stay traceable to a request and reverse with it.
+ *
+ * Data import DI-35: not final — OvertimeArrearImports ("Override previous month overtime") is this upload for days of
+ * earlier attendance months.
  */
-final class OvertimeImports extends RowImports
+class OvertimeImports extends RowImports
 {
     public const TYPE = 'overtime_hours';
 
@@ -68,6 +72,10 @@ final class OvertimeImports extends RowImports
             && AttendanceRecord::query()->where('employee_id', $employeeId)->whereDate('date', $date)->where('is_locked', true)->exists()) {
             return ['action' => 'error', 'errors' => ['The day is locked for payroll.'], 'employee_id' => $employeeId];
         }
+        // HROne parity TX-3: a day of a closed attendance month, like a locked day.
+        if (! (bool) app(SettingsRepository::class)->get('attendance.allow_corrections_after_lock', false) && app(AttendanceMonthCloses::class)->isClosedDay((int) $employeeId, $date)) {
+            return ['action' => 'error', 'errors' => ['The day is in a closed attendance month.'], 'employee_id' => $employeeId];
+        }
         if (TimeOfficeRequest::query()->where('employee_id', $employeeId)->where('type', 'overtime')->whereIn('status', ['pending', ...TimeOfficeRequest::EFFECTIVE])->whereDate('from_date', $date)->exists()) {
             return ['action' => 'skip', 'match' => ['reason' => 'An overtime claim for this day is already on file.'], 'employee_id' => $employeeId];
         }
@@ -115,6 +123,6 @@ final class OvertimeImports extends RowImports
     {
         $code = Employee::query()->orderBy('id')->value('employee_code') ?? 'EMP0001';
 
-        return [[$code, now()->subDay()->toDateString(), '90', '', 'Month-end close']];
+        return [[$code, now()->subDay()->toDateString(), '90', '', 'Month-end close'], [$code, now()->subDays(2)->toDateString(), '', '01:30', 'Stock count']];
     }
 }

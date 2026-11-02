@@ -83,6 +83,42 @@ final class Documents
         return $document;
     }
 
+    /**
+     * HROne parity WO-14 ("Share letters / documents"): a ready-made file the organisation shares with the employee. The
+     * same server-side file checks as any upload; stored as the organisation's own document — verified on sharing (nobody
+     * verifies what HR itself shared), its own version of the type, never replacing (archiving) the employee's earlier
+     * documents of that type — and no `document.uploaded` notification (DocumentShares tells the employee). Unpublishing
+     * archives it (DocumentShares::unpublishItem); the file is kept.
+     */
+    public function share(Employee $employee, UploadedFile $file, DocumentType $type, string $title, ?string $reason = null, ?string $originalName = null): EmployeeDocument
+    {
+        $disk = config('peopleos.documents.disk');
+        $name = $originalName ?? $file->getClientOriginalName();
+        $sniffed = FileSafety::sniffFile((string) $file->getRealPath());
+        $extension = FileSafety::assertAllowed($name, (int) $file->getSize(), $sniffed ?? $file->getMimeType());
+        $path = $file->storeAs("tenants/{$employee->tenant_id}/employees/{$employee->id}", Str::ulid().'.'.$extension, $disk);
+
+        $document = new EmployeeDocument([
+            'employee_id' => $employee->id,
+            'document_type_id' => $type->id,
+            'title' => mb_substr(trim($title), 0, 255),
+            'disk' => $disk,
+            'path' => $path,
+            'original_name' => mb_substr($name, 0, 255),
+            'mime_type' => $sniffed ?? $file->getClientMimeType(),
+            'size_bytes' => $file->getSize() ?: 0,
+            'version' => (int) EmployeeDocument::query()->where('employee_id', $employee->id)->where('document_type_id', $type->id)->max('version') + 1,
+            'status' => 'verified',
+            'issued_on' => now()->toDateString(),
+            'uploaded_by' => auth()->id(),
+            'verified_at' => now(),
+            'review_note' => 'Shared by the organisation',
+        ]);
+        $document->withAuditReason($reason)->save();
+
+        return $document;
+    }
+
     public function review(EmployeeDocument $document, bool $verified, ?string $note = null, ?User $actor = null): EmployeeDocument
     {
         $actor ??= auth()->user();
@@ -128,13 +164,15 @@ final class Documents
     /**
      * HROne parity MS-2 ("Download all"): one ZIP of the given documents, built on the fly in a temporary file that the
      * caller sends and removes. Each document is checked again (the viewer may open it, it belongs to $employee and is
-     * current) and each file put in the ZIP is one DOWNLOAD audit entry (purpose download_all). Null when nothing can be
-     * included; refused above BUNDLE_MAX_BYTES.
+     * current) and each file put in the ZIP is one DOWNLOAD audit entry (purpose download_all; HROne parity WO-4: another
+     * purpose, with extra audit metadata, for a prepared download). Null when nothing can be included; refused above
+     * BUNDLE_MAX_BYTES.
      *
      * @param  iterable<EmployeeDocument>  $documents
+     * @param  array<string, mixed>  $metadata
      * @return array{path: string, count: int}|null
      */
-    public function bundle(User $viewer, Employee $employee, iterable $documents): ?array
+    public function bundle(User $viewer, Employee $employee, iterable $documents, string $purpose = 'download_all', array $metadata = []): ?array
     {
         $chosen = collect($documents)->filter(fn (EmployeeDocument $d) => (int) $d->employee_id === (int) $employee->getKey() && $d->status !== 'archived' && $viewer->can('view', $d))->values();
         if ($chosen->isEmpty()) {
@@ -165,8 +203,8 @@ final class Documents
             // A file on a local disk is read by ZipArchive when the archive is written (not held in memory).
             $local = rescue(fn () => $disk->path($document->path), null, false);
             is_string($local) && is_file($local) ? $zip->addFile($local, $name) : $zip->addFromString($name, (string) $disk->get($document->path));
-            $this->audit->record(AuditAction::Download, 'documents', $document, reason: 'download_all',
-                metadata: ['purpose' => 'download_all', 'employee_id' => $document->employee_id, 'sensitive' => $document->isSensitive()]);
+            $this->audit->record(AuditAction::Download, 'documents', $document, reason: $purpose,
+                metadata: ['purpose' => $purpose, 'employee_id' => $document->employee_id, 'sensitive' => $document->isSensitive()] + $metadata, actor: $viewer);
             $count++;
         }
         $zip->close();

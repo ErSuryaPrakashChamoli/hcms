@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Employees\RelationManagers;
 
 use App\Domain\People\Actions\ChangeEmergencyContactAction;
+use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Support\ProfileChangeActions;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -24,7 +25,8 @@ class EmergencyContactsRelationManager extends PersonSatelliteRelationManager
         return $schema->columns(2)->components([
             TextInput::make('name')->required()->maxLength(255),
             TextInput::make('relation')->maxLength(64),
-            TextInput::make('phone')->tel()->required()->maxLength(32),
+            // HROne parity MS-4: the phone's country code (E.164 when given; as typed without one).
+            ...EmployeeForm::phoneFields('phone', 'phone_country_code', 'Phone', required: true),
             TextInput::make('alternate_phone')->tel()->maxLength(32),
             TextInput::make('email')->email()->maxLength(255),
             TextInput::make('priority')->numeric()->minValue(1)->maxValue(9)->default(1),

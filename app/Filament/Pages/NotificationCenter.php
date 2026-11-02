@@ -5,6 +5,8 @@ namespace App\Filament\Pages;
 use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Communication\Models\Announcement;
 use App\Domain\Compensation\Models\CompensationChange;
+use App\Domain\Documents\Models\DocumentShareBatch;
+use App\Domain\Documents\Models\DocumentShareItem;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
@@ -14,6 +16,7 @@ use App\Domain\Experience\Support\NotificationCategories;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Letters\Models\Letter;
 use App\Domain\Payroll\Models\Payslip;
+use App\Domain\ProductFeedback\Models\ProductIdea;
 use App\Domain\ServiceDesk\Models\Ticket;
 use App\Domain\ServiceDesk\Services\CaseAccess;
 use App\Domain\Workflow\Models\RequestReturn;
@@ -21,10 +24,12 @@ use App\Domain\Workflow\Models\TaskComment;
 use App\Domain\Workflow\Models\WorkflowInstance;
 use App\Domain\Workflow\Models\WorkflowTask;
 use App\Filament\Resources\CompensationChanges\CompensationChangeResource;
+use App\Filament\Resources\DocumentShareBatches\DocumentShareBatchResource;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\ExitCases\ExitCaseResource;
 use App\Filament\Resources\Letters\LetterResource;
 use App\Filament\Resources\Payslips\PayslipResource;
+use App\Filament\Resources\ProductIdeas\ProductIdeaResource;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
@@ -239,6 +244,12 @@ class NotificationCenter extends Page
                 $record instanceof RequestReturn => (int) $record->requester_id === (int) $user->id ? TaskInbox::getUrl(['tab' => 'returned']) : (Approvals::canAccess() ? Approvals::getUrl() : null),
                 $record instanceof TaskComment => RequestDiscussion::getUrl(['comment' => $record->id]),
                 $record instanceof EmployeeImport => RecentUploads::urlFor($record),
+                // HROne parity WO-14: a document shared with me opens My HR → Documents; a share I ran opens the share.
+                $record instanceof DocumentShareItem => MyHr::canAccess() && (int) MyHr::me()?->getKey() === (int) $record->employee_id ? MyHr::getUrl(['tab' => 'documents'])
+                    : ($user->can('view', $record) ? DocumentShareBatchResource::getUrl('view', ['record' => $record->document_share_batch_id]) : null),
+                $record instanceof DocumentShareBatch => DocumentShareBatchResource::canAccess() ? DocumentShareBatchResource::getUrl('view', ['record' => $record]) : null,
+                // HROne parity AC-3: Markedge's answer to a product idea opens the idea.
+                $record instanceof ProductIdea => $user->can('view', $record) ? ProductIdeaResource::getUrl('view', ['record' => $record]) : null,
                 default => null,
             };
         } catch (Throwable) {

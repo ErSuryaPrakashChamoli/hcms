@@ -5,13 +5,17 @@ namespace App\Filament\Resources\CompensationCycles;
 use App\Domain\Compensation\Models\CompensationBudget;
 use App\Domain\Compensation\Models\CompensationCycle;
 use App\Domain\Compensation\Services\CompensationCycles;
+use App\Domain\Compensation\Services\IncrementCalculator;
+use App\Domain\Compensation\Services\IncrementPlanSharing;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Performance\Models\PerformanceCycle;
+use App\Filament\Pages\IncrementCalculator as IncrementCalculatorPage;
 use App\Filament\Resources\CompensationCycles\Pages\ManageCompensationCycles;
 use App\Filament\Resources\CompensationCycles\Pages\ViewCompensationCycle;
 use App\Filament\Resources\CompensationCycles\RelationManagers\LinesRelationManager;
 use App\Filament\Support\CompensationActions;
+use App\Filament\Support\IncrementCalculatorWizard;
 use App\Filament\Support\TalentActions;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -23,10 +27,12 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 /**
@@ -50,6 +56,10 @@ class CompensationCycleResource extends Resource
     public static function headerActions(): array
     {
         return [
+            // HROne parity PO-17: the increment calculator's wizard (bands × ratings, basis, proration, population).
+            Action::make('incrementCalculator')->label('Increment calculator')->icon(Heroicon::OutlinedCalculator)->color('gray')
+                ->visible(fn () => IncrementCalculatorPage::canAccess())
+                ->url(fn () => IncrementCalculatorPage::getUrl(['action' => 'create'])),
             Action::make('create')->label('New cycle')->icon(Heroicon::OutlinedPlus)->visible(fn () => auth()->user()->can('compensation.cycles'))
                 ->schema([
                     TextInput::make('code')->required()->maxLength(40),
@@ -101,6 +111,10 @@ class CompensationCycleResource extends Resource
                 ->visible(fn (CompensationCycle $record) => in_array($record->status, ['draft', 'submitted', 'under_review', 'approved'], true) && ((int) $record->prepared_by === (int) auth()->id() || auth()->user()->can('compensation.approve')))
                 ->schema([Textarea::make('reason')->required()])
                 ->action(fn (CompensationCycle $record, array $data) => CompensationActions::run(fn () => $service()->cancel($record, $user(), $data['reason']), 'Cycle cancelled')),
+            // HROne parity PO-17: share with managers, clone, the employees skipped.
+            IncrementCalculatorWizard::shareAction(),
+            IncrementCalculatorWizard::cloneAction(),
+            IncrementCalculatorWizard::errorFileAction(),
         ];
     }
 
@@ -111,9 +125,59 @@ class CompensationCycleResource extends Resource
             TextEntry::make('cycle_type')->formatStateUsing(fn (string $state) => config("peopleos.compensation.cycle_types.{$state}.label", $state)),
             TextEntry::make('effective_from')->date(), TextEntry::make('employee_count')->label('Lines'),
             TextEntry::make('default_increase_percent')->label('Default increase %'),
-            TextEntry::make('rating_increase_percent')->label('By rating')->state(fn (CompensationCycle $record) => collect($record->rating_increase_percent ?? [])->map(fn ($v, $k) => "{$k}: {$v}%")->implode(', ') ?: '—'),
+            TextEntry::make('rating_increase_percent')->label('By rating')->state(fn (CompensationCycle $record) => $record->hasGrid() ? 'CTC band × rating grid (below)' : (collect($record->rating_increase_percent ?? [])->map(fn ($v, $k) => "{$k}: {$v}%")->implode(', ') ?: '—')),
             TextEntry::make('operation_id')->label('Operation')->placeholder('—'),
+            // HROne parity PO-17: the increment calculator's rules and summary.
+            Section::make('Increment calculator')->columnSpanFull()->columns(3)->visible(fn (CompensationCycle $record) => ! $record->isUpload())->schema([
+                TextEntry::make('increment_basis')->label('Basis')->formatStateUsing(fn (?string $state) => CompensationCycle::BASES[$state ?? 'ctc_percent'] ?? $state)
+                    ->suffix(fn (CompensationCycle $record) => $record->isAmountBasis() && $record->default_increase_amount !== null ? ' · default '.number_format((float) $record->default_increase_amount, 2) : null),
+                TextEntry::make('prorate_on_tenure')->label('Tenure proration')->state(fn (CompensationCycle $record) => $record->prorate_on_tenure
+                    ? (CompensationCycle::PRORATION_BASES[$record->proration_basis] ?? $record->proration_basis).' up to '.$record->proration_cutoff?->format('j M Y').'; full increment at '.$record->proration_full_months.' months'
+                    : 'No'),
+                TextEntry::make('population')->label('Population')->state(fn (CompensationCycle $record) => self::populationLine($record)),
+                TextEntry::make('grid')->label('CTC band × rating grid')->columnSpanFull()->visible(fn (CompensationCycle $record) => $record->hasGrid())
+                    ->state(fn (CompensationCycle $record) => new HtmlString(self::gridHtml($record))),
+                TextEntry::make('summary')->label('Summary')->columnSpanFull()->visible(fn (CompensationCycle $record) => $record->employee_count > 0 || count((array) ($record->population_errors ?? [])) > 0)
+                    ->state(fn (CompensationCycle $record) => new HtmlString(IncrementCalculatorWizard::summaryHtml(app(IncrementCalculator::class)->summary($record)))),
+                TextEntry::make('shared_with')->label('Shared with')->state(fn (CompensationCycle $record) => app(IncrementPlanSharing::class)->sharesOf($record)->map(fn ($s) => $s->user?->name)->filter()->implode(', ') ?: '—'),
+                TextEntry::make('clonedFrom.code')->label('Cloned from')->placeholder('—'),
+            ]),
         ]);
+    }
+
+    /** HROne parity PO-17: who the population filters keep. */
+    public static function populationLine(CompensationCycle $record): string
+    {
+        $population = (array) ($record->population ?? []);
+        $parts = [];
+        foreach ((array) ($population['organisation'] ?? []) as $column => $ids) {
+            $parts[] = str_replace('_id', '', $column).': '.count((array) $ids);
+        }
+        if (($population['codes'] ?? []) !== []) {
+            $parts[] = count($population['codes']).' pasted code(s)';
+        }
+        if (($population['exclude_codes'] ?? []) !== []) {
+            $parts[] = count($population['exclude_codes']).' code(s) left out';
+        }
+
+        return $parts === [] ? 'Everyone of the company (and unit) taking part in cycles' : implode(' · ', str_replace('_', ' ', $parts));
+    }
+
+    /** HROne parity PO-17: the grid as a small table. */
+    public static function gridHtml(CompensationCycle $record): string
+    {
+        $unit = $record->isAmountBasis() ? '' : '%';
+        $rows = '';
+        foreach ((array) ($record->rating_increase_percent['bands'] ?? []) as $band) {
+            $range = number_format((float) $band['ctc_from'], 2).($band['ctc_to'] !== null ? ' – '.number_format((float) $band['ctc_to'], 2) : ' and above');
+            $cells = collect($band['ratings'])->map(fn ($r) => 'rating '.$r['from'].'–'.$r['to'].': '.$r['value'].$unit);
+            if ($band['value'] !== null) {
+                $cells->push('any other rating: '.$band['value'].$unit);
+            }
+            $rows .= '<tr><td class="pr-4 tabular-nums">'.e($range).'</td><td>'.e($cells->implode(' · ')).'</td></tr>';
+        }
+
+        return '<table class="text-sm" data-increment-grid><thead><tr><th class="pr-4 text-left">Annual CTC</th><th class="text-left">Value</th></tr></thead><tbody>'.$rows.'</tbody></table>';
     }
 
     public static function table(Table $table): Table

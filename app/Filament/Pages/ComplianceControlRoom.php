@@ -64,6 +64,15 @@ class ComplianceControlRoom extends Page implements HasTable
         return $user !== null && ($user->hasPermission('compliance.returns.view') || $user->hasPermission('compliance.view'));
     }
 
+    /** HROne parity PO-13: the challan grid (returns and payments by month) is one step away. */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('challans')->label('Challans')->icon(Heroicon::OutlinedBanknotes)->color('gray')
+                ->visible(fn () => StatutoryChallansPage::canAccess())->url(fn () => StatutoryChallansPage::getUrl()),
+        ];
+    }
+
     public function getSubheading(): ?string
     {
         return (ComplianceRules::enforced() ? 'Verified-rule enforcement is ON.' : 'Verified-rule enforcement is OFF (development / test only; always on in production).')

@@ -11,7 +11,9 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +21,8 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * The approvals of a submitted report: one per workflow group (and one for exceptional expenses). Approvers in scope
  * approve line by line (each line up to its claimable amount; 0 rejects the line), reject, or return the report.
+ * HROne parity XO-3 (D-XO7): with expense.review.suspect_button on, a line may be marked "Suspected" (a note is required):
+ * it is held out — approved at 0 for now — and decided later with "Clear suspicion" on the expenses.
  */
 class PartsRelationManager extends RelationManager
 {
@@ -58,12 +62,15 @@ class PartsRelationManager extends RelationManager
                             TextInput::make('line')->label('Expense')->disabled()->dehydrated(false)->columnSpan(2),
                             TextInput::make('claimable')->label('Claimable')->disabled()->dehydrated(false),
                             TextInput::make('amount')->label('Approve')->numeric()->minValue(0)->required(),
-                            TextInput::make('note')->label('Note for this expense')->maxLength(500)->columnSpanFull(),
+                            TextInput::make('note')->label('Note for this expense')->maxLength(500)->columnSpanFull()
+                                ->required(fn (Get $get) => (bool) $get('suspected')),
+                            Toggle::make('suspected')->label('Suspected — hold it out (approved at 0 for now) and decide it later')->live()->columnSpanFull()
+                                ->visible(fn () => app(ExpenseReports::class)->suspicionOffered()),
                         ]),
                         Textarea::make('note')->label('Note')->maxLength(500),
                     ])
                     ->action(fn (ExpenseReportPart $record, array $data) => ExpenseReportResource::run(fn () => app(ExpenseReports::class)->approvePart($record,
-                        collect($data['lines'] ?? [])->mapWithKeys(fn (array $l) => [(int) $l['id'] => ['amount' => $l['amount'] ?? null, 'note' => $l['note'] ?? null]])->all(), $data['note'] ?? null), 'Decision recorded')),
+                        collect($data['lines'] ?? [])->mapWithKeys(fn (array $l) => [(int) $l['id'] => ['amount' => $l['amount'] ?? null, 'note' => $l['note'] ?? null, 'suspected' => (bool) ($l['suspected'] ?? false)]])->all(), $data['note'] ?? null), 'Decision recorded')),
                 Action::make('reject')->icon('heroicon-m-x-mark')->color('danger')->visible($decidable)
                     ->schema([Textarea::make('note')->label('Reason')->required()->maxLength(500)])
                     ->action(fn (ExpenseReportPart $record, array $data) => ExpenseReportResource::run(fn () => app(ExpenseReports::class)->rejectPart($record, $data['note']), 'Expenses rejected')),

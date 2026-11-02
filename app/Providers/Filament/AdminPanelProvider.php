@@ -10,6 +10,7 @@ use App\Domain\Platform\Services\PlatformTenantAccess;
 use App\Filament\Auth\AcceptInvitation;
 use App\Filament\Auth\ChangeExpiredPassword;
 use App\Filament\Auth\ConfirmMultiFactorAuthentication;
+use App\Filament\Auth\ConfirmPayPassword;
 use App\Filament\Auth\EditProfile;
 use App\Filament\Auth\Login;
 use App\Filament\Auth\RequestPasswordReset;
@@ -48,10 +49,12 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationBuilder;
 use Filament\Navigation\NavigationGroup;
+use Filament\Pages\Page;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
+use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -98,8 +101,10 @@ class AdminPanelProvider extends PanelProvider
                 });
                 // HROne setup parity: an expired password is replaced here before anything else (EnforceAccountSecurity).
                 Route::get('password/expired', ChangeExpiredPassword::class)->name('auth.password-expired');
+                // HROne parity MS-9: the password asked again before the employee's own pay pages (when the organisation asks).
+                Route::get('pay/confirm-password', ConfirmPayPassword::class)->middleware('throttle:30,1')->name('auth.confirm-pay-password');
             })
-            ->livewireComponents([SetUpRequiredMultiFactorAuthentication::class, ConfirmMultiFactorAuthentication::class, ChangeExpiredPassword::class, AcceptInvitation::class,
+            ->livewireComponents([SetUpRequiredMultiFactorAuthentication::class, ConfirmMultiFactorAuthentication::class, ChangeExpiredPassword::class, ConfirmPayPassword::class, AcceptInvitation::class,
                 SignupStart::class, SignupConfirm::class, SignupApplicationPage::class])
             ->brandName('PeopleOS')
             ->brandLogo(fn () => view('filament.shell.brand'))
@@ -158,6 +163,11 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.shell.body-end'))
             // UX.15 closure: the PeopleOS module experience. Lists get their context and lens above the table; record
             // forms get the review step. Both render inside the page component, from the page's own state.
+            // On a module's own page the area bar names it, so the header's buttons sit in the table's toolbar, between the
+            // search and the filters (CSS hides them in the header once they are there).
+            ->renderHook(TablesRenderHook::TOOLBAR_SEARCH_AFTER, fn () => ($page = Livewire::current()) instanceof Page && auth()->user() !== null && app(ExperienceNavigation::class)->onAreaLanding(auth()->user())
+                ? view('filament.shell.toolbar-actions', ['actions' => $page->getCachedHeaderActions()])
+                : '')
             ->renderHook(PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_BEFORE, fn () => ($page = Livewire::current()) !== null && method_exists($page, 'moduleContextView') ? $page->moduleContextView() : '')
             // A record form followed as a wizard has the review as its last step instead.
             ->renderHook(PanelsRenderHook::PAGE_END, fn () => (($page = Livewire::current()) instanceof PeopleEditRecord || $page instanceof PeopleCreateRecord) && ! $page->isFormWizard()

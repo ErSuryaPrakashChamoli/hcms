@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\DB;
 /** Authoritative person update: only person-owned facts, audited with a reason (contract §3). */
 final class UpdatePersonAction
 {
-    public const FIELDS = ['first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'birthday_month', 'birthday_day', 'birthday_shared', 'wedding_anniversary_month', 'wedding_anniversary_day', 'wedding_anniversary_shared', 'directory_hidden', 'gender', 'marital_status', 'nationality', 'blood_group', 'personal_email', 'personal_phone', 'photo_path', 'metadata'];
+    public const FIELDS = ['first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'birthday_month', 'birthday_day', 'birthday_shared', 'wedding_anniversary_month', 'wedding_anniversary_day', 'wedding_anniversary_shared', 'directory_hidden', 'gender', 'marital_status', 'nationality', 'blood_group', 'personal_email', 'personal_phone', 'photo_path', 'metadata',
+        // HROne parity MS-4: salutation, "I am a fresher", the personal phone's country code.
+        'salutation', 'is_fresher', 'personal_phone_country_code'];
 
     /**
      * @param  array<string, mixed>  $attributes

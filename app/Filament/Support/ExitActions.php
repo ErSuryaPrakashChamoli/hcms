@@ -7,10 +7,12 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\WorkforceReason;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\ExitClearance;
+use App\Domain\Exit\Models\ExitWithdrawalRequest;
 use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Exit\Policies\ExitCasePolicy;
 use App\Domain\Exit\Services\ExitInterviews;
 use App\Domain\Exit\Services\Exits;
+use App\Domain\Exit\Services\ExitWithdrawals;
 use App\Domain\Exit\Services\FinalSettlements;
 use App\Domain\Feedback\Services\FeedbackRequests;
 use App\Domain\Identity\Scopes\AccessScope;
@@ -91,6 +93,8 @@ final class ExitActions
         $own = fn (ExitCase $record) => ExitCasePolicy::isOwn(auth()->user(), $record);
 
         return [
+            // HROne parity WO-11: accept / reject leads when the organisation asks resignations to be accepted (hidden otherwise).
+            SeparationActions::decide(),
             Action::make('startClearance')->label('Start clearance')->icon(Heroicon::OutlinedClipboardDocumentCheck)->color('primary')
                 ->visible(fn (ExitCase $record) => in_array($record->status, ['initiated', 'notice'], true) && $manage())
                 ->requiresConfirmation()
@@ -116,14 +120,20 @@ final class ExitActions
                     KeyValue::make('extra')->label('Extra variables')->keyLabel('Variable')->valueLabel('Value')->helperText('e.g. purpose → visa application'),
                 ])
                 ->action(fn (ExitCase $record, array $data) => ServiceDeskActions::run(fn () => app(Letters::class)->generate(LetterTemplate::query()->findOrFail($data['template_id']), $record->employee, $data['extra'] ?? [], auth()->user(), $record), fn ($l) => "Letter {$l->number} ".($l->status === 'approved' ? 'ready to issue' : 'sent for approval'))),
+            // HROne parity WO-11 (D-WO8): withdrawn at once (as before) unless withdrawals need approval — then a request waits.
             Action::make('withdraw')->label('Withdraw resignation')->icon(Heroicon::OutlinedArrowUturnLeft)->color('warning')
-                ->visible(fn (ExitCase $record) => $record->type === 'resignation' && in_array($record->status, ['initiated', 'notice', 'clearance'], true) && ($manage() || $own($record)))
+                ->visible(fn (ExitCase $record) => $record->type === 'resignation' && in_array($record->status, ['initiated', 'notice', 'clearance'], true) && ($manage() || $own($record))
+                    && $record->withdrawalRequests()->where('status', 'pending')->doesntExist())
                 ->requiresConfirmation()
+                ->modalDescription(fn () => app(ExitWithdrawals::class)->requiresApproval() ? 'Your request goes to HR for approval; until it is approved the exit goes on.' : null)
                 ->schema([Textarea::make('reason')->required()->maxLength(500)])
-                ->action(fn (ExitCase $record, array $data) => ServiceDeskActions::run(fn () => app(Exits::class)->withdraw($record, $data['reason'], auth()->user()), 'Resignation withdrawn; employee is active again')),
+                ->action(fn (ExitCase $record, array $data) => ServiceDeskActions::run(fn () => app(ExitWithdrawals::class)->request($record, auth()->user(), $data['reason']),
+                    fn ($result) => $result instanceof ExitWithdrawalRequest ? 'Withdrawal requested; it waits for approval' : 'Resignation withdrawn; employee is active again')),
             Action::make('complete')->label('Complete exit')->icon(Heroicon::OutlinedCheckBadge)->color('success')
                 ->visible(fn (ExitCase $record) => $record->isOpen() && $manage())
-                ->requiresConfirmation()->modalDescription('Marks the employee as exited on the last working day and disables their login. Requires all clearances and an approved settlement.')
+                ->requiresConfirmation()->modalDescription(fn (ExitCase $record) => 'Marks the employee as exited on the last working day and disables their login. Requires all clearances and an approved settlement.'
+                    // HROne parity WO-11 (D-WO10): roles and team still to hand over are a warning, never a block.
+                    .(($warning = SeparationActions::completionWarning($record)) !== null ? ' '.$warning : ''))
                 ->schema([Checkbox::make('skip_settlement')->label('Complete without an approved settlement (e.g. death, no dues)')])
                 ->action(fn (ExitCase $record, array $data) => ServiceDeskActions::run(fn () => app(Exits::class)->complete($record, auth()->user(), ! ($data['skip_settlement'] ?? false)), 'Exit completed')),
             Action::make('alumni')->label('Create alumni profile')->icon(Heroicon::OutlinedUserGroup)->color('primary')
@@ -135,6 +145,8 @@ final class ExitActions
                     Toggle::make('consent_to_contact')->label('Consented to be contacted')->default(true),
                 ])
                 ->action(fn (ExitCase $record, array $data) => ServiceDeskActions::run(fn () => app(Exits::class)->createAlumni($record, auth()->user(), array_filter($data, fn ($v) => $v !== null && $v !== '')), 'Alumni profile created')),
+            // HROne parity WO-11: last working day, notice relaxation, approver's reason, rehire eligibility, settlement month.
+            ...SeparationActions::forCase(),
         ];
     }
 
@@ -169,6 +181,8 @@ final class ExitActions
                 ->visible(fn (ExitClearance $record) => $record->status === 'pending' && auth()->user()->can('exit.manage'))
                 ->schema([Textarea::make('remarks')->required()->maxLength(500)])
                 ->action(fn (ExitClearance $record, array $data) => ServiceDeskActions::run(fn () => app(Exits::class)->markNotApplicable($record, auth()->user(), $data['remarks']), 'Marked not applicable')),
+            // HROne parity WO-11: expected date, evidence, cancel (D-WO3) and the HR stage's hand-over of roles and team.
+            ...SeparationActions::forClearance(),
         ];
     }
 

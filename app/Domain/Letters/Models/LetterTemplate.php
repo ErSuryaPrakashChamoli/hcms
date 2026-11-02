@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * in the rich-text editor) and docx (the client's own Word file, uploaded; its text is kept in body for search and
  * checking). Templates converted from the first markdown editor are html.
  */
-#[Fillable(['tenant_id', 'name', 'code', 'type', 'format', 'subject', 'body', 'file_disk', 'file_path', 'file_name', 'requires_approval', 'letter_signatory_id', 'version', 'status'])]
+#[Fillable(['tenant_id', 'name', 'code', 'type', 'format', 'subject', 'body', 'file_disk', 'file_path', 'file_name', 'requires_approval', 'letter_signatory_id', 'letter_signatory_2_id', 'letter_signatory_3_id', 'letter_signatory_4_id', 'version', 'status'])]
 class LetterTemplate extends Model
 {
     use Auditable, BelongsToTenant;
@@ -59,5 +59,21 @@ class LetterTemplate extends Model
     public function isDocx(): bool
     {
         return $this->format === self::DOCX;
+    }
+
+    /**
+     * HROne parity WO-13: the template's second, third and fourth signatories (active only), in signing order, by position.
+     *
+     * @return array<int, LetterSignatory> position (2–4) => signatory
+     */
+    public function additionalSignatories(): array
+    {
+        $ids = array_filter([2 => $this->letter_signatory_2_id, 3 => $this->letter_signatory_3_id, 4 => $this->letter_signatory_4_id]);
+        if ($ids === []) {
+            return [];
+        }
+        $found = LetterSignatory::query()->where('status', ActiveStatus::Active)->whereKey(array_values($ids))->get()->keyBy('id');
+
+        return array_filter(array_map(fn ($id) => $found->get((int) $id), $ids));
     }
 }

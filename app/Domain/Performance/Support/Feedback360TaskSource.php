@@ -11,6 +11,7 @@ use App\Domain\Performance\Models\FeedbackNomination;
 use App\Domain\Performance\Models\FeedbackParticipant;
 use App\Domain\Performance\Models\PerformancePeriodReview;
 use App\Domain\Performance\Services\FeedbackNominations;
+use App\Domain\Performance\Services\PerformanceWindows;
 use App\Filament\Resources\Appraisals\AppraisalResource;
 use App\Filament\Resources\FeedbackNominations\FeedbackNominationResource;
 use App\Filament\Resources\FeedbackParticipants\FeedbackParticipantResource;
@@ -28,16 +29,18 @@ final class Feedback360TaskSource implements ExperienceTaskSource
     public function tasksFor(User $user, ?Employee $employee): Collection
     {
         $tasks = collect();
+        // HROne parity GO-2: due when the window closes for the assessed employee (an extension for them included).
+        $windows = app(PerformanceWindows::class);
         try {
             $give = $this->url(fn () => FeedbackNominationResource::getUrl('index'));
             $this->nominations->pendingFor($user)->each(fn (FeedbackNomination $n) => $tasks->push(new ExperienceTask(
                 'performance', 'feedback_360', '360 feedback for '.($n->employee?->person?->full_name ?? 'a colleague').' ('.$n->round->name.')',
-                $n->requested_at?->toDateString(), $n->round->window_closes_on->copy()->endOfDay(), $give,
+                $n->requested_at?->toDateString(), $windows->roundClosesOn($n->round, (int) $n->employee_id)->copy()->endOfDay(), $give,
             )));
             $nominate = $this->url(fn () => FeedbackParticipantResource::getUrl('index', ['tab' => 'nominate']));
             $this->nominations->toNominateFor($user)->each(fn (FeedbackParticipant $p) => $tasks->push(new ExperienceTask(
                 'performance', 'feedback_360_nomination', 'Nominate 360 reviewers for '.($p->employee?->person?->full_name ?? 'an employee').' ('.$p->round->name.')',
-                $p->created_at?->toDateString(), $p->round->window_closes_on->copy()->endOfDay(), $nominate,
+                $p->created_at?->toDateString(), $windows->roundClosesOn($p->round, (int) $p->employee_id)->copy()->endOfDay(), $nominate,
             )));
             if ($employee !== null) {
                 PerformancePeriodReview::query()->withoutGlobalScope(AccessScope::class)->with('employee.person')->where('reviewer_id', $employee->id)->where('status', 'open')->orderBy('window_closes_on')->get()

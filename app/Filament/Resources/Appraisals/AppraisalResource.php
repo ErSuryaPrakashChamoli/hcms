@@ -16,6 +16,7 @@ use App\Filament\Resources\Appraisals\Pages\ListAppraisals;
 use App\Filament\Resources\Appraisals\Pages\ViewAppraisal;
 use App\Filament\Resources\Appraisals\RelationManagers\ReviewsRelationManager;
 use App\Filament\Resources\PerformanceCycles\PerformanceCycleResource;
+use App\Filament\Support\BulkRecordActions;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\PerformanceActions;
 use App\Filament\Support\PerformanceRegisters;
@@ -78,7 +79,7 @@ class AppraisalResource extends Resource
     public static function statusColor(string $status): string
     {
         return match ($status) {
-            'pending' => 'gray', 'in_review' => 'info', 'calibration' => 'warning', 'finalized' => 'success', 'acknowledged' => 'primary', default => 'gray'
+            'pending' => 'gray', 'in_review' => 'info', 'calibration' => 'warning', 'finalized' => 'success', 'acknowledged' => 'primary', 'withdrawn' => 'danger', default => 'gray'
         };
     }
 
@@ -142,6 +143,13 @@ class AppraisalResource extends Resource
                     ->visible(fn (Appraisal $record) => ! empty($record->recommendations) && AppraisalVisibility::isPrivileged($record, auth()->user())),
                 TextEntry::make('calibration_note')->placeholder('—')->columnSpan(2)->visible(fn () => auth()->user()->can('performance.calibrate')),
                 TextEntry::make('employee_comment')->label('Employee comment')->placeholder('—')->columnSpan(2),
+                // HROne parity GO-2: withdrawn from the cycle — when, by whom and why (HR and the employee's managers).
+                TextEntry::make('withdrawn_at')->label('Withdrawn from the cycle')->dateTime()
+                    ->visible(fn (Appraisal $record) => $record->isWithdrawn() && AppraisalVisibility::isPrivileged($record, auth()->user())),
+                TextEntry::make('withdrawer.name')->label('Withdrawn by')->placeholder('—')
+                    ->visible(fn (Appraisal $record) => $record->isWithdrawn() && AppraisalVisibility::isPrivileged($record, auth()->user())),
+                TextEntry::make('withdrawal_reason')->label('Why withdrawn')->columnSpan(2)
+                    ->visible(fn (Appraisal $record) => $record->isWithdrawn() && AppraisalVisibility::isPrivileged($record, auth()->user())),
                 // HP-8e: the goal templates' feedback form asked of the manager (statuses only, never the answers).
                 TextEntry::make('goal_sheet_feedback')->label('Goal sheet feedback')->columnSpan(2)
                     ->state(fn (Appraisal $record) => ($review = $record->review('manager')) ? app(FeedbackRequests::class)->summary($review) : null)
@@ -183,6 +191,8 @@ class AppraisalResource extends Resource
             ])
             ->recordActions([ViewAction::make()])
             ->toolbarActions([
+                // HROne parity GO-2: "Withdraw from cycle" on the selected appraisals (bulk run; HR with bulk.run).
+                BulkRecordActions::selected('appraisals', ['appraisals.withdraw']),
                 // HP-8b: publish the selected finalized ratings (manual publishing).
                 BulkAction::make('publishRatings')->label('Publish ratings')->icon(Heroicon::OutlinedMegaphone)->color('success')
                     ->visible(fn () => auth()->user()->can('performance.calibrate'))

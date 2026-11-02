@@ -16,20 +16,23 @@ use App\Domain\Payroll\Models\SalaryComponent;
 final class LetterVariables
 {
     /** Variables that insert a block (a table, an image) rather than a line of text. */
-    public const BLOCKS = ['salary.annexure', 'signatory.signature'];
+    public const BLOCKS = ['salary.annexure', 'signatory.signature', 'signatory_2.signature', 'signatory_3.signature', 'signatory_4.signature'];
+
+    /** HROne parity WO-13 (§23.7.1 #8): the second, third and fourth signatories a template or letter may name. */
+    public const MORE_SIGNATORIES = [2 => 'Second', 3 => 'Third', 4 => 'Fourth'];
 
     /** Names under salary.* used by the totals: a component with one of these codes has no own variables. */
     public const SALARY_RESERVED = ['annexure', 'ctc', 'gross', 'employer_contributions', 'variable', 'currency', 'effective_from', 'structure'];
 
     /** group => [title, what it covers, [variable => [meaning, example]]] */
     public const GROUPS = [
-        'employee' => ['Employee: personal', 'From the employee’s personal details. Pronouns and salutation follow the recorded gender (they / them / their and Mx when none is recorded).', [
+        'employee' => ['Employee: personal', 'From the employee’s personal details. Pronouns and salutation follow the recorded gender (they / them / their and Mx when none is recorded); a salutation recorded on the person (Dr, Prof …) is used first.', [
             'employee.name' => ['Full name', 'Asha Rao'],
             'employee.first_name' => ['First name', 'Asha'],
             'employee.middle_name' => ['Middle name', ''],
             'employee.last_name' => ['Last name', 'Rao'],
             'employee.preferred_name' => ['Preferred name (first name when none)', 'Asha'],
-            'employee.salutation' => ['Mr / Ms / Mx', 'Ms'],
+            'employee.salutation' => ['Salutation: the one recorded on the person (Mr / Ms / Dr …), else Mr / Ms / Mx from the gender', 'Ms'],
             'employee.he_she' => ['he / she / they', 'she'],
             'employee.him_her' => ['him / her / them', 'her'],
             'employee.his_her' => ['his / her / their', 'her'],
@@ -136,13 +139,22 @@ final class LetterVariables
             'employee.ctc_annual' => ['Older name for salary.ctc.annual', '600,000.00'],
             'employee.ctc_monthly' => ['Older name for salary.ctc.monthly', '50,000.00'],
         ]],
-        'letter' => ['Letter and signing authority', 'The signatory is the one chosen when the letter is generated, else the template’s, else the default signatory.', [
+        'letter' => ['Letter and signing authority', 'The signatory is the one chosen when the letter is generated, else the template’s, else the default signatory. A letter may have up to four signatories: the second, third and fourth print only when the template or the letter names them (blank otherwise).', [
             'letter.number' => ['Letter reference number', 'LTR-2026-00042'],
             'letter.date' => ['Date of the letter', '22 Oct 2026'],
             'today' => ['Today’s date', '22 Oct 2026'],
             'signatory.name' => ['Signing authority’s name (Authorised Signatory when none is set up)', 'Neha Kapoor'],
             'signatory.designation' => ['Signing authority’s designation', 'Head of HR'],
             'signatory.signature' => ['Signing authority’s signature image', '(signature)'],
+            'signatory_2.name' => ['Second signatory’s name', 'Arjun Mehta'],
+            'signatory_2.designation' => ['Second signatory’s designation', 'Chief Financial Officer'],
+            'signatory_2.signature' => ['Second signatory’s signature image', '(signature)'],
+            'signatory_3.name' => ['Third signatory’s name', 'Priya Nair'],
+            'signatory_3.designation' => ['Third signatory’s designation', 'Head of Legal'],
+            'signatory_3.signature' => ['Third signatory’s signature image', '(signature)'],
+            'signatory_4.name' => ['Fourth signatory’s name', 'Rahul Verma'],
+            'signatory_4.designation' => ['Fourth signatory’s designation', 'Managing Director'],
+            'signatory_4.signature' => ['Fourth signatory’s signature image', '(signature)'],
         ]],
     ];
 

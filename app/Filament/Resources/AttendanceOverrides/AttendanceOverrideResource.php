@@ -51,7 +51,9 @@ class AttendanceOverrideResource extends Resource
                 // HROne parity TX-1: the WO-2 employee search (code, names, work e-mail, designation).
                 TextColumn::make('employee.person.display_name')->label('Employee')->searchable(query: EmployeeFilters::search('employee'))->description(fn (AttendanceOverride $r) => $r->employee?->employee_code),
                 TextColumn::make('date')->date('D, d M Y')->sortable(),
-                TextColumn::make('status')->badge()->formatStateUsing(fn (?string $state) => $state ? config("peopleos.attendance.statuses.{$state}", $state) : null)->placeholder('As calculated'),
+                TextColumn::make('status')->badge()->formatStateUsing(fn (?string $state) => $state ? config("peopleos.attendance.statuses.{$state}", $state) : null)->placeholder(fn (AttendanceOverride $record) => $record->hasHalves() ? 'By half' : 'As calculated'),
+                // HROne parity TX-6: the status of each half when HR set the day by half.
+                TextColumn::make('halves')->label('By half')->state(fn (AttendanceOverride $r) => $r->halvesLabel())->placeholder('—')->toggleable(),
                 TextColumn::make('worked_minutes')->label('Worked')->formatStateUsing(fn (?int $state) => $state === null ? null : intdiv($state, 60).'h '.str_pad((string) ($state % 60), 2, '0', STR_PAD_LEFT).'m')->placeholder('As calculated'),
                 TextColumn::make('reason')->limit(60)->wrap(),
                 TextColumn::make('creator.name')->label('By')->placeholder('—'),

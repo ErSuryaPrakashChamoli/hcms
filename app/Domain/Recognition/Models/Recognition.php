@@ -18,11 +18,18 @@ use RuntimeException;
  * HROne setup parity HP-9c: one badge given to one employee (the recognitions ledger). Made only by
  * Recognitions::give(); never changed or deleted. HR may withdraw it once (withdrawn_at / by / reason), which takes it
  * off the wall, the quota and the counts. The message is the giver's own words, so it is kept out of the audit trail.
+ *
+ * Data import DI-35: `source` is `person` for a badge a person gave (Recognitions::give, counted in their monthly quota) or
+ * `upload` for one HR allocated on behalf of the organisation (Recognitions::allocate, no giver quota).
  */
-#[Fillable(['tenant_id', 'badge_id', 'employee_id', 'giver_user_id', 'giver_employee_id', 'message', 'visibility', 'attachments', 'withdrawn_at', 'withdrawn_by', 'withdraw_reason'])]
+#[Fillable(['tenant_id', 'badge_id', 'employee_id', 'giver_user_id', 'giver_employee_id', 'source', 'message', 'visibility', 'attachments', 'withdrawn_at', 'withdrawn_by', 'withdraw_reason'])]
 class Recognition extends Model
 {
     use Auditable, BelongsToTenant, ScopedByEmployee;
+
+    public const SOURCES = ['person' => 'Given by a colleague', 'upload' => 'Allocated by HR (upload)'];
+
+    protected $attributes = ['source' => 'person'];
 
     /** The only columns that may change after a recognition is given (its withdrawal, once). */
     private const WITHDRAWAL = ['withdrawn_at', 'withdrawn_by', 'withdraw_reason', 'updated_at'];

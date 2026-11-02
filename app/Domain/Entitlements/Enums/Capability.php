@@ -190,7 +190,8 @@ enum Capability: string
             self::Performance => ['performance'],
             self::Learning => ['learning', 'skills', 'development'],
             self::Talent => ['career', 'talent', 'succession'],
-            self::Workforce => ['workforce'],
+            // Data import DI-1: customers, projects and their members (Workforce → Customers, Projects).
+            self::Workforce => ['workforce', 'project'],
             self::Assets => ['asset'],
             self::ServiceDesk => ['servicedesk', 'grievance', 'kb'],
             self::Expense => ['expense'],

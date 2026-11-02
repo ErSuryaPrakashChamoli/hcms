@@ -295,7 +295,8 @@ final class NineBox
     /** @return Collection<int, Appraisal> the cycle's appraisals the viewer may see on the grid (access scope applies) */
     private function appraisals(PerformanceCycle $cycle, User $viewer, string $mode, array $filters): Collection
     {
-        $query = Appraisal::query()->with(['employee.person'])->where('performance_cycle_id', $cycle->id);
+        // HROne parity GO-2: appraisals withdrawn from the cycle are not placed.
+        $query = Appraisal::query()->with(['employee.person'])->where('performance_cycle_id', $cycle->id)->where('status', '!=', 'withdrawn');
         if ($mode === 'team') {
             $query->whereIn('employee_id', $this->relationships->teamOf($viewer)->all());
         }

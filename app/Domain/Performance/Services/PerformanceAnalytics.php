@@ -24,7 +24,9 @@ final class PerformanceAnalytics
     /** @return array{cycle: ?string, min_group: int, overall: array<string, mixed>, groups: list<array<string, mixed>>} */
     public function summary(?PerformanceCycle $cycle = null): array
     {
-        $appraisals = Appraisal::query()->with(['employee.currentPosition.department'])->when($cycle, fn ($q) => $q->where('performance_cycle_id', $cycle->id))->get();
+        $appraisals = Appraisal::query()->with(['employee.currentPosition.department'])->when($cycle, fn ($q) => $q->where('performance_cycle_id', $cycle->id))
+            // HROne parity GO-2: appraisals withdrawn from their cycle are left out.
+            ->where('status', '!=', 'withdrawn')->get();
         $employeeIds = $appraisals->pluck('employee_id')->unique();
         if ($cycle === null) {
             $employeeIds = Employee::query()->employed()->pluck('id');

@@ -4,6 +4,7 @@ namespace App\Domain\Experience\RequestTypes;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
+use App\Domain\Exit\Services\SeparationDesk;
 use App\Domain\Experience\Enums\RequestStatus;
 use App\Domain\Identity\Models\User;
 use App\Filament\Pages\MyDay;
@@ -13,7 +14,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * HROne parity RQ-1: resignation (My day → "Resign"). A resignation waits for acceptance only while an approval workflow
- * runs on it (P5); otherwise the notice period runs at once, so an open resignation counts as approved.
+ * runs on it (P5), or — HROne parity WO-11 — while the organisation asks resignations to be accepted and HR has not yet
+ * accepted it; otherwise the notice period runs at once, so an open resignation counts as approved.
  */
 final class ResignationRequestType extends BaseRequestType
 {
@@ -65,6 +67,18 @@ final class ResignationRequestType extends BaseRequestType
         return $this->withAction(MyDay::getUrl(), 'resign');
     }
 
+    /** HROne parity AC-2: HR's "Initiate exit" on the exit cases list (its type defaults to resignation). */
+    public function onBehalfPermission(): ?string
+    {
+        return 'exit.manage';
+    }
+
+    public function onBehalfUrl(User $user): ?string
+    {
+        return $this->signedIn($user) && $user->can('exit.manage') && ExitCaseResource::canAccess()
+            ? $this->withAction(ExitCaseResource::getUrl('index'), 'initiate') : null;
+    }
+
     public function model(): ?string
     {
         return ExitCase::class;
@@ -102,7 +116,10 @@ final class ResignationRequestType extends BaseRequestType
 
     public function whereStatus(Builder $query, RequestStatus $status): Builder
     {
-        $waiting = fn (Builder $q) => $q->whereIn('exit_cases.status', ExitCase::OPEN)->whereNull('exit_cases.resignation_accepted_at')->whereNotNull('exit_cases.workflow_instance_id');
+        // HROne parity WO-11: with exit.resignation.requires_acceptance on, every open resignation not yet accepted waits.
+        $acceptance = app(SeparationDesk::class)->requiresAcceptance();
+        $waiting = fn (Builder $q) => $q->whereIn('exit_cases.status', ExitCase::OPEN)->whereNull('exit_cases.resignation_accepted_at')
+            ->when(! $acceptance, fn (Builder $w) => $w->whereNotNull('exit_cases.workflow_instance_id'));
 
         return match ($status) {
             RequestStatus::Pending => $waiting($query),
@@ -154,7 +171,8 @@ final class ResignationRequestType extends BaseRequestType
     {
         $attributes = $record->getAttributes();
 
-        return in_array($attributes['status'] ?? null, ExitCase::OPEN, true) && ($attributes['resignation_accepted_at'] ?? null) === null && ($attributes['workflow_instance_id'] ?? null) !== null;
+        return in_array($attributes['status'] ?? null, ExitCase::OPEN, true) && ($attributes['resignation_accepted_at'] ?? null) === null
+            && (($attributes['workflow_instance_id'] ?? null) !== null || app(SeparationDesk::class)->requiresAcceptance());
     }
 
     // -- approval route (RQ-2) ----------------------------------------------------------------------------------
@@ -166,7 +184,10 @@ final class ResignationRequestType extends BaseRequestType
 
     public function builtInApprovers(): string
     {
-        return 'HR (exit cases), unless an approval workflow runs on resignations';
+        // HROne parity WO-11: who accepts it when the organisation asks resignations to be accepted (Approval Center).
+        return app(SeparationDesk::class)->requiresAcceptance()
+            ? 'HR accepts it in the Approval Center, unless an approval workflow runs on resignations'
+            : 'HR (exit cases), unless an approval workflow runs on resignations';
     }
 
     public function approverPermissions(): array

@@ -4,13 +4,17 @@ namespace App\Filament\Pages;
 
 use App\Domain\Attendance\Services\Regularisations;
 use App\Domain\Engagement\Exceptions\EngagementRuleViolation;
+use App\Domain\Engagement\Models\CompanyEventInvitation;
 use App\Domain\Engagement\Models\MoodCheckIn;
+use App\Domain\Engagement\Services\CompanyEvents;
 use App\Domain\Engagement\Services\MoodCheckIns;
 use App\Domain\Experience\Services\ContextualIntelligence;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\HomeComposer;
 use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Experience\Services\UxMetrics;
+use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\CurrentEmployee;
 use App\Domain\People\Services\Birthdays;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Services\SettingsRepository;
@@ -19,6 +23,7 @@ use App\Domain\Recognition\Services\SocialWall;
 use App\Filament\Resources\Tenants\TenantResource;
 use App\Filament\Support\AttendanceActions;
 use App\Filament\Support\BirthdayActions;
+use App\Filament\Support\FundraiserActions;
 use App\Filament\Support\LeaveActions;
 use App\Filament\Support\PendingRequestsPanel;
 use App\Filament\Support\RequestChrome;
@@ -294,11 +299,37 @@ class Home extends Dashboard
             });
     }
 
+    /** HROne parity GO-18: "Donate now" on the Fundraisers card (['campaign' => id]); Fundraisers checks everything again. */
+    public function donateAction(): Action
+    {
+        return FundraiserActions::donate(function () {
+            unset($this->home);
+        });
+    }
+
     /** HROne setup parity HP-9e: "Like" on a post of the social wall card. */
     public function wallReact(int $post): void
     {
         try {
             app(SocialWall::class)->react(WallPost::query()->findOrFail($post), auth()->user(), 'like');
+        } catch (RuntimeException $e) {
+            Notification::make()->danger()->title('Not done')->body($e->getMessage())->send();
+        }
+        unset($this->home);
+    }
+
+    /** HROne parity GO-15: accept (acknowledge) or decline an event invitation from the "Upcoming events" card. */
+    public function eventRespond(int $invitation, string $status): void
+    {
+        try {
+            $events = app(CompanyEvents::class);
+            $me = app(CurrentEmployee::class)->of(auth()->user());
+            $row = $me === null ? null : CompanyEventInvitation::query()->withoutGlobalScope(AccessScope::class)->whereKey($invitation)->where('employee_id', $me->getKey())->first();
+            if ($row === null) {
+                throw new EngagementRuleViolation('That invitation is not yours.');
+            }
+            $answered = $events->respond($row, $status, auth()->user());
+            Notification::make()->success()->title($answered->status === 'accepted' ? 'See you there' : 'Declined')->send();
         } catch (RuntimeException $e) {
             Notification::make()->danger()->title('Not done')->body($e->getMessage())->send();
         }

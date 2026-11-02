@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\ExpenseAdvances\Pages;
 
+use App\Domain\Employment\Models\Employee;
 use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Expense\Models\ExpenseAdvance;
 use App\Domain\Expense\Services\ExpenseAdvances;
 use App\Domain\Expense\Services\ExpensePolicies;
 use App\Filament\Resources\ExpenseAdvances\ExpenseAdvanceResource;
 use App\Filament\Resources\ExpenseReceipts\ExpenseReceiptForm;
+use App\Filament\Support\ExpenseOnBehalf;
 use App\Filament\Support\ExpenseRegisters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
@@ -18,6 +20,9 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Text;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
 use RuntimeException;
 
@@ -93,6 +98,55 @@ class ListExpenseAdvances extends PeopleListRecords
                         Notification::make()->danger()->title('Not sent')->body($e->getMessage())->send();
                     }
                 }),
+            $this->requestForEmployee(),
         ];
+    }
+
+    /**
+     * HROne parity XO-5 (matrix 26 §26.7 #2, HROne's global "Advance request"): HR (or a manager) requests an advance for an
+     * employee in their access scope — never their own (the "Request an advance" above) — as a wizard: the employee (and
+     * what their policy allows), the advance, then who approves it. The employee's policy, limits and workflow apply as if
+     * they had asked; the advance records who filed it (`requested_by`, `filed_on_behalf`, audited).
+     */
+    private function requestForEmployee(): Action
+    {
+        $employee = fn (Get $get): ?Employee => ExpenseOnBehalf::picked($get('employee_id'));
+        $rules = fn (Get $get) => ($e = $employee($get)) !== null ? app(ExpensePolicies::class)->advanceRules($e, today()) : null;
+
+        return Action::make('requestForEmployee')->label('Request an advance for an employee')->icon(Heroicon::OutlinedUserPlus)->color('gray')
+            ->visible(fn () => ExpenseOnBehalf::offered())
+            ->modalHeading('Request an advance for an employee')
+            ->steps([
+                Step::make('Employee')->description('Whose advance it is')->schema([
+                    ExpenseOnBehalf::employeeSelect(),
+                    RequestChrome::header($employee),
+                    Text::make(fn (Get $get) => ($r = $rules($get)) === null ? '' : ($r->refusal() ?? ($r->maxAmount !== null
+                        ? 'Their expense advance policy allows up to '.number_format($r->maxAmount, 2).' per advance.' : 'Their expense advance policy sets no largest advance.')))
+                        ->visible(fn (Get $get) => $employee($get) !== null),
+                ]),
+                Step::make('Advance')->description('Amount, date and purpose')->schema([
+                    TextInput::make('currency')->maxLength(3)->default(fn () => app(CurrencyRates::class)->baseCurrency()),
+                    TextInput::make('amount')->numeric()->minValue(0.01)->required(),
+                    DatePicker::make('needed_on')->label('Needed on')->native(false)->minDate(today()),
+                    Textarea::make('purpose')->maxLength(500)->required(fn (Get $get) => (bool) $rules($get)?->purposeRequired),
+                    FileUpload::make('attachments')->label('Supporting documents')->multiple()->disk(config('peopleos.documents.disk', 'local'))->directory(fn () => ExpenseAdvances::directory())
+                        ->visibility('private')->acceptedFileTypes(['image/jpeg', 'image/png', 'application/pdf'])->maxSize((int) config('peopleos.documents.max_kb', 10240))
+                        ->required(fn (Get $get) => (bool) $rules($get)?->attachmentRequired),
+                ]),
+                Step::make('Review')->description('Who approves it')->schema([
+                    Text::make('The advance is requested in the employee\'s name under their expense advance policy and goes to their approvers. It records that you filed it.'),
+                    RequestChrome::route('expense_advance', $employee),
+                ]),
+            ])
+            ->action(function (array $data) {
+                try {
+                    $for = ExpenseOnBehalf::resolve($data['employee_id'] ?? null, 'Request an advance');
+                    unset($data['employee_id']);
+                    $advance = app(ExpenseAdvances::class)->request($for, ['attachments' => array_values((array) ($data['attachments'] ?? []))] + $data);
+                    RequestChrome::confirmed('expense_advance', $advance, 'Advance '.$advance->number.' requested for '.$for->display_name, 'It goes to the employee\'s approvers.');
+                } catch (RuntimeException $e) {
+                    Notification::make()->danger()->title('Not sent')->body($e->getMessage())->send();
+                }
+            });
     }
 }

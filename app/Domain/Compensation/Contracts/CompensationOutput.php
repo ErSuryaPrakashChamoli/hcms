@@ -66,4 +66,14 @@ interface CompensationOutput
      * @return array<int, float> employee id => annual CTC
      */
     public function annualCtcOn(?array $employeeIds = null, CarbonInterface|string|null $date = null): array;
+
+    /**
+     * HROne parity PO-2: the approved compensation in force on the date for many employees, in one query (the employee
+     * salary structure register). Employees the current user may not reach, or without compensation on the date, are left
+     * out.
+     *
+     * @param  list<int>  $employeeIds
+     * @return array<int, CompensationSnapshot> employee id => snapshot
+     */
+    public function inForceOn(array $employeeIds, CarbonInterface|string|null $date = null): array;
 }

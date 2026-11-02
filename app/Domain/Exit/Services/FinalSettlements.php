@@ -10,6 +10,7 @@ use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Exit\Models\FinalSettlementLine;
+use App\Domain\Exit\Support\NoticeShortfall;
 use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Leave\Services\LeaveBalances;
@@ -137,11 +138,23 @@ final class FinalSettlements
                 $inputs['gratuity']['manual_line'] = 'A gratuity line was added by hand, so none was added automatically.';
             }
 
-            if ($case->type === 'resignation' && (bool) $this->settings->get('exit.notice_recovery', true) && $case->resignation_date) {
-                $served = (int) $case->resignation_date->diffInDays($lwd);
-                $shortfall = max(0, $case->notice_days - $served);
+            // HROne parity WO-11: the exit policy may set its own notice recovery rule (`none`, or `policy`: a line from
+            // NoticeRecoverySettlementSource); blank keeps this built-in line. Relaxation days HR granted (0 by default)
+            // reduce the shortfall; the month chosen for the settlement is recorded with the inputs.
+            $noticeRule = NoticeShortfall::rule($case)['rule'];
+            if ($noticeRule !== null) {
+                $inputs['notice_recovery_rule'] = $noticeRule;
+            }
+            if (($case->getAttributes()['settlement_month'] ?? null) !== null) {
+                $inputs['settlement_month'] = $case->settlement_month->format('Y-m');
+            }
+            if ($noticeRule === null && $case->type === 'resignation' && (bool) $this->settings->get('exit.notice_recovery', true) && $case->resignation_date) {
+                $notice = NoticeShortfall::for($case);
+                $served = $notice['served_days'];
+                $shortfall = $notice['shortfall_days'];
                 if ($shortfall > 0 && $monthlyGross > 0) {
-                    $add('deduction', 'NOTICE_RECOVERY', "Notice shortfall ({$shortfall} days)", $shortfall * round($monthlyGross / 30, 2), ['notice_days' => $case->notice_days, 'served_days' => $served, 'per_day_gross' => round($monthlyGross / 30, 2)]);
+                    $add('deduction', 'NOTICE_RECOVERY', "Notice shortfall ({$shortfall} days)", $shortfall * round($monthlyGross / 30, 2), ['notice_days' => $case->notice_days, 'served_days' => $served, 'per_day_gross' => round($monthlyGross / 30, 2)]
+                        + ($notice['relaxation_days'] > 0 ? ['relaxation_days' => $notice['relaxation_days']] : []));
                 }
             }
 

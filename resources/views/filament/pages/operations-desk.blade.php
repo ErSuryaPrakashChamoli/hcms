@@ -1,25 +1,20 @@
 <x-filament-panels::page>
-    {{-- HROne parity WO-1: an operations desk — existing registers in journey order (each entry is checked with its own canAccess()). --}}
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        @foreach ($this->deskSections() as $section)
-            <x-pos.section :title="$section['label']" :sub="$section['description']">
-                <div class="pos-panel pos-stream">
-                    @foreach ($section['items'] as $item)
-                        <a href="{{ $item['url'] }}" wire:navigate class="pos-stream-row">
-                            <span class="pos-stream-icon" aria-hidden="true"><x-filament::icon icon="heroicon-o-queue-list" class="size-4" /></span>
-                            <div class="pos-stream-body">
-                                <p class="pos-stream-title">{{ $item['label'] }}</p>
-                                @if ($item['description'])<p class="pos-stream-meta">{{ $item['description'] }}</p>@endif
-                            </div>
-                            <div class="pos-stream-end">
-                                @if ($item['count'] !== null)<span class="tabular-nums text-sm" aria-label="{{ $item['count'] }} open">{{ $item['count'] }}</span>@endif
-                            </div>
-                        </a>
-                    @endforeach
-                </div>
-            </x-pos.section>
-        @endforeach
-    </div>
+    {{-- HROne parity WO-1: an operations desk — existing registers in journey order (each entry is checked with its own canAccess()):
+         the sections down the left, the open one's registers beside them in columns. --}}
+    {{-- HROne parity TX-8a: the desk's reminders (none unless the desk gives some). --}}
+    @foreach ($this->notices() as $notice)
+        <x-filament::section :heading="$notice['title']" icon="heroicon-o-bell-alert" icon-color="warning" compact data-desk-notice="{{ $notice['key'] }}">
+            <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <p>{{ $notice['body'] }}</p>
+                @if (filled($notice['url'] ?? null))
+                    <x-filament::button tag="a" size="sm" :href="$notice['url']" wire:navigate>{{ $notice['action'] ?? 'Open' }}</x-filament::button>
+                @endif
+            </div>
+        </x-filament::section>
+    @endforeach
+
+    <x-pos.browse :label="(string) $this->getTitle()" :remember="'desk:'.$this::getSlug()"
+        :groups="array_map(fn (array $section) => ['key' => \Illuminate\Support\Str::slug($section['label']), 'label' => $section['label'], 'sub' => $section['description'], 'items' => $section['items']], $this->deskSections())" />
 
     @php($runs = $this->recentRuns())
     @if ($runs->isNotEmpty())

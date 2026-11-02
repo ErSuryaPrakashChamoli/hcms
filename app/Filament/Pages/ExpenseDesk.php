@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Domain\Expense\Models\ExpenseAdvance;
 use App\Domain\Expense\Models\ExpenseReport;
 use App\Filament\Resources\ExpenseAdvances\ExpenseAdvanceResource;
 use App\Filament\Resources\ExpenseCategories\ExpenseCategoryResource;
@@ -94,10 +93,14 @@ class ExpenseDesk extends OperationsDeskPage
                 ['label' => 'Advance requests', 'target' => ExpenseAdvanceResource::class, 'params' => ['view' => 'waiting'], 'description' => 'Advances waiting for approval',
                     'count' => $advances(fn (Builder $q) => $q->where('status', 'requested'))],
                 ['label' => 'Dispense advances', 'target' => DispenseAdvances::class, 'description' => 'Approved advances to pay out',
-                    'count' => fn () => ExpenseAdvance::query()->where('status', 'approved')->count()],
+                    // HROne parity XO-5: what Dispense advances lists (approved; with partial dispense on, also the rest of partly dispensed ones).
+                    'count' => fn () => DispenseAdvances::awaiting()->count()],
                 ['label' => 'Dispensed advances', 'target' => ExpenseAdvanceResource::class, 'params' => ['view' => 'dispensed'], 'description' => 'Paid out, not yet settled by expense reports'],
                 ['label' => 'Advance cancellations', 'target' => ExpenseAdvanceResource::class, 'params' => ['view' => 'cancellations'], 'description' => 'Cancellations waiting, cancelled advances and cancellations refused',
                     'count' => $advances(fn (Builder $q) => $q->where('status', 'cancel_requested'))],
+                // HROne parity XO-6 (§26.7 #5, "Recover advance"): employees owing money on dispensed advances.
+                ['label' => 'Advance recovery', 'target' => AdvanceRecovery::class, 'description' => 'Employees owing money on dispensed advances: recover through payroll or record it paid back',
+                    'count' => fn () => AdvanceRecovery::rows('unrecovered')->count()],
             ]],
             ['label' => 'Expense', 'items' => [
                 ['label' => 'Expense receipts', 'target' => ExpenseReceiptResource::class, 'description' => 'Every expense filed, with its checks and the report it went in'],

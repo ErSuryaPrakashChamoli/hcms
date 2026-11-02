@@ -16,7 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /** One separation (§59): initiated → notice → clearance → settlement → completed (→ alumni); or withdrawn / cancelled. */
-#[Fillable(['tenant_id', 'number', 'employee_id', 'type', 'reason', 'status', 'initiated_by', 'initiated_on', 'resignation_accepted_at', 'resignation_accepted_by', 'resignation_date', 'notice_days', 'notice_end_date', 'last_working_day', 'manager_id', 'knowledge_transfer_to', 'knowledge_transfer_notes', 'is_rehire_eligible', 'workforce_reason_id', 'rehire_block_reason_id', 'notes', 'workflow_instance_id', 'clearance_started_at', 'completed_at', 'completed_by', 'alumni_created_at'])]
+#[Fillable(['tenant_id', 'number', 'employee_id', 'type', 'reason', 'status', 'initiated_by', 'initiated_on', 'resignation_accepted_at', 'resignation_accepted_by', 'resignation_date', 'notice_days', 'notice_end_date', 'last_working_day', 'manager_id', 'knowledge_transfer_to', 'knowledge_transfer_notes', 'is_rehire_eligible', 'workforce_reason_id', 'rehire_block_reason_id', 'notes', 'workflow_instance_id', 'clearance_started_at', 'completed_at', 'completed_by', 'alumni_created_at',
+    // HROne parity WO-11: the approver's reason, notice relaxation, the rehire comment and the settlement month.
+    'approver_reason_id', 'approver_remark', 'notice_relaxation_days', 'rehire_comment', 'settlement_month'])]
 class ExitCase extends Model
 {
     use Auditable, BelongsToTenant;
@@ -24,7 +26,7 @@ class ExitCase extends Model
 
     public const OPEN = ['initiated', 'notice', 'clearance', 'settlement'];
 
-    protected $attributes = ['status' => 'initiated'];
+    protected $attributes = ['status' => 'initiated', 'notice_relaxation_days' => 0];
 
     protected function casts(): array
     {
@@ -32,6 +34,7 @@ class ExitCase extends Model
             'initiated_on' => 'date', 'resignation_date' => 'date', 'notice_days' => 'integer', 'notice_end_date' => 'date', 'last_working_day' => 'date',
             'is_rehire_eligible' => 'boolean', 'clearance_started_at' => 'datetime', 'completed_at' => 'datetime', 'alumni_created_at' => 'datetime',
             'resignation_accepted_at' => 'datetime',
+            'notice_relaxation_days' => 'integer', 'settlement_month' => 'date',
         ];
     }
 
@@ -47,7 +50,7 @@ class ExitCase extends Model
 
     public function auditSensitiveAttributes(): array
     {
-        return ['reason', 'notes'];
+        return ['reason', 'notes', 'approver_remark', 'rehire_comment'];
     }
 
     public function employee(): BelongsTo
@@ -65,6 +68,18 @@ class ExitCase extends Model
     public function rehireBlockReason(): BelongsTo
     {
         return $this->belongsTo(WorkforceReason::class, 'rehire_block_reason_id');
+    }
+
+    /** HROne parity WO-11 (§23.6.1 #8, #17): the approver's separation reason, kept apart from the employee's. */
+    public function approverReason(): BelongsTo
+    {
+        return $this->belongsTo(WorkforceReason::class, 'approver_reason_id');
+    }
+
+    /** HROne parity WO-11 (§23.6.2, D-WO8): requests to withdraw this resignation (when withdrawals need approval). */
+    public function withdrawalRequests(): HasMany
+    {
+        return $this->hasMany(ExitWithdrawalRequest::class)->orderByDesc('id');
     }
 
     public function manager(): BelongsTo

@@ -74,7 +74,7 @@ class MyDay extends Page
     public function getToday(): array
     {
         $employee = $this->employee();
-        $punches = AttendancePunch::query()->where('employee_id', $employee->id)->where('processing_status', '!=', 'rejected')->whereDate('punched_at', now()->toDateString())->orderBy('punched_at')->get();
+        $punches = AttendancePunch::query()->where('employee_id', $employee->id)->whereNotIn('processing_status', AttendancePunch::NOT_COUNTED)->whereDate('punched_at', now()->toDateString())->orderBy('punched_at')->get();
         $record = AttendanceRecord::query()->where('employee_id', $employee->id)->whereDate('date', now()->toDateString())->first();
         $last = $punches->last();
 

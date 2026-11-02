@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Expense\Models\ExpenseReceipt;
+use App\Domain\Expense\Services\ExpenseDocumentDownloads;
 use App\Domain\Expense\Services\ExpenseReceipts;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
@@ -14,7 +15,8 @@ use Illuminate\Support\Carbon;
 /**
  * HROne setup parity EX-C (Expense → Settings → expense expiry period): unreported expenses older than the tenant's
  * expiry period become expired and can no longer be reported. Idempotent: an expired expense is never touched again;
- * tenants with no expiry period are skipped.
+ * tenants with no expiry period are skipped. HROne parity XO-3: expense document zips past their download time are
+ * removed too (the download row stays).
  */
 class ExpireExpenseReceipts extends Command
 {
@@ -39,7 +41,9 @@ class ExpireExpenseReceipts extends Command
                         return ['succeeded' => $expired];
                     }, entityType: ExpenseReceipt::class);
 
-                    $this->info("{$tenant->slug}: {$expired} expense(s) expired");
+                    $pruned = app(ExpenseDocumentDownloads::class)->prune();
+
+                    $this->info("{$tenant->slug}: {$expired} expense(s) expired".($pruned > 0 ? ", {$pruned} document download(s) removed" : ''));
                 });
             }));
 

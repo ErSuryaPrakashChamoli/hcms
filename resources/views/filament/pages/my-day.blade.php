@@ -31,7 +31,10 @@
             <div class="text-sm text-gray-500">Latest payslip</div>
             @if ($payslip)
                 <div class="text-xl font-semibold">{{ $payslip->get('period.label') }}</div>
-                <div class="text-xs text-gray-500">Net {{ number_format((float) $payslip->get('totals.net'), 2) }}</div>
+                {{-- HROne parity MS-9: no figure here while the organisation asks for the password before pay pages. --}}
+                @unless (\App\Filament\Support\PayPasswordGate::required())
+                    <div class="text-xs text-gray-500">Net {{ number_format((float) $payslip->get('totals.net'), 2) }}</div>
+                @endunless
                 <div class="mt-3"><x-filament::link :href="\App\Filament\Resources\Payslips\PayslipResource::getUrl('view', ['record' => $payslip])" size="sm">Open</x-filament::link></div>
             @else
                 <div class="text-sm text-gray-500">No payslip yet.</div>

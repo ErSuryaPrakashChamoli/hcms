@@ -6,6 +6,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Models\UserInvitation;
 use App\Domain\Identity\Notifications\InvitationLink;
 use App\Domain\Identity\Notifications\PasswordResetLink;
+use App\Domain\Identity\Notifications\TemporaryPasswordMail;
 use App\Domain\Identity\Services\InvalidInvitation;
 use App\Domain\Identity\Services\PasswordResets;
 use App\Domain\Identity\Services\UserInvitations;
@@ -149,13 +150,14 @@ it('invites a new user instead of letting an administrator set a password', func
     Livewire::test(CreateUser::class)->assertFormFieldDoesNotExist('password')
         ->fillForm(['name' => 'Neha Kapoor', 'email' => 'neha@alpha.test'])->call('create')->assertHasNoFormErrors();
 
+    // Owner decision 2026-10-31: the invitation e-mails a temporary password, replaced at the first sign-in
+    // (TemporaryPasswordsTest covers the sign-in).
     $neha = User::query()->where('email', 'neha@alpha.test')->sole();
     expect($neha->status)->toBe(UserStatus::Invited)
         ->and($neha->tenant_id)->toBe($this->tenant->id)
-        ->and($neha->canAccessPanel(Filament::getPanel('admin')))->toBeFalse()
-        ->and(UserInvitation::query()->where('user_id', $neha->id)->sole()->isPending())->toBeTrue();
-    Notification::assertSentTo($neha, InvitationLink::class);
-    expect(allEvents('INVITATION_ISSUED')->sole()->actor_id)->toBe($admin->id);
+        ->and($neha->holdsTemporaryPassword())->toBeTrue()->and($neha->temporary_password_via)->toBe('email');
+    Notification::assertSentTo($neha, TemporaryPasswordMail::class);
+    expect(allEvents('TEMPORARY_PASSWORD_ISSUED')->sole()->actor_id)->toBe($admin->id);
 });
 
 it('activates the account from the link once, with the tenant policy, and only then can the person sign in', function () {
@@ -244,11 +246,10 @@ it('re-invites at the new address when an administrator corrects an invited user
 
     Livewire::test(EditUser::class, ['record' => $invitee->id])->fillForm(['email' => 'right@alpha.test', 'audit_reason' => 'Typo'])->call('save')->assertHasNoFormErrors();
 
-    $invitations = UserInvitation::query()->where('user_id', $invitee->id)->orderBy('id')->get();
-    expect($invitations)->toHaveCount(2)
-        ->and($invitations->first()->revoked_at)->not->toBeNull()
-        ->and($invitations->last()->isPending())->toBeTrue();
-    Notification::assertSentTo($invitee->fresh(), InvitationLink::class);
+    // The earlier link stops working; the new address gets a temporary password.
+    expect(UserInvitation::query()->where('user_id', $invitee->id)->sole()->revoked_at)->not->toBeNull()
+        ->and($invitee->fresh()->holdsTemporaryPassword())->toBeTrue();
+    Notification::assertSentTo($invitee->fresh(), TemporaryPasswordMail::class);
 });
 
 /* ---------- E-mail verification ---------- */

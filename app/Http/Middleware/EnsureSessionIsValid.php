@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * SaaS.2: a signed-in session is only as good as the account and tenant behind it, checked on every
  * request (panel pages, Livewire calls and protected downloads), before anything else runs:
- * - the user is still active;
+ * - the user is still active (or invited and signed in with a temporary password to choose their own: User::maySignIn);
  * - a tenant user's tenant is still accessible (not suspended);
  * - the session was opened under the current session epochs (SessionSecurity), so a suspension, an
  *   MFA reset or a password reset ends sessions that already existed.
@@ -33,7 +33,7 @@ class EnsureSessionIsValid
         }
 
         $problem = match (true) {
-            ! $user->isActive() => 'Your account is not active.',
+            ! $user->maySignIn() => 'Your account is not active.',
             ! $user->isPlatformAdmin() && ! ($user->tenant?->isAccessible() ?? false) => 'Access to your organisation is suspended.',
             ! $this->sessions->isCurrent($request->session(), $user) => 'Your session has ended. Please sign in again.',
             default => null,

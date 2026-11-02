@@ -32,7 +32,8 @@ final class WorkInbox
     private const LISTED_REQUEST_TYPES = ['leave', 'attendance_regularisation', 'helpdesk'];
 
     /** NeedsAttention keys already represented by Approval Center items. */
-    private const DUPLICATES = ['tasks', 'leave', 'regularisation'];
+    // HROne parity GO-9: "reviews" — each pending review is now its own task row (PerformanceReviewTaskSource).
+    private const DUPLICATES = ['tasks', 'leave', 'regularisation', 'reviews'];
 
     public function __construct(
         private readonly ApprovalCenter $approvals,

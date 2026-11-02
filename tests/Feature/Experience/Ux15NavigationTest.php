@@ -79,16 +79,19 @@ it('keeps the area bar when a module page re-renders on Livewire\'s update route
 
     $html = $this->get(EmployeeResource::getUrl('index'))->assertOk()->getContent();
     preg_match_all('/wire:snapshot="([^"]+)"/', $html, $matches);
-    $snapshot = collect($matches[1])->map(fn (string $s) => html_entity_decode($s, ENT_QUOTES))
-        ->first(fn (string $s) => (json_decode($s, true)['memo']['name'] ?? null) === ListEmployees::class);
-    expect($snapshot)->not->toBeNull();
-
-    // An action, a filter or the next page: the page component alone re-renders, from Livewire's endpoint.
-    $update = $this->withHeaders(['X-Livewire' => 'true'])->postJson(app(HandleRequests::class)->getUpdateUri(), [
+    $snapshots = collect($matches[1])->map(fn (string $s) => html_entity_decode($s, ENT_QUOTES));
+    $snapshot = $snapshots->first(fn (string $s) => (json_decode($s, true)['memo']['name'] ?? null) === ListEmployees::class);
+    $bar = $snapshots->first(fn (string $s) => str_contains((string) (json_decode($s, true)['memo']['name'] ?? ''), 'area-bar'));
+    expect($snapshot)->not->toBeNull()->and($bar)->not->toBeNull();
+    $update = fn (string $snapshot) => $this->withHeaders(['X-Livewire' => 'true'])->postJson(app(HandleRequests::class)->getUpdateUri(), [
         'components' => [['snapshot' => $snapshot, 'updates' => [], 'calls' => [['path' => '', 'method' => '$refresh', 'params' => []]]]],
-    ])->assertOk();
+    ])->assertOk()->json('components.0.effects.html');
 
-    expect($update->json('components.0.effects.html'))->toContain('class="pos-spacebar"')->toContain('All in Lifecycle');
+    // An action, a filter or the next page: the page component re-renders, from Livewire's endpoint, and keeps the
+    // area bar (its own component) in place.
+    expect($update($snapshot))->toContain('wire:id="'.json_decode($bar, true)['memo']['id'].'"');
+    // A star re-renders the bar alone; it still reads the page's area from the page's URL.
+    expect($update($bar))->toContain('class="pos-spacebar"')->toContain('All in Lifecycle');
 });
 
 it('starts a person-first change only for people allowed to make it, and only towards profiles they may open', function () {

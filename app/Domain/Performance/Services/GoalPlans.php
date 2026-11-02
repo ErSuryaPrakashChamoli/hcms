@@ -12,6 +12,10 @@ use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\GoalPlan;
 use App\Domain\Performance\Models\PerformanceCycle;
+use App\Domain\Workflow\Enums\InstanceStatus;
+use App\Domain\Workflow\Exceptions\WorkflowException;
+use App\Domain\Workflow\Models\WorkflowInstance;
+use App\Domain\Workflow\Services\WorkflowEngine;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -171,6 +175,31 @@ final class GoalPlans
             throw new RuntimeException("The goal sheet's weightage adds up to {$total}; it must add up to {$required}. Change the goals before confirming.");
         }
         app(GoalSheetRules::class)->assertPlan($employee, $cycleId);
+    }
+
+    /**
+     * HROne parity GO-2 ("Withdraw from cycle"): a pending goal sheet of an employee who leaves the cycle is cancelled with
+     * the reason (audited; never deleted); a workflow waiting on it is cancelled too. Its goals are cancelled by the caller
+     * (Goals::cancelForWithdrawal). Returns whether a plan was cancelled.
+     */
+    public function cancel(GoalPlan $plan, string $reason, ?User $actor): bool
+    {
+        $locked = GoalPlan::query()->withoutGlobalScope(AccessScope::class)->whereKey($plan->id)->lockForUpdate()->first();
+        if ($locked === null || ! $locked->isPending()) {
+            return false;
+        }
+        $locked->withAuditReason($reason)->update(['status' => 'cancelled', 'decided_by' => $actor?->id, 'decided_at' => now(), 'decision_note' => mb_strimwidth($reason, 0, 500)]);
+        WorkflowInstance::query()->where('subject_type', $locked->getMorphClass())->where('subject_id', $locked->id)->get()
+            ->filter(fn (WorkflowInstance $run) => $run->status->isOpen() || $run->status === InstanceStatus::Returned)
+            ->each(function (WorkflowInstance $run) use ($reason) {
+                try {
+                    app(WorkflowEngine::class)->cancel($run, $reason);
+                } catch (WorkflowException $e) {
+                    report($e);
+                }
+            });
+
+        return true;
     }
 
     /** @return list<int> the employee's performance managers (told that a goal sheet waits) */

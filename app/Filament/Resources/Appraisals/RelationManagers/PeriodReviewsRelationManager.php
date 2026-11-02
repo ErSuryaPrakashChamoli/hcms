@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
  * HROne setup parity HP-8i: the periodic reviews of an appraisal (performance policy review cycle). The reviewer (the
  * reporting manager) rates an open review inside its window; ratings and comments show to those who see the appraisal's
  * reviews, and to the employee once submitted unless the policy keeps them from the employee (PeriodicReviews::visibleTo).
+ * HROne parity GO-3: the normalised rating HR set (calibration board → "Normalise review ratings") sits next to the rating.
  */
 class PeriodReviewsRelationManager extends RelationManager
 {
@@ -49,6 +50,8 @@ class PeriodReviewsRelationManager extends RelationManager
                         'submitted' => 'success', 'open' => 'info', 'missed' => 'danger', default => 'gray'
                     }),
                 TextColumn::make('rating')->placeholder('—')->state(fn (PerformancePeriodReview $record) => $shown($record) ? $record->rating : null),
+                // HROne parity GO-3: HR's normalised rating (the one the roll-up reads), shown as the rating is.
+                TextColumn::make('normalised_rating')->label('Normalised')->placeholder('—')->state(fn (PerformancePeriodReview $record) => $shown($record) ? $record->normalised_rating : null),
                 TextColumn::make('comment')->placeholder('—')->limit(60)->state(fn (PerformancePeriodReview $record) => $shown($record) ? $record->comment : null),
             ])
             ->recordActions([

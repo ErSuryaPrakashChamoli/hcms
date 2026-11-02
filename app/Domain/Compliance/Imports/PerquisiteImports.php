@@ -102,8 +102,10 @@ final class PerquisiteImports extends RowImports
 
     protected function examples(): array
     {
-        $code = Employee::query()->orderBy('id')->value('employee_code') ?? 'EMP0001';
+        $codes = Employee::query()->orderBy('id')->limit(2)->pluck('employee_code')->all() + ['EMP0001', 'EMP0002'];
+        $year = app(FinancialYear::class)->label(now());
+        $second = array_key_last((array) config('peopleos.compliance.perquisite_types')) ?? 'car';
 
-        return [[$code, app(FinancialYear::class)->label(now()), 'car', 'Company car with driver', '43200', '0', '']];
+        return [[$codes[0], $year, 'car', 'Company car with driver', '43200', '0', ''], [$codes[1], $year, $second, 'Perquisite for the year', '12000', '2000', '']];
     }
 }

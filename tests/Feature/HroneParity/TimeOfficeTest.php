@@ -277,3 +277,52 @@ it('shows an employee their month on the attendance calendar and lets HR pick an
         ->test(AttendanceCalendar::class)
         ->assertSet('employee', $this->employee->id); // falls back to their own month
 });
+
+it('finds employees for the attendance calendar by employee ID or name, and opens the one picked', function () {
+    $anita = Employee::factory()->create(['joining_date' => '2025-01-01', 'employee_code' => 'CALX001']);
+    $anita->person->update(['first_name' => 'Anita', 'last_name' => 'Rao']);
+    $rahul = Employee::factory()->create(['joining_date' => '2025-01-01', 'employee_code' => 'CALX003']);
+    $rahul->person->update(['first_name' => 'Rahul', 'last_name' => 'Sharma']);
+
+    $page = Livewire::withQueryParams(['month' => '2026-09'])->test(AttendanceCalendar::class);
+    $search = fn (string $term) => $page->instance()->employeeOptions($term);
+    expect($search('CALX003'))->toHaveKey($rahul->id)->not->toHaveKey($anita->id)
+        ->and($search('calx'))->toHaveKeys([$anita->id, $rahul->id])
+        ->and($search('anita rao'))->toBe([$anita->id => 'CALX001 · '.$anita->person->fresh()->display_name])
+        ->and($search('Rao Anita'))->toHaveKey($anita->id)->toHaveCount(1)
+        ->and($search('sharma'))->toHaveKey($rahul->id)->not->toHaveKey($anita->id)
+        ->and($search('nobody here'))->toBe([]);
+
+    // One search box ("Search employee", no name by default): typing lists the matches right below it; picking one opens
+    // that person's month and empties the box; Enter picks the first match.
+    $page->assertSet('employeeSearch', '')->assertSee('Search employee')->assertDontSee('CALX003')
+        ->set('employeeSearch', 'rahul')->assertSee('CALX003 · ')->assertDontSee('CALX001 · ')
+        ->call('pickEmployee', $rahul->id)->assertSet('employee', $rahul->id)->assertSet('employeeSearch', '')
+        ->set('employeeSearch', 'CALX001')->call('pickFirstMatch')->assertSet('employee', $anita->id)->assertSet('employeeSearch', '')
+        ->set('employeeSearch', 'nobody')->assertSee('No employee matches.');
+
+    // An employee without attendance.view keeps their own month and gets no search.
+    $user = tenantUser($this->tenant, ['attendance.regularise']);
+    $this->employee->update(['user_id' => $user->id]);
+    $this->actingAs($user);
+    $own = Livewire::withQueryParams(['month' => '2026-09'])->test(AttendanceCalendar::class)->assertSet('employee', $this->employee->id);
+    expect($own->instance()->employeeOptions('CALX'))->toBe([]);
+});
+
+it('shows weekly offs and holidays from the roster on days not processed yet, and the processed status otherwise', function () {
+    $calendar = HolidayCalendar::create(['name' => 'Nat', 'code' => 'NAT']);
+    Holiday::create(['holiday_calendar_id' => $calendar->id, 'date' => '2026-09-17', 'name' => 'Founders day', 'type' => 'public']);
+    HolidayCalendarRule::create(['holiday_calendar_id' => $calendar->id, 'name' => 'All', 'conditions' => []]);
+    punch($this->employee, '2026-09-23 09:00:00', 'in');
+    punch($this->employee, '2026-09-23 18:00:00', 'out');
+    $this->processor->process($this->employee, '2026-09-23');
+
+    $days = collect(Livewire::withQueryParams(['month' => '2026-09', 'employee' => $this->employee->id])->test(AttendanceCalendar::class)
+        ->assertSee('days not processed yet')->instance()->calendar()['days'])->keyBy(fn ($d) => $d['date']->toDateString());
+
+    expect($days['2026-09-19'])->tone->toBe('weekly_off')->planned->toBeTrue()->status->toBe('not_processed')->code->toBe('WO')
+        ->and($days['2026-09-17'])->tone->toBe('holiday')->planned->toBeTrue()->holiday->toBe('Founders day')
+        ->and($days['2026-09-22'])->tone->toBe('not_processed')->planned->toBeFalse()->shift->toBe('GEN')
+        ->and($days['2026-09-23'])->tone->toBe('present')->planned->toBeFalse()->in->toBe('09:00')
+        ->and($days['2026-09-30'])->tone->toBe('upcoming')->code->toBe('');
+});

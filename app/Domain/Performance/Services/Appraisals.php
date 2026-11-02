@@ -20,8 +20,11 @@ use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\AppraisalReview;
 use App\Domain\Performance\Models\Competency;
 use App\Domain\Performance\Models\Goal;
+use App\Domain\Performance\Models\GoalPlan;
 use App\Domain\Performance\Models\PerformanceCycle;
+use App\Domain\Performance\Models\PerformancePeriodReview;
 use App\Domain\Performance\Models\RatingScale;
+use App\Domain\Performance\Scopes\GoalVisibilityScope;
 use App\Domain\Performance\Support\RatingRules;
 use App\Domain\Platform\Services\SettingsRepository;
 use Illuminate\Support\Carbon;
@@ -61,10 +64,31 @@ final class Appraisals
         return Employee::query()->with(['person', 'currentManager'])->employed()
             ->where(fn ($q) => $q->whereNull('joining_date')->orWhere('joining_date', '<=', $cycle->period_end->toDateString().' 23:59:59'))
             ->orderBy('employee_code')->get()
-            ->filter(fn (Employee $e) => empty($cycle->eligibility) || $this->rules->matches($cycle->eligibility, $this->context->build($e, $cycle->period_end)))
-            // HP-8i: the performance policy's eligibility criteria (joined too long after the cycle started).
-            ->filter(fn (Employee $e) => app(PerformancePolicyRules::class)->eligible($e, $cycle))
+            ->filter(fn (Employee $e) => $this->meetsEligibility($e, $cycle))
             ->values();
+    }
+
+    /** The cycle's eligibility rules and (HP-8i) the performance policy's eligibility criteria (joined too long after the cycle started). */
+    private function meetsEligibility(Employee $employee, PerformanceCycle $cycle): bool
+    {
+        return (empty($cycle->eligibility) || $this->rules->matches($cycle->eligibility, $this->context->build($employee, $cycle->period_end)))
+            && app(PerformancePolicyRules::class)->eligible($employee, $cycle);
+    }
+
+    /**
+     * HROne parity GO-2: why one employee would not get an appraisal at launch (null = eligible) — the launch rules exactly:
+     * employed, joined by the end of the cycle period, the cycle's eligibility rules and the performance policy's (HP-8i).
+     */
+    public function ineligibility(Employee $employee, PerformanceCycle $cycle): ?string
+    {
+        if (! Employee::query()->withoutGlobalScope(AccessScope::class)->employed()->whereKey($employee->id)->exists()) {
+            return 'Not employed.';
+        }
+        if ($employee->joining_date !== null && $employee->joining_date->toDateString() > $cycle->period_end->toDateString()) {
+            return 'Joins after the cycle period ends.';
+        }
+
+        return $this->meetsEligibility($employee, $cycle) ? null : 'Not eligible under the cycle\'s eligibility rules or the performance policy.';
     }
 
     /** Phase 7: a draft cycle is scheduled for a launch date; its configuration freezes. */
@@ -105,11 +129,7 @@ final class Appraisals
             $first = $cycle->stageKeys()[0];
 
             foreach ($employees as $employee) {
-                $appraisal = Appraisal::query()->firstOrCreate(
-                    ['performance_cycle_id' => $cycle->id, 'employee_id' => $employee->id],
-                    ['manager_id' => $employee->currentManager?->manager_id, 'status' => 'pending', 'performance_template_version_id' => $version->id],
-                );
-                $this->ensureReviews($cycle, $appraisal);
+                $this->createAppraisal($cycle, $employee, $version->id, 'pending');
             }
             Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id)->whereNull('performance_template_version_id')->update(['performance_template_version_id' => $version->id]);
             // HP-8i: periodic reviews of a performance policy whose review cycle is shorter than this cycle.
@@ -146,6 +166,198 @@ final class Appraisals
         }
     }
 
+    /** HROne parity GO-2: the refusal for anything asked of an appraisal withdrawn from its cycle. */
+    public const WITHDRAWN = 'This appraisal was withdrawn from its cycle.';
+
+    /**
+     * The one path that creates a cycle's appraisal — at launch and (HROne parity GO-2) for an employee added to the running
+     * cycle: never a second appraisal for the same employee and cycle (an existing one is returned), with the reviews the
+     * cycle's stages call for.
+     */
+    private function createAppraisal(PerformanceCycle $cycle, Employee $employee, ?int $versionId, string $status): Appraisal
+    {
+        $appraisal = Appraisal::query()->withoutGlobalScope(AccessScope::class)->firstOrCreate(
+            ['performance_cycle_id' => $cycle->id, 'employee_id' => $employee->id],
+            ['manager_id' => $employee->currentManager?->manager_id, 'status' => $status, 'performance_template_version_id' => $versionId],
+        );
+        $this->ensureReviews($cycle, $appraisal);
+
+        return $appraisal;
+    }
+
+    /** HROne parity GO-2: the status an appraisal created now takes — as the stages already entered left the others. */
+    private static function statusAtStage(PerformanceCycle $cycle): string
+    {
+        $index = $cycle->stageIndex($cycle->current_stage);
+        if ($cycle->hasStage('calibration') && $index >= $cycle->stageIndex('calibration')) {
+            return 'calibration';
+        }
+        foreach (['self_review', 'manager_review', 'peer_review', 'approver_review'] as $stage) {
+            if ($cycle->isAtOrPast($stage)) {
+                return 'in_review';
+            }
+        }
+
+        return 'pending';
+    }
+
+    /**
+     * HROne parity GO-2 (HROne "Initiate goal / review cycle for selected employees", matrix 27 §27.2.2 #3–4, §27.3.3 #3):
+     * add one employee to a running cycle — e.g. a joiner after launch — through the launch path: the launch eligibility
+     * (employed, joined by the period end, the cycle's eligibility rules, the performance policy's criteria, HP-8i), one
+     * appraisal (never a second for the same employee and cycle), the reviews the stages call for (the reviewers of stages
+     * already open are told), the performance policy's periodic reviews, the goal sheet policy's system mapping once goal
+     * setting has started, and the feedback forms of the manager review once it has opened. An employee already in the
+     * cycle gets the reviews of the open stages brought up to date (e.g. a manager review once a manager is known). A
+     * withdrawn employee is not added again (a withdrawal is final). performance.manage within the actor's access scope.
+     *
+     * @return array{appraisal: Appraisal, created: bool, reviews: int}
+     */
+    public function addEmployee(PerformanceCycle $cycle, Employee $employee, User $actor): array
+    {
+        if (! $actor->hasPermission('performance.manage')) {
+            throw new RuntimeException('You cannot add employees to performance cycles.');
+        }
+        if (! app(AccessScopes::class)->allows($actor, $employee)) {
+            throw new RuntimeException('This employee is outside your access.');
+        }
+
+        return DB::transaction(function () use ($cycle, $employee, $actor) {
+            // The cycle row serialises additions (and launch / close) of the same cycle.
+            $locked = PerformanceCycle::query()->with('templateVersion')->whereKey($cycle->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'active') {
+                throw new RuntimeException('Employees are added to a running cycle; a draft or scheduled cycle includes everyone eligible when it launches.');
+            }
+            $employee = Employee::query()->withoutGlobalScope(AccessScope::class)->with(['person', 'currentManager'])->findOrFail($employee->id);
+            $existing = Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $locked->id)->where('employee_id', $employee->id)->lockForUpdate()->first();
+            if ($existing !== null) {
+                if ($existing->isWithdrawn()) {
+                    throw new RuntimeException('Withdrawn from this cycle on '.$existing->withdrawn_at?->format('d M Y').'; a withdrawal is final.');
+                }
+                if ($existing->isFinal() || $existing->isLocked()) {
+                    throw new RuntimeException('Already in this cycle; the appraisal is finalized.');
+                }
+
+                return ['appraisal' => $existing, 'created' => false, 'reviews' => $this->openReviews($locked, $existing, $employee)];
+            }
+            if (($why = $this->ineligibility($employee, $locked)) !== null) {
+                throw new RuntimeException($why);
+            }
+            $appraisal = $this->createAppraisal($locked, $employee, $locked->performance_template_version_id, self::statusAtStage($locked));
+            app(PeriodicReviews::class)->planFor($locked, $appraisal);
+            if (! $locked->hasStage('goal_setting') || $locked->isAtOrPast('goal_setting')) {
+                // HP-8e: the goal sheet policy's system mapping, as at launch (no goal-setting stage) or at goal setting.
+                app(GoalTemplates::class)->assignFor($locked, $employee);
+            }
+            $reviews = $this->openReviews($locked, $appraisal, $employee, true);
+            $this->audit->record(AuditAction::Update, 'performance', $locked, [], 'Added '.$employee->employee_code.' to the running cycle', actor: $actor,
+                metadata: ['event' => 'employee_added', 'employee_id' => $employee->id, 'appraisal_id' => $appraisal->id, 'stage' => $locked->current_stage]);
+            PerformanceEvent::dispatch('performance.appraisal.added', $employee, $appraisal, ['cycle' => $locked->name, 'stage' => config("peopleos.performance.stages.{$locked->current_stage}", $locked->current_stage)], [$employee->id]);
+
+            return ['appraisal' => $appraisal->refresh(), 'created' => true, 'reviews' => $reviews];
+        });
+    }
+
+    /**
+     * The reviews of the stages already open for one appraisal (added, or brought up to date): created as at launch; their
+     * reviewers are told (HROne "Initiate review cycle for selected employees"), and the manager review's feedback forms
+     * are asked once that stage has opened. Returns the reviews created now ($all: every open review, for a new appraisal).
+     */
+    private function openReviews(PerformanceCycle $cycle, Appraisal $appraisal, Employee $employee, bool $all = false): int
+    {
+        $before = $appraisal->reviews()->pluck('id')->all();
+        $this->ensureReviews($cycle, $appraisal);
+        $created = $appraisal->reviews()->whereNotIn('id', $before ?: [0])->get();
+        $tell = $all ? $appraisal->reviews()->where('status', 'pending')->get() : $created;
+        if ($tell->isNotEmpty() && in_array($appraisal->status, ['pending'], true) && self::statusAtStage($cycle) === 'in_review') {
+            $appraisal->update(['status' => 'in_review']);
+        }
+        foreach ($tell as $review) {
+            $stage = PerformanceWindows::stageOfReview($review->type);
+            if ($review->status === 'pending' && $cycle->hasStage($stage) && $cycle->isAtOrPast($stage)) {
+                PerformanceEvent::dispatch('performance.review.assigned', $employee, $review, ['cycle' => $cycle->name, 'type' => config("peopleos.performance.review_types.{$review->type}")], array_filter([$review->reviewer_id]));
+            }
+        }
+        if ($cycle->isAtOrPast('manager_review')) {
+            app(GoalTemplates::class)->raiseFeedback($cycle, [$appraisal->id]);
+            $this->raiseReviewFeedback($cycle, [$appraisal->id]);
+        }
+
+        // A new appraisal's reviews were all created now (by createAppraisal).
+        return $all ? $appraisal->reviews()->count() : $created->count();
+    }
+
+    /**
+     * HROne parity GO-2 ("Withdraw from cycle" — the safe alternative to HROne's "Delete goals" / "Delete reviews"; owner
+     * decision PER-10 / HP-8k: nothing is deleted): a non-finalized appraisal leaves its cycle with a reason. Its pending
+     * reviews and periodic reviews are withdrawn, its pending goal sheet is cancelled (with a workflow waiting on it), and the
+     * employee's open goals of the cycle are cancelled with the reason; submitted reviews, ratings and the audit trail stay.
+     * The employee and their manager are told. A finalized appraisal is immutable and is never withdrawn; nobody withdraws
+     * their own appraisal. performance.manage within the actor's access scope.
+     */
+    public function withdraw(Appraisal $appraisal, string $reason, User $actor): Appraisal
+    {
+        if (! $actor->hasPermission('performance.manage')) {
+            throw new RuntimeException('You cannot withdraw employees from performance cycles.');
+        }
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new RuntimeException('Say why the employee is withdrawn from the cycle.');
+        }
+        if (mb_strlen($reason) > 500) {
+            throw new RuntimeException('Keep the reason under 500 characters.');
+        }
+        $appraisal = Appraisal::query()->withoutGlobalScope(AccessScope::class)->with(['cycle', 'employee.person'])->findOrFail($appraisal->id);
+        if (! app(AccessScopes::class)->allows($actor, $appraisal)) {
+            throw new RuntimeException('This appraisal is outside your access.');
+        }
+        $me = app(PerformanceRelationships::class)->forUser($actor);
+        if ($me !== null && (int) $me->id === (int) $appraisal->employee_id) {
+            throw new RuntimeException('You cannot withdraw your own appraisal.');
+        }
+
+        return DB::transaction(function () use ($appraisal, $reason, $actor) {
+            $current = Appraisal::query()->withoutGlobalScope(AccessScope::class)->whereKey($appraisal->id)->lockForUpdate()->firstOrFail();
+            if ($current->isWithdrawn()) {
+                throw new RuntimeException('Already withdrawn from this cycle.');
+            }
+            if ($current->isFinal() || $current->isLocked()) {
+                throw new RuntimeException('A finalized appraisal is kept as it is: it cannot be withdrawn.');
+            }
+            if ($appraisal->cycle?->status !== 'active') {
+                throw new RuntimeException('Employees are withdrawn from a running cycle only.');
+            }
+            // As every change to a goal sheet: the employee row, then the goal plan (GoalPlans, Goals).
+            Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($current->employee_id)->lockForUpdate()->first();
+            $from = $current->status;
+            $current->withAuditReason('Withdrawn from the cycle: '.$reason)->update([
+                'status' => 'withdrawn', 'withdrawn_at' => now(), 'withdrawn_by' => $actor->id, 'withdrawal_reason' => $reason,
+            ]);
+            $reviews = 0;
+            foreach (AppraisalReview::query()->where('appraisal_id', $current->id)->where('status', 'pending')->orderBy('id')->get() as $review) {
+                $review->withAuditReason('Withdrawn from the cycle')->update(['status' => 'withdrawn']);
+                $reviews++;
+            }
+            $periodic = 0;
+            foreach (PerformancePeriodReview::query()->withoutGlobalScope(AccessScope::class)->where('appraisal_id', $current->id)->whereIn('status', ['scheduled', 'open'])->orderBy('id')->get() as $review) {
+                $review->withAuditReason('Withdrawn from the cycle')->update(['status' => 'withdrawn']);
+                $periodic++;
+            }
+            $plans = 0;
+            foreach (GoalPlan::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $current->employee_id)->where('performance_cycle_id', $current->performance_cycle_id)->where('status', 'pending')->get() as $plan) {
+                $plans += app(GoalPlans::class)->cancel($plan, 'Withdrawn from the cycle: '.$reason, $actor) ? 1 : 0;
+            }
+            $goals = $this->goals->cancelForWithdrawal((int) $current->employee_id, (int) $current->performance_cycle_id, 'Withdrawn from the cycle: '.$reason, $actor);
+            $this->audit->record(AuditAction::StatusChange, 'performance', $current, [['field' => 'status', 'before' => $from, 'after' => 'withdrawn']], $reason, actor: $actor, metadata: [
+                'event' => 'withdrawn_from_cycle', 'cycle_id' => $current->performance_cycle_id, 'reviews_withdrawn' => $reviews, 'periodic_reviews_withdrawn' => $periodic, 'goal_plans_cancelled' => $plans, 'goals_cancelled' => $goals,
+            ]);
+            PerformanceEvent::dispatch('performance.appraisal.withdrawn', $appraisal->employee, $current, ['cycle' => $appraisal->cycle?->name, 'for' => $appraisal->employee?->person?->full_name, 'reason' => $reason],
+                array_values(array_filter([(int) $current->employee_id, $current->manager_id ? (int) $current->manager_id : null])));
+
+            return $current->refresh();
+        });
+    }
+
     public function advance(PerformanceCycle $cycle, ?User $actor = null): PerformanceCycle
     {
         if ($cycle->status !== 'active') {
@@ -161,7 +373,7 @@ final class Appraisals
         $cycle->update(['current_stage' => $next]);
         $this->audit->record(AuditAction::Update, 'performance', $cycle, [['field' => 'current_stage', 'before' => $previous, 'after' => $next]], null, actor: $actor);
         $this->onStageEntered($cycle, $next);
-        PerformanceEvent::dispatch('performance.cycle.stage_changed', null, $cycle, ['cycle' => $cycle->name, 'stage' => config("peopleos.performance.stages.{$next}")], $cycle->appraisals()->pluck('employee_id')->all());
+        PerformanceEvent::dispatch('performance.cycle.stage_changed', null, $cycle, ['cycle' => $cycle->name, 'stage' => config("peopleos.performance.stages.{$next}")], $cycle->appraisals()->where('status', '!=', 'withdrawn')->pluck('employee_id')->all());
 
         return $cycle->refresh();
     }
@@ -195,14 +407,14 @@ final class Appraisals
         }
 
         if ($stage === 'calibration') {
-            $cycle->appraisals()->whereNotIn('status', ['finalized', 'acknowledged'])->get()->each(function (Appraisal $a) {
+            $cycle->appraisals()->whereNotIn('status', ['finalized', 'acknowledged', 'withdrawn'])->get()->each(function (Appraisal $a) {
                 $this->score($a);
                 $a->update(['status' => 'calibration']);
             });
         }
 
         if ($stage === 'final') {
-            $cycle->appraisals()->whereNotIn('status', ['finalized', 'acknowledged'])->get()->each(fn (Appraisal $a) => $this->score($a));
+            $cycle->appraisals()->whereNotIn('status', ['finalized', 'acknowledged', 'withdrawn'])->get()->each(fn (Appraisal $a) => $this->score($a));
         }
     }
 
@@ -214,12 +426,13 @@ final class Appraisals
                 throw new RuntimeException('Only an active cycle can be closed.');
             }
             $all = Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id);
-            $open = (clone $all)->whereNotIn('status', ['finalized', 'acknowledged'])->count();
+            // HROne parity GO-2: appraisals withdrawn from the cycle are neither open nor waiting to be published.
+            $open = (clone $all)->whereNotIn('status', ['finalized', 'acknowledged', 'withdrawn'])->count();
             if ($open > 0) {
                 throw new RuntimeException("{$open} appraisal(s) are not finalized yet.");
             }
             // HP-8b: with manual publishing, ratings are published before the cycle (and its appraisals) lock.
-            $unpublished = (clone $all)->whereNull('published_at')->count();
+            $unpublished = (clone $all)->where('status', '!=', 'withdrawn')->whereNull('published_at')->count();
             if ($unpublished > 0) {
                 throw new RuntimeException("{$unpublished} finalized rating(s) are not published yet. Publish the ratings, then close the cycle.");
             }
@@ -231,7 +444,8 @@ final class Appraisals
             $cycle->update(['status' => 'closed', 'closed_at' => now()]);
             // Phase 7: every appraisal (and its reviews and ratings) locks with the cycle.
             (clone $all)->whereNull('locked_at')->update(['locked_at' => now()]);
-            Goal::query()->where('performance_cycle_id', $cycle->id)->where('status', 'active')->update(['status' => 'completed']);
+            // HROne parity GO-4: private goals complete with their cycle too, whoever closes it.
+            Goal::query()->withoutGlobalScope(GoalVisibilityScope::class)->where('performance_cycle_id', $cycle->id)->where('status', 'active')->update(['status' => 'completed']);
             $metadata = ['appraisals_locked' => (clone $all)->count()];
             if ($distribution->mode() !== 'off' && ($gap = $distribution->warning($locked)) !== null) {
                 $metadata['distribution_warning'] = $gap;
@@ -264,6 +478,9 @@ final class Appraisals
         if ($appraisal->isFinal()) {
             throw new RuntimeException('The appraisal is finalized.');
         }
+        if ($appraisal->isWithdrawn()) {
+            throw new RuntimeException(self::WITHDRAWN);
+        }
         if ($reviewer->id === $appraisal->employee_id) {
             throw new RuntimeException('An employee cannot be their own peer reviewer.');
         }
@@ -287,6 +504,9 @@ final class Appraisals
 
         if ($appraisal->isFinal()) {
             throw new RuntimeException('The appraisal is finalized.');
+        }
+        if ($appraisal->isWithdrawn() || $review->status === 'withdrawn') {
+            throw new RuntimeException(self::WITHDRAWN);
         }
         if ($review->isSubmitted() && ! $cycle->setting('allow_resubmit', false)) {
             throw new RuntimeException('This review was already submitted.');
@@ -339,7 +559,11 @@ final class Appraisals
             if ($current->isFinal() || $current->isLocked()) {
                 throw new RuntimeException('The appraisal is finalized.');
             }
-            if (AppraisalReview::query()->whereKey($review->id)->lockForUpdate()->value('status') === 'submitted' && ! $cycle->setting('allow_resubmit', false)) {
+            $status = AppraisalReview::query()->whereKey($review->id)->lockForUpdate()->value('status');
+            if ($current->isWithdrawn() || $status === 'withdrawn') {
+                throw new RuntimeException(self::WITHDRAWN);
+            }
+            if ($status === 'submitted' && ! $cycle->setting('allow_resubmit', false)) {
                 throw new RuntimeException('This review was already submitted.');
             }
             $review->ratings()->delete();
@@ -429,6 +653,9 @@ final class Appraisals
             if ($current->isFinal() || $current->isLocked()) {
                 throw new RuntimeException('The appraisal is finalized: its reviews can no longer be reopened.');
             }
+            if ($current->isWithdrawn()) {
+                throw new RuntimeException(self::WITHDRAWN);
+            }
             $locked = AppraisalReview::query()->whereKey($review->id)->lockForUpdate()->firstOrFail();
             if (! $locked->isSubmitted()) {
                 throw new RuntimeException('Only a submitted review can be reopened.');
@@ -469,6 +696,10 @@ final class Appraisals
      */
     public function score(Appraisal $appraisal): Appraisal
     {
+        // HROne parity GO-2: an appraisal withdrawn from its cycle keeps the scores it had when it left.
+        if ($appraisal->isWithdrawn()) {
+            return $appraisal;
+        }
         $appraisal->loadMissing(['cycle.templateVersion', 'reviews.ratings', 'employee']);
         $cycle = $appraisal->cycle;
         $scale = $cycle->ratingScale();
@@ -667,6 +898,9 @@ final class Appraisals
         if ($appraisal->isFinal()) {
             throw new RuntimeException('The appraisal is finalized.');
         }
+        if ($appraisal->isWithdrawn()) {
+            throw new RuntimeException(self::WITHDRAWN);
+        }
         app(Calibrations::class)->adjust($appraisal, $rating, $note, $expected, null, $actor);
 
         return $appraisal->refresh();
@@ -679,6 +913,9 @@ final class Appraisals
 
         if ($appraisal->isFinal()) {
             throw new RuntimeException('The appraisal is already finalized.');
+        }
+        if ($appraisal->isWithdrawn()) {
+            throw new RuntimeException(self::WITHDRAWN);
         }
         if ($cycle->status !== 'active') {
             throw new RuntimeException('The cycle is not active.');
@@ -705,6 +942,9 @@ final class Appraisals
             $current = Appraisal::query()->withoutGlobalScope(AccessScope::class)->whereKey($appraisal->id)->lockForUpdate()->firstOrFail();
             if ($current->isFinal() || $current->isLocked()) {
                 throw new RuntimeException('The appraisal is already finalized.');
+            }
+            if ($current->isWithdrawn()) {
+                throw new RuntimeException(self::WITHDRAWN);
             }
             // HP-8b: auto publishing (the default) publishes the rating with the finalization, as before; manual waits
             // for Publish ratings — until then the employee sees no rating, label, summary or reviews by others.
@@ -787,10 +1027,12 @@ final class Appraisals
      * HP-8i: the feedback template the employee's performance policy maps on the performance review, asked of the manager
      * when the cycle reaches the manager review (one per manager review; a My tasks item). A failure never stops the cycle.
      */
-    private function raiseReviewFeedback(PerformanceCycle $cycle): void
+    private function raiseReviewFeedback(PerformanceCycle $cycle, ?array $appraisalIds = null): void
     {
         $rules = app(PerformancePolicyRules::class);
-        AppraisalReview::query()->with(['appraisal.employee.person', 'reviewer'])->whereIn('appraisal_id', $cycle->appraisals()->pluck('id'))->where('type', 'manager')->get()
+        // HROne parity GO-2: not for appraisals withdrawn from the cycle; $appraisalIds = employees added to the running cycle.
+        AppraisalReview::query()->with(['appraisal.employee.person', 'reviewer'])->where('status', '!=', 'withdrawn')
+            ->whereIn('appraisal_id', $cycle->appraisals()->where('status', '!=', 'withdrawn')->when($appraisalIds !== null, fn ($q) => $q->whereIn('id', $appraisalIds ?: [0]))->pluck('id'))->where('type', 'manager')->get()
             ->each(function (AppraisalReview $review) use ($rules, $cycle) {
                 try {
                     $employee = $review->appraisal?->employee;
@@ -827,7 +1069,7 @@ final class Appraisals
         $scale = $cycle->ratingScale();
         $counts = collect($scale->levels)->mapWithKeys(fn ($l) => [$l['label'] => 0])->all();
 
-        foreach ($cycle->appraisals()->get() as $appraisal) {
+        foreach ($cycle->appraisals()->where('status', '!=', 'withdrawn')->get() as $appraisal) {
             $label = RatingRules::label($scale, $appraisal->effectiveRating());
             if ($label !== null) {
                 $counts[$label]++;

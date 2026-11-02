@@ -37,10 +37,16 @@
     <tr><th>Confirmation date</th><td>{{ $date($employee->confirmation_date) }}</td></tr>
     <tr><th>Work e-mail</th><td>{{ $employee->work_email ?? '—' }}</td></tr>
     <tr><th>Work phone</th><td>{{ $employee->work_phone ?? '—' }}</td></tr>
+    @if (filled($employee->getAttributes()['device_user_id'] ?? null))
+        <tr><th>Device user id</th><td>{{ $employee->device_user_id }}</td></tr>
+    @endif
 </table>
 
 <h2>Personal</h2>
 <table>
+    @if ($person?->salutationLabel())
+        <tr><th>Salutation</th><td>{{ $person->salutationLabel() }}</td></tr>
+    @endif
     <tr><th>Preferred name</th><td>{{ $person?->preferred_name ?? '—' }}</td></tr>
     <tr><th>Gender</th><td>{{ $person?->gender ?? '—' }}</td></tr>
     <tr><th>Marital status</th><td>{{ $person?->marital_status ?? '—' }}</td></tr>
@@ -92,7 +98,7 @@
 <table>
     <thead><tr><th>Name</th><th>Relation</th><th>Notes</th></tr></thead>
     @foreach ($family as $f)
-        <tr><td>{{ $f->name }}</td><td>{{ $f->relation }}</td><td>{{ collect([$f->is_dependent ? 'Dependant' : null, $f->is_nominee ? 'Nominee' : null])->filter()->implode(', ') ?: '—' }}</td></tr>
+        <tr><td>{{ $f->name }}</td><td>{{ $f->relation }}</td><td>{{ collect([$f->is_dependent ? 'Dependant' : null, $f->is_nominee ? 'Nominee' : null, $f->in_school ? 'In school' : null, $f->in_hostel ? 'In a hostel' : null, $f->remarks])->filter()->implode(', ') ?: '—' }}</td></tr>
     @endforeach
     @foreach ($contacts as $c)
         <tr><td>{{ $c->name }}</td><td>{{ $c->relation }}</td><td>Emergency contact · {{ $c->phone }}</td></tr>
@@ -103,18 +109,31 @@
 </table>
 @endif
 
+@php($nominations = $shows['family'] ? ($person?->nominations ?? collect()) : collect())
+@if ($nominations->isNotEmpty())
+<h2>Nominations</h2>
+<table>
+    <thead><tr><th>Benefit</th><th>Nominee</th><th>Share</th><th>Guardian</th></tr></thead>
+    @foreach ($nominations as $n)
+        <tr><td>{{ $n->benefitLabel() }}</td><td>{{ $n->familyMember?->name ?? '—' }}</td><td>{{ rtrim(rtrim((string) $n->share, '0'), '.') }}%</td><td>{{ $n->guardian_name ? $n->guardian_name.($n->guardian_relation ? ' ('.$n->guardian_relation.')' : '') : '—' }}</td></tr>
+    @endforeach
+</table>
+@endif
+
 @if ($shows['professional'])
 <h2>Qualifications and experience</h2>
 <table>
     <thead><tr><th>Qualification / employer</th><th>Institution / designation</th><th>Year / period</th></tr></thead>
     @foreach ($person?->qualifications ?? [] as $q)
-        <tr><td>{{ $q->qualification }}{{ $q->specialisation ? ' · '.$q->specialisation : '' }}</td><td>{{ $q->institution ?? '—' }}</td><td>{{ $q->year_of_completion ?? '—' }}</td></tr>
+        <tr><td>{{ $q->qualification }}{{ $q->specialisation ? ' · '.$q->specialisation : '' }}{{ $q->is_highest ? ' (highest)' : '' }}</td><td>{{ $q->institution ?? '—' }}{{ $q->mode ? ' · '.app(\App\Domain\Configuration\Services\OptionLists::class)->label('qualification_modes', $q->mode) : '' }}</td><td>{{ $q->year_started ? $q->year_started.' – ' : '' }}{{ $q->year_of_completion ?? '—' }}</td></tr>
     @endforeach
     @foreach ($person?->experiences ?? [] as $x)
         <tr><td>{{ $x->employer }}</td><td>{{ $x->designation ?? '—' }}</td><td>{{ $date($x->from_date) }} – {{ $date($x->to_date) }}</td></tr>
     @endforeach
     @if (($person?->qualifications ?? collect())->isEmpty() && ($person?->experiences ?? collect())->isEmpty())
-        <tr><td colspan="3" class="muted">None recorded.</td></tr>
+        <tr><td colspan="3" class="muted">{{ $person?->isFresher() ? 'None recorded. Fresher: no earlier employment.' : 'None recorded.' }}</td></tr>
+    @elseif ($person?->isFresher())
+        <tr><td colspan="3" class="muted">Fresher: no earlier employment.</td></tr>
     @endif
 </table>
 @endif
@@ -125,6 +144,9 @@
         <tr><th>PAN</th><td>{{ $mask($statutory?->pan) }}</td></tr>
         <tr><th>UAN</th><td>{{ $mask($statutory?->uan) }}</td></tr>
         <tr><th>ESIC number</th><td>{{ $mask($statutory?->esic_number) }}</td></tr>
+        @foreach ($identityDocuments as $d)
+            <tr><th>{{ $d->kindLabel() }}</th><td>{{ $d->maskedNumber() }}@if ($d->expires_on) · expires {{ $date($d->expires_on) }}@endif</td></tr>
+        @endforeach
         @if ($shows['bank'])
             @forelse ($bank as $b)
                 <tr><th>Bank account{{ $b->is_primary ? ' (primary)' : '' }}</th><td>{{ $b->bank_name ?? '—' }} · {{ $mask($b->account_number) }}</td></tr>

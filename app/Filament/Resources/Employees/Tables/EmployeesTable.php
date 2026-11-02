@@ -8,6 +8,7 @@ use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Filament\Support\BulkRecordActions;
 use App\Filament\Support\EmployeeFilters;
+use App\Filament\Support\SeparationActions;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -83,6 +84,8 @@ class EmployeesTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
+                // HROne parity WO-11 (§23.2.2 #20, "Blacklist"): an exited employee marked not eligible for rehire (exit.manage).
+                SeparationActions::notEligibleForRehire(),
             ])
             // HROne parity WO-1: bulk actions on the rows selected (each record still authorised by its own service).
             ->toolbarActions([BulkRecordActions::selected('employees', ListEmployees::BULK_OPERATIONS)]);

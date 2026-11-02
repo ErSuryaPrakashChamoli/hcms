@@ -30,9 +30,20 @@ final class LeaveEntitlements
     /** @return array<string, array<string, mixed>> leave type code => entitlement settings */
     public function for(Employee $employee, CarbonInterface|string|null $on = null): array
     {
+        return $this->fromVersion($this->policyFor($employee, $on));
+    }
+
+    /**
+     * The entitlements of a resolved leave policy version (what for() reads; HROne parity TX-8a resolves the policy once
+     * and reads both its name and its entitlements).
+     *
+     * @return array<string, array<string, mixed>> leave type code => entitlement settings
+     */
+    public function fromVersion(?PolicyVersion $version): array
+    {
         $entitlements = [];
 
-        foreach ($this->policyFor($employee, $on)?->setting('entitlements', []) ?? [] as $row) {
+        foreach ($version?->setting('entitlements', []) ?? [] as $row) {
             if (! empty($row['leave_type_code'])) {
                 $entitlements[$row['leave_type_code']] = array_replace(self::DEFAULTS, array_filter($row, fn ($v) => $v !== null && $v !== ''));
             }

@@ -12,6 +12,7 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
+use App\Domain\Organisation\Models\DimensionValue;
 use App\Domain\Organisation\Models\Division;
 use App\Domain\Organisation\Models\EmployeeCategory;
 use App\Domain\Organisation\Models\EmploymentType;
@@ -38,6 +39,7 @@ final class BeforeAfterPreview
         'designation_id' => ['Designation', Designation::class], 'level_id' => ['Level', Level::class], 'grade_id' => ['Grade', Grade::class],
         'employment_type_id' => ['Employment type', EmploymentType::class], 'employee_category_id' => ['Employee category', EmployeeCategory::class],
         'work_mode_id' => ['Work mode', WorkMode::class], 'cost_centre_id' => ['Cost centre', CostCentre::class],
+        'dimension_value_id' => ['Dimension', DimensionValue::class],
     ];
 
     public static function position(): View

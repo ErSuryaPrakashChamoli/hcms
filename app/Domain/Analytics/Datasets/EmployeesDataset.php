@@ -91,6 +91,13 @@ class EmployeesDataset extends Dataset
             'manager' => ['label' => 'Manager', 'type' => 'string', 'value' => fn ($e) => $e->currentManager?->manager?->person?->full_name],
             'manager_code' => ['label' => 'Manager code', 'type' => 'string', 'value' => fn ($e) => $e->currentManager?->manager?->employee_code],
             'has_login' => ['label' => 'Has a login', 'type' => 'boolean', 'value' => fn ($e) => $e->user_id !== null],
+            // HROne parity MS-4: salutation, fresher, device user id, highest qualification, identity document expiry (never a number).
+            'salutation' => ['label' => 'Salutation', 'type' => 'string', 'value' => fn ($e) => $e->person?->salutationLabel()],
+            'is_fresher' => ['label' => 'Fresher (no earlier employment)', 'type' => 'boolean', 'value' => fn ($e) => (bool) $e->person?->isFresher()],
+            'device_user_id' => ['label' => 'Device user id', 'type' => 'string', 'value' => fn ($e) => $e->getAttributes()['device_user_id'] ?? null],
+            'highest_qualification' => ['label' => 'Highest qualification', 'type' => 'string', 'value' => fn ($e) => $e->person?->highestQualification?->qualification],
+            'passport_expires_on' => ['label' => 'Passport expires on', 'type' => 'date', 'sensitive' => true, 'value' => fn ($e) => $e->person?->identityDocuments->firstWhere('kind', 'passport')?->expires_on],
+            'driving_licence_expires_on' => ['label' => 'Driving licence expires on', 'type' => 'date', 'sensitive' => true, 'value' => fn ($e) => $e->person?->identityDocuments->firstWhere('kind', 'driving_licence')?->expires_on],
             // Phase 11: approved compensation through the Compensation read contract (one query per report).
             'ctc_annual' => ['label' => 'Annual CTC', 'type' => 'number', 'sensitive' => true, 'permission' => 'compensation.view', 'value' => fn ($e) => ($this->ctc ??= app(CompensationOutput::class)->annualCtcOn())[$e->id] ?? null],
             'headcount' => ['label' => 'Headcount (1 per row)', 'type' => 'number', 'value' => fn ($e) => 1],
@@ -99,7 +106,7 @@ class EmployeesDataset extends Dataset
 
     public function query(): Builder
     {
-        return Employee::query()->with(['person', 'currentPosition.company', 'currentPosition.businessUnit', 'currentPosition.division', 'currentPosition.location', 'currentPosition.department', 'currentPosition.team', 'currentPosition.designation', 'currentPosition.level', 'currentPosition.grade', 'currentPosition.employmentType', 'currentPosition.employeeCategory', 'currentPosition.workMode', 'currentPosition.costCentre', 'currentManager.manager.person'])->orderBy('employee_code');
+        return Employee::query()->with(['person', 'person.highestQualification', 'person.identityDocuments', 'currentPosition.company', 'currentPosition.businessUnit', 'currentPosition.division', 'currentPosition.location', 'currentPosition.department', 'currentPosition.team', 'currentPosition.designation', 'currentPosition.level', 'currentPosition.grade', 'currentPosition.employmentType', 'currentPosition.employeeCategory', 'currentPosition.workMode', 'currentPosition.costCentre', 'currentManager.manager.person'])->orderBy('employee_code');
     }
 
     /** @param  array<int, string>  $bands  upper bound (exclusive) => label, ascending */

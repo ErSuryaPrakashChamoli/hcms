@@ -64,6 +64,28 @@ abstract class RowImports
         return ['employees' => Employee::query()->pluck('id', 'employee_code')->mapWithKeys(fn ($id, $c) => [mb_strtolower((string) $c) => (int) $id])->all(), 'seen' => []];
     }
 
+    /**
+     * Data import: whether a file of this type can be meant for new or existing records (the page then asks, and
+     * validate() skips rows outside the choice). An upload whose rows only ever add something says false.
+     */
+    public static function intents(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Data import: values for cells left blank, from the process the file was uploaded for (options.defaults, e.g.
+     * kind = opening for Opening leave balance). Only fields of this upload count.
+     *
+     * @return array<string, string>
+     */
+    protected function defaults(EmployeeImport $import): array
+    {
+        $defaults = $import->options['defaults'] ?? [];
+
+        return is_array($defaults) ? array_map('strval', array_intersect_key(array_filter($defaults, fn ($v) => $v !== null && $v !== ''), static::fields())) : [];
+    }
+
     /** @return array<string, string> extra header aliases => field */
     protected function aliases(): array
     {
@@ -154,7 +176,8 @@ abstract class RowImports
                 throw new RuntimeException("Column [{$header}] or field [{$field}] is not valid.");
             }
         }
-        $missing = collect($fields)->filter(fn ($d) => $d[1])->keys()->diff(array_values($mapping));
+        // A required field the process fills in for blank cells (options.defaults) needs no column.
+        $missing = collect($fields)->filter(fn ($d) => $d[1])->keys()->diff(array_values($mapping))->diff(array_keys($this->defaults($import)));
         if ($missing->isNotEmpty()) {
             throw new RuntimeException('Required fields are not mapped: '.$missing->map(fn ($f) => $fields[$f][0])->implode(', ').'.');
         }
@@ -173,7 +196,7 @@ abstract class RowImports
 
         DB::transaction(function () use ($import, $mapping, &$counts, &$context, $mode) {
             foreach ($import->rows()->orderBy('row_number')->cursor() as $row) {
-                $r = $this->recordFor($row, $mapping);
+                $r = $this->recordFor($row, $mapping) + $this->defaults($import);
                 try {
                     $decision = $this->check($r, $context, $row, $import);
                 } catch (Throwable $e) {
@@ -226,7 +249,7 @@ abstract class RowImports
                     continue;
                 }
                 try {
-                    $text = DB::transaction(fn () => $this->apply($this->recordFor($row, $mapping), $row, $import, $user));
+                    $text = DB::transaction(fn () => $this->apply($this->recordFor($row, $mapping) + $this->defaults($import), $row, $import, $user));
                     $row->update(['status' => 'imported', 'result' => Str::limit($text, 500)]);
                     $result[$row->action === 'update' ? 'updated' : 'created']++;
                 } catch (Throwable $e) {

@@ -31,7 +31,7 @@ PeopleOS is built so that work comes to people, rather than people hunting throu
 
 ### Overview
 
-You sign in with your work e-mail address and a password that only you know. Your administrator never chooses or sees your password: new users receive an **invitation** by e-mail and choose their own. If you forget your password, you can ask for a reset link yourself.
+You sign in with your work e-mail address and a password that only you know. New users receive an **invitation** by e-mail with a temporary password (or the administrator hands one over); the first time you sign in you choose your own, so nobody else knows it after that. A temporary password stops working after a few days. If you forget your password, you can ask for a reset link yourself, or ask your administrator for a new temporary password.
 
 Your organisation can also require **multi-factor sign-in** (PeopleOS also calls it two-factor authentication, or 2FA). This means that, after your password, you type a 6-digit code from an authenticator app on your phone. Whether it is required is a decision your organisation makes in its security policy; in the demonstration organisation it is optional.
 

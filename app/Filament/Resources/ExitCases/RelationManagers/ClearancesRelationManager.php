@@ -36,6 +36,10 @@ class ClearancesRelationManager extends RelationManager
                 TextColumn::make('remarks')->placeholder('—')->wrap(),
                 TextColumn::make('clearer.name')->label('By')->placeholder('—'),
                 TextColumn::make('cleared_at')->dateTime()->placeholder('—'),
+                // HROne parity WO-11 (§23.6.3 #4, #7): due (overdue in red), expected date and the evidence file's name.
+                TextColumn::make('due_on')->label('Due')->date()->placeholder('—')->color(fn (ExitClearance $record) => $record->isOverdue() ? 'danger' : null)->toggleable(),
+                TextColumn::make('expected_on')->label('Expected')->date()->placeholder('—')->toggleable(),
+                TextColumn::make('evidence_name')->label('Evidence')->placeholder('—')->toggleable(),
             ])
             ->defaultSort('sort_order')
             ->paginated(false)

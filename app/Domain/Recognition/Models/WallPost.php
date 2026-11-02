@@ -15,7 +15,7 @@ use RuntimeException;
 
 /**
  * HROne setup parity HP-9e: one post on the social wall — an HR post (written on the wall) or a post the system makes
- * for a badge, a reward, a celebration, an announcement, a new joiner or an achievement (SocialWall). Never deleted:
+ * for a badge, a reward, a celebration, an announcement, a new joiner, an achievement or a company event (SocialWall). Never deleted:
  * moderators hide it (who, when, why) and may restore it; HR posts are the only ones whose text a person wrote, and that
  * text stays out of the audit trail. The person the post is about is `aboutEmployee` (wall visibility is decided by
  * SocialWall, not by the HR access scope of the records it points at).
@@ -29,6 +29,8 @@ class WallPost extends Model
     public const TYPES = [
         'hr_post' => 'HR post', 'badge' => 'Badge', 'reward' => 'Reward', 'celebration' => 'Celebration', 'announcement' => 'Announcement',
         'new_joiner' => 'New joiner', 'goal_achievement' => 'Goal achieved', 'learning_certificate' => 'Certificate earned', 'skill_endorsement' => 'Skill endorsement',
+        // HROne parity GO-15: a published company event, shown to its invitees.
+        'event' => 'Event',
     ];
 
     /** The comment restriction (engage.wall.comments_disabled_for) each type falls under. */

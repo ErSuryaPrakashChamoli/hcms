@@ -10,6 +10,7 @@ use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Models\TransferRequest;
 use App\Domain\Employment\Models\WorkforceReason;
 use App\Domain\Identity\Models\User;
+use App\Domain\Letters\Support\PolicyLetters;
 use App\Domain\Payroll\Models\SalaryComponent;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -79,8 +80,15 @@ final class TransferRequests
 
     public function approve(TransferRequest $request, ?string $note, User $by): TransferRequest
     {
-        return $this->decide($request, $by, 'approved', $note, function (TransferRequest $r) use ($note) {
+        return $this->decide($request, $by, 'approved', $note, function (TransferRequest $r) use ($note, $by) {
             app(TransferEmployeeAction::class)->handle($r->employee, $r->changes ?? [], $r->effective_date, $r->new_manager_id, $note ?: ($r->reason?->name ?? 'Approved transfer request #'.$r->id));
+            // HROne parity WO-13 (§23.7.1 #25–26): the transfer policy may draft an intimation letter now and a transfer letter
+            // when the transfer takes effect — now when the date has come, else on the date (peopleos:letters:tick). None by default.
+            $policy = $this->policies->resolve('transfer', $r->employee, $r->effective_date);
+            PolicyLetters::draft($policy?->setting('letter_on_request_approval'), $r->employee, $by, $r, 'transfer.letter_on_request_approval', PolicyLetters::transferValues($r));
+            if ($r->effective_date !== null && $r->effective_date->lte(now()->endOfDay())) {
+                PolicyLetters::draft($policy?->setting('letter_on_effect'), $r->employee, $by, $r, 'transfer.letter_on_effect', PolicyLetters::transferValues($r));
+            }
         });
     }
 

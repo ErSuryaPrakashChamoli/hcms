@@ -270,6 +270,9 @@ it('audits every domain model except the documented append-only or derived table
         'Attendance\Models\HolidayLibraryList', 'Attendance\Models\HolidayLibraryEntry',
         // The region list: audited explicitly by CountryRegions on the platform chain (add, rename, retire, restore, sync).
         'Attendance\Models\CountryRegion',
+        // HROne parity PO-13: a TDS challan's per-employee allocation is written once with the challan (never changed) and
+        // audited on the challan (its CREATE event and an ASSIGN event listing the employees and the amount).
+        'Compliance\Models\StatutoryChallanAllocation',
     ];
     $allowed = array_map(fn (string $c) => 'App\\Domain\\'.$c, $appendOnlyOrDerived);
 
@@ -318,6 +321,9 @@ it('bypasses tenant scoping only in the documented platform services', function 
         'app/Domain/Offboarding/Services/TenantRetentionTerms.php',
         // SaaS.10: an application's audit trail on the platform chain (tenant_id null, filtered by its reference).
         'app/Domain/Signup/Support/SignupAudit.php',
+        // HROne parity AC-3: the operators' list of product ideas across organisations (the ideas, the organisation's name, the
+        // sender's name and e-mail; filtered by organisation, module, status, kind).
+        'app/Domain/ProductFeedback/Services/ProductIdeaDirectory.php',
         // SaaS.12: the deletion register and restore reconciliation run on the platform, with no bound tenant: completed
         // deletions (reference, status, certificate hash, plan) compared with the register, filtered by reference or the
         // tenant concerned. No tenant record beyond the deletion's own is read.

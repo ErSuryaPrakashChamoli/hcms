@@ -19,6 +19,8 @@ use Illuminate\View\View;
  * the record's `view` policy → audit → render. Sensitive sections (date of birth, blood group, personal contacts, statutory and bank
  * details) are included only with `viewSensitive`, masked, and that access is recorded like on the 360. Sections the profile
  * access matrix (CA-6, profile.section_visibility) hides from this viewer are left out, as on the 360 tabs.
+ * HROne parity MS-4: salutation, fresher, device user id, family schooling and remarks, nominations (family section),
+ * qualification highest / mode / years, and passport / driving licence (sensitive, masked) are printed too.
  */
 class EmployeeProfilePrintController extends Controller
 {
@@ -38,6 +40,7 @@ class EmployeeProfilePrintController extends Controller
         abort_unless($request->hasValidSignature(), 403);
         $employee = Employee::query()->with([
             'person.addresses', 'person.familyMembers', 'person.emergencyContacts', 'person.qualifications', 'person.experiences',
+            'person.nominations.familyMember', 'person.identityDocuments',
             'currentPosition.designation', 'currentPosition.department', 'currentPosition.company', 'currentPosition.location',
             'currentPosition.businessUnit', 'currentPosition.grade', 'currentPosition.employmentType', 'currentManager.manager.person',
         ])->findOrFail($employee);
@@ -61,6 +64,8 @@ class EmployeeProfilePrintController extends Controller
             'withSensitive' => $withSensitive,
             'statutory' => $withSensitive ? $employee->statutoryDetail : null,
             'bank' => $withSensitive && $shows['bank'] ? $employee->bankAccounts()->orderByDesc('is_primary')->get() : collect(),
+            // HROne parity MS-4: passport / driving licence with the statutory block (masked; personal section of the matrix).
+            'identityDocuments' => $withSensitive && $shows['personal'] ? ($employee->person?->identityDocuments ?? collect()) : collect(),
             'shows' => $shows,
             'mask' => fn (?string $value) => blank($value) ? '—' : str_repeat('•', max(0, mb_strlen($value) - 4)).mb_substr($value, -4),
         ]);

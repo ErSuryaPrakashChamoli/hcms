@@ -10,6 +10,7 @@ use App\Domain\Expense\Models\ExpenseReceipt;
 use App\Domain\Expense\Models\TravelRequest;
 use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Models\LeaveRequest;
+use App\Domain\Leave\Services\LeavePrivacy;
 use App\Domain\People\Services\Anniversaries;
 use App\Domain\People\Services\Birthdays;
 use App\Domain\Performance\Models\ImprovementPlan;
@@ -137,8 +138,8 @@ final class TeamCalendar
                     fn (Employee $e) => $kind === 'work_anniversary' ? Anniversaries::yearsLabel(Anniversaries::years($e, $start)) : null)
                 : [],
             'confirmation' => $this->records($viewer, $inTeam(Employee::query()->with('person')->whereBetween('probation_end_date', $days)
-                ->whereNotIn('lifecycle_state', ['exited', 'alumni', 'confirmed']), 'employees.id'), 'probation_end_date', fn () => 'Probation ends', self: true),
-            'joining' => $this->records($viewer, $inTeam(Employee::query()->with('person')->where(fn (Builder $q) => $q
+                ->whereNotIn('lifecycle_state', ['exited', 'alumni', 'confirmed', 'not_joined']), 'employees.id'), 'probation_end_date', fn () => 'Probation ends', self: true),
+            'joining' => $this->records($viewer, $inTeam(Employee::query()->with('person')->where('lifecycle_state', '!=', 'not_joined')->where(fn (Builder $q) => $q
                 ->whereBetween('joining_date', $days)
                 ->orWhere(fn (Builder $q) => $q->whereNull('joining_date')->whereBetween('expected_joining_date', $days))), 'employees.id'),
                 fn (Employee $e) => $e->joining_date ?? $e->expected_joining_date, fn (Employee $e) => $e->joining_date ? 'Joins' : 'Expected to join', self: true),
@@ -149,7 +150,8 @@ final class TeamCalendar
             'leave' => $this->records($viewer, $inTeam(LeaveRequest::query()->with(['employee.person', 'leaveType'])->whereIn('status', LeaveRequest::TAKEN)
                 ->whereDate('from_date', '<=', $end->toDateString())->whereDate('to_date', '>=', $start->toDateString())),
                 fn (LeaveRequest $r) => $r->from_date->lt($start) ? $start : $r->from_date,
-                fn (LeaveRequest $r) => ($r->leaveType?->name ?? 'Leave').' · '.$r->from_date->format('j M').($r->to_date->equalTo($r->from_date) ? '' : ' – '.$r->to_date->format('j M'))),
+                // HROne parity RQ-4: a private leave reads "Away" for a viewer who may not see it in full.
+                fn (LeaveRequest $r) => app(LeavePrivacy::class)->typeLabel($r, $viewer).' · '.$r->from_date->format('j M').($r->to_date->equalTo($r->from_date) ? '' : ' – '.$r->to_date->format('j M'))),
             'overtime', 'comp_off' => $this->records($viewer, $inTeam(TimeOfficeRequest::query()->with('employee.person')->where('type', $kind)->where('status', 'approved')
                 ->whereBetween('from_date', $days)), 'from_date',
                 fn (TimeOfficeRequest $r) => $kind === 'overtime' ? ($r->minutes ? 'Overtime · '.intdiv((int) $r->minutes, 60).' h '.((int) $r->minutes % 60).' min' : 'Overtime') : 'Comp-off'),

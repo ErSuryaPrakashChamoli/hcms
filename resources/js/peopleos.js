@@ -454,6 +454,41 @@ components.posFormReview = (mode = 'edit') => ({
 });
 
 /*
+ * Browse (x-pos.browse): areas down the left, the open one's screens beside them; an accordion where the space is
+ * narrow (one grid column). One area is open at a time; a remembered page reopens the area last opened this visit.
+ * Up/Down, Home and End move between the area headings (Enter or Space opens one).
+ */
+components.posBrowse = (remember = null) => ({
+    open: null,
+    init() {
+        const keys = [...this.$root.querySelectorAll(':scope > [data-browse-key]')].map((el) => el.dataset.browseKey);
+        let saved = null;
+        try { saved = remember ? sessionStorage.getItem(`pos-browse:${remember}`) : null; } catch (e) { saved = null; }
+        this.open = keys.includes(saved) ? saved : (keys[0] ?? null);
+    },
+    // Side by side when the grid has two columns (a container query decides, not the window).
+    wide() {
+        return getComputedStyle(this.$root).gridTemplateColumns.trim().split(/\s+/).length > 1;
+    },
+    toggle(key) {
+        this.open = this.open === key && !this.wide() ? null : key;
+        if (remember && this.open) {
+            try { sessionStorage.setItem(`pos-browse:${remember}`, this.open); } catch (e) { /* storage unavailable: nothing to remember */ }
+        }
+    },
+    move(e) {
+        if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key) || e.metaKey || e.ctrlKey || e.altKey) return;
+        const head = e.target instanceof Element ? e.target.closest('.pos-browse-head') : null;
+        if (!head) return;
+        const heads = [...this.$root.querySelectorAll(':scope > .pos-browse-head')];
+        const i = heads.indexOf(head);
+        const next = e.key === 'Home' ? heads[0] : e.key === 'End' ? heads[heads.length - 1] : heads[(i + (e.key === 'ArrowDown' ? 1 : -1) + heads.length) % heads.length];
+        e.preventDefault();
+        next?.focus();
+    },
+});
+
+/*
  * Employee 360 views (UX.15 closure P1-04): Now is the default; Journey, Work, Growth, Rewards, Documents and
  * Records are one step away. The URL hash names the view, so #journey and #records links keep working; the
  * html[data-pos360-view] attribute lets the deep record sections (rendered by Filament) follow the same view.
@@ -509,6 +544,65 @@ document.addEventListener('keydown', (e) => {
         const map = window.PeopleOS?.goto ?? {};
         const url = map[e.key.toLowerCase()];
         if (url) { e.preventDefault(); go(url); }
+    });
+})();
+
+/*
+ * Rail sections: resting the mouse on a section opens its areas under it, and moving off the section (its row and its
+ * areas) folds it again, so one section is open at a time; the current section's areas are always open. A short grace
+ * keeps a section open while the pointer slips over a gap. Folding a section above the pointer moves the rows under
+ * it, so a pending open only happens if its section is still under the pointer. Touch never hovers: a tap opens the
+ * section's page, which shows its areas. Livewire replaces the rail on navigation, so the listeners sit on the document.
+ */
+(() => {
+    const OPEN = 'data-pos-rail-open';
+    let opening = null;
+    let closing = null;
+    let x = 0;
+    let y = 0;
+    const opened = () => document.querySelector(`.fi-sidebar [${OPEN}]`);
+    const fold = () => document.querySelectorAll(`.fi-sidebar [${OPEN}]`).forEach((li) => li.removeAttribute(OPEN));
+    const sectionOf = (target) => {
+        const li = target?.closest?.('.fi-sidebar.fi-sidebar-open .fi-sidebar-item-btn')?.parentElement;
+        return li?.querySelector(':scope > .fi-sidebar-sub-group-items[data-pos-rail-closed]') ? li : null;
+    };
+    const close = () => {
+        if (closing === null) closing = setTimeout(() => { closing = null; fold(); }, 200);
+    };
+    const open = (li) => {
+        clearTimeout(closing);
+        closing = null;
+        fold();
+        li.setAttribute(OPEN, '');
+        // Areas that open below the rail's edge scroll into sight; the pointer then rests on them, not on another section.
+        const nav = li.closest('.fi-sidebar-nav');
+        if (!nav) return;
+        const edge = nav.getBoundingClientRect();
+        const box = li.getBoundingClientRect();
+        const by = Math.min(box.bottom + 12 - edge.bottom, box.top - edge.top);
+        if (by > 0) nav.scrollBy({ top: by, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    };
+    document.addEventListener('pointermove', (e) => { x = e.clientX; y = e.clientY; }, { passive: true });
+    document.addEventListener('pointerover', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        x = e.clientX;
+        y = e.clientY;
+        clearTimeout(opening);
+        const current = opened();
+        if (current?.contains(e.target)) {
+            clearTimeout(closing);
+            closing = null;
+            return;
+        }
+        if (current) close();
+        const li = sectionOf(e.target);
+        if (li) opening = setTimeout(() => { if (sectionOf(document.elementFromPoint(x, y)) === li) open(li); }, 120);
+    });
+    // Leaving the window fires no pointerover anywhere.
+    document.addEventListener('pointerout', (e) => {
+        if (e.pointerType !== 'mouse' || e.relatedTarget) return;
+        clearTimeout(opening);
+        if (opened()) close();
     });
 })();
 
@@ -577,6 +671,8 @@ document.addEventListener('keydown', (e) => {
         const bar = document.querySelector('.fi-topbar-ctn');
         const areaBar = document.querySelector('.pos-spacebar-wrap');
         header = document.querySelector('.fi-page-header-main-ctn > .fi-header');
+        // A header with nothing left to show (a module's own page: the area bar names it) is not drawn and pins nothing.
+        if (header && !header.getClientRects().length) header = null;
         watch(areaBar);
         watch(header);
         area = areaBar?.offsetHeight ?? 0;
@@ -644,6 +740,42 @@ document.addEventListener('keydown', (e) => {
         window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
         document.getElementById('pos-main')?.focus({ preventScroll: true });
     };
+})();
+
+/*
+ * Attendance calendar: with the totals beside the month and at least CAL_MIN of room below the employee bar, the month
+ * and its totals fit that room (html[data-pos-cal-fit], --pos-cal-h; theme.css section K), so the whole month shows
+ * without scrolling. A day too short for its notes drops them (no-body); its shift is in the top row and always shows.
+ * Otherwise the page scrolls.
+ */
+(() => {
+    const root = document.documentElement;
+    const CAL_MIN = 440;
+    let pending = 0;
+    const measure = () => {
+        pending = 0;
+        const main = document.querySelector('.pos-cal-main');
+        const beside = !!main && getComputedStyle(main).gridTemplateColumns.trim().split(/\s+/).length > 1;
+        // The page's own bottom padding, at least one gap, stays below the month.
+        const page = document.querySelector('.fi-main');
+        const below = Math.max(page ? parseFloat(getComputedStyle(page).paddingBottom) || 0 : 0, parseFloat(getComputedStyle(root).getPropertyValue('--pos-gap')) || 16);
+        const room = beside ? Math.floor(window.innerHeight - (main.getBoundingClientRect().top + window.scrollY) - below) : 0;
+        if (room < CAL_MIN) {
+            root.removeAttribute('data-pos-cal-fit');
+            return;
+        }
+        root.style.setProperty('--pos-cal-h', `${room}px`);
+        root.setAttribute('data-pos-cal-fit', '');
+        const day = main.querySelector('.pos-cal-day')?.offsetHeight ?? 0;
+        root.setAttribute('data-pos-cal-fit', day < 56 ? 'no-body' : '');
+    };
+    const schedule = () => { if (!pending) pending = requestAnimationFrame(measure); };
+    window.addEventListener('resize', schedule);
+    document.addEventListener('livewire:navigated', measure);
+    const hook = () => window.Livewire.hook('morphed', schedule);
+    if (window.Livewire) hook(); else document.addEventListener('livewire:init', hook, { once: true });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', measure); else measure();
+    document.fonts?.ready.then(schedule);
 })();
 
 /*

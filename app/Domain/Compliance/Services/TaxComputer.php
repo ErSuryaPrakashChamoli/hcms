@@ -2,6 +2,7 @@
 
 namespace App\Domain\Compliance\Services;
 
+use App\Domain\Claims\Services\ReimbursementBills;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Payroll\Services\PayrollComputation;
 
@@ -17,6 +18,14 @@ use App\Domain\Payroll\Services\PayrollComputation;
  * (TaxIncomeEntries), the previous employer's PF and PT, voluntary PF and NPS lines, other income the employee
  * declares, and home-loan interest (24(b)) when the rule in force carries its limits. Statutory values still come
  * only from the rule: a head the rule has no parameter for is recorded on the basis and not counted.
+ *
+ * HROne parity MS-4: the previous employer's gratuity / leave-encashment exemptions are recorded on the basis through
+ * PriorExemptions (verified rule limits only); they never change the monthly tax.
+ *
+ * Data import DI-4: months paid before going live (TaxIncomeEntries previous_salary) count like income paid outside
+ * payroll plus their basic + DA and HRA in the HRA exemption; TDS / TCS declared on Form 12BAA counts as tax already
+ * deducted (unless the rule in force carries `other_tds_tcs_credit: false`); unbilled pay-by-default reimbursements are
+ * taxable from the organisation's bills month (ReimbursementBills).
  */
 final class TaxComputer
 {
@@ -24,6 +33,7 @@ final class TaxComputer
         private readonly FinancialYear $fy,
         private readonly TaxDeclarationAmounts $amounts,
         private readonly TaxIncomeEntries $incomeEntries,
+        private readonly ?PriorExemptions $priorExemptions = null,
     ) {}
 
     /** @return array{tds: float, pan_missing: bool, basis: array<string, mixed>} */
@@ -49,6 +59,9 @@ final class TaxComputer
         $classified = fn (string $classification) => (float) collect($c->lines)->where('classification', $classification)->sum('amount');
         $npsEmployer = round(($ytd['nps_employer'] ?? 0) + $classified('nps_employer') * $remaining, 2);
         $grossSalary += $outside['perquisites'] + $outside['outside_taxable'] + $npsEmployer;
+        // Data import DI-4 (decision): from the organisation's bills date, pay-by-default reimbursements beyond their bills.
+        $unbilled = app(ReimbursementBills::class)->unbilled($c, $paid, $remaining);
+        $grossSalary += (float) ($unbilled['taxable'] ?? 0);
         if ($npsEmployer > 0) {
             $declared['80CCD2'] = (float) ($declared['80CCD2'] ?? 0) + $npsEmployer; // s.17(1)(viii) income, 80CCD(2) deduction
         }
@@ -57,8 +70,9 @@ final class TaxComputer
         $hraExempt = 0.0;
         $rent = (float) ($declared['HRA_RENT'] ?? 0);
         if (($params['hra_exempt'] ?? false) && $declaration && $rent > 0) {
-            $hraAnnual = $ytd['hra'] + collect($c->lines)->where('classification', 'hra')->sum('amount') * $remaining;
-            $basicAnnual = $ytd['basic'] + collect($c->lines)->whereIn('classification', ['basic', 'da'])->sum('amount') * $remaining;
+            // Data import DI-4: months paid before PeopleOS went live count with the year's HRA and basic + DA (0 without them).
+            $hraAnnual = $ytd['hra'] + collect($c->lines)->where('classification', 'hra')->sum('amount') * $remaining + $outside['outside_hra'];
+            $basicAnnual = $ytd['basic'] + collect($c->lines)->whereIn('classification', ['basic', 'da'])->sum('amount') * $remaining + $outside['outside_basic'];
             $metro = (float) ($declared['METRO'] ?? 0) > 0;
             $hraExempt = max(0, min($hraAnnual, $rent - 0.10 * $basicAnnual, ($metro ? 0.50 : 0.40) * $basicAnnual));
         }
@@ -117,7 +131,21 @@ final class TaxComputer
             $annualTax = max($annualTax, round($taxable * 0.20)); // s.206AA
         }
 
+        // HROne parity MS-4: gratuity / leave-encashment exemptions used at the previous employer are read only through the
+        // verified TDS rule's limits (PriorExemptions); monthly salary TDS exempts neither, so they are recorded on the basis
+        // (remaining exemption for the payout tax, or "not counted" without a verified rule) and never change this tax.
+        $priorExemptions = ($this->priorExemptions ?? app(PriorExemptions::class))->for($declaration, $paid);
+
         $alreadyDeducted = $ytd['tds'] + (float) ($declaration?->previous_employer_tds ?? 0) + $outside['outside_tds'];
+        // Data import DI-4 (decision): TDS / TCS deducted or collected elsewhere that the employee declared (Form 12BAA) counts
+        // as tax already deducted, like the previous employer's TDS and tax deducted on income outside payroll (s.192(2B) as
+        // amended from October 2024, as Indian payroll suites apply it). A TDS rule version carrying
+        // `other_tds_tcs_credit: false` turns it off for its period; the credit is then shown on the basis as not counted.
+        $taxCredit = (float) ($outside['tax_credit'] ?? 0);
+        $creditCounted = $taxCredit > 0 && $rule->param('other_tds_tcs_credit', true) !== false;
+        if ($creditCounted) {
+            $alreadyDeducted += $taxCredit;
+        }
         $balance = max(0, $annualTax - $alreadyDeducted);
         $tds = $remaining > 0 ? round($balance / $remaining) : $balance;
 
@@ -136,10 +164,17 @@ final class TaxComputer
                 'perquisites' => $outside['perquisites'] ?: null,
                 'outside_payroll_taxable' => $outside['outside_taxable'] ?: null,
                 'outside_payroll_tds' => $outside['outside_tds'] ?: null,
+                'previous_salary_months' => ($outside['previous_months'] ?? 0) ?: null,
+                'reimbursement_paid' => $unbilled['paid'] ?? null,
+                'reimbursement_bills' => $unbilled !== null ? $unbilled['billed'] : null,
+                'reimbursement_unbilled_taxable' => $unbilled !== null ? $unbilled['taxable'] : null,
+                'tax_credit_counted' => $creditCounted ? $taxCredit : null,
+                'tax_credit_not_counted' => $taxCredit > 0 && ! $creditCounted ? $taxCredit : null,
                 'employer_nps' => $npsEmployer ?: null,
                 'other_income' => $otherIncome ?: null,
                 'house_property_loss' => $housePropertyLoss ?: null,
                 'house_property_not_counted' => $housingInterest > 0 && ! isset($params['house_property_interest_limit']) ? $housingInterest : null,
+                'previous_exemptions' => $priorExemptions ?: null,
             ], fn ($v) => $v !== null),
         ];
     }

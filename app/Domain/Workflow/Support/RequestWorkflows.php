@@ -45,6 +45,8 @@ final class RequestWorkflows
         'App\\Domain\\Exit\\Models\\ExitCase' => ['exit.resignation_submitted'],
         // HROne parity MS-3: self-service profile changes.
         'App\\Domain\\People\\Models\\ProfileChangeRequest' => ['profile.change_requested'],
+        // HROne parity WO-11: resignation withdrawal requests (D-WO8).
+        'App\\Domain\\Exit\\Models\\ExitWithdrawalRequest' => ['exit.withdrawal_requested'],
     ];
 
     /**

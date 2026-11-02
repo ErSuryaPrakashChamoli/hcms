@@ -4,6 +4,8 @@ namespace App\Filament\Resources\AttendanceArrears;
 
 use App\Domain\Attendance\Models\AttendanceArrear;
 use App\Filament\Resources\AttendanceArrears\Pages\ListAttendanceArrears;
+use App\Filament\Support\AttendancePolicyFilters;
+use App\Filament\Support\BulkRecordActions;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\PayrollRegisters;
 use App\Filament\Support\TimeOfficeRegisters;
@@ -52,7 +54,7 @@ class AttendanceArrearResource extends Resource
                     ->formatStateUsing(fn ($state) => sprintf('%+.2f', (float) $state)),
                 TextColumn::make('status')->badge()->formatStateUsing(fn (string $state) => AttendanceArrear::STATUSES[$state] ?? $state)
                     ->color(fn (string $state) => match ($state) {
-                        'settled' => 'success', 'void' => 'gray', default => 'warning'
+                        'settled' => 'success', 'void' => 'gray', 'held' => 'info', default => 'warning'
                     }),
             ])
             ->filters([
@@ -61,7 +63,12 @@ class AttendanceArrearResource extends Resource
                 ...TimeOfficeRegisters::filters('attendance.view', ['effective_dates' => ['Corrected day', 'date']]),
                 // HROne parity PO-1 (matrix 25 §25.1 #5): "Pay Arrear (For) Month" and the "Arrear Days" bands.
                 PayrollRegisters::arrears('attendance.view'),
+                // HROne parity TX-3 (matrix 24 §24.5.3 #9): the attendance policy and its punch type.
+                AttendancePolicyFilters::policy('attendance.view'),
+                AttendancePolicyFilters::punchMode('attendance.view'),
             ])
+            // HROne parity TX-3: hold / release selected arrears (attendance.arrears; settled arrears never change).
+            ->toolbarActions([BulkRecordActions::selected('attendance_arrears', ListAttendanceArrears::BULK_OPERATIONS)])
             ->defaultSort('date', 'desc');
     }
 

@@ -211,10 +211,14 @@ final class NumberSeries
         if ($series->company_id !== null && $type['applicable_on'] !== 'company') {
             return ['company_id', "{$type['label']} is numbered for the whole organisation only."];
         }
+        // HROne parity WO-15: a code type may allow fewer characters (`characters`, explained by `characters_hint`), e.g.
+        // business partner codes hold only letters, digits and _.
+        $part = (string) ($type['characters'] ?? self::PART);
+        $hint = (string) ($type['characters_hint'] ?? 'letters, digits, - _ / and {YYYY} {YY} {MM} {FY}');
         foreach (['prefix' => 24, 'suffix' => 16] as $field => $max) {
             $value = (string) $series->{$field};
-            if (mb_strlen($value) > $max || ! preg_match(self::PART, str_replace(self::TOKENS, '', $value))) {
-                return [$field, "Use at most {$max} characters: letters, digits, - _ / and {YYYY} {YY} {MM} {FY}."];
+            if (mb_strlen($value) > $max || ! preg_match($part, str_replace(self::TOKENS, '', $value))) {
+                return [$field, "Use at most {$max} characters: {$hint}."];
             }
         }
         $digits = (int) $series->digits;

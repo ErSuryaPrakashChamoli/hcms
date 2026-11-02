@@ -6,6 +6,7 @@ use App\Domain\Payroll\Models\Payslip;
 use App\Filament\Resources\Payslips\Pages\ListPayslips;
 use App\Filament\Resources\Payslips\Pages\ViewPayslip;
 use App\Filament\Support\PayrollRegisters;
+use App\Http\Middleware\ConfirmPasswordForPay;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -32,6 +33,9 @@ class PayslipResource extends Resource
     protected static ?string $navigationLabel = 'Payslips';
 
     protected static ?int $navigationSort = 30;
+
+    /** HROne parity MS-9: own payslips ask for the password again while the organisation asks for it (payroll staff are not asked). */
+    protected static string|array $routeMiddleware = ConfirmPasswordForPay::class.':payslips';
 
     public static function canCreate(): bool
     {

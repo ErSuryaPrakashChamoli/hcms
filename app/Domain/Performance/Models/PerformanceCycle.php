@@ -125,6 +125,12 @@ class PerformanceCycle extends Model
         return $this->hasMany(Goal::class);
     }
 
+    /** HROne parity GO-2: the extensions of this cycle's stage windows (append-only). */
+    public function windowExtensions(): HasMany
+    {
+        return $this->hasMany(PerformanceWindowExtension::class, 'performance_cycle_id');
+    }
+
     /** @return array<int, string> ordered stage keys */
     public function stageKeys(): array
     {

@@ -8,7 +8,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
-/** The advance's ledger: dispensed, settled against reports, refunded, written off. Read only. */
+/** The advance's ledger: dispensed, settled against reports, refunded (XO-6: and how), written off. Read only. */
 class EntriesRelationManager extends RelationManager
 {
     protected static string $relationship = 'entries';
@@ -30,6 +30,8 @@ class EntriesRelationManager extends RelationManager
                 TextColumn::make('amount')->numeric(2),
                 TextColumn::make('report.number')->label('Report')->placeholder('—'),
                 TextColumn::make('reference')->placeholder('—'),
+                // HROne parity XO-6: how a refund came back (bank transfer, cheque with bank, number and date, cash).
+                TextColumn::make('refund_mode')->label('How')->placeholder('—')->state(fn (ExpenseAdvanceEntry $e) => $e->refundModeLabel()),
                 TextColumn::make('note')->placeholder('—')->wrap(),
             ]);
     }

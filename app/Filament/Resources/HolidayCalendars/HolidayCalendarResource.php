@@ -16,6 +16,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -47,6 +48,9 @@ class HolidayCalendarResource extends Resource
                 TextInput::make('code')->required()->maxLength(32)->alphaDash(),
                 TextInput::make('year')->numeric()->minValue(2000)->maxValue(2100)->placeholder('Any'),
                 Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                // HROne parity MS-12: the calendar's "Note :" under the employee's holiday list (My holidays).
+                Textarea::make('employee_note')->label('Note for employees')->rows(2)->maxLength(1000)->columnSpanFull()
+                    ->helperText('Shown under the holiday list on My holidays. Leave blank for none.'),
             ]),
             // HROne parity HP-1: restricted holidays — optional holidays become a holiday only for those who choose them.
             Section::make('Restricted holidays')->columns(2)->schema([

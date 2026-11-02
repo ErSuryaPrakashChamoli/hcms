@@ -1,4 +1,14 @@
 <x-filament-panels::page>
+    {{-- HROne parity MS-9: "Salary structure" / "Salary insights" tabs when there is more than the structure to show. --}}
+    @php($tabs = $this->tabs())
+    @if ($tabs !== [])
+        <x-filament::tabs>
+            @foreach ($tabs as $key => $label)
+                <x-filament::tabs.item :active="$tab === $key" wire:click="setTab('{{ $key }}')">{{ $label }}</x-filament::tabs.item>
+            @endforeach
+        </x-filament::tabs>
+    @endif
+    @if ($tabs === [] || $tab === 'structure')
     @php($current = $this->getCurrent())
     <x-filament::section heading="In force today">
         @if ($current)
@@ -15,6 +25,36 @@
             <p class="text-sm text-gray-500">No approved compensation is in force today.</p>
         @endif
     </x-filament::section>
+    {{-- HROne parity MS-9: statutory details and pay mode, as the organisation allows. --}}
+    @php($statutory = $this->getStatutory())
+    @php($payMode = $this->getPayMode())
+    @if ($statutory !== null || $payMode !== null)
+        <x-filament::section heading="Statutory details" :description="$statutory && $statutory['period'] ? 'Deducted figures are from your '.$statutory['period'].' payslip.' : null">
+            @if ($statutory !== null)
+                <table class="w-full text-sm">
+                    <thead><tr class="text-left text-gray-500"><th class="py-1">Scheme</th><th>Applies</th><th>Details</th><th>Latest deduction</th></tr></thead>
+                    <tbody>
+                        @foreach ($statutory['rows'] as $row)
+                            <tr class="border-t border-gray-200 dark:border-gray-700" data-scheme="{{ $row['scheme'] }}">
+                                <td class="py-1">{{ $row['scheme'] }}</td>
+                                <td>{{ $row['applies'] }}</td>
+                                <td>{{ $row['detail'] ?? '—' }}</td>
+                                <td>{{ $row['latest'] === null ? '—' : number_format($row['latest'], 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+            <dl class="mt-3 grid gap-4 text-sm md:grid-cols-4">
+                @if ($statutory !== null)
+                    <div><dt class="text-gray-500">Income tax regime</dt><dd>{{ $statutory['tax_regime'] ?? 'Not chosen yet' }}</dd></div>
+                @endif
+                @if ($payMode !== null)
+                    <div><dt class="text-gray-500">Salary paid by</dt><dd data-pay-mode>{{ $payMode }}</dd></div>
+                @endif
+            </dl>
+        </x-filament::section>
+    @endif
     {{-- HROne setup parity (PS-3): take-home, wage split, perquisites and insight, as the organisation allows. --}}
     @php($pay = ($this->shows('net_take_home') || $this->shows('wage_split')) ? $this->getLatestPay() : null)
     @if ($pay)
@@ -79,5 +119,43 @@
             </tbody>
         </table>
     </x-filament::section>
+    @endif
+    @endif
+    {{-- HROne parity MS-9 "Salary insights": the Code on Wages verdict (verified rules only) and the change at each revision. --}}
+    @if ($tabs !== [] && $tab === 'insights')
+        @if ($this->shows('wage_split'))
+            @php($verdict = $this->getWageCode())
+            <x-filament::section heading="Code on Wages" :description="$verdict ? 'On your '.$verdict['period'].' pay: wages (basic and DA) are '.$verdict['wage_share'].'% of your earnings.' : null">
+                @if ($verdict === null)
+                    <p class="text-sm text-gray-500">Nothing to check until your first salary is paid.</p>
+                @else
+                    <ul class="space-y-2 text-sm">
+                        @foreach (['share' => 'Wages and exclusions', 'minimum' => 'Minimum wage'] as $part => $label)
+                            <li data-verdict="{{ $part }}" data-state="{{ $verdict[$part]['state'] }}">
+                                <span class="font-medium">{{ $label }}:</span>
+                                <span @class(['text-success-600' => $verdict[$part]['state'] === 'ok', 'text-warning-600' => $verdict[$part]['state'] === 'attention', 'text-gray-500' => $verdict[$part]['state'] === 'no_rule'])>{{ $verdict[$part]['text'] }}</span>
+                                @if ($verdict[$part]['rule'])
+                                    <span class="text-xs text-gray-500">({{ $verdict[$part]['rule'] }})</span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </x-filament::section>
+        @endif
+        @if ($this->shows('insight'))
+            <x-filament::section heading="Change at each revision">
+                @php($changes = $this->getInsight())
+                @if ($changes === [])
+                    <p class="text-sm text-gray-500">No revision yet.</p>
+                @else
+                    <ul class="text-sm">
+                        @foreach ($changes as $from => $pct)
+                            <li>From {{ $from }}: {{ $pct > 0 ? '+' : '' }}{{ $pct }}%</li>
+                        @endforeach
+                    </ul>
+                @endif
+            </x-filament::section>
+        @endif
     @endif
 </x-filament-panels::page>

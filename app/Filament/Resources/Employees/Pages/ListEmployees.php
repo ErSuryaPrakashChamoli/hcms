@@ -9,7 +9,9 @@ use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
+use App\Filament\Support\WorkforceBulkWizards;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Support\Icons\Heroicon;
@@ -24,8 +26,12 @@ class ListEmployees extends PeopleListRecords
 
     protected static string $resource = EmployeeResource::class;
 
-    /** HROne parity WO-1 / WO-2: what the Employees register can do in bulk (selected rows or all matching). */
-    public const BULK_OPERATIONS = ['employees.initiate_exit', 'employees.start_onboarding', 'employees.initiate_bgv', 'employees.send_email'];
+    /** HROne parity WO-1 / WO-2: what the Employees register can do in bulk (selected rows or all matching); WO-13: + letters. */
+    public const BULK_OPERATIONS = ['employees.initiate_exit', 'employees.start_onboarding', 'employees.initiate_bgv', 'employees.send_email', 'employees.generate_letter',
+        // HROne parity WO-11 (§23.2.2 #6–7): start clearance and complete the exit of the selected employees.
+        'employees.start_clearance', 'employees.complete_exit',
+        // HROne parity WO-16 (§23.9 #4, #7–8, #17): change manager, invite to sign in, password reset links.
+        'employees.change_manager', 'employees.invite_users', 'employees.send_reset_links'];
 
     /** HROne parity WO-1 (§23.1 #10–11): the card layout and the fields a card shows (kept with a saved view). */
     public const CARD_FIELDS = [
@@ -72,6 +78,12 @@ class ListEmployees extends PeopleListRecords
     {
         return [
             ...$this->registerToolActions(),
+            // HROne parity WO-16: the step wizards (a manager's team, filters, codes or this register's view → a bulk run).
+            ActionGroup::make([
+                WorkforceBulkWizards::changeManager(),
+                WorkforceBulkWizards::invite(),
+                WorkforceBulkWizards::invite('bulkResetLinks', 'reset'),
+            ])->label('Bulk changes')->icon(Heroicon::OutlinedUserGroup)->button()->color('gray'),
             $this->layoutAction(),
             // The employees the list shows (filters and search applied), in the import template format.
             Action::make('exportEmployees')

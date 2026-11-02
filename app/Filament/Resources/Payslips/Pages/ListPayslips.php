@@ -3,15 +3,27 @@
 namespace App\Filament\Resources\Payslips\Pages;
 
 use App\Filament\Resources\Payslips\PayslipResource;
+use App\Filament\Support\Pages\Concerns\ConfirmsPayPassword;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\PayrollRegisters;
 
 class ListPayslips extends PeopleListRecords
 {
+    use ConfirmsPayPassword;
     use HasRegisterTools;
 
     protected static string $resource = PayslipResource::class;
+
+    protected static function payPasswordScope(): string
+    {
+        return 'payslips';
+    }
+
+    protected function payPasswordReturnUrl(): string
+    {
+        return PayslipResource::getUrl('index');
+    }
 
     public static function registerKey(): string
     {

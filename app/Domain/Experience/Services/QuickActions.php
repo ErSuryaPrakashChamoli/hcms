@@ -4,6 +4,7 @@ namespace App\Domain\Experience\Services;
 
 use App\Domain\Identity\Models\User;
 use App\Domain\Payroll\Models\Payslip;
+use App\Filament\Pages\ActionsPage;
 use App\Filament\Pages\AdminCentre;
 use App\Filament\Pages\Approvals;
 use App\Filament\Pages\ChangeIntelligencePage;
@@ -180,7 +181,27 @@ final class QuickActions
                 fn () => $url, RoleLens::EMPLOYEE, true);
         }
 
+        // HROne parity AC-1: the Actions panel itself and its HR actions, so the Command Center finds them too (after every
+        // action above; one that an action above already opens is not repeated).
+        $add('all_actions', 'Review', 'All HR actions', 'Every HR action you can run, by module', 'heroicon-o-bolt', ['actions', 'hr actions', 'all actions', 'hr desk', 'action panel'],
+            fn () => ActionsPage::getUrl(), RoleLens::HR, ActionsPage::canAccess());
+        $opened = array_column($actions, 'url');
+        foreach (app(ActionCatalogue::class)->for($user) as $action) {
+            if (in_array($action['url'], $opened, true)) {
+                continue;
+            }
+            $add('hr_action.'.$action['key'], 'Start', $action['label'], $action['hint'], $action['icon'],
+                [...$action['keywords'], mb_strtolower($action['hrone']), mb_strtolower(ActionCatalogue::SECTIONS[$action['section']])],
+                fn () => $action['url'], RoleLens::HR, true);
+        }
+
         return $actions;
+    }
+
+    /** HROne parity AC-1: an action added from the Actions panel's catalogue (found in the Command Center, never featured on Home). */
+    public static function isPanelAction(string $key): bool
+    {
+        return $key === 'all_actions' || str_starts_with($key, 'hr_action.');
     }
 
     /** HROne parity RQ-1: an action added from the request registry ("New request", "My requests", one per request type). */
@@ -195,7 +216,7 @@ final class QuickActions
         // UX.16: match by experience, so the HR admin and system admin lenses share the administrator's actions.
         $experience = RoleLens::experienceOf($lens);
         // HROne parity RQ-1: the request launcher's actions are found in the Command Center, never featured on Home.
-        $own = array_values(array_filter($this->for($user), fn (array $a) => RoleLens::experienceOf($a['lens']) === $experience && ! self::isRequestLauncher($a['key'])));
+        $own = array_values(array_filter($this->for($user), fn (array $a) => RoleLens::experienceOf($a['lens']) === $experience && ! self::isRequestLauncher($a['key']) && ! self::isPanelAction($a['key'])));
 
         return array_slice($own, 0, $limit);
     }

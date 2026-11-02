@@ -124,10 +124,12 @@ final class ConfirmationReviews
             $values = $apply($locked, $employee);
             $locked->withAuditReason($values['decision_note'] ?? 'Confirmation decided')->update($values + ['decided_by' => $actor->id, 'decided_at' => now()]);
             // HROne setup parity: the confirmation policy may draft a letter for the decision.
-            $template = $this->policies->resolve('confirmation', $employee, now())?->setting(match ($values['status']) {
+            $hook = match ($values['status']) {
                 'confirmed' => 'letter_on_confirm', 'extended' => 'letter_on_extend', default => 'letter_on_terminate',
-            });
-            PolicyLetters::draft($template, $employee, $actor, $locked);
+            };
+            $template = $this->policies->resolve('confirmation', $employee, now())?->setting($hook);
+            // HROne parity WO-13: the letter keeps the hook that drafted it (the register's "Process").
+            PolicyLetters::draft($template, $employee, $actor, $locked, "confirmation.{$hook}");
             app(FeedbackRequests::class)->cancelFor($locked, 'Confirmation review decided');
 
             return $locked;

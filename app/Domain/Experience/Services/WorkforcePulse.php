@@ -150,7 +150,7 @@ final class WorkforcePulse
 
     private function joiners(array $period)
     {
-        return Employee::query()->whereDate('joining_date', '>=', $period[0])->whereDate('joining_date', '<=', $period[1])->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding']);
+        return Employee::query()->whereDate('joining_date', '>=', $period[0])->whereDate('joining_date', '<=', $period[1])->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding', 'not_joined']);
     }
 
     private function exits(array $period)

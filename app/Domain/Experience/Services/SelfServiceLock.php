@@ -38,8 +38,9 @@ final class SelfServiceLock
     /** The employee tasks that count towards the lock (options `employee_task_kinds`; blank = all). */
     public const TASK_KINDS = [
         'workflow' => 'Workflow tasks and approvals', 'onboarding' => 'Onboarding tasks', 'knowledge' => 'Policy acknowledgements',
-        'communication' => 'Announcement acknowledgements', 'engagement' => 'Surveys', 'feedback' => 'Feedback asked of the employee (exit interview, confirmation, probation, induction)',
-        'performance' => 'One-on-one feedback', 'assets' => 'Asset acknowledgements', 'servicedesk' => 'Helpdesk requests waiting for the employee',
+        'communication' => 'Announcement acknowledgements', 'engagement' => 'Surveys and event invitations', 'feedback' => 'Feedback asked of the employee (exit interview, confirmation, probation, induction)',
+        // HROne parity GO-9: performance tasks now also include reviews, goal sheets, goal check-ins and PIP evaluations.
+        'performance' => 'Performance tasks (reviews, goal sheets, goal check-ins, PIP evaluations, one-on-one and 360 feedback)', 'assets' => 'Asset acknowledgements', 'servicedesk' => 'Helpdesk requests waiting for the employee',
     ];
 
     public function __construct(private readonly SettingsRepository $settings) {}

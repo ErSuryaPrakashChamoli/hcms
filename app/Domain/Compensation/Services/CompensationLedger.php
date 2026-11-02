@@ -128,6 +128,20 @@ final class CompensationLedger implements CompensationOutput
             ->mapWithKeys(fn ($r) => [(int) $r->employee_id => (float) $r->ctc_annual])->all();
     }
 
+    public function inForceOn(array $employeeIds, CarbonInterface|string|null $date = null): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $employeeIds)));
+        if ($ids === []) {
+            return [];
+        }
+
+        // Oldest first, so the latest row in force on the date wins for each employee (as on() picks it).
+        return EmployeeSalaryAssignment::query()->active()->whereIn('employee_id', $ids)->effectiveOn($date)
+            ->with('structure:id,code')->orderBy('effective_from')->orderBy('id')->get()
+            ->mapWithKeys(fn (EmployeeSalaryAssignment $row) => [(int) $row->employee_id => CompensationSnapshot::fromRow($row, $row->structure?->code)])
+            ->all();
+    }
+
     /**
      * Fingerprint of what a payroll calculation used: the compensation rows and the approved structure
      * versions of their structures, each with its effective range clipped to the window (a row or

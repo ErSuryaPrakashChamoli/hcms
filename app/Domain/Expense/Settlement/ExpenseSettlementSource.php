@@ -47,14 +47,18 @@ final class ExpenseSettlementSource implements SettlementSource
                 'basis' => ['reports' => $reports->map(fn (ExpenseReport $r) => ['id' => $r->id, 'number' => $r->number, 'amount' => (float) $r->net_payable])->values()->all()]];
         }
 
-        $skip = $elsewhere(PayrollCommitments::RECOVERY);
+        // HROne parity XO-6: a recovery scheduled for the final salary's month may take only part of an advance there; the
+        // rest is recovered here. (The automatic recovery always takes all of it, so nothing changes for it.)
+        $ownRecovery = $own[PayrollCommitments::RECOVERY] ?? [];
+        $skip = $this->payroll->pending(PayrollCommitments::RECOVERY, $employeeId) + self::pending(PayrollCommitments::RECOVERY, $employeeId, $settlement->exists ? (int) $settlement->id : null);
+        $rest = fn (ExpenseAdvance $a): float => round((float) $a->outstanding - (float) ($ownRecovery[$a->id]['amount'] ?? 0), 2);
         $advances = ExpenseAdvance::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employeeId)->where('status', 'disbursed')
             ->where('outstanding', '>', 0)->orderBy('disbursed_on')->orderBy('id')->get()
-            ->reject(fn (ExpenseAdvance $a) => isset($skip[$a->id]) || app(ExpenseAdvances::class)->rulesFor($a)->recovery === 'none');
+            ->reject(fn (ExpenseAdvance $a) => isset($skip[$a->id]) || $rest($a) <= 0 || app(ExpenseAdvances::class)->rulesFor($a)->recovery === 'none');
         if ($advances->isNotEmpty()) {
             $lines[] = ['type' => 'deduction', 'code' => self::BALANCE, 'name' => 'Expense advance balance ('.$advances->pluck('number')->implode(', ').')',
-                'amount' => round((float) $advances->sum(fn (ExpenseAdvance $a) => (float) $a->outstanding), 2),
-                'basis' => ['advances' => $advances->map(fn (ExpenseAdvance $a) => ['id' => $a->id, 'number' => $a->number, 'amount' => (float) $a->outstanding, 'settle_by' => $a->settle_by?->toDateString()])->values()->all()]];
+                'amount' => round((float) $advances->sum(fn (ExpenseAdvance $a) => $rest($a)), 2),
+                'basis' => ['advances' => $advances->map(fn (ExpenseAdvance $a) => ['id' => $a->id, 'number' => $a->number, 'amount' => $rest($a), 'settle_by' => $a->settle_by?->toDateString()])->values()->all()]];
         }
 
         return $lines;
@@ -77,8 +81,30 @@ final class ExpenseSettlementSource implements SettlementSource
             app(ExpenseReports::class)->paidThrough($ids, 'settlement', $on, $reference, null, (int) $settlement->id);
         }
         if ($amounts = array_map(fn (array $c) => $c['amount'], $carried[PayrollCommitments::RECOVERY] ?? [])) {
-            app(ExpenseAdvances::class)->recovered($amounts, 'fnf-'.$settlement->id, $on, $reference, $note, null, (int) $settlement->id);
+            app(ExpenseAdvances::class)->recovered($amounts, 'fnf-'.$settlement->id, $on, $reference, $note, null, (int) $settlement->id, self::schedulesCarried((int) $settlement->id));
         }
+    }
+
+    /**
+     * HROne parity XO-6: the recoveries scheduled on the Advance recovery desk that the settlement's final salary lines carry
+     * (their basis names the schedule), so they are marked recovered when the settlement is paid.
+     *
+     * @return array<int, int> advance id => recovery schedule id
+     */
+    private static function schedulesCarried(int $settlementId): array
+    {
+        $out = [];
+        FinalSettlementLine::query()->where('final_settlement_id', $settlementId)->whereNotNull('basis')->get(['id', 'basis'])
+            ->each(function (FinalSettlementLine $line) use (&$out) {
+                $basis = (array) $line->basis;
+                if (($basis['source']['key'] ?? null) === PayrollCommitments::RECOVERY && isset($basis['schedule'])) {
+                    foreach ((array) ($basis['source']['ids'] ?? []) as $id) {
+                        $out[(int) $id] = (int) $basis['schedule'];
+                    }
+                }
+            });
+
+        return $out;
     }
 
     /**

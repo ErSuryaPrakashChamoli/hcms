@@ -20,8 +20,8 @@ class ListAttendanceSheetImports extends PeopleListRecords
         return [
             ImportActions::formatAction(AttendanceSheetImports::TYPE),
             Action::make('downloadTemplate')
-                ->label('Download template')
-                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->label('Download sample file')
+                ->icon(Heroicon::OutlinedTableCells)
                 ->color('gray')
                 ->modalHeading('Download a monthly attendance sheet')
                 ->modalDescription('The sheet lists everyone employed in the month, with a column for each day. Fill in a day code per day and upload it.')
@@ -30,13 +30,14 @@ class ListAttendanceSheetImports extends PeopleListRecords
                 ->action(fn (array $data) => response()->streamDownload(fn () => print (app(AttendanceSheetImports::class)->template($data['month'])), "attendance-{$data['month']}.csv", ['Content-Type' => 'text/csv'])),
             CreateAction::make()
                 ->label('Upload attendance CSV')
+                ->modalWidth('4xl')->modalSubmitActionLabel('Upload and continue')->createAnother(false)->modalContentFooter(null)
                 ->modalHeading('Upload a month\'s attendance')
-                ->modalDescription('For attendance not captured by a biometric device: one row per employee, one column per day of the month, a day code in each cell. Start from Download template. Nothing changes until the file is mapped, validated, approved and run.')
+                ->modalDescription('For attendance not captured by a biometric device: one row per employee, one column per day of the month, a day code in each cell. Start from Download sample file. Nothing changes until the file is mapped, validated, approved and run.')
                 ->schema([
+                    ImportActions::fileField(),
                     ImportActions::monthField(),
                     ImportActions::modeField(AttendanceSheetImports::MODES),
                     ImportActions::blankDaysField(),
-                    ImportActions::fileField(),
                     ImportActions::formatSection(AttendanceSheetImports::TYPE),
                 ])
                 ->using(fn (array $data) => app(AttendanceSheetImports::class)->register($data['file'], ImportActions::originalName($data), auth()->user(), $data['month'], ImportMode::from($data['mode']), $data['blank_days']))

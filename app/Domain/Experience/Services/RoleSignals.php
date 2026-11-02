@@ -155,7 +155,7 @@ final class RoleSignals
         }
 
         $probation = $managed->isEmpty() ? collect() : $this->safe(fn () => Employee::query()->whereKey($managed->all())->where('lifecycle_state', LifecycleState::Probation->value)
-            ->whereNotNull('probation_end_date')->whereDate('probation_end_date', '<=', now()->addDays(30))->get(['id', 'probation_end_date']), collect());
+            ->whereNotNull('probation_end_date')->whereDate('probation_end_date', '<=', now()->addDays(30))->get(['id', 'tenant_id', 'user_id', 'probation_end_date']), collect());
         if ($probation->isNotEmpty()) {
             $overdue = $probation->filter(fn ($e) => $e->probation_end_date->isPast())->count();
             $one = $probation->count() === 1 ? $probation->first() : null;

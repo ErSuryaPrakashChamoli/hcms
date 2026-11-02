@@ -7,6 +7,7 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
+use App\Domain\Organisation\Models\DimensionValue;
 use App\Domain\Organisation\Models\Division;
 use App\Domain\Organisation\Models\EmployeeCategory;
 use App\Domain\Organisation\Models\EmploymentType;
@@ -30,6 +31,8 @@ final class OrganisationCodes
         'designation_code' => ['designation_id', Designation::class], 'level_code' => ['level_id', Level::class], 'grade_code' => ['grade_id', Grade::class],
         'employment_type_code' => ['employment_type_id', EmploymentType::class], 'employee_category_code' => ['employee_category_id', EmployeeCategory::class],
         'work_mode_code' => ['work_mode_id', WorkMode::class], 'cost_centre_code' => ['cost_centre_id', CostCentre::class],
+        // Data import DI-1 (decision D1): the organisation's own dimension on the position.
+        'dimension_code' => ['dimension_value_id', DimensionValue::class],
     ];
 
     /** API resource types => model */

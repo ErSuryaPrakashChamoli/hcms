@@ -3,10 +3,14 @@
 namespace App\Filament\Resources\LeaveEncashments\Pages;
 
 use App\Domain\Leave\Models\LeaveType;
+use App\Filament\Resources\LeaveEncashmentBatches\LeaveEncashmentBatchResource;
 use App\Filament\Resources\LeaveEncashments\LeaveEncashmentResource;
+use App\Filament\Support\LeaveEncashmentWizards;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\TimeOfficeRegisters;
+use Filament\Actions\Action;
+use Filament\Support\Icons\Heroicon;
 
 class ListLeaveEncashments extends PeopleListRecords
 {
@@ -43,8 +47,18 @@ class ListLeaveEncashments extends PeopleListRecords
         ], ['request_dates' => 'requested_on', 'decision_dates' => 'reviewed_on']);
     }
 
+    /**
+     * HROne parity PO-8: "Encash for an employee" (one employee, on their behalf) and "Encash leaves" (the HR batch screen,
+     * opened on its wizard), next to the register tools.
+     */
     protected function getHeaderActions(): array
     {
-        return $this->registerToolActions();
+        return [
+            LeaveEncashmentWizards::forEmployee(),
+            Action::make('encashLeavesBatch')->label('Encash leaves')->icon(Heroicon::OutlinedBanknotes)->color('gray')
+                ->visible(fn () => LeaveEncashmentBatchResource::canAccess() && (auth()->user()?->hasPermission('leave.manage') ?? false))
+                ->url(fn () => LeaveEncashmentBatchResource::getUrl('index', ['action' => 'encashLeaves'])),
+            ...$this->registerToolActions(),
+        ];
     }
 }

@@ -81,7 +81,13 @@ final class UnifiedInbox
         'knowledge.acknowledge' => 'Policy acknowledgement', 'communication.acknowledge' => 'Announcement', 'assets.acknowledge' => 'Asset acknowledgement',
         'performance.feedback_360' => '360 feedback', 'performance.feedback_360_nomination' => '360 nominations', 'performance.period_review' => 'Periodic review',
         'performance.one_on_one_feedback' => 'One-on-one feedback', 'performance.initiative_feedback' => 'Initiative feedback', 'feedback' => 'Feedback',
+        // HROne parity GO-9: performance task kinds (HROne's inbox categories).
+        'performance.review' => 'Performance review', 'performance.create_goal' => 'Create goal', 'performance.goal_check_in' => 'Goal check-in',
+        'performance.goal_check_in_company' => 'Goal check-in: company', 'performance.goal_check_in_team' => 'Goal check-in: team',
+        'performance.rating_acknowledgement' => 'Acknowledge overall rating', 'performance.pip_evaluation_due' => 'PIP evaluation',
         'engagement' => 'Survey', 'surveys' => 'Survey',
+        // HROne parity GO-15: an event invitation to answer (HROne's inbox "Engage: Events").
+        'engagement.event_invitation' => 'Event invitation',
     ];
 
     private const UNIT_LABELS = ['company' => 'Company', 'business_unit' => 'Business unit', 'division' => 'Division', 'department' => 'Department', 'location' => 'Location', 'team' => 'Team'];

@@ -2,7 +2,10 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Filament\Pages\AttendanceCalendar;
 use App\Filament\Support\AttendanceActions;
+use App\Filament\Support\TimeOfficeRegisters;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Filters\Filter;
@@ -37,6 +40,12 @@ class AttendanceRelationManager extends RelationManager
             ])
             ->defaultSort('date', 'desc')
             ->recordActions(AttendanceActions::forRecords())
+            // HROne parity TX-7 (§24.5.2 #1): the employee's attendance calendar from Employee 360, for the HR side.
+            ->headerActions([
+                Action::make('calendar')->label('Attendance calendar')->icon('heroicon-m-calendar-days')->color('gray')
+                    ->visible(fn () => TimeOfficeRegisters::hrSide('attendance.view') && AttendanceCalendar::canAccess())
+                    ->url(fn () => AttendanceCalendar::getUrl(['employee' => $this->getOwnerRecord()->getKey(), 'month' => now()->format('Y-m')])),
+            ])
             ->emptyStateHeading('No attendance yet')
             ->emptyStateDescription('Records appear once punches are processed. Assign a work schedule from the Life events menu.');
     }

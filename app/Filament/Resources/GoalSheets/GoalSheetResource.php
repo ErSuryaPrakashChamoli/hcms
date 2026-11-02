@@ -86,7 +86,8 @@ class GoalSheetResource extends Resource
             return $query->whereRaw('1 = 0');
         }
 
-        return app(GoalSheets::class)->withSheet($query);
+        // HROne parity GO-2: an employee withdrawn from the cycle no longer has a goal sheet in it (their goals were cancelled).
+        return app(GoalSheets::class)->withSheet($query->where('appraisals.status', '!=', 'withdrawn'));
     }
 
     public static function statusColor(string $status): string

@@ -316,7 +316,7 @@ it('opens the expense desk for expense operators only, in HROne\'s process order
     expect($sections->pluck('label')->all())->toBe(['Travel', 'Advances', 'Expense', 'Payments', 'Reports', 'Expense setup'])
         ->and(collect($sections->firstWhere('label', 'Travel')['items'])->firstWhere('label', 'Travel cancellations')['count'])->toBe(1)
         ->and(collect($sections->firstWhere('label', 'Advances')['items'])->firstWhere('label', 'Advance requests')['count'])->toBe(1)
-        ->and(ExperienceNavigation::MODULE_AREA)->toHaveKey('ExpenseDesk')->toHaveKey('AssetDesk');
+        ->and(ExperienceNavigation::DESKS)->toContain('ExpenseDesk', 'AssetDesk');
 
     // A manager approving the team's claims, or a read-only viewer, runs no expense desk.
     $this->actingAs($this->managerUser);

@@ -32,6 +32,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'duplicate_score', 'duplicate_of_id', 'duplicate_matches', 'flags', 'is_exceptional', 'exception_reason', 'limit_amount', 'over_limit_amount', 'claimable_amount',
     'reimbursable', 'declaration_accepted_at', 'expires_on', 'workflow_group', 'approved_amount', 'approver_note', 'status',
     'withdrawn_at', 'expired_at', 'created_by',
+    // HROne parity XO-3 (D-XO7): the approver's "Suspected" decision and its clearing.
+    'suspected_at', 'suspected_by', 'suspicion_note', 'suspicion_cleared_at', 'suspicion_cleared_by',
 ])]
 class ExpenseReceipt extends Model
 {
@@ -40,10 +42,13 @@ class ExpenseReceipt extends Model
     public const STATUSES = [
         'unreported' => 'Unreported', 'reported' => 'In a report', 'approved' => 'Approved', 'partly_approved' => 'Partly approved',
         'rejected' => 'Rejected', 'expired' => 'Expired', 'withdrawn' => 'Withdrawn',
+        // HROne parity XO-3 (D-XO7): held out by an approver as suspected (approved at 0 for now), until "Clear suspicion".
+        // Only reached with expense.review.suspect_button on.
+        'suspected' => 'Held as suspected',
     ];
 
-    /** Statuses whose amount counts against limits and frequencies (claimed and not refused). */
-    public const COUNTING = ['unreported', 'reported', 'approved', 'partly_approved'];
+    /** Statuses whose amount counts against limits and frequencies (claimed and not refused; a held line is not refused). */
+    public const COUNTING = ['unreported', 'reported', 'approved', 'partly_approved', 'suspected'];
 
     protected $attributes = ['status' => 'unreported', 'is_exceptional' => false, 'reimbursable' => true, 'over_limit_amount' => 0, 'exchange_rate' => 1];
 
@@ -51,6 +56,7 @@ class ExpenseReceipt extends Model
     {
         return [
             'expense_date' => 'date', 'expires_on' => 'date', 'declaration_accepted_at' => 'datetime', 'withdrawn_at' => 'datetime', 'expired_at' => 'datetime',
+            'suspected_at' => 'datetime', 'suspicion_cleared_at' => 'datetime',
             'amount' => 'decimal:2', 'exchange_rate' => 'decimal:8', 'base_amount' => 'decimal:2', 'distance_km' => 'decimal:2', 'computed_distance_km' => 'decimal:2',
             'odometer_start' => 'decimal:1', 'odometer_end' => 'decimal:1', 'limit_amount' => 'decimal:2', 'over_limit_amount' => 'decimal:2',
             'claimable_amount' => 'decimal:2', 'approved_amount' => 'decimal:2',
@@ -113,6 +119,17 @@ class ExpenseReceipt extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** HROne parity XO-3 (D-XO7): an approver holds the line out as suspected and nobody has cleared it yet. */
+    public function isHeldAsSuspected(): bool
+    {
+        return $this->suspected_at !== null && $this->suspicion_cleared_at === null;
+    }
+
+    public function suspecter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'suspected_by');
     }
 
     public function hasFlag(string $flag): bool

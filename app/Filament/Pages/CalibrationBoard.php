@@ -2,16 +2,20 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Performance\Models\Appraisal;
+use App\Domain\Performance\Models\CalibrationAdjustment;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Models\RatingScale;
 use App\Domain\Performance\Services\Appraisals;
 use App\Domain\Performance\Services\PerformanceDistribution;
 use App\Domain\Performance\Support\PerformancePeriods;
 use App\Filament\Resources\Appraisals\AppraisalResource;
+use App\Filament\Support\NormaliseActions;
 use App\Filament\Support\PerformanceActions;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -21,6 +25,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
@@ -33,6 +38,11 @@ use UnitEnum;
  * "Publish ratings" (manual publishing) and, with a performance year set, it opens on the cycle of the current period.
  * HP-8g (bell curve): the distribution is compared with the cycle's targets (its own, else the default ones) — target vs
  * actual per level — and can be narrowed to a department or grade; "Distribution targets" sets them (performance.manage).
+ * HROne parity GO-3 ("Normalize performance rating" / "Normalize review rating"): "Normalise ratings" and "Normalise review
+ * ratings" — step wizards over the board's population (the WO-2 picker: everyone on the board, chosen employees, an
+ * organisation unit or pasted codes), a grid of system-calculated against normalised ratings, one reason per batch
+ * (NormaliseActions); "Last normalised by" (toggleable) shows who changed each rating last, e.g. a manager while the
+ * owner decision PER-2 / D-GO2 lets managers normalise their team.
  */
 class CalibrationBoard extends Page implements HasTable
 {
@@ -100,9 +110,16 @@ class CalibrationBoard extends Page implements HasTable
         ]));
     }
 
+    /** HROne parity GO-3: the employees on the board (filters applied, withdrawn left out) — the normalise wizards' candidates. */
+    public function boardEmployees(): Builder
+    {
+        return Employee::query()->whereIn('id', $this->filteredQuery()->select('employee_id'));
+    }
+
     private function filteredQuery(): Builder
     {
-        $query = Appraisal::query()->where('performance_cycle_id', $this->cycle ?? 0);
+        // HROne parity GO-2: appraisals withdrawn from the cycle are not calibrated.
+        $query = Appraisal::query()->where('performance_cycle_id', $this->cycle ?? 0)->where('status', '!=', 'withdrawn');
         $positions = array_filter(['department_id' => $this->department, 'grade_id' => $this->grade]);
         if ($positions !== []) {
             $query->whereIn('employee_id', EmployeePosition::query()->effectiveOn()->where($positions)->pluck('employee_id')->all());
@@ -149,6 +166,9 @@ class CalibrationBoard extends Page implements HasTable
                 ->visible(fn () => ($cycle = $this->getCycle()) !== null && $cycle->status === 'active' && PerformanceActions::unpublished($cycle) > 0)
                 ->requiresConfirmation()->modalDescription(fn () => PerformanceActions::unpublished($this->getCycle()).' finalized rating(s) will be shown to the employees, who are told.')
                 ->action(fn () => PerformanceActions::run(fn () => app(Appraisals::class)->publish($this->getCycle(), null, auth()->user()), fn (int $n) => "{$n} rating(s) published")),
+            // HROne parity GO-3: the normalise grids (performance ratings; periodic review ratings of one review period).
+            NormaliseActions::ratings('normalise', fn () => $this->getCycle(), fn () => $this->boardEmployees(), 'Everyone on the board'),
+            NormaliseActions::reviewRatings(fn () => $this->getCycle(), fn () => $this->boardEmployees(), 'Everyone on the board'),
         ];
     }
 
@@ -180,11 +200,30 @@ class CalibrationBoard extends Page implements HasTable
         ];
     }
 
+    /** @var array<int, string> per-request memo of user names for "Last normalised by" */
+    private array $userNames = [];
+
+    private function userName(int $id): ?string
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
+        return $this->userNames[$id] ??= (string) User::query()->whereKey($id)->value('name');
+    }
+
     public function table(Table $table): Table
     {
         return $table
-            ->query(fn (): Builder => $this->filteredQuery()->with(['employee.person', 'manager.person', 'reviews', 'cycle.scale']))
-            ->columns(AppraisalResource::columns())
+            ->query(fn (): Builder => $this->filteredQuery()->with(['employee.person', 'manager.person', 'reviews', 'cycle.scale'])
+                // GO-3: who changed the normalised (calibrated) rating last — HR sees managers' changes (PER-2 / D-GO2).
+                ->select('appraisals.*')->addSelect(['last_normaliser_id' => CalibrationAdjustment::query()->select('actor_id')
+                ->whereColumn('calibration_adjustments.appraisal_id', 'appraisals.id')->orderByDesc('calibration_adjustments.id')->limit(1)]))
+            ->columns([
+                ...AppraisalResource::columns(),
+                TextColumn::make('last_normaliser_id')->label('Last normalised by')->placeholder('—')->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(fn ($state) => $this->userName((int) $state)),
+            ])
             ->defaultSort('computed_rating', 'desc')
             ->recordActions(collect(PerformanceActions::forAppraisal())->filter(fn ($a) => in_array($a->getName(), ['calibrate', 'finalize', 'publishRating'], true))->values()->all())
             ->emptyStateHeading('No appraisals in this cycle')

@@ -79,7 +79,7 @@ it('adds accounts for employees without one and replaces the salary account of t
         ->and($rows[3]->errors[0])->toContain("'NOBODY' does not exist")
         ->and($rows[4]->errors[0])->toContain('5.01E+13')
         ->and($rows[5]->errors)->toContain('Employee EMP3 also appears in row 4.')
-        ->and(implode(' ', $rows[5]->errors))->toContain('IFSC field format is invalid')->toContain('account type');
+        ->and(implode(' ', $rows[5]->errors))->toContain("IFSC 'BAD' is not valid: it has 3 characters and an IFSC has 11.")->toContain("Account type 'cheque' is not one we know");
     expect(EmployeeBankAccount::query()->count())->toBe(1); // nothing written yet
 
     $import = $this->imports->run($this->imports->approve($import, $this->hr, 'Payroll onboarding'), $this->hr);
@@ -99,6 +99,26 @@ it('adds accounts for employees without one and replaces the salary account of t
         ->and(DB::table('employee_import_rows')->where('employee_import_id', $import->id)->whereNotNull('sealed_data')->count())->toBe(0)
         ->and(Storage::disk('local')->exists($import->path))->toBeFalse()
         ->and($import->rows()->where('row_number', 1)->value('result'))->toBe('Added HDFC Bank ••••2333');
+});
+
+it('reads account types as people write them, and says what is wrong with an IFSC', function () {
+    $csv = BANK_HEADER
+        ."EMP1,Asha Test,HDFC Bank,000111222333,HDFC0001234,Kirti Nagar,Saving\n"          // as uploaded on 2026-11-01: 'Saving' means savings
+        ."EMP2,Vikram Test,ICICI Bank,99998888777,icic o000002,,Current A/c\n"           // spaces dropped, a letter O fifth is the zero
+        ."EMP3,Neel Test,HDFC Bank,1234567890,HDFC000011,Kirti Nagar,SB Account\n";      // ten characters: one is missing
+    $import = validatedBankUpload($csv);
+    $rows = $import->rows()->get()->keyBy('row_number');
+
+    expect($rows[1]->action)->toBe('create')->and($rows[1]->errors)->toBeEmpty()
+        ->and($rows[2]->action)->toBe('update')->and($rows[2]->errors)->toBeEmpty()
+        ->and($rows[3]->errors)->toBe(["IFSC 'HDFC000011' is not valid: it has 10 characters and an IFSC has 11. An IFSC is four letters, a zero, then six letters or digits, like HDFC0001234."]);
+
+    $this->imports->run($this->imports->approve($import, $this->hr, 'Bank details'), $this->hr);
+    expect(EmployeeBankAccount::query()->where('employee_id', $this->fresh->id)->sole()->account_type)->toBe('savings')
+        ->and($this->onFile->refresh()->account_type)->toBe('current')->and($this->onFile->ifsc)->toBe('ICIC0000002');
+
+    $wrongFifth = validatedBankUpload(BANK_HEADER."EMP3,Neel Test,HDFC Bank,1234567890,HDFC1000011,,salary account\n");
+    expect($wrongFifth->rows()->first()->errors)->toBe(["IFSC 'HDFC1000011' is not valid: the fifth character must be the digit 0. An IFSC is four letters, a zero, then six letters or digits, like HDFC0001234."]);
 });
 
 it('lets the uploader choose new employees only or existing bank details only, and skips the rest with the reason', function () {

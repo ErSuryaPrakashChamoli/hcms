@@ -32,7 +32,7 @@ final class JourneyMap
     private const STATE_STAGE = [
         'pre_employee' => 'preboarding', 'preboarding' => 'preboarding', 'onboarding' => 'onboarding', 'joined' => 'joined', 'probation' => 'probation',
         'confirmed' => 'confirmed', 'active' => 'active', 'on_leave' => 'active', 'suspended' => 'active', 'notice_period' => 'transition',
-        'exited' => 'exit', 'alumni' => 'alumni',
+        'exited' => 'exit', 'alumni' => 'alumni', 'not_joined' => 'preboarding',
     ];
 
     /**

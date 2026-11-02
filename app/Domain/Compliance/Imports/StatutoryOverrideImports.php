@@ -94,8 +94,9 @@ final class StatutoryOverrideImports extends RowImports
 
     protected function examples(): array
     {
-        $code = Employee::query()->orderBy('id')->value('employee_code') ?? 'EMP0001';
+        // DI-4: two rows, so every preset's sample (ESI, LWF arrear, TDS, PF, PT: the line is filled in) shows more than one employee.
+        $codes = Employee::query()->orderBy('id')->limit(2)->pluck('employee_code')->all() + ['EMP0001', 'EMP0002'];
 
-        return [[$code, now()->format('Y-m'), 'TDS', '2500', 'Tax already paid by the employee']];
+        return [[$codes[0], now()->format('Y-m'), 'TDS', '2500', 'Agreed with the employee after review'], [$codes[1], now()->format('Y-m'), 'TDS', '0', 'Nothing to deduct this month: declared proofs cover it']];
     }
 }

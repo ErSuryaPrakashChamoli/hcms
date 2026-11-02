@@ -9,6 +9,7 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Experience\Enums\RequestStatus;
 use App\Domain\Identity\Models\User;
 use App\Filament\Resources\MyInvestmentProofs\MyInvestmentProofResource;
+use App\Filament\Resources\TaxDeclarations\TaxDeclarationResource;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -64,6 +65,18 @@ final class InvestmentProofRequestType extends BaseRequestType
     public function formUrl(User $user, ?Employee $employee): ?string
     {
         return MyInvestmentProofResource::getUrl('index');
+    }
+
+    /** HROne parity AC-2: payroll sends an employee's proof ("Submit proof for an employee", Tax declarations). */
+    public function onBehalfPermission(): ?string
+    {
+        return 'payroll.manage';
+    }
+
+    public function onBehalfUrl(User $user): ?string
+    {
+        return $this->signedIn($user) && $user->hasPermission('payroll.manage') && TaxDeclarationResource::canAccess()
+            ? $this->withAction(TaxDeclarationResource::getUrl('index'), 'submitProofForEmployee') : null;
     }
 
     public function model(): ?string

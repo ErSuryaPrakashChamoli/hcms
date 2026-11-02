@@ -12,6 +12,8 @@ use App\Domain\Experience\Services\ProfileSectionVisibility;
 use App\Domain\Experience\Services\RequestTimeline;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\CurrentEmployee;
+use App\Domain\People\Models\InsuredMember;
+use App\Domain\People\Models\PersonIdentityDocument;
 use App\Domain\People\Models\ProfileChangeRequest;
 use App\Domain\People\Services\ProfileChanges;
 use App\Domain\People\Support\ProfileEditSections;
@@ -120,12 +122,21 @@ class MyProfile extends Page
         }
         $matrix = app(ProfileSectionVisibility::class);
         $bank = preg_match('/^bank:(\d{1,18})$/', $field, $m) === 1 ? (int) $m[1] : null;
-        $allowed = ($bank === null && array_key_exists($field, MyProfileSections::IDENTIFIERS) && $matrix->allowsAudience('employee', 'personal'))
-            || ($bank !== null && $matrix->allowsAudience('employee', 'bank') && EmployeeBankAccount::query()->where('employee_id', $me->getKey())->whereKey($bank)->exists());
+        // HROne parity MS-4: a passport / driving licence number of the person's own record (personal section).
+        $identity = preg_match('/^identity:(\d{1,18})$/', $field, $m) === 1 ? (int) $m[1] : null;
+        // HROne parity MS-5: the insurer's member id of someone a policy of the person's own covers (health insurance section).
+        $insured = preg_match('/^insured:(\d{1,18})$/', $field, $m) === 1 ? (int) $m[1] : null;
+        $allowed = ($bank === null && $identity === null && $insured === null && array_key_exists($field, MyProfileSections::IDENTIFIERS) && $matrix->allowsAudience('employee', 'personal'))
+            || ($bank !== null && $matrix->allowsAudience('employee', 'bank') && EmployeeBankAccount::query()->where('employee_id', $me->getKey())->whereKey($bank)->exists())
+            || ($identity !== null && $matrix->allowsAudience('employee', 'personal') && PersonIdentityDocument::query()->where('person_id', $me->person_id)->whereKey($identity)->exists())
+            || ($insured !== null && $matrix->allowsAudience('employee', 'health_insurance')
+                && InsuredMember::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $me->getKey())->whereKey($insured)->whereNotNull('member_id_last4')->exists());
         if (! $allowed || in_array($field, $this->revealed, true)) {
             return;
         }
-        app(SensitiveAccessAuditor::class)->recordView($me, 'self_reveal', $bank === null ? $field : 'bank_account:'.$bank);
+        app(SensitiveAccessAuditor::class)->recordView($me, 'self_reveal', match (true) {
+            $bank !== null => 'bank_account:'.$bank, $identity !== null => 'identity_document:'.$identity, $insured !== null => 'insured_member:'.$insured, default => $field,
+        });
         $this->revealed[] = $field;
     }
 

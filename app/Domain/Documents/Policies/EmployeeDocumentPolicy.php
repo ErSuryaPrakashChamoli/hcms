@@ -2,11 +2,13 @@
 
 namespace App\Domain\Documents\Policies;
 
+use App\Domain\Documents\Models\DocumentShareItem;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
+use App\Domain\Letters\Models\Letter;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeDocumentPolicy
@@ -26,7 +28,23 @@ class EmployeeDocumentPolicy
     {
         return $user->hasPermission('document.own')
             && Employee::query()->withoutGlobalScope(AccessScope::class)->where('user_id', $user->id)->whereKey($model->getAttribute('employee_id'))->exists()
-            && self::visibleToEmployee($model);
+            && self::visibleToEmployee($model)
+            && ! self::ofRevokedLetter($model)
+            && ! self::ofUnpublishedShare($model);
+    }
+
+    /** HROne parity WO-14 (D-WO5): a shared document that was unpublished is kept for HR but hidden from the employee. */
+    private static function ofUnpublishedShare(Model $model): bool
+    {
+        return $model->getAttribute('status') === 'archived'
+            && DocumentShareItem::query()->withoutGlobalScope(AccessScope::class)->where('employee_document_id', $model->getKey())->where('status', 'unpublished')->exists();
+    }
+
+    /** HROne parity WO-13 (D-WO5): the document of a revoked letter is kept for HR but hidden from the employee. */
+    private static function ofRevokedLetter(Model $model): bool
+    {
+        return $model->getAttribute('status') === 'archived'
+            && Letter::query()->withoutGlobalScope(AccessScope::class)->where('document_id', $model->getKey())->where('status', 'revoked')->exists();
     }
 
     /** HROne setup parity CA-4: a document type may be kept from the employee ("Employee can view" off). */

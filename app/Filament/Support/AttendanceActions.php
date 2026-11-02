@@ -3,8 +3,13 @@
 namespace App\Filament\Support;
 
 use App\Domain\Attendance\Models\AttendanceRecord;
+use App\Domain\Attendance\Services\AttendanceOverrides;
 use App\Domain\Attendance\Services\AttendanceProcessor;
 use App\Domain\Attendance\Services\Regularisations;
+use App\Domain\Experience\BulkOperations\ChangeAttendanceStatusOperation;
+use App\Domain\Platform\Services\SettingsRepository;
+use App\Filament\Pages\AttendanceCalendar;
+use App\Livewire\Attendance\DayDrawer;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
@@ -24,6 +29,14 @@ final class AttendanceActions
     public static function forRecords(): array
     {
         return [
+            // HROne parity TX-7 (§24.5.2 #3, §24.5.1 #3): the day drawer and the employee's month, for the HR side (attendance.view)
+            // on days the viewer may see; an employee's own list is unchanged.
+            Action::make('day')->label('Day')->icon('heroicon-m-queue-list')->color('gray')
+                ->visible(fn (AttendanceRecord $record) => DayDrawer::available() && auth()->user()->can('view', $record))
+                ->action(fn (AttendanceRecord $record, $livewire) => $livewire->dispatch('pos-day-drawer-open', employee: (int) $record->employee_id, date: $record->date->toDateString())),
+            Action::make('calendar')->label('Calendar')->icon('heroicon-m-calendar-days')->color('gray')
+                ->visible(fn (AttendanceRecord $record) => TimeOfficeRegisters::hrSide('attendance.view') && AttendanceCalendar::canAccess() && auth()->user()->can('view', $record))
+                ->url(fn (AttendanceRecord $record) => AttendanceCalendar::getUrl(['employee' => $record->employee_id, 'month' => $record->date->format('Y-m')])),
             Action::make('regularise')->label('Regularise')->icon('heroicon-m-pencil-square')
                 ->visible(fn (AttendanceRecord $record) => ! $record->is_locked && auth()->user()->can('regularise', $record))
                 ->fillForm(fn (AttendanceRecord $record) => ['requested_in' => $record->first_in, 'requested_out' => $record->last_out, 'type' => in_array('missed_punch', $record->exceptions ?? [], true) ? 'missed_punch' : null])
@@ -47,6 +60,33 @@ final class AttendanceActions
                     } catch (RuntimeException $e) {
                         Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
                     }
+                }),
+            // HROne parity TX-6 (§24.5.1 #4 "Edit"): the day's status for the whole day or each half (and worked minutes) — the
+            // "Change attendance status" form for one day, through AttendanceOverrides::setRange (attendance.override on the
+            // record in scope; never one's own day; locked days only with corrections after lock).
+            Action::make('editStatus')->label('Edit')->icon('heroicon-m-adjustments-horizontal')->color('gray')
+                ->visible(fn (AttendanceRecord $record) => self::canEditStatus($record))
+                ->modalHeading(fn (AttendanceRecord $record) => 'Edit attendance · '.$record->employee?->auditLabel().' · '.$record->date->format('D j M Y'))
+                ->modalDescription(fn (AttendanceRecord $record) => 'Now: '.$record->statusLabel().($record->is_half_day_leave ? ' (with half-day leave)' : '').'. The day is recalculated when saved; approved full-day leave keeps the day.')
+                ->modalSubmitActionLabel('Save')
+                ->fillForm(fn (AttendanceRecord $record) => ChangeAttendanceStatusOperation::defaultsFor($record))
+                ->schema([...ChangeAttendanceStatusOperation::statusFields(true), Textarea::make('reason')->required()->maxLength(500)])
+                ->action(function (AttendanceRecord $record, array $data) {
+                    try {
+                        [$status, $first, $second] = ChangeAttendanceStatusOperation::statusesFrom($data);
+                        $result = app(AttendanceOverrides::class)->setRange([$record->employee], $record->date, $record->date, $status, $first, $second, (string) ($data['reason'] ?? ''), auth()->user(),
+                            filled($data['worked_minutes'] ?? null) ? (int) $data['worked_minutes'] : null);
+                    } catch (RuntimeException $e) {
+                        Notification::make()->danger()->title('Not saved')->body($e->getMessage())->send();
+
+                        return;
+                    }
+                    if ($result['done'] === []) {
+                        Notification::make()->danger()->title('Not saved')->body($result['refused'][0]['reason'] ?? 'Nothing was changed.')->send();
+
+                        return;
+                    }
+                    Notification::make()->success()->title('Day recalculated: '.$record->refresh()->statusLabel())->body($result['done'][0]['message'])->send();
                 }),
             Action::make('approveOvertime')->label('Approve OT')->icon('heroicon-m-clock')->color('warning')
                 ->visible(fn (AttendanceRecord $record) => $record->overtime_minutes > 0 && ! $record->is_locked && auth()->user()->can('approve', $record))
@@ -82,6 +122,20 @@ final class AttendanceActions
                     Notification::make()->success()->title('Reprocessed')->send();
                 }),
         ];
+    }
+
+    /** HROne parity TX-6: "Edit" is offered on days in the viewer's override scope, not their own, and not locked (unless corrections after lock are allowed). */
+    public static function canEditStatus(AttendanceRecord $record): bool
+    {
+        $user = auth()->user();
+        if ($user === null || ! $user->can('override', $record)) {
+            return false;
+        }
+        if ($record->employee?->user_id !== null && (int) $record->employee->user_id === (int) $user->id) {
+            return false;
+        }
+
+        return ! $record->is_locked || (bool) app(SettingsRepository::class)->get('attendance.allow_corrections_after_lock', false);
     }
 
     /** @return array<int, Column> */

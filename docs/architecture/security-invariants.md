@@ -156,7 +156,11 @@ enforce the mechanical ones on every CI run; the rest are reviewed.
     identity is ever created for an operator. Platform `tenant.*` keys are never effective for tenant users.
 36. **Identity links are one-time and reveal nothing.** Invitations store only a SHA-256 of their token and work
     once for one invited user of an accessible tenant; password resets are silent, token-checked before any
-    policy message, locked against double use, and never queued. Administrators never choose or see passwords.
+    policy message, locked against double use, and never queued. Administrators never choose passwords. Owner
+    decision 2026-10-31: tenant users are invited with a generated temporary password (`TemporaryPasswords`), e-mailed
+    directly (never queued) or, with `security.manage`, shown once to the administrator; only its hash is stored, it
+    expires after `peopleos.identity.invitation_hours`, and `EnforceAccountSecurity` makes the person choose their own
+    before anything else. Platform operators and the first tenant administrator keep the one-time invitation link.
 37. **Status changes go through their service.** Tenant suspension and reactivation use `TenantSuspensions`
     (conditional update, never a lock on the tenants row); the tenant edit form cannot change the status. A
     `Tenant`'s own changes are audited in its own chain (`auditTenantId()`); `AuditRecorder` writes to the

@@ -26,6 +26,8 @@ final class LeaveBalanceImports extends RowImports
         return [
             'employee_code' => ['Employee code', true], 'leave_code' => ['Leave code', true], 'days' => ['Days', true],
             'kind' => ['Kind (opening/adjustment)', false], 'year' => ['Leave year', false], 'note' => ['Note', false],
+            // Data import DI-35 (decision D35-7): only leave types of this category, e.g. the Restricted holiday balance process.
+            'category' => ['Leave category', false],
         ];
     }
 
@@ -60,6 +62,15 @@ final class LeaveBalanceImports extends RowImports
         $type = $context['types'][mb_strtolower($r['leave_code'] ?? '')] ?? null;
         if ($type === null) {
             $errors[] = "Leave code '".($r['leave_code'] ?? '')."' does not exist.";
+        }
+        // Data import DI-35 (decision D35-7): a process for one kind of leave (Restricted holiday balance) takes only that kind.
+        $categories = (array) config('peopleos.leave.categories', []);
+        if (isset($r['category'])) {
+            if (! array_key_exists(mb_strtolower($r['category']), $categories)) {
+                $errors[] = 'Leave category must be one of: '.implode(', ', array_keys($categories)).'.';
+            } elseif ($type !== null && $type->category !== mb_strtolower($r['category'])) {
+                $errors[] = "Leave code '{$type->code}' is not a ".mb_strtolower($categories[mb_strtolower($r['category'])]).' leave type.';
+            }
         }
         $kind = strtolower($r['kind'] ?? 'opening');
         if (! in_array($kind, ['opening', 'adjustment'], true)) {
@@ -121,6 +132,7 @@ final class LeaveBalanceImports extends RowImports
                 ['Kind (opening/adjustment)', 'No', 'opening (default): the balance at the start of the year, posted once. adjustment: a change to the balance.', 'opening'],
                 ['Leave year', 'No', 'The leave year; blank is the current one.', (string) app(LeaveYear::class)->periodFor(now())],
                 ['Note', 'No', 'Why the balance is set or changed.', 'Balance carried from HROne'],
+                ['Leave category', 'No', 'Only leave types of this category: '.implode(', ', array_keys((array) config('peopleos.leave.categories', []))).' (blank: any).', ''],
             ],
             'notes' => [
                 'Balances change only through the leave ledger: each row posts an opening or an adjustment entry, which the leave balance screens show.',
@@ -132,9 +144,12 @@ final class LeaveBalanceImports extends RowImports
 
     protected function examples(): array
     {
-        $code = Employee::query()->orderBy('id')->value('employee_code') ?? 'EMP0001';
-        $year = (string) app(LeaveYear::class)->periodFor(now());
+        $codes = Employee::query()->orderBy('id')->limit(2)->pluck('employee_code')->all() ?: ['EMP0001'];
+        $year = app(LeaveYear::class)->periodFor(now());
+        // Data import DI-35: both rows positive and for two employees (or two years), so the sample also validates where a
+        // process fills the kind or the leave code (Opening leave balance, Restricted holiday balance).
+        $second = isset($codes[1]) ? [$codes[1], (string) $year] : [$codes[0], (string) ($year - 1)];
 
-        return [[$code, 'EL', '12', 'opening', $year, 'Go-live balance'], [$code, 'CL', '-1', 'adjustment', $year, 'Correction']];
+        return [[$codes[0], 'EL', '12', 'opening', (string) $year, 'Go-live balance', ''], [$second[0], 'CL', '2', 'adjustment', $second[1], 'Correction', '']];
     }
 }

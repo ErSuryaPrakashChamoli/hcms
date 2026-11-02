@@ -61,6 +61,12 @@
                         @elseif ($this->requestLeaveAction->isVisible() && $h['lens'] === 'employee')
                             <button type="button" wire:click="mountAction('requestLeave')" class="pos-btn pos-btn-primary" data-pos-action="request_leave_header">Request leave</button>
                         @endif
+                        {{-- An employee's own month: attendance, leave balance, regularise and apply leave by day --}}
+                        @if ($h['lens'] === 'employee' && ($h['employee'] ?? null) !== null && \App\Filament\Pages\AttendanceCalendar::canAccess())
+                            <a href="{{ \App\Filament\Pages\AttendanceCalendar::getUrl() }}" wire:navigate class="pos-btn pos-btn-secondary" data-pos-action="my_attendance_header">
+                                <x-filament::icon icon="heroicon-m-calendar" class="size-4" /> My attendance
+                            </a>
+                        @endif
                         {{-- UX.17: phones and tablets start something from the bar's Actions button, so this one shows with the rail only --}}
                         <button type="button" class="pos-btn pos-btn-secondary pos-with-rail" x-data x-on:click="$dispatch('pos-command-open', { mode: 'actions' })">
                             <x-filament::icon icon="heroicon-m-plus" class="size-4" /> Start something

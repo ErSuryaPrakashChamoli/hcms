@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Employees\Pages;
 
 use App\Domain\Attendance\Models\WorkSchedule;
-use App\Domain\Attendance\Models\WorkScheduleAssignment;
+use App\Domain\Attendance\Services\ScheduleAssignments;
 use App\Domain\Bgv\Services\Bgv;
 use App\Domain\Employment\Actions\AssignPositionAction;
 use App\Domain\Employment\Actions\ChangeManagerAction;
@@ -39,6 +39,9 @@ use App\Filament\Support\Pages\PeopleViewRecord;
 use App\Filament\Support\ProfileChangeActions;
 use App\Filament\Support\SavesCustomFields;
 use App\Filament\Support\ServiceDeskActions;
+use App\Filament\Support\SignInActions;
+use App\Filament\Support\UpcomingJoinerActions;
+use App\Filament\Support\WorkforceBulkWizards;
 use App\Http\Controllers\EmployeeProfilePrintController;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -56,7 +59,6 @@ use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
@@ -141,8 +143,12 @@ class ViewEmployee extends PeopleViewRecord
             ActionGroup::make([
                 $this->assignPositionAction(),
                 $this->changeManagerAction(),
+                // HROne parity WO-16: move this person's team (reporting or functional) to a new manager, in bulk.
+                WorkforceBulkWizards::changeManager('changeTeamManager', fn () => $this->getRecord()),
                 $this->lifecycleAction(),
                 $this->markJoinedAction(),
+                // HROne parity WO-4: an upcoming joiner's joining date, not joining, all documents, the profile-completion mail.
+                ...UpcomingJoinerActions::all(),
                 $this->startOnboardingAction(),
                 $this->initiateBgvAction(),
                 $this->assignScheduleAction(),
@@ -150,6 +156,12 @@ class ViewEmployee extends PeopleViewRecord
                 $this->initiateExitAction(),
                 $this->rehireAction(),
             ])->label('Action')->icon(Heroicon::OutlinedBolt)->button(),
+            // Sign-in: invite (a temporary password e-mailed), e-mail a new one or generate one to hand over (SignInActions).
+            ActionGroup::make([
+                SignInActions::invite(fn () => $this->getRecord()),
+                ...SignInActions::forUser(fn () => $this->getRecord()->user),
+                SignInActions::openUser(fn () => $this->getRecord()->user),
+            ])->label('Sign-in')->icon(Heroicon::OutlinedKey)->button()->color('gray'),
             ActionGroup::make([
                 EditAction::make()->label('Edit profile'),
                 // Phase 14: every audited change to this employee's records (employee, person and linked rows), in Change Intelligence.
@@ -161,6 +173,11 @@ class ViewEmployee extends PeopleViewRecord
                 $this->printProfileAction(),
             ])->label('More')->icon(Heroicon::OutlinedEllipsisHorizontal)->button()->color('gray'),
         ];
+    }
+
+    public function temporaryPasswordShownAction(): Action
+    {
+        return SignInActions::shown();
     }
 
     /** HROne parity WO-2 ("Send email"): write to the employee through EmployeeMessages (audited without the body). */
@@ -361,7 +378,8 @@ class ViewEmployee extends PeopleViewRecord
             ->schema([
                 Select::make('to_state')
                     ->label('New state')
-                    ->options(fn (Employee $record) => collect($record->lifecycle_state->allowedNext())->mapWithKeys(fn (LifecycleState $s) => [$s->value => $s->getLabel()])->all())
+                    // HROne parity WO-4: "not joined" has its own action (a reason; it closes the onboarding), never this list.
+                    ->options(fn (Employee $record) => collect($record->lifecycle_state->allowedNext())->reject(fn (LifecycleState $s) => $s === LifecycleState::NotJoined)->mapWithKeys(fn (LifecycleState $s) => [$s->value => $s->getLabel()])->all())
                     ->required(),
                 DatePicker::make('effective_date')->native(false)->required(),
                 AuditReasonField::make()->required(),
@@ -470,13 +488,8 @@ class ViewEmployee extends PeopleViewRecord
             ])
             ->action(function (Employee $record, array $data) {
                 $reason = AuditReasonField::extract($data);
-                $from = Carbon::parse($data['effective_from']);
-
-                $record->scheduleAssignments()->whereNull('effective_to')->where('effective_from', '<', $from->toDateString())->get()
-                    ->each(fn (WorkScheduleAssignment $a) => $a->withAuditReason($reason)->update(['effective_to' => $from->copy()->subDay()]));
-
-                $assignment = new WorkScheduleAssignment(['employee_id' => $record->id, 'work_schedule_id' => $data['work_schedule_id'], 'effective_from' => $from, 'reason' => $reason]);
-                $assignment->withAuditReason($reason)->save();
+                // Data import DI-2: the same write path as the Employee settings upload.
+                app(ScheduleAssignments::class)->assign($record, WorkSchedule::query()->findOrFail($data['work_schedule_id']), $data['effective_from'], $reason, auth()->user());
 
                 Notification::make()->success()->title('Schedule assigned')->send();
             });

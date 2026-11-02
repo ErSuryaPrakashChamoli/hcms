@@ -7,7 +7,7 @@
         class="pos-command pos-command-enter" x-on:keydown.escape.prevent.stop="close()" x-transition:enter="pos-command-in" x-transition:leave="pos-command-out">
         <h2 id="pos-command-title" class="sr-only">Command center</h2>
         <div class="pos-command-head">
-            <x-filament::icon icon="heroicon-m-magnifying-glass" class="size-5 shrink-0 pos-muted" />
+            <span class="pos-command-glyph" aria-hidden="true"><x-filament::icon icon="heroicon-m-magnifying-glass" class="size-5" /></span>
             <input x-ref="input" type="text" wire:model.live.debounce.120ms="query" autocomplete="off" spellcheck="false"
                 role="combobox" aria-expanded="true" aria-controls="pos-command-list" aria-autocomplete="list" :aria-activedescendant="activeId"
                 class="pos-command-input" placeholder="{{ $this->pickLabel() ? 'Whose change is it? Name, ID or email' : ($mode === 'actions' ? 'What do you want to do?' : ($mode === 'people' ? 'Find a person by name, ID or email' : 'Search people, requests, policies… or type what you want to do')) }}"
@@ -35,7 +35,7 @@
             @php($groups = $active || trim($query) !== '' ? $this->groups : [])
             @forelse ($groups as $group)
                 <div role="group" aria-labelledby="cmd-g-{{ $group['key'] }}" class="pos-command-section">
-                    <p id="cmd-g-{{ $group['key'] }}" class="pos-command-group">{{ $group['label'] }}</p>
+                    <p id="cmd-g-{{ $group['key'] }}" class="pos-command-group">{{ $group['label'] }} <span class="pos-command-group-count" aria-hidden="true">{{ count($group['items']) }}</span></p>
                     @foreach ($group['items'] as $item)
                         @php($domId = 'cmd-'.md5($group['key'].$item['id']))
                         {{-- Options hold no buttons; the highlighted result's actions appear in the toolbar below the list. --}}
@@ -69,6 +69,7 @@
                     @elseif (trim($query) === '')
                         <p class="pos-body-sm pos-muted">Start typing to search.</p>
                     @else
+                        <span class="pos-command-empty-icon" aria-hidden="true"><x-filament::icon icon="heroicon-o-magnifying-glass" class="size-6" /></span>
                         <p class="pos-body font-medium">No results for “{{ $query }}”</p>
                         <p class="pos-body-sm pos-muted mt-1">Try a person’s name, a request number, a policy word, or an action such as “leave”, “payslip” or “approve”. Results only include what you have access to.</p>
                     @endif

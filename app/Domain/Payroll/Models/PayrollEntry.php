@@ -5,6 +5,7 @@ namespace App\Domain\Payroll\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
+use App\Domain\Identity\Models\User;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -45,6 +46,8 @@ class PayrollEntry extends Model
             'taxable_earnings' => 'decimal:2',
             'exceptions' => 'array',
             'inputs' => 'array',
+            // HROne parity PO-4: the optional reviewer tick (who / when; never blocks; cleared by recalculation).
+            'reviewed_at' => 'datetime',
         ];
     }
 
@@ -76,6 +79,12 @@ class PayrollEntry extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(PayrollEntryLine::class)->orderBy('sort_order');
+    }
+
+    /** HROne parity PO-4: who ticked the entry as checked (optional). */
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     public function payslip(): HasOne

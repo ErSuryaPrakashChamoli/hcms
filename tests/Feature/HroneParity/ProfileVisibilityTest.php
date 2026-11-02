@@ -170,7 +170,7 @@ it('hides each section from the audiences the matrix unticks, and never from peo
 
 it('fails closed on an unknown section, audience or viewer', function () {
     $matrix = app(ProfileSectionVisibility::class);
-    expect($matrix->allows($this->employee->user, $this->employee, 'health_insurance'))->toBeFalse()
+    expect($matrix->allows($this->employee->user, $this->employee, 'no_such_section'))->toBeFalse()
         ->and($matrix->allows(null, $this->employee, 'family'))->toBeFalse()
         ->and($matrix->allowsAudience('hr', 'family'))->toBeFalse()
         ->and($matrix->allowsAudience('employee', 'salary'))->toBeFalse();

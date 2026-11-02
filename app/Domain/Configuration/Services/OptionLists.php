@@ -15,6 +15,18 @@ final class OptionLists
     public const LISTS = [
         'family_relations' => ['label' => 'Family relations', 'config' => 'peopleos.people.family_relations'],
         'document_categories' => ['label' => 'Document categories', 'config' => 'peopleos.documents.categories'],
+        // HROne parity MS-4: salutations (letters, lists), the benefits a nomination is for, how a qualification was studied.
+        'salutations' => ['label' => 'Salutations', 'config' => 'peopleos.people.salutations'],
+        'nomination_benefits' => ['label' => 'Nomination benefits', 'config' => 'peopleos.people.nomination_benefits'],
+        'qualification_modes' => ['label' => 'Qualification modes', 'config' => 'peopleos.people.qualification_modes'],
+        // HROne parity WO-4: why an upcoming joiner did not join ("Mark as not joining").
+        'not_joining_reasons' => ['label' => 'Not-joining reasons', 'config' => 'peopleos.lifecycle.not_joining_reasons'],
+        // HROne parity WO-15: the type of a business partner ("User type") and the kind of a vendor.
+        'partner_types' => ['label' => 'Business partner types', 'config' => 'peopleos.partners.types'],
+        'vendor_kinds' => ['label' => 'Vendor kinds', 'config' => 'peopleos.partners.vendor_kinds'],
+        // HROne parity GO-15: the type and sub-type of a company event ("Type of event", "Type of sub event").
+        'event_types' => ['label' => 'Event types', 'config' => 'peopleos.engagement.event_types'],
+        'event_sub_types' => ['label' => 'Event sub-types', 'config' => 'peopleos.engagement.event_sub_types'],
     ];
 
     /** @return array<string, string> the built-in options of a list */

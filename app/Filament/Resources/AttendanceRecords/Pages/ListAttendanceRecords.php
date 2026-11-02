@@ -7,6 +7,7 @@ use App\Domain\Attendance\Models\Shift;
 use App\Domain\Attendance\Services\AttendanceProcessor;
 use App\Domain\Attendance\Services\PunchIngestion;
 use App\Domain\Employment\Models\Employee;
+use App\Filament\Pages\AttendanceStatusChange;
 use App\Filament\Resources\AttendanceRecords\AttendanceRecordResource;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
@@ -64,6 +65,10 @@ class ListAttendanceRecords extends PeopleListRecords
         return [
             // HROne parity TX-1: views, report and the uploads for the HR side; an employee's own list is unchanged.
             ...(TimeOfficeRegisters::hrSide('attendance.view') ? [...$this->registerToolActions(), TimeOfficeRegisters::uploads(['attendance_sheet', 'day_overrides', 'punches'])] : []),
+            // HROne parity TX-6: "Change attendance status" for chosen employees and a range of days, the whole day or each half.
+            Action::make('changeStatus')->label('Change attendance status')->icon(Heroicon::OutlinedAdjustmentsHorizontal)->color('gray')
+                ->visible(fn () => AttendanceStatusChange::canAccess())
+                ->url(fn () => AttendanceStatusChange::getUrl()),
             // HROne parity TX-2: attendance.punch / attendance.process (attendance.manage also grants both).
             Action::make('manualPunch')->label('Manual punch')->icon(Heroicon::OutlinedFingerPrint)
                 ->authorize(fn () => auth()->user()->can('attendance.punch'))

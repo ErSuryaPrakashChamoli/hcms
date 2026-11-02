@@ -55,10 +55,8 @@ final class Feedback360Actions
     public static function forRound(): array
     {
         return [
-            Action::make('extend')->label('Extend window')->icon(Heroicon::OutlinedCalendarDays)->color('gray')
-                ->visible(fn (FeedbackRound $record) => $record->isOpen() && FeedbackRounds::mayManage(auth()->user()))
-                ->schema([DatePicker::make('closes_on')->label('New closing date')->required()->native(false), Textarea::make('reason')->required()->maxLength(500)])
-                ->action(fn (FeedbackRound $record, array $data) => PerformanceActions::run(fn () => app(FeedbackRounds::class)->extend($record, (string) $data['closes_on'], (string) $data['reason'], auth()->user()), 'Window extended')),
+            // HROne parity GO-2 (HROne "Extend 360"): for everyone (the round's window, as before) or for chosen employees.
+            PerformanceCycleActions::extendRound(),
             Action::make('close')->label('Close round')->icon(Heroicon::OutlinedLockClosed)->color('warning')->requiresConfirmation()
                 ->modalDescription('Answers stop; employees and managers may read the results as the policy says. Clients\' links stop working.')
                 ->visible(fn (FeedbackRound $record) => $record->isOpen() && FeedbackRounds::mayManage(auth()->user()))

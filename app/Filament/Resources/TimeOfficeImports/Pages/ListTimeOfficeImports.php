@@ -21,17 +21,18 @@ class ListTimeOfficeImports extends PeopleListRecords
     protected function getHeaderActions(): array
     {
         $resource = static::getResource();
-        $types = fn () => collect(RowImportTypes::allowedTypes(auth()->user(), $resource::area()))->mapWithKeys(fn (string $t) => [$t => RowImportTypes::TYPES[$t][1]])->all();
+        $types = fn () => collect($resource::types())->mapWithKeys(fn (string $t) => [$t => RowImportTypes::TYPES[$t][1]])->all();
 
         return [
             Action::make('templates')
-                ->label('Download template')
-                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->label('Download sample file')
+                ->icon(Heroicon::OutlinedTableCells)
                 ->color('gray')
                 ->schema([Select::make('type')->label('Upload')->options($types)->required()->native(false)])
                 ->action(fn (array $data) => response()->streamDownload(fn () => print (ImportActions::service($data['type'])->template()), str_replace('_', '-', $data['type']).'-template.csv', ['Content-Type' => 'text/csv'])),
             CreateAction::make()
                 ->label('Upload CSV')
+                ->modalWidth('4xl')->modalSubmitActionLabel('Upload and continue')->createAnother(false)->modalContentFooter(null)
                 // HROne parity TX-1: a register's "Upload" link opens this dialog with its type chosen (when allowed).
                 ->mountUsing(function (?Schema $schema, array $arguments) use ($types): void {
                     $schema?->fill();
@@ -41,14 +42,16 @@ class ListTimeOfficeImports extends PeopleListRecords
                     }
                 })
                 ->modalHeading($resource::uploadHeading())
-                ->modalDescription('Choose what the file holds, then upload it. Start from Download template. Nothing changes until the file is mapped, validated, approved and run.')
+                ->modalDescription('Choose what the file holds, then drop the file in. Start from Download sample file. Nothing changes until the file is mapped, validated, approved and run.')
                 ->schema([
                     Select::make('type')->label('Upload')->options($types)->required()->live()->native(false),
-                    Radio::make('mode')->label('What is this file for?')->required()->default('both')
+                    ImportActions::fileField(),
+                    Radio::make('mode')->label('What is this file for?')->required()->default('both')->extraAttributes(['class' => 'pos-di-choices'])
                         ->options(fn (Get $get) => array_map(fn (array $m) => $m[0], ImportActions::modes((string) $get('type')) ?? []))
                         ->descriptions(fn (Get $get) => array_map(fn (array $m) => $m[1], ImportActions::modes((string) $get('type')) ?? []))
                         ->visible(fn (Get $get) => filled($get('type')) && ImportActions::modes((string) $get('type')) !== null),
-                    ImportActions::fileField(),
+                    // The format guide of the upload chosen above, under the file and the choice.
+                    ImportActions::formatSectionFor(fn (Get $get) => $get('type')),
                 ])
                 ->using(fn (array $data) => ImportActions::service($data['type'])->register($data['file'], ImportActions::originalName($data), auth()->user(), null, array_filter(['mode' => $data['mode'] ?? null])))
                 ->successRedirectUrl(fn ($record) => $resource::getUrl('view', ['record' => $record])),

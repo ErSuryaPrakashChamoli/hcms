@@ -105,6 +105,10 @@ class LetterTemplateResource extends Resource
                     ->options(fn () => self::signatories())
                     ->helperText('Printed by {{ signatory.signature }}, {{ signatory.name }} and {{ signatory.designation }}.'),
                 Toggle::make('requires_approval')->label('Needs approval before issue')->inline(false),
+                // HROne parity WO-13 (§23.7.1 #8): up to four signatories, printed by {{ signatory_2.signature }} … {{ signatory_4.name }}.
+                ...array_map(fn (int $n) => Select::make("letter_signatory_{$n}_id")->label(LetterVariables::MORE_SIGNATORIES[$n].' signatory')->placeholder('None')
+                    ->options(fn () => self::signatories())->helperText("Printed by {{ signatory_{$n}.signature }}, {{ signatory_{$n}.name }} and {{ signatory_{$n}.designation }}."),
+                    array_keys(LetterVariables::MORE_SIGNATORIES)),
             ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);

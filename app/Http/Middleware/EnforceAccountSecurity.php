@@ -25,6 +25,8 @@ use Symfony\Component\HttpFoundation\Response;
  * 4. HROne setup parity: a tenant user whose password is older than the tenant's expiry (security.password_expiry_days)
  *    chooses a new one before going on, unless the session was opened through SSO (no password was used). A password
  *    with no known change date counts as expired. Platform operators follow the platform's rules, not a tenant's.
+ * 5. A user who signed in with a temporary password (TemporaryPasswords) chooses their own first, right after the
+ *    authenticator challenge (before setting up MFA or verifying the address), unless the session was opened through SSO.
  *
  * Only the pages that complete these steps, and sign-out, stay reachable meanwhile.
  */
@@ -54,6 +56,7 @@ class EnforceAccountSecurity
 
         $target = match (true) {
             $user->hasMfaEnabled() && ! $this->mfa->isVerified($session, $user) => 'filament.admin.auth.multi-factor-authentication.challenge',
+            self::mustReplacePasswordFor($user, $session) => 'filament.admin.auth.password-expired',
             ! $user->hasMfaEnabled() && $this->mfa->requiredFor($user) => 'filament.admin.auth.multi-factor-authentication.set-up-required',
             ! $user->hasVerifiedEmail() && $session->get(self::AUTH_METHOD_KEY) !== 'sso' => 'filament.admin.auth.email-verification.prompt',
             self::passwordExpiredFor($user, $session) => 'filament.admin.auth.password-expired',
@@ -72,6 +75,12 @@ class EnforceAccountSecurity
         }
 
         return redirect()->route($target);
+    }
+
+    /** Whether this session signed in with a temporary password and must choose its own first. */
+    public static function mustReplacePasswordFor(User $user, Session $session): bool
+    {
+        return $user->mustReplacePassword() && $session->get(self::AUTH_METHOD_KEY) !== 'sso';
     }
 
     /** Whether this session must choose a new password first (read from the raw attributes: strict mode, fresh instances). */

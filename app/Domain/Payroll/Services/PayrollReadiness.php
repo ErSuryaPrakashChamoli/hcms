@@ -133,6 +133,10 @@ final class PayrollReadiness
                 continue;
             }
             $months[] = ['company' => $company->name, 'label' => Carbon::create($year, $month, 1)->format('M Y'), 'dates' => $start->format('j M').' – '.$end->format('j M Y')];
+            // HROne parity TX-3: with attendance month close in use, a month whose attendance is still open is a note (never a block).
+            if (($notice = app(AttendanceMonthNotice::class)->forMonth((int) $company->id, $year, $month, $company->name)) !== null) {
+                $notes[] = $notice;
+            }
             $latestEnd = $latestEnd === null || $end->gt($latestEnd) ? $end : $latestEnd;
 
             $employees = $this->population((int) $company->id, $start, $end, $activeOnly)->with(['person', 'statutoryDetail'])->orderBy('employee_code')->get();

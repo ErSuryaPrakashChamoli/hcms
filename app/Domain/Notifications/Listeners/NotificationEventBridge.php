@@ -198,6 +198,11 @@ final class NotificationEventBridge
             'exit.withdrawn' => 'Resignation withdrawn by '.$who,
             // HROne setup parity P5: the resignation's approval workflow accepted it.
             'exit.resignation_accepted' => 'Your resignation was accepted (last day '.$c['last_working_day'].')',
+            // HROne parity WO-11: withdrawal requests (when withdrawals need approval) and a changed last working day.
+            'exit.withdrawal_requested' => 'Request to withdraw the resignation of '.$who.' ('.$c['number'].')',
+            'exit.withdrawal_approved' => 'The withdrawal of the resignation of '.$who.' was approved ('.$c['number'].')',
+            'exit.withdrawal_rejected' => 'The withdrawal of the resignation of '.$who.' was not approved ('.$c['number'].')',
+            'exit.last_working_day_changed' => 'Last working day of '.$who.' changed to '.$c['last_working_day'].' ('.$c['number'].')',
             'exit.clearance.pending' => $c['stage'].' needed for '.$who.' by '.$c['last_working_day'],
             'exit.clearance.cleared' => $c['stage'].' cleared for '.$who,
             'exit.clearance.blocked' => $c['stage'].' blocked for '.$who.': '.$c['remarks'],
@@ -489,6 +494,9 @@ final class NotificationEventBridge
             'compensation.change.effective' => 'Compensation change'.$who.' is effective from '.($c['effective_date'] ?? ''),
             'compensation.reminder.pending_change' => 'Compensation change'.$who.' is still waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
             'compensation.reminder.pending_cycle' => 'Compensation cycle '.($c['cycle'] ?? '').' is still waiting ('.str_replace('_', ' ', (string) ($c['status'] ?? '')).')',
+            // HROne parity PO-17: an increment plan shared with a manager, and a manager's proposal for the preparer.
+            'compensation.cycle.shared' => 'Increment plan '.($c['cycle'] ?? '').' was shared with you for your team',
+            'compensation.cycle.proposal' => 'A manager proposed increments on plan '.($c['cycle'] ?? ''),
             default => ucfirst(str_replace(['compensation.', '.', '_'], ['', ' ', ' '], $event->name)).(isset($c['cycle']) ? ': '.$c['cycle'] : (isset($c['structure']) ? ': '.$c['structure'] : '')),
         };
 
@@ -519,6 +527,10 @@ final class NotificationEventBridge
             'campaign.review_requested' => 'Campaign to review: '.($c['campaign'] ?? ''),
             'campaign.launched' => 'Campaign launched: '.($c['campaign'] ?? '').(($c['partial'] ?? false) ? ' (some items were not ready)' : ''),
             'feedback.submitted' => 'New employee feedback: '.($c['category'] ?? ''),
+            // HROne parity GO-15: company events — an invitation (on publishing, or added later), a colleague's nomination, a cancellation.
+            'event.published' => (($c['mandatory'] ?? false) ? 'Please acknowledge: ' : 'You are invited: ').($c['event'] ?? '').(isset($c['when']) ? ' ('.$c['when'].')' : ''),
+            'event.nominated' => ($c['by'] ?? 'A colleague').' nominated you for '.($c['event'] ?? 'an event').(isset($c['when']) ? ' ('.$c['when'].')' : ''),
+            'event.cancelled' => 'Cancelled: '.($c['event'] ?? 'an event').(isset($c['reason']) ? ' — '.$c['reason'] : ''),
             default => ucfirst(str_replace(['.', '_'], ' ', $event->name)).(isset($c['survey']) ? ': '.$survey : (isset($c['campaign']) ? ': '.$c['campaign'] : '')),
         };
 
@@ -602,6 +614,9 @@ final class NotificationEventBridge
             'performance.period_review.opened' => 'Periodic review to complete for '.($event->context['for'] ?? 'an employee').' ('.($event->context['period'] ?? '').')',
             // HROne parity GO-1: HR reopened a submitted review (the reviewer fills it in again; the reason is HR's).
             'performance.review.reopened' => 'Your '.mb_strtolower((string) ($event->context['type'] ?? '')).' review for '.($event->context['cycle'] ?? 'the cycle').' was reopened by HR: '.($event->context['reason'] ?? ''),
+            // HROne parity GO-2: added to a running cycle, or withdrawn from it (the cycle and HR's reason only).
+            'performance.appraisal.added' => 'You were added to the performance cycle '.($event->context['cycle'] ?? '').(filled($event->context['stage'] ?? null) ? ' (now at '.$event->context['stage'].')' : ''),
+            'performance.appraisal.withdrawn' => ($event->context['for'] ?? 'An employee').' was withdrawn from the performance cycle '.($event->context['cycle'] ?? '').': '.($event->context['reason'] ?? ''),
             default => str_replace('.', ' ', $event->name),
         };
 

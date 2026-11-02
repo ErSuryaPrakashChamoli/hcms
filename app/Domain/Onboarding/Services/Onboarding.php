@@ -251,6 +251,39 @@ final class Onboarding
         return $plan;
     }
 
+    /**
+     * HROne parity WO-4 ("New joining date"): an upcoming joiner's joining date moved, so an in-progress onboarding checklist or
+     * induction programme anchored on joining moves with it — the anchor, and the due date of every item not started yet
+     * (pending) by the same number of days. Closed items keep their dates; items issued to current employees (task campaigns)
+     * are not anchored on joining and are left alone. Audited on the plan. Returns the number of items moved.
+     */
+    public function reschedule(OnboardingPlan $plan, CarbonInterface $anchor, ?string $reason = null): int
+    {
+        if ($plan->status !== 'in_progress' || ! in_array($plan->kind, ['onboarding', 'induction'], true)) {
+            return 0;
+        }
+        $from = $plan->anchor_date?->copy()->startOfDay();
+        $to = Carbon::parse($anchor)->startOfDay();
+        if ($from === null || $from->equalTo($to)) {
+            return 0;
+        }
+        $days = (int) $from->diffInDays($to, false);
+
+        return DB::transaction(function () use ($plan, $from, $to, $days, $reason) {
+            $moved = 0;
+            $plan->tasks()->where('status', 'pending')->whereNotNull('due_on')->orderBy('id')->get()
+                ->each(function (OnboardingTask $task) use ($days, &$moved): void {
+                    $task->forceFill(['due_on' => $task->due_on->copy()->addDays($days)])->saveQuietly();
+                    $moved++;
+                });
+            $plan->withAuditReason($reason)->update(['anchor_date' => $to]);
+            $this->audit->record(AuditAction::Update, 'onboarding', $plan, changes: [['field' => 'anchor_date', 'before' => $from->toDateString(), 'after' => $to->toDateString()]],
+                reason: $reason, metadata: ['rescheduled_items' => $moved, 'days' => $days]);
+
+            return $moved;
+        });
+    }
+
     public function recompute(OnboardingPlan $plan): OnboardingPlan
     {
         $plan->loadMissing('employee');

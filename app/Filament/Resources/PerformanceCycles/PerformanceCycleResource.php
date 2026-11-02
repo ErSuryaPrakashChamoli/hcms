@@ -135,7 +135,8 @@ class PerformanceCycleResource extends Resource
 
     public static function getRelations(): array
     {
-        return [AppraisalsRelationManager::class, AuditHistoryRelationManager::class];
+        // HROne parity GO-2: the cycle's window extensions (read-only).
+        return [AppraisalsRelationManager::class, RelationManagers\WindowExtensionsRelationManager::class, AuditHistoryRelationManager::class];
     }
 
     public static function getPages(): array

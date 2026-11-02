@@ -7,6 +7,9 @@ use App\Domain\Communication\Events\CommunicationEvent;
 use App\Domain\Communication\Models\Announcement;
 use App\Domain\Communication\Models\CommunicationRecipient;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Engagement\Events\EngagementEvent;
+use App\Domain\Engagement\Models\CompanyEvent;
+use App\Domain\Engagement\Models\CompanyEventInvitation;
 use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\User;
@@ -43,12 +46,13 @@ use Throwable;
  *
  * - **Posts:** HR writes posts (wall.post; attachments while engage.wall.attachments); the system posts public badges,
  *   rewards between colleagues, celebrations (shared birthdays and wedding anniversaries, work anniversaries), published
- *   announcements, new joiners and — while engage.wall.show_achievements — completed goals and learning certificates.
+ *   announcements, published company events (GO-15), new joiners and — while engage.wall.show_achievements — completed
+ *   goals and learning certificates.
  *   Each event is posted once (dedupe key); a withdrawn badge's post is hidden.
  * - **Who sees what:** wall.view (or wall.moderate) while the wall is on; with engage.wall.scope = company, posts of the
  *   viewer's own company (and organisation-wide ones); a viewer with an access scope sees posts about people in it; an
- *   announcement only its recipients; a celebration only those who may see that celebration (its own visible_to and
- *   sharing rules). Moderators also see hidden posts and comments.
+ *   announcement only its recipients; a company event only its invitees; a celebration only those who may see that
+ *   celebration (its own visible_to and sharing rules). Moderators also see hidden posts and comments.
  * - **Reactions and comments:** one reaction per person and post; comments unless the post's type is listed in
  *   engage.wall.comments_disabled_for; a comment is never edited (its author removes it, a moderator hides it).
  * - **Moderation:** wall.moderate hides and restores posts and comments with a reason, and pins posts; "Report" tells
@@ -377,6 +381,29 @@ final class SocialWall
         });
     }
 
+    /**
+     * HROne parity GO-15 (§27.16 #5): a published company event (its invitees see it on the wall); its post is hidden when
+     * the event is cancelled.
+     */
+    public function onEngagement(EngagementEvent $event): void
+    {
+        if (! $event->subject instanceof CompanyEvent || ! in_array($event->name, ['event.published', 'event.cancelled'], true) || ! $this->enabled()) {
+            return;
+        }
+        $this->safely(function () use ($event) {
+            $company = $event->subject;
+            if ($event->name === 'event.cancelled') {
+                WallPost::query()->where('dedupe_key', "event:{$company->getKey()}")->where('status', 'published')->get()
+                    ->each(fn (WallPost $post) => $post->update(['status' => 'hidden', 'hidden_at' => now(), 'hide_reason' => 'The event was cancelled']));
+
+                return;
+            }
+            $c = $event->context;
+            $body = collect([$c['when'] ?? null, $c['place'] ?? null, $company->description ? Str::limit(trim(strip_tags((string) $company->description)), 200) : null])->filter()->implode(' · ');
+            $this->system('event', $company, null, (string) $company->title, $body === '' ? null : $body, "event:{$company->getKey()}", ['icon' => 'heroicon-o-calendar-days']);
+        });
+    }
+
     /** A new joiner: the first time someone becomes a working employee. */
     public function onLifecycle(EmployeeLifecycleChanged $event): void
     {
@@ -439,6 +466,10 @@ final class SocialWall
             $announcement = (new Announcement)->getMorphClass();
             $query->where(fn (Builder $q) => $q->where('type', '!=', 'announcement')->orWhere(fn (Builder $a) => $a->where('subject_type', $announcement)
                 ->whereIn('subject_id', CommunicationRecipient::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $me?->id ?? 0)->select('announcement_id'))));
+            // HROne parity GO-15: an event post only for the people invited to it.
+            $companyEvent = (new CompanyEvent)->getMorphClass();
+            $query->where(fn (Builder $q) => $q->where('type', '!=', 'event')->orWhere(fn (Builder $e) => $e->where('subject_type', $companyEvent)
+                ->whereIn('subject_id', CompanyEventInvitation::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $me?->id ?? 0)->select('event_id'))));
         }
 
         return $query;

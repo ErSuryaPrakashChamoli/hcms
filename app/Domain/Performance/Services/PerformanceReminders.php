@@ -30,22 +30,30 @@ final class PerformanceReminders
         $lead = (int) config('peopleos.performance.reminder_days_before', 3);
         $sent = ['reviews' => 0, 'check_ins' => 0, 'checkpoints' => 0];
 
-        PerformanceCycle::query()->where('status', 'active')->get()->each(function (PerformanceCycle $cycle) use ($today, $lead, &$sent) {
-            $stage = collect($cycle->stages ?? [])->firstWhere('key', $cycle->current_stage);
+        $windows = app(PerformanceWindows::class);
+        PerformanceCycle::query()->where('status', 'active')->get()->each(function (PerformanceCycle $cycle) use ($today, $lead, $windows, &$sent) {
             $type = match ($cycle->current_stage) {
                 'self_review' => 'self', 'manager_review' => 'manager', 'peer_review' => 'peer', default => null
             };
-            if ($type === null || empty($stage['ends_on']) || Carbon::parse($stage['ends_on'])->gt($today->copy()->addDays($lead))) {
+            $base = $type === null ? null : PerformanceWindows::baseEnd($cycle, (string) $cycle->current_stage);
+            // Extensions only move an end later: a stage whose own end is beyond the lead time has nothing due yet.
+            if ($base === null || $base->gt($today->copy()->addDays($lead))) {
                 return;
             }
-            AppraisalReview::query()->with('appraisal.employee')->whereHas('appraisal', fn ($q) => $q->where('performance_cycle_id', $cycle->id)->whereNull('locked_at'))
-                ->where('type', $type)->where('status', 'pending')->whereNotNull('reviewer_id')->get()
-                ->each(function (AppraisalReview $review) use ($cycle, $stage, $today, &$sent) {
-                    if ($this->once('review_due', $review, $today)) {
-                        PerformanceEvent::dispatch('performance.reminder.review_due', $review->appraisal->employee, $review, ['cycle' => $cycle->name, 'due' => $stage['ends_on']], [$review->reviewer_id]);
-                        $sent['reviews']++;
-                    }
-                });
+            $reviews = AppraisalReview::query()->with('appraisal.employee')->whereHas('appraisal', fn ($q) => $q->where('performance_cycle_id', $cycle->id)->whereNull('locked_at'))
+                ->where('type', $type)->where('status', 'pending')->whereNotNull('reviewer_id')->get();
+            // HROne parity GO-2: each review falls due at its stage's end as extended for the employee (or everyone).
+            $ends = $windows->stageEnds($cycle, (string) $cycle->current_stage, $reviews->map(fn (AppraisalReview $r) => (int) $r->appraisal->employee_id));
+            $reviews->each(function (AppraisalReview $review) use ($cycle, $ends, $today, $lead, &$sent) {
+                $due = $ends[(int) $review->appraisal->employee_id] ?? null;
+                if ($due === null || $due->gt($today->copy()->addDays($lead))) {
+                    return;
+                }
+                if ($this->once('review_due', $review, $today)) {
+                    PerformanceEvent::dispatch('performance.reminder.review_due', $review->appraisal->employee, $review, ['cycle' => $cycle->name, 'due' => $due->toDateString()], [$review->reviewer_id]);
+                    $sent['reviews']++;
+                }
+            });
         });
 
         PerformanceCheckIn::query()->with('employee')->where('status', 'submitted')->whereNotNull('manager_id')->where('submitted_at', '<=', now()->subDays($lead))->get()
@@ -97,8 +105,9 @@ final class PerformanceReminders
         if (! $this->once('review_due', $review, now()->startOfDay())) {
             return false;
         }
-        $stage = collect($cycle->stages ?? [])->firstWhere('key', $stageKey);
-        $due = ! empty($stage['ends_on']) ? Carbon::parse($stage['ends_on'])->toDateString() : 'the end of the '.mb_strtolower((string) config("peopleos.performance.stages.{$stageKey}", 'review')).' stage';
+        // HROne parity GO-2: the stage's end as extended for the employee (or everyone).
+        $end = app(PerformanceWindows::class)->stageEnd($cycle, $stageKey, (int) $appraisal->employee_id);
+        $due = $end !== null ? $end->toDateString() : 'the end of the '.mb_strtolower((string) config("peopleos.performance.stages.{$stageKey}", 'review')).' stage';
         PerformanceEvent::dispatch('performance.reminder.review_due', $appraisal->employee, $review, ['cycle' => $cycle->name, 'due' => $due], [(int) $review->reviewer_id]);
 
         return true;

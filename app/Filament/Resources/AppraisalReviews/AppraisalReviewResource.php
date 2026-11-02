@@ -6,6 +6,7 @@ use App\Domain\Performance\Models\Appraisal;
 use App\Domain\Performance\Models\AppraisalReview;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Services\Appraisals;
+use App\Domain\Performance\Services\PerformanceWindows;
 use App\Domain\Performance\Support\AppraisalVisibility;
 use App\Filament\Resources\AppraisalReviews\Pages\ListAppraisalReviews;
 use App\Filament\Resources\Appraisals\AppraisalResource;
@@ -21,7 +22,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 use UnitEnum;
 
 /**
@@ -50,6 +50,9 @@ class AppraisalReviewResource extends Resource
     protected static ?string $slug = 'review-requests';
 
     protected static ?int $navigationSort = 21;
+
+    /** Review statuses (HROne parity GO-2: withdrawn = its appraisal left the cycle before it was written). */
+    public const STATUSES = ['pending' => 'Pending', 'submitted' => 'Submitted', 'withdrawn' => 'Withdrawn'];
 
     public static function canAccess(): bool
     {
@@ -87,15 +90,12 @@ class AppraisalReviewResource extends Resource
         return $query->whereHas('appraisal');
     }
 
-    /** The day the review's stage closes (HROne "due"), from the cycle's stage dates. */
+    /** The day the review's stage closes (HROne "due"), from the cycle's stage dates — HROne parity GO-2: as extended for the employee. */
     public static function dueOn(AppraisalReview $record): ?string
     {
-        $stage = match ($record->type) {
-            'self' => 'self_review', 'manager' => 'manager_review', 'approver' => 'approver_review', default => 'peer_review'
-        };
-        $ends = collect($record->loadMissing('appraisal.cycle')->appraisal?->cycle?->stages ?? [])->firstWhere('key', $stage)['ends_on'] ?? null;
+        $appraisal = $record->loadMissing('appraisal.cycle')->appraisal;
 
-        return $ends ? Carbon::parse($ends)->toDateString() : null;
+        return $appraisal === null ? null : app(PerformanceWindows::class)->reviewDue($appraisal, $record->type)?->toDateString();
     }
 
     public static function table(Table $table): Table
@@ -111,9 +111,11 @@ class AppraisalReviewResource extends Resource
                 TextColumn::make('type')->label('Review level')->badge()->color('gray')
                     ->formatStateUsing(fn (string $state) => config("peopleos.performance.review_types.{$state}", $state)),
                 TextColumn::make('reviewer.person.full_name')->label('Reviewer')->placeholder('—'),
-                TextColumn::make('status')->badge()->color(fn (string $state) => $state === 'submitted' ? 'success' : 'warning')
-                    ->formatStateUsing(fn (string $state) => $state === 'submitted' ? 'Submitted' : 'Pending'),
-                TextColumn::make('due_on')->label('Due')->placeholder('—')->state(fn (AppraisalReview $record) => $record->isSubmitted() ? null : self::dueOn($record)),
+                TextColumn::make('status')->badge()->color(fn (string $state) => match ($state) {
+                    'submitted' => 'success', 'withdrawn' => 'gray', default => 'warning'
+                })
+                    ->formatStateUsing(fn (string $state) => self::STATUSES[$state] ?? $state),
+                TextColumn::make('due_on')->label('Due')->placeholder('—')->state(fn (AppraisalReview $record) => $record->status === 'pending' ? self::dueOn($record) : null),
                 TextColumn::make('created_at')->label('Created')->date()->sortable(),
                 TextColumn::make('submitted_at')->label('Submitted')->dateTime()->placeholder('—')->sortable(),
                 TextColumn::make('overall_rating')->label('Overall')->placeholder('—')->toggleable(isToggledHiddenByDefault: true)
@@ -128,7 +130,7 @@ class AppraisalReviewResource extends Resource
                     ->options(fn () => PerformanceCycle::query()->orderByDesc('period_start')->pluck('name', 'id')->all())
                     ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null) ? $query->whereHas('appraisal', fn (Builder $a) => $a->where('performance_cycle_id', (int) $data['value'])) : $query),
                 SelectFilter::make('type')->label('Review level')->multiple()->options(fn () => config('peopleos.performance.review_types')),
-                SelectFilter::make('status')->multiple()->options(['pending' => 'Pending', 'submitted' => 'Submitted']),
+                SelectFilter::make('status')->multiple()->options(self::STATUSES),
                 SelectFilter::make('appraisal_status')->label('Appraisal status')->multiple()->options(fn () => config('peopleos.performance.appraisal_statuses'))
                     ->query(fn (Builder $query, array $data) => ($data['values'] ?? []) !== [] ? $query->whereHas('appraisal', fn (Builder $a) => $a->whereIn('status', (array) $data['values'])) : $query),
                 EmployeeFilters::dateRange('created_dates', 'Created', 'created_at'),

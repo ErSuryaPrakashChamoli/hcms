@@ -57,6 +57,11 @@ final class LifecycleEngine
         if (! $from->canTransitionTo($to)) {
             throw InvalidLifecycleTransitionException::between($from, $to);
         }
+        // HROne parity WO-4 (D-WO1): "not joined" closes an upcoming joiner's onboarding, position and reporting lines too, so it
+        // is reached only through UpcomingJoiners::markNotJoining (which passes the reason); never as a bare state change.
+        if ($to === LifecycleState::NotJoined && blank($metadata['not_joining_reason'] ?? null)) {
+            throw new InvalidLifecycleTransitionException('Use "Mark as not joining" on the upcoming joiner: it needs a reason and closes their onboarding.');
+        }
         // HROne setup parity CA-4: a joiner (pre-employee, pre-boarding, onboarding) cannot join while a document mandatory
         // for onboarding is missing, when the organisation asks for it (documents.block_joining_without_mandatory).
         if (in_array($from, [LifecycleState::PreEmployee, LifecycleState::Preboarding, LifecycleState::Onboarding], true) && $to->isEmployed()) {
@@ -128,6 +133,7 @@ final class LifecycleEngine
             LifecycleState::NoticePeriod => 'Resignation / notice period started',
             LifecycleState::Exited => 'Exited company',
             LifecycleState::Alumni => 'Became alumni',
+            LifecycleState::NotJoined => 'Did not join',
             default => $state->getLabel(),
         };
     }

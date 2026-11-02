@@ -5,6 +5,7 @@ namespace App\Filament\Resources\AppraisalReviews\Pages;
 use App\Filament\Resources\AppraisalReviews\AppraisalReviewResource;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
+use App\Filament\Support\PerformanceCycleActions;
 use App\Filament\Support\PerformanceRegisters;
 
 /** HROne parity GO-1: Performance review requests — saved views, presets, report and bulk "Remind reviewers" / "Reopen reviews". */
@@ -43,6 +44,7 @@ class ListAppraisalReviews extends PeopleListRecords
 
     protected function getHeaderActions(): array
     {
-        return [...$this->registerToolActions(), PerformanceRegisters::actionsMenu()];
+        // HROne parity GO-2: "Extend review" (HROne "Initiate review cycle ▾" → Extend review, §27.3.3 #4).
+        return [...$this->registerToolActions(), PerformanceCycleActions::extendWindow('review'), PerformanceRegisters::actionsMenu()];
     }
 }

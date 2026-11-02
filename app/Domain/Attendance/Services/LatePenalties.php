@@ -102,6 +102,9 @@ final class LatePenalties
         if (AttendanceRecord::query()->where('employee_id', $penalty->employee_id)->whereDate('date', $penalty->date->toDateString())->where('is_locked', true)->exists()) {
             throw new RuntimeException('The day is locked for payroll.');
         }
+        if (app(AttendanceMonthCloses::class)->isClosedDay((int) $penalty->employee_id, $penalty->date)) {
+            throw new RuntimeException('The day is in a closed attendance month.');
+        }
         $actor ??= auth()->user();
 
         $penalty->withAuditReason($reason)->update(['status' => 'waived', 'waived_by' => $actor?->id, 'waive_reason' => $reason]);

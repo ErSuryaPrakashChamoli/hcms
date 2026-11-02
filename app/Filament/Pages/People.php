@@ -203,7 +203,7 @@ class People extends Page
         if ($this->status && LifecycleState::tryFrom($this->status)) {
             $query->where('lifecycle_state', $this->status);
         } else {
-            $query->where('lifecycle_state', '!=', LifecycleState::Alumni->value);
+            $query->whereNotIn('lifecycle_state', [LifecycleState::Alumni->value, LifecycleState::NotJoined->value]);
         }
         if ($this->manager) {
             $query->whereHas('reportingRelationships', fn (Builder $r) => $r->where('manager_id', $this->manager)->where('is_primary', true)->currentlyEffective());

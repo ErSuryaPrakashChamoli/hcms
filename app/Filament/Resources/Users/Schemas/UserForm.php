@@ -20,6 +20,7 @@ use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\Team;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\TimezoneFields;
 use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -43,8 +44,9 @@ class UserForm
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
-                        // SaaS.2: administrators never choose or see a password. A new user is invited by e-mail and
-                        // chooses their own; a forgotten password is reset by its owner (or a reset link is sent).
+                        // SaaS.2: administrators never choose a password. A new user is e-mailed a temporary password
+                        // (TemporaryPasswords) and chooses their own at the first sign-in; a forgotten password is reset by
+                        // its owner (or a reset link or a new temporary password is sent).
                         Select::make('status')
                             ->options(fn (?User $record) => $record?->status === UserStatus::Invited
                                 ? [UserStatus::Invited->value => UserStatus::Invited->getLabel()]
@@ -54,7 +56,7 @@ class UserForm
                             ->dehydrated(fn (?User $record) => $record?->status !== UserStatus::Invited)
                             ->helperText(fn (?User $record) => $record?->status === UserStatus::Invited ? 'Activated when the person accepts their invitation.' : null)
                             ->required(),
-                        TextInput::make('timezone')->placeholder('Asia/Kolkata')->maxLength(64),
+                        ...TimezoneFields::make(),
                     ]),
                 Section::make('Roles')
                     ->schema([

@@ -46,7 +46,10 @@ class ExperiencesRelationManager extends PersonSatelliteRelationManager
                 TextColumn::make('location')->placeholder('—'),
                 IconColumn::make('is_verified')->label('Verified')->boolean(),
             ])
-            ->headerActions([CreateAction::make()])
+            // HROne parity MS-4: a fresher has no earlier employment to add (the person record refuses it too).
+            ->headerActions([CreateAction::make()
+                ->disabled(fn () => $this->getOwnerRecord()->person?->isFresher() ?? false)
+                ->tooltip(fn () => ($this->getOwnerRecord()->person?->isFresher() ?? false) ? 'Marked as a fresher: untick "Fresher" on the person first.' : null)])
             ->recordActions([EditAction::make(), DeleteAction::make()]);
     }
 }

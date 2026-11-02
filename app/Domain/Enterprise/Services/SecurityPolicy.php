@@ -20,7 +20,7 @@ final class SecurityPolicy
      * retired). The working states (joined, probation, confirmed, active) are not offered, so one setting can never
      * lock the whole workforce out.
      */
-    public const LOGIN_DISABLE_STATES = ['pre_employee', 'preboarding', 'onboarding', 'on_leave', 'suspended', 'notice_period', 'exited', 'alumni'];
+    public const LOGIN_DISABLE_STATES = ['pre_employee', 'preboarding', 'onboarding', 'on_leave', 'suspended', 'notice_period', 'exited', 'alumni', 'not_joined'];
 
     public function __construct(private readonly SettingsRepository $settings) {}
 

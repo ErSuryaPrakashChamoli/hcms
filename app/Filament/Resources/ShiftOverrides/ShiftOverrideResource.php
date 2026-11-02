@@ -13,6 +13,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -54,6 +55,8 @@ class ShiftOverrideResource extends Resource
                 TextColumn::make('date')->date('D, d M Y')->sortable(),
                 TextColumn::make('shift.name')->label('Shift')->placeholder('Weekly off')->badge(),
                 TextColumn::make('source')->badge()->formatStateUsing(fn (string $state) => ShiftOverride::SOURCES[$state] ?? $state)->color('gray'),
+                // HROne parity TX-5: automatic shift correction allowed on the rostered day.
+                IconColumn::make('auto_shift')->label('Auto shift')->boolean()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('reason')->limit(50)->toggleable(),
                 TextColumn::make('creator.name')->label('By')->placeholder('—')->toggleable(),
                 TextColumn::make('updated_at')->label('Changed on')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),

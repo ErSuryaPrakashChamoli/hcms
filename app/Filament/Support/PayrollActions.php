@@ -2,11 +2,15 @@
 
 namespace App\Filament\Support;
 
+use App\Domain\Integration\Models\IntegrationSystem;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Models\PayrollPeriod;
 use App\Domain\Payroll\Models\PayrollRun;
+use App\Domain\Payroll\Services\AttendanceMonthNotice;
 use App\Domain\Payroll\Services\BankFile;
+use App\Domain\Payroll\Services\JournalVoucher;
 use App\Domain\Payroll\Services\PayCycle;
+use App\Domain\Payroll\Services\PayrollRunCockpit;
 use App\Domain\Payroll\Services\PayrollRuns;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use Filament\Actions\Action;
@@ -68,8 +72,13 @@ final class PayrollActions
         return [
             Action::make('calculate')->label(fn (PayrollRun $record) => $record->status === 'draft' ? 'Calculate' : 'Recalculate')->icon(Heroicon::OutlinedCalculator)->color('primary')
                 ->visible(fn (PayrollRun $record) => $record->isEditable() && auth()->user()->can('payroll.calculate'))
-                ->requiresConfirmation()->modalDescription('Runs every employee of the company through the pipeline. Existing results for this run are replaced.')
+                ->requiresConfirmation()->modalDescription(fn (PayrollRun $record) => self::withAttendanceNotice('Runs every employee of the company through the pipeline. Existing results for this run are replaced.', $record))
                 ->action(fn (PayrollRun $record) => self::run(fn () => app(PayrollRuns::class)->calculate($record, auth()->user()), fn (PayrollRun $r) => "Calculated for {$r->total('employees')} employee(s); {$r->exception_count} with exceptions")),
+            // HROne parity PO-4 (§25.6.1 #3): the same calculation queued as CalculatePayrollRun; the person is told when it is done.
+            Action::make('calculateInBackground')->label(fn (PayrollRun $record) => $record->status === 'draft' ? 'Calculate in background' : 'Recalculate in background')->icon(Heroicon::OutlinedClock)->color('gray')
+                ->visible(fn (PayrollRun $record) => $record->isEditable() && auth()->user()->can('payroll.calculate'))
+                ->requiresConfirmation()->modalDescription(fn (PayrollRun $record) => self::withAttendanceNotice('Runs every employee of the company through the pipeline in the background. Existing results for this run are replaced. You are told in the app and by e-mail when it is done.', $record))
+                ->action(fn (PayrollRun $record) => self::run(fn () => app(PayrollRunCockpit::class)->queueCalculation($record, auth()->user()), 'Calculation queued in the background; you will be told when it is done')),
             Action::make('validate')->label('Validate')->icon(Heroicon::OutlinedShieldCheck)->color('info')
                 ->visible(fn (PayrollRun $record) => $record->status === 'calculated' && auth()->user()->can('payroll.calculate'))
                 ->action(fn (PayrollRun $record) => self::run(fn () => app(PayrollRuns::class)->validate($record), 'Run validated; ready for approval')),
@@ -79,7 +88,7 @@ final class PayrollActions
                 ->action(fn (PayrollRun $record, array $data) => self::run(fn () => app(PayrollRuns::class)->approve($record, auth()->user(), $data['note'] ?? null), 'Run approved')),
             Action::make('finalize')->label('Finalize & generate payslips')->icon(Heroicon::OutlinedLockClosed)->color('success')
                 ->visible(fn (PayrollRun $record) => $record->status === 'approved' && auth()->user()->can('finalize', $record))
-                ->requiresConfirmation()->modalDescription('Locks attendance for the period, closes the period and issues payslips to employees. Finalized payroll cannot be reopened: a later correction goes into an open month as an arrear or a recovery.')
+                ->requiresConfirmation()->modalDescription(fn (PayrollRun $record) => self::withAttendanceNotice('Locks attendance for the period, closes the period and issues payslips to employees. Finalized payroll cannot be reopened: a later correction goes into an open month as an arrear or a recovery.', $record))
                 ->action(fn (PayrollRun $record) => self::run(fn () => app(PayrollRuns::class)->finalize($record, auth()->user()), 'Run finalized; payslips generated')),
             Action::make('bankFile')->label('Bank file')->icon(Heroicon::OutlinedArrowDownTray)->color('gray')
                 ->visible(fn (PayrollRun $record) => $record->isLocked() && auth()->user()->can('finalize', $record))
@@ -94,6 +103,21 @@ final class PayrollActions
                     $name = app(BankFile::class)->fileName($record, $account);
 
                     return response()->streamDownload(fn () => print ($csv), $name, ['Content-Type' => str_ends_with($name, '.txt') ? 'text/plain' : 'text/csv']);
+                }),
+            // Data import DI-1 (decision D2): the journal voucher of the run, for the books (ledgers and segments are JV codes).
+            Action::make('journalVoucher')->label('Journal voucher (JV)')->icon(Heroicon::OutlinedArrowDownTray)->color('gray')
+                ->visible(fn (PayrollRun $record) => $record->isLocked() && auth()->user()->can('finalize', $record))
+                ->schema(fn () => IntegrationSystem::query()->exists() ? [
+                    Select::make('integration_system_id')->label('Accounting system')->placeholder('Every system (common codes)')
+                        ->options(fn () => IntegrationSystem::query()->orderBy('name')->pluck('name', 'id')->all())
+                        ->helperText('A system\'s own JV codes win over the common ones.'),
+                ] : [])
+                ->action(function (PayrollRun $record, array $data) {
+                    $system = filled($data['integration_system_id'] ?? null) ? IntegrationSystem::query()->find($data['integration_system_id']) : null;
+                    $journal = app(JournalVoucher::class);
+                    $csv = $journal->csv($record, $system);
+
+                    return response()->streamDownload(fn () => print ($csv), $journal->fileName($record, $system), ['Content-Type' => 'text/csv']);
                 }),
             Action::make('markPaid')->label('Mark as paid')->icon(Heroicon::OutlinedBanknotes)->color('success')
                 ->visible(fn (PayrollRun $record) => $record->status === 'finalized' && auth()->user()->can('finalize', $record))
@@ -111,6 +135,14 @@ final class PayrollActions
                 ->schema([Textarea::make('reason')->required()->maxLength(255)])
                 ->action(fn (PayrollRun $record, array $data) => self::run(fn () => app(PayrollRuns::class)->reopen($record, $data['reason'], auth()->user()), 'Run returned to draft for recalculation')),
         ];
+    }
+
+    /** HROne parity TX-3: the attendance month's warning (month close in use and the month still open) after the text. */
+    private static function withAttendanceNotice(string $text, PayrollRun $run): string
+    {
+        $notice = app(AttendanceMonthNotice::class)->forRun($run);
+
+        return $notice === null ? $text : $text.' Warning: '.$notice;
     }
 
     private static function run(callable $callback, string|callable $success): void

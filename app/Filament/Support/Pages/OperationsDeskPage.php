@@ -25,9 +25,23 @@ abstract class OperationsDeskPage extends Page
     protected string $view = 'filament.pages.operations-desk';
 
     /**
-     * @return list<array{label: string, description?: string, items: list<array{label: string, target: class-string, params?: array<string, mixed>, description?: string, count?: Closure(): int}>}>
+     * HROne parity WO-16: an entry may carry `visible` (a closure; false = not listed), for an entry that opens an action
+     * on its target page (`params: ['action' => …]`) which only some of the target's viewers may run.
+     *
+     * @return list<array{label: string, description?: string, items: list<array{label: string, target: class-string, params?: array<string, mixed>, description?: string, count?: Closure(): int, visible?: Closure(): bool}>}>
      */
     abstract protected function sections(): array;
+
+    /**
+     * HROne parity TX-8a: reminders shown above the desk's sections (e.g. the leave year closing with leave still to carry
+     * forward). None by default; each desk decides who sees its own.
+     *
+     * @return list<array{key: string, title: string, body: string, url?: string|null, action?: string|null}>
+     */
+    public function notices(): array
+    {
+        return [];
+    }
 
     /** @return list<string> register keys of this desk (recent bulk runs). */
     protected function registers(): array
@@ -40,7 +54,7 @@ abstract class OperationsDeskPage extends Page
     {
         foreach ((new static)->sections() as $section) {
             foreach ($section['items'] as $item) {
-                if (self::urlFor($item['target'], $item['params'] ?? []) !== null) {
+                if (self::listed($item) && self::urlFor($item['target'], $item['params'] ?? []) !== null) {
                     return true;
                 }
             }
@@ -60,7 +74,7 @@ abstract class OperationsDeskPage extends Page
         foreach ($this->sections() as $section) {
             $items = [];
             foreach ($section['items'] as $item) {
-                $url = self::urlFor($item['target'], $item['params'] ?? []);
+                $url = self::listed($item) ? self::urlFor($item['target'], $item['params'] ?? []) : null;
                 if ($url === null) {
                     continue;
                 }
@@ -89,6 +103,12 @@ abstract class OperationsDeskPage extends Page
     public function runUrl(BulkRun $run): string
     {
         return BulkRunResource::getUrl('view', ['record' => $run]);
+    }
+
+    /** @param  array<string, mixed>  $item */
+    private static function listed(array $item): bool
+    {
+        return ! isset($item['visible']) || (bool) rescue(fn () => ($item['visible'])(), false, false);
     }
 
     /** @param  array<string, mixed>  $params */

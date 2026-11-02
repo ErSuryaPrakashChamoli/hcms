@@ -54,31 +54,18 @@ final class LeaveAccrual
         return $written;
     }
 
-    /** Close $period for the employee: carry forward up to the limit, lapse the rest. */
-    public function closeYear(Employee $employee, int $period): int
+    /**
+     * Close $period for the employee: carry forward up to the limit, lapse the rest. HROne parity TX-8a: $codes limits
+     * the close to those leave types (the "Carry forward leaves" screen); null closes every type, as always.
+     *
+     * @param  list<string>|null  $codes
+     */
+    public function closeYear(Employee $employee, int $period, ?array $codes = null): int
     {
         $written = 0;
         $nextStart = $this->years->start($period + 1);
 
-        foreach ($this->entitlements->for($employee, $this->years->end($period)) as $code => $rule) {
-            $type = LeaveType::query()->where('code', $code)->first();
-
-            if ($type === null) {
-                continue;
-            }
-
-            $closing = (float) $this->balances->recompute($employee, $type, $period)->closing;
-
-            if ($closing <= 0) {
-                continue;
-            }
-
-            // HROne setup parity (TO-7): carry all, none, or up to the limit.
-            $carry = match ($rule['carry_forward_mode'] ?? 'specific') {
-                'all' => $closing, 'zero' => 0.0, default => min($closing, (float) $rule['carry_forward_limit']),
-            };
-            $lapse = $closing - $carry;
-
+        foreach ($this->yearEnd($employee, $period, $codes) as ['type' => $type, 'carry' => $carry, 'lapse' => $lapse]) {
             if ($carry > 0 && ($entry = $this->balances->post($employee, $type, $period + 1, 'carry_forward', $carry, null, "Carried forward from {$period}", "cf-{$period}", $nextStart->toDateString()))) {
                 $written++;
                 $this->audit->record(AuditAction::LeaveCarriedForward, 'leave', $entry, reason: "Year-end {$period}", metadata: ['employee_id' => $employee->id, 'leave_type' => $type->code, 'days' => $carry]);
@@ -92,6 +79,54 @@ final class LeaveAccrual
         }
 
         return $written;
+    }
+
+    /**
+     * The year-end calculation closeYear() posts and the HROne parity TX-8a "Carry forward leaves" preview shows — one
+     * calculation for both: for each leave type of the employee's leave policy on the last day of the year (only $codes
+     * when given) with a positive closing balance, the closing balance, the days carried into the next year (all of it,
+     * none, or up to the limit — TO-7) and the days that lapse. A generator, so the year close posts each type before
+     * reading the next, exactly as it always has.
+     *
+     * $read carries what the preview read beforehand for many employees at once, so nothing is written: `rules` (the
+     * entitlements of the employee's leave policy on the last day of the year), `closings` (leave type id => closing
+     * balance, from LeaveBalances::closings — the formula recompute() saves) and `types` (code => leave type). Without it
+     * the policy is resolved and each balance recomputed here, as the year close always did.
+     *
+     * @param  list<string>|null  $codes
+     * @param  array{rules?: array<string, array<string, mixed>>, closings?: array<int, float>, types?: array<string, LeaveType>}|null  $read
+     * @return \Generator<int, array{type: LeaveType, closing: float, carry: float, lapse: float, mode: string, limit: float}>
+     */
+    public function yearEnd(Employee $employee, int $period, ?array $codes = null, ?array $read = null): \Generator
+    {
+        $rules = $read['rules'] ?? $this->entitlements->for($employee, $this->years->end($period));
+
+        foreach ($rules as $code => $rule) {
+            $code = (string) $code;
+            if ($codes !== null && ! in_array($code, $codes, true)) {
+                continue;
+            }
+
+            $type = $read === null ? LeaveType::query()->where('code', $code)->first() : ($read['types'][$code] ?? null);
+
+            if ($type === null) {
+                continue;
+            }
+
+            $closing = $read === null ? (float) $this->balances->recompute($employee, $type, $period)->closing : (float) ($read['closings'][$type->id] ?? 0.0);
+
+            if ($closing <= 0) {
+                continue;
+            }
+
+            // HROne setup parity (TO-7): carry all, none, or up to the limit.
+            $mode = (string) ($rule['carry_forward_mode'] ?? 'specific');
+            $carry = match ($mode) {
+                'all' => $closing, 'zero' => 0.0, default => min($closing, (float) $rule['carry_forward_limit']),
+            };
+
+            yield ['type' => $type, 'closing' => $closing, 'carry' => $carry, 'lapse' => $closing - $carry, 'mode' => $mode, 'limit' => (float) $rule['carry_forward_limit']];
+        }
     }
 
     /**

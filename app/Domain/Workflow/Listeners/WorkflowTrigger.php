@@ -108,7 +108,8 @@ final class WorkflowTrigger
     public function onExit(ExitEvent $event): void
     {
         // HROne setup parity P5: exit.resignation_submitted (an employee's own resignation, for its approval workflow).
-        if (in_array($event->name, ['exit.initiated', 'exit.resignation_submitted', 'letter.requested', 'alumni.request.created'], true)) {
+        // HROne parity WO-11: exit.withdrawal_requested (a request to withdraw a resignation, when withdrawals need approval).
+        if (in_array($event->name, ['exit.initiated', 'exit.resignation_submitted', 'exit.withdrawal_requested', 'letter.requested', 'alumni.request.created'], true)) {
             $this->fire($event->name, $event->subject, $event->context + ['employee_id' => $event->employee?->id]);
         }
     }

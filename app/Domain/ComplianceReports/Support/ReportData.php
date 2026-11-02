@@ -292,7 +292,7 @@ final class ReportData
                 'positions' => fn ($q) => $q->with(['designation', 'department', 'employmentType', 'employeeCategory', 'location', 'grade'])])
             ->whereNotNull('joining_date')->whereDate('joining_date', '<=', $to->toDateString())
             ->where(fn ($q) => $q->whereNull('exit_date')->orWhereDate('exit_date', '>=', $from->toDateString()))
-            ->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])
+            ->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding', 'not_joined'])
             ->whereHas('positions', fn ($q) => $q->where('company_id', $company->getKey()))
             ->orderBy('employee_code')
             ->get();

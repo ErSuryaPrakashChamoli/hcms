@@ -127,6 +127,8 @@ it('registers one request type per module request, with unique keys and a status
         'asset', 'helpdesk', 'hr_service', 'resignation', 'goal_change', 'form',
         // HROne parity MS-3: self-service profile changes (not offered by default: nothing is editable).
         'profile_change',
+        // HROne parity WO-11: a request to withdraw one's resignation (not offered by default: withdrawals take effect at once).
+        'resignation_withdrawal',
     ]);
     $statuses = fn (string $model) => array_keys(constant($model.'::STATUSES'));
     foreach ($types as $key => $type) {

@@ -8,11 +8,13 @@ use App\Domain\Identity\Services\MultiFactor;
 use App\Domain\Identity\Services\PasswordResets;
 use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Identity\Services\SessionSecurity;
+use App\Domain\Identity\Services\TemporaryPasswords;
 use App\Domain\Identity\Services\UserInvitations;
 use App\Filament\Resources\Users\Concerns\SavesAccessScope;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Support\GovernedEdit;
 use App\Filament\Support\Pages\PeopleEditRecord;
+use App\Filament\Support\SignInActions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -56,12 +58,12 @@ class EditUser extends PeopleEditRecord
         $this->persistAccessScope($this->getRecord(), $this->data['audit_reason'] ?? null);
         app(RoleGrants::class)->recordChange($this->getRecord(), $this->rolesBefore, auth()->user(), $this->data['audit_reason'] ?? null);
 
-        // SaaS.2: a new address is unproven. An invited user is re-invited at the new address (the old link
+        // SaaS.2: a new address is unproven. An invited user is re-invited at the new address (the earlier invitation
         // stops working); an active user is asked to verify the new address at their next request.
         $user = $this->getRecord();
         if ($this->emailBefore !== null && $this->emailBefore !== $user->email) {
             if ($user->status === UserStatus::Invited) {
-                app(UserInvitations::class)->issue($user, auth()->user(), 'E-mail address changed');
+                app(TemporaryPasswords::class)->email($user, auth()->user(), 'E-mail address changed');
             } else {
                 $user->sendEmailVerificationNotification();
             }
@@ -75,22 +77,19 @@ class EditUser extends PeopleEditRecord
 
         return [
             ActionGroup::make([
-                Action::make('resendInvitation')
-                    ->label('Send a new invitation')
-                    ->icon('heroicon-o-envelope')
-                    ->visible(fn (User $record) => $record->status === UserStatus::Invited)
-                    ->authorize($can('update'))
-                    ->requiresConfirmation()
-                    ->modalDescription('The previous invitation link stops working.')
-                    ->action(fn (User $record) => $this->attempt(fn () => app(UserInvitations::class)->issue($record, auth()->user(), 'Invitation resent'), 'A new invitation is on its way.')),
+                // Owner decision 2026-10-31: a temporary password, e-mailed (the invitation for an invited user) or shown once.
+                ...SignInActions::forUser(fn () => $this->getRecord()),
                 Action::make('revokeInvitation')
                     ->label('Revoke invitation')
                     ->icon('heroicon-o-no-symbol')
                     ->color('danger')
-                    ->visible(fn (User $record) => $record->status === UserStatus::Invited && app(UserInvitations::class)->latestFor($record)?->isPending())
+                    ->visible(fn (User $record) => $record->status === UserStatus::Invited && ($record->mustReplacePassword() || app(UserInvitations::class)->latestFor($record)?->isPending()))
                     ->authorize($can('update'))
                     ->schema([$reason()])
-                    ->action(fn (User $record, array $data) => $this->attempt(fn () => app(UserInvitations::class)->revokePendingFor($record, auth()->user(), $data['reason']), 'Invitation revoked.')),
+                    ->action(fn (User $record, array $data) => $this->attempt(function () use ($record, $data) {
+                        app(UserInvitations::class)->revokePendingFor($record, auth()->user(), $data['reason']);
+                        app(TemporaryPasswords::class)->withdraw($record, auth()->user(), $data['reason']);
+                    }, 'Invitation revoked.')),
                 Action::make('sendPasswordReset')
                     ->label('Send password reset link')
                     ->icon('heroicon-o-key')
@@ -120,6 +119,11 @@ class EditUser extends PeopleEditRecord
             ])->label('Account')->icon('heroicon-o-shield-check')->button(),
             DeleteAction::make(),
         ];
+    }
+
+    public function temporaryPasswordShownAction(): Action
+    {
+        return SignInActions::shown();
     }
 
     private function attempt(callable $work, string $success): void

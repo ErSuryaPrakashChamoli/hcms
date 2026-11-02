@@ -12,10 +12,13 @@ use App\Filament\Pages\DeclareInvestments;
 use App\Filament\Pages\MyCareer;
 use App\Filament\Pages\MyCompensation;
 use App\Filament\Pages\MyDay;
+use App\Filament\Pages\MyHolidays;
 use App\Filament\Pages\MyHr;
 use App\Filament\Pages\MyLearning;
+use App\Filament\Pages\MyPayslips;
 use App\Filament\Pages\MyProfile;
 use App\Filament\Pages\MyRequests;
+use App\Filament\Pages\MySalaryYtd;
 use App\Filament\Pages\NewRequest;
 use App\Filament\Pages\OutOfOffice;
 use App\Filament\Pages\Preferences;
@@ -38,6 +41,7 @@ use App\Filament\Resources\FeedbackEntries\FeedbackEntryResource;
 use App\Filament\Resources\FeedbackNominations\FeedbackNominationResource;
 use App\Filament\Resources\FeedbackParticipants\FeedbackParticipantResource;
 use App\Filament\Resources\FeedbackRequests\FeedbackRequestResource;
+use App\Filament\Resources\FundraiserCampaigns\FundraiserCampaignResource;
 use App\Filament\Resources\Goals\GoalResource;
 use App\Filament\Resources\Grievances\GrievanceResource;
 use App\Filament\Resources\ImprovementPlans\ImprovementPlanResource;
@@ -74,9 +78,10 @@ use App\Filament\Resources\VariablePayRequests\VariablePayRequestResource;
  * coming from HROne finds "Payslip", "Loan history" or "1 on 1" by the old name.
  *
  * HROne items with no PeopleOS page yet are not listed (each owning package adds its item when it builds the page):
- * Attendance ytd (MS-11), Shift (MS-11), Holiday calendar as its own page (MS-12), Salary ytd (MS-10), Fbp approval
- * history (BP-7), Polls and Team announcement (MS-15), Reward store (MS-15 / VEN-3), Social profile (MS-6), Clearance
- * tasks, own Confirmation and Trips (MS-16), QR Code (MS-17); Job requisition and Position assigned are recruitment (N-A).
+ * Attendance ytd (MS-11), Shift (MS-11), Fbp approval history (BP-7), Polls and Team announcement (MS-15), Reward store
+ * (MS-15 / VEN-3), Social profile (MS-6), Clearance tasks, own Confirmation and Trips (MS-16), QR Code (MS-17); Job
+ * requisition and Position assigned are recruitment (N-A). MS-9 / MS-10 / MS-12 added My payslips, My salary YTD and
+ * My holidays (HROne's Payslip, Salary ytd and Holiday calendar).
  */
 final class SelfPages
 {
@@ -110,7 +115,10 @@ final class SelfPages
         'my_day' => ['label' => 'My day', 'group' => 'time', 'icon' => 'heroicon-o-sun', 'target' => MyDay::class,
             'description' => 'Punch in or out, balances, apply leave, fix attendance', 'keywords' => ['mark attendance', 'punch', 'check in', 'check out', 'today']],
         'attendance' => ['label' => 'Attendance calendar', 'group' => 'time', 'icon' => 'heroicon-o-calendar', 'target' => AttendanceCalendar::class,
-            'description' => 'Your month: in / out, late marks, shifts and holidays', 'keywords' => ['attendance', 'holiday calendar', 'holidays', 'shift', 'calendar']],
+            'description' => 'Your month: in / out, late marks, shifts and holidays', 'keywords' => ['attendance', 'shift', 'calendar']],
+        // HROne parity MS-12: the year's holiday list (HROne "Holiday calendar").
+        'holidays' => ['label' => 'My holidays', 'group' => 'time', 'icon' => 'heroicon-o-sun', 'target' => MyHolidays::class,
+            'description' => 'Fixed and restricted holidays of the year; choose your restricted holidays', 'keywords' => ['holiday calendar', 'holidays', 'restricted holiday', 'optional holiday', 'holiday list']],
         'regularisations' => ['label' => 'Regularisations', 'group' => 'time', 'icon' => 'heroicon-o-clock', 'target' => AttendanceRegularisationResource::class,
             'description' => 'Corrections to your attendance and their approval', 'keywords' => ['attendance regularization', 'regularise', 'missed punch']],
         'attendance_records' => ['label' => 'Attendance records', 'group' => 'time', 'icon' => 'heroicon-o-table-cells', 'target' => AttendanceRecordResource::class,
@@ -137,6 +145,11 @@ final class SelfPages
             'description' => 'Your CTC and salary structure', 'keywords' => ['ctc', 'salary', 'salary structure', 'pay']],
         'payslips' => ['label' => 'Payslips', 'group' => 'pay', 'icon' => 'heroicon-o-document-currency-rupee', 'target' => PayslipResource::class,
             'description' => 'Your payslips by month', 'keywords' => ['payslip', 'salary slip']],
+        // HROne parity MS-9 / MS-10: the financial year's payslips and tax slips; the year's pay month by month.
+        'my_payslips' => ['label' => 'My payslips', 'group' => 'pay', 'icon' => 'heroicon-o-document-text', 'target' => MyPayslips::class,
+            'description' => 'Salary and tax slips of a financial year', 'keywords' => ['payslip', 'tax slip', 'salary slip', 'monthly tax']],
+        'salary_ytd' => ['label' => 'My salary YTD', 'group' => 'pay', 'icon' => 'heroicon-o-table-cells', 'target' => MySalaryYtd::class,
+            'description' => 'Each component paid month by month this financial year, with PF, ESI, PT and LWF', 'keywords' => ['salary ytd', 'year to date', 'ytd', 'provident fund', 'esi', 'professional tax']],
         'tax_certificates' => ['label' => 'My tax certificates', 'group' => 'pay', 'icon' => 'heroicon-o-document-check', 'target' => MyTaxCertificateResource::class,
             'description' => 'Form 16 for each financial year', 'keywords' => ['form 16', 'tds certificate', 'tax']],
         'declare_investments' => ['label' => 'Declare investments', 'group' => 'pay', 'icon' => 'heroicon-o-clipboard-document-list', 'target' => DeclareInvestments::class,
@@ -217,6 +230,9 @@ final class SelfPages
             'description' => 'News from HR and leadership', 'keywords' => ['announcement', 'news', 'team announcement']],
         'surveys' => ['label' => 'Surveys', 'group' => 'engage', 'icon' => 'heroicon-o-clipboard-document', 'target' => MyHr::class, 'parameters' => ['tab' => 'surveys'],
             'description' => 'Surveys open for you and the ones you answered', 'keywords' => ['survey', 'pulse', 'polls']],
+        // HROne parity GO-18: the fundraisers open to the person (shown only while there is one, or a pledge of theirs).
+        'fundraisers' => ['label' => 'Fundraisers', 'group' => 'engage', 'icon' => 'heroicon-o-heart', 'target' => FundraiserCampaignResource::class,
+            'description' => 'Causes your organisation collects for; pledge an amount you choose', 'keywords' => ['fundraise', 'fundraiser', 'donate', 'donation', 'charity', 'pledge']],
         'assistant' => ['label' => 'Assistant', 'group' => 'engage', 'icon' => 'heroicon-o-chat-bubble-oval-left-ellipsis', 'target' => AssistantPage::class,
             'description' => 'Ask questions about policies and your own data', 'keywords' => ['ai', 'help', 'support assistant']],
 

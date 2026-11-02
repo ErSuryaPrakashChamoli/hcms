@@ -36,7 +36,9 @@ class ListTdsReturns extends PeopleListRecords
                         DatePicker::make('deposit_date')->required(),
                         TextInput::make('challan_serial')->required()->maxLength(16),
                         TextInput::make('amount')->numeric()->required(),
-                    ])->defaultItems(0),
+                    ])->defaultItems(0)
+                        // HROne parity PO-13: an empty list takes the quarter's challans from the challan register.
+                        ->helperText('Leave empty to take the challans recorded for the quarter in the challan register (Compliance → Challans).'),
                     Textarea::make('reason')->rows(2),
                 ])
                 ->action(fn (array $data) => StatutoryReturnActions::run(fn () => app(TdsQuarterlyReturns::class)->generate(

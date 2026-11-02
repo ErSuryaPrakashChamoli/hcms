@@ -126,41 +126,57 @@ final class GoalTemplates
     public function assignForCycle(PerformanceCycle $cycle): int
     {
         $total = 0;
+        // HROne parity GO-2: employees withdrawn from the cycle get no goal sheet.
         $employees = Employee::query()->withoutGlobalScope(AccessScope::class)->with(['person', 'currentManager'])
-            ->whereIn('id', Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id)->pluck('employee_id'))->orderBy('id')->get();
+            ->whereIn('id', Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id)->where('status', '!=', 'withdrawn')->pluck('employee_id'))->orderBy('id')->get();
         foreach ($employees as $employee) {
-            try {
-                $creation = $this->sheet->creation($employee);
-                if ($creation['mode'] !== 'system' || ($template = $this->templateFor($employee)) === null) {
-                    continue;
-                }
-                if (Goal::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->where('performance_cycle_id', $cycle->id)->where('goal_template_id', $template->id)->exists()) {
-                    continue;
-                }
-                $goals = DB::transaction(fn () => $this->assign($template, $employee, $cycle));
-                $total += $goals->count();
-                $owner = $creation['owner'] === 'manager' ? $employee->currentManager?->manager_id : $employee->id;
-                if ($goals->isNotEmpty()) {
-                    PerformanceEvent::dispatch('performance.goal_sheet.assigned', $employee, $goals->first(), ['cycle' => $cycle->name, 'template' => $template->name, 'goals' => $goals->count(), 'for' => $employee->person?->full_name], array_filter([$owner]));
-                }
-            } catch (Throwable $e) {
-                report($e);
-            }
+            $total += $this->assignFor($cycle, $employee);
         }
 
         return $total;
     }
 
     /**
+     * The system mapping for one employee of the cycle (HROne parity GO-2: also for an employee added to the running cycle).
+     * A failure is reported and never stops the caller. Returns the goals created.
+     */
+    public function assignFor(PerformanceCycle $cycle, Employee $employee): int
+    {
+        try {
+            $employee->loadMissing(['person', 'currentManager']);
+            $creation = $this->sheet->creation($employee);
+            if ($creation['mode'] !== 'system' || ($template = $this->templateFor($employee)) === null) {
+                return 0;
+            }
+            if (Goal::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->where('performance_cycle_id', $cycle->id)->where('goal_template_id', $template->id)->exists()) {
+                return 0;
+            }
+            $goals = DB::transaction(fn () => $this->assign($template, $employee, $cycle));
+            $owner = $creation['owner'] === 'manager' ? $employee->currentManager?->manager_id : $employee->id;
+            if ($goals->isNotEmpty()) {
+                PerformanceEvent::dispatch('performance.goal_sheet.assigned', $employee, $goals->first(), ['cycle' => $cycle->name, 'template' => $template->name, 'goals' => $goals->count(), 'for' => $employee->person?->full_name], array_filter([$owner]));
+            }
+
+            return $goals->count();
+        } catch (Throwable $e) {
+            report($e);
+
+            return 0;
+        }
+    }
+
+    /**
      * The feedback form of the templates an employee's goals came from, asked of the manager at the manager review (one
      * per review; FeedbackRequests ignores a template that is missing or inactive). Returns how many were asked.
      */
-    public function raiseFeedback(PerformanceCycle $cycle): int
+    public function raiseFeedback(PerformanceCycle $cycle, ?array $appraisalIds = null): int
     {
         $raised = 0;
         $stage = collect($cycle->stages ?? [])->firstWhere('key', 'manager_review');
+        // HROne parity GO-2: $appraisalIds narrows it to the appraisals of employees added to the running cycle.
         $reviews = AppraisalReview::query()->with(['appraisal.employee.person', 'reviewer'])->where('type', 'manager')->where('status', 'pending')
-            ->whereIn('appraisal_id', Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id)->pluck('id'))->get();
+            ->whereIn('appraisal_id', Appraisal::query()->withoutGlobalScope(AccessScope::class)->where('performance_cycle_id', $cycle->id)
+                ->when($appraisalIds !== null, fn ($q) => $q->whereIn('id', $appraisalIds ?: [0]))->pluck('id'))->get();
         foreach ($reviews as $review) {
             try {
                 $employee = $review->appraisal?->employee;

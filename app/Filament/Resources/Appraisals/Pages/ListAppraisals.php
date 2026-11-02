@@ -25,7 +25,15 @@ class ListAppraisals extends PeopleListRecords
             'in_review' => ['label' => 'In review', 'filters' => ['status' => ['value' => 'in_review']]],
             'calibration' => ['label' => 'In calibration', 'filters' => ['status' => ['value' => 'calibration']]],
             'finalized' => ['label' => 'Finalized', 'filters' => ['status' => ['value' => 'finalized']]],
+            // HROne parity GO-2: appraisals withdrawn from their cycle.
+            'withdrawn' => ['label' => 'Withdrawn from the cycle', 'filters' => ['status' => ['value' => 'withdrawn']]],
         ];
+    }
+
+    /** HROne parity GO-2: "Withdraw from cycle" on every appraisal matching the filters (HR with bulk.run). */
+    public static function registerBulkOperations(): array
+    {
+        return ['appraisals.withdraw'];
     }
 
     public static function registerReports(): array

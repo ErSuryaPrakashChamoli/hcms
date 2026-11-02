@@ -2,6 +2,8 @@
 
 namespace App\Domain\Compliance\Services;
 
+use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compliance\Models\EmployeeTaxDeclaration;
 use App\Domain\Compliance\Models\TdsEmployeeInvestment;
 use App\Domain\Compliance\Support\InvestmentCatalogue;
@@ -20,7 +22,9 @@ use RuntimeException;
  * (InvestmentCatalogue) and declares an amount per item. Each item is a tds_employee_investments row (its proof is
  * verified there, item by item); the section totals that TaxComputer reads are written to the declaration from those
  * rows, so the two never disagree. Verified items are never changed here; a rejected item that is changed goes back
- * to pending. Employees file their own (payroll.payslip); payroll.manage files for anyone in its scope.
+ * to pending. Employees file their own (payroll.payslip); payroll.manage files for anyone in its scope — HROne parity
+ * AC-2: recorded as filed on the employee's behalf (audit reasons, and a SUBMITTED event with `on_behalf` on submission),
+ * outside the declaration window too (payroll always may, as before).
  */
 final class InvestmentDeclarations
 {
@@ -124,7 +128,11 @@ final class InvestmentDeclarations
             throw new RuntimeException('Choose a tax regime.');
         }
 
-        return DB::transaction(function () use ($user, $employee, $financialYear, $input, $submit) {
+        // HROne parity AC-2: payroll filing for the employee ("Declare for an employee") is recorded as on their behalf.
+        $onBehalf = $employee->user_id === null || (int) $employee->user_id !== (int) $user->getKey();
+        $by = $onBehalf ? ' (filed on the employee\'s behalf)' : '';
+
+        return DB::transaction(function () use ($user, $employee, $financialYear, $input, $submit, $onBehalf, $by) {
             // One save at a time per employee (the declaration may not exist yet, so lock the employee row).
             Employee::query()->whereKey($employee->id)->lockForUpdate()->first();
             $declaration = EmployeeTaxDeclaration::query()->where('employee_id', $employee->id)->where('financial_year', $financialYear)->lockForUpdate()->first();
@@ -152,7 +160,7 @@ final class InvestmentDeclarations
             ]);
             if (! $declaration->exists) {
                 $declaration->declarations = [];
-                $declaration->withAuditReason('Investment declaration started')->save();
+                $declaration->withAuditReason('Investment declaration started'.$by)->save();
             }
 
             $rows = TdsEmployeeInvestment::query()->where('employee_id', $employee->id)->where('financial_year', $financialYear)->whereNotNull('item_key')->lockForUpdate()->get()->keyBy('item_key');
@@ -164,7 +172,7 @@ final class InvestmentDeclarations
                     continue; // payroll accepted this proof: only payroll changes it, on the proofs screen
                 }
                 if (! $wanted->has($key)) {
-                    $row->withAuditReason('Removed from the investment declaration')->delete();
+                    $row->withAuditReason('Removed from the investment declaration'.$by)->delete();
                 }
             }
 
@@ -183,7 +191,7 @@ final class InvestmentDeclarations
                 ];
                 if ($row === null) {
                     (new TdsEmployeeInvestment($values + ['employee_id' => $employee->id, 'financial_year' => $financialYear, 'item_key' => $key, 'proof_status' => 'pending']))
-                        ->withAuditReason('Declared in the investment declaration')->save();
+                        ->withAuditReason('Declared in the investment declaration'.$by)->save();
 
                     continue;
                 }
@@ -192,12 +200,16 @@ final class InvestmentDeclarations
                     $row->fill(['proof_status' => 'pending', 'proof_amount' => null, 'verified_by' => null, 'verified_at' => null]);
                 }
                 if ($row->isDirty()) {
-                    $row->withAuditReason('Changed in the investment declaration')->save();
+                    $row->withAuditReason('Changed in the investment declaration'.$by)->save();
                 }
             }
 
             $declaration->declarations = $this->totals($declaration->declarations ?? [], $employee, $financialYear, (bool) ($input['metro'] ?? false));
-            $declaration->withAuditReason($submit ? 'Investment declaration submitted to payroll' : 'Investment declaration saved as draft')->save();
+            $declaration->withAuditReason(($submit ? 'Investment declaration submitted to payroll' : 'Investment declaration saved as draft').$by)->save();
+            if ($submit && $onBehalf) {
+                app(AuditRecorder::class)->record(AuditAction::Submitted, 'compliance', $declaration, reason: 'Investment declaration submitted on behalf of the employee', actor: $user,
+                    metadata: ['on_behalf' => true, 'employee_id' => (int) $employee->getKey(), 'financial_year' => $financialYear]);
+            }
             // HROne setup parity P5: a declaration newly submitted to payroll is an event (its approval workflow, when one is set up).
             if ($submit && ! $wasSubmitted) {
                 $this->event('payroll.tax_declaration_submitted', $declaration);
@@ -205,6 +217,38 @@ final class InvestmentDeclarations
 
             return $declaration->refresh();
         });
+    }
+
+    /**
+     * Data import DI-4: the employee's declaration for the year as save() input, the way the guided page loads it (every
+     * item with its amount, description and details; a section total declared before items existed in the section's
+     * catch-all item; metro; the previous employer), so an upload can change one part and save the rest unchanged.
+     *
+     * @return array{regime: string, metro: bool, previous_employer_income: float, previous_employer_tds: float, previous_employer: ?array<string, mixed>, items: array<string, array{amount: float, description: ?string, details: ?array<string, mixed>}>}
+     */
+    public function currentInput(Employee $employee, string $financialYear): array
+    {
+        $declaration = $this->declaration($employee, $financialYear);
+        $items = [];
+        $rows = $this->items($employee, $financialYear);
+        foreach ($rows as $row) {
+            $items[(string) $row->item_key] = ['amount' => (float) $row->declared_amount, 'description' => $row->description, 'details' => $row->details];
+        }
+        foreach (array_keys(InvestmentCatalogue::SECTIONS) as $section) {
+            $total = (float) ($declaration?->amount($section) ?? 0);
+            if ($total > 0 && ! $rows->contains('section', $section)) {
+                $items[InvestmentCatalogue::fallbackItem($section)] = ['amount' => $total, 'description' => 'Declared earlier', 'details' => null];
+            }
+        }
+
+        return [
+            'regime' => (string) ($declaration?->regime ?? 'new'),
+            'metro' => (float) ($declaration?->amount('METRO') ?? 0) > 0,
+            'previous_employer_income' => (float) ($declaration?->previous_employer_income ?? 0),
+            'previous_employer_tds' => (float) ($declaration?->previous_employer_tds ?? 0),
+            'previous_employer' => $declaration?->previous_employer ?: null,
+            'items' => $items,
+        ];
     }
 
     /**
@@ -290,8 +334,9 @@ final class InvestmentDeclarations
      */
     private function previousEmployer(?array $details): ?array
     {
-        $clean = $this->details(collect($details ?? [])->only(['name', 'tan', 'from', 'to', 'pf', 'pt'])->all()) ?? [];
-        foreach (['pf', 'pt'] as $key) {
+        // HROne parity MS-4: the gratuity and leave-encashment exemptions used there (PriorExemptions; counted only through a verified rule).
+        $clean = $this->details(collect($details ?? [])->only(['name', 'tan', 'from', 'to', 'pf', 'pt', 'gratuity_exempt', 'leave_encashment_exempt'])->all()) ?? [];
+        foreach (['pf', 'pt', 'gratuity_exempt', 'leave_encashment_exempt'] as $key) {
             if (isset($clean[$key])) {
                 $clean[$key] = $this->amount($clean[$key]);
             }

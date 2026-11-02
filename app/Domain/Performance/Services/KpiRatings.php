@@ -46,6 +46,11 @@ final class KpiRatings
     /** Achievement % of a goal (or one key result) for a basis; null when it cannot be worked out. */
     public function achievementPct(Goal|KeyResult $subject, string $basis): ?float
     {
+        // HROne parity GO-4 (D-GO7): an actual achievement entered for the goal replaces the computed one — only while
+        // `performance.goals.achievement_override` is on (off: exactly as before).
+        if ($subject instanceof Goal && $subject->achievementOverridden()) {
+            return round((float) $subject->achievement_override, 2);
+        }
         if ($subject instanceof Goal) {
             $subject->loadMissing('keyResults');
             if ($subject->keyResults->isNotEmpty()) {

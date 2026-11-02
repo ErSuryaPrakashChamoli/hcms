@@ -13,6 +13,7 @@ use App\Domain\Exit\Events\ExitEvent;
 use App\Domain\Exit\Models\ClearanceChecklist;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\ExitClearance;
+use App\Domain\Exit\Support\ClearanceDueDates;
 use App\Domain\Expense\Services\ExpenseReports;
 use App\Domain\Feedback\Services\FeedbackRequests;
 use App\Domain\Identity\Enums\UserStatus;
@@ -101,7 +102,7 @@ final class Exits
             $this->buildClearances($case, $employee);
             // HROne setup parity P13: the separation policy's exit interviews (employee, manager, HR) as feedback tasks.
             app(FeedbackRequests::class)->raiseForExit($case, $employee);
-            PolicyLetters::draft(app(PolicyResolver::class)->resolve('exit', $employee, now())?->setting('letter_on_exit'), $employee, $actor, $case);
+            PolicyLetters::draft(app(PolicyResolver::class)->resolve('exit', $employee, now())?->setting('letter_on_exit'), $employee, $actor, $case, 'exit.letter_on_exit');
 
             $this->lifecycle->transition($employee, LifecycleState::NoticePeriod, now(), $reason ?? config("peopleos.exit.types.{$type}"), ['exit_case_id' => $case->id, 'type' => $type]);
             $employee->update(['exit_date' => $lwd]);
@@ -158,6 +159,8 @@ final class Exits
             $locked->withAuditReason($note ?: 'Resignation accepted')->update(['resignation_accepted_at' => now(), 'resignation_accepted_by' => $actor->id]);
             $this->timeline->record($employee, 'exit', 'Resignation accepted', now(), null, $locked);
             ExitEvent::dispatch('exit.resignation_accepted', $employee, $locked, ['number' => $locked->number, 'last_working_day' => $locked->last_working_day->toDateString()], array_filter([$employee->user_id]));
+            // HROne parity WO-13 (§23.7.1 #27): the separation policy may draft a resignation acceptance letter (none by default).
+            PolicyLetters::draft(app(PolicyResolver::class)->resolve('exit', $employee, now())?->setting('letter_on_acceptance'), $employee, $actor, $locked, 'exit.letter_on_acceptance');
 
             return $locked;
         });
@@ -246,7 +249,9 @@ final class Exits
                     break;
             }
 
-            ExitClearance::create(['exit_case_id' => $case->id, 'stage' => $stage, 'name' => $definition['name'], 'owner_user_id' => $owner, 'owner_role_id' => $role, 'items' => $items, 'status' => 'pending', 'sort_order' => ++$i * 10]);
+            // HROne parity WO-11 (§23.6.3 #4): the stage's due date from the checklist or the exit policy (blank = none, as before).
+            $due = ClearanceDueDates::dueOn($case->last_working_day, ClearanceDueDates::offset($stage, $items, $employee));
+            ExitClearance::create(['exit_case_id' => $case->id, 'stage' => $stage, 'name' => $definition['name'], 'owner_user_id' => $owner, 'owner_role_id' => $role, 'items' => $items, 'status' => 'pending', 'sort_order' => ++$i * 10, 'due_on' => $due]);
         }
     }
 
@@ -357,9 +362,12 @@ final class Exits
             throw new RuntimeException('Only a resignation that is still open can be withdrawn.');
         }
 
-        return DB::transaction(function () use ($case, $reason) {
+        return DB::transaction(function () use ($case, $reason, $actor) {
             $employee = $case->employee()->firstOrFail();
             $case->withAuditReason($reason)->update(['status' => 'withdrawn']);
+            // HROne parity WO-11 (§23.6.3 #11): stages still open are not applicable any more; cleared ones stay as they are.
+            // A withdrawal request still waiting (another one than the request being approved) closes with the exit.
+            app(SeparationDesk::class)->closeForWithdrawal($case, $actor);
             $this->lifecycle->transition($employee, LifecycleState::Active, now(), 'Resignation withdrawn: '.$reason, ['exit_case_id' => $case->id]);
             $employee->update(['exit_date' => null]);
             app(FeedbackRequests::class)->cancelFor($case, 'Resignation withdrawn');
@@ -382,6 +390,9 @@ final class Exits
         if ($requireSettlement && ! in_array($case->settlement?->status, ['approved', 'paid'], true)) {
             throw new RuntimeException('The full & final settlement must be approved first.');
         }
+        // HROne parity WO-11: when resignations need acceptance, an unaccepted one is not relieved; nor is an exit whose
+        // withdrawal is waiting for a decision (only possible when withdrawals need approval).
+        app(SeparationDesk::class)->assertReadyToComplete($case);
 
         return DB::transaction(function () use ($case, $actor) {
             $employee = $case->employee;
@@ -394,7 +405,7 @@ final class Exits
 
             $this->timeline->record($employee, 'exit', 'Exit completed', $case->last_working_day, null, $case);
             ExitEvent::dispatch('exit.completed', $employee, $case, ['number' => $case->number, 'last_working_day' => $case->last_working_day->toDateString()], array_filter([$case->manager()->value('user_id')]));
-            PolicyLetters::draft(app(PolicyResolver::class)->resolve('exit', $employee, $case->last_working_day)?->setting('letter_on_completion'), $employee, $actor, $case);
+            PolicyLetters::draft(app(PolicyResolver::class)->resolve('exit', $employee, $case->last_working_day)?->setting('letter_on_completion'), $employee, $actor, $case, 'exit.letter_on_completion');
 
             return $case->refresh();
         });

@@ -14,7 +14,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * HROne parity RQ-1: proposed investment declaration (Declare investments). Offered while the person may change this
- * year's declaration (the declaration window, InvestmentDeclarations::canEdit).
+ * year's declaration (the declaration window, InvestmentDeclarations::canEdit). HROne parity AC-2: on behalf, payroll
+ * opens the same wizard on an employee ("Declare for an employee").
  */
 final class InvestmentDeclarationRequestType extends BaseRequestType
 {
@@ -66,6 +67,18 @@ final class InvestmentDeclarationRequestType extends BaseRequestType
     public function formUrl(User $user, ?Employee $employee): ?string
     {
         return DeclareInvestments::getUrl();
+    }
+
+    /** HROne parity AC-2: payroll declares for an employee in the same wizard ("Declare for an employee"). */
+    public function onBehalfPermission(): ?string
+    {
+        return 'payroll.manage';
+    }
+
+    public function onBehalfUrl(User $user): ?string
+    {
+        return $this->signedIn($user) && $user->hasPermission('payroll.manage') && DeclareInvestments::canAccess()
+            ? $this->withAction(DeclareInvestments::getUrl(), 'declareForEmployee') : null;
     }
 
     public function historyVisibleTo(User $user): bool

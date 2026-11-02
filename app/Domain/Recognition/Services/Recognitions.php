@@ -86,7 +86,8 @@ final class Recognitions
      */
     public function givenThisMonth(User $giver, bool $locking = false): int
     {
-        return Recognition::query()->withoutGlobalScope(AccessScope::class)->where('giver_user_id', $giver->getKey())->whereNull('withdrawn_at')
+        // Data import DI-35: badges HR allocated for the organisation (source upload) are not the person's own quota.
+        return Recognition::query()->withoutGlobalScope(AccessScope::class)->where('giver_user_id', $giver->getKey())->where('source', 'person')->whereNull('withdrawn_at')
             ->where('created_at', '>=', $this->now()->startOfMonth()->setTimezone(config('app.timezone')))
             ->when($locking, fn (Builder $q) => $q->sharedLock())->count();
     }
@@ -186,18 +187,87 @@ final class Recognitions
             throw new RuntimeException('Attach a file to give the badge '.$badge->name.'.');
         }
 
-        $recognition = DB::transaction(function () use ($badge, $receiver, $giver, $giverEmployee, $message, $attachments) {
+        return $this->store($badge, $receiver, $giver, $giverEmployee, $message, $attachments, 'person');
+    }
+
+    /**
+     * Data import DI-35 ("Badge allocation"; owner decision D-GO4 on its recommended behaviour): HR (recognition.manage)
+     * allocates $badge to $receiver on behalf of the organisation, e.g. from an upload. The badge must be allowed (status,
+     * custom badges switched on), the receiver must match its receiver conditions and stay within its receiving limit, and
+     * a reason is needed when the badge asks for one; the giver roles / conditions and the monthly giver quota are the
+     * rules of a person giving, so they do not apply. A badge that needs an attachment is given on the Recognition page.
+     * The rest is as for a given badge: notice, certificate, reward points and the wall post.
+     */
+    public function allocate(Badge $badge, Employee $receiver, User $actor, ?string $message = null, string $source = 'upload'): Recognition
+    {
+        $message = trim(strip_tags((string) $message));
+        $receiver->loadMissing(['person', 'user']);
+        if (($refusal = $this->refusalForAllocation($badge, $receiver, $actor, $message)) !== null) {
+            throw new RuntimeException($refusal);
+        }
+
+        return $this->store($badge, $receiver, $actor, null, $message, [], $source);
+    }
+
+    /** Why HR may not allocate $badge to $receiver with this message (null = they may). The receiving limit is checked when saving. */
+    public function refusalForAllocation(Badge $badge, Employee $receiver, User $actor, ?string $message): ?string
+    {
+        $message = trim(strip_tags((string) $message));
+        if (! $actor->hasPermission('recognition.manage')) {
+            return 'Only HR allocates badges for the organisation.';
+        }
+        if (! $badge->isActive()) {
+            return 'The badge '.$badge->name.' is switched off.';
+        }
+        if (! $badge->is_system && ! $this->customAllowed()) {
+            return 'Custom badges are switched off in this organisation.';
+        }
+        if (($refusal = $this->refusalForReceiver($badge, $receiver)) !== null) {
+            return $refusal;
+        }
+        if ((int) $receiver->user_id === (int) $actor->getKey()) {
+            return 'You cannot allocate a badge to yourself.';
+        }
+        if (mb_strlen($message) > self::MESSAGE_MAX) {
+            return 'Keep the message to '.self::MESSAGE_MAX.' characters.';
+        }
+        if ($badge->reason_required && $message === '') {
+            return 'Give the reason for the badge '.$badge->name.'.';
+        }
+        if ($badge->attachment_required) {
+            return 'The badge '.$badge->name.' needs an attachment: give it on the Recognition page.';
+        }
+
+        return null;
+    }
+
+    /** How many times $receiver has received $badge in its receiving period (withdrawn ones not counted). */
+    public function receivedInPeriod(Badge $badge, Employee $receiver, bool $locking = false): int
+    {
+        $start = $this->periodStart($badge);
+
+        return Recognition::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $receiver->id)->where('badge_id', $badge->id)->whereNull('withdrawn_at')
+            ->when($start !== null, fn (Builder $q) => $q->where('created_at', '>=', $start))->when($locking, fn (Builder $q) => $q->sharedLock())->count();
+    }
+
+    /**
+     * Save a recognition and what follows it. A person's badge (source person) counts in their monthly quota, serialised on
+     * their user row; the receiving limit is checked under a lock on the receiver.
+     *
+     * @param  list<string>  $attachments
+     */
+    private function store(Badge $badge, Employee $receiver, User $giver, ?Employee $giverEmployee, string $message, array $attachments, string $source): Recognition
+    {
+        $recognition = DB::transaction(function () use ($badge, $receiver, $giver, $giverEmployee, $message, $attachments, $source) {
             // The giver's row serialises their badges (quota); the receiver's row their receiving limit.
             User::query()->whereKey($giver->getKey())->lockForUpdate()->value('id');
             $per = $this->perMonth();
-            if ($per > 0 && $this->givenThisMonth($giver, locking: true) >= $per) {
+            if ($source === 'person' && $per > 0 && $this->givenThisMonth($giver, locking: true) >= $per) {
                 throw new RuntimeException("You have given your {$per} badges for this month.");
             }
             if ($badge->receive_limit > 0) {
                 Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($receiver->id)->lockForUpdate()->value('id');
-                $start = $this->periodStart($badge);
-                $received = Recognition::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $receiver->id)->where('badge_id', $badge->id)->whereNull('withdrawn_at')
-                    ->when($start !== null, fn (Builder $q) => $q->where('created_at', '>=', $start))->sharedLock()->count();
+                $received = $this->receivedInPeriod($badge, $receiver, locking: true);
                 if ($received >= $badge->receive_limit) {
                     $when = $badge->receive_period === 'ever' ? '' : ($badge->receive_period_basis === 'rolling' ? ' in the last '.$badge->receive_period : ' this '.$badge->receive_period);
                     throw new RuntimeException($receiver->person->display_name.' has already received the badge '.$badge->name.' '.($badge->receive_limit === 1 ? 'once' : $badge->receive_limit.' times').$when.'.');
@@ -205,14 +275,14 @@ final class Recognitions
             }
 
             return Recognition::query()->create([
-                'badge_id' => $badge->id, 'employee_id' => $receiver->id, 'giver_user_id' => $giver->getKey(), 'giver_employee_id' => $giverEmployee?->id,
+                'badge_id' => $badge->id, 'employee_id' => $receiver->id, 'giver_user_id' => $giver->getKey(), 'giver_employee_id' => $giverEmployee?->id, 'source' => $source,
                 'message' => $message === '' ? null : $message, 'visibility' => $badge->visibility, 'attachments' => $attachments === [] ? null : $attachments,
             ]);
         });
 
         $recipient = $receiver->user;
         if ($recipient !== null && $recipient->isActive()) {
-            $this->notifier->send([$recipient], ['in_app'], $giver->name.' gave you the badge '.$badge->name, $message !== '' ? $message : 'Well done!', 'recognition.received', $recognition);
+            $this->notifier->send([$recipient], ['in_app'], ($source === 'person' ? $giver->name.' gave you' : 'You received').' the badge '.$badge->name, $message !== '' ? $message : 'Well done!', 'recognition.received', $recognition);
         }
         $this->issueCertificate($recognition, $badge, $receiver, $giver);
         // HROne setup parity HP-9d / HP-9e: the badge's reward points and the social wall post follow the recognition.

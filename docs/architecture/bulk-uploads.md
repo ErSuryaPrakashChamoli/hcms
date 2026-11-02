@@ -1,6 +1,6 @@
 # Bulk uploads
 
-Written 2026-10-26. Describes what is implemented.
+Written 2026-10-26. Describes what is implemented. Every upload is also listed by module on Admin › Data import (see `data-import.md`, 2026-10-31).
 
 Five CSV uploads share one staged pipeline on `employee_imports` / `employee_import_rows`:
 

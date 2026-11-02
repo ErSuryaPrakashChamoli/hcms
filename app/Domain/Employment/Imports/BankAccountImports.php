@@ -42,6 +42,13 @@ final class BankAccountImports
         'account_number' => ['Account number', true], 'ifsc' => ['IFSC', false], 'branch_name' => ['Branch name', false], 'account_type' => ['Account type', false],
     ];
 
+    /** How people write an account type in a file (lower case, letters only) => the type it means. */
+    private const ACCOUNT_TYPE_WORDS = [
+        'savings' => 'savings', 'saving' => 'savings', 'sb' => 'savings', 'savingsbank' => 'savings', 'savingbank' => 'savings',
+        'current' => 'current', 'ca' => 'current', 'curr' => 'current',
+        'salary' => 'salary', 'sal' => 'salary', 'salarysavings' => 'salary', 'salarysaving' => 'salary', 'savingssalary' => 'salary', 'savingsalary' => 'salary',
+    ];
+
     /** What a file can be for: mode => [label, description]. */
     public const MODES = [
         'new' => ['Add bank details for new employees', 'For employees with no bank account on file. Employees who already have one are skipped.'],
@@ -111,7 +118,7 @@ final class BankAccountImports
             'account_number' => ['Up to 34 letters or digits; spaces are removed.', '00011122233344'],
             'ifsc' => ['Indian Financial System Code: four letters, a zero, six letters or digits. Blank keeps the IFSC on file.', 'HDFC0001234'],
             'branch_name' => ['Blank keeps the branch on file.', 'Andheri East'],
-            'account_type' => ['savings, current or salary. Blank keeps the type on file.', 'salary'],
+            'account_type' => ['Savings, Current or Salary, in any case (Saving, SB, CA and "Savings A/c" also work). Blank keeps the type on file.', 'Salary'],
         ];
 
         return [
@@ -423,13 +430,20 @@ final class BankAccountImports
             }
         }
         if (isset($data['ifsc'])) {
-            $data['ifsc'] = mb_strtoupper(str_replace(' ', '', $data['ifsc']));
+            $data['ifsc'] = self::ifsc($data['ifsc']);
+            if ($data['ifsc'] === '') {
+                unset($data['ifsc']);
+            }
         }
         if (isset($data['account_type'])) {
-            $data['account_type'] = mb_strtolower($data['account_type']);
+            $data['account_type'] = self::accountType($data['account_type']);
         }
 
-        $validator = Validator::make($data, $this->accounts->rules(true), [], ['ifsc' => 'IFSC', 'account_type' => 'account type', 'account_number' => 'account number',
+        $messages = [
+            'ifsc.regex' => self::ifscProblem($data['ifsc'] ?? ''), 'ifsc.max' => self::ifscProblem($data['ifsc'] ?? ''),
+            'account_type.in' => "Account type '".($r['account_type'] ?? '')."' is not one we know: use Savings, Current or Salary.",
+        ];
+        $validator = Validator::make($data, $this->accounts->rules(true), $messages, ['ifsc' => 'IFSC', 'account_type' => 'account type', 'account_number' => 'account number',
             'account_holder_name' => 'account holder name', 'bank_name' => 'bank name', 'branch_name' => 'branch name']);
         foreach ($validator->errors()->all() as $message) {
             $errors[] = $message;
@@ -440,6 +454,36 @@ final class BankAccountImports
         }
 
         return [$employee, $data, array_values(array_unique($errors))];
+    }
+
+    /** Upper case without spaces or dashes; a letter O as the fifth character is the zero every IFSC has there. */
+    private static function ifsc(string $value): string
+    {
+        $ifsc = mb_strtoupper(str_replace([' ', "\u{00A0}", '-'], '', $value));
+
+        return mb_strlen($ifsc) === 11 && $ifsc[4] === 'O' ? substr_replace($ifsc, '0', 4, 1) : $ifsc;
+    }
+
+    /** Why an IFSC does not read as one, in words the uploader can act on. */
+    private static function ifscProblem(string $ifsc): string
+    {
+        $length = mb_strlen($ifsc);
+        $why = match (true) {
+            $length !== 11 => "it has {$length} characters and an IFSC has 11",
+            ! preg_match('/^[A-Z]{4}/', $ifsc) => 'the first four characters (the bank) must be letters',
+            $ifsc[4] !== '0' => 'the fifth character must be the digit 0',
+            default => 'the last six characters (the branch) must be letters or digits',
+        };
+
+        return "IFSC '{$ifsc}' is not valid: {$why}. An IFSC is four letters, a zero, then six letters or digits, like HDFC0001234.";
+    }
+
+    /** The account type a file means ('Saving', 'SB A/c', 'Current account' …); anything else is kept as written and fails validation. */
+    private static function accountType(string $value): string
+    {
+        $words = preg_replace('/[^a-z]/', '', str_replace(['a/c', 'account', 'acct', 'acc'], '', mb_strtolower($value)));
+
+        return self::ACCOUNT_TYPE_WORDS[$words] ?? mb_strtolower($value);
     }
 
     /** @return array<string, mixed>|null who the row is for and how it reads on screen, with the reason for a skip */

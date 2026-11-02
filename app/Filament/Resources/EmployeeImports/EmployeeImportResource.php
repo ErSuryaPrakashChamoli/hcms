@@ -16,6 +16,7 @@ use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -49,6 +50,8 @@ class EmployeeImportResource extends Resource
     public static function infolist(Schema $schema): Schema
     {
         return $schema->components([
+            // Data import: the upload at a glance — what it is, where it stands in the pipeline, its counts.
+            View::make('filament.imports.upload-summary')->viewData(fn (EmployeeImport $record) => ImportActions::summary($record))->columnSpanFull(),
             Section::make('File')->columns(4)->schema([
                 TextEntry::make('original_name')->label('File'),
                 TextEntry::make('status')->badge()->color(fn (string $state) => match ($state) {
@@ -57,7 +60,7 @@ class EmployeeImportResource extends Resource
                 TextEntry::make('uploader.name')->label('Uploaded by'),
                 TextEntry::make('created_at')->dateTime()->label('Uploaded'),
             ]),
-            Section::make('Rows')->columns(4)->schema([
+            Section::make('Rows')->columns(4)->collapsible()->collapsed()->schema([
                 TextEntry::make('row_count')->label('Rows'),
                 TextEntry::make('valid_count')->label('Valid'),
                 TextEntry::make('error_count')->label('Errors'),

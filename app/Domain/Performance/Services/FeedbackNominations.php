@@ -356,7 +356,8 @@ final class FeedbackNominations
         }
         $nomination = FeedbackNomination::query()->withoutGlobalScope(AccessScope::class)->with('round')
             ->where('token_hash', hash('sha256', $token))->where('relation', 'client')->where('status', 'requested')->first();
-        if ($nomination === null || $nomination->token_expires_at === null || $nomination->token_expires_at->lte(now()) || ! $nomination->round->windowOpen()) {
+        if ($nomination === null || $nomination->token_expires_at === null || $nomination->token_expires_at->lte(now())
+            || ! app(PerformanceWindows::class)->roundOpenFor($nomination->round, (int) $nomination->employee_id)) {
             return null;
         }
 
@@ -379,8 +380,9 @@ final class FeedbackNominations
     /** Clients' links follow the window: a new closing date moves their expiry. */
     public function refreshLinkExpiry(FeedbackRound $round): void
     {
+        $windows = app(PerformanceWindows::class);
         FeedbackNomination::query()->withoutGlobalScope(AccessScope::class)->where('feedback_round_id', $round->id)->where('status', 'requested')->whereNotNull('token_hash')
-            ->get()->each(fn (FeedbackNomination $n) => $n->update(['token_expires_at' => $round->window_closes_on->copy()->endOfDay()]));
+            ->get()->each(fn (FeedbackNomination $n) => $n->update(['token_expires_at' => $windows->roundClosesOn($round, (int) $n->employee_id)->copy()->endOfDay()]));
     }
 
     // --- Lists for screens and My tasks --------------------------------------------------------------------------
@@ -388,10 +390,27 @@ final class FeedbackNominations
     /** @return Collection<int, FeedbackNomination> feedback asked of the user that they can give now */
     public function pendingFor(User $user): Collection
     {
+        // HROne parity GO-2: a round's window as extended for the assessed employee (PerformanceWindows).
         return FeedbackNomination::query()->withoutGlobalScope(AccessScope::class)->with(['round', 'employee.person'])
             ->where('reviewer_user_id', $user->id)->where('status', 'requested')
-            ->whereHas('round', fn ($q) => $q->where('status', 'open')->where('window_opens_on', '<=', today()->toDateString().' 23:59:59')->where('window_closes_on', '>=', today()->toDateString()))
+            ->whereHas('round', fn ($q) => $q->where('status', 'open')->where('window_opens_on', '<=', today()->toDateString().' 23:59:59'))
+            ->where(fn ($q) => self::windowNotPassed($q, 'feedback_nominations'))
             ->orderBy('id')->get();
+    }
+
+    /**
+     * HROne parity GO-2: rows of $table (a round id and the assessed employee) whose round window has not passed today —
+     * the round's own window, or an extension of it for that employee.
+     */
+    private static function windowNotPassed($query, string $table): void
+    {
+        $today = today()->toDateString();
+        $query->whereHas('round', fn ($r) => $r->where('window_closes_on', '>=', $today))
+            ->orWhereExists(fn ($e) => $e->selectRaw('1')->from('performance_window_extensions')
+                ->whereColumn('performance_window_extensions.feedback_round_id', "{$table}.feedback_round_id")
+                ->whereColumn('performance_window_extensions.employee_id', "{$table}.employee_id")
+                ->where('performance_window_extensions.stage', PerformanceWindows::ROUND)
+                ->where('performance_window_extensions.ends_on', '>=', $today));
     }
 
     /** @return Collection<int, FeedbackParticipant> nomination sets the user still has to make */
@@ -402,7 +421,8 @@ final class FeedbackNominations
         return FeedbackParticipant::query()->withoutGlobalScope(AccessScope::class)->with(['round', 'employee.person'])
             ->whereIn('nomination_status', ['draft', 'returned'])
             ->where(fn ($q) => $q->where('nominator_user_id', $user->id)->orWhere(fn ($r) => $r->whereNull('nominator_user_id')->whereIn('nominator_role_id', $roleIds ?: [0])))
-            ->whereHas('round', fn ($q) => $q->where('status', 'open')->where('window_closes_on', '>=', today()->toDateString()))
+            ->whereHas('round', fn ($q) => $q->where('status', 'open'))
+            ->where(fn ($q) => self::windowNotPassed($q, 'feedback_participants'))
             ->orderBy('id')->get();
     }
 
@@ -450,7 +470,7 @@ final class FeedbackNominations
             }
             $nomination->update(['status' => 'requested', 'requested_at' => now()]);
             PerformanceEvent::dispatch('performance.feedback360.requested', $participant->employee, $nomination,
-                ['for' => $participant->employee?->person?->full_name, 'round' => $round->name, 'due' => $round->window_closes_on->format('d M Y')], array_filter([(int) $nomination->reviewer_employee_id]));
+                ['for' => $participant->employee?->person?->full_name, 'round' => $round->name, 'due' => app(PerformanceWindows::class)->roundClosesOn($round, (int) $participant->employee_id)->format('d M Y')], array_filter([(int) $nomination->reviewer_employee_id]));
         }
     }
 
@@ -458,12 +478,14 @@ final class FeedbackNominations
     private function sendLink(FeedbackNomination $nomination): void
     {
         $token = Str::random(64);
-        $nomination->update(['token_hash' => hash('sha256', $token), 'token_expires_at' => $nomination->round->window_closes_on->copy()->endOfDay()]);
+        // HROne parity GO-2: valid until the window closes for the assessed employee (an extension for them included).
+        $closes = app(PerformanceWindows::class)->roundClosesOn($nomination->round, (int) $nomination->employee_id);
+        $nomination->update(['token_hash' => hash('sha256', $token), 'token_expires_at' => $closes->copy()->endOfDay()]);
         $url = URL::signedRoute('feedback360.external', ['tenant' => $nomination->tenant_id, 'token' => $token]);
         try {
             $nomination->loadMissing('employee.person');
             Notification::route('mail', $nomination->external_email)->notify(new Feedback360Invitation(
-                (string) $nomination->external_name, (string) ($nomination->employee?->person?->full_name ?? ''), $nomination->round->window_closes_on->format('d M Y'), $url,
+                (string) $nomination->external_name, (string) ($nomination->employee?->person?->full_name ?? ''), $closes->format('d M Y'), $url,
             ));
         } catch (Throwable $e) {
             report($e);
@@ -476,7 +498,7 @@ final class FeedbackNominations
         if (! $this->mayNominate($actor, $participant)) {
             throw new RuntimeException('You do not nominate reviewers for this employee.');
         }
-        if (! $participant->round->isOpen() || $participant->round->window_closes_on->toDateString() < today()->toDateString()) {
+        if (! $participant->round->isOpen() || app(PerformanceWindows::class)->roundClosesOn($participant->round, (int) $participant->employee_id)->toDateString() < today()->toDateString()) {
             throw new RuntimeException('The 360 feedback round is no longer open.');
         }
         if (! in_array($participant->nomination_status, ['draft', 'returned'], true)) {
@@ -492,7 +514,7 @@ final class FeedbackNominations
         if ($nomination->status !== 'requested') {
             throw new RuntimeException($nomination->status === 'submitted' ? 'This 360 feedback was already given.' : 'This 360 feedback is no longer asked.');
         }
-        if (! $nomination->round->windowOpen()) {
+        if (! app(PerformanceWindows::class)->roundOpenFor($nomination->round, (int) $nomination->employee_id)) {
             throw new RuntimeException('The 360 feedback window is closed.');
         }
     }

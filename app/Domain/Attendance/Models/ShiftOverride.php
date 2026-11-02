@@ -14,8 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * The shift an employee works on one date, overriding the schedule (HP-1 day-level roster). Written by the
  * roster, by an approved shift-change request or by an import. A null shift makes the day a weekly off.
+ * HROne parity TX-5: `auto_shift` true lets the day's first check-in correct the rostered shift (null / false = as is).
  */
-#[Fillable(['tenant_id', 'employee_id', 'date', 'shift_id', 'source', 'time_office_request_id', 'reason', 'created_by'])]
+#[Fillable(['tenant_id', 'employee_id', 'date', 'shift_id', 'auto_shift', 'source', 'time_office_request_id', 'reason', 'created_by'])]
 class ShiftOverride extends Model
 {
     use Auditable, BelongsToTenant;
@@ -27,7 +28,13 @@ class ShiftOverride extends Model
 
     protected function casts(): array
     {
-        return ['date' => 'date'];
+        return ['date' => 'date', 'auto_shift' => 'boolean'];
+    }
+
+    /** HROne parity TX-5: may the day's first check-in correct the rostered shift? */
+    public function allowsAutoShift(): bool
+    {
+        return (bool) ($this->getAttributes()['auto_shift'] ?? false);
     }
 
     public function auditModule(): string

@@ -381,7 +381,7 @@ it('declares each narrower right inside its module, split out of the broad key t
         expect($catalogue)->toContain($narrow)->toContain($broad)
             ->and(explode('.', $narrow)[0])->toBe(explode('.', $broad)[0]);
     }
-    expect(array_keys(config('peopleos.permission_splits')))->toEqualCanonicalizing(['attendance.roster', 'attendance.override', 'attendance.punch', 'attendance.process', 'attendance.arrears', 'leave.adjust', 'leave.carry_forward']);
+    expect(array_keys(config('peopleos.permission_splits')))->toEqualCanonicalizing(['attendance.roster', 'attendance.override', 'attendance.punch', 'attendance.process', 'attendance.arrears', 'attendance.holiday_change', 'leave.adjust', 'leave.carry_forward']);
 
     $broad = tenantUser($this->tenant, ['attendance.manage', 'leave.manage']);
     foreach (array_keys(config('peopleos.permission_splits')) as $narrow) {

@@ -6,6 +6,8 @@ use App\Filament\Resources\CompensationChanges\CompensationChangeResource;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleManageRecords;
 use App\Filament\Support\PayrollRegisters;
+use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Database\Eloquent\Builder;
 
 class ManageCompensationChanges extends PeopleManageRecords
 {
@@ -27,7 +29,26 @@ class ManageCompensationChanges extends PeopleManageRecords
             'to_execute' => ['label' => 'Approved, to execute', 'filters' => ['status' => ['value' => 'approved']]],
             'scheduled' => ['label' => 'Scheduled', 'filters' => ['status' => ['value' => 'scheduled']]],
             'effective' => ['label' => 'In force (revisions)', 'filters' => ['status' => ['value' => 'effective']]],
+            // HROne parity PO-2 (§25.2.3 #1): HROne's request cards as views.
+            'pending_requests' => ['label' => 'Pending requests', 'filters' => ['request_status' => ['value' => 'pending']]],
+            'approved_requests' => ['label' => 'Approved requests', 'filters' => ['request_status' => ['value' => 'approved']]],
+            'rejected_requests' => ['label' => 'Rejected requests', 'filters' => ['request_status' => ['value' => 'rejected']]],
         ];
+    }
+
+    /**
+     * HROne parity PO-2 (§25.2.3 #1): the request cards — Approved / Pending / Rejected with their counts, over the same
+     * scoped query as the list ("All" first, so the list opens as before).
+     *
+     * @return array<string, Tab>
+     */
+    public function getTabs(): array
+    {
+        $count = fn (string $group) => fn () => CompensationChangeResource::getEloquentQuery()->whereIn('status', CompensationChangeResource::REQUEST_GROUPS[$group])->count();
+        $tab = fn (string $group) => Tab::make(CompensationChangeResource::REQUEST_STATUSES[$group])->badge($count($group))
+            ->modifyQueryUsing(fn (Builder $query) => $query->whereIn($query->getModel()->qualifyColumn('status'), CompensationChangeResource::REQUEST_GROUPS[$group]));
+
+        return ['all' => Tab::make('All'), 'pending' => $tab('pending'), 'approved' => $tab('approved'), 'rejected' => $tab('rejected')];
     }
 
     public static function registerReports(): array

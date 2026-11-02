@@ -21,8 +21,8 @@ class ListEmployeeImports extends PeopleListRecords
         return [
             ImportActions::formatAction('employees'),
             Action::make('downloadTemplate')
-                ->label('Download template')
-                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->label('Download sample file')
+                ->icon(Heroicon::OutlinedTableCells)
                 ->color('gray')
                 ->visible(fn () => auth()->user()->can('create', EmployeeImport::class))
                 ->action(function () {
@@ -32,11 +32,12 @@ class ListEmployeeImports extends PeopleListRecords
                 }),
             CreateAction::make()
                 ->label('Upload CSV')
+                ->modalWidth('4xl')->modalSubmitActionLabel('Upload and continue')->createAnother(false)->modalContentFooter(null)
                 ->modalHeading('Upload an employee file')
-                ->modalDescription('CSV with a header row; start from Download template and replace the example row with your people. To update people already on file, Employees › Export gives them in this format. Nothing is written to employees until the file is mapped, validated, approved and run.')
+                ->modalDescription('CSV with a header row; start from Download sample file and replace the example row with your people. To update people already on file, Employees › Export gives them in this format. Nothing is written to employees until the file is mapped, validated, approved and run.')
                 ->schema([
-                    ImportActions::modeField(EmployeeImports::MODES),
                     ImportActions::fileField(),
+                    ImportActions::modeField(EmployeeImports::MODES),
                     ImportActions::formatSection('employees'),
                 ])
                 ->using(fn (array $data) => app(EmployeeImports::class)->register($data['file'], ImportActions::originalName($data), auth()->user(), mode: ImportMode::from($data['mode'])))

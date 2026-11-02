@@ -10,19 +10,25 @@ use App\Domain\Documents\Services\DocumentRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\People\Models\InsurancePolicy;
+use App\Domain\People\Models\InsuredMember;
 use App\Domain\People\Models\Person;
 use App\Domain\People\Models\PersonAddress;
 use App\Domain\People\Models\PersonEmergencyContact;
 use App\Domain\People\Models\PersonExperience;
 use App\Domain\People\Models\PersonFamilyMember;
+use App\Domain\People\Models\PersonIdentityDocument;
+use App\Domain\People\Models\PersonNomination;
 use App\Domain\People\Models\PersonQualification;
 use App\Domain\People\Models\PersonSkill;
 use App\Domain\People\Models\Qualification;
 use App\Domain\People\Models\QualificationSpecialisation;
 use App\Domain\People\Models\Skill;
+use App\Domain\People\Services\InsuranceRecords;
 use App\Domain\People\Services\ProfileChangeOperations;
 use App\Domain\People\Support\ProfileEditSections;
 use App\Domain\Skills\Support\SkillProficiencies;
+use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Support\Storage\StagedUpload;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -65,10 +71,15 @@ final class ProfileEditForms
         return match ($section) {
             'blood_group', 'contact', 'legal_identity' => collect(ProfileChangeOperations::PERSON_FIELDS[$section])->mapWithKeys(fn ($f) => [$f => self::state($person?->getAttribute($f))])->all(),
             'addresses' => ['current' => $address('current'), 'permanent' => $address('permanent'), 'same_as_current' => false],
-            'emergency_contacts' => ['entries' => $rows(PersonEmergencyContact::class, ['name', 'relation', 'phone', 'alternate_phone', 'email', 'priority'], 'priority')],
+            'emergency_contacts' => ['entries' => $rows(PersonEmergencyContact::class, ['name', 'relation', 'phone_country_code', 'phone', 'alternate_phone', 'email', 'priority'], 'priority')],
             'identifiers' => [],
-            'family' => ['marital_status' => $person?->marital_status, 'entries' => $rows(PersonFamilyMember::class, ['name', 'relation', 'date_of_birth', 'gender', 'phone', 'is_dependent', 'is_nominee', 'nominee_share'])],
-            'education' => ['entries' => $rows(PersonQualification::class, ['qualification_id', 'specialisation_id', 'qualification', 'specialisation', 'institution', 'board_or_university', 'year_of_completion', 'grade_or_score'])],
+            'family' => ['marital_status' => $person?->marital_status, 'entries' => $rows(PersonFamilyMember::class, ['name', 'relation', 'date_of_birth', 'gender', 'phone', 'occupation', 'is_dependent', 'is_nominee', 'nominee_share', 'in_school', 'in_hostel', 'remarks'])],
+            'education' => ['entries' => $rows(PersonQualification::class, ['qualification_id', 'specialisation_id', 'qualification', 'specialisation', 'institution', 'board_or_university', 'year_started', 'year_of_completion', 'grade_or_score', 'mode', 'is_highest'])],
+            // HROne parity MS-4: the documents on file without their numbers (a blank number keeps the one on file).
+            'identity_documents' => ['entries' => $rows(PersonIdentityDocument::class, ['kind', 'issued_on', 'expires_on', 'issuing_country', 'place_of_issue'], 'kind')],
+            'nominations' => ['benefit' => null, 'rows' => []],
+            // HROne parity MS-5: the first policy on file (or a new one), its member ids left blank (blank keeps them).
+            'health_insurance' => self::insuranceState($employee, InsuranceRecords::policiesOf($employee)->first()?->getKey()),
             'experience' => ['entries' => $rows(PersonExperience::class, ['employer', 'designation', 'from_date', 'to_date', 'location', 'responsibilities', 'reason_for_leaving'])],
             'skills' => ['entries' => $rows(PersonSkill::class, ['skill_id', 'proficiency', 'years_of_experience'])],
             'other_details' => ['values' => array_intersect_key(app(CustomFields::class)->valuesFor($employee), array_flip(ProfileChangeOperations::editableCustomFields()->pluck('key')->all()))],
@@ -101,7 +112,8 @@ final class ProfileEditForms
             'blood_group' => [Select::make('blood_group')->label('Blood group')->options(array_combine((array) config('peopleos.people.blood_groups'), (array) config('peopleos.people.blood_groups')))],
             'contact' => [
                 TextInput::make('personal_email')->label('Personal e-mail')->email()->maxLength(255),
-                TextInput::make('personal_phone')->label('Personal phone')->tel()->maxLength(32),
+                // HROne parity MS-4: the country code (the number is stored as +code… when one is chosen).
+                ...EmployeeForm::phoneFields('personal_phone', 'personal_phone_country_code', 'Personal phone'),
             ],
             'legal_identity' => [
                 TextInput::make('first_name')->label('First name')->required()->maxLength(255),
@@ -118,7 +130,7 @@ final class ProfileEditForms
             'emergency_contacts' => [self::repeater([
                 TextInput::make('name')->required()->maxLength(255),
                 TextInput::make('relation')->maxLength(64),
-                TextInput::make('phone')->tel()->required()->maxLength(32),
+                ...EmployeeForm::phoneFields('phone', 'phone_country_code', 'Phone', required: true),
                 TextInput::make('alternate_phone')->tel()->maxLength(32),
                 TextInput::make('email')->email()->maxLength(255),
                 TextInput::make('priority')->numeric()->minValue(1)->maxValue(9),
@@ -136,9 +148,13 @@ final class ProfileEditForms
                     DatePicker::make('date_of_birth')->native(false)->beforeOrEqual('today'),
                     Select::make('gender')->options((array) config('peopleos.people.genders')),
                     TextInput::make('phone')->tel()->maxLength(32),
+                    TextInput::make('occupation')->maxLength(120),
                     Toggle::make('is_dependent')->label('Dependent'),
                     Toggle::make('is_nominee')->label('Nominee'),
                     TextInput::make('nominee_share')->label('Nominee share (%)')->numeric()->minValue(0)->maxValue(100),
+                    Toggle::make('in_school')->label('In school'),
+                    Toggle::make('in_hostel')->label('In a hostel'),
+                    TextInput::make('remarks')->maxLength(255)->columnSpanFull(),
                 ], 'Add a family member'),
             ],
             'education' => [self::repeater([
@@ -150,8 +166,11 @@ final class ProfileEditForms
                 TextInput::make('specialisation')->label('Specialisation (if not in the list)')->maxLength(255)->hidden(fn (Get $get) => filled($get('specialisation_id'))),
                 TextInput::make('institution')->label('Institute')->maxLength(255),
                 TextInput::make('board_or_university')->label('Board / university')->maxLength(255),
+                TextInput::make('year_started')->label('Year of starting')->numeric()->minValue(1940)->maxValue((int) now()->format('Y') + 1),
                 TextInput::make('year_of_completion')->label('Year of passing')->numeric()->minValue(1950)->maxValue((int) now()->format('Y') + 6),
+                Select::make('mode')->label('Mode of study')->options(fn () => app(OptionLists::class)->options('qualification_modes')),
                 TextInput::make('grade_or_score')->label('Grade')->maxLength(32),
+                Toggle::make('is_highest')->label('This is my highest qualification'),
             ], 'Add education')],
             'experience' => [self::repeater([
                 TextInput::make('employer')->label('Company')->required()->maxLength(255),
@@ -170,8 +189,102 @@ final class ProfileEditForms
             ], 'Add a skill')],
             'other_details' => ProfileChangeOperations::editableCustomFields()->map(fn (CustomField $f) => CustomFieldsSchema::component($f, 'values.'.$f->key))->values()->all(),
             'bank' => self::bankFields($employee),
+            // HROne parity MS-4.
+            'identity_documents' => [self::repeater([
+                Select::make('kind')->label('Document')->required()->options(PersonIdentityDocument::kinds())->disabled(fn (Get $get) => filled($get('record_id')))->dehydrated(),
+                TextInput::make('number')->label('Number')->maxLength(32)->password()->revealable()
+                    ->required(fn (Get $get) => blank($get('record_id')))->helperText(fn (Get $get) => filled($get('record_id')) ? 'Leave blank to keep the number on file.' : null),
+                DatePicker::make('issued_on')->label('Issued on')->native(false)->beforeOrEqual('today'),
+                DatePicker::make('expires_on')->label('Expires on')->native(false),
+                TextInput::make('issuing_country')->label('Issuing country (2 letters)')->maxLength(2),
+                TextInput::make('place_of_issue')->label('Place of issue')->maxLength(128),
+            ], 'Add a passport or driving licence')],
+            'nominations' => self::nominationFields($employee),
+            'health_insurance' => self::insuranceFields($employee),
             default => [],
         };
+    }
+
+    /** @return array<string, mixed> HROne parity MS-5: a policy of the employee as form state (none: a new policy) */
+    private static function insuranceState(Employee $employee, ?int $policyId): array
+    {
+        $policy = $policyId === null ? null : InsuranceRecords::policiesOf($employee)->firstWhere('id', $policyId);
+        if ($policy === null) {
+            return ['policy_id' => null, 'insurer_name' => null, 'insurer_code' => null, 'policy_number' => null, 'sum_assured' => null, 'issued_on' => null, 'valid_until' => null, 'members' => []];
+        }
+
+        return ['policy_id' => $policy->id, 'insurer_name' => $policy->insurer_name, 'insurer_code' => $policy->insurer_code, 'policy_number' => $policy->policy_number,
+            'sum_assured' => $policy->sum_assured === null ? null : (float) $policy->sum_assured, 'issued_on' => self::state($policy->issued_on), 'valid_until' => self::state($policy->valid_until),
+            'members' => $policy->members->map(fn (InsuredMember $m) => ['record_id' => $m->id, 'family_member_id' => $m->family_member_id === null ? InsuredMember::SELF : (string) $m->family_member_id,
+                'member_id' => null, 'date_of_birth' => self::state($m->date_of_birth), 'gender' => $m->gender, 'is_parents_cover' => (bool) $m->is_parents_cover])->values()->all()];
+    }
+
+    /** @return array<int, Component> HROne parity MS-5: one policy (an own one, or a new one) and the people it covers */
+    private static function insuranceFields(Employee $employee): array
+    {
+        $policies = InsuranceRecords::policiesOf($employee);
+        $relations = app(OptionLists::class);
+        $insurable = [InsuredMember::SELF => 'Myself']
+            + PersonFamilyMember::query()->where('person_id', $employee->person_id)->orderBy('name')->get()
+                ->mapWithKeys(fn (PersonFamilyMember $m) => [(string) $m->id => $m->name.' ('.$relations->label('family_relations', $m->relation).')'])->all();
+
+        return [
+            Select::make('policy_id')->label('Policy')->placeholder('Add a new policy')->live()
+                ->options($policies->mapWithKeys(fn (InsurancePolicy $p) => [$p->id => $p->label()])->all())
+                ->afterStateUpdated(function (mixed $state, Set $set) use ($employee) {
+                    foreach (self::insuranceState($employee, filled($state) ? (int) $state : null) as $field => $value) {
+                        if ($field !== 'policy_id') {
+                            $set($field, $value);
+                        }
+                    }
+                }),
+            Section::make('Policy')->columns(2)->schema([
+                TextInput::make('insurer_name')->label('Insurance company')->required()->maxLength(255),
+                TextInput::make('insurer_code')->label('Company code')->maxLength(64),
+                TextInput::make('policy_number')->label('Policy number')->required()->maxLength(64),
+                TextInput::make('sum_assured')->label('Sum assured')->numeric()->minValue(0),
+                DatePicker::make('issued_on')->label('Issue date')->native(false)->beforeOrEqual('today'),
+                DatePicker::make('valid_until')->label('Valid until')->native(false),
+            ]),
+            Repeater::make('members')->label('Insured members')->columns(2)->addActionLabel('Add an insured person')->deletable(false)->reorderable(false)->defaultItems(0)
+                ->helperText('Yourself or your family members (add a family member under Family first). Change an entry or add one; to remove someone, ask HR.')
+                ->schema([
+                    Hidden::make('record_id'),
+                    Select::make('family_member_id')->label('Insured person')->required()->live()->options($insurable),
+                    TextInput::make('member_id')->label('Member id')->maxLength(64)->password()->revealable()
+                        ->helperText(fn (Get $get) => filled($get('record_id')) ? 'Leave blank to keep the member id on file.' : null),
+                    DatePicker::make('date_of_birth')->label('Date of birth')->native(false)->beforeOrEqual('today'),
+                    Select::make('gender')->options((array) config('peopleos.people.genders')),
+                    Toggle::make('is_parents_cover')->label('Under the parents’ cover')
+                        ->visible(fn (Get $get) => filled($get('family_member_id')) && $get('family_member_id') !== InsuredMember::SELF),
+                ]),
+        ];
+    }
+
+    /** @return array<int, Component> HROne parity MS-4: one benefit's nominees (the shares must total 100%). */
+    private static function nominationFields(Employee $employee): array
+    {
+        $members = PersonFamilyMember::query()->where('person_id', $employee->person_id)->orderBy('name')->get();
+        $rowsFor = fn (?string $benefit) => blank($benefit) ? [] : PersonNomination::query()->where('person_id', $employee->person_id)->where('benefit', $benefit)->orderBy('id')->get()
+            ->map(fn (PersonNomination $n) => ['family_member_id' => $n->family_member_id, 'share' => (float) $n->share, 'address' => $n->address, 'remarks' => $n->remarks,
+                'guardian_name' => $n->guardian_name, 'guardian_relation' => $n->guardian_relation])->values()->all();
+        $minor = fn (Get $get) => filled($get('family_member_id')) && (bool) $members->firstWhere('id', (int) $get('family_member_id'))?->isMinor();
+
+        return [
+            Select::make('benefit')->label('Benefit')->required()->live()->options(fn () => app(OptionLists::class)->options('nomination_benefits'))
+                ->afterStateUpdated(fn (?string $state, Set $set) => $set('rows', $rowsFor($state))),
+            Repeater::make('rows')->label('Nominees')->columns(2)->addActionLabel('Add a nominee')->defaultItems(0)
+                ->helperText('The shares must total 100%. Nominees are chosen from your family members; leave no rows to remove the nominations for this benefit.')
+                ->schema([
+                    Select::make('family_member_id')->label('Family member')->required()->live()
+                        ->options($members->mapWithKeys(fn (PersonFamilyMember $m) => [$m->id => $m->name])->all()),
+                    TextInput::make('share')->label('Share (%)')->numeric()->required()->minValue(0.01)->maxValue(100),
+                    TextInput::make('guardian_name')->label('Guardian’s name')->maxLength(255)->visible($minor)->required($minor),
+                    TextInput::make('guardian_relation')->label('Guardian’s relation')->maxLength(64)->visible($minor)->required($minor),
+                    TextInput::make('address')->label('Nominee’s address')->maxLength(500)->columnSpanFull(),
+                    TextInput::make('remarks')->maxLength(255)->columnSpanFull(),
+                ]),
+        ];
     }
 
     /** @return array<int, Component> */

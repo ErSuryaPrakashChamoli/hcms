@@ -112,6 +112,53 @@ final class CompOffCredits
         return LeaveType::query()->where('category', 'comp_off')->where('status', 'active')->first() ?? throw new RuntimeException('No compensatory-off leave type is configured.');
     }
 
+    /**
+     * HROne parity RQ-4 (matrix 20 §20.1.18 Leave #9, "Comp Off generated from"): the worked days behind the comp-off the
+     * employee can still take, oldest first — the order they are used in (expiry treats newer credits as used last, so the
+     * balance available now belongs to the newest credits). Each credit is the TO-4 `comp_off_credit` ledger entry dated
+     * the day worked; one from a claim carries the claim's validity, and a credit HR posted by hand has no worked day of
+     * its own (`claim_id` null, dated the day it was posted). Credits whose claim is no longer in effect, has lapsed, or
+     * whose validity ended before $on are left out. Read only.
+     *
+     * @return list<array{worked_on: Carbon, days: float, left: float, expires_on: ?Carbon, claim_id: ?int}>
+     */
+    public function sources(Employee $employee, LeaveType $type, Carbon|string|null $on = null): array
+    {
+        $on = Carbon::parse($on ?? now())->startOfDay();
+        $period = $this->years->periodFor($on);
+        $entries = LeaveLedgerEntry::query()->where('employee_id', $employee->getKey())->where('leave_type_id', $type->getKey())
+            ->where('period_year', $period)->where('type', 'comp_off_credit')->where('days', '>', 0)
+            ->orderBy('entry_date')->orderBy('id')->get(['id', 'entry_date', 'days', 'reference_type', 'reference_id']);
+        if ($entries->isEmpty()) {
+            return [];
+        }
+        $claimClass = (new TimeOfficeRequest)->getMorphClass();
+        $claims = TimeOfficeRequest::query()->where('employee_id', $employee->getKey())->where('type', 'comp_off')
+            ->whereIn('id', $entries->where('reference_type', $claimClass)->pluck('reference_id')->all())
+            ->get(['id', 'status', 'from_date', 'expires_on', 'effects'])->keyBy('id');
+
+        $credits = [];
+        foreach ($entries as $entry) {
+            $fromClaim = $entry->reference_type === $claimClass;
+            $claim = $fromClaim ? $claims->get($entry->reference_id) : null;
+            if ($fromClaim && ($claim === null || ! in_array($claim->status, TimeOfficeRequest::EFFECTIVE, true)
+                || isset($claim->effects['expired_on']) || ($claim->expires_on !== null && $claim->expires_on->lt($on)))) {
+                continue; // cancelled, lapsed or out of validity
+            }
+            $credits[] = ['worked_on' => $entry->entry_date->copy(), 'days' => round((float) $entry->days, 2), 'left' => 0.0,
+                'expires_on' => $claim?->expires_on?->copy(), 'claim_id' => $claim !== null ? (int) $claim->getKey() : null];
+        }
+
+        // The balance available now (after pending requests) sits with the newest credits.
+        $remaining = max(0.0, $this->balances->balance($employee, $type, $period)->available());
+        for ($i = count($credits) - 1; $i >= 0 && $remaining > 0.0001; $i--) {
+            $credits[$i]['left'] = round(min($credits[$i]['days'], $remaining), 2);
+            $remaining -= $credits[$i]['left'];
+        }
+
+        return array_values(array_filter($credits, fn (array $c) => $c['left'] > 0));
+    }
+
     /** For callers that only hold an employee: is any comp-off credit of theirs live? */
     public function liveCredits(Employee $employee): float
     {

@@ -120,8 +120,12 @@ final class EmployeeFilters
             });
     }
 
-    /** @param  list<string>|null  $dimensions  columns of ORGANISATION (all when null) */
-    public static function organisation(?string $relation = null, ?array $dimensions = null, string $name = 'organisation'): Filter
+    /**
+     * @param  list<string>|null  $dimensions  columns of ORGANISATION (all when null)
+     * @param  string  $positionRelation  HROne parity WO-4: the employee's position relation filtered on (upcoming joiners have no
+     *                                    current position before their joining date: their register filters on `positions`)
+     */
+    public static function organisation(?string $relation = null, ?array $dimensions = null, string $name = 'organisation', string $positionRelation = 'currentPosition'): Filter
     {
         $dimensions = array_intersect_key(self::ORGANISATION, array_flip($dimensions ?? array_keys(self::ORGANISATION)));
 
@@ -130,7 +134,7 @@ final class EmployeeFilters
             ->columns(2)
             ->schema(array_values(array_map(fn (string $column) => Select::make($column)->label($dimensions[$column][0])->multiple()->searchable()->preload()
                 ->options(fn () => $dimensions[$column][1]::query()->orderBy('name')->limit(1000)->pluck('name', 'id')->all()), array_keys($dimensions))))
-            ->query(function (Builder $query, array $data) use ($relation, $dimensions): Builder {
+            ->query(function (Builder $query, array $data) use ($relation, $dimensions, $positionRelation): Builder {
                 $chosen = [];
                 foreach (array_keys($dimensions) as $column) {
                     $ids = array_values(array_filter(array_map('intval', (array) ($data[$column] ?? []))));
@@ -142,7 +146,7 @@ final class EmployeeFilters
                     return $query;
                 }
 
-                return self::onEmployee($query, $relation, fn (Builder $e) => $e->whereHas('currentPosition', function (Builder $p) use ($chosen) {
+                return self::onEmployee($query, $relation, fn (Builder $e) => $e->whereHas($positionRelation, function (Builder $p) use ($chosen) {
                     foreach ($chosen as $column => $ids) {
                         $p->whereIn($p->getModel()->qualifyColumn($column), $ids);
                     }

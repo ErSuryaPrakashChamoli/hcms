@@ -32,6 +32,18 @@ final class PersonMatcher
         return AccessScope::withoutScoping(fn () => $this->match($person, $employee))->map(fn (array $hit) => $this->disclose($hit))->values();
     }
 
+    /**
+     * HROne parity WO-3: the same matches across the whole tenant WITHOUT the minimal disclosure, for server-side rules only
+     * (the hire wizard's returning-employee check needs the earlier employee's exit to know whether a confirmation is
+     * required). Callers decide themselves what the actor may see; never show these rows as they are.
+     *
+     * @return Collection<int, array{person_id: int, employee_id: ?int, employee_code: ?string, name: string, matched_on: list<string>, definite: bool}>
+     */
+    public function undisclosedCandidates(array $person, array $employee = []): Collection
+    {
+        return AccessScope::withoutScoping(fn () => $this->match($person, $employee))->values();
+    }
+
     /** @return Collection<int, array<string, mixed>> */
     private function match(array $person, array $employee): Collection
     {

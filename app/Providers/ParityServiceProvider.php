@@ -8,6 +8,11 @@ use App\Domain\Assets\Models\AssetRequest;
 use App\Domain\Assets\Models\AssetSubtype;
 use App\Domain\Assets\Policies\AssetPolicy;
 use App\Domain\Assets\Policies\AssetRequestPolicy;
+use App\Domain\Attendance\Contracts\AttendanceCycle;
+use App\Domain\Attendance\Contracts\AttendancePeriodState;
+use App\Domain\Attendance\Contracts\LeaveOnDay;
+use App\Domain\Attendance\Contracts\PaidDayAdjustmentReader;
+use App\Domain\Attendance\Contracts\PendingLeaveReader;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Attendance\Listeners\CompOffGenerator;
 use App\Domain\Attendance\Listeners\RegularisationWorkflowBridge;
@@ -23,38 +28,66 @@ use App\Domain\Attendance\Models\ShiftOverride;
 use App\Domain\Attendance\Models\TimeOfficeRequest;
 use App\Domain\Attendance\Policies\AttendanceConfigPolicy;
 use App\Domain\Attendance\Policies\AttendanceRecordPolicy;
+use App\Domain\Attendance\Services\AttendanceMonthCloses;
 use App\Domain\Attendance\Services\AttendanceProcessor;
 use App\Domain\Attendance\Services\LatePenalties;
+use App\Domain\Attendance\Services\PaidDayAdjustments;
 use App\Domain\Attendance\Support\RequestRules;
+use App\Domain\Claims\Models\ReimbursementBill;
 use App\Domain\Claims\Models\ReimbursementClaim;
 use App\Domain\Claims\Models\ReimbursementLedgerEntry;
 use App\Domain\Claims\Services\ReimbursementClaims;
 use App\Domain\Communication\Events\CommunicationEvent;
 use App\Domain\Compliance\Listeners\TaxDeclarationWorkflowBridge;
 use App\Domain\Compliance\Models\EmployeePfOption;
+use App\Domain\Compliance\Models\StatutoryChallan;
+use App\Domain\Compliance\Models\StatutoryChallanAllocation;
 use App\Domain\Compliance\Models\StatutoryOverride;
 use App\Domain\Compliance\Models\TaxIncomeEntry;
 use App\Domain\Compliance\Policies\StatutoryOverridePolicy;
+use App\Domain\Compliance\Policies\StatutoryReturnPolicy;
 use App\Domain\Configuration\Models\CodeSeries;
 use App\Domain\Configuration\Models\OptionList;
 use App\Domain\Configuration\Services\PolicyResolver;
+use App\Domain\Documents\Models\DocumentShareBatch;
+use App\Domain\Documents\Models\DocumentShareItem;
+use App\Domain\Documents\Policies\DocumentSharePolicy;
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Listeners\ImportWorkflowBridge;
 use App\Domain\Employment\Models\BankAccountRule;
+use App\Domain\Employment\Models\EmployeeContract;
 use App\Domain\Employment\Models\TransferRequest;
 use App\Domain\Employment\Models\WorkforceReason;
 use App\Domain\Employment\Policies\ClearanceChecklistPolicy;
+use App\Domain\Employment\Policies\EmployeeContractPolicy;
 use App\Domain\Employment\Policies\TransferRequestPolicy;
 use App\Domain\Employment\Policies\WorkforceReasonPolicy;
+use App\Domain\Engagement\Contracts\PledgePayroll;
+use App\Domain\Engagement\Events\EngagementEvent;
+use App\Domain\Engagement\Models\CompanyEvent;
+use App\Domain\Engagement\Models\CompanyEventAttendance;
+use App\Domain\Engagement\Models\CompanyEventInvitation;
+use App\Domain\Engagement\Models\CompanyEventSession;
+use App\Domain\Engagement\Models\FundraiserCampaign;
+use App\Domain\Engagement\Models\FundraiserPledge;
 use App\Domain\Engagement\Models\MissionStatement;
 use App\Domain\Engagement\Models\MoodReason;
+use App\Domain\Engagement\Policies\CompanyEventPolicy;
+use App\Domain\Engagement\Policies\CompanyEventRecordPolicy;
+use App\Domain\Engagement\Policies\FundraiserPolicy;
 use App\Domain\Engagement\Policies\MissionStatementPolicy;
 use App\Domain\Engagement\Policies\MoodReasonPolicy;
+use App\Domain\Engagement\Services\Fundraisers;
 use App\Domain\Exit\Events\ExitEvent;
+use App\Domain\Exit\Listeners\ExitWithdrawalWorkflowBridge;
 use App\Domain\Exit\Listeners\ResignationWorkflowBridge;
 use App\Domain\Exit\Models\ClearanceChecklist;
+use App\Domain\Exit\Models\ExitWithdrawalRequest;
+use App\Domain\Exit\Policies\ExitCasePolicy;
+use App\Domain\Exit\Settlement\NoticeRecoverySettlementSource;
 use App\Domain\Expense\Contracts\ExpenseUsage;
 use App\Domain\Expense\Contracts\PayrollCommitments;
+use App\Domain\Expense\Contracts\PayrollMonths;
 use App\Domain\Expense\Listeners\ExpenseWorkflowBridge;
 use App\Domain\Expense\Models\ExpenseAdvance;
 use App\Domain\Expense\Models\ExpenseAdvanceEntry;
@@ -75,17 +108,45 @@ use App\Domain\Expense\Policies\ExpensePolicy;
 use App\Domain\Expense\Policies\TravelRequestPolicy;
 use App\Domain\Expense\Settlement\ExpenseSettlementSource;
 use App\Domain\Expense\Support\ReceiptUsage;
+use App\Domain\Experience\BulkOperations\AddToCycleOperation;
+use App\Domain\Experience\BulkOperations\AdjustPaidDaysOperation;
+use App\Domain\Experience\BulkOperations\AdvanceRecoveryPayrollOperation;
+use App\Domain\Experience\BulkOperations\AdvanceRecoveryRefundOperation;
+use App\Domain\Experience\BulkOperations\ApplyLeaveOperation;
+use App\Domain\Experience\BulkOperations\AssignSalaryOperation;
+use App\Domain\Experience\BulkOperations\AssignShiftOperation;
 use App\Domain\Experience\BulkOperations\CancelClaimOperation;
+use App\Domain\Experience\BulkOperations\CancelClearanceOperation;
 use App\Domain\Experience\BulkOperations\CancelLeaveOperation;
+use App\Domain\Experience\BulkOperations\CarryForwardLeaveOperation;
+use App\Domain\Experience\BulkOperations\ChangeAttendanceStatusOperation;
+use App\Domain\Experience\BulkOperations\ChangeHolidayOperation;
+use App\Domain\Experience\BulkOperations\ChangeManagerOperation;
 use App\Domain\Experience\BulkOperations\CompleteExitOperation;
 use App\Domain\Experience\BulkOperations\ConfirmReviewOperation;
+use App\Domain\Experience\BulkOperations\EmployeeCompleteExitOperation;
+use App\Domain\Experience\BulkOperations\EmployeeStartClearanceOperation;
+use App\Domain\Experience\BulkOperations\GenerateLettersOperation;
+use App\Domain\Experience\BulkOperations\HoldArrearOperation;
 use App\Domain\Experience\BulkOperations\InitiateBgvOperation;
 use App\Domain\Experience\BulkOperations\InitiateExitOperation;
+use App\Domain\Experience\BulkOperations\InviteUsersOperation;
+use App\Domain\Experience\BulkOperations\MarkPresentOperation;
+use App\Domain\Experience\BulkOperations\NormaliseRatingsOperation;
+use App\Domain\Experience\BulkOperations\NormaliseReviewRatingsOperation;
+use App\Domain\Experience\BulkOperations\PublishLettersOperation;
+use App\Domain\Experience\BulkOperations\ReleaseArrearOperation;
 use App\Domain\Experience\BulkOperations\RemindReviewersOperation;
+use App\Domain\Experience\BulkOperations\RemoveShiftOperation;
 use App\Domain\Experience\BulkOperations\ReopenReviewsOperation;
 use App\Domain\Experience\BulkOperations\SendEmailOperation;
+use App\Domain\Experience\BulkOperations\SendResetLinksOperation;
 use App\Domain\Experience\BulkOperations\StartClearanceOperation;
 use App\Domain\Experience\BulkOperations\StartOnboardingOperation;
+use App\Domain\Experience\BulkOperations\StartStageClearanceOperation;
+use App\Domain\Experience\BulkOperations\UserResendInvitationsOperation;
+use App\Domain\Experience\BulkOperations\UserResetLinksOperation;
+use App\Domain\Experience\BulkOperations\WithdrawFromCycleOperation;
 use App\Domain\Experience\Models\BulkRun;
 use App\Domain\Experience\Models\BulkRunItem;
 use App\Domain\Experience\MySpaceItems\PageItem;
@@ -112,12 +173,14 @@ use App\Domain\Experience\RequestTypes\ProfileChangeRequestType;
 use App\Domain\Experience\RequestTypes\RegularisationRequestType;
 use App\Domain\Experience\RequestTypes\ReimbursementClaimRequestType;
 use App\Domain\Experience\RequestTypes\ResignationRequestType;
+use App\Domain\Experience\RequestTypes\ResignationWithdrawalRequestType;
 use App\Domain\Experience\RequestTypes\RestrictedHolidayRequestType;
 use App\Domain\Experience\RequestTypes\ShiftChangeRequestType;
 use App\Domain\Experience\RequestTypes\ShortLeaveRequestType;
 use App\Domain\Experience\RequestTypes\TravelRequestType;
 use App\Domain\Experience\RequestTypes\VariablePayRequestType;
 use App\Domain\Experience\RequestTypes\WeekOffChangeRequestType;
+use App\Domain\Experience\Services\ActionCatalogue;
 use App\Domain\Experience\Services\BulkOperations;
 use App\Domain\Experience\Services\MySpace;
 use App\Domain\Experience\Services\RequestApprovers;
@@ -125,8 +188,10 @@ use App\Domain\Experience\Services\RequestPreview;
 use App\Domain\Experience\Services\RequestRegistry;
 use App\Domain\Experience\Services\UnifiedInbox;
 use App\Domain\Experience\Sources\AssetRequestApprovalSource;
+use App\Domain\Experience\Sources\ExitApprovalSource;
 use App\Domain\Experience\Sources\ExpenseApprovalSource;
 use App\Domain\Experience\Sources\Feedback360ApprovalSource;
+use App\Domain\Experience\Sources\LeaveEncashmentBatchApprovalSource;
 use App\Domain\Experience\Sources\PayrollRequestsApprovalSource;
 use App\Domain\Experience\Sources\PerformanceApprovalSource;
 use App\Domain\Experience\Sources\ProfileChangeApprovalSource;
@@ -143,13 +208,25 @@ use App\Domain\Identity\Listeners\QueueRoleMembershipSync;
 use App\Domain\Identity\Models\AccessScopeGroup;
 use App\Domain\Identity\Policies\AccessScopeGroupPolicy;
 use App\Domain\Identity\Services\AccessScopes;
+use App\Domain\Integration\Models\JvCode;
+use App\Domain\Integration\Policies\JvCodePolicy;
 use App\Domain\Learning\Events\LearningEvent;
+use App\Domain\Leave\Contracts\EncashmentsBeingPaid;
 use App\Domain\Leave\Listeners\CompOffClaimBridge;
 use App\Domain\Leave\Listeners\LeaveExtrasWorkflowBridge;
 use App\Domain\Leave\Listeners\ShortLeaveBalanceBridge;
 use App\Domain\Leave\Models\LeaveDonation;
+use App\Domain\Leave\Models\LeaveEncashmentBatch;
+use App\Domain\Leave\Policies\LeaveEncashmentBatchPolicy;
 use App\Domain\Leave\Policies\LeaveRequestPolicy;
+use App\Domain\Leave\Services\AttendanceLeaveOnDay;
+use App\Domain\Leave\Services\AttendancePendingLeaveReader;
+use App\Domain\Letters\Contracts\LetterSignatureProvider;
 use App\Domain\Letters\Listeners\LetterWorkflowBridge;
+use App\Domain\Letters\Models\LetterSchedule;
+use App\Domain\Letters\Models\LetterScheduleItem;
+use App\Domain\Letters\Policies\LetterSchedulePolicy;
+use App\Domain\Letters\Support\NoSignatureProvider;
 use App\Domain\Lifecycle\Events\EmployeeLifecycleChanged;
 use App\Domain\Lifecycle\Events\EmployeeReminderDue;
 use App\Domain\Lifecycle\Models\ConfirmationReview;
@@ -159,20 +236,34 @@ use App\Domain\Loans\Models\LoanGuarantor;
 use App\Domain\Loans\Models\LoanInstallment;
 use App\Domain\Loans\Policies\LoanPolicy;
 use App\Domain\Loans\Settlement\LoanSettlementSource;
+use App\Domain\Organisation\Models\BusinessRegion;
+use App\Domain\Organisation\Models\DimensionValue;
+use App\Domain\Organisation\Models\GeoPlace;
 use App\Domain\Organisation\Models\OrganisationContact;
+use App\Domain\Organisation\Models\Region;
 use App\Domain\Organisation\Policies\OrganisationContactPolicy;
+use App\Domain\Organisation\Policies\OrganisationStructurePolicy;
 use App\Domain\Organisation\Policies\PeopleSetupPolicy;
+use App\Domain\Partners\Models\BusinessPartner;
+use App\Domain\Partners\Models\Vendor;
+use App\Domain\Partners\Policies\PartnerPolicy;
 use App\Domain\Payroll\Contracts\PaidPayReader;
 use App\Domain\Payroll\Contracts\PayrollSummaryReader;
+use App\Domain\Payroll\Contracts\SalaryHoldReader;
 use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Payroll\Inputs\AttendanceArrearInput;
+use App\Domain\Payroll\Inputs\BonusInput;
 use App\Domain\Payroll\Inputs\ExpenseAdvancePayoutInput;
 use App\Domain\Payroll\Inputs\ExpenseAdvanceRecoveryInput;
+use App\Domain\Payroll\Inputs\ExpensePayrollMonths;
 use App\Domain\Payroll\Inputs\ExpenseReportInput;
+use App\Domain\Payroll\Inputs\FundraiserDeductionInput;
+use App\Domain\Payroll\Inputs\FundraiserPayrollMonths;
 use App\Domain\Payroll\Inputs\LeaveEncashmentInput;
 use App\Domain\Payroll\Inputs\LoanDisbursementInput;
 use App\Domain\Payroll\Inputs\LoanRecoveryInput;
 use App\Domain\Payroll\Inputs\PayrollInputs;
+use App\Domain\Payroll\Inputs\PendingEncashmentPayments;
 use App\Domain\Payroll\Inputs\PendingPayrollInputs;
 use App\Domain\Payroll\Inputs\ReimbursementClaimInput;
 use App\Domain\Payroll\Inputs\RewardPointsInput;
@@ -188,12 +279,17 @@ use App\Domain\Payroll\Models\VariablePayPlan;
 use App\Domain\Payroll\Models\VariablePayRequest;
 use App\Domain\Payroll\Policies\PayrollSetupPolicy;
 use App\Domain\Payroll\Policies\VariablePayPlanPolicy;
+use App\Domain\Payroll\Services\AttendanceMonthCalendar;
+use App\Domain\Payroll\Services\OpenSalaryHolds;
 use App\Domain\Payroll\Services\PaidPay;
 use App\Domain\Payroll\Services\PayrollSummary;
 use App\Domain\People\Listeners\ProfileChangeWorkflowBridge;
+use App\Domain\People\Models\InsurancePolicy;
+use App\Domain\People\Models\InsuredMember;
 use App\Domain\People\Models\ProfileChangeRequest;
 use App\Domain\People\Models\Qualification;
 use App\Domain\People\Models\QualificationSpecialisation;
+use App\Domain\People\Policies\InsurancePolicyPolicy;
 use App\Domain\People\Policies\ProfileChangeRequestPolicy;
 use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\Performance\Listeners\PerformanceWorkflowBridge;
@@ -202,6 +298,7 @@ use App\Domain\Performance\Models\FeedbackNomination;
 use App\Domain\Performance\Models\FeedbackParticipant;
 use App\Domain\Performance\Models\FeedbackResponse;
 use App\Domain\Performance\Models\FeedbackRound;
+use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\GoalPlan;
 use App\Domain\Performance\Models\GoalTemplate;
 use App\Domain\Performance\Models\GoalTemplateItem;
@@ -217,11 +314,18 @@ use App\Domain\Performance\Models\PerformanceUnit;
 use App\Domain\Performance\Policies\AppraisalPolicy;
 use App\Domain\Performance\Policies\EmployeeOwnedPolicy;
 use App\Domain\Performance\Policies\Feedback360Policy;
+use App\Domain\Performance\Policies\GoalPolicy;
 use App\Domain\Performance\Policies\InitiativePolicy;
 use App\Domain\Performance\Policies\OneOnOnePolicy;
 use App\Domain\Performance\Policies\PerformanceConfigPolicy;
 use App\Domain\Performance\Services\PerformancePolicyRules;
 use App\Domain\Platform\Services\SettingsRepository;
+use App\Domain\ProductFeedback\Models\ProductIdea;
+use App\Domain\ProductFeedback\Policies\ProductIdeaPolicy;
+use App\Domain\Projects\Models\Customer;
+use App\Domain\Projects\Models\Project;
+use App\Domain\Projects\Models\ProjectMember;
+use App\Domain\Projects\Policies\ProjectPolicy;
 use App\Domain\Recognition\Events\RecognitionEvent;
 use App\Domain\Recognition\Models\Badge;
 use App\Domain\Recognition\Models\Recognition;
@@ -261,6 +365,15 @@ class ParityServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(PaidPayReader::class, PaidPay::class);
+        // HROne parity TX-3: attendance months come from the pay cycle (Payroll answers Attendance's contract); payroll
+        // reads whether a month is closed through AttendancePeriodState; Leave answers which leave still waits on its days.
+        $this->app->bind(AttendanceCycle::class, AttendanceMonthCalendar::class);
+        $this->app->bind(AttendancePeriodState::class, AttendanceMonthCloses::class);
+        $this->app->bind(PendingLeaveReader::class, AttendancePendingLeaveReader::class);
+        // HROne parity TX-4: payroll reads HR's attendance paid-day adjustments (quantities) through this contract.
+        $this->app->bind(PaidDayAdjustmentReader::class, PaidDayAdjustments::class);
+        // HROne parity TX-7: the day drawer reads a day's leave and cancels it through Leave's own cancellation.
+        $this->app->bind(LeaveOnDay::class, AttendanceLeaveOnDay::class);
         // HROne parity CA-10: dashboard payroll figures (finalized payroll only, within the reader's access) for shared views.
         $this->app->bind(PayrollSummaryReader::class, PayrollSummary::class);
         $this->app->tag([TimeOfficeApprovalSource::class, PayrollRequestsApprovalSource::class, TransferApprovalSource::class, ExpenseApprovalSource::class,
@@ -271,19 +384,39 @@ class ParityServiceProvider extends ServiceProvider
             // HROne setup parity HP-8h: 360 feedback nominations waiting for approval.
             Feedback360ApprovalSource::class,
             // HROne parity MS-3: self-service profile changes waiting for approval.
-            ProfileChangeApprovalSource::class], 'peopleos.approval_sources');
+            ProfileChangeApprovalSource::class,
+            // HROne parity WO-11: resignation withdrawals and acceptances (only where the organisation switched them on).
+            ExitApprovalSource::class,
+            // HROne parity PO-8: HR leave encashment batches waiting for a second person's approval.
+            LeaveEncashmentBatchApprovalSource::class], 'peopleos.approval_sources');
+        // HROne parity PO-8: a batch unprocess leaves alone the encashments a payroll run not yet finalized carries.
+        $this->app->bind(EncashmentsBeingPaid::class, PendingEncashmentPayments::class);
         $this->app->tag([LeaveEncashmentInput::class, AttendanceArrearInput::class, LoanDisbursementInput::class, LoanRecoveryInput::class, VariablePayInput::class, ReimbursementClaimInput::class, ShiftAllowanceInput::class,
             // HROne setup parity EX-E: expense reports and advances paid, and advances recovered, through payroll.
             ExpenseReportInput::class, ExpenseAdvancePayoutInput::class, ExpenseAdvanceRecoveryInput::class,
             // HROne setup parity 08.6: transfer allowances granted on approved transfer requests, paid once.
             TransferAllowanceInput::class,
             // HROne setup parity HP-9d: reward points redeemed through payroll (none unless the organisation allows it).
-            RewardPointsInput::class], 'peopleos.payroll_inputs');
-        $this->app->tag([LoanSettlementSource::class, ExpenseSettlementSource::class], 'peopleos.settlement_sources');
+            RewardPointsInput::class,
+            // HROne parity PO-22: approved statutory bonus and ex gratia, paid once with the chosen payroll month.
+            BonusInput::class,
+            // HROne parity GO-18 (D-GO3): fundraiser pledges deducted once from salary (none unless the organisation allows it).
+            FundraiserDeductionInput::class], 'peopleos.payroll_inputs');
+        $this->app->tag([LoanSettlementSource::class, ExpenseSettlementSource::class,
+            // HROne parity WO-11: notice shortfall on the exit policy's own rule (nothing unless the policy sets one).
+            NoticeRecoverySettlementSource::class], 'peopleos.settlement_sources');
+        // HROne parity WO-11: salary still on hold, for the exit case's relieving review (read only).
+        $this->app->bind(SalaryHoldReader::class, OpenSalaryHolds::class);
         // HROne setup parity EX-B/EX-C: what employees have claimed, for expense limits — their expense receipts.
         $this->app->bind(ExpenseUsage::class, ReceiptUsage::class);
         // EX-E: which expense records a payroll run not yet finalized already pays or recovers (read from payroll entries).
         $this->app->bind(PayrollCommitments::class, PendingPayrollInputs::class);
+        // HROne parity XO-4 (D-XO1): the payroll months a report may be paid in and the paying accounts (read from payroll).
+        $this->app->bind(PayrollMonths::class, ExpensePayrollMonths::class);
+        // HROne parity GO-18: the payroll months a fundraiser pledge may be deducted in, and the pledges a run being prepared
+        // already deducts (read from payroll); the fundraisers' per-request answers (audiences, visible campaigns).
+        $this->app->bind(PledgePayroll::class, FundraiserPayrollMonths::class);
+        $this->app->scoped(Fundraisers::class);
         // HROne setup parity P3: send-backs and discussions keep their per-request memo (open returns, threads).
         $this->app->scoped(RequestReturns::class);
         $this->app->scoped(TaskComments::class);
@@ -305,13 +438,62 @@ class ParityServiceProvider extends ServiceProvider
             // HROne parity GO-1: performance review requests (remind reviewers; reopen reviews while PER-1 / D-GO1 is switched on).
             RemindReviewersOperation::class,
             ReopenReviewsOperation::class,
+            // HROne parity GO-2: add employees to a running performance cycle; withdraw appraisals from their cycle.
+            AddToCycleOperation::class,
+            WithdrawFromCycleOperation::class,
+            // HROne parity GO-3: large normalise grids of the calibration board (performance ratings; periodic review ratings).
+            NormaliseRatingsOperation::class,
+            NormaliseReviewRatingsOperation::class,
             // HROne parity RQ-1: HR bulk cancel where the module already cancels (leave, reimbursement claims).
             CancelLeaveOperation::class,
             CancelClaimOperation::class,
+            // HROne parity TX-3: Run attendance — mark absent days present, apply leave on them (TIM-5, off by default),
+            // hold / release attendance arrears.
+            MarkPresentOperation::class,
+            ApplyLeaveOperation::class,
+            HoldArrearOperation::class,
+            ReleaseArrearOperation::class,
+            // HROne parity TX-4: Paid days — adjust the paid days of the selected employees' month (TIM-2, off by default).
+            AdjustPaidDaysOperation::class,
+            // HROne parity TX-5: Roster board — assign a shift (weekly-off weekdays, automatic shift correction) or remove the
+            // rostered days of a range for large selections.
+            AssignShiftOperation::class,
+            RemoveShiftOperation::class,
+            // HROne parity TX-6: Change attendance status — a date range, the whole day or each half, for large selections.
+            ChangeAttendanceStatusOperation::class,
+            // HROne parity TX-12: Change holiday — assign, remove or replace a holiday for large selections.
+            ChangeHolidayOperation::class,
+            // HROne parity TX-8a: Carry forward leaves — the year close of a leave year for large selections.
+            CarryForwardLeaveOperation::class,
+            // HROne parity WO-13: bulk letter generation (employees) and "Generate & publish" (letters not yet issued).
+            GenerateLettersOperation::class,
+            PublishLettersOperation::class,
+            // HROne parity WO-11: start / cancel clearance stages (Clearances register; D-WO3: cancel, never delete) and start
+            // clearance / complete exit from the Employees register.
+            StartStageClearanceOperation::class,
+            CancelClearanceOperation::class,
+            EmployeeStartClearanceOperation::class,
+            EmployeeCompleteExitOperation::class,
+            // HROne parity WO-16: bulk change manager (with the moved people's open manager approvals, when asked), invite to
+            // sign in / password reset links from the Employees register, new invitations / reset links from the Users list.
+            ChangeManagerOperation::class,
+            InviteUsersOperation::class,
+            SendResetLinksOperation::class,
+            UserResendInvitationsOperation::class,
+            UserResetLinksOperation::class,
+            // HROne parity PO-2: "Assign salary" for the employees selected on the salary structure register (proposals only).
+            AssignSalaryOperation::class,
+            // HROne parity XO-6: Advance recovery desk — recover through payroll / record recovery outside payroll.
+            AdvanceRecoveryPayrollOperation::class,
+            AdvanceRecoveryRefundOperation::class,
         ], 'peopleos.bulk_operations');
+        // HROne parity WO-13: the e-sign seam — no provider until SV-17, so e-signing is never offered.
+        $this->app->bind(LetterSignatureProvider::class, NoSignatureProvider::class);
         // HROne parity RQ-1: the request registry (one adapter per module request; each reads and links, never writes).
         // Request-scoped: its answers ("what can this person raise now") are memoised for one request only.
         $this->app->scoped(RequestRegistry::class);
+        // HROne parity AC-1: the Actions panel's catalogue (request-scoped like the registry it reads for on-behalf forms).
+        $this->app->scoped(ActionCatalogue::class);
         $this->app->tag([
             LeaveRequestType::class, LeaveEncashmentRequestType::class,
             RegularisationRequestType::class, OnDutyRequestType::class, ShortLeaveRequestType::class, RestrictedHolidayRequestType::class,
@@ -326,6 +508,8 @@ class ParityServiceProvider extends ServiceProvider
             FormSubmissionRequestType::class,
             // HROne parity MS-3: self-service profile changes (My profile).
             ProfileChangeRequestType::class,
+            // HROne parity WO-11: a request to withdraw one's resignation (only while withdrawals need approval).
+            ResignationWithdrawalRequestType::class,
         ], 'peopleos.request_types');
         // HROne parity RQ-2: whom a raised request waits with and what the chrome previews are memoised for one request only.
         $this->app->scoped(RequestApprovers::class);
@@ -360,6 +544,8 @@ class ParityServiceProvider extends ServiceProvider
         }
         Gate::policy(GeoFence::class, AttendanceConfigPolicy::class);
         Gate::policy(LeaveDonation::class, LeaveRequestPolicy::class);
+        // HROne parity PO-8: HR leave encashment batches.
+        Gate::policy(LeaveEncashmentBatch::class, LeaveEncashmentBatchPolicy::class);
         // HP-2 payroll requests.
         Gate::policy(Loan::class, LoanPolicy::class);
         Gate::policy(LoanInstallment::class, LoanPolicy::class);
@@ -367,18 +553,32 @@ class ParityServiceProvider extends ServiceProvider
         Gate::policy(VariablePayRequest::class, LoanPolicy::class);
         Gate::policy(ReimbursementClaim::class, LoanPolicy::class);
         Gate::policy(ReimbursementLedgerEntry::class, LoanPolicy::class);
+        // Data import DI-4: bills behind pay-by-default reimbursements.
+        Gate::policy(ReimbursementBill::class, LoanPolicy::class);
         // HP-3 tax and statutory.
         Gate::policy(TaxIncomeEntry::class, LoanPolicy::class);
         Gate::policy(EmployeePfOption::class, LoanPolicy::class);
         Gate::policy(StatutoryOverride::class, StatutoryOverridePolicy::class);
+        // HROne parity PO-13: the challan register follows the statutory return rules (compliance.returns.view in the company /
+        // establishment scope; changes only through StatutoryChallans).
+        Gate::policy(StatutoryChallan::class, StatutoryReturnPolicy::class);
+        Gate::policy(StatutoryChallanAllocation::class, StatutoryReturnPolicy::class);
         // HROne setup parity: Workforce.
         Gate::policy(ConfirmationReview::class, ConfirmationReviewPolicy::class);
         Gate::policy(WorkforceReason::class, WorkforceReasonPolicy::class);
         Gate::policy(ClearanceChecklist::class, ClearanceChecklistPolicy::class);
         Gate::policy(TransferRequest::class, TransferRequestPolicy::class);
+        // HROne parity WO-11: resignation withdrawal requests follow their exit case (ExitCasePolicy).
+        Gate::policy(ExitWithdrawalRequest::class, ExitCasePolicy::class);
         // HROne parity WO-1: bulk runs (own runs; bulk.view_all sees every run).
         Gate::policy(BulkRun::class, BulkRunPolicy::class);
+        // HROne parity WO-13: letter schedules (and what each did per employee) for people who issue letters.
+        Gate::policy(LetterSchedule::class, LetterSchedulePolicy::class);
+        Gate::policy(LetterScheduleItem::class, LetterSchedulePolicy::class);
         Gate::policy(BulkRunItem::class, BulkRunPolicy::class);
+        // HROne parity WO-14: document share batches and the documents they shared, for people who share documents.
+        Gate::policy(DocumentShareBatch::class, DocumentSharePolicy::class);
+        Gate::policy(DocumentShareItem::class, DocumentSharePolicy::class);
         // HROne setup parity: Helpdesk (resolver rules follow the service desk configuration) and Asset (sub types follow
         // the asset masters).
         Gate::policy(ServiceResolverRule::class, ServiceDeskConfigPolicy::class);
@@ -474,9 +674,23 @@ class ParityServiceProvider extends ServiceProvider
         // HROne setup parity CA-2 / CA-3 (Core HR): organisation contacts follow the company permissions; qualification
         // masters and option lists follow people setup.
         Gate::policy(OrganisationContact::class, OrganisationContactPolicy::class);
+        // HROne parity WO-15: business partners and the vendor master (partner.view / partner.manage; never deleted).
+        Gate::policy(BusinessPartner::class, PartnerPolicy::class);
+        Gate::policy(Vendor::class, PartnerPolicy::class);
         Gate::policy(Qualification::class, PeopleSetupPolicy::class);
         Gate::policy(QualificationSpecialisation::class, PeopleSetupPolicy::class);
         Gate::policy(OptionList::class, PeopleSetupPolicy::class);
+        // Data import DI-1: regions, business regions, places and dimension values follow the organisation structure;
+        // customers, projects and their members need project.view / project.manage; JV codes follow the integrations.
+        foreach ([Region::class, BusinessRegion::class, GeoPlace::class, DimensionValue::class] as $model) {
+            Gate::policy($model, OrganisationStructurePolicy::class);
+        }
+        foreach ([Customer::class, Project::class, ProjectMember::class] as $model) {
+            Gate::policy($model, ProjectPolicy::class);
+        }
+        Gate::policy(JvCode::class, JvCodePolicy::class);
+        // Data import (Workforce → Contract): contracts of contract staff follow the employee record.
+        Gate::policy(EmployeeContract::class, EmployeeContractPolicy::class);
         // HROne setup parity HP-8a / HP-8c: performance masters and KPI rating formulas follow the performance
         // configuration (rating scales, KRA library); one-on-one feedback cards follow the employee-owned records.
         Gate::policy(PerformanceLookup::class, PerformanceConfigPolicy::class);
@@ -485,6 +699,9 @@ class ParityServiceProvider extends ServiceProvider
         Gate::policy(OneOnOneFeedback::class, EmployeeOwnedPolicy::class);
         // HP-8b: the employee who scheduled a one-on-one and hosts it may open and update it (organisation scope).
         Gate::policy(OneOnOne::class, OneOnOnePolicy::class);
+        // HROne parity GO-4: goals add private visibility (D-GO5), the organisation goal owner's check-in and the achievement
+        // override (D-GO7) to the employee-owned rules.
+        Gate::policy(Goal::class, GoalPolicy::class);
         // HROne setup parity HP-9b / HP-9c (Engage): mission statements follow the engagement configuration; badges are
         // set up by HR (recognition.manage); recognitions are seen as their visibility allows and never edited.
         Gate::policy(MissionStatement::class, MissionStatementPolicy::class);
@@ -496,6 +713,16 @@ class ParityServiceProvider extends ServiceProvider
         Gate::policy(WallPost::class, WallPostPolicy::class);
         Gate::policy(WallComment::class, WallPostPolicy::class);
         Gate::policy(MoodReason::class, MoodReasonPolicy::class);
+        // HROne parity GO-15 (Engage → Events): events are run by engagement.events (host and invitees open their own);
+        // sessions, invitations and attendance are written only through CompanyEvents.
+        Gate::policy(CompanyEvent::class, CompanyEventPolicy::class);
+        foreach ([CompanyEventSession::class, CompanyEventInvitation::class, CompanyEventAttendance::class] as $model) {
+            Gate::policy($model, CompanyEventRecordPolicy::class);
+        }
+        // HROne parity GO-18: fundraiser campaigns and pledges.
+        Gate::policy(FundraiserCampaign::class, FundraiserPolicy::class);
+        Gate::policy(FundraiserPledge::class, FundraiserPolicy::class);
+        Event::listen(RequestHandled::class, fn () => $this->app->forgetInstance(Fundraisers::class));
         // Badge points are posted before the wall post that may show them.
         Event::listen(RecognitionEvent::class, [RewardPoints::class, 'onRecognition']);
         Event::listen(RecognitionEvent::class, [SocialWall::class, 'onRecognition']);
@@ -504,6 +731,8 @@ class ParityServiceProvider extends ServiceProvider
         Event::listen(EmployeeLifecycleChanged::class, [SocialWall::class, 'onLifecycle']);
         Event::listen(PerformanceEvent::class, [SocialWall::class, 'onPerformance']);
         Event::listen(LearningEvent::class, [SocialWall::class, 'onLearning']);
+        // HROne parity GO-15: a published company event is posted to its invitees (wall post type `event`); hidden when cancelled.
+        Event::listen(EngagementEvent::class, [SocialWall::class, 'onEngagement']);
         // HROne setup parity P13 (Forms & templates → Feedback templates): banks and templates are configuration
         // (feedback.view / feedback.manage); feedback is read only as FeedbackRequests::canRead allows.
         foreach ([QuestionBank::class, QuestionBankQuestion::class, FeedbackTemplate::class] as $model) {
@@ -549,9 +778,16 @@ class ParityServiceProvider extends ServiceProvider
         Event::listen(WorkflowCompleted::class, CompensationWorkflowBridge::class);
         Event::listen(WorkflowCompleted::class, LetterWorkflowBridge::class);
         Event::listen(WorkflowCompleted::class, ResignationWorkflowBridge::class);
+        // HROne parity WO-11: a workflow deciding a resignation withdrawal request.
+        Event::listen(WorkflowCompleted::class, ExitWithdrawalWorkflowBridge::class);
         Event::listen(WorkflowCompleted::class, TaxDeclarationWorkflowBridge::class);
         // HROne parity MS-3: a workflow deciding a self-service profile change (P5).
         Event::listen(WorkflowCompleted::class, ProfileChangeWorkflowBridge::class);
         Gate::policy(ProfileChangeRequest::class, ProfileChangeRequestPolicy::class);
+        // HROne parity MS-5: health insurance policies and insured members (employee.sensitive.view / update, own record).
+        Gate::policy(InsurancePolicy::class, InsurancePolicyPolicy::class);
+        Gate::policy(InsuredMember::class, InsurancePolicyPolicy::class);
+        // HROne parity AC-3: product ideas to Markedge (product.feedback; answered by operators on the platform page).
+        Gate::policy(ProductIdea::class, ProductIdeaPolicy::class);
     }
 }

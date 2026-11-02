@@ -8,6 +8,7 @@ use App\Domain\Attendance\Models\AttendanceRegularisation;
 use App\Domain\Attendance\Support\RequestRules;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Models\PolicyVersion;
 use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Experience\Services\SelfServiceLock;
@@ -42,13 +43,10 @@ final class Regularisations
         // HROne setup parity P4: the employee request lock refuses the employee's own request while it applies.
         app(SelfServiceLock::class)->assertOpen($employee, 'regularisation', $requester);
 
-        if ($policy && $policy->setting('regularisation_allowed', true) === false) {
+        $window = $this->windowFor($policy, $employee, $requester);
+        if ($window === null) {
             throw new RuntimeException('Regularisation is not allowed under the applicable attendance policy.');
         }
-
-        // HROne setup parity (TO-3): managers and HR may have their own backdated windows.
-        $window = (int) ($policy?->setting('regularisation_window_days') ?? $this->settings->get('attendance.regularisation.window_days', 7));
-        $window = (int) $this->rules->backdatedDays($policy, 'ar', RequestRules::role($employee, $requester), $window);
 
         if ($date->lt(now()->startOfDay()->subDays($window))) {
             throw new RuntimeException("Regularisation is only allowed within {$window} days.");
@@ -76,6 +74,8 @@ final class Regularisations
             && AttendanceRecord::query()->where('employee_id', $employee->id)->whereDate('date', $date->toDateString())->where('is_locked', true)->exists()) {
             throw new RuntimeException('This day is locked for payroll.');
         }
+        // HROne parity TX-3: the same rule for a day of a closed attendance month.
+        app(AttendanceMonthCloses::class)->assertOpen($employee, $date, $date, 'This day is in a closed attendance month.');
 
         $regularisation = new AttendanceRegularisation([
             'employee_id' => $employee->id,
@@ -93,6 +93,27 @@ final class Regularisations
         AttendanceEvent::dispatch('attendance.regularisation_requested', $employee, $regularisation, ['date' => $date->toDateString(), 'type' => $type, 'reason' => $reason]);
 
         return $regularisation;
+    }
+
+    /**
+     * How many days back $requester may ask to regularise $employee's $date, or null when the attendance policy allows no
+     * regularisation. The same answer request() acts on; the employee's attendance calendar offers "Regularise" by it.
+     */
+    public function window(Employee $employee, Carbon|string $date, ?User $requester = null): ?int
+    {
+        return $this->windowFor($this->policies->resolve('attendance', $employee, Carbon::parse($date)->startOfDay()), $employee, $requester ?? auth()->user());
+    }
+
+    private function windowFor(?PolicyVersion $policy, Employee $employee, ?User $requester): ?int
+    {
+        if ($policy && $policy->setting('regularisation_allowed', true) === false) {
+            return null;
+        }
+
+        // HROne setup parity (TO-3): managers and HR may have their own backdated windows.
+        $window = (int) ($policy?->setting('regularisation_window_days') ?? $this->settings->get('attendance.regularisation.window_days', 7));
+
+        return (int) $this->rules->backdatedDays($policy, 'ar', RequestRules::role($employee, $requester), $window);
     }
 
     public function approve(AttendanceRegularisation $regularisation, ?string $note = null, ?User $actor = null): AttendanceRegularisation
@@ -139,6 +160,9 @@ final class Regularisations
             if ($record->is_locked) {
                 throw new RuntimeException('This day is locked for payroll.');
             }
+            if (app(AttendanceMonthCloses::class)->isClosedDay((int) $record->employee_id, $record->date)) {
+                throw new RuntimeException('This day is in a closed attendance month.');
+            }
 
             if ($record->overtime_minutes <= 0) {
                 throw new RuntimeException('There is no calculated overtime on this day.');
@@ -171,6 +195,9 @@ final class Regularisations
 
             if ($record->is_locked) {
                 throw new RuntimeException('This day is locked for payroll.');
+            }
+            if (app(AttendanceMonthCloses::class)->isClosedDay((int) $record->employee_id, $record->date)) {
+                throw new RuntimeException('This day is in a closed attendance month.');
             }
 
             $before = (int) $record->overtime_approved_minutes;

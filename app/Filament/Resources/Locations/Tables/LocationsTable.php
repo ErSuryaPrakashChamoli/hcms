@@ -17,6 +17,9 @@ class LocationsTable
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code')->searchable()->sortable(),
                 TextColumn::make('company.name')->label('Company')->sortable()->toggleable()->placeholder('—'),
+                TextColumn::make('parentLocation.name')->label('Parent branch')->toggleable()->placeholder('—'),
+                TextColumn::make('region.name')->label('Region')->toggleable(isToggledHiddenByDefault: true)->placeholder('—'),
+                TextColumn::make('businessRegion.name')->label('Business region')->toggleable(isToggledHiddenByDefault: true)->placeholder('—'),
                 TextColumn::make('type')->badge()->toggleable(),
                 TextColumn::make('city')->searchable()->toggleable(),
                 TextColumn::make('status')->badge(),
@@ -26,6 +29,8 @@ class LocationsTable
             ])
             ->filters([
                 SelectFilter::make('status')->options(ActiveStatus::class),
+                SelectFilter::make('parent_location_id')->label('Parent branch')->relationship('parentLocation', 'name'),
+                SelectFilter::make('region_id')->label('Region')->relationship('region', 'name'),
             ])
             ->defaultSort('name')
             ->recordActions([

@@ -6,6 +6,7 @@ use App\Domain\Attendance\Contracts\LeaveDayResolver;
 use App\Domain\Attendance\Jobs\ProcessAttendanceRange;
 use App\Domain\Attendance\Models\AttendanceMark;
 use App\Domain\Attendance\Models\AttendanceRecord;
+use App\Domain\Attendance\Services\AttendanceMonthCloses;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\EmployeeImport;
@@ -613,6 +614,9 @@ final class AttendanceSheetImports
         $locked = AttendanceRecord::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->where('is_locked', true)
             ->whereDate('date', '>=', $start->toDateString())->whereDate('date', '<=', $end->toDateString())->get()
             ->mapWithKeys(fn (AttendanceRecord $r) => [$r->date->toDateString() => true])->all();
+        // HROne parity TX-3: days of a closed attendance month are left as they are, like locked days.
+        $closed = array_fill_keys(app(AttendanceMonthCloses::class)->closedDates($employee, $start, $end), true);
+        $locked += $closed;
         $leave = $from->lte($to) ? $this->leave->approvedLeaveBetween($employee, $from, $to) : [];
         $repeated = array_map(fn (Carbon $d) => $d->toDateString(), self::repeated($start, $end));
 
@@ -658,6 +662,9 @@ final class AttendanceSheetImports
         }
 
         $errors = $lockedDays === [] ? [] : [(count($lockedDays) === 1 ? 'Day ' : 'Days ').implode(', ', $lockedDays).' '.(count($lockedDays) === 1 ? 'is' : 'are').' locked by a finalised payroll run and cannot change.'];
+        if ($closed !== [] && $errors !== []) {
+            $errors[0] = str_replace(' and cannot change.', ' or a closed attendance month and cannot change.', $errors[0]);
+        }
         $parts = array_filter([
             $tally['added'] + $tally['replaced'] > 0 ? 'marks '.($tally['added'] + $tally['replaced']).' day(s)'.($tally['replaced'] > 0 ? " ({$tally['replaced']} replaced)" : '') : null,
             $tally['same'] > 0 ? "{$tally['same']} day(s) already marked the same" : null,

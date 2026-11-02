@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'total_claimed', 'total_approved', 'reimbursable_approved', 'advance_adjusted', 'net_payable', 'window_cycle', 'filed_on_behalf',
     'submitted_at', 'submitted_by', 'decided_at', 'decided_by', 'returned_at', 'return_note', 'cancelled_at', 'cancel_reason',
     'payment_channel', 'payment_scheduled_at', 'payment_scheduled_by', 'paid_on', 'payment_reference', 'paid_by', 'payroll_run_id', 'final_settlement_id', 'created_by',
+    'payment_scheduled_for', 'payment_mode', 'paid_from_account_id', 'cheque_number', 'cheque_date', 'payment_note',
 ])]
 class ExpenseReport extends Model
 {
@@ -46,12 +47,15 @@ class ExpenseReport extends Model
     /** How a report is (to be) paid: outside payroll (Pay expenses), with payroll, or in the final settlement (EX-E). */
     public const CHANNELS = ['bank' => 'Outside payroll', 'payroll' => 'With payroll', 'settlement' => 'In the full and final settlement'];
 
+    /** HROne parity XO-4 (§26.4.4 #19): how a payment outside payroll was made (null: not recorded, as before XO-4). */
+    public const PAYMENT_MODES = ['bank_transfer' => 'Bank transfer', 'cheque' => 'Cheque', 'cash' => 'Cash'];
+
     protected $attributes = ['status' => 'draft', 'total_claimed' => 0, 'total_approved' => 0, 'reimbursable_approved' => 0, 'advance_adjusted' => 0, 'net_payable' => 0, 'filed_on_behalf' => false];
 
     protected function casts(): array
     {
         return [
-            'period_from' => 'date', 'period_to' => 'date', 'paid_on' => 'date', 'payment_scheduled_at' => 'datetime',
+            'period_from' => 'date', 'period_to' => 'date', 'paid_on' => 'date', 'payment_scheduled_at' => 'datetime', 'payment_scheduled_for' => 'date', 'cheque_date' => 'date',
             'submitted_at' => 'datetime', 'decided_at' => 'datetime', 'returned_at' => 'datetime', 'cancelled_at' => 'datetime',
             'total_claimed' => 'decimal:2', 'total_approved' => 'decimal:2', 'reimbursable_approved' => 'decimal:2', 'advance_adjusted' => 'decimal:2', 'net_payable' => 'decimal:2',
             'window_cycle' => 'integer', 'filed_on_behalf' => 'boolean',
@@ -78,6 +82,33 @@ class ExpenseReport extends Model
     public function isScheduledForPayroll(): bool
     {
         return $this->isPayable() && $this->payment_channel === 'payroll';
+    }
+
+    /** HROne parity XO-4 (D-XO1): the payroll month chosen for it ("2026-12"), or null for the next payroll. */
+    public function payMonth(): ?string
+    {
+        return $this->payment_scheduled_for?->format('Y-m');
+    }
+
+    /** "Dec 2026", or "Next payroll" while scheduled without a chosen month; null when not scheduled. */
+    public function payMonthLabel(): ?string
+    {
+        return match (true) {
+            $this->payment_scheduled_for !== null => $this->payment_scheduled_for->format('M Y'),
+            $this->payment_channel === 'payroll' && $this->paid_on === null => 'Next payroll',
+            default => null,
+        };
+    }
+
+    /** "Bank transfer", "Cheque 004512 of 3 Nov 2026", "Cash"; null when no mode was recorded. */
+    public function paymentModeLabel(): ?string
+    {
+        $mode = self::PAYMENT_MODES[$this->payment_mode ?? ''] ?? null;
+        if ($mode === null || $this->payment_mode !== 'cheque') {
+            return $mode;
+        }
+
+        return trim($mode.' '.($this->cheque_number ?? '').($this->cheque_date !== null ? ' of '.$this->cheque_date->format('j M Y') : ''));
     }
 
     /** Where the payment stands, as Pay expenses and the reports show it. */
@@ -115,6 +146,12 @@ class ExpenseReport extends Model
     public function submitter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    /** HROne parity XO-5: who created the report (HR or a manager when filed for the employee). */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function decider(): BelongsTo

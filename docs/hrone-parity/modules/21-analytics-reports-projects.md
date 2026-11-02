@@ -654,7 +654,7 @@ dataset / template exposes it (or key columns are missing); **MISSING** when the
 |---|---|---|---|---|---|
 | 1 | Absconding report (E) | Employees marked absconding | `exits` (type absconding) | HAVE | — |
 | 2 | Bank details (E) | Employee bank accounts | `statutory_bank_register` (masked) | HAVE | — |
-| 3 | Business partners Report (E) | Business partners (external users) | Partner type partly modelled (gap register IP-04) | PARTIAL | With IP-04: dataset field / filter `employee_category = business_partner` |
+| 3 | Business partners Report (E) | Business partners (external users) | Partner type partly modelled (gap register IP-04) | PARTIAL → built (WO-15: dataset `partners`, template "Business partners") | With IP-04: dataset field / filter `employee_category = business_partner` |
 | 4 | Clearance pdf (P) | Clearance status PDF for completed clearances | `exit_clearances`; no PDF | PARTIAL | AN-29: printable no-dues certificate per exit case |
 | 5 | Clearance task (E) | Clearance tasks of initiated exits | `clearances_pending` (`exit_clearances`) | HAVE | — |
 | 6 | Confirmation feedback (E) | Confirmation feedback answers | `ConfirmationReview` + feedback templates (WF-1, P13); no dataset | PARTIAL | AN-29: dataset `confirmation_reviews` (+ answers for `employee.view` holders) |

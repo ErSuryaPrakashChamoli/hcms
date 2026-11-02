@@ -5,6 +5,7 @@ namespace App\Domain\Attendance\Support;
 use App\Domain\Attendance\Models\AttendancePunch;
 use App\Domain\Attendance\Models\AttendanceRecord;
 use App\Domain\Attendance\Models\TimeOfficeRequest;
+use App\Domain\Attendance\Services\AttendanceMonthCloses;
 use App\Domain\Attendance\Services\HolidayResolver;
 use App\Domain\Attendance\Services\ShiftResolver;
 use App\Domain\Configuration\Models\PolicyVersion;
@@ -84,6 +85,10 @@ final class RequestRules
         if ($locked) {
             throw new RuntimeException("{$label} cannot be requested once attendance is processed for payroll.");
         }
+        // HROne parity TX-3: a closed attendance month is processed too.
+        if (app(AttendanceMonthCloses::class)->closedDates($employee, $from, $to) !== []) {
+            throw new RuntimeException("{$label} cannot be requested once the attendance month is closed.");
+        }
     }
 
     /** `{prefix}_attachment_required` = Yes: at least one file. @param  list<string>  $attachments */
@@ -123,7 +128,7 @@ final class RequestRules
         if (! self::isYes($policy?->setting('ar_requires_punch'))) {
             return;
         }
-        $punched = AttendancePunch::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->where('processing_status', '!=', 'rejected')
+        $punched = AttendancePunch::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->whereNotIn('processing_status', AttendancePunch::NOT_COUNTED)
             ->whereBetween('punched_at', [$date->copy()->startOfDay(), $date->copy()->endOfDay()])->exists();
         if (! $punched) {
             throw new RuntimeException('A regularisation needs at least one punch on the day.');

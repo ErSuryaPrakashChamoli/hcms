@@ -6,6 +6,7 @@ use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\BankAccountImports;
 use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Imports\EmployeeImports;
+use App\Domain\People\Imports\InsuranceImports;
 use App\Filament\Support\ImportActions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Radio;
@@ -49,12 +50,17 @@ class RowsRelationManager extends RelationManager
             ->paginated([25, 50, 100]);
     }
 
-    /** How a row reads in the list: its first cells, or for bank details the employee, bank and last four digits only. */
+    /** How a row reads in the list: its first cells, or for bank details / health insurance the employee and last four characters only. */
     private function summary(EmployeeImportRow $row): string
     {
         $import = $this->getOwnerRecord();
 
-        return $import->type === BankAccountImports::TYPE ? app(BankAccountImports::class)->summary($row, $import) : collect($row->data)->take(3)->implode(' · ');
+        return match ($import->type) {
+            BankAccountImports::TYPE => app(BankAccountImports::class)->summary($row, $import),
+            // HROne parity MS-5: health insurance rows are sealed too (member ids): employee, insurer, person, last four.
+            InsuranceImports::TYPE => app(InsuranceImports::class)->summary($row, $import),
+            default => collect($row->data)->take(3)->implode(' · '),
+        };
     }
 
     /** @return array<string, string> the decisions the file's mode allows for a row under review */

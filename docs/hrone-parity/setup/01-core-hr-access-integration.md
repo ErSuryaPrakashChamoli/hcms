@@ -296,9 +296,9 @@ PeopleOS splits HROne's "company" across `companies` (`CompanyResource`), `legal
 
 | HROne setting | PeopleOS today | Status | Build note |
 |---|---|---|---|
-| Vendor code · `vendorCode`, company name · `companyName`, address · `vendorAddress`, `countryCode`, `stateCode`, `cityCode`, `pin` | Assets store `vendor` as free text (`database/migrations/2026_09_27_100002_create_asset_tables.php`) | MISSING | `vendors` (code, name, address, country_code, state_code, city, postal_code, gstin, status) + `VendorResource`; `assets.vendor_id` (nullable FK; text kept). PR-01. |
-| GSTIN · `gServiceTin` | — | MISSING | `vendors.gstin` with the GSTIN validation of §1.2. |
-| Primary contact · `primaryName`, `primaryMobileNo`, `primaryPhoneNo`, `primaryEmailId`, `primaryContactFor`; secondary contact · `secName`, `secMobileNo`, `secPhoneNo`, `secEmailId`, `secContactFor` | — | MISSING | `vendor_contacts` (vendor_id, is_primary, name, mobile, phone, email, contact_for). |
+| Vendor code · `vendorCode`, company name · `companyName`, address · `vendorAddress`, `countryCode`, `stateCode`, `cityCode`, `pin` | Assets store `vendor` as free text (`database/migrations/2026_09_27_100002_create_asset_tables.php`) | MISSING → built (WO-15: `vendors` — code, name, kind, address lines, city, state code, postal code, country, status — and `VendorResource`; `assets.vendor_id` not built) | `vendors` (code, name, address, country_code, state_code, city, postal_code, gstin, status) + `VendorResource`; `assets.vendor_id` (nullable FK; text kept). PR-01. |
+| GSTIN · `gServiceTin` | — | MISSING → built (WO-15: `vendors.gstin` checked by `RegistrationNumberFormat` with the `gstin` registration type — pattern, check character, state code; PAN encrypted beside it) | `vendors.gstin` with the GSTIN validation of §1.2. |
+| Primary contact · `primaryName`, `primaryMobileNo`, `primaryPhoneNo`, `primaryEmailId`, `primaryContactFor`; secondary contact · `secName`, `secMobileNo`, `secPhoneNo`, `secEmailId`, `secContactFor` | — | MISSING → partly built (WO-15: one contact on the vendor — name, e-mail, phone; `vendor_contacts` not built) | `vendor_contacts` (vendor_id, is_primary, name, mobile, phone, email, contact_for). |
 | Vendor field 1–5 · `vendorField1..5` | Custom Field Engine (entities: employee, company, department, location, designation, asset) | MISSING | Add entity `vendor` to `peopleos.custom_fields.entities`. |
 
 ### 1.34 Vendor → Vendor form (`app-fields`)

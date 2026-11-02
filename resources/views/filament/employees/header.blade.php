@@ -3,7 +3,7 @@
     $p = $employee->currentPosition;
     $manager = $employee->currentManager?->manager;
     $state = $employee->lifecycle_state;
-    $tone = match ($state?->value) { 'probation', 'onboarding', 'preboarding', 'pre_employee' => 'info', 'notice_period', 'suspended' => 'warning', 'exited', 'alumni' => 'neutral', default => 'success' };
+    $tone = match ($state?->value) { 'probation', 'onboarding', 'preboarding', 'pre_employee' => 'info', 'notice_period', 'suspended' => 'warning', 'exited', 'alumni', 'not_joined' => 'neutral', default => 'success' };
     $life = $workspace['lifetime'] ?? null;
     $sectionsNav = ['now' => 'Now', 'journey' => 'Journey', 'work' => 'Work', 'growth' => 'Growth', 'rewards' => 'Rewards', 'documents' => 'Documents', 'records' => 'Records'];
 @endphp

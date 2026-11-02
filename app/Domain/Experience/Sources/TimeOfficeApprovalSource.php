@@ -184,6 +184,8 @@ final class TimeOfficeApprovalSource implements ApprovalSource, DescribesApprova
             reason: $e->reason, impact: 'Takes '.$this->days((float) $e->days).' off the '.($e->leaveType?->name ?? 'leave').' balance for payment', effectiveOn: null,
             dueAt: $e->created_at?->copy()->addDays(5), requestedAt: $e->created_at, requestedBy: null, risk: 'normal', riskReason: null,
             decisions: ['approve', 'reject'], url: $this->url(fn () => LeaveEncashmentResource::getUrl('index')), record: $e,
+            // HROne parity RQ-4: say when supporting files came with the request (opened from Leave → Encashments).
+            facts: ($files = count(array_filter((array) $e->getAttribute('attachments')))) > 0 ? [$files.' supporting '.($files === 1 ? 'file' : 'files').' attached'] : [],
         ))->values()->all();
     }
 

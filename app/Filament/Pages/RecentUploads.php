@@ -8,16 +8,19 @@ use App\Domain\Compensation\Imports\SalaryImports;
 use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\BankAccountImports;
 use App\Domain\Employment\Imports\EmployeeImport;
+use App\Domain\Employment\Imports\ImportCatalogue;
 use App\Domain\Employment\Imports\ImportGovernance;
 use App\Domain\Employment\Imports\ImportTypes;
 use App\Domain\Employment\Imports\RowImportTypes;
 use App\Filament\Resources\AttendanceSheetImports\AttendanceSheetImportResource;
 use App\Filament\Resources\BankAccountImports\BankAccountImportResource;
+use App\Filament\Resources\DataUploads\DataUploadResource;
 use App\Filament\Resources\EmployeeImports\EmployeeImportResource;
 use App\Filament\Resources\PayrollUploads\PayrollUploadResource;
 use App\Filament\Resources\PunchImports\PunchImportResource;
 use App\Filament\Resources\SalaryImports\SalaryImportResource;
 use App\Filament\Resources\TimeOfficeImports\TimeOfficeImportResource;
+use App\Filament\Resources\WorkforceUploads\WorkforceUploadResource;
 use App\Filament\Support\ImportActions;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -93,7 +96,7 @@ class RecentUploads extends Page implements HasTable
             ->where(function (Builder $query) use ($types, $user) {
                 $query->whereRaw('1 = 0');
                 foreach ($types as $type) {
-                    $query->orWhere(fn (Builder $q) => in_array($type, [BankAccountImports::TYPE, SalaryImports::TYPE], true)
+                    $query->orWhere(fn (Builder $q) => in_array($type, [BankAccountImports::TYPE, SalaryImports::TYPE], true) || RowImportTypes::uploaderOnly($type)
                         ? ImportGovernance::ownOrChecked($q->where('type', $type), $type, $user)
                         : $q->where('type', $type));
                 }
@@ -109,7 +112,14 @@ class RecentUploads extends Page implements HasTable
             SalaryImports::TYPE => SalaryImportResource::class,
             PunchImports::TYPE => PunchImportResource::class,
             AttendanceSheetImports::TYPE => AttendanceSheetImportResource::class,
-            default => (RowImportTypes::TYPES[$import->type][3] ?? null) === 'payroll' ? PayrollUploadResource::class : TimeOfficeImportResource::class,
+            default => match (RowImportTypes::TYPES[$import->type][3] ?? null) {
+                'payroll' => PayrollUploadResource::class,
+                // HROne parity MS-5: workforce uploads (health insurance).
+                'workforce' => WorkforceUploadResource::class,
+                'time_office' => TimeOfficeImportResource::class,
+                // Data import: the heads without an upload screen of their own.
+                default => DataUploadResource::class,
+            },
         };
         try {
             return $resource::canAccess() ? $resource::getUrl('view', ['record' => $import]) : null;
@@ -126,8 +136,10 @@ class RecentUploads extends Page implements HasTable
             ->query(fn (): Builder => self::visibleUploads())
             ->columns([
                 TextColumn::make('created_at')->label('Uploaded')->dateTime()->sortable(),
-                TextColumn::make('type')->label('Upload')->formatStateUsing(fn (string $state) => ImportTypes::label($state))
-                    ->description(fn (EmployeeImport $record) => ImportActions::modes((string) $record->type)[ImportMode::of($record)->value][0] ?? null),
+                // Data import: the process the file was uploaded for (Opening leave balance, New hire …), else the upload type.
+                TextColumn::make('type')->label('Upload')
+                    ->formatStateUsing(fn (string $state, EmployeeImport $record) => ImportCatalogue::find($record->options['process'] ?? null)['label'] ?? ImportTypes::label($state))
+                    ->description(fn (EmployeeImport $record) => ImportTypes::modes((string) $record->type)[ImportMode::of($record)->value][0] ?? null),
                 TextColumn::make('module')->label('Module')->state(fn (EmployeeImport $record) => ImportTypes::moduleLabel((string) $record->type))->toggleable(),
                 TextColumn::make('original_name')->label('File')->searchable()->wrap(),
                 TextColumn::make('uploader.name')->label('Uploaded by')->searchable(),

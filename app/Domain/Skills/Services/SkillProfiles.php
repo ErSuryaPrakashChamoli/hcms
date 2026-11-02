@@ -5,6 +5,7 @@ namespace App\Domain\Skills\Services;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Learning\Models\LearningCompletion;
 use App\Domain\Performance\Services\PerformanceRelationships;
 use App\Domain\Skills\Events\SkillEvent;
@@ -66,6 +67,24 @@ final class SkillProfiles
     public function recordFromLearning(Employee $employee, int $skillId, float $level, LearningCompletion $completion, ?User $actor = null): EmployeeSkill
     {
         return $this->record($employee, $skillId, $level, null, 'learning', true, ['learning_completion_id' => $completion->id, 'assessed_on' => now()->toDateString()], $actor);
+    }
+
+    /**
+     * Data import DI-2 (Workforce → Employee skills): a level and / or a target loaded from a file. It is kept as its own
+     * source (`imported`, after manager and before system and self in the precedence), is never verified, and supersedes
+     * only the earlier imported level (a target alone supersedes the current target, as setTarget does). Needs
+     * skills.manage within the organisation scope.
+     */
+    public function import(Employee $employee, int $skillId, ?float $level, ?float $target, User $actor, ?string $evidence = null): EmployeeSkill
+    {
+        if (! $actor->hasPermission('skills.manage') || ! app(AccessScopes::class)->allows($actor, $employee)) {
+            throw new RuntimeException('Only skills administrators load skill levels from a file, within their organisation scope.');
+        }
+        if ($level === null && $target === null) {
+            throw new RuntimeException('Give a level or a target level.');
+        }
+
+        return $this->record($employee, $skillId, $level, $target, 'imported', false, ['evidence' => $evidence, 'assessed_on' => now()->toDateString()], $actor);
     }
 
     /** @return list<array{skill_id: int, skill: ?string, scale_version_id: int, level: ?float, label: ?string, basis: ?string, verified: bool, self_declared: ?float, target: ?float, gap: ?float}> */

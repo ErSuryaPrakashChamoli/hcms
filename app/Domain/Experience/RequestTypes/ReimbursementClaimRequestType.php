@@ -10,7 +10,7 @@ use App\Domain\Payroll\Models\SalaryComponent;
 use App\Filament\Resources\ReimbursementClaims\ReimbursementClaimResource;
 use Illuminate\Database\Eloquent\Model;
 
-/** HROne parity RQ-1: reimbursement claim (Reimbursement claims → "Claim a reimbursement"). */
+/** HROne parity RQ-1: reimbursement claim (Reimbursement claims → "Claim a reimbursement"; AC-2 on behalf: "Claim for an employee"). */
 final class ReimbursementClaimRequestType extends BaseRequestType
 {
     public function key(): string
@@ -58,6 +58,19 @@ final class ReimbursementClaimRequestType extends BaseRequestType
     public function formUrl(User $user, ?Employee $employee): ?string
     {
         return $this->withAction(ReimbursementClaimResource::getUrl('index'), 'claim');
+    }
+
+    /** HROne parity AC-2: payroll claims for an employee ("Claim for an employee"), the right that decides claims. */
+    public function onBehalfPermission(): ?string
+    {
+        return 'payroll.manage';
+    }
+
+    public function onBehalfUrl(User $user): ?string
+    {
+        return $this->signedIn($user) && $user->hasPermission('payroll.manage') && ReimbursementClaimResource::canAccess()
+            && SalaryComponent::query()->where('type', 'reimbursement')->where('pay_on_claim', true)->exists()
+            ? $this->withAction(ReimbursementClaimResource::getUrl('index'), 'claimForEmployee') : null;
     }
 
     public function model(): ?string

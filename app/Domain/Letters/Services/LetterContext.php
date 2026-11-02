@@ -4,6 +4,7 @@ namespace App\Domain\Letters\Services;
 
 use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compensation\Support\CompensationComponentLine;
+use App\Domain\Compensation\Support\CompensationSegment;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Letters\Models\LetterSignatory;
@@ -32,8 +33,11 @@ final class LetterContext
 {
     public function __construct(private readonly CompensationOutput $compensation, private readonly StructureFormulas $formulas) {}
 
-    /** @return array<string, mixed> */
-    public function build(Employee $employee, array $extra = [], ?LetterSignatory $signatory = null): array
+    /**
+     * @param  array<int, LetterSignatory>  $others  HROne parity WO-13: the second, third and fourth signatories, by position (2–4)
+     * @return array<string, mixed>
+     */
+    public function build(Employee $employee, array $extra = [], ?LetterSignatory $signatory = null, array $others = []): array
     {
         $employee->loadMissing(['person.addresses', 'person.familyMembers', 'statutoryDetail', 'bankAccounts', 'currentManager.manager.person', 'currentManager.manager.currentPosition.designation']);
         $relations = ['designation', 'department', 'company', 'location', 'businessUnit', 'division', 'team', 'level', 'grade', 'employmentType', 'employeeCategory', 'workMode', 'costCentre'];
@@ -49,6 +53,8 @@ final class LetterContext
             'female' => ['Ms', 'she', 'her', 'her'],
             default => ['Mx', 'they', 'them', 'their'],
         };
+        // HROne parity MS-4: the salutation recorded on the person (option list `salutations`) wins; none = from the gender, as before.
+        $salutation = $person?->salutationLabel() ?? $salutation;
         $family = fn (string $relation) => $person?->familyMembers->firstWhere('relation', $relation)?->name;
         $manager = $employee->currentManager?->manager;
         $location = $position?->location;
@@ -98,6 +104,7 @@ final class LetterContext
             'custom' => array_intersect_key($employee->customFields(), LetterVariables::customFields()),
             'signatory' => ['name' => $signatory?->name ?? 'Authorised Signatory', 'designation' => $signatory?->designation,
                 'signature' => $image ? new SignatureImage($image['bytes'], $image['mime'], $image['width'], $image['height']) : null],
+            ...self::moreSignatories($others),
             'today' => now(),
             'letter' => ['number' => null, 'date' => now()],
         ], $extra);
@@ -136,9 +143,19 @@ final class LetterContext
     private function salary(Employee $employee, CarbonInterface $on): array
     {
         $segment = $this->compensation->forPayroll($employee, $on, $on)->last();
-        if ($segment === null) {
-            return [];
-        }
+
+        return $segment === null ? [] : $this->salaryFor($employee, $segment, $on);
+    }
+
+    /**
+     * The salary.* subtree (with the annexure) for one compensation segment. HROne parity PO-2: also for a proposed
+     * compensation not yet approved ("Print breakup" of the assign-salary wizard and of a salary structure request).
+     *
+     * @return array<string, mixed>
+     */
+    public function salaryFor(Employee $employee, CompensationSegment $segment, CarbonInterface $on): array
+    {
+        $employee->loadMissing('statutoryDetail');
         $pay = $segment->compensation;
         $lines = $segment->components->map(fn (CompensationComponentLine $line) => ['component' => $line->component, 'formula_override' => $line->formulaOverride, 'sort_order' => $line->sortOrder])->all();
         $preview = $lines === [] ? null : $this->formulas->preview($lines, $segment->parameters, [
@@ -196,6 +213,26 @@ final class LetterContext
             'effective_from' => $pay->effectiveFrom,
             'structure' => $pay->structureCode,
         ];
+    }
+
+    /**
+     * HROne parity WO-13: signatory_2 … signatory_4, always present (blank when the position is not named), so a template
+     * that prints them never shows a stray variable.
+     *
+     * @param  array<int, LetterSignatory>  $others
+     * @return array<string, array{name: ?string, designation: ?string, signature: ?SignatureImage}>
+     */
+    private static function moreSignatories(array $others): array
+    {
+        $out = [];
+        foreach (array_keys(LetterVariables::MORE_SIGNATORIES) as $position) {
+            $person = $others[$position] ?? null;
+            $image = $person?->signatureImage();
+            $out["signatory_{$position}"] = ['name' => $person?->name, 'designation' => $person?->designation,
+                'signature' => $image ? new SignatureImage($image['bytes'], $image['mime'], $image['width'], $image['height']) : null];
+        }
+
+        return $out;
     }
 
     private static function amount(?float $value): ?string

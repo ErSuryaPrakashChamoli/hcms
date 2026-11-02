@@ -304,7 +304,7 @@ it('opens the payroll desk for payroll operators only, in HROne\'s panel order, 
         ->and($item('Variable pay', 'Variable pay requests')['count'])->toBe(1)
         ->and($item('Payroll processing', 'Salary holds')['count'])->toBe(1)
         ->and($item('Payroll processing', 'Payroll runs')['count'])->toBe(0)
-        ->and(ExperienceNavigation::MODULE_AREA)->toHaveKey('PayrollDesk')
+        ->and(ExperienceNavigation::DESKS)->toContain('PayrollDesk')
         ->and(ListExitCases::presetViews())->toHaveKey('settlement')->toHaveKey('settled')
         ->and(ListLetters::presetViews()['increment']['filters'])->toBe(['type' => ['value' => 'increment']]);
 

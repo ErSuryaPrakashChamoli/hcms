@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Phase 11: a bulk compensation cycle (annual increment, promotion, market adjustment). Its lines are
  * CompensationChange rows (source "cycle"). Rules are editable only while the cycle is a draft.
  */
-#[Fillable(['tenant_id', 'code', 'name', 'cycle_type', 'company_id', 'organisation_node_id', 'business_unit_id', 'division_id', 'department_id', 'team_id', 'location_id', 'effective_from', 'status', 'compensation_budget_id', 'performance_cycle_id', 'default_increase_percent', 'rating_increase_percent', 'employee_count', 'snapshot_checksum', 'operation_id', 'prepared_by', 'populated_at', 'submitted_at', 'reviewed_by', 'reviewed_at', 'approved_by', 'approved_at', 'executed_by', 'executed_at', 'closed_by', 'closed_at', 'decision_note', 'lock_version'])]
+#[Fillable(['tenant_id', 'code', 'name', 'cycle_type', 'company_id', 'organisation_node_id', 'business_unit_id', 'division_id', 'department_id', 'team_id', 'location_id', 'effective_from', 'status', 'compensation_budget_id', 'performance_cycle_id', 'default_increase_percent', 'rating_increase_percent', 'population', 'increment_basis', 'default_increase_amount', 'prorate_on_tenure', 'proration_basis', 'proration_cutoff', 'proration_full_months', 'employee_count', 'snapshot_checksum', 'population_errors', 'operation_id', 'cloned_from_id', 'prepared_by', 'populated_at', 'submitted_at', 'reviewed_by', 'reviewed_at', 'approved_by', 'approved_at', 'executed_by', 'executed_at', 'closed_by', 'closed_at', 'decision_note', 'lock_version'])]
 class CompensationCycle extends Model
 {
     use Auditable, BelongsToTenant, ScopedByOrganisationDimensions;
@@ -28,9 +28,17 @@ class CompensationCycle extends Model
     /** The cycle type prepared from a salary file (SalaryImports): its lines come from the file, never from populate. */
     public const UPLOAD = 'salary_upload';
 
-    public const RULES = ['cycle_type', 'company_id', 'organisation_node_id', 'location_id', 'effective_from', 'compensation_budget_id', 'performance_cycle_id', 'default_increase_percent', 'rating_increase_percent'];
+    public const RULES = ['cycle_type', 'company_id', 'organisation_node_id', 'location_id', 'effective_from', 'compensation_budget_id', 'performance_cycle_id', 'default_increase_percent', 'rating_increase_percent',
+        // HROne parity PO-17: the increment calculator's rules.
+        'population', 'increment_basis', 'default_increase_amount', 'prorate_on_tenure', 'proration_basis', 'proration_cutoff', 'proration_full_months'];
 
-    protected $attributes = ['status' => 'draft', 'default_increase_percent' => 0, 'employee_count' => 0, 'lock_version' => 0];
+    /** HROne parity PO-17: what a cycle's values are — a percent of annual CTC (the earlier rule), a percent of fixed pay, or an amount. */
+    public const BASES = ['ctc_percent' => 'Percent of annual CTC', 'fixed_percent' => 'Percent of fixed pay (annual CTC less the variable-pay target)', 'amount' => 'Flat annual amount'];
+
+    /** HROne parity PO-17: what tenure proration counts, up to the cut-off date. */
+    public const PRORATION_BASES = ['joining' => 'Months since joining', 'role' => 'Months in the current designation'];
+
+    protected $attributes = ['status' => 'draft', 'default_increase_percent' => 0, 'employee_count' => 0, 'lock_version' => 0, 'increment_basis' => 'ctc_percent', 'prorate_on_tenure' => false];
 
     protected static function booted(): void
     {
@@ -46,6 +54,7 @@ class CompensationCycle extends Model
     {
         return [
             'effective_from' => 'date', 'default_increase_percent' => 'decimal:2', 'rating_increase_percent' => 'array', 'employee_count' => 'integer',
+            'population' => 'array', 'population_errors' => 'array', 'default_increase_amount' => 'decimal:2', 'prorate_on_tenure' => 'boolean', 'proration_cutoff' => 'date', 'proration_full_months' => 'integer',
             'populated_at' => 'datetime', 'submitted_at' => 'datetime', 'reviewed_at' => 'datetime', 'approved_at' => 'datetime', 'executed_at' => 'datetime', 'closed_at' => 'datetime',
             'lock_version' => 'integer',
         ];
@@ -64,6 +73,33 @@ class CompensationCycle extends Model
     public function isUpload(): bool
     {
         return $this->cycle_type === self::UPLOAD;
+    }
+
+    /** HROne parity PO-17: the rules are the CTC band × rating grid (the rating label → percent matrix otherwise). */
+    public function hasGrid(): bool
+    {
+        return is_array(($this->rating_increase_percent ?? [])['bands'] ?? null);
+    }
+
+    /** HROne parity PO-17: values are amounts (not percentages). */
+    public function isAmountBasis(): bool
+    {
+        return $this->increment_basis === 'amount';
+    }
+
+    public function shares(): HasMany
+    {
+        return $this->hasMany(CompensationCycleShare::class);
+    }
+
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(CompensationCycleProposal::class);
+    }
+
+    public function clonedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'cloned_from_id');
     }
 
     public function lines(): HasMany

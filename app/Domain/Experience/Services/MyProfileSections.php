@@ -5,6 +5,7 @@ namespace App\Domain\Experience\Services;
 use App\Domain\Audit\Services\ChangeIntelligence;
 use App\Domain\Compliance\Services\FinancialYear;
 use App\Domain\Compliance\Services\InvestmentDeclarations;
+use App\Domain\Compliance\Services\PriorExemptions;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Services\CustomFields;
 use App\Domain\Configuration\Services\OptionLists;
@@ -23,13 +24,20 @@ use App\Domain\Lifecycle\Models\EmployeeTimelineEntry;
 use App\Domain\Lifecycle\Support\TimelineCategories;
 use App\Domain\Payroll\Models\EmployeePaymentMode;
 use App\Domain\Payroll\Services\PaymentModes;
+use App\Domain\People\Models\InsurancePolicy;
+use App\Domain\People\Models\InsuredMember;
+use App\Domain\People\Models\Person;
 use App\Domain\People\Models\PersonAddress;
 use App\Domain\People\Models\PersonEmergencyContact;
 use App\Domain\People\Models\PersonExperience;
 use App\Domain\People\Models\PersonFamilyMember;
+use App\Domain\People\Models\PersonIdentityDocument;
+use App\Domain\People\Models\PersonNomination;
 use App\Domain\People\Models\PersonQualification;
 use App\Domain\People\Models\PersonSkill;
 use App\Domain\People\Models\ProfileChangeRequest;
+use App\Domain\People\Services\InsuranceRecords;
+use App\Domain\People\Services\ProfileChanges;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Domain\Skills\Services\SkillProfiles;
 use App\Domain\Skills\Support\SkillProficiencies;
@@ -41,7 +49,7 @@ use Throwable;
 
 /**
  * HROne parity MS-2 (My space → Profile): the employee's own profile, read by section (Snapshot, Personal, Family,
- * Professional, Skills, Other details, Bank, Previous employer, Documents, History).
+ * Professional, Health insurance (HROne parity MS-5), Skills, Other details, Bank, Previous employer, Documents, History).
  *
  * Every value is read through its owning domain (People, Employment, Exit, Payroll pay modes, Compliance declarations,
  * Documents, Skills, custom fields, Lifecycle timeline, the audit trail through ChangeIntelligence). It only ever reads
@@ -86,6 +94,10 @@ final class MyProfileSections
             if ($key === 'documents' && ! $viewer->hasPermission('document.own')) {
                 continue;
             }
+            // HROne parity MS-5: shown only to someone with a policy on file or who may add one (nothing new otherwise).
+            if ($key === 'health_insurance' && ! $this->showsInsurance($viewer, $employee)) {
+                continue;
+            }
             $out[$key] = match ($key) {
                 'personal' => 'Personal', 'professional' => 'Professional', 'other_details' => 'Other details', default => $label,
             };
@@ -107,6 +119,47 @@ final class MyProfileSections
         ];
     }
 
+    /** HROne parity MS-5: a policy on file, the section editable by the person, or a change of it waiting. */
+    private function showsInsurance(User $viewer, Employee $employee): bool
+    {
+        return InsurancePolicy::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->getKey())->exists()
+            || app(ProfileChanges::class)->editable($viewer, $employee, 'health_insurance')
+            || ProfileChangeRequest::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->getKey())->where('section', 'health_insurance')->where('status', 'pending')->exists();
+    }
+
+    /**
+     * HROne parity MS-5 (matrix 22 §22.2.5): the person's health insurance — each policy (insurer and code, policy number,
+     * sum assured, issue date, valid until, the e-card link) and the people it covers (name, relation, date of birth,
+     * gender, parents' cover). The insurer's member id only as PRV-1 allows (with employee.self_sensitive, masked, in full
+     * only once revealed through the page's audited reveal of `insured:{id}`); today's default: not shown.
+     *
+     * @param  list<string>  $revealed
+     * @return array{sensitive: bool, policies: list<array<string, mixed>>}
+     */
+    public function insurance(User $viewer, Employee $employee, array $revealed = []): array
+    {
+        if (! self::isOwn($viewer, $employee) || ! $this->matrix->allowsAudience('employee', 'health_insurance')) {
+            return ['sensitive' => false, 'policies' => []];
+        }
+        $sensitive = self::maySeeSensitive($viewer, $employee);
+        $date = fn ($d) => $d?->format('j M Y');
+
+        return ['sensitive' => $sensitive, 'policies' => InsuranceRecords::policiesOf($employee)->map(fn (InsurancePolicy $p) => [
+            'id' => $p->id, 'insurer' => $p->insurer_name, 'code' => $p->insurer_code, 'number' => $p->policy_number,
+            'sum_assured' => $p->sum_assured === null ? null : number_format((float) $p->sum_assured, 2), 'issued' => $date($p->issued_on), 'valid_until' => $date($p->valid_until),
+            'expired' => $p->valid_until !== null && $p->valid_until->lt(today()),
+            'ecard' => $p->hasEcard() ? $this->safe(fn () => ParityFileController::url('insurance-ecard', $p, 0)) : null,
+            'members' => $p->members->map(function (InsuredMember $m) use ($sensitive, $revealed, $date) {
+                $field = 'insured:'.$m->id;
+                $shown = $sensitive && in_array($field, $revealed, true) && $m->maskedMemberId() !== null;
+
+                return ['id' => $m->id, 'field' => $field, 'name' => $m->name, 'relation' => $m->relationLabel(), 'date_of_birth' => $date($m->date_of_birth),
+                    'gender' => $m->genderLabel(), 'parents' => (bool) $m->is_parents_cover,
+                    'member_id' => $sensitive ? ($shown ? (string) $m->member_id : $m->maskedMemberId()) : null, 'revealed' => $shown];
+            })->values()->all(),
+        ])->values()->all()];
+    }
+
     /** @return array<string, ?string> label => value (the snapshot: basic HR facts, including the stored-but-hidden ones) */
     public function snapshot(User $viewer, Employee $employee): array
     {
@@ -125,6 +178,8 @@ final class MyProfileSections
 
         $facts = [
             'Employee code' => $employee->employee_code,
+            // HROne parity MS-4: shown only when recorded.
+            'Salutation' => $person?->salutationLabel(),
             'Name' => $person?->full_name,
             'Preferred name' => $person?->preferred_name,
             'Date of birth' => $date($person?->date_of_birth),
@@ -168,12 +223,15 @@ final class MyProfileSections
      * Identification (masked; full only for revealed fields and only with employee.self_sensitive), contact, addresses and
      * emergency contacts.
      *
+     * HROne parity MS-4: passports and driving licences — kind and dates always; the number only as PRV-1 allows (with
+     * employee.self_sensitive, masked, in full only once revealed through the page's audited reveal of `identity:{id}`).
+     *
      * @param  list<string>  $revealed
-     * @return array{identifiers: list<array{field: string, label: string, value: string}>, sensitive: bool, contact: array<string, ?string>, addresses: list<array<string, ?string>>, emergency: list<array<string, ?string>>}
+     * @return array{identifiers: list<array{field: string, label: string, value: string}>, sensitive: bool, contact: array<string, ?string>, addresses: list<array<string, ?string>>, emergency: list<array<string, ?string>>, identity_documents: list<array<string, mixed>>}
      */
     public function personal(User $viewer, Employee $employee, array $revealed = []): array
     {
-        $empty = ['identifiers' => [], 'sensitive' => false, 'contact' => [], 'addresses' => [], 'emergency' => []];
+        $empty = ['identifiers' => [], 'sensitive' => false, 'contact' => [], 'addresses' => [], 'emergency' => [], 'identity_documents' => []];
         if (! self::isOwn($viewer, $employee) || ! $this->matrix->allowsAudience('employee', 'personal')) {
             return $empty;
         }
@@ -200,14 +258,22 @@ final class MyProfileSections
                     'address' => collect([$a->address_line_1, $a->address_line_2, $a->city, $a->state_code, $a->postal_code, $a->country_code])->filter()->implode(', ')])->values()->all(),
             'emergency' => PersonEmergencyContact::query()->where('person_id', $employee->person_id)->orderBy('priority')->get()
                 ->map(fn (PersonEmergencyContact $c) => ['name' => $c->name, 'relation' => $c->relation, 'phone' => collect([$c->phone, $c->alternate_phone])->filter()->implode(' / '), 'email' => $c->email])->values()->all(),
+            'identity_documents' => PersonIdentityDocument::query()->where('person_id', $employee->person_id)->orderBy('kind')->get()
+                ->map(function (PersonIdentityDocument $d) use ($sensitive, $revealed) {
+                    $field = 'identity:'.$d->id;
+                    $shown = $sensitive && in_array($field, $revealed, true);
+
+                    return ['id' => $d->id, 'field' => $field, 'label' => $d->kindLabel(), 'issued' => $d->issued_on?->format('j M Y'), 'expires' => $d->expires_on?->format('j M Y'),
+                        'country' => $d->issuing_country, 'number' => $sensitive ? ($shown ? (string) $d->number : $d->maskedNumber()) : null, 'revealed' => $shown];
+                })->values()->all(),
         ];
     }
 
-    /** @return array{marital_status: ?string, members: list<array<string, ?string>>} */
+    /** @return array{marital_status: ?string, members: list<array<string, ?string>>, nominations: list<array<string, ?string>>} */
     public function family(User $viewer, Employee $employee): array
     {
         if (! self::isOwn($viewer, $employee) || ! $this->matrix->allowsAudience('employee', 'family')) {
-            return ['marital_status' => null, 'members' => []];
+            return ['marital_status' => null, 'members' => [], 'nominations' => []];
         }
         $employee->loadMissing('person');
         $status = $employee->person?->marital_status;
@@ -217,15 +283,21 @@ final class MyProfileSections
             'marital_status' => $status ? (string) config("peopleos.people.marital_statuses.{$status}", $status) : null,
             'members' => PersonFamilyMember::query()->where('person_id', $employee->person_id)->orderBy('id')->get()
                 ->map(fn (PersonFamilyMember $m) => ['name' => $m->name, 'relation' => $relations->label('family_relations', $m->relation), 'date_of_birth' => $m->date_of_birth?->format('j M Y'),
-                    'dependent' => $m->is_dependent ? 'Yes' : 'No', 'nominee' => $m->is_nominee ? (($m->nominee_share !== null ? rtrim(rtrim((string) $m->nominee_share, '0'), '.').'%' : 'Yes')) : 'No'])->values()->all(),
+                    'dependent' => $m->is_dependent ? 'Yes' : 'No', 'nominee' => $m->is_nominee ? (($m->nominee_share !== null ? rtrim(rtrim((string) $m->nominee_share, '0'), '.').'%' : 'Yes')) : 'No',
+                    // HROne parity MS-4: schooling and remarks.
+                    'notes' => collect([$m->in_school ? 'In school' : null, $m->in_hostel ? 'In a hostel' : null, $m->remarks])->filter()->implode(' · ') ?: null])->values()->all(),
+            // HROne parity MS-4: nominations per benefit.
+            'nominations' => PersonNomination::query()->with('familyMember')->where('person_id', $employee->person_id)->orderBy('benefit')->orderBy('id')->get()
+                ->map(fn (PersonNomination $n) => ['benefit' => $n->benefitLabel(), 'nominee' => $n->familyMember?->name, 'share' => rtrim(rtrim((string) $n->share, '0'), '.').'%',
+                    'guardian' => $n->guardian_name ? $n->guardian_name.($n->guardian_relation ? ' ('.$n->guardian_relation.')' : '') : null])->values()->all(),
         ];
     }
 
-    /** @return array{experience: list<array<string, ?string>>, total_months: int, education: list<array<string, ?string>>} */
+    /** @return array{experience: list<array<string, ?string>>, total_months: int, education: list<array<string, ?string>>, fresher: bool} */
     public function professional(User $viewer, Employee $employee): array
     {
         if (! self::isOwn($viewer, $employee) || ! $this->matrix->allowsAudience('employee', 'professional')) {
-            return ['experience' => [], 'total_months' => 0, 'education' => []];
+            return ['experience' => [], 'total_months' => 0, 'education' => [], 'fresher' => false];
         }
         $total = 0;
         $experience = PersonExperience::query()->where('person_id', $employee->person_id)->orderByDesc('from_date')->get()
@@ -242,7 +314,11 @@ final class MyProfileSections
             'total_months' => $total,
             'education' => PersonQualification::query()->where('person_id', $employee->person_id)->orderByDesc('year_of_completion')->get()
                 ->map(fn (PersonQualification $q) => ['qualification' => $q->qualification, 'specialisation' => $q->specialisation, 'institution' => $q->institution,
-                    'board' => $q->board_or_university, 'year' => $q->year_of_completion ? (string) $q->year_of_completion : null, 'grade' => $q->grade_or_score])->values()->all(),
+                    'board' => $q->board_or_university, 'year' => $q->year_of_completion ? ($q->year_started ? $q->year_started.' – ' : '').$q->year_of_completion : ($q->year_started ? 'from '.$q->year_started : null),
+                    'grade' => $q->grade_or_score,
+                    // HROne parity MS-4: the highest qualification and how it was studied.
+                    'highest' => (bool) $q->is_highest, 'mode' => $q->mode ? app(OptionLists::class)->label('qualification_modes', $q->mode) : null])->values()->all(),
+            'fresher' => (bool) Person::query()->whereKey($employee->person_id)->value('is_fresher'),
         ];
     }
 
@@ -328,7 +404,7 @@ final class MyProfileSections
         ];
     }
 
-    /** @return array{year: string, declared: bool, facts: array<string, ?string>} the previous employer on this financial year's declaration */
+    /** @return array{year: string, declared: bool, facts: array<string, ?string>, note?: ?string} the previous employer on this financial year's declaration */
     public function previousEmployer(User $viewer, Employee $employee): array
     {
         $year = app(FinancialYear::class)->label(now());
@@ -342,6 +418,12 @@ final class MyProfileSections
         $money = fn ($v) => $v === null || $v === '' ? null : number_format((float) $v, 2);
         $date = fn ($v) => blank($v) ? null : Carbon::parse($v)->format('j M Y');
 
+        // HROne parity MS-4: gratuity / leave-encashment exemptions used there — shown, and counted only through a verified rule.
+        $prior = $this->safe(fn () => app(PriorExemptions::class)->for($declaration, now())) ?? [];
+        $note = $prior === [] ? null : (collect($prior)->every(fn (array $p) => $p['counted'])
+            ? 'The exemptions used at the previous employer are counted against the verified tax rule’s limits; they do not change the monthly tax on your salary.'
+            : 'The exemptions used at the previous employer are kept for your Form 12BB and do not change your tax: no verified tax rule carries the exemption limits yet.');
+
         return ['year' => $year, 'declared' => true, 'facts' => array_filter([
             'Employer' => $declaration->previousEmployer('name'),
             'TAN' => $declaration->previousEmployer('tan'),
@@ -351,7 +433,9 @@ final class MyProfileSections
             'Tax deducted (TDS)' => $money($declaration->previous_employer_tds),
             'PF deducted' => $money($declaration->previousEmployer('pf')),
             'Professional tax deducted' => $money($declaration->previousEmployer('pt')),
-        ], fn ($v) => $v !== null && $v !== '')];
+            'Gratuity exemption used' => $money($declaration->previousEmployer('gratuity_exempt')),
+            'Leave encashment exemption used' => $money($declaration->previousEmployer('leave_encashment_exempt')),
+        ], fn ($v) => $v !== null && $v !== ''), 'note' => $note];
     }
 
     /**

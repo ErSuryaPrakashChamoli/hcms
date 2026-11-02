@@ -8,6 +8,7 @@ use App\Domain\Expense\Services\ExpenseCoverLetters;
 use App\Domain\Expense\Services\ExpenseReports;
 use App\Filament\Resources\ExpenseReports\ExpenseReportResource;
 use App\Filament\Support\Pages\PeopleViewRecord;
+use App\Http\Controllers\ExpenseReportPrintController;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -47,6 +48,11 @@ class ViewExpenseReport extends PeopleViewRecord
                         return null;
                     }
                 }),
+            // HROne parity XO-3 (§26.4.3 #24): a printable summary (lines, approvals, totals, payment as on this page), whether
+            // or not cover letters are switched on.
+            Action::make('printSummary')->label('Print summary')->icon('heroicon-m-printer')->color('gray')
+                ->visible(fn (ExpenseReport $record) => auth()->user()?->can('view', $record) ?? false)
+                ->url(fn (ExpenseReport $record) => ExpenseReportPrintController::url($record))->openUrlInNewTab(),
             ExpenseReportResource::cancelAction(),
         ];
     }

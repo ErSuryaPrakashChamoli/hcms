@@ -103,7 +103,11 @@ class EmployeeResource extends Resource
             RelationGroup::make('Operations', [DocumentsRelationManager::class, RelationManagers\LettersRelationManager::class, RequestsRelationManager::class,
                 AssetsRelationManager::class, BgvRelationManager::class, RelationManagers\CommunicationsRelationManager::class]),
             RelationGroup::make(fn (?Model $ownerRecord) => $ownerRecord !== null && BankAccountsRelationManager::canViewForRecord($ownerRecord, ViewEmployee::class) ? 'Bank & personal' : 'Personal', [AddressesRelationManager::class, FamilyMembersRelationManager::class, EmergencyContactsRelationManager::class,
-                QualificationsRelationManager::class, ExperiencesRelationManager::class, BankAccountsRelationManager::class]),
+                QualificationsRelationManager::class, ExperiencesRelationManager::class, BankAccountsRelationManager::class,
+                // HROne parity MS-4: nominations per benefit (family section) and passport / driving licence (sensitive).
+                RelationManagers\NominationsRelationManager::class, RelationManagers\IdentityDocumentsRelationManager::class,
+                // HROne parity MS-5: health insurance policies and insured members (sensitive, CA-6 section health_insurance).
+                RelationManagers\InsuranceRelationManager::class]),
             AuditHistoryRelationManager::class,
             // HROne parity WO-2: everything about the employee across modules, from the audit trail (audit.view).
             RelationManagers\ActivityRelationManager::class,

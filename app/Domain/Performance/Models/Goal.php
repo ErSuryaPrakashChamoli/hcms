@@ -8,6 +8,8 @@ use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\OrganisationNode;
+use App\Domain\Performance\Scopes\GoalVisibilityScope;
+use App\Domain\Performance\Support\GoalVisibility;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -17,14 +19,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * A goal / objective / KRA / KPI (§34). Cascades company → business → department → team → employee
  * through parent_id; organisation-level goals carry an organisation_node_id instead of an employee.
+ *
+ * HROne parity GO-4: an organisation goal may name an owner person (owner_employee_id) and be private (visibility, with a
+ * visible-to list in goal_viewers; GoalVisibilityScope keeps private goals to the people GoalVisibility names); every goal
+ * carries the health reported at check-in, tags, and — while `performance.goals.achievement_override` is on — an actual
+ * achievement entered beside the system-calculated progress (finalAchievement). Every period of alignment to a parent goal
+ * is kept in goal_alignments (linked / unlinked on).
  */
-#[Fillable(['tenant_id', 'level', 'employee_id', 'organisation_node_id', 'parent_id', 'performance_cycle_id', 'kra_id', 'type', 'title', 'description', 'measure_type', 'start_value', 'target_value', 'current_value', 'unit', 'weight', 'progress', 'status', 'start_date', 'due_date', 'is_locked', 'created_by', 'source', 'measurement', 'lock_version', 'perspective_id', 'unit_id', 'is_reverse', 'kpi_rating_formula_id', 'goal_template_id'])]
+#[Fillable(['tenant_id', 'level', 'employee_id', 'organisation_node_id', 'parent_id', 'performance_cycle_id', 'kra_id', 'type', 'title', 'description', 'measure_type', 'start_value', 'target_value', 'current_value', 'unit', 'weight', 'progress', 'status', 'start_date', 'due_date', 'is_locked', 'created_by', 'source', 'measurement', 'lock_version', 'perspective_id', 'unit_id', 'is_reverse', 'kpi_rating_formula_id', 'goal_template_id', 'owner_employee_id', 'health', 'visibility', 'tags', 'achievement_override', 'achievement_override_reason', 'achievement_overridden_by', 'achievement_overridden_at'])]
 class Goal extends Model
 {
     use Auditable, BelongsToTenant;
     use ScopedByEmployee;
 
-    protected $attributes = ['status' => 'draft'];
+    protected $attributes = ['status' => 'draft', 'visibility' => 'public'];
 
     /** Alignment order: a goal aligns to a goal at its own level or above. */
     public const LEVEL_RANK = ['company' => 0, 'business' => 1, 'department' => 2, 'team' => 3, 'employee' => 4];
@@ -34,6 +42,8 @@ class Goal extends Model
 
     protected static function booted(): void
     {
+        // HROne parity GO-4 (D-GO5): private goals reach only the people GoalVisibility names.
+        static::addGlobalScope(new GoalVisibilityScope);
         // Phase 7 structural rules, enforced for every write path (service, Filament, API).
         static::saving(function (self $goal) {
             if ($goal->weight !== null && $goal->weight < 0) {
@@ -48,6 +58,17 @@ class Goal extends Model
             if ($goal->isDirty('parent_id') && $goal->parent_id) {
                 $goal->assertAlignment();
             }
+            // GO-4: only organisation goals have an owner person or may be private (an employee goal's owner is its employee).
+            $attributes = $goal->getAttributes();
+            if ($goal->level === 'employee' && (($attributes['owner_employee_id'] ?? null) !== null || ($attributes['visibility'] ?? 'public') === 'private')) {
+                throw new \RuntimeException('Only organisation goals have an owner person or can be private.');
+            }
+            if (($attributes['health'] ?? null) !== null && ! array_key_exists($attributes['health'], (array) config('peopleos.performance.goal_health'))) {
+                throw new \RuntimeException("Unknown goal status '{$attributes['health']}'.");
+            }
+            if (! array_key_exists((string) ($attributes['visibility'] ?? 'public'), (array) config('peopleos.performance.goal_visibility'))) {
+                throw new \RuntimeException('A goal is public or private.');
+            }
             if ($goal->exists && $goal->getRawOriginal('is_locked') && ! $goal->isDirty('is_locked')) {
                 foreach (self::LOCKED_FIELDS as $field) {
                     if ($goal->isDirty($field)) {
@@ -61,12 +82,37 @@ class Goal extends Model
                 $goal->lock_version = (int) $goal->getRawOriginal('lock_version') + 1;
             }
         });
+        // GO-4: linked on / unlinked on, whatever path set, changed or cleared the alignment.
+        static::created(function (self $goal) {
+            if ($goal->parent_id !== null) {
+                $goal->recordAlignment();
+            }
+        });
+        static::updated(function (self $goal) {
+            if ($goal->wasChanged('parent_id')) {
+                $goal->recordAlignment();
+            }
+        });
+    }
+
+    /** GO-4: close the open alignment to any other parent and open one to the current parent (if any). */
+    private function recordAlignment(): void
+    {
+        $actor = auth()->id();
+        GoalAlignment::query()->where('goal_id', $this->id)->whereNull('unlinked_at')
+            ->when($this->parent_id !== null, fn ($q) => $q->where('parent_id', '!=', $this->parent_id))
+            ->get()->each(function (GoalAlignment $alignment) use ($actor) {
+                $alignment->update(['unlinked_at' => now(), 'unlinked_by' => $actor]);
+            });
+        if ($this->parent_id !== null && ! GoalAlignment::query()->where('goal_id', $this->id)->where('parent_id', $this->parent_id)->whereNull('unlinked_at')->exists()) {
+            GoalAlignment::create(['tenant_id' => $this->tenant_id, 'goal_id' => $this->id, 'parent_id' => $this->parent_id, 'linked_at' => now(), 'linked_by' => $actor]);
+        }
     }
 
     /** No self-alignment, no cycles, no aligning upward to a lower level. */
     public function assertAlignment(): void
     {
-        $parent = self::query()->withoutGlobalScope(AccessScope::class)->find($this->parent_id);
+        $parent = self::query()->withoutGlobalScopes([AccessScope::class, GoalVisibilityScope::class])->find($this->parent_id);
         if ($parent === null) {
             throw new \RuntimeException('The goal to align to does not exist.');
         }
@@ -74,7 +120,7 @@ class Goal extends Model
             throw new \RuntimeException('A goal can only align to a goal at its own level or above.');
         }
         $seen = [];
-        for ($node = $parent; $node !== null; $node = $node->parent_id ? self::query()->withoutGlobalScope(AccessScope::class)->find($node->parent_id) : null) {
+        for ($node = $parent; $node !== null; $node = $node->parent_id ? self::query()->withoutGlobalScopes([AccessScope::class, GoalVisibilityScope::class])->find($node->parent_id) : null) {
             if (($this->exists && $node->id === $this->id) || isset($seen[$node->id])) {
                 throw new \RuntimeException('This alignment would create a circular goal chain.');
             }
@@ -88,6 +134,7 @@ class Goal extends Model
             'start_value' => 'decimal:2', 'target_value' => 'decimal:2', 'current_value' => 'decimal:2',
             'weight' => 'integer', 'progress' => 'decimal:2', 'is_locked' => 'boolean',
             'start_date' => 'date', 'due_date' => 'date', 'lock_version' => 'integer', 'is_reverse' => 'boolean',
+            'tags' => 'array', 'achievement_override' => 'decimal:2', 'achievement_overridden_at' => 'datetime',
         ];
     }
 
@@ -173,6 +220,76 @@ class Goal extends Model
     public function isOpen(): bool
     {
         return in_array($this->status, ['draft', 'active'], true);
+    }
+
+    /** GO-4: the organisation goal's accountable person (employee goals belong to their employee). */
+    public function ownerEmployee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'owner_employee_id');
+    }
+
+    /** GO-4: the visible-to list of a private goal. */
+    public function viewers(): HasMany
+    {
+        return $this->hasMany(GoalViewer::class);
+    }
+
+    /** GO-4: every period a goal was aligned to this one (linked goals; open rows are still linked). */
+    public function alignments(): HasMany
+    {
+        return $this->hasMany(GoalAlignment::class, 'parent_id');
+    }
+
+    public function achievementOverrider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'achievement_overridden_by');
+    }
+
+    public function isPrivate(): bool
+    {
+        return $this->visibility === 'private';
+    }
+
+    public function isOrganisationGoal(): bool
+    {
+        return $this->level !== 'employee';
+    }
+
+    /** GO-4: the health of an open goal (none reported yet = not started); a closed goal is "closed". */
+    public function healthKey(): string
+    {
+        return $this->isOpen() || $this->status === 'pending_approval' ? ($this->health ?? 'not_started') : 'closed';
+    }
+
+    public function healthLabel(): string
+    {
+        $key = $this->healthKey();
+
+        return $key === 'closed' ? 'Closed' : (string) config("peopleos.performance.goal_health.{$key}", $key);
+    }
+
+    /** GO-4: the achievement the system calculates (progress from key results, check-ins or aligned goals). */
+    public function systemAchievement(): float
+    {
+        return (float) $this->progress;
+    }
+
+    /** GO-4 (D-GO7): whether an entered actual achievement replaces the system's — only while the setting is on. */
+    public function achievementOverridden(): bool
+    {
+        return $this->achievement_override !== null && GoalVisibility::overrideEnabled();
+    }
+
+    /** GO-4 (D-GO7): the final achievement — the actual one while overriding is on, else exactly the system's. */
+    public function finalAchievement(): float
+    {
+        return $this->achievementOverridden() ? (float) $this->achievement_override : $this->systemAchievement();
+    }
+
+    /** GO-4: the title for outbound events and integrations (a private goal's title stays inside the product). */
+    public function publicTitle(): string
+    {
+        return $this->isPrivate() ? GoalVisibility::HIDDEN_PARENT : $this->title;
     }
 
     /** Progress implied by a value between start and target (clamped 0–100). */

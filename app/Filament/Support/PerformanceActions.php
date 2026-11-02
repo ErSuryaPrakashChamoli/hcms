@@ -88,6 +88,10 @@ final class PerformanceActions
                 ->visible(fn (PerformanceCycle $record) => $record->status === 'closed' && auth()->user()->can('performance.manage'))
                 ->requiresConfirmation()->modalDescription('An archived cycle is read-only.')
                 ->action(fn (PerformanceCycle $record) => self::run(fn () => app(Appraisals::class)->archive($record, auth()->user()), 'Cycle archived')),
+            // HROne parity GO-2: the running cycle's population and windows (add employees, extend a window, withdraw).
+            PerformanceCycleActions::addEmployees(true),
+            PerformanceCycleActions::extendWindow(null, true),
+            PerformanceCycleActions::withdrawEmployees(true),
         ];
     }
 
@@ -153,6 +157,8 @@ final class PerformanceActions
                 ->visible(fn (Appraisal $record) => $record->status === 'finalized' && $record->isPublished() && $record->employee_id === self::me()?->id)
                 ->schema([Textarea::make('comment')->maxLength(500)])
                 ->action(fn (Appraisal $record, array $data) => self::run(fn () => app(Appraisals::class)->acknowledge($record, $data['comment'] ?? null), 'Acknowledged')),
+            // HROne parity GO-2: "Withdraw from cycle" (HR; non-finalized only; nothing is deleted).
+            PerformanceCycleActions::withdrawAppraisal(),
         ];
     }
 
@@ -420,29 +426,66 @@ final class PerformanceActions
     public static function forGoal(): array
     {
         return [
-            Action::make('checkIn')->label('Check in')->icon(Heroicon::OutlinedChartBar)->color('primary')
-                ->visible(fn (Goal $record) => $record->isOpen() && auth()->user()->can('update', $record))
-                ->schema(function (Goal $record) {
-                    $krs = $record->keyResults()->get();
-
-                    return [
-                        Select::make('key_result_id')->label(PerformanceLabels::get('kpi', 'Key result'))->options($krs->pluck('title', 'id')->all())->placeholder('The goal itself')->visible($krs->isNotEmpty()),
-                        TextInput::make('value')->label(PerformanceLabels::get('achievement', 'Current value'))->numeric()->required(),
-                        Select::make('confidence')->options(GoalCheckIn::CONFIDENCE)->default('on_track'),
-                        TextInput::make('measurement')->label('How it was measured')->maxLength(255),
-                        Textarea::make('note')->maxLength(500),
-                    ];
-                })
-                ->action(function (Goal $record, array $data) {
-                    $subject = ! empty($data['key_result_id']) ? $record->keyResults()->findOrFail($data['key_result_id']) : $record;
-                    self::run(fn () => app(Goals::class)->checkIn($subject, (float) $data['value'], $data['note'] ?? null, $data['confidence'] ?? null, auth()->user(), 'manual', $data['measurement'] ?? null), 'Progress updated');
-                }),
+            self::goalCheckIn(),
             Action::make('close')->label('Close')->icon(Heroicon::OutlinedCheckCircle)->color('gray')
                 // Owner decision 2026-10-29: the reporting manager closes the goals of a system-mapped goal sheet.
                 ->visible(fn (Goal $record) => $record->isOpen() && auth()->user()->can('update', $record) && ! app(Goals::class)->proposesFor($record, auth()->user()))
                 ->schema([Select::make('status')->options(['completed' => 'Completed', 'cancelled' => 'Cancelled'])->required(), Textarea::make('reason')->maxLength(255)])
                 ->action(fn (Goal $record, array $data) => self::run(fn () => app(Goals::class)->close($record, $data['status'], $data['reason'] ?? null), 'Goal closed')),
+            self::overrideAchievement(),
         ];
+    }
+
+    /**
+     * "Check in" on a goal (or one of its key results). HROne parity GO-4: the goal's status (health) and the period the
+     * update covers, both optional (HROne's check-in dialog: From / To date, Status). $goalOf turns the action's record
+     * into the goal (the linked-goals table acts on alignment rows).
+     */
+    public static function goalCheckIn(?\Closure $goalOf = null, string $name = 'checkIn'): Action
+    {
+        $goalOf ??= fn (Goal $record) => $record;
+
+        return Action::make($name)->label('Check in')->icon(Heroicon::OutlinedChartBar)->color('primary')
+            ->visible(fn ($record) => ($goal = $goalOf($record)) !== null && $goal->isOpen() && auth()->user()->can('checkIn', $goal))
+            ->schema(function ($record) use ($goalOf) {
+                $krs = $goalOf($record)?->keyResults()->get() ?? collect();
+
+                return [
+                    Select::make('key_result_id')->label(PerformanceLabels::get('kpi', 'Key result'))->options($krs->pluck('title', 'id')->all())->placeholder('The goal itself')->visible($krs->isNotEmpty()),
+                    TextInput::make('value')->label(PerformanceLabels::get('achievement', 'Current value'))->numeric()->required(),
+                    Select::make('confidence')->options(GoalCheckIn::CONFIDENCE)->default('on_track'),
+                    Select::make('health')->label('Goal status')->options(config('peopleos.performance.goal_health'))->placeholder('Unchanged')
+                        ->helperText('Shown on the goal and in its filters (not started, on track, behind, at risk).'),
+                    DatePicker::make('period_start')->label('Period from')->native(false),
+                    DatePicker::make('period_end')->label('Period to')->native(false),
+                    TextInput::make('measurement')->label('How it was measured')->maxLength(255),
+                    Textarea::make('note')->maxLength(500),
+                ];
+            })
+            ->action(function ($record, array $data) use ($goalOf) {
+                $goal = $goalOf($record);
+                $subject = ! empty($data['key_result_id']) ? $goal->keyResults()->findOrFail($data['key_result_id']) : $goal;
+                self::run(fn () => app(Goals::class)->checkIn($subject, (float) $data['value'], $data['note'] ?? null, $data['confidence'] ?? null, auth()->user(), 'manual', $data['measurement'] ?? null,
+                    health: $data['health'] ?? null, periodStart: $data['period_start'] ?? null, periodEnd: $data['period_end'] ?? null), 'Progress updated');
+            });
+    }
+
+    /**
+     * HROne parity GO-4 (owner decision PER-6 / D-GO7): "Actual achievement" — performance HR or the manager of the goal's
+     * person enters the achievement that overrides the system-calculated one, with a reason (blank clears it). Shown only
+     * while `performance.goals.achievement_override` is on.
+     */
+    public static function overrideAchievement(): Action
+    {
+        return Action::make('overrideAchievement')->label('Actual achievement')->icon(Heroicon::OutlinedAdjustmentsHorizontal)->color('gray')
+            ->visible(fn (Goal $record) => $record->status !== 'cancelled' && auth()->user()->can('overrideAchievement', $record))
+            ->modalDescription(fn (Goal $record) => 'System calculated achievement: '.number_format($record->systemAchievement(), 2).' %. The system value is kept beside the actual one; leave the actual achievement blank to go back to the system\'s.')
+            ->fillForm(fn (Goal $record) => ['actual' => $record->achievement_override === null ? null : (float) $record->achievement_override])
+            ->schema([
+                TextInput::make('actual')->label('Actual achievement')->numeric()->minValue(0)->maxValue(1000)->suffix('%'),
+                Textarea::make('reason')->label('Reason')->required()->maxLength(500),
+            ])
+            ->action(fn (Goal $record, array $data) => self::run(fn () => app(Goals::class)->overrideAchievement($record, filled($data['actual'] ?? null) ? (float) $data['actual'] : null, (string) $data['reason'], auth()->user()), 'Achievement saved'));
     }
 
     /**

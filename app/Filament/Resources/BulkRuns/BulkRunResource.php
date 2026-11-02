@@ -5,6 +5,7 @@ namespace App\Filament\Resources\BulkRuns;
 use App\Domain\Experience\Models\BulkRun;
 use App\Filament\Resources\BulkRuns\Pages\ListBulkRuns;
 use App\Filament\Resources\BulkRuns\Pages\ViewBulkRun;
+use App\Filament\Resources\BulkRuns\RelationManagers\DeliveryListRelationManager;
 use App\Filament\Resources\BulkRuns\RelationManagers\ItemsRelationManager;
 use BackedEnum;
 use Filament\Actions\ViewAction;
@@ -95,7 +96,8 @@ class BulkRunResource extends Resource
 
     public static function getRelations(): array
     {
-        return [ItemsRelationManager::class];
+        // HROne parity WO-16: invitation / reset-link runs also show their delivery list (other runs: unchanged).
+        return [ItemsRelationManager::class, DeliveryListRelationManager::class];
     }
 
     public static function getPages(): array

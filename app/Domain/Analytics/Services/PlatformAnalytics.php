@@ -113,7 +113,7 @@ final class PlatformAnalytics
 
         return [
             'Headcount on '.$day => $headcount,
-            'Joiners (30 days)' => $this->suppress(Employee::query()->whereBetween('joining_date', [$from, $day])->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])->count()),
+            'Joiners (30 days)' => $this->suppress(Employee::query()->whereBetween('joining_date', [$from, $day])->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding', 'not_joined'])->count()),
             'Exits (30 days)' => $this->suppress(ExitCase::query()->where('status', 'completed')->whereBetween('last_working_day', [$from, $day])->count()),
             'Exits in progress' => $this->suppress(ExitCase::query()->whereIn('status', ExitCase::OPEN)->count()),
         ] + $states->mapWithKeys(fn ($n, $state) => ['Lifecycle: '.str_replace('_', ' ', (string) $state) => $this->suppress((int) $n)])->all();

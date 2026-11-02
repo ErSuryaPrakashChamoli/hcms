@@ -24,6 +24,8 @@ use RuntimeException;
  * performance.write and honour Idempotency-Key). Deliberately never returns: review or feedback
  * text, one-on-one notes (shared or private), check-in answers, calibration notes or history,
  * anonymous feedback authors, PIP reasons / objectives / outcomes, or unfinalized ratings.
+ * HROne parity GO-4: private goals are never returned or written here (GoalVisibilityScope: an API-key request reads
+ * public goals only); goals carry their health, check-ins their health and period.
  */
 class PerformanceController extends Controller
 {
@@ -67,6 +69,10 @@ class PerformanceController extends Controller
             'confidence' => ['nullable', 'in:'.implode(',', array_keys(GoalCheckIn::CONFIDENCE))],
             'measurement' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:500'],
+            // HROne parity GO-4: the goal status and the period the update covers (optional).
+            'health' => ['nullable', 'in:'.implode(',', array_keys((array) config('peopleos.performance.goal_health')))],
+            'period_start' => ['nullable', 'date'],
+            'period_end' => ['nullable', 'date'],
         ]);
         $key = $request->header('Idempotency-Key');
         if ($key !== null && ($key === '' || strlen($key) > 64)) {
@@ -75,7 +81,8 @@ class PerformanceController extends Controller
         $goal = Goal::query()->findOrFail($goal);
 
         try {
-            $checkIn = $goals->checkIn($goal, (float) $data['value'], $data['note'] ?? null, $data['confidence'] ?? null, null, 'api', $data['measurement'] ?? null, $key);
+            $checkIn = $goals->checkIn($goal, (float) $data['value'], $data['note'] ?? null, $data['confidence'] ?? null, null, 'api', $data['measurement'] ?? null, $key,
+                $data['health'] ?? null, $data['period_start'] ?? null, $data['period_end'] ?? null);
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -148,11 +155,12 @@ class PerformanceController extends Controller
 
     private function goal(Goal $g): array
     {
-        return ['id' => $g->id, 'employee_code' => $g->employee?->employee_code, 'cycle' => $g->cycle?->code, 'level' => $g->level, 'type' => $g->type, 'title' => $g->title, 'parent_id' => $g->parent_id, 'measure_type' => $g->measure_type, 'target_value' => (float) $g->target_value, 'current_value' => (float) $g->current_value, 'weight' => $g->weight, 'progress' => (float) $g->progress, 'status' => $g->status, 'locked' => (bool) $g->is_locked, 'due_date' => $g->due_date?->toDateString(), 'version' => $g->lock_version];
+        return ['id' => $g->id, 'employee_code' => $g->employee?->employee_code, 'cycle' => $g->cycle?->code, 'level' => $g->level, 'type' => $g->type, 'title' => $g->title, 'parent_id' => $g->parent_id, 'measure_type' => $g->measure_type, 'target_value' => (float) $g->target_value, 'current_value' => (float) $g->current_value, 'weight' => $g->weight, 'progress' => (float) $g->progress, 'status' => $g->status, 'locked' => (bool) $g->is_locked, 'due_date' => $g->due_date?->toDateString(), 'version' => $g->lock_version, 'health' => $g->healthKey()];
     }
 
     private function progress(GoalCheckIn $c): array
     {
-        return ['id' => $c->id, 'goal_id' => $c->goal_id, 'key_result_id' => $c->key_result_id, 'previous_value' => $c->previous_value === null ? null : (float) $c->previous_value, 'value' => (float) $c->value, 'previous_progress' => $c->previous_progress === null ? null : (float) $c->previous_progress, 'progress' => (float) $c->progress, 'confidence' => $c->confidence, 'source' => $c->source, 'measurement' => $c->measurement, 'recorded_at' => $c->created_at?->toIso8601String()];
+        return ['id' => $c->id, 'goal_id' => $c->goal_id, 'key_result_id' => $c->key_result_id, 'previous_value' => $c->previous_value === null ? null : (float) $c->previous_value, 'value' => (float) $c->value, 'previous_progress' => $c->previous_progress === null ? null : (float) $c->previous_progress, 'progress' => (float) $c->progress, 'confidence' => $c->confidence, 'source' => $c->source, 'measurement' => $c->measurement, 'recorded_at' => $c->created_at?->toIso8601String(),
+            'health' => $c->health, 'period_start' => $c->period_start?->toDateString(), 'period_end' => $c->period_end?->toDateString()];
     }
 }

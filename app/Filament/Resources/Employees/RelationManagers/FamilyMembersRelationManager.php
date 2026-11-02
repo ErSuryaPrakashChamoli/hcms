@@ -12,6 +12,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
@@ -29,15 +30,24 @@ class FamilyMembersRelationManager extends PersonSatelliteRelationManager
 
     public function form(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([
-            TextInput::make('name')->required()->maxLength(255),
-            Select::make('relation')->options(fn () => app(OptionLists::class)->options('family_relations'))->required(),
-            DatePicker::make('date_of_birth')->native(false),
-            Select::make('gender')->options(config('peopleos.people.genders')),
-            TextInput::make('phone')->tel()->maxLength(32),
-            Toggle::make('is_dependent')->label('Dependent'),
-            Toggle::make('is_nominee')->label('Nominee')->live(),
-            TextInput::make('nominee_share')->numeric()->minValue(0)->maxValue(100)->suffix('%')->visible(fn (Get $get) => (bool) $get('is_nominee')),
+        // HROne parity MS-4: two steps (the drawer becomes a wizard): who the member is, then dependant / nominee / school.
+        return $schema->components([
+            Section::make('Family member')->columns(2)->schema([
+                TextInput::make('name')->required()->maxLength(255),
+                Select::make('relation')->options(fn () => app(OptionLists::class)->options('family_relations'))->required(),
+                DatePicker::make('date_of_birth')->native(false),
+                Select::make('gender')->options(config('peopleos.people.genders')),
+                TextInput::make('phone')->tel()->maxLength(32),
+                TextInput::make('occupation')->maxLength(120),
+                TextInput::make('remarks')->maxLength(255),
+            ]),
+            Section::make('Dependant, nominee and schooling')->columns(2)->schema([
+                Toggle::make('is_dependent')->label('Dependent'),
+                Toggle::make('is_nominee')->label('Nominee')->live(),
+                TextInput::make('nominee_share')->numeric()->minValue(0)->maxValue(100)->suffix('%')->visible(fn (Get $get) => (bool) $get('is_nominee')),
+                Toggle::make('in_school')->label('In school')->helperText('For children: studying at a school or college.'),
+                Toggle::make('in_hostel')->label('In a hostel')->helperText('For children: living in a hostel while studying.'),
+            ]),
         ]);
     }
 
@@ -51,6 +61,10 @@ class FamilyMembersRelationManager extends PersonSatelliteRelationManager
                 IconColumn::make('is_dependent')->label('Dependent')->boolean(),
                 IconColumn::make('is_nominee')->label('Nominee')->boolean(),
                 TextColumn::make('nominee_share')->suffix('%')->placeholder('—'),
+                IconColumn::make('in_school')->label('In school')->boolean()->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('in_hostel')->label('In a hostel')->boolean()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('occupation')->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('remarks')->placeholder('—')->limit(40)->toggleable(isToggledHiddenByDefault: true),
             ])
             // Phase 12: every write goes through the People change action (authorization, validation, audit).
             ->headerActions([CreateAction::make()->using(fn (array $data) => ProfileChangeActions::run(fn () => app(ChangeFamilyMemberAction::class)->add($this->getOwnerRecord(), $data, auth()->user())))])

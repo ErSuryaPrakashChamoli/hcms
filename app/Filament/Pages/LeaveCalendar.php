@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Leave\Models\LeaveType;
+use App\Domain\Leave\Services\LeavePrivacy;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
 use Filament\Pages\Page;
@@ -20,6 +21,7 @@ use UnitEnum;
 /**
  * Team / organisation leave calendar (Phase 3 §42–§44): who is away when, inside the viewer's
  * scope (organisation + relationship scope through the query layer). Reasons are never shown here.
+ * HROne parity RQ-4: a private leave shows its type only to those LeavePrivacy lets see it in full ("Away" otherwise).
  */
 class LeaveCalendar extends Page implements HasTable
 {
@@ -49,7 +51,9 @@ class LeaveCalendar extends Page implements HasTable
                 TextColumn::make('to_date')->label('To')->date('D d M'),
                 TextColumn::make('employee.person.display_name')->label('Employee'),
                 TextColumn::make('employee.currentPosition.department.name')->label('Department')->placeholder('—'),
-                TextColumn::make('leaveType.name')->label('Type')->badge()->color('gray'),
+                // HROne parity RQ-4: a private leave reads "Away" for a viewer who may not see it in full (same badge colour).
+                TextColumn::make('leaveType.name')->label('Type')->badge()->color('gray')
+                    ->formatStateUsing(fn ($state, LeaveRequest $record) => app(LeavePrivacy::class)->showsDetails($record, auth()->user()) ? $state : LeavePrivacy::AWAY),
                 TextColumn::make('days')->numeric(1),
                 TextColumn::make('status')->badge()->color(fn (string $state) => match ($state) {
                     'approved' => 'success', 'pending' => 'warning', default => 'gray'
@@ -61,7 +65,11 @@ class LeaveCalendar extends Page implements HasTable
                         ->when($data['from'] ?? null, fn (Builder $q, $d) => $q->whereDate('to_date', '>=', $d))
                         ->when($data['until'] ?? null, fn (Builder $q, $d) => $q->whereDate('from_date', '<=', $d))),
                 SelectFilter::make('status')->options(['approved' => 'Approved', 'pending' => 'Pending', 'cancel_requested' => 'Cancellation requested']),
-                SelectFilter::make('leave_type_id')->label('Type')->options(fn () => LeaveType::query()->orderBy('name')->pluck('name', 'id')),
+                // HROne parity RQ-4: filtering by type never finds a private leave the viewer may not see in full.
+                SelectFilter::make('leave_type_id')->label('Type')->options(fn () => LeaveType::query()->orderBy('name')->pluck('name', 'id'))
+                    ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null)
+                        ? app(LeavePrivacy::class)->restrictToDetails($query->where('leave_type_id', $data['value']), auth()->user())
+                        : $query),
                 SelectFilter::make('department')->relationship('employee.currentPosition.department', 'name')->preload(),
             ])
             ->defaultSort('from_date')

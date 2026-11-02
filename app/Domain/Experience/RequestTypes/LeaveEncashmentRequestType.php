@@ -7,7 +7,9 @@ use App\Domain\Experience\Enums\RequestStatus;
 use App\Domain\Identity\Models\User;
 use App\Domain\Leave\Models\LeaveEncashment;
 use App\Domain\Leave\Models\LeaveType;
+use App\Filament\Resources\LeaveEncashments\LeaveEncashmentResource;
 use App\Filament\Resources\MyLeaveEncashments\MyLeaveEncashmentResource;
+use App\Filament\Support\LeaveEncashmentWizards;
 use Illuminate\Database\Eloquent\Model;
 
 /** HROne parity RQ-1: leave encashment (My encashments → "Request encashment"). */
@@ -58,6 +60,19 @@ final class LeaveEncashmentRequestType extends BaseRequestType
     public function formUrl(User $user, ?Employee $employee): ?string
     {
         return $this->withAction(MyLeaveEncashmentResource::getUrl('index'), 'requestEncashment');
+    }
+
+    /** HROne parity PO-8: HR's "Leave encashment request" on behalf (`leaveencashment_1470`) — leave.manage ("encash, apply on behalf"). */
+    public function onBehalfPermission(): ?string
+    {
+        return 'leave.manage';
+    }
+
+    /** "Encash for an employee" on Leave → Encashments, for people who manage leave and can open that register. */
+    public function onBehalfUrl(User $user): ?string
+    {
+        return $this->signedIn($user) && LeaveEncashmentWizards::onBehalfOffered()
+            ? $this->withAction(LeaveEncashmentResource::getUrl('index'), 'encashForEmployee') : null;
     }
 
     public function model(): ?string

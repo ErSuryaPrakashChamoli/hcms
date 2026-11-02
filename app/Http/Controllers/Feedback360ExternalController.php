@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Performance\Services\FeedbackNominations;
+use App\Domain\Performance\Services\PerformanceWindows;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
@@ -33,7 +34,8 @@ class Feedback360ExternalController extends Controller
             $nomination->loadMissing('employee.person');
             $template = $nomination->round->templateFor($nomination->relation);
             $view = ['state' => 'form', 'organisation' => $organisation->name, 'name' => $nomination->external_name, 'about' => $nomination->employee?->person?->full_name,
-                'due' => $nomination->round->window_closes_on->format('d M Y'), 'questions' => $template['questions'] ?? [], 'action' => $request->fullUrl(), 'old' => [], 'error' => null];
+                // HROne parity GO-2: the window as extended for the assessed employee.
+                'due' => app(PerformanceWindows::class)->roundClosesOn($nomination->round, (int) $nomination->employee_id)->format('d M Y'), 'questions' => $template['questions'] ?? [], 'action' => $request->fullUrl(), 'old' => [], 'error' => null];
             if (! $request->isMethod('post')) {
                 return $this->page($view);
             }

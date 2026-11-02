@@ -4,7 +4,11 @@ namespace App\Filament\Resources\ExitCases;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
+use App\Domain\Exit\Models\ExitWithdrawalRequest;
 use App\Domain\Exit\Policies\ExitCasePolicy;
+use App\Domain\Exit\Services\RelievingReview;
+use App\Domain\Exit\Support\ClearanceOwners;
+use App\Domain\Exit\Support\NoticeShortfall;
 use App\Domain\Feedback\Services\FeedbackRequests;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\ExitCases\Pages\ListExitCases;
@@ -12,6 +16,7 @@ use App\Filament\Resources\ExitCases\Pages\ViewExitCase;
 use App\Filament\Resources\ExitCases\RelationManagers\ClearancesRelationManager;
 use App\Filament\Resources\ExitCases\RelationManagers\LettersRelationManager;
 use App\Filament\Resources\ExitCases\RelationManagers\SettlementRelationManager;
+use App\Filament\Resources\ExitCases\RelationManagers\WithdrawalRequestsRelationManager;
 use App\Filament\Support\BulkRecordActions;
 use App\Filament\Support\EmployeeFilters;
 use BackedEnum;
@@ -22,6 +27,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -61,10 +67,23 @@ class ExitCaseResource extends Resource
             return $query;
         }
         $me = Employee::query()->where('user_id', $user->id)->value('id');
-        $roleIds = $user->roles()->pluck('roles.id');
+        // HROne parity WO-11: a clearance owner's out-of-office delegate (P4, exit clearance) sees the owner's cases too.
+        $owners = ClearanceOwners::for($user);
 
         return $query->where(fn (Builder $q) => $q->where('employee_id', $me ?? 0)->orWhere('manager_id', $me ?? 0)
-            ->orWhereHas('clearances', fn (Builder $c) => $c->where('owner_user_id', $user->id)->orWhereIn('owner_role_id', $roleIds)));
+            ->orWhereHas('clearances', fn (Builder $c) => $c->whereIn('owner_user_id', $owners['users'])->orWhereIn('owner_role_id', $owners['roles'])));
+    }
+
+    /** HR who reads exit cases (the separation desk's filters and details). */
+    public static function isHr(): bool
+    {
+        return (bool) (auth()->user()?->can('exit.view') || auth()->user()?->can('exit.manage'));
+    }
+
+    /** Free-text remarks on the case: HR, or the employee on their own exit. */
+    private static function readsDetails(ExitCase $record): bool
+    {
+        return self::isHr() || ExitCasePolicy::isOwn(auth()->user(), $record);
     }
 
     public static function statusColor(string $status): string
@@ -97,7 +116,23 @@ class ExitCaseResource extends Resource
                     ->visible(fn (ExitCase $record) => app(FeedbackRequests::class)->summary($record) !== null)->columnSpan(2),
                 TextEntry::make('reason')->placeholder('—')->columnSpanFull()->visible(fn (ExitCase $record) => auth()->user()->can('exit.view') || auth()->user()->can('exit.manage') || ExitCasePolicy::isOwn(auth()->user(), $record)),
                 TextEntry::make('knowledge_transfer_notes')->placeholder('—')->columnSpanFull(),
+                // HROne parity WO-11: the approver's reason (apart from the employee's), notice relaxation and shortfall, the
+                // settlement month, the rehire comment, the acceptance — each shown only once there is something to show.
+                TextEntry::make('approverReason.name')->label('Approver\'s reason')
+                    ->formatStateUsing(fn ($state, ExitCase $record) => $state.($record->approverReason?->separation_kind ? ' ('.config('peopleos.people.separation_kinds.'.$record->approverReason->separation_kind).')' : '').($record->approver_remark && self::readsDetails($record) ? ' — '.$record->approver_remark : ''))
+                    ->visible(fn (ExitCase $record) => $record->approver_reason_id !== null),
+                TextEntry::make('resignation_accepted_at')->label('Resignation accepted')->dateTime()->visible(fn (ExitCase $record) => $record->resignation_accepted_at !== null),
+                TextEntry::make('notice_shortfall')->label('Notice shortfall')
+                    ->state(fn (ExitCase $record) => ($n = NoticeShortfall::for($record)) !== null ? $n['shortfall_days'].' day(s)'.($n['relaxation_days'] > 0 ? ' (after '.$n['relaxation_days'].' relaxation day(s))' : '') : null)
+                    ->visible(fn (ExitCase $record) => NoticeShortfall::days($record) > 0 || (int) $record->notice_relaxation_days > 0),
+                TextEntry::make('settlement_month')->label('Settlement month')->date('F Y')->visible(fn (ExitCase $record) => $record->settlement_month !== null),
+                TextEntry::make('rehire_comment')->label('Rehire comment')->visible(fn (ExitCase $record) => filled($record->rehire_comment) && self::readsDetails($record))->columnSpanFull(),
             ]),
+            // HROne parity WO-11 (§23.6.1 #14): what HR checks before relieving — last payroll, salary on hold, notice, the
+            // settlement month and what is still to hand over (a warning, never a block).
+            Section::make('Relieving review')->collapsible()->schema([
+                TextEntry::make('relieving_review')->hiddenLabel()->state(fn (ExitCase $record) => app(RelievingReview::class)->lines($record, auth()->user()))->listWithLineBreaks(),
+            ])->visible(fn (ExitCase $record) => ($record->isOpen() || $record->status === 'completed') && (auth()->user()->can('exit.view') || auth()->user()->can('exit.manage') || auth()->user()->can('exit.settle'))),
         ]);
     }
 
@@ -118,7 +153,14 @@ class ExitCaseResource extends Resource
             ->filters([SelectFilter::make('status')->options(config('peopleos.exit.statuses'))->multiple()->default(ExitCase::OPEN), SelectFilter::make('type')->options(config('peopleos.exit.types')),
                 // HROne parity WO-2: the shared employee filters, the resignation date and the last working day.
                 ...EmployeeFilters::forRegister('employee', 'resignation_date', 'Resignation date', excludeLeavers: false),
-                EmployeeFilters::dateRange('last_working_days', 'Last working day', 'last_working_day')])
+                EmployeeFilters::dateRange('last_working_days', 'Last working day', 'last_working_day'),
+                // HROne parity WO-11: final clearance ("ready to complete": every stage cleared or n.a.) and withdrawal requests.
+                Filter::make('ready')->label('Ready to complete (all stages cleared)')->toggle()
+                    ->query(fn (Builder $query) => $query->whereIn('status', ['clearance', 'settlement'])->whereHas('clearances')->whereDoesntHave('clearances', fn (Builder $c) => $c->whereIn('status', ['pending', 'blocked'])))
+                    ->visible(fn () => self::isHr()),
+                SelectFilter::make('withdrawal')->label('Withdrawal request')->options(ExitWithdrawalRequest::STATUSES)
+                    ->query(fn (Builder $query, array $data) => $query->when($data['value'] ?? null, fn (Builder $q, $status) => $q->whereHas('withdrawalRequests', fn (Builder $w) => $w->where('status', $status))))
+                    ->visible(fn () => self::isHr())])
             ->recordActions([ViewAction::make()->label('Open')])
             // HROne parity WO-1: start clearance or complete the selected exits (each through Exits).
             ->toolbarActions([BulkRecordActions::selected('exit_cases', ['exit_cases.start_clearance', 'exit_cases.complete'])]);
@@ -126,7 +168,9 @@ class ExitCaseResource extends Resource
 
     public static function getRelations(): array
     {
-        return [ClearancesRelationManager::class, SettlementRelationManager::class, LettersRelationManager::class, AuditHistoryRelationManager::class];
+        return [ClearancesRelationManager::class, SettlementRelationManager::class, LettersRelationManager::class,
+            // HROne parity WO-11 (§23.6.2): requests to withdraw the resignation (only once there is one).
+            WithdrawalRequestsRelationManager::class, AuditHistoryRelationManager::class];
     }
 
     public static function getPages(): array

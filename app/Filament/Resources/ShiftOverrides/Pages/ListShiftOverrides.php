@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ShiftOverrides\Pages;
 use App\Domain\Attendance\Models\Shift;
 use App\Domain\Attendance\Services\ShiftRoster;
 use App\Domain\Employment\Models\Employee;
+use App\Filament\Pages\RosterBoard;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\ShiftOverrides\ShiftOverrideResource;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
@@ -49,6 +50,10 @@ class ListShiftOverrides extends PeopleListRecords
         return [
             ...$this->registerToolActions(),
             TimeOfficeRegisters::uploads(['shift_roster']),
+            // HROne parity TX-5: the board of employees × days, with "Assign shift" for a range.
+            Action::make('rosterBoard')->label('Roster board')->icon(Heroicon::OutlinedSquares2x2)->color('gray')
+                ->visible(fn () => RosterBoard::canAccess())
+                ->url(fn () => RosterBoard::getUrl()),
             Action::make('roster')
                 ->label('Roster employees')
                 ->icon(Heroicon::OutlinedCalendarDays)

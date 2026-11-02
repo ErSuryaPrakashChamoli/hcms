@@ -12,11 +12,13 @@ use App\Domain\Expense\Events\ExpenseEvent;
 use App\Domain\Expense\Exceptions\ExpenseRuleViolation;
 use App\Domain\Expense\Models\ExpenseAdvance;
 use App\Domain\Expense\Models\ExpenseAdvanceEntry;
+use App\Domain\Expense\Models\ExpenseAdvanceRecoverySchedule;
 use App\Domain\Expense\Models\ExpenseReport;
 use App\Domain\Expense\Models\TravelRequest;
 use App\Domain\Expense\Policies\ExpensePolicy;
 use App\Domain\Expense\Support\ExpenseAdvanceRules;
 use App\Domain\Expense\Support\ExpenseCommitments;
+use App\Domain\Expense\Support\ExpenseSettings;
 use App\Domain\Experience\Services\SelfServiceLock;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
@@ -49,6 +51,18 @@ use RuntimeException;
  * - EX-F: an advance asked for inside a travel request (`travel_request_id`) raises no workflow of its own: the trip's
  *   approval approves it, its rejection rejects it and its cancellation cancels it (unless it is already paid). Its
  *   settle-by date counts from the trip's end when that is after the payment.
+ * - HROne parity XO-5: HR (or a manager) requests an advance for an employee in scope through the same path — the
+ *   employee's policy, limits and workflow — recorded as filed on behalf (`requested_by`, `filed_on_behalf`, the audit
+ *   event's `on_behalf`). Dispensing may carry a note (the ledger entry's note). With `expense.advance.partial_dispense`
+ *   on (owner decision D-XO8 / EXP-14; off = the approved amount in one payout, as before) finance may pay less than the
+ *   approved amount and pay the rest later: the settle-by (and recovery) date counts from the first payout, later payouts
+ *   only add to the ledger, and what is never paid out lapses once the advance is settled, recovered or written off, its
+ *   rest is cancelled or its trip is. The ledger stays the source of truth: outstanding is always what was paid out less
+ *   what was settled, refunded, written off or recovered.
+ * - HROne parity XO-6: a refund may record how the money came back (bank transfer, cheque with bank, number and date, cash)
+ *   and a note on its ledger entry; without them it is recorded exactly as before. Recoveries HR scheduled for a payroll
+ *   month (AdvanceRecoveries, D-XO2) are marked recovered with the ledger entry that recovers them, and close (unrecovered)
+ *   when their advance is settled, recovered or written off first.
  */
 final class ExpenseAdvances
 {
@@ -69,6 +83,8 @@ final class ExpenseAdvances
     public function request(Employee $employee, array $data, ?User $actor = null): ExpenseAdvance
     {
         $actor = $this->authorise($actor, $employee);
+        // HROne parity XO-5: filed by someone else (HR or a manager) for the employee.
+        $onBehalf = $employee->user_id === null || (int) $employee->user_id !== (int) $actor->id;
         // HROne setup parity P4: the employee request lock refuses the employee's own request while it applies.
         app(SelfServiceLock::class)->assertOpen($employee, 'expense', $actor, ExpenseRuleViolation::class);
         $tripId = filled($data['travel_request_id'] ?? null) ? (int) $data['travel_request_id'] : null;
@@ -106,14 +122,15 @@ final class ExpenseAdvances
         $neededOn = filled($data['needed_on'] ?? null) ? CarbonImmutable::parse($data['needed_on'])->toDateString() : null;
         $this->numbers->prepare('expense_advance', NumberSeries::companyOf($employee));
 
-        return DB::transaction(function () use ($employee, $actor, $rules, $currency, $amount, $fx, $amountBase, $purpose, $attachments, $neededOn, $tripId) {
+        return DB::transaction(function () use ($employee, $actor, $rules, $currency, $amount, $fx, $amountBase, $purpose, $attachments, $neededOn, $tripId, $onBehalf) {
             Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($employee->getKey())->lockForUpdate()->value('id');
             $open = ExpenseAdvance::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->whereIn('status', ExpenseAdvance::OPEN)->get();
             if ($open->count() >= $rules->maxOpen) {
                 throw new ExpenseRuleViolation("Your expense advance policy allows {$rules->maxOpen} open advance(s) at a time: settle or cancel one first.");
             }
             if ($rules->maxOutstandingTotal !== null) {
-                $exposure = round((float) $open->sum(fn (ExpenseAdvance $a) => $a->status === 'disbursed' ? (float) $a->outstanding : $a->baseAmount()), 2);
+                // HROne parity XO-5: a partly dispensed advance still counts what may be paid out of it.
+                $exposure = round((float) $open->sum(fn (ExpenseAdvance $a) => $a->status === 'disbursed' ? (float) $a->outstanding + $a->remainingToDispense() : $a->baseAmount()), 2);
                 if ($exposure + $amountBase > $rules->maxOutstandingTotal + 0.004) {
                     throw new ExpenseRuleViolation('Your expense advance policy allows at most '.number_format($rules->maxOutstandingTotal, 2).' across open advances; '.number_format($exposure, 2).' is already open.');
                 }
@@ -122,9 +139,10 @@ final class ExpenseAdvances
                 'number' => $this->numbers->next('expense_advance', NumberSeries::companyOf($employee)), 'employee_id' => $employee->id, 'policy_version_id' => $rules->policyVersionId, 'travel_request_id' => $tripId,
                 'purpose' => $purpose, 'needed_on' => $neededOn, 'currency' => $currency, 'amount' => $amount, 'exchange_rate' => round($fx, 8), 'amount_base' => $amountBase,
                 'attachments' => $attachments ?: null, 'status' => 'requested', 'disbursement_channel' => $rules->disbursement, 'requested_by' => $actor->id,
-            ]);
+            ] + ($onBehalf ? ['filed_on_behalf' => true] : []));
             $advance->withAuditReason($purpose)->save();
-            $this->audit->record(AuditAction::Submitted, 'expense', $advance, reason: $purpose, actor: $actor, metadata: ['amount' => $amountBase] + ($tripId !== null ? ['travel_request_id' => $tripId] : []));
+            $this->audit->record(AuditAction::Submitted, 'expense', $advance, reason: $purpose, actor: $actor, metadata: ['amount' => $amountBase] + ($tripId !== null ? ['travel_request_id' => $tripId] : [])
+                + ($onBehalf ? ['on_behalf' => true, 'employee_id' => $employee->id] : []));
             if ($tripId === null) {
                 // EX-F: an advance inside a travel request is decided with the trip (its workflow), not on its own.
                 ExpenseEvent::dispatch('expense.advance_requested', $employee, $advance, ['number' => $advance->number, 'amount' => $amountBase, 'currency' => $this->rates->baseCurrency()], $this->managerUsers($employee));
@@ -178,6 +196,10 @@ final class ExpenseAdvances
 
         return DB::transaction(function () use ($advance, $reason, $actor) {
             $locked = $this->lock($advance);
+            if ($locked->status === 'disbursed' && $locked->remainingToDispense() > 0) {
+                // HROne parity XO-5 (D-XO8): what is paid stays to be settled; only the rest not yet paid out is cancelled.
+                return $this->lapseRest($locked, $reason, $actor);
+            }
             if ($locked->status === 'approved') {
                 $this->assertFree($locked, PayrollCommitments::PAYOUT, 'cancelled');
             }
@@ -231,45 +253,158 @@ final class ExpenseAdvances
         });
     }
 
-    /** Records that the approved advance was paid outside PeopleOS (bank transfer, cash) with its reference. */
-    public function dispense(ExpenseAdvance $advance, string $reference, CarbonInterface|string $on, ?User $actor = null): ExpenseAdvance
+    /**
+     * Records that the approved advance was paid outside PeopleOS (bank transfer, cash) with its reference.
+     *
+     * HROne parity XO-5: an optional note (kept on the ledger entry and the advance). With `expense.advance.partial_dispense`
+     * on (owner decision D-XO8), $amount may be less than the approved amount and a dispensed advance with something left
+     * to pay out takes further payouts up to the approved amount (the settle-by date stays the first payout's); off, the
+     * approved amount is paid in full (as before).
+     */
+    public function dispense(ExpenseAdvance $advance, string $reference, CarbonInterface|string $on, ?User $actor = null, ?float $amount = null, ?string $note = null): ExpenseAdvance
     {
         $reference = $this->reference($reference);
         $on = $this->paymentDate($on);
+        $note = filled($note) ? mb_substr(trim((string) $note), 0, 500) : null;
 
-        return DB::transaction(function () use ($advance, $reference, $on, $actor) {
+        return DB::transaction(function () use ($advance, $reference, $on, $actor, $amount, $note) {
+            if ($this->partialDispense() && $this->lock($advance)->status === 'disbursed') {
+                return $this->dispenseMore($advance, $reference, $on, $actor, $amount, $note);
+            }
             [$locked, $actor] = $this->decidable($advance, $actor, 'approved', 'pay');
             if ($on->lt(CarbonImmutable::parse($locked->decided_at ?? $locked->created_at)->startOfDay())) {
                 throw new ExpenseRuleViolation('An advance is dispensed on or after its approval.');
             }
             // EX-E: an advance a payroll run has already calculated its payout for is paid by that run.
             $this->assertFree($locked, PayrollCommitments::PAYOUT, 'dispensed outside payroll');
-            $amount = (float) $locked->approved_amount;
-            $this->post($locked, 'disbursed', $amount, 'disbursed', $on, $reference, 'Dispensed outside payroll', null, $actor);
+            $approved = (float) $locked->approved_amount;
+            $amount = $this->payoutAmount($amount, $approved, $approved);
+            $partial = $amount < $approved - 0.004;
+            $this->post($locked, 'disbursed', $amount, 'disbursed', $on, $reference, $note !== null ? mb_substr($note, 0, 255) : 'Dispensed outside payroll', null, $actor);
             $rules = $this->rulesFor($locked);
             $settleBy = $this->settleFrom($locked, $on)->addDays($rules->settleWithinDays);
-            $locked->withAuditReason('Dispensed: '.$reference)->update(['status' => 'disbursed', 'disbursement_channel' => 'bank', 'disbursed_on' => $on->toDateString(),
-                'disbursement_reference' => $reference, 'disbursed_by' => $actor->id, 'settle_by' => $settleBy->toDateString(), 'recovery_due_on' => self::recoveryDueOn($rules, $settleBy)]);
+            $locked->withAuditReason('Dispensed: '.$reference.($partial ? ' ('.number_format($amount, 2).' of '.number_format($approved, 2).')' : ''))->update(['status' => 'disbursed', 'disbursement_channel' => 'bank', 'disbursed_on' => $on->toDateString(),
+                'disbursement_reference' => $reference, 'disbursed_by' => $actor->id, 'settle_by' => $settleBy->toDateString(), 'recovery_due_on' => self::recoveryDueOn($rules, $settleBy)]
+                + ($partial ? ['dispensed_amount' => $amount] : []) + ($note !== null ? ['disbursement_note' => $note] : []));
             $this->tell('expense.advance_dispensed', $locked, ['amount' => $amount, 'reference' => $reference, 'settle_by' => $settleBy->toDateString()]);
 
             return $locked->refresh();
         });
     }
 
-    /** The employee paid back (part of) a dispensed advance. */
-    public function refund(ExpenseAdvance $advance, float $amount, string $reference, CarbonInterface|string $on, ?User $actor = null): ExpenseAdvance
+    /**
+     * HROne parity XO-5 (D-XO8): a further payout of a partly dispensed advance, up to what is left of the approved amount
+     * (blank = all of it). The ledger takes it under its own key; the settle-by and recovery dates stay the first payout's.
+     * Refused while a payroll run or an unpaid final settlement is recovering the advance. Runs inside dispense()'s
+     * transaction.
+     */
+    private function dispenseMore(ExpenseAdvance $advance, string $reference, CarbonImmutable $on, ?User $actor, ?float $amount, ?string $note): ExpenseAdvance
+    {
+        [$locked, $actor] = $this->decidable($advance, $actor, 'disbursed', 'pay');
+        $left = $locked->remainingToDispense();
+        if ($left <= 0) {
+            throw new ExpenseRuleViolation($locked->number.' is dispensed in full'.($locked->lapsedAmount() > 0 ? ' (the rest has lapsed)' : '').': nothing is left to pay out.');
+        }
+        if ($on->lt(CarbonImmutable::parse($locked->disbursed_on)->startOfDay())) {
+            throw new ExpenseRuleViolation('A further payout is on or after the first one ('.$locked->disbursed_on->format('d M Y').').');
+        }
+        $this->assertFree($locked, PayrollCommitments::RECOVERY, 'paid out further');
+        $amount = $this->payoutAmount($amount, $left, (float) $locked->approved_amount);
+        $count = ExpenseAdvanceEntry::query()->withoutGlobalScope(AccessScope::class)->where('expense_advance_id', $locked->id)->where('kind', 'disbursed')->count();
+        $this->post($locked, 'disbursed', $amount, 'disbursed-'.($count + 1), $on, $reference, $note !== null ? mb_substr($note, 0, 255) : 'Further payout outside payroll', null, $actor);
+        $paid = round((float) $locked->dispensed_amount + $amount, 2);
+        $locked->withAuditReason('Further payout: '.$reference.' ('.number_format($amount, 2).'; '.number_format($paid, 2).' of '.number_format((float) $locked->approved_amount, 2).' paid out)')
+            ->update(['dispensed_amount' => $paid]);
+        $this->tell('expense.advance_dispensed', $locked, ['amount' => $amount, 'reference' => $reference, 'settle_by' => $locked->settle_by?->toDateString()]);
+
+        return $locked->refresh();
+    }
+
+    /** HROne parity XO-5 (D-XO8): whether an advance may be paid out in several payouts (Setup → Expense). */
+    public function partialDispense(): bool
+    {
+        return (bool) app(ExpenseSettings::class)->get('expense.advance.partial_dispense', false);
+    }
+
+    /** The payout: blank = $left; with partial dispense off only the approved amount in full. */
+    private function payoutAmount(?float $amount, float $left, float $approved): float
+    {
+        if ($amount === null) {
+            return round($left, 2);
+        }
+        $amount = round($amount, 2);
+        if (! $this->partialDispense()) {
+            if (abs($amount - $approved) > 0.004) {
+                throw new ExpenseRuleViolation('An advance is dispensed in full: '.number_format($approved, 2).'.');
+            }
+
+            return round($approved, 2);
+        }
+        if ($amount <= 0 || $amount > $left + 0.004) {
+            throw new ExpenseRuleViolation('Pay out between 0.01 and what is left to dispense ('.number_format($left, 2).').');
+        }
+
+        return $amount;
+    }
+
+    /**
+     * HROne parity XO-5 (D-XO8): the rest of a partly dispensed advance, not yet paid out, is cancelled — by the employee or
+     * someone who may act for them (`update`), or by finance (`pay`) — and lapses. What was paid stays to be settled.
+     */
+    public function cancelRemainder(ExpenseAdvance $advance, string $reason, ?User $actor = null): ExpenseAdvance
+    {
+        $this->assertNote($reason, 'cancelling the rest');
+        $actor ??= auth()->user();
+        if ($actor === null) {
+            throw new ExpenseRuleViolation('You cannot cancel this advance.');
+        }
+
+        return DB::transaction(function () use ($advance, $reason, $actor) {
+            $locked = $this->lock($advance);
+            if ($locked->status !== 'disbursed' || $locked->remainingToDispense() <= 0) {
+                throw new ExpenseRuleViolation('Nothing is left to pay out on this advance.');
+            }
+
+            return $this->lapseRest($locked, $reason, $actor);
+        });
+    }
+
+    private function lapseRest(ExpenseAdvance $locked, string $reason, User $actor): ExpenseAdvance
+    {
+        $policy = app(ExpensePolicy::class);
+        if (! $policy->update($actor, $locked) && ! $policy->pay($actor, $locked)) {
+            throw new ExpenseRuleViolation('You cannot cancel this advance.');
+        }
+        $rest = $locked->remainingToDispense();
+        $locked->withAuditReason('Rest cancelled: '.trim($reason))->update(['remainder_lapsed_at' => now()]);
+        $this->audit->record(AuditAction::Cancelled, 'expense', $locked, reason: $reason, actor: $actor, metadata: ['remainder' => $rest, 'lapsed' => true]);
+
+        return $locked->refresh();
+    }
+
+    /**
+     * The employee paid back (part of) a dispensed advance.
+     *
+     * HROne parity XO-6 (§26.3.4 #9): `$details` may say how — `mode` (ExpenseAdvanceEntry::REFUND_MODES; null = not
+     * recorded, as before), `bank_name` (bank transfer or cheque), `cheque_number` and `cheque_date` (required for a cheque,
+     * refused otherwise) and `note` (the ledger entry's note instead of "Refunded by the employee"). Kept on the entry.
+     *
+     * @param  array{mode?: ?string, bank_name?: ?string, cheque_number?: ?string, cheque_date?: mixed, note?: ?string}  $details
+     */
+    public function refund(ExpenseAdvance $advance, float $amount, string $reference, CarbonInterface|string $on, ?User $actor = null, array $details = []): ExpenseAdvance
     {
         $reference = $this->reference($reference);
         $on = $this->paymentDate($on);
+        [$columns, $note] = self::refundDetails($details);
 
-        return DB::transaction(function () use ($advance, $amount, $reference, $on, $actor) {
+        return DB::transaction(function () use ($advance, $amount, $reference, $on, $actor, $columns, $note) {
             [$locked, $actor] = $this->decidable($advance, $actor, 'disbursed', 'pay');
             $this->assertFree($locked, PayrollCommitments::RECOVERY, 'refunded');
             $amount = round($amount, 2);
             if ($amount <= 0 || $amount > (float) $locked->outstanding + 0.004) {
                 throw new ExpenseRuleViolation('A refund is between 0.01 and what is outstanding ('.number_format((float) $locked->outstanding, 2).').');
             }
-            if ($this->post($locked, 'refunded', -$amount, 'refund-'.substr(sha1(mb_strtolower($reference)), 0, 24), $on, $reference, 'Refunded by the employee', null, $actor) === null) {
+            if ($this->post($locked, 'refunded', -$amount, 'refund-'.substr(sha1(mb_strtolower($reference)), 0, 24), $on, $reference, $note ?? 'Refunded by the employee', null, $actor, $columns) === null) {
                 throw new ExpenseRuleViolation("A refund with the reference {$reference} is already recorded.");
             }
             $this->closeIfSettled($locked->refresh());
@@ -291,7 +426,8 @@ final class ExpenseAdvances
                 throw new ExpenseRuleViolation('Nothing is outstanding on this advance.');
             }
             $this->post($locked, 'written_off', -$outstanding, 'write-off', CarbonImmutable::today(), null, mb_substr($reason, 0, 255), null, $actor);
-            $locked->withAuditReason($reason)->update(['status' => 'written_off', 'closed_at' => now()]);
+            $locked->withAuditReason($reason)->update(['status' => 'written_off', 'closed_at' => now()] + self::lapse($locked));
+            self::closeSchedules($locked, 'The advance was written off');
             $this->tell('expense.advance_written_off', $locked, ['amount' => $outstanding, 'reason' => $reason]);
 
             return $locked->refresh();
@@ -300,9 +436,10 @@ final class ExpenseAdvances
 
     /**
      * Settles the employee's dispensed advances against an approved report, oldest first, up to what the report repays.
-     * Runs inside the report's decision (the caller holds the report lock). Returns the amount adjusted.
+     * Runs inside the report's decision (the caller holds the report lock). Returns the amount adjusted. HROne parity XO-3:
+     * a line decided after the report (a suspicion cleared) settles what it adds under its own key (default: the report's).
      */
-    public function adjustForReport(ExpenseReport $report, float $available, ?User $actor = null): float
+    public function adjustForReport(ExpenseReport $report, float $available, ?User $actor = null, ?string $key = null): float
     {
         $remaining = round($available, 2);
         if ($remaining <= 0) {
@@ -321,7 +458,7 @@ final class ExpenseAdvances
                 continue;
             }
             $take = round(min($remaining, (float) $advance->outstanding), 2);
-            if ($take <= 0 || $this->post($advance, 'adjusted', -$take, 'report-'.$report->id, CarbonImmutable::today(), $report->number, 'Settled against expense report '.$report->number, $report->id, $actor) === null) {
+            if ($take <= 0 || $this->post($advance, 'adjusted', -$take, $key ?? 'report-'.$report->id, CarbonImmutable::today(), $report->number, 'Settled against expense report '.$report->number, $report->id, $actor) === null) {
                 continue;
             }
             $remaining = round($remaining - $take, 2);
@@ -363,13 +500,17 @@ final class ExpenseAdvances
      * EX-E: these amounts were recovered from dispensed advances by payroll (or the final settlement): ledger (−) keyed
      * $key (once per advance), recorded with the run or settlement; an advance with nothing left is `recovered`.
      *
+     * HROne parity XO-6: `$schedules` names the scheduled recovery each amount recovers (advance id => schedule id); that
+     * schedule is marked recovered in the same transaction as its ledger entry — so once, and only with it.
+     *
      * @param  array<int, float>  $amounts  advance id => amount recovered
+     * @param  array<int, int>  $schedules  advance id => recovery schedule id
      */
-    public function recovered(array $amounts, string $key, CarbonInterface|string $on, string $reference, string $note, ?int $payrollRunId = null, ?int $settlementId = null): void
+    public function recovered(array $amounts, string $key, CarbonInterface|string $on, string $reference, string $note, ?int $payrollRunId = null, ?int $settlementId = null, array $schedules = []): void
     {
         $on = CarbonImmutable::parse($on)->startOfDay();
         foreach ($amounts as $id => $amount) {
-            DB::transaction(function () use ($id, $amount, $key, $on, $reference, $note, $payrollRunId, $settlementId) {
+            DB::transaction(function () use ($id, $amount, $key, $on, $reference, $note, $payrollRunId, $settlementId, $schedules) {
                 $locked = ExpenseAdvance::query()->withoutGlobalScope(AccessScope::class)->whereKey($id)->lockForUpdate()->first();
                 if ($locked === null || round((float) $amount, 2) <= 0 || ! in_array($locked->status, ['disbursed', 'settled', 'recovered'], true)) {
                     return;
@@ -377,9 +518,15 @@ final class ExpenseAdvances
                 if ($this->post($locked, 'recovered', -round((float) $amount, 2), $key, $on, mb_substr($reference, 0, 120), mb_substr($note, 0, 255), null, null, ['payroll_run_id' => $payrollRunId, 'final_settlement_id' => $settlementId]) === null) {
                     return;
                 }
+                $schedule = isset($schedules[$id]) ? ExpenseAdvanceRecoverySchedule::query()->withoutGlobalScope(AccessScope::class)->whereKey((int) $schedules[$id])
+                    ->where('expense_advance_id', $locked->id)->where('status', 'scheduled')->lockForUpdate()->first() : null;
+                // The schedule's part of what was recovered (a final settlement may recover the rest of the advance with it).
+                $schedule?->withAuditReason('Recovered: '.$reference)->update(['status' => 'recovered', 'recovered_amount' => round(min((float) $amount, (float) $schedule->amount), 2),
+                    'recovered_on' => $on->toDateString(), 'payroll_run_id' => $payrollRunId, 'final_settlement_id' => $settlementId]);
                 $locked->refresh();
                 if ($locked->status === 'disbursed' && (float) $locked->outstanding <= 0) {
-                    $locked->withAuditReason($note)->update(['status' => 'recovered', 'closed_at' => now()]);
+                    $locked->withAuditReason($note)->update(['status' => 'recovered', 'closed_at' => now()] + self::lapse($locked));
+                    self::closeSchedules($locked, 'The advance was recovered');
                 }
                 $this->tell('expense.advance_recovered', $locked, ['amount' => round((float) $amount, 2), 'reference' => $reference]);
             });
@@ -394,6 +541,12 @@ final class ExpenseAdvances
     public function cancelWithTrip(ExpenseAdvance $advance, string $reason): ?ExpenseAdvance
     {
         $locked = $this->lock($advance);
+        if ($locked->status === 'disbursed' && $locked->remainingToDispense() > 0) {
+            // HROne parity XO-5 (D-XO8): what was paid stays to be settled; the rest not yet paid out lapses with the trip.
+            $locked->withAuditReason('Rest lapsed with the trip: '.$reason)->update(['remainder_lapsed_at' => now()]);
+
+            return null;
+        }
         if (! in_array($locked->status, ['requested', 'approved', 'cancel_requested'], true)
             || $this->commitments->of(PayrollCommitments::PAYOUT, (int) $locked->employee_id, (int) $locked->id) !== null) {
             return null;
@@ -404,10 +557,72 @@ final class ExpenseAdvances
         return $locked;
     }
 
+    /**
+     * HROne parity XO-6: a refund's mode, bank, cheque and note, checked; only the columns given are returned (nothing given =
+     * nothing recorded, as before).
+     *
+     * @return array{0: array<string, mixed>, 1: ?string} the entry's columns and its note
+     */
+    public static function refundDetails(array $details): array
+    {
+        $text = fn (string $key) => filled($details[$key] ?? null) ? trim((string) $details[$key]) : null;
+        $mode = $text('mode');
+        $bank = $text('bank_name');
+        $chequeNumber = $text('cheque_number');
+        $chequeDate = filled($details['cheque_date'] ?? null) ? $details['cheque_date'] : null;
+        $note = $text('note');
+        if ($mode !== null && ! array_key_exists($mode, ExpenseAdvanceEntry::REFUND_MODES)) {
+            throw new ExpenseRuleViolation('Choose how it was paid back: bank transfer, cheque or cash.');
+        }
+        if ($mode === null && ($bank !== null || $chequeNumber !== null || $chequeDate !== null)) {
+            throw new ExpenseRuleViolation('Say how it was paid back before giving the bank or cheque details.');
+        }
+        $columns = $mode !== null ? ['refund_mode' => $mode] : [];
+        if ($bank !== null) {
+            if ($mode === 'cash') {
+                throw new ExpenseRuleViolation('A cash refund has no bank.');
+            }
+            if (mb_strlen($bank) > 120) {
+                throw new ExpenseRuleViolation('Keep the bank name to 120 characters.');
+            }
+            $columns['bank_name'] = $bank;
+        }
+        if ($mode === 'cheque') {
+            if ($bank === null) {
+                throw new ExpenseRuleViolation('Give the bank of the cheque.');
+            }
+            if ($chequeNumber === null || mb_strlen($chequeNumber) > 30) {
+                throw new ExpenseRuleViolation('Give the cheque number (at most 30 characters).');
+            }
+            if ($chequeDate === null) {
+                throw new ExpenseRuleViolation('Give the cheque date.');
+            }
+            try {
+                $columns['cheque_date'] = CarbonImmutable::parse($chequeDate)->toDateString();
+            } catch (\Throwable) {
+                throw new ExpenseRuleViolation('Give the cheque date.');
+            }
+            $columns['cheque_number'] = $chequeNumber;
+        } elseif ($chequeNumber !== null || $chequeDate !== null) {
+            throw new ExpenseRuleViolation('Cheque number and date go with a refund by cheque.');
+        }
+        if ($note !== null && mb_strlen($note) > 255) {
+            throw new ExpenseRuleViolation('Keep the note to 255 characters.');
+        }
+
+        return [$columns, $note];
+    }
+
     /** The day payroll may start recovering what is outstanding: settle-by plus the policy's days, when it recovers through payroll. */
     public static function recoveryDueOn(ExpenseAdvanceRules $rules, CarbonInterface $settleBy): ?string
     {
         return $rules->recovery === 'payroll' ? CarbonImmutable::parse($settleBy)->addDays($rules->recoveryAfterDays)->toDateString() : null;
+    }
+
+    /** HROne parity XO-5 (D-XO8): an advance closing with part of it never paid out — that part lapses now. */
+    private static function lapse(ExpenseAdvance $advance): array
+    {
+        return $advance->remainingToDispense() > 0 ? ['remainder_lapsed_at' => now()] : [];
     }
 
     /** The employee's advance policy as it applied to this advance (its policy version; today's when none was recorded). */
@@ -446,9 +661,17 @@ final class ExpenseAdvances
     private function closeIfSettled(ExpenseAdvance $advance): void
     {
         if ($advance->status === 'disbursed' && (float) $advance->outstanding <= 0) {
-            $advance->withAuditReason('Fully settled')->update(['status' => 'settled', 'closed_at' => now()]);
+            $advance->withAuditReason('Fully settled')->update(['status' => 'settled', 'closed_at' => now()] + self::lapse($advance));
+            self::closeSchedules($advance, 'The advance was settled');
             $this->tell('expense.advance_settled', $advance, []);
         }
+    }
+
+    /** HROne parity XO-6: the advance closed before its scheduled recoveries were recovered — they close with it (audited). */
+    private static function closeSchedules(ExpenseAdvance $advance, string $why): void
+    {
+        ExpenseAdvanceRecoverySchedule::query()->withoutGlobalScope(AccessScope::class)->where('expense_advance_id', $advance->id)->where('status', 'scheduled')->orderBy('id')->get()
+            ->each(fn (ExpenseAdvanceRecoverySchedule $schedule) => $schedule->withAuditReason($why)->update(['status' => 'closed', 'cancelled_at' => now(), 'cancel_reason' => $why]));
     }
 
     /** @return array{0: ExpenseAdvance, 1: User} */

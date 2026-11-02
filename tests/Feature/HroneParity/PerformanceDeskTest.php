@@ -418,9 +418,9 @@ it('filters appraisals by created date and employee for HR, with views and the a
 
     $page = Livewire::test(ListAppraisals::class)->filterTable('created_dates', ['from' => '2026-10-01'])->assertCanSeeTableRecords([$b])->assertCanNotSeeTableRecords([$a])
         ->resetTableFilters()->filterTable('employee_codes', ['codes' => $this->peer->employee_code])->assertCanNotSeeTableRecords([$a, $b]);
-    expect(collect((fn () => $this->getHeaderActions())->call($page->instance()))->map(fn ($a) => $a->getLabel())->all())->toBe(['Views', 'Report', 'Performance actions'])
+    expect(collect((fn () => $this->getHeaderActions())->call($page->instance()))->map(fn ($a) => $a->getLabel())->all())->toBe(['Views', 'Report', 'Act on all matching', 'Performance actions']) // GO-2: "Withdraw from cycle" on all matching
         ->and(collect(PerformanceRegisters::actionsMenu()->getActions())->filter(fn ($a) => $a->isVisible())->map(fn ($a) => $a->getLabel())->values()->all())
-        ->toBe(['Initiate goal or review cycle', 'Create company goal', 'Normalise and publish ratings', 'Initiate 360 feedback', 'Add PIP', 'Remind reviewers']);
+        ->toBe(['Initiate goal or review cycle', 'Create company goal', 'Normalise and publish ratings', 'Initiate 360 feedback', 'Add PIP', 'Remind reviewers', 'Add employees, extend or withdraw']);
 });
 
 it('gives the PIP register request, approval and end-date filters, requested / approved columns and the PIP evaluations view', function () {

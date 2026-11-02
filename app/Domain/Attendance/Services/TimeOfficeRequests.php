@@ -153,11 +153,18 @@ final class TimeOfficeRequests
      * A request decided outside the portal (an upload of approved overtime): recorded as approved in the actor's
      * name without the employee-facing windows and limits, but with the type's own checks, the payroll lock and
      * the one-per-day rule. Only overtime is accepted this way.
+     *
+     * Data import DI-35 (matrix 24 §24.9 #13): earned comp-off too — a worked day with its days (a full or half day) and
+     * the date it expires (blank: the time-office policy's validity). The approved claim is credited to the comp-off leave
+     * type by the leave domain, exactly as an approved claim from the portal is; cancelling the claim takes the credit back.
      */
     public function recordApproved(Employee $employee, string $type, array $data, string $reason, User $actor): TimeOfficeRequest
     {
+        if ($type === 'comp_off') {
+            return $this->recordCompOff($employee, $data, $reason, $actor);
+        }
         if ($type !== 'overtime') {
-            throw new RuntimeException('Only overtime can be recorded as approved from an upload.');
+            throw new RuntimeException('Only overtime and comp-off can be recorded as approved from an upload.');
         }
         $date = Carbon::parse($data['from_date'])->startOfDay();
         $minutes = (int) ($data['minutes'] ?? 0);
@@ -180,6 +187,56 @@ final class TimeOfficeRequests
         });
         $request->setRelation('employee', $employee);
         $this->reprocess($request);
+
+        return $request->refresh();
+    }
+
+    /**
+     * Data import DI-35: an earned comp-off recorded as an approved claim (see recordApproved). The day worked has passed,
+     * the days are a full (1) or half (0.5) day and the expiry, when given, comes after the day worked. One claim per day
+     * and never on a day whose overtime was approved; the day's attendance is not recalculated (the claim changes the leave
+     * balance only, as an approved portal claim does).
+     *
+     * @return TimeOfficeRequest the approved claim
+     */
+    private function recordCompOff(Employee $employee, array $data, string $reason, User $actor): TimeOfficeRequest
+    {
+        $date = Carbon::parse($data['from_date'] ?? throw new RuntimeException('Give the day worked.'))->startOfDay();
+        $days = round((float) ($data['days'] ?? 1), 2);
+        if ($date->gt(now()->startOfDay())) {
+            throw new RuntimeException('Comp-off is recorded for a day already worked.');
+        }
+        if (! in_array($days, [0.5, 1.0], true)) {
+            throw new RuntimeException('A comp-off is a full day (1) or a half day (0.5).');
+        }
+        $expires = null;
+        if (! empty($data['expires_on'])) {
+            $expires = Carbon::parse($data['expires_on'])->startOfDay();
+            if ($expires->lte($date)) {
+                throw new RuntimeException('The comp-off must expire after the day worked.');
+            }
+        } else {
+            $validity = (int) ($this->policies->resolve('time_office', $employee, $date)?->setting('comp_off_validity_days') ?? 90);
+            $expires = $validity > 0 ? $date->copy()->addDays($validity) : null;
+        }
+
+        $request = DB::transaction(function () use ($employee, $date, $days, $expires, $reason, $actor) {
+            Employee::query()->withoutGlobalScope(AccessScope::class)->whereKey($employee->getKey())->lockForUpdate()->value('id');
+            $this->assertNoOverlap($employee, 'comp_off', $date, $date);
+            if (TimeOfficeRequest::query()->where('employee_id', $employee->id)->where('type', 'overtime')->whereIn('status', TimeOfficeRequest::EFFECTIVE)->covering($date)->exists()) {
+                throw new RuntimeException('Overtime was already approved for this day; record one or the other.');
+            }
+
+            $request = new TimeOfficeRequest(['employee_id' => $employee->id, 'type' => 'comp_off', 'status' => 'approved', 'from_date' => $date, 'to_date' => $date,
+                'session' => $days >= 1 ? 'full' : 'first_half', 'days' => $days, 'expires_on' => $expires, 'reason' => $reason, 'requested_by' => $actor->id,
+                'reviewed_by' => $actor->id, 'reviewed_at' => now(), 'review_note' => 'Recorded as approved from an upload']);
+            $request->withAuditReason($reason)->save();
+            $this->audit->record(AuditAction::Approved, 'attendance', $request, reason: $reason, actor: $actor, metadata: ['type' => 'comp_off', 'recorded' => true]);
+            // The leave domain credits the comp-off here (inside this transaction: no credit, no claim).
+            AttendanceEvent::dispatch('attendance.timeoffice_approved', $employee, $request, ['type' => 'comp_off', 'from' => $date->toDateString(), 'to' => $date->toDateString(), 'recorded' => true]);
+
+            return $request;
+        });
 
         return $request->refresh();
     }
@@ -375,9 +432,11 @@ final class TimeOfficeRequests
         $overrides = [];
         foreach ($days as $date => $shiftId) {
             $existing = ShiftOverride::query()->where('employee_id', $request->employee_id)->whereDate('date', $date)->first();
-            $overrides[$date] = $existing ? ['shift_id' => $existing->shift_id, 'source' => $existing->source, 'reason' => $existing->reason] : null;
+            // HROne parity TX-5: a roster's automatic shift correction gives way to the shift asked for (kept to restore it).
+            $overrides[$date] = $existing ? ['shift_id' => $existing->shift_id, 'source' => $existing->source, 'reason' => $existing->reason] + ($existing->allowsAutoShift() ? ['auto_shift' => true] : []) : null;
             $override = $existing ?? new ShiftOverride(['employee_id' => $request->employee_id, 'date' => Carbon::parse($date)]);
-            $override->fill(['shift_id' => $shiftId, 'source' => 'request', 'time_office_request_id' => $request->id, 'reason' => "{$label} request #{$request->id}", 'created_by' => $actor?->id])
+            $override->fill(['shift_id' => $shiftId, 'source' => 'request', 'time_office_request_id' => $request->id, 'reason' => "{$label} request #{$request->id}", 'created_by' => $actor?->id]
+                + (($existing?->getAttributes()['auto_shift'] ?? null) !== null ? ['auto_shift' => null] : []))
                 ->withAuditReason("Approved {$label} request #{$request->id}")->save();
         }
 
@@ -396,7 +455,8 @@ final class TimeOfficeRequests
                 }
                 $previous === null
                     ? $override->withAuditReason('Shift change #'.$request->id.' cancelled')->delete()
-                    : $override->fill(['shift_id' => $previous['shift_id'], 'source' => $previous['source'], 'reason' => $previous['reason'], 'time_office_request_id' => null])->withAuditReason('Shift change #'.$request->id.' cancelled')->save();
+                    : $override->fill(['shift_id' => $previous['shift_id'], 'source' => $previous['source'], 'reason' => $previous['reason'], 'time_office_request_id' => null]
+                        + (! empty($previous['auto_shift']) ? ['auto_shift' => true] : []))->withAuditReason('Shift change #'.$request->id.' cancelled')->save();
             }
         }
 
@@ -809,6 +869,8 @@ final class TimeOfficeRequests
         if ($balanceOnly || (bool) $this->settings->get('attendance.allow_corrections_after_lock', false)) {
             return;
         }
+        // HROne parity TX-3: days of a closed attendance month are refused like locked days.
+        app(AttendanceMonthCloses::class)->assertOpen($employee, $from, $to);
         $locked = AttendanceRecord::query()->where('employee_id', $employee->id)->where('is_locked', true)
             ->whereDate('date', '>=', $from->toDateString())->whereDate('date', '<=', $to->toDateString())->exists();
         if ($locked) {

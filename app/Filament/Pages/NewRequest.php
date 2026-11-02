@@ -36,8 +36,11 @@ class NewRequest extends Page
 
     protected string $view = 'filament.pages.experience.new-request';
 
-    /** Permissions that open a module's on-behalf request form (a person without an employee record may hold one). */
-    public const ON_BEHALF_PERMISSIONS = ['leave.manage', 'attendance.manage', 'payroll.manage', 'expense.approve', 'asset.assign', 'asset.manage', 'servicedesk.agent', 'leave.approve'];
+    /**
+     * Permissions that open a module's on-behalf request form (a person without an employee record may hold one).
+     * HROne parity AC-2: exit.manage ("Initiate exit" for a resignation).
+     */
+    public const ON_BEHALF_PERMISSIONS = ['leave.manage', 'attendance.manage', 'payroll.manage', 'expense.approve', 'asset.assign', 'asset.manage', 'servicedesk.agent', 'leave.approve', 'exit.manage'];
 
     #[Url]
     public string $search = '';

@@ -10,6 +10,7 @@ use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\PeopleListRecords;
 use App\Filament\Support\TimeOfficeActions;
 use App\Filament\Support\TimeOfficeRegisters;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Schema;
@@ -76,7 +77,7 @@ class ListTimeOfficeRequests extends PeopleListRecords
                 ->icon(Heroicon::OutlinedPlus)
                 ->visible(fn () => auth()->user()->can('attendance.regularise') && $mine() !== null)
                 // HROne parity RQ-1: "New request" opens this form with the kind chosen (?actionArguments[type]=…).
-                ->mountUsing(fn (?Schema $schema, array $arguments) => self::fillType($schema, $arguments))
+                ->mountUsing(fn (?Schema $schema, array $arguments) => self::fillType($schema, $arguments, $mine))
                 ->schema(fn () => TimeOfficeActions::form($mine))
                 ->action(fn (array $data) => TimeOfficeActions::submit($mine(), $data)),
             Action::make('onBehalf')
@@ -97,14 +98,24 @@ class ListTimeOfficeRequests extends PeopleListRecords
      * The form's usual defaults, with the request kind chosen when the link names a known one (HROne parity RQ-1: the
      * request launcher opens "New request" / "Raise on behalf" on a kind). Without an argument this is Filament's default.
      *
+     * HROne parity MS-12 ("Choose" on My holidays): on the person's own form, a restricted holiday kind may also name the
+     * optional holiday (`actionArguments[holiday_id]`); it is filled in only when it is one of the person's own optional
+     * holidays the form offers. Nothing is submitted: the person still gives the reason and sends it.
+     *
      * @param  array<string, mixed>  $arguments
+     * @param  (Closure(): ?Employee)|null  $employee  the form's own employee (the person's own form only)
      */
-    private static function fillType(?Schema $schema, array $arguments): void
+    private static function fillType(?Schema $schema, array $arguments, ?Closure $employee = null): void
     {
         $schema?->fill();
         $type = is_string($arguments['type'] ?? null) ? $arguments['type'] : null;
         if ($schema !== null && $type !== null && array_key_exists($type, TimeOfficeRequest::TYPES)) {
-            $schema->fill([...$schema->getRawState(), 'type' => $type]);
+            $state = [...$schema->getRawState(), 'type' => $type];
+            $holiday = is_numeric($arguments['holiday_id'] ?? null) ? (int) $arguments['holiday_id'] : null;
+            if ($type === 'restricted_holiday' && $holiday !== null && $employee !== null && array_key_exists($holiday, TimeOfficeActions::optionalHolidays($employee()))) {
+                $state['holiday_id'] = $holiday;
+            }
+            $schema->fill($state);
         }
     }
 }

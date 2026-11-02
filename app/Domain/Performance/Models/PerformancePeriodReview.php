@@ -16,8 +16,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * employee's performance policy runs a review cycle shorter than the appraisal cycle. scheduled → open (when its window
  * starts, or initiated by hand) → submitted (rated by the reporting manager), or missed when the window passes. It locks
  * with its appraisal; it is never deleted.
+ *
+ * HROne parity GO-3 ("Normalize review rating"): HR may normalise a submitted review's rating (PeriodicReviews::normalise).
+ * The reviewer's rating stays as submitted; only the normalisation columns of a submitted review may change.
  */
-#[Fillable(['tenant_id', 'appraisal_id', 'performance_cycle_id', 'employee_id', 'reviewer_id', 'sequence', 'period_start', 'period_end', 'window_opens_on', 'window_closes_on', 'manual', 'status', 'rating', 'comment', 'opened_by', 'opened_at', 'submitted_by', 'submitted_at'])]
+#[Fillable(['tenant_id', 'appraisal_id', 'performance_cycle_id', 'employee_id', 'reviewer_id', 'sequence', 'period_start', 'period_end', 'window_opens_on', 'window_closes_on', 'manual', 'status', 'rating', 'comment', 'opened_by', 'opened_at', 'submitted_by', 'submitted_at', 'normalised_rating', 'normalisation_note', 'normalised_by', 'normalised_at'])]
 class PerformancePeriodReview extends Model
 {
     use Auditable, BelongsToTenant;
@@ -25,10 +28,14 @@ class PerformancePeriodReview extends Model
 
     protected $attributes = ['status' => 'scheduled', 'manual' => false];
 
+    /** HROne parity GO-3: the only columns of a submitted review that may still change (its normalisation by HR). */
+    public const NORMALISATION_COLUMNS = ['normalised_rating', 'normalisation_note', 'normalised_by', 'normalised_at'];
+
     protected static function booted(): void
     {
         static::updating(function (self $review): void {
-            if ($review->getRawOriginal('status') === 'submitted') {
+            if ($review->getRawOriginal('status') === 'submitted'
+                && array_diff(array_keys($review->getDirty()), [...self::NORMALISATION_COLUMNS, $review->getUpdatedAtColumn()]) !== []) {
                 throw new \RuntimeException('A submitted periodic review is read-only.');
             }
         });
@@ -40,6 +47,7 @@ class PerformancePeriodReview extends Model
         return [
             'period_start' => 'date', 'period_end' => 'date', 'window_opens_on' => 'date', 'window_closes_on' => 'date',
             'manual' => 'boolean', 'rating' => 'decimal:2', 'sequence' => 'integer', 'opened_at' => 'datetime', 'submitted_at' => 'datetime',
+            'normalised_rating' => 'decimal:2', 'normalised_at' => 'datetime',
         ];
     }
 
@@ -55,7 +63,21 @@ class PerformancePeriodReview extends Model
 
     public function auditSensitiveAttributes(): array
     {
-        return ['comment'];
+        // GO-3: the normalisation reason is confidential calibration talk, as the appraisal's calibration note.
+        return ['comment', 'normalisation_note'];
+    }
+
+    /** HROne parity GO-3: the rating that stands — HR's normalised rating, else the reviewer's. */
+    public function effectiveRating(): ?float
+    {
+        $value = ($this->getAttributes()['normalised_rating'] ?? null) ?? ($this->getAttributes()['rating'] ?? null);
+
+        return $value === null ? null : (float) $value;
+    }
+
+    public function normaliser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'normalised_by');
     }
 
     public function appraisal(): BelongsTo

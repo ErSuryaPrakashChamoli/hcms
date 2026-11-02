@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['tenant_id', 'employee_id', 'leave_type_id', 'from_date', 'to_date', 'from_session', 'to_session', 'days', 'dates', 'reason', 'status', 'document_id', 'requested_by', 'reviewed_by', 'reviewed_at', 'review_note', 'cancelled_at', 'contact_details', 'cancel_requested_at', 'cancel_reason', 'cancellation_reviewed_by', 'cancellation_reviewed_at', 'idempotency_key'])]
+#[Fillable(['tenant_id', 'employee_id', 'leave_type_id', 'from_date', 'to_date', 'from_session', 'to_session', 'days', 'dates', 'reason', 'status', 'document_id', 'requested_by', 'reviewed_by', 'reviewed_at', 'review_note', 'cancelled_at', 'contact_details', 'cancel_requested_at', 'cancel_reason', 'cancellation_reviewed_by', 'cancellation_reviewed_at', 'idempotency_key', 'is_private'])]
 class LeaveRequest extends Model
 {
     use Auditable, BelongsToTenant;
@@ -33,6 +33,7 @@ class LeaveRequest extends Model
             'dates' => 'array',
             'reviewed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'is_private' => 'boolean',
         ];
     }
 
@@ -94,5 +95,14 @@ class LeaveRequest extends Model
     public function isOpen(): bool
     {
         return in_array($this->status, self::ACTIVE, true);
+    }
+
+    /**
+     * HROne parity RQ-4: colleagues see a private leave as "Away", without its type or reason (LeavePrivacy). Read from
+     * the raw attributes: a request created without the flag (the default) does not carry the column in memory.
+     */
+    public function isPrivate(): bool
+    {
+        return (bool) ($this->getAttributes()['is_private'] ?? false);
     }
 }

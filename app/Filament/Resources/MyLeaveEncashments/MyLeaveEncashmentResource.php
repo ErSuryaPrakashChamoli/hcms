@@ -5,6 +5,7 @@ namespace App\Filament\Resources\MyLeaveEncashments;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Leave\Models\LeaveEncashment;
 use App\Domain\Leave\Services\LeaveAdjustments;
+use App\Filament\Resources\LeaveEncashments\LeaveEncashmentResource;
 use App\Filament\Resources\MyLeaveEncashments\Pages\ListMyLeaveEncashments;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -62,6 +63,8 @@ class MyLeaveEncashmentResource extends Resource
                 TextColumn::make('period_year')->label('Year'),
                 TextColumn::make('days')->numeric(1),
                 TextColumn::make('reason')->placeholder('—')->wrap(),
+                // HROne parity RQ-4: the request's supporting files (signed links).
+                LeaveEncashmentResource::filesColumn(),
                 TextColumn::make('status')->badge()->formatStateUsing(fn (string $state) => LeaveEncashment::STATUSES[$state] ?? $state)->color(fn (string $state) => match ($state) {
                     'approved', 'paid' => 'success', 'rejected' => 'danger', 'cancelled' => 'gray', default => 'warning',
                 }),

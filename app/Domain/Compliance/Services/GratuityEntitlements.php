@@ -207,7 +207,7 @@ final class GratuityEntitlements
     private function headcounts(Establishment $establishment, CarbonImmutable $day): array
     {
         $employees = Employee::query()->withoutGlobalScope(AccessScope::class)->whereNotNull('joining_date')->whereDate('joining_date', '<=', $day->toDateString())
-            ->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding'])
+            ->whereNotIn('lifecycle_state', ['pre_employee', 'preboarding', 'not_joined'])
             ->whereHas('positions', fn ($q) => $q->withoutGlobalScope(AccessScope::class)->where('company_id', $establishment->company_id))
             ->get(['id', 'joining_date', 'exit_date']);
         $ids = $employees->modelKeys();

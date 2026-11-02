@@ -88,6 +88,10 @@ final class PerformanceRegisters
             Action::make('posPerfRemind')->label('Remind reviewers')->icon(Heroicon::OutlinedBellAlert)
                 ->visible($opens(fn () => $user()->can('performance.manage') && AppraisalReviewResource::canAccess()))
                 ->url(fn () => AppraisalReviewResource::getUrl('index', ['view' => 'pending'])),
+            // HROne parity GO-2: a running cycle's population and windows, on the cycle's row (Cycles list).
+            Action::make('posPerfPopulation')->label('Add employees, extend or withdraw')->icon(Heroicon::OutlinedUserPlus)
+                ->visible($opens(fn () => $user()->can('performance.manage') && PerformanceCycleResource::canAccess()))
+                ->url(fn () => PerformanceCycleResource::getUrl('index', ['tableFilters' => ['status' => ['value' => 'active']]])),
         ])->label('Performance actions')->icon(Heroicon::OutlinedSquares2x2)->button()->color('gray')
             ->visible(fn () => self::hrSide() || ($user()?->can('performance.manage') ?? false));
     }

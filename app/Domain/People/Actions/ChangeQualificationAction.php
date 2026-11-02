@@ -2,6 +2,7 @@
 
 namespace App\Domain\People\Actions;
 
+use App\Domain\Configuration\Services\OptionLists;
 use App\Domain\People\Models\PersonQualification;
 use App\Domain\People\Models\Qualification;
 use App\Domain\People\Models\QualificationSpecialisation;
@@ -31,6 +32,10 @@ final class ChangeQualificationAction extends ChangePersonRecordAction
             'year_of_completion' => ['nullable', 'integer', 'min:1950', 'max:'.((int) now()->format('Y') + 6)],
             'grade_or_score' => ['nullable', 'string', 'max:32'],
             'is_verified' => ['nullable', 'boolean'],
+            // HROne parity MS-4: the year studies started (not after passing), how it was studied, the highest qualification.
+            'year_started' => ['nullable', 'integer', 'min:1940', 'max:'.((int) now()->format('Y') + 1)],
+            'mode' => ['nullable', 'in:'.implode(',', array_keys(app(OptionLists::class)->labels('qualification_modes')))],
+            'is_highest' => ['nullable', 'boolean'],
         ];
     }
 

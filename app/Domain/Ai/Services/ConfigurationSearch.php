@@ -70,4 +70,33 @@ final class ConfigurationSearch
     {
         return ucfirst(implode(' · ', array_map(fn ($s) => str_replace('_', ' ', $s), explode('.', $key))));
     }
+
+    /** Words of setting keys that read differently in a name: abbreviations in capitals, run-together words apart. */
+    private const SETTING_WORDS = [
+        'ai' => 'AI', 'api' => 'API', 'bgv' => 'BGV', 'ctc' => 'CTC', 'esi' => 'ESI', 'ess' => 'ESS', 'hr' => 'HR', 'hra' => 'HRA',
+        'id' => 'ID', 'ids' => 'IDs', 'ifsc' => 'IFSC', 'ip' => 'IP', 'it' => 'IT', 'kpi' => 'KPI', 'kra' => 'KRA', 'lop' => 'LOP',
+        'lta' => 'LTA', 'lwf' => 'LWF', 'mfa' => 'MFA', 'nps' => 'NPS', 'pan' => 'PAN', 'pf' => 'PF', 'pt' => 'PT', 'sla' => 'SLA',
+        'sso' => 'SSO', 'tds' => 'TDS', 'uom' => 'UOM', 'url' => 'URL', 'linkedin' => 'LinkedIn', 'max' => 'maximum',
+        'min' => 'minimum', 'form12bb' => 'Form 12BB', 'form16' => 'Form 16', 'kb' => 'knowledge base', 'servicedesk' => 'service desk',
+        'myspace' => 'My space', 'pct' => 'percent', 'checkin' => 'check-in',
+    ];
+
+    /**
+     * A setting's name for people, split into what it belongs to and what it is:
+     * "payroll.tax.form12bb_visibility" → ['group' => 'Payroll · Tax', 'label' => 'Form 12BB visibility']. Within a
+     * place that already says it ($within = "payroll"), the group leaves that out: 'Tax'.
+     *
+     * @return array{group: string, label: string}
+     */
+    public static function settingParts(string $key, ?string $within = null): array
+    {
+        $words = fn (string $segment) => ucfirst(implode(' ', array_map(fn (string $w) => self::SETTING_WORDS[$w] ?? $w, explode('_', $segment))));
+        $segments = explode('.', $key);
+        $last = array_pop($segments);
+        if ($within !== null && ($segments[0] ?? null) === $within) {
+            array_shift($segments);
+        }
+
+        return ['group' => $segments === [] ? 'General' : implode(' · ', array_map($words, $segments)), 'label' => $words($last)];
+    }
 }

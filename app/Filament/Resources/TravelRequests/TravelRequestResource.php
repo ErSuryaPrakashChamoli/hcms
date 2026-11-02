@@ -7,6 +7,7 @@ use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Expense\Models\ExpenseAdvance;
 use App\Domain\Expense\Models\TravelRequest;
 use App\Domain\Expense\Services\TravelRequests;
+use App\Filament\Resources\ExpenseAdvances\ExpenseAdvanceResource;
 use App\Filament\Resources\TravelRequests\Pages\ListTravelRequests;
 use App\Filament\Resources\TravelRequests\Pages\ViewTravelRequest;
 use App\Filament\Resources\TravelRequests\RelationManagers\LegsRelationManager;
@@ -100,7 +101,14 @@ class TravelRequestResource extends Resource
                 IconEntry::make('is_international')->label('International')->boolean(),
                 TextEntry::make('estimated_cost')->label('Estimated cost')->formatStateUsing(fn (TravelRequest $r) => $r->estimated_cost !== null ? $r->currency.' '.number_format((float) $r->estimated_cost, 2) : '—')->placeholder('—'),
                 TextEntry::make('estimated_cost_base')->label('Estimated cost (base)')->money($base)->placeholder('—'),
-                TextEntry::make('advance.number')->label('Advance')->formatStateUsing(fn (TravelRequest $r) => $r->advance ? $r->advance->number.' · '.(ExpenseAdvance::STATUSES[$r->advance->status] ?? $r->advance->status) : '—')->placeholder('—'),
+                TextEntry::make('advance.number')->label('Advance')->formatStateUsing(fn (TravelRequest $r) => $r->advance ? $r->advance->number.' · '.(ExpenseAdvance::STATUSES[$r->advance->status] ?? $r->advance->status) : '—')->placeholder('—')
+                    // HROne parity XO-5: the advance's page, for whoever may open it.
+                    ->url(fn (TravelRequest $r) => $r->advance !== null && auth()->user()?->can('view', $r->advance) ? ExpenseAdvanceResource::getUrl('view', ['record' => $r->advance]) : null),
+                // HROne parity XO-5 (matrix 26 §26.2.2 #8): the advance's amount (as asked, and as approved once decided) and the day it is needed.
+                TextEntry::make('advance_amount_asked')->label('Advance amount')->visible(fn (TravelRequest $r) => $r->advance !== null)
+                    ->state(fn (TravelRequest $r) => $r->advance === null ? null : $r->advance->currency.' '.number_format((float) $r->advance->amount, 2)
+                        .($r->advance->approved_amount !== null ? ' · approved '.$base().' '.number_format((float) $r->advance->approved_amount, 2) : '')),
+                TextEntry::make('advance.needed_on')->label('Advance needed on')->date()->placeholder('—')->visible(fn (TravelRequest $r) => $r->advance !== null),
                 TextEntry::make('visa_number')->label('Visa number')->formatStateUsing(fn (?string $state) => $masked($state))->placeholder('—')->visible(fn (TravelRequest $r) => (bool) $r->is_international),
                 TextEntry::make('passport_number')->label('Passport number')->formatStateUsing(fn (?string $state) => $masked($state))->placeholder('—')->visible(fn (TravelRequest $r) => (bool) $r->is_international),
                 TextEntry::make('purpose')->columnSpanFull(),

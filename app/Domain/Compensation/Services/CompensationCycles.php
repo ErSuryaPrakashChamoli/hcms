@@ -4,11 +4,12 @@ namespace App\Domain\Compensation\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compensation\Events\CompensationEvent;
 use App\Domain\Compensation\Exceptions\CompensationRuleViolation;
 use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\CompensationCycle;
-use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
+use App\Domain\Compensation\Support\CompensationSnapshot;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Identity\Models\User;
@@ -17,6 +18,7 @@ use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Performance\Contracts\PerformanceOutcomesReader;
 use App\Domain\Workforce\Services\ChecksOrganisationScope;
 use App\Domain\Workforce\Services\OrganisationDimensions;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +37,13 @@ use Illuminate\Support\Facades\DB;
  * cycle is named, from the employee's finalized rating label (PerformanceOutcomesReader). A rating never
  * decides anything by itself: every line is reviewed, approved and executed by people.
  *
+ * HROne parity PO-17 (increment calculator, IncrementCalculator): the population can be narrowed by organisation
+ * filters and pasted codes, values can be a percent of fixed pay or an amount, a CTC band × rating grid can replace the
+ * rating matrix (whose earlier shape is read as before) and increments can be prorated by tenure. Populating records
+ * every employee it skipped and why (the error file), including a line a compensation rule refuses — the other lines
+ * are still proposed. A cycle can be cloned as the starting point of a new one; sharing it with managers and their
+ * proposals is IncrementPlanSharing.
+ *
  * Preparer, reviewer, approver and executor are four different people. Execution runs under one audit
  * operation id in one transaction (all lines or none) and is idempotent: executing an executed cycle
  * returns the same operation id and changes nothing.
@@ -49,6 +58,9 @@ final class CompensationCycles
         private readonly AccessScopes $scopes,
         private readonly PerformanceOutcomesReader $performance,
         private readonly AuditRecorder $audit,
+        private readonly CompensationOutput $output,
+        private readonly IncrementCalculator $calculator,
+        private readonly IncrementPlanSharing $sharing,
     ) {}
 
     /** @param  array<string, mixed>  $data */
@@ -106,8 +118,94 @@ final class CompensationCycles
         });
     }
 
+    /**
+     * HROne parity PO-17 "Clone": a new draft cycle with the rules of $source (type, company and unit, budget,
+     * performance cycle, default, matrix or grid, basis, proration, population), under the new code and name in $data;
+     * any rule given in $data replaces the copied one. No line, share or proposal is copied.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function clone(CompensationCycle $source, array $data, User $actor): CompensationCycle
+    {
+        $this->authorise($actor, 'compensation.cycles');
+        $this->assertRecordInScope($actor, $source);
+        if ($source->isUpload()) {
+            throw new CompensationRuleViolation('A salary upload cycle is not cloned; upload a new file instead.');
+        }
+        $copied = [];
+        foreach (['cycle_type', 'company_id', 'organisation_node_id', 'location_id', 'effective_from', 'compensation_budget_id', 'performance_cycle_id', 'default_increase_percent', 'rating_increase_percent', 'population', 'increment_basis', 'default_increase_amount', 'prorate_on_tenure', 'proration_basis', 'proration_cutoff', 'proration_full_months'] as $rule) {
+            $value = $source->getAttribute($rule);
+            $copied[$rule] = $value instanceof CarbonInterface ? $value->toDateString() : $value;
+        }
+
+        return DB::transaction(function () use ($source, $data, $copied, $actor) {
+            $cycle = $this->open(['cloned_from_id' => $source->id] + $data + $copied, $actor);
+            $this->audit->record(AuditAction::StatusChange, 'compensation', $cycle, [], null, actor: $actor, effectiveDate: $cycle->effective_from, metadata: ['event' => 'cloned', 'cloned_from' => $source->code]);
+
+            return $cycle;
+        });
+    }
+
+    /**
+     * The cycle a create would write, validated, without writing it (the increment calculator's preview).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function draftOf(array $data, User $actor): CompensationCycle
+    {
+        return (new CompensationCycle)->forceFill($this->attributes($data, $actor) + ['status' => 'draft']);
+    }
+
+    /**
+     * HROne parity PO-17: what populating a cycle would give, without writing anything — the planned lines and the
+     * employees it would skip. Compensation rules checked only when a line is proposed (structure, lifecycle) are not
+     * run here.
+     *
+     * @return array{lines: list<array{employee: Employee, current: CompensationSnapshot, result: array<string, mixed>}>, errors: list<array{employee_id: ?int, employee_code: ?string, reason: string}>}
+     */
+    public function plan(CompensationCycle $cycle, User $actor): array
+    {
+        $this->authorise($actor, 'compensation.cycles');
+        $employees = $this->eligible($cycle, $actor);
+        $inForce = $this->output->inForceOn($employees->keys()->all(), $cycle->effective_from->copy());
+        $errors = $this->calculator->missingCodes($cycle, $employees);
+        $lines = [];
+        $error = fn (Employee $e, string $reason) => ['employee_id' => (int) $e->id, 'employee_code' => (string) $e->employee_code, 'reason' => $reason];
+        foreach ($employees as $employee) {
+            $current = $inForce[(int) $employee->id] ?? null;
+            if ($current === null) {
+                $errors[] = $error($employee, 'No approved compensation in force on the effective date.');
+
+                continue;
+            }
+            if ((int) $employee->user_id === (int) $actor->id) {
+                $errors[] = $error($employee, 'Your own compensation: no one plans their own increment.');
+
+                continue;
+            }
+            $result = $this->calculator->evaluate($cycle, $employee, $current, $this->outcomeFor($cycle, $employee));
+            if ($result['skip'] !== null) {
+                $errors[] = $error($employee, $result['skip']);
+
+                continue;
+            }
+            $lines[] = ['employee' => $employee, 'current' => $current, 'result' => $result];
+        }
+
+        return ['lines' => $lines, 'errors' => $errors];
+    }
+
     /** @param  array<string, mixed>  $data */
     private function open(array $data, User $actor): CompensationCycle
+    {
+        return CompensationCycle::query()->create($this->attributes($data, $actor));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed> the new cycle's columns
+     */
+    private function attributes(array $data, User $actor): array
     {
         $this->authorise($actor, 'compensation.cycles');
         foreach (['code', 'name', 'cycle_type', 'company_id', 'effective_from'] as $field) {
@@ -118,6 +216,9 @@ final class CompensationCycles
         if (! array_key_exists($data['cycle_type'], config('peopleos.compensation.cycle_types', []))) {
             throw new CompensationRuleViolation("Unknown cycle type [{$data['cycle_type']}].");
         }
+        if (CompensationCycle::query()->withoutGlobalScope(AccessScope::class)->where('code', strtoupper(trim((string) $data['code'])))->exists()) {
+            throw new CompensationRuleViolation('A compensation cycle with the code '.strtoupper(trim((string) $data['code'])).' already exists.');
+        }
         $node = $this->dimensions->forNode(filled($data['organisation_node_id'] ?? null) ? (int) $data['organisation_node_id'] : null);
         if ($node['company_id'] && (int) $node['company_id'] !== (int) $data['company_id']) {
             throw new CompensationRuleViolation('A cycle covers one company and its organisation units.');
@@ -127,22 +228,21 @@ final class CompensationCycles
         if (! is_numeric($percent) || (float) $percent < -100 || (float) $percent > 1000) {
             throw new CompensationRuleViolation('The default increase must be a percentage between -100 and 1000.');
         }
-        $matrix = [];
-        foreach ((array) ($data['rating_increase_percent'] ?? []) as $label => $value) {
-            if (! is_numeric($value) || (float) $value < -100 || (float) $value > 1000) {
-                throw new CompensationRuleViolation("The increase for rating [{$label}] must be a percentage between -100 and 1000.");
-            }
-            $matrix[(string) $label] = round((float) $value, 2);
+        // The rating matrix (earlier shape, same checks) or the CTC band × rating grid, the basis, proration and population.
+        $rules = $this->calculator->rules($data);
+        if (filled($data['cloned_from_id'] ?? null) && ! CompensationCycle::query()->whereKey($data['cloned_from_id'])->exists()) {
+            throw new CompensationRuleViolation('The cycle cloned from does not exist.');
         }
 
-        return CompensationCycle::query()->create([
+        return [
             'code' => strtoupper(trim((string) $data['code'])), 'name' => $data['name'], 'cycle_type' => $data['cycle_type'],
             'company_id' => (int) $data['company_id'], 'organisation_node_id' => $data['organisation_node_id'] ?? null, 'location_id' => $data['location_id'] ?? null,
             ...array_intersect_key($node, array_flip(OrganisationDimensions::UNIT_COLUMNS)),
             'effective_from' => Carbon::parse($data['effective_from'])->toDateString(), 'compensation_budget_id' => $data['compensation_budget_id'] ?? null,
             'performance_cycle_id' => $data['performance_cycle_id'] ?? null, 'default_increase_percent' => round((float) $percent, 2),
-            'rating_increase_percent' => $matrix ?: null, 'prepared_by' => $actor->id,
-        ]);
+            'prepared_by' => $actor->id, 'cloned_from_id' => filled($data['cloned_from_id'] ?? null) ? (int) $data['cloned_from_id'] : null,
+            ...$rules,
+        ];
     }
 
     /**
@@ -165,41 +265,40 @@ final class CompensationCycles
             }
             $this->assertRecordInScope($actor, $current);
             $cycle->setRawAttributes($current->getAttributes(), true);
+            // HROne parity PO-17: managers' proposals still open lapse, the lines they were made on are replaced.
+            $this->sharing->lapse($cycle, 'The plan was calculated again.', detach: true);
             CompensationChange::query()->withoutGlobalScope(AccessScope::class)->where('compensation_cycle_id', $cycle->id)->get()->each(fn (CompensationChange $c) => $c->delete());
 
             $date = $cycle->effective_from->copy();
-            $employees = $this->eligible($cycle, $actor);
-            $rows = EmployeeSalaryAssignment::query()->withoutGlobalScope(AccessScope::class)->active()->whereIn('employee_id', $employees->keys())->effectiveOn($date)->get()->keyBy('employee_id');
+            $plan = $this->plan($cycle, $actor);
+            $errors = $plan['errors'];
             $lines = 0;
-            $skipped = 0;
             $snapshot = [];
-            foreach ($employees as $employee) {
-                $row = $rows->get($employee->id);
-                if ($row === null || (int) $employee->user_id === (int) $actor->id) {
-                    $skipped++;
+            foreach ($plan['lines'] as ['employee' => $employee, 'current' => $row, 'result' => $result]) {
+                $proposed = $result['proposed'];
+                try {
+                    // A line a compensation rule refuses is skipped and reported; the other lines are still proposed.
+                    DB::transaction(function () use ($cycle, $employee, $row, $result, $proposed, $date, $actor) {
+                        $change = $this->changes->propose($employee, [
+                            'change_type' => config("peopleos.compensation.cycle_types.{$cycle->cycle_type}.change_type", 'annual_increment'),
+                            'effective_from' => $date->toDateString(), 'salary_structure_id' => $row->structureId, 'ctc_annual' => $proposed,
+                            'currency' => $row->currency, 'pay_frequency' => $row->payFrequency, 'component_values' => $row->componentValues,
+                            'variable_target_annual' => $row->variableTargetAnnual,
+                            'reason' => "{$cycle->name}: ".$this->calculator->reasonFor($cycle, $result, $row->currency).$this->suggestion($cycle, $employee),
+                        ], $actor, 'cycle');
+                        $change->update(['compensation_cycle_id' => $cycle->id, 'compensation_budget_id' => $cycle->compensation_budget_id, 'performance_label' => $result['label'], 'increase_percent' => $result['percent'], 'base_ctc_annual' => $row->ctcAnnual]);
+                    });
+                } catch (CompensationRuleViolation $e) {
+                    $errors[] = ['employee_id' => (int) $employee->id, 'employee_code' => (string) $employee->employee_code, 'reason' => $e->getMessage()];
 
                     continue;
                 }
-                [$percent, $label] = $this->percentFor($cycle, $employee);
-                $proposed = round((float) $row->ctc_annual * (1 + $percent / 100), 2);
-                if ($proposed <= 0) {
-                    $skipped++;
-
-                    continue;
-                }
-                $change = $this->changes->propose($employee, [
-                    'change_type' => config("peopleos.compensation.cycle_types.{$cycle->cycle_type}.change_type", 'annual_increment'),
-                    'effective_from' => $date->toDateString(), 'salary_structure_id' => $row->salary_structure_id, 'ctc_annual' => $proposed,
-                    'currency' => $row->currency, 'pay_frequency' => $row->pay_frequency, 'component_values' => $row->component_values ?? [],
-                    'variable_target_annual' => $row->variable_target_annual,
-                    'reason' => "{$cycle->name}: ".($label !== null ? "rating {$label}, " : '').number_format($percent, 2).'%'.$this->suggestion($cycle, $employee),
-                ], $actor, 'cycle');
-                $change->update(['compensation_cycle_id' => $cycle->id, 'compensation_budget_id' => $cycle->compensation_budget_id, 'performance_label' => $label, 'increase_percent' => $percent]);
-                $snapshot[] = $employee->id.':'.$row->id.':'.$proposed;
+                $snapshot[] = $employee->id.':'.$row->assignmentId.':'.$proposed;
                 $lines++;
             }
+            $skipped = count($errors);
             sort($snapshot);
-            $cycle->update(['employee_count' => $lines, 'snapshot_checksum' => hash('sha256', implode('|', $snapshot)), 'populated_at' => now(), 'lock_version' => $cycle->lock_version + 1]);
+            $cycle->update(['employee_count' => $lines, 'snapshot_checksum' => hash('sha256', implode('|', $snapshot)), 'population_errors' => $errors ?: null, 'populated_at' => now(), 'lock_version' => $cycle->lock_version + 1]);
             $this->audit->record(AuditAction::StatusChange, 'compensation', $cycle, [], null, actor: $actor, effectiveDate: $date, metadata: ['event' => 'populated', 'lines' => $lines, 'skipped' => $skipped]);
 
             return ['lines' => $lines, 'skipped' => $skipped];
@@ -218,6 +317,7 @@ final class CompensationCycles
                 throw new CompensationRuleViolation('Populate the cycle before submitting it.');
             }
             $this->changes->quietly(fn () => $lines->each(fn (CompensationChange $c) => $this->changes->submit($c, $actor)));
+            $this->sharing->lapse($cycle, 'The plan was submitted for review.');
             $cycle->update(['submitted_at' => now()]);
 
             return $this->holders('compensation.review', [$cycle->prepared_by]);
@@ -338,8 +438,11 @@ final class CompensationCycles
                 $positions->when($cycle->getAttribute($column), fn ($q, $id) => $q->where($column, $id));
             }
         }
+        $employees = Employee::query()->withoutGlobalScope(AccessScope::class);
+        // HROne parity PO-17: the population's organisation filters and pasted codes (none = as before).
+        $this->calculator->applyPopulation($cycle, $positions, $employees);
 
-        return Employee::query()->withoutGlobalScope(AccessScope::class)->whereIn('id', $positions)
+        return $employees->whereIn('id', $positions)
             ->whereIn('lifecycle_state', config('peopleos.compensation.lifecycle.cycles', []))
             ->when($this->scopes->isScoped($actor), fn ($q) => $q->whereIn('id', $this->scopes->employeeKeys($actor)))
             ->orderBy('id')->get()->keyBy('id');
@@ -363,21 +466,19 @@ final class CompensationCycles
         return ' (appraisal suggests '.(($increment['type'] ?? 'percentage') === 'amount' ? $value.' as an amount' : $value.'%').')';
     }
 
-    /** @return array{0: float, 1: ?string} percent and the finalized rating label it came from */
-    private function percentFor(CompensationCycle $cycle, Employee $employee): array
+    /**
+     * The finalized performance outcome the rules read (PerformanceOutcomesReader), when the cycle names a performance
+     * cycle and has a rating matrix or a grid; the value then comes from IncrementCalculator::evaluate().
+     *
+     * @return array<string, mixed>|null
+     */
+    private function outcomeFor(CompensationCycle $cycle, Employee $employee): ?array
     {
-        $matrix = (array) ($cycle->rating_increase_percent ?? []);
-        if ($cycle->performance_cycle_id && $matrix !== []) {
-            $outcome = $this->performance->finalOutcome((int) $employee->id, (int) $cycle->performance_cycle_id);
-            $label = $outcome['final_label'] ?? null;
-            if ($label !== null && array_key_exists($label, $matrix)) {
-                return [(float) $matrix[$label], $label];
-            }
-
-            return [(float) $cycle->default_increase_percent, $label];
+        if (! $cycle->performance_cycle_id || ((array) ($cycle->rating_increase_percent ?? [])) === []) {
+            return null;
         }
 
-        return [(float) $cycle->default_increase_percent, null];
+        return $this->performance->finalOutcome((int) $employee->id, (int) $cycle->performance_cycle_id);
     }
 
     /**

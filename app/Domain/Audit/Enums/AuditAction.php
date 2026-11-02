@@ -206,6 +206,8 @@ enum AuditAction: string
     case InvitationAccepted = 'INVITATION_ACCEPTED';
     case InvitationRevoked = 'INVITATION_REVOKED';
     case PasswordResetRequested = 'PASSWORD_RESET_REQUESTED';
+    // Owner decision 2026-10-31: a generated temporary password (e-mailed or shown once); never the password itself.
+    case TemporaryPasswordIssued = 'TEMPORARY_PASSWORD_ISSUED';
     case EmailVerified = 'EMAIL_VERIFIED';
     case SessionsRevoked = 'SESSIONS_REVOKED';
     case PlatformAccessStarted = 'PLATFORM_ACCESS_STARTED';
@@ -303,6 +305,15 @@ enum AuditAction: string
     case NotificationResent = 'NOTIFICATION_RESENT'; // tenant chain
     // HROne parity WO-2: HR e-mailed an employee from the Employee 360 or a register (subject and recipients; never the body).
     case EmployeeEmailed = 'EMPLOYEE_EMAILED';
+    // HROne parity WO-13: an issued letter withdrawn from the employee (kept), replaced by a newer letter, e-mailed (recipients'
+    // kinds and the number of copies; never the body).
+    case LetterRevoked = 'LETTER_REVOKED';
+    case LetterSuperseded = 'LETTER_SUPERSEDED';
+    case LetterEmailed = 'LETTER_EMAILED';
+    // HROne parity WO-14: a bulk share of ready-made documents ran (counts, never the files), and a shared document was
+    // unpublished (hidden from the employee, kept).
+    case DocumentsShared = 'DOCUMENTS_SHARED';
+    case DocumentUnpublished = 'DOCUMENT_UNPUBLISHED';
     // SaaS.9: data export, offboarding, legal holds, retention and deletion (platform chain; tenant chain while it exists).
     case OffboardingRequested = 'OFFBOARDING_REQUESTED';
     case OffboardingCancelled = 'OFFBOARDING_CANCELLED';

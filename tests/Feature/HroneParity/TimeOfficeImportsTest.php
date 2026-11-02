@@ -63,9 +63,9 @@ function runRows(RowImports $service, EmployeeImport $import): EmployeeImport
     return $service->run($import->refresh(), auth()->user());
 }
 
-it('keeps every upload type within the 16 characters employee_imports.type holds', function () {
+it('keeps every upload type within the 32 characters employee_imports.type holds', function () {
     foreach (array_keys(RowImportTypes::TYPES) as $type) {
-        expect(strlen($type))->toBeLessThanOrEqual(16, $type);
+        expect(strlen($type))->toBeLessThanOrEqual(32, $type);
     }
 });
 

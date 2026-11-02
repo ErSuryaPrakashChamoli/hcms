@@ -4,6 +4,8 @@ namespace App\Domain\Exit\Policies;
 
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
+use App\Domain\Exit\Models\ExitClearance;
+use App\Domain\Exit\Models\ExitWithdrawalRequest;
 use App\Domain\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,6 +19,13 @@ class ExitCasePolicy
 
     public function view(User $user, Model $model): bool
     {
+        // HROne parity WO-11: a clearance stage (its evidence file included) and a withdrawal request are seen by whoever
+        // may see their exit case (a stage's owner too, through the case's own rule below).
+        if ($model instanceof ExitClearance || $model instanceof ExitWithdrawalRequest) {
+            $case = $model->exitCase()->first();
+
+            return $case !== null && ($this->view($user, $case) || ($model instanceof ExitClearance && $model->isOwnedBy($user)));
+        }
         if ($user->hasPermission('exit.view') || $user->hasPermission('exit.manage') || $user->hasPermission('exit.settle')) {
             return true;
         }

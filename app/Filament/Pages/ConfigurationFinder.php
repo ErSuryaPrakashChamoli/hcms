@@ -13,8 +13,9 @@ use Livewire\Attributes\Url;
 use UnitEnum;
 
 /**
- * "What do you want to configure?" (§103): every configuration screen and setting the viewer may open, as module
- * cards, narrowed as they type. Each screen is listed only if the module catalogue says the viewer can open it.
+ * "What do you want to configure?" (§103): every configuration screen and setting the viewer may open, by module
+ * (modules down the left, the open one beside them), narrowed as they type. Each screen is listed only if the module
+ * catalogue says the viewer can open it.
  */
 class ConfigurationFinder extends Page
 {
@@ -30,7 +31,7 @@ class ConfigurationFinder extends Page
 
     protected string $view = 'filament.pages.configuration-finder';
 
-    /** The module cards, in order: key → [label, what it covers, icon]. Each configuration map entry names its card. */
+    /** The modules, in order: key → [label, what it covers, icon]. Each configuration map entry names its module. */
     public const MODULES = [
         'organisation' => ['Organisation structure', 'Companies, legal entities, establishments, locations, departments, teams and cost centres.', 'heroicon-o-building-office-2'],
         'people' => ['Jobs and people data', 'Designations, levels, grades, job families, employee categories, document types, custom fields and forms.', 'heroicon-o-identification'],
@@ -46,7 +47,7 @@ class ConfigurationFinder extends Page
         'general' => ['Company-wide settings', 'Settings, features, branding and locale, country and configuration packs, and the change centre.', 'heroicon-o-cog-6-tooth'],
     ];
 
-    /** Tenant setting key prefix → card; the longest matching prefix wins, anything else is company-wide. */
+    /** Tenant setting key prefix → module; the longest matching prefix wins, anything else is company-wide. */
     public const SETTING_MODULES = [
         'employee.code' => 'people', 'documents' => 'people',
         'employee' => 'lifecycle', 'exit' => 'lifecycle',
@@ -70,12 +71,12 @@ class ConfigurationFinder extends Page
 
     public function getSubheading(): ?string
     {
-        return 'Everything you can set up, by module. Type to narrow it down, or open any card to see all of it.';
+        return 'Everything you can set up, by module. Type to narrow it down, or choose a module to see all of it.';
     }
 
     /**
-     * The cards with what the viewer may open in each: configuration screens first, then individual settings
-     * (names and keys only, never values). While searching, only matching items and their cards remain.
+     * The modules with what the viewer may open in each: configuration screens first, then individual settings
+     * (names and keys only, never values). While searching, only matching items and their modules remain.
      *
      * @return list<array{key: string, label: string, why: string, icon: string, items: list<array{label: string, url: string, setting: bool}>}>
      */
@@ -98,7 +99,7 @@ class ConfigurationFinder extends Page
         $settings = rescue(fn () => TenantSettingResource::canAccess() ? TenantSettingResource::getUrl('index') : null, null, false);
         if ($settings !== null) {
             foreach ($term === '' ? array_keys(config('peopleos.settings', [])) : $search->settings($term) as $key) {
-                $items[$this->settingModule($key)][] = ['label' => ConfigurationSearch::settingLabel($key), 'url' => $settings.'?search='.urlencode($key), 'setting' => true];
+                $items[$this->settingModule($key)][] = ['label' => ConfigurationSearch::settingLabel($key), 'url' => $settings.'?search='.urlencode($key), 'setting' => true, 'key' => $key];
             }
         }
 
@@ -110,6 +111,51 @@ class ConfigurationFinder extends Page
         }
 
         return $out;
+    }
+
+    /**
+     * The modules as browse areas (x-pos.browse): a module's screens first, then its settings by what they belong to, each
+     * under its own name ("Payroll · Tax" → "Form 12BB visibility"). While searching, "All matches" comes first: every
+     * matching screen (with the module it belongs to) and every matching setting.
+     *
+     * @return list<array{key: string, label: string, sub: string, icon: string, items: list<array<string, mixed>>, sets: list<array{label: string, items: list<array<string, mixed>>}>}>
+     */
+    public function browseGroups(): array
+    {
+        $groups = array_map(fn (array $m) => ['key' => $m['key'], 'label' => $m['label'], 'sub' => $m['why'], 'icon' => $m['icon'],
+            'items' => array_values(array_filter($m['items'], fn (array $item) => ! $item['setting'])),
+            'sets' => $this->settingSets(array_filter($m['items'], fn (array $item) => $item['setting']))], $this->modules);
+        $term = trim($this->term);
+        if ($term === '' || $groups === []) {
+            return $groups;
+        }
+        $screens = array_merge(...array_map(fn (array $g) => array_map(fn (array $item) => $item + ['description' => $g['label']], $g['items']), $groups));
+        $settings = array_merge(...array_map(fn (array $m) => array_filter($m['items'], fn (array $item) => $item['setting']), $this->modules));
+
+        return [['key' => 'matches', 'label' => 'All matches', 'sub' => 'Everything that matches “'.$term.'”, from every module.', 'icon' => 'heroicon-o-magnifying-glass',
+            'items' => $screens, 'sets' => $this->settingSets($settings)], ...$groups];
+    }
+
+    /**
+     * @param  array<int, array{label: string, url: string, key: string}>  $settings
+     * @return list<array{label: string, items: list<array{label: string, url: string}>}>
+     */
+    private function settingSets(array $settings): array
+    {
+        // Settings that all start with the same word ("performance.…") are named without it: the module says it already.
+        $firsts = array_unique(array_map(fn (array $setting) => strtok($setting['key'], '.'), $settings));
+        $within = count($firsts) === 1 ? reset($firsts) : null;
+        $sets = [];
+        foreach ($settings as $setting) {
+            ['group' => $group, 'label' => $label] = ConfigurationSearch::settingParts($setting['key'], $within);
+            $sets[$group][] = ['label' => $label, 'url' => $setting['url']];
+        }
+        // The module's own general settings lead.
+        if (isset($sets['General'])) {
+            $sets = ['General' => $sets['General']] + $sets;
+        }
+
+        return array_map(fn (string $label, array $items) => ['label' => $label, 'items' => $items], array_keys($sets), array_values($sets));
     }
 
     private function settingModule(string $key): string

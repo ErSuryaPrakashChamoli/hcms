@@ -3,6 +3,7 @@
 namespace App\Domain\Identity\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Identity\Enums\UserKind;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Services\MultiFactor;
 use App\Domain\Identity\Services\PasswordHistory;
@@ -29,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Validation\ValidationException;
@@ -51,6 +53,9 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     /** Set while saving when the password changed, so the saved hook can keep its hash for the reuse rule. */
     private bool $passwordSaved = false;
 
+    /** Set by giveTemporaryPassword() for the next save, so the saving hook keeps the password temporary. */
+    private bool $temporaryPasswordGiven = false;
+
     protected function casts(): array
     {
         return [
@@ -59,10 +64,13 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
             'password_changed_at' => 'datetime',
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'temporary_password_until' => 'datetime',
             'password' => 'hashed',
             'is_platform_admin' => 'boolean',
             'status' => UserStatus::class,
             'disabled_by_rule' => 'boolean',
+            // HROne parity WO-15: not fillable; only BusinessPartners::invite makes a partner sign-in.
+            'kind' => UserKind::class,
         ];
     }
 
@@ -72,6 +80,12 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
             $user->passwordSaved = $user->isDirty('password');
             if ($user->isDirty('password')) {
                 $user->password_changed_at = now();
+                // A password the person chose (reset link, profile, invitation) ends a temporary one.
+                if (! $user->temporaryPasswordGiven) {
+                    $user->temporary_password_until = null;
+                    $user->temporary_password_via = null;
+                }
+                $user->temporaryPasswordGiven = false;
             }
             // SaaS.2: a changed address is unproven until its owner verifies it (unless the change itself proved it).
             if ($user->exists && $user->isDirty('email') && ! $user->isDirty('email_verified_at')) {
@@ -202,6 +216,50 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     }
 
     /**
+     * HROne parity WO-15: a business partner's sign-in (never linked to an employee). Read from the raw attributes: a freshly
+     * created instance may not carry the column's default (strict mode).
+     */
+    public function isPartner(): bool
+    {
+        return ($this->getAttributes()['kind'] ?? null) === UserKind::Partner->value;
+    }
+
+    /** A generated password (TemporaryPasswords) for the next save: it works until $until and must be replaced at sign-in. */
+    public function giveTemporaryPassword(#[\SensitiveParameter] string $password, Carbon $until, string $via): static
+    {
+        $this->temporaryPasswordGiven = true;
+
+        return $this->forceFill(['password' => $password, 'temporary_password_until' => $until, 'temporary_password_via' => $via]);
+    }
+
+    /** The password was generated for the person (TemporaryPasswords) and must be replaced at sign-in, expired or not. */
+    public function mustReplacePassword(): bool
+    {
+        return ($this->getAttributes()['temporary_password_until'] ?? null) !== null;
+    }
+
+    /**
+     * The account may be signed in (and its sessions kept): active, or invited and holding a temporary password, which
+     * it uses only to choose its own; never with an expired temporary password.
+     */
+    public function maySignIn(): bool
+    {
+        if ($this->mustReplacePassword()) {
+            return $this->holdsTemporaryPassword() && in_array($this->status, [UserStatus::Active, UserStatus::Invited], true);
+        }
+
+        return $this->isActive();
+    }
+
+    /** A temporary password that still works. */
+    public function holdsTemporaryPassword(): bool
+    {
+        $until = $this->getAttributes()['temporary_password_until'] ?? null;
+
+        return $until !== null && Carbon::parse($until)->isFuture();
+    }
+
+    /**
      * Exact-key permission check. Wildcards are expanded when roles are provisioned, so the
      * stored graph is always concrete.
      *
@@ -269,7 +327,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
 
     public function canAccessPanel(Panel $panel): bool
     {
-        if (! $this->isActive()) {
+        if (! $this->maySignIn()) {
             return false;
         }
 

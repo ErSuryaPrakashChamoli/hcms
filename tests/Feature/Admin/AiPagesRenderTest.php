@@ -35,10 +35,11 @@ it('renders the AI pages with the right access', function () {
     $this->get(AiInteractionResource::getUrl('index'))->assertForbidden();
 });
 
-it('shows every configuration module as a card, narrows it as you type, and lists only what the viewer may open', function () {
+it('shows every configuration module, narrows it as you type, and lists only what the viewer may open', function () {
+    // Settings are listed by what they belong to ("Employee · Probation") under their own name ("Default months").
     $this->get(ConfigurationFinder::getUrl())->assertOk()
         ->assertSee('Time and leave rules')->assertSee('Shifts')->assertSee('Organisation structure')->assertSee('Departments')
-        ->assertSee('Employee · probation · default months');
+        ->assertSee('Employee · Probation')->assertSee('Default months');
 
     actAsTenant($this->tenant);
     $modules = collect(Livewire::test(ConfigurationFinder::class)->set('term', 'working hours')->instance()->modules);

@@ -13,9 +13,26 @@ class ListAttendanceArrears extends PeopleListRecords
 
     protected static string $resource = AttendanceArrearResource::class;
 
+    /** HROne parity TX-3: hold and release ("Unprocess" / "Process attendance arrear"). */
+    public const BULK_OPERATIONS = ['attendance_arrears.hold', 'attendance_arrears.release'];
+
     public static function registerKey(): string
     {
         return 'attendance_arrears';
+    }
+
+    public static function registerBulkOperations(): array
+    {
+        return self::BULK_OPERATIONS;
+    }
+
+    /** HROne parity TX-3: views of the arrears HR holds or still has to take. */
+    public static function presetViews(): array
+    {
+        return [
+            'pending' => ['label' => 'Pending arrears', 'filters' => ['status' => ['value' => 'pending']]],
+            'held' => ['label' => 'Held arrears', 'filters' => ['status' => ['value' => 'held']]],
+        ];
     }
 
     public static function registerReports(): array

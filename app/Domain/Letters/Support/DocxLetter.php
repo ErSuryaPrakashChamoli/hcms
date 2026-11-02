@@ -101,7 +101,9 @@ final class DocxLetter
         $tmp = tempnam(sys_get_temp_dir(), 'letter');
         copy($path, $tmp);
         $zip = self::open($tmp);
-        $signature = null;
+        // HROne parity WO-13: up to four signatories, so each distinct signature image gets its own media part and
+        // relationship (the first keeps the name and id it always had).
+        $images = [];
         $drawings = 0;
 
         try {
@@ -111,13 +113,15 @@ final class DocxLetter
                     throw new RuntimeException('The Word template is damaged and cannot be read. Open it in Word, save it again and upload it.');
                 }
                 $xml = self::blocks(self::joinRuns($xml), $context);
-                $usesSignature = false;
-                $xml = (string) preg_replace_callback('~'.self::PLACEHOLDER.'~', function (array $m) use ($context, &$usesSignature, &$signature, &$drawings) {
+                $used = [];
+                $xml = (string) preg_replace_callback('~'.self::PLACEHOLDER.'~', function (array $m) use ($context, &$used, &$images, &$drawings) {
                     $value = Arr::get($context, $m[1]);
                     if ($value instanceof SignatureImage) {
-                        [$usesSignature, $signature] = [true, $value];
+                        $images[md5($value->bytes)] ??= [count($images) + 1, $value];
+                        $index = $images[md5($value->bytes)][0];
+                        $used[$index] = $value;
 
-                        return '</w:t></w:r><w:r>'.self::drawing($value, 7000 + ++$drawings).'</w:r><w:r><w:t xml:space="preserve">';
+                        return '</w:t></w:r><w:r>'.self::drawing($value, 7000 + ++$drawings, $index).'</w:r><w:r><w:t xml:space="preserve">';
                     }
 
                     return str_replace("\n", '</w:t><w:br/><w:t xml:space="preserve">', htmlspecialchars(TemplateRenderer::format($value), ENT_XML1 | ENT_QUOTES, 'UTF-8'));
@@ -126,13 +130,13 @@ final class DocxLetter
                     throw new RuntimeException('The Word template could not be filled: a variable in '.basename($name).' is broken up by a link, field or table. Delete it and type it again in one go.');
                 }
                 $zip->addFromString($name, $xml);
-                if ($usesSignature) {
-                    self::relate($zip, $name, $signature);
+                foreach ($used as $index => $image) {
+                    self::relate($zip, $name, $image, $index);
                 }
             }
-            if ($signature !== null) {
-                $zip->addFromString('word/media/peopleos-signature.'.$signature->extension(), $signature->bytes);
-                self::contentType($zip, $signature);
+            foreach ($images as [$index, $image]) {
+                $zip->addFromString('word/'.self::media($index, $image), $image->bytes);
+                self::contentType($zip, $image);
             }
         } finally {
             $zip->close();
@@ -245,7 +249,7 @@ final class DocxLetter
     }
 
     /** An inline picture (namespaces declared on the elements, so any part can hold it). */
-    private static function drawing(SignatureImage $image, int $id): string
+    private static function drawing(SignatureImage $image, int $id, int $index = 1): string
     {
         [$width, $height] = $image->printedSize();
         [$cx, $cy] = [$width * 9525, $height * 9525];
@@ -254,18 +258,30 @@ final class DocxLetter
             .'<wp:extent cx="'.$cx.'" cy="'.$cy.'"/><wp:docPr id="'.$id.'" name="Signature '.$id.'"/>'
             .'<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
             .'<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="signature.'.$image->extension().'"/><pic:cNvPicPr/></pic:nvPicPr>'
-            .'<pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdPeopleOSSignature"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+            .'<pic:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="'.self::rid($index).'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
             .'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'.$cx.'" cy="'.$cy.'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>'
             .'</a:graphicData></a:graphic></wp:inline></w:drawing>';
     }
 
+    /** The relationship id of the n-th signature image (the first keeps its original id). */
+    private static function rid(int $index): string
+    {
+        return $index === 1 ? 'rIdPeopleOSSignature' : 'rIdPeopleOSSignature'.$index;
+    }
+
+    /** The n-th signature image's media part, relative to word/ (the first keeps its original name). */
+    private static function media(int $index, SignatureImage $image): string
+    {
+        return 'media/peopleos-signature'.($index === 1 ? '' : '-'.$index).'.'.$image->extension();
+    }
+
     /** The part's relationship to the signature image. */
-    private static function relate(ZipArchive $zip, string $part, SignatureImage $image): void
+    private static function relate(ZipArchive $zip, string $part, SignatureImage $image, int $index = 1): void
     {
         $name = 'word/_rels/'.basename($part).'.rels';
         $rels = $zip->getFromName($name) ?: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
-        if (! str_contains($rels, 'Id="rIdPeopleOSSignature"')) {
-            $rel = '<Relationship Id="rIdPeopleOSSignature" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/peopleos-signature.'.$image->extension().'"/>';
+        if (! str_contains($rels, 'Id="'.self::rid($index).'"')) {
+            $rel = '<Relationship Id="'.self::rid($index).'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="'.self::media($index, $image).'"/>';
             $rels = str_contains($rels, '</Relationships>') ? str_replace('</Relationships>', $rel.'</Relationships>', $rels) : (string) preg_replace('~<Relationships([^>]*)/>~', '<Relationships$1>'.$rel.'</Relationships>', $rels);
         }
         $zip->addFromString($name, $rels);

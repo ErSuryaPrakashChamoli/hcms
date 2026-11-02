@@ -12,11 +12,15 @@ use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Performance\Events\PerformanceEvent;
 use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\GoalCheckIn;
+use App\Domain\Performance\Models\GoalViewer;
 use App\Domain\Performance\Models\KeyResult;
 use App\Domain\Performance\Models\PerformanceCycle;
 use App\Domain\Performance\Models\PerformanceUnit;
+use App\Domain\Performance\Scopes\GoalVisibilityScope;
 use App\Domain\Performance\Support\GoalFieldRules;
+use App\Domain\Performance\Support\GoalVisibility;
 use App\Domain\Platform\Services\SettingsRepository;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -30,6 +34,11 @@ use RuntimeException;
  * on the sheet's goal plan until the manager confirms (GoalPlans::propose); the employee cannot make a goal active,
  * complete or cancel it there. The manager (and HR) change the sheet directly and confirm it. Manual goal sheets are
  * unchanged.
+ *
+ * HROne parity GO-4: organisation goals take an owner person and a visibility (private + visible-to list, D-GO5); any goal
+ * takes tags; check-ins carry the goal's health and the period they cover; the actual achievement may override the
+ * system's while `performance.goals.achievement_override` is on (D-GO7, overrideAchievement). Roll-ups and alignment
+ * checks read goals whatever their visibility (GoalVisibilityScope lifted), so a private goal never changes the numbers.
  */
 final class Goals
 {
@@ -47,6 +56,10 @@ final class Goals
     {
         // SaaS.3: shadow entitlement observation (never blocks; see Entitlements).
         app(Entitlements::class)->observe(Capability::Performance, 'performance.goal.create');
+        // GO-4: the visible-to list is saved beside the goal; tags are trimmed and de-duplicated.
+        $viewers = array_key_exists('visible_to', $attributes) ? (array) $attributes['visible_to'] : null;
+        unset($attributes['visible_to']);
+        $attributes = $this->withTags($attributes);
         $attributes['level'] ??= isset($attributes['employee_id']) ? 'employee' : 'company';
         $attributes['status'] ??= 'active';
         $attributes['source'] ??= 'manual';
@@ -93,13 +106,18 @@ final class Goals
             $attributes['weight'] = 0;
         }
 
-        return DB::transaction(function () use ($attributes, $keyResults, $owner, $proposal, $actor) {
+        $this->assertOwnerPerson($attributes);
+
+        return DB::transaction(function () use ($attributes, $keyResults, $owner, $proposal, $actor, $viewers) {
             if ($proposal) {
                 $this->lockSheet($owner);
             }
             $this->assertNotDuplicate($attributes);
             $this->assertWithinWeightTotal($attributes);
             $goal = Goal::create($attributes);
+            if ($viewers !== null) {
+                $this->syncViewers($goal, $viewers, $actor ?? auth()->user());
+            }
 
             foreach ($keyResults as $i => $kr) {
                 $goal->keyResults()->create($kr + ['sort_order' => ($i + 1) * 10, 'progress' => Goal::progressFor($kr['measure_type'] ?? 'percentage', (float) ($kr['start_value'] ?? 0), (float) ($kr['target_value'] ?? 100), (float) ($kr['current_value'] ?? 0))]);
@@ -116,7 +134,7 @@ final class Goals
             if ($goal->employee_id) {
                 PerformanceEvent::dispatch('performance.goal.assigned', $goal->employee, $goal, ['title' => $goal->title, 'due' => $goal->due_date?->toDateString()], [$goal->employee_id]);
             }
-            PerformanceEvent::dispatch('performance.goal.created', $goal->employee, $goal, ['title' => $goal->title, 'level' => $goal->level], []);
+            PerformanceEvent::dispatch('performance.goal.created', $goal->employee, $goal, ['title' => $goal->publicTitle(), 'level' => $goal->level], []);
 
             return $goal->refresh();
         });
@@ -131,9 +149,14 @@ final class Goals
     public function update(Goal $goal, array $attributes, ?int $expectedVersion = null, ?User $actor = null, ?string $reason = null, bool $keyResultsChanged = false): Goal
     {
         unset($attributes['current_value'], $attributes['progress'], $attributes['lock_version'], $attributes['tenant_id'], $attributes['created_by']);
+        // GO-4: the achievement override changes only through overrideAchievement(), with its reason.
+        unset($attributes['achievement_override'], $attributes['achievement_override_reason'], $attributes['achievement_overridden_by'], $attributes['achievement_overridden_at']);
+        $viewers = array_key_exists('visible_to', $attributes) ? (array) $attributes['visible_to'] : null;
+        unset($attributes['visible_to']);
+        $attributes = $this->withTags($attributes);
         $proposal = $this->proposesFor($goal, $actor ?? auth()->user());
 
-        return DB::transaction(function () use ($goal, $attributes, $expectedVersion, $actor, $reason, $proposal, $keyResultsChanged) {
+        return DB::transaction(function () use ($goal, $attributes, $expectedVersion, $actor, $reason, $proposal, $keyResultsChanged, $viewers) {
             if ($proposal) {
                 $this->lockSheet($this->sheetOwner($goal->only(['level', 'employee_id'])));
             }
@@ -151,6 +174,21 @@ final class Goals
             }
             $merged = [...$current->only(['level', 'employee_id', 'organisation_node_id', 'performance_cycle_id', 'title', 'weight', 'status']), ...$attributes];
             $this->assertOwnership($merged, $actor ?? auth()->user());
+            // GO-4: a goal is aligned only to a goal the person may see; an employee goal keeps no owner person.
+            if (! empty($attributes['parent_id']) && (int) $attributes['parent_id'] !== (int) $current->parent_id && ($actor ?? auth()->user()) !== null
+                && Goal::query()->withoutGlobalScope(AccessScope::class)->whereKey($attributes['parent_id'])->doesntExist()) {
+                throw new RuntimeException('The goal to align to does not exist.');
+            }
+            if (($merged['level'] ?? null) === 'employee') {
+                // An organisation goal turned into an employee goal drops its owner person and becomes public again.
+                if ($current->owner_employee_id !== null || array_key_exists('owner_employee_id', $attributes)) {
+                    $attributes['owner_employee_id'] = null;
+                }
+                if ($current->visibility === 'private' || array_key_exists('visibility', $attributes)) {
+                    $attributes['visibility'] = 'public';
+                }
+            }
+            $this->assertOwnerPerson([...$merged, ...$attributes]);
             // HP-8b: outside the goal-setting period only performance administrators change a cycle's goals.
             $this->assertGoalPeriodOpen($current->performance_cycle_id, $actor ?? auth()->user(), $current->employee_id);
             if ((int) ($merged['performance_cycle_id'] ?? 0) !== (int) $current->performance_cycle_id) {
@@ -175,6 +213,9 @@ final class Goals
 
             $changed = $keyResultsChanged || array_diff(array_keys($goal->fill($attributes)->getDirty()), ['lock_version', 'updated_at']) !== [];
             $goal->withAuditReason($reason)->update($attributes);
+            if ($viewers !== null) {
+                $this->syncViewers($goal, $viewers, $actor ?? auth()->user(), $reason);
+            }
             if ($owner !== null) {
                 $this->rebalanceSheet($goal->refresh(), $owner);
             }
@@ -219,14 +260,20 @@ final class Goals
      * HROne setup parity HP-8b (performance.goals.edit_only_in_goal_stage): goals of a cycle are created, changed or
      * closed only while the cycle is active, at its goal-setting stage and inside that stage's dates. Performance
      * administrators, system runs (no actor) and goals outside any cycle are not limited; progress check-ins never are.
+     *
+     * HROne parity GO-2: an extension of the goal-setting window (PerformanceWindows, for everyone or for the goal's
+     * owner) moves the end of both checks to its date, and keeps goal setting open for that person until then even once
+     * the cycle has moved on to its reviews (HROne "Extend goal").
      */
     public function assertGoalPeriodOpen(int|string|null $cycleId, ?User $actor, int|string|null $employeeId = null): void
     {
+        $windows = app(PerformanceWindows::class);
+        $owner = empty($employeeId) ? null : (int) $employeeId;
         // HROne setup parity HP-8i: the goal window of the goal owner's performance policy (blank = no window).
         if (! empty($cycleId) && ! empty($employeeId) && $actor !== null && ! $actor->hasPermission('performance.manage')
             && ($cycle = PerformanceCycle::query()->find($cycleId)) !== null
             && ($window = app(PerformancePolicyRules::class)->goalWindow(Employee::query()->withoutGlobalScope(AccessScope::class)->find($employeeId), $cycle)) !== null
-            && (today()->lt($window[0]) || today()->gt($window[1]))) {
+            && (today()->lt($window[0]) || (today()->gt($window[1]) && ! (($extended = $windows->extensionEnd($cycle, 'goal_setting', $owner)) !== null && today()->lte($extended))))) {
             throw new RuntimeException("Goals of {$cycle->name} can be changed only during the goal window ({$window[0]->format('d M Y')} – {$window[1]->format('d M Y')}).");
         }
         if (empty($cycleId) || $actor === null || $actor->hasPermission('performance.manage')
@@ -239,8 +286,11 @@ final class Goals
         }
         $stage = collect($cycle->stages ?? [])->firstWhere('key', 'goal_setting');
         $today = today()->toDateString();
-        $open = $cycle->status === 'active' && $cycle->current_stage === 'goal_setting'
-            && (empty($stage['starts_on']) || $stage['starts_on'] <= $today) && (empty($stage['ends_on']) || $stage['ends_on'] >= $today);
+        $started = empty($stage['starts_on']) || $stage['starts_on'] <= $today;
+        $end = $windows->stageEnd($cycle, 'goal_setting', $owner);
+        $extended = $windows->extensionEnd($cycle, 'goal_setting', $owner);
+        $open = $cycle->status === 'active' && $started && ($end === null || $end->toDateString() >= $today)
+            && ($cycle->current_stage === 'goal_setting' || ($cycle->isAtOrPast('goal_setting') && $extended !== null && $extended->toDateString() >= $today));
         if (! $open) {
             throw new RuntimeException("Goals of {$cycle->name} can be changed only during its goal-setting period.");
         }
@@ -361,7 +411,7 @@ final class Goals
         if (in_array($attributes['status'] ?? 'active', ['cancelled'], true)) {
             return;
         }
-        $duplicate = Goal::query()->withoutGlobalScope(AccessScope::class)
+        $duplicate = Goal::query()->withoutGlobalScopes([AccessScope::class, GoalVisibilityScope::class])
             ->where('level', $attributes['level'] ?? 'employee')
             ->where('employee_id', $attributes['employee_id'] ?? null)
             ->where('organisation_node_id', $attributes['organisation_node_id'] ?? null)
@@ -389,7 +439,11 @@ final class Goals
         }
     }
 
-    public function checkIn(Goal|KeyResult $subject, ?float $value, ?string $note = null, ?string $confidence = null, ?User $actor = null, string $source = 'manual', ?string $measurement = null, ?string $idempotencyKey = null): GoalCheckIn
+    /**
+     * GO-4: $health (not started / on track / behind / at risk) becomes the goal's health; $periodStart / $periodEnd are the
+     * period the update covers (HROne "Task period"). Without them a check-in is exactly as before.
+     */
+    public function checkIn(Goal|KeyResult $subject, ?float $value, ?string $note = null, ?string $confidence = null, ?User $actor = null, string $source = 'manual', ?string $measurement = null, ?string $idempotencyKey = null, ?string $health = null, ?string $periodStart = null, ?string $periodEnd = null): GoalCheckIn
     {
         $goalId = $subject instanceof Goal ? $subject->id : $subject->goal_id;
         if ($idempotencyKey !== null && ($previous = GoalCheckIn::query()->where('goal_id', $goalId)->where('idempotency_key', $idempotencyKey)->first())) {
@@ -401,6 +455,14 @@ final class Goals
         if ($confidence !== null && ! array_key_exists($confidence, GoalCheckIn::CONFIDENCE)) {
             throw new RuntimeException("Unknown confidence '{$confidence}'.");
         }
+        if ($health !== null && ! array_key_exists($health, (array) config('peopleos.performance.goal_health'))) {
+            throw new RuntimeException("Unknown goal status '{$health}'.");
+        }
+        $periodStart = blank($periodStart) ? null : Carbon::parse($periodStart)->toDateString();
+        $periodEnd = blank($periodEnd) ? null : Carbon::parse($periodEnd)->toDateString();
+        if ($periodStart !== null && $periodEnd !== null && $periodEnd < $periodStart) {
+            throw new RuntimeException('The check-in period cannot end before it starts.');
+        }
         $goal = $subject instanceof Goal ? $subject : $subject->goal()->firstOrFail();
 
         if (! $goal->isOpen()) {
@@ -410,9 +472,9 @@ final class Goals
             throw new RuntimeException('This goal belongs to a closed cycle.');
         }
 
-        return DB::transaction(function () use ($subject, $goal, $value, $note, $confidence, $actor, $source, $measurement, $idempotencyKey) {
+        return DB::transaction(function () use ($subject, $goal, $value, $note, $confidence, $actor, $source, $measurement, $idempotencyKey, $health, $periodStart, $periodEnd) {
             // Serialize concurrent updates of the same goal; read the previous values under the lock.
-            Goal::query()->whereKey($goal->id)->lockForUpdate()->first();
+            Goal::query()->withoutGlobalScope(GoalVisibilityScope::class)->whereKey($goal->id)->lockForUpdate()->first();
             $subject->refresh();
             $previousValue = $subject->current_value;
             $previousProgress = $subject->progress;
@@ -433,10 +495,16 @@ final class Goals
                 'measurement' => $measurement,
                 'note' => $note,
                 'created_by' => $actor?->id ?? auth()->id(),
+                'health' => $health,
+                'period_start' => $periodStart,
+                'period_end' => $periodEnd,
             ]);
 
+            if ($health !== null && $health !== $goal->refresh()->health) {
+                $goal->update(['health' => $health]);
+            }
             $this->recompute($goal);
-            PerformanceEvent::dispatch('performance.goal.progress_updated', $goal->employee, $goal, ['title' => $goal->title, 'progress' => (float) $goal->refresh()->progress, 'source' => $source], []);
+            PerformanceEvent::dispatch('performance.goal.progress_updated', $goal->employee, $goal, ['title' => $goal->publicTitle(), 'progress' => (float) $goal->refresh()->progress, 'source' => $source], []);
 
             return $checkIn;
         });
@@ -446,7 +514,8 @@ final class Goals
     public function recompute(Goal $goal): void
     {
         $goal->loadMissing('keyResults');
-        $sources = $goal->keyResults->isNotEmpty() ? $goal->keyResults : $goal->children()->where('status', '!=', 'cancelled')->get();
+        // GO-4: aligned goals count whatever their visibility to the person whose action triggered the roll-up.
+        $sources = $goal->keyResults->isNotEmpty() ? $goal->keyResults : $goal->children()->withoutGlobalScope(GoalVisibilityScope::class)->where('status', '!=', 'cancelled')->get();
 
         if ($sources->isNotEmpty()) {
             $totalWeight = $sources->sum(fn ($s) => max(0, (int) $s->weight)) ?: $sources->count();
@@ -455,7 +524,7 @@ final class Goals
         }
 
         if ($goal->parent_id) {
-            $parent = $goal->parent()->first();
+            $parent = $goal->parent()->withoutGlobalScope(GoalVisibilityScope::class)->first();
             if ($parent && $parent->keyResults()->doesntExist()) {
                 $this->recompute($parent);
             }
@@ -478,8 +547,8 @@ final class Goals
         $goal->withAuditReason($reason)->update(['status' => $status, 'progress' => $status === 'completed' ? 100 : $goal->progress]);
         $this->audit->record($status === 'completed' ? AuditAction::Update : AuditAction::Cancelled, 'performance', $goal, [['field' => 'status', 'before' => 'active', 'after' => $status]], $reason);
 
-        if ($goal->parent_id) {
-            $this->recompute($goal->parent()->first());
+        if ($goal->parent_id && ($parent = $goal->parent()->withoutGlobalScope(GoalVisibilityScope::class)->first()) !== null) {
+            $this->recompute($parent);
         }
         // HP-8d: with equal weightage the goals left on the sheet share the total again.
         if (($owner = $this->sheetOwner($goal->only(['level', 'employee_id']))) !== null) {
@@ -552,6 +621,126 @@ final class Goals
             if ($this->sheet->rebalanceKeyResults($sheetGoal->refresh()) > 0) {
                 $this->recompute($sheetGoal->unsetRelation('keyResults'));
             }
+        }
+    }
+
+    /**
+     * HROne parity GO-2 ("Withdraw from cycle", the safe alternative to HROne's "Delete goals"): the employee's open goals of
+     * the cycle (draft, waiting for approval, active) are cancelled with the reason — each audited, nothing deleted; the goals
+     * they were aligned to are recomputed. Returns how many were cancelled.
+     */
+    public function cancelForWithdrawal(int $employeeId, int $cycleId, string $reason, ?User $actor): int
+    {
+        $goals = Goal::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employeeId)->where('performance_cycle_id', $cycleId)
+            ->where('level', 'employee')->whereIn('status', GoalSheetRules::OPEN_STATUSES)->orderBy('id')->get();
+        foreach ($goals as $goal) {
+            $before = $goal->status;
+            $goal->withAuditReason($reason)->update(['status' => 'cancelled']);
+            $this->audit->record(AuditAction::Cancelled, 'performance', $goal, [['field' => 'status', 'before' => $before, 'after' => 'cancelled']], $reason, actor: $actor);
+            if ($goal->parent_id && ($parent = Goal::query()->withoutGlobalScopes([AccessScope::class, GoalVisibilityScope::class])->find($goal->parent_id)) !== null) {
+                $this->recompute($parent);
+            }
+        }
+
+        return $goals->count();
+    }
+
+    /**
+     * HROne parity GO-4 (owner decision PER-6 / D-GO7): the actual achievement of a goal, entered by performance HR or the
+     * performance manager of the goal's person with a reason, beside the system-calculated achievement (`progress`, which
+     * keeps rolling up as before). $actual null clears the override (the system's stands again). Only while
+     * `performance.goals.achievement_override` is on; never on one's own goal, a cancelled goal or one of a closed cycle.
+     * Audited with the system and final values.
+     */
+    public function overrideAchievement(Goal $goal, ?float $actual, string $reason, ?User $actor = null): Goal
+    {
+        $actor ??= auth()->user();
+        if (! GoalVisibility::overrideEnabled()) {
+            throw new RuntimeException('Overriding the calculated achievement is switched off (Setup → Performance).');
+        }
+        if (trim($reason) === '') {
+            throw new RuntimeException('Give a reason for overriding the achievement.');
+        }
+        if ($actual !== null && ($actual < 0 || $actual > 1000)) {
+            throw new RuntimeException('The actual achievement must be between 0 and 1000 %.');
+        }
+        if (! GoalVisibility::mayOverride($actor, $goal)) {
+            throw new RuntimeException('Only performance HR or the manager of the goal\'s owner may override its achievement, never on their own goal.');
+        }
+
+        return DB::transaction(function () use ($goal, $actual, $reason, $actor) {
+            $current = Goal::query()->withoutGlobalScope(GoalVisibilityScope::class)->whereKey($goal->id)->lockForUpdate()->firstOrFail();
+            if ($current->status === 'cancelled') {
+                throw new RuntimeException('This goal is cancelled.');
+            }
+            if ($current->performance_cycle_id && $current->cycle()->value('status') === 'closed') {
+                throw new RuntimeException('This goal belongs to a closed cycle.');
+            }
+            $before = $current->achievement_override === null ? null : (float) $current->achievement_override;
+            if ($before === $actual) {
+                throw new RuntimeException('The actual achievement is already '.($actual === null ? 'the system\'s' : "{$actual} %").'.');
+            }
+            $current->withoutAuditing()->update([
+                'achievement_override' => $actual,
+                'achievement_override_reason' => $actual === null ? null : trim($reason),
+                'achievement_overridden_by' => $actual === null ? null : $actor?->id,
+                'achievement_overridden_at' => $actual === null ? null : now(),
+            ]);
+            $this->audit->record(AuditAction::Update, 'performance', $current, [['field' => 'achievement_override', 'before' => $before, 'after' => $actual, 'sensitive' => false]], trim($reason), actor: $actor,
+                metadata: ['system_achievement' => $current->systemAchievement(), 'final_achievement' => $current->refresh()->finalAchievement(), 'achievement_override' => $actual === null ? 'cleared' : 'set']);
+
+            return $goal->refresh();
+        });
+    }
+
+    /**
+     * GO-4: replace the visible-to list of a goal (employees in the person's reach), audited as one change of the goal.
+     *
+     * @param  array<int, int|string>  $employeeIds
+     */
+    private function syncViewers(Goal $goal, array $employeeIds, ?User $actor, ?string $reason = null): void
+    {
+        $wanted = collect($employeeIds)->filter(fn ($id) => filled($id))->map(fn ($id) => (int) $id)->unique()->sort()->values();
+        if ($wanted->isNotEmpty() && Employee::query()->whereIn('id', $wanted)->count() !== $wanted->count()) {
+            throw new RuntimeException('Someone on the visible-to list is not an employee you can choose.');
+        }
+        $rows = GoalViewer::query()->withoutGlobalScope(AccessScope::class)->where('goal_id', $goal->id)->get();
+        $before = $rows->pluck('employee_id')->map(fn ($id) => (int) $id)->sort()->values();
+        if ($before->all() === $wanted->all()) {
+            return;
+        }
+        $rows->whereNotIn('employee_id', $wanted->all())->each(fn (GoalViewer $row) => $row->delete());
+        $wanted->diff($before)->each(fn (int $id) => GoalViewer::create(['tenant_id' => $goal->tenant_id, 'goal_id' => $goal->id, 'employee_id' => $id, 'created_by' => $actor?->id]));
+        $this->audit->record(AuditAction::Update, 'performance', $goal, [['field' => 'visible_to', 'before' => $before->implode(', '), 'after' => $wanted->implode(', '), 'sensitive' => false]], $reason, actor: $actor);
+    }
+
+    /** GO-4: tags trimmed, without blanks or repeats (at most 20, each up to 40 characters); none = null. */
+    private function withTags(array $attributes): array
+    {
+        if (! array_key_exists('tags', $attributes)) {
+            return $attributes;
+        }
+        $tags = collect((array) $attributes['tags'])->map(fn ($t) => trim((string) $t))->filter(fn ($t) => $t !== '')
+            ->unique(fn ($t) => mb_strtolower($t))->values();
+        if ($tags->count() > 20 || $tags->contains(fn ($t) => mb_strlen($t) > 40)) {
+            throw new RuntimeException('A goal takes at most 20 tags of up to 40 characters each.');
+        }
+        $attributes['tags'] = $tags->isEmpty() ? null : $tags->all();
+
+        return $attributes;
+    }
+
+    /** GO-4: an owner person only on organisation goals, and one the person may choose. */
+    private function assertOwnerPerson(array $attributes): void
+    {
+        if (empty($attributes['owner_employee_id'])) {
+            return;
+        }
+        if (($attributes['level'] ?? 'employee') === 'employee') {
+            throw new RuntimeException('Only organisation goals have an owner person (an employee goal belongs to its employee).');
+        }
+        if (Employee::query()->whereKey($attributes['owner_employee_id'])->doesntExist()) {
+            throw new RuntimeException('The goal owner is not an employee you can choose.');
         }
     }
 

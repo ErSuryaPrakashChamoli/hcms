@@ -248,7 +248,7 @@ class OrganisationMap extends Page
     {
         return app(PeopleVisibility::class)->query(auth()->user())
             // Current reporting lines: people not yet joined (their line starts on the joining date) are not on the map yet.
-            ->whereNotIn('lifecycle_state', [LifecycleState::Exited->value, LifecycleState::Alumni->value, LifecycleState::PreEmployee->value, LifecycleState::Preboarding->value])
+            ->whereNotIn('lifecycle_state', [LifecycleState::Exited->value, LifecycleState::Alumni->value, LifecycleState::PreEmployee->value, LifecycleState::Preboarding->value, LifecycleState::NotJoined->value])
             ->pluck('employees.id')->map(fn ($id) => (int) $id)->all();
     }
 }

@@ -13,6 +13,7 @@ use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\ExportLayouts;
 use App\Domain\Compliance\Services\Returns\StatutoryReturns;
 use App\Domain\Compliance\Services\Returns\StatutorySnapshots;
+use App\Domain\Compliance\Services\StatutoryChallans;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\LegalEntity;
@@ -46,7 +47,7 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
     }
 
     /**
-     * @param  list<array{bsr_code: string, deposit_date: string, challan_serial: string, amount: float|int|string}>  $challans
+     * @param  list<array{bsr_code: string, deposit_date: string, challan_serial: string, amount: float|int|string}>  $challans  typed in (none: the challan register's)
      */
     public function generate(LegalEntity $entity, string $financialYear, int $quarter, User $actor, array $challans = [], ?string $reason = null, string $source = 'ui'): StatutoryReturn
     {
@@ -56,6 +57,14 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
 
         $fyStart = Carbon::create((int) substr($financialYear, 0, 4), (int) config('peopleos.compliance.financial_year_start_month', 4), 1);
         $start = $fyStart->copy()->addMonthsNoOverflow(($quarter - 1) * 3);
+
+        // HROne parity PO-13: with no challans typed in, the statement takes the quarter's challans from the challan register
+        // (none recorded there: nothing changes, and validation asks for the deposit details as before).
+        $fromRegister = false;
+        if ($challans === []) {
+            $challans = app(StatutoryChallans::class)->forTdsStatement($entity, $financialYear, $quarter);
+            $fromRegister = $challans !== [];
+        }
 
         $return = $this->returns->generate([
             'company_id' => $entity->company_id,
@@ -70,7 +79,7 @@ final class TdsQuarterlyReturns implements StatutoryReturnGenerator
             'period_end' => $start->copy()->addMonthsNoOverflow(2)->endOfMonth()->toDateString(),
             'sequence' => 1,
             ...app(ExportLayouts::class)->headerFor('TDS_FORM_138'),
-            'attestations' => ['challans' => array_values($challans)],
+            'attestations' => ['challans' => array_values($challans)] + ($fromRegister ? ['challan_source' => 'register'] : []),
         ], $actor, $source, $reason);
 
         return $return;

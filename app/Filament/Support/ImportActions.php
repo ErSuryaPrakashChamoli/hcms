@@ -9,11 +9,14 @@ use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\BankAccountImports;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImports;
+use App\Domain\Employment\Imports\ImportCatalogue;
 use App\Domain\Employment\Imports\ImportDownloads;
 use App\Domain\Employment\Imports\ImportGovernance;
+use App\Domain\Employment\Imports\ImportTypes;
 use App\Domain\Employment\Imports\RowImports;
 use App\Domain\Employment\Imports\RowImportTypes;
 use App\Domain\Organisation\Models\Company;
+use App\Filament\Pages\DataImport;
 use App\Filament\Resources\CompensationCycles\CompensationCycleResource;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -23,6 +26,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -51,12 +55,13 @@ final class ImportActions
         return app(self::TYPES[$type][0] ?? RowImportTypes::TYPES[$type][0] ?? EmployeeImports::class);
     }
 
-    /** @return array<string, array{0: string, 1: string}>|null mode => [label, description], for the imports that offer the choice */
+    /**
+     * @return array<string, array{0: string, 1: string}>|null mode => [label, description], for the imports that offer the
+     *                                                         choice: the upload's own choices, or the generic insert / update of a one-row-one-change upload (ImportTypes::modes)
+     */
     public static function modes(string $type): ?array
     {
-        $class = self::TYPES[$type][0] ?? RowImportTypes::TYPES[$type][0] ?? EmployeeImports::class;
-
-        return defined("{$class}::MODES") ? $class::MODES : null;
+        return ImportTypes::modes($type);
     }
 
     /** @return list<Action> */
@@ -180,10 +185,10 @@ final class ImportActions
         }
     }
 
-    /** The "new or existing" choice an upload offers, with what each choice does. */
+    /** The "new or existing" choice an upload offers, with what each choice does (shown as cards). */
     public static function modeField(array $modes): Radio
     {
-        return Radio::make('mode')->label('What is this file for?')
+        return Radio::make('mode')->label('What is this file for?')->extraAttributes(['class' => 'pos-di-choices'])
             ->options(array_map(fn (array $mode) => $mode[0], $modes))->descriptions(array_map(fn (array $mode) => $mode[1], $modes))->required();
     }
 
@@ -198,12 +203,23 @@ final class ImportActions
             ->descriptions(array_map(fn (array $o) => $o[1], AttendanceSheetImports::BLANK_DAYS))->default('calculate')->required();
     }
 
-    /** The CSV field of every upload dialog: a file on the private disk, under the tenant's import folder. */
+    /** The CSV field of every upload: a large drop zone; the file goes to the private disk, under the tenant's import folder. */
     public static function fileField(): FileUpload
     {
         return FileUpload::make('file')->label('CSV file')->disk(EmployeeImports::disk())->directory(fn () => EmployeeImports::directory())->visibility('private')
             ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])->maxSize((int) config('peopleos.documents.max_kb', 10240))
+            ->placeholder(fn () => self::dropLabel())->extraAttributes(['class' => 'pos-di-dropzone'])
             ->storeFileNamesIn('original_name')->required();
+    }
+
+    /** The drop zone's text (FilePond's idle label takes HTML). */
+    public static function dropLabel(): string
+    {
+        $mb = max(1, intdiv((int) config('peopleos.documents.max_kb', 10240), 1024));
+
+        return '<span class="pos-di-drop-icon">'.svg('heroicon-o-arrow-up-tray')->toHtml().'</span>'
+            .'<span class="pos-di-drop-main">Drop your CSV file here</span>'
+            .'<span class="pos-di-drop-hint">or <span class="filepond--label-action">browse your computer</span> · CSV, up to '.$mb.' MB</span>';
     }
 
     /** The uploaded file's own name, as the upload field stored it. */
@@ -214,11 +230,21 @@ final class ImportActions
         return (string) (is_array($name) ? (reset($name) ?: basename($data['file'])) : ($name ?? basename($data['file'])));
     }
 
-    /** The format guide inside an upload dialog, folded away under the fields. */
-    public static function formatSection(string $type): Section
+    /** The format guide inside an upload dialog, open under the file and the choices. */
+    public static function formatSection(string $type): View
     {
-        return Section::make('File format and example')->description('Every column, what to enter, and an example file.')->collapsible()->collapsed()
-            ->schema([View::make('filament.imports.csv-format')->viewData(fn () => self::formatData($type))]);
+        return self::formatSectionFor(fn () => $type);
+    }
+
+    /**
+     * The format guide for the type a dialog has chosen (closure: the type, or null while none is chosen), as an open
+     * block under the fields — not a form section, so the dialog stays one page instead of becoming a step wizard.
+     */
+    public static function formatSectionFor(\Closure $type): View
+    {
+        return View::make('filament.imports.format-guide-block')->columnSpanFull()
+            ->visible(fn (Get $get) => filled($type($get)))
+            ->viewData(fn (Get $get) => ['format' => filled($found = $type($get)) ? self::formatData((string) $found) : []]);
     }
 
     /** The format guide on its own, from the list page. */
@@ -240,6 +266,58 @@ final class ImportActions
 
         return ['title' => self::TYPES[$type][1] ?? RowImportTypes::TYPES[$type][1] ?? $type, 'columns' => $format['columns'], 'codes' => $format['codes'] ?? null, 'codesTitle' => $format['codes_title'] ?? null, 'modes' => self::modes($type),
             'notes' => $format['notes'], 'sample' => $sample, 'sampleRows' => iterator_to_array(Reader::fromString($sample)->getRecords(), false)];
+    }
+
+    /**
+     * The head of an upload's own page (filament.imports.upload-summary): what the upload is, its module's tint, where it
+     * stands in the pipeline (uploaded → columns matched → rows checked → approved → run), the next step, and its counts.
+     *
+     * @return array<string, mixed>
+     */
+    public static function summary(EmployeeImport $import): array
+    {
+        $process = ImportCatalogue::find($import->options['process'] ?? null);
+        $head = $process['head'] ?? ImportTypes::module((string) $import->type) ?? 'workforce';
+        [$module, $icon] = ImportCatalogue::HEADS[$head] ?? ['Data import', 'heroicon-o-arrow-up-tray'];
+        $hue = DataImport::TONES[$head] ?? 'iris';
+        $status = (string) $import->status;
+        $run = in_array($status, ['imported', 'failed'], true);
+        $modes = ImportTypes::modes((string) $import->type);
+
+        return [
+            'tone' => "--pos-tone: var(--pos-hue-{$hue}); --pos-tone-bg: var(--pos-hue-{$hue}-bg);",
+            'icon' => $icon, 'module' => $module, 'title' => $process['label'] ?? ImportTypes::label((string) $import->type),
+            'file' => $import->original_name, 'uploader' => $import->uploader?->name ?? 'someone', 'uploadedAt' => $import->created_at?->format('j M Y, H:i'),
+            'intent' => $modes[ImportMode::of($import)->value][0] ?? null, 'status' => ucfirst($status),
+            'steps' => ['Uploaded', 'Columns matched', 'Rows checked', 'Approved', 'Run'],
+            'current' => match ($status) {
+                'uploaded', 'inspected' => 1, 'mapped' => 2, 'validated' => 3, 'approved', 'importing' => 4, 'imported', 'failed' => 5, default => 0
+            },
+            'next' => match ($status) {
+                'uploaded' => 'Next: Inspect file reads the rows and matches the columns by name.',
+                'inspected' => 'Next: Map columns to confirm the PeopleOS field of each column.',
+                'mapped' => 'Next: Validate rows checks every row.',
+                'validated' => $import->error_count > 0
+                    ? "Next: correct the {$import->error_count} row(s) with errors in your file and upload it again, or approve the import to run the rest."
+                    : 'Next: approve the import, then run it.',
+                'approved' => 'Next: Run import writes the rows.',
+                'importing' => 'The import is running.',
+                default => null,
+            },
+            // Until the rows are checked only their number is known.
+            'stats' => match (true) {
+                $status === 'uploaded' => [],
+                in_array($status, ['inspected', 'mapped'], true) => [['Rows', $import->row_count, '']],
+                default => array_values(array_filter([
+                    ['Rows', $import->row_count, ''],
+                    [$run ? 'Added' : 'To add', $import->create_count, 'add'],
+                    [$run ? 'Updated' : 'To update', $import->update_count, 'update'],
+                    ['Skipped', $import->skip_count, ''],
+                    $run ? ['Failed', $import->failure_count, 'error'] : ['With errors', $import->error_count, 'error'],
+                    $import->review_count > 0 ? ['To decide', $import->review_count, 'decide'] : null,
+                ])),
+            },
+        ];
     }
 
     public static function monthLabel(EmployeeImport $import): string

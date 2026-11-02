@@ -95,6 +95,11 @@ final class ReportLibrary
                 self::rows(['employee_code', 'name', 'department', 'member', 'relation', 'date_of_birth', 'nominee_share'], [$active, self::when('is_nominee', 'equals', '1')], 'employee_code')],
             ['dependants', 'People', 'Dependants (insurance)', 'Dependants per employee for group health insurance.', 'family_members',
                 self::rows(['employee_code', 'name', 'member', 'relation', 'gender', 'date_of_birth', 'age'], [$active, self::when('is_dependent', 'equals', '1')], 'employee_code')],
+            // HROne parity MS-5: the people each health insurance policy covers (never the member id), and covers ending soon.
+            ['health_insurance_members', 'People', 'Health insurance members', 'Who each active employee\'s health insurance covers: insurer, policy, sum assured, validity, relation, date of birth and parents\' cover.', 'insurance_members',
+                self::rows(['employee_code', 'name', 'department', 'insurer', 'policy_number', 'sum_assured', 'valid_until', 'member', 'relation', 'gender', 'date_of_birth', 'is_parents_cover', 'has_member_id'], [$active], 'employee_code')],
+            ['health_insurance_expiring', 'People', 'Health insurance expiring in the next 60 days', 'Policies of active employees whose cover ends soon, per insured person.', 'insurance_members',
+                self::rows(['employee_code', 'name', 'department', 'insurer', 'policy_number', 'valid_until', 'days_to_expiry', 'member', 'relation'], [$active, self::when('valid_until', 'next_days', '60')], 'valid_until')],
             ['emergency_contacts', 'People', 'Emergency contacts', 'Emergency contacts of active employees.', 'emergency_contacts',
                 self::rows(['employee_code', 'name', 'department', 'location', 'contact', 'relation', 'phone', 'alternate_phone'], [$active], 'employee_code')],
             ['qualifications', 'People', 'Education and qualifications', 'Qualifications of active employees.', 'qualifications',
@@ -114,11 +119,19 @@ final class ReportLibrary
                 self::rows(['number', 'employee_code', 'name', 'type', 'subject', 'issued_on', 'approved_by'], [self::when('issued_on', 'this_month')], 'issued_on', 'desc')],
             ['letters_pending', 'People', 'Letters awaiting approval or issue', 'Letters in draft or pending approval.', 'letters',
                 self::rows(['number', 'employee_code', 'name', 'type', 'subject', 'status', 'requested_on', 'requested_by'], [self::when('status', 'in', 'draft,pending_approval,approved')], 'requested_on')],
+            // HROne parity WO-14 (matrix 21 Workforce #41): documents shared in bulk, per employee, this month.
+            ['shared_documents_this_month', 'People', 'Shared letters / documents (this month)', 'Documents shared with employees in bulk this month: share, type, title, status, who published it and, if unpublished, why.', 'document_shares',
+                self::rows(['share', 'employee_code', 'name', 'document_type', 'title', 'file', 'status', 'reason', 'published_on', 'published_by', 'unpublish_reason'], [self::when('published_on', 'this_month')], 'published_on', 'desc')],
             // HROne setup parity HP-9c: the badges ledger and who was recognised most.
             ['badges_ledger_this_month', 'People', 'Badges ledger (this month)', 'Every badge given this month: badge, receiver, giver, reason and visibility.', 'badges_ledger',
                 self::rows(['given_on', 'badge', 'employee_code', 'name', 'department', 'given_by', 'reason', 'visibility', 'status'], [self::when('given_on', 'this_month')], 'given_on', 'desc')],
             ['badges_by_employee', 'People', 'Badges received per employee (this financial year)', 'Badges received by each employee this financial year (withdrawn ones left out).', 'badges_ledger',
                 self::grouped('employee', [['fn' => 'count']], [self::when('given_on', 'this_financial_year'), self::when('status', 'equals', 'given')], 'table', 'count', 'desc')],
+            // HROne parity GO-15: company events — who was invited and answered, and who attended (HROne "Event details", "Event attendance").
+            ['event_details', 'People', 'Event details', 'Every invitation to a company event: the event, the invitee, how they were invited and their answer.', 'event_participants',
+                self::rows(['event', 'event_type', 'event_date', 'event_status', 'employee_code', 'name', 'department', 'invitation', 'source', 'nominated_by', 'answered_on'], [], 'event_date', 'desc')],
+            ['event_attendance', 'People', 'Event attendance (this financial year)', 'Invitees of this financial year\'s events with the sessions they attended.', 'event_participants',
+                self::rows(['event', 'event_date', 'employee_code', 'name', 'department', 'invitation', 'sessions', 'sessions_attended', 'attended'], [self::when('event_date', 'this_financial_year')], 'event_date', 'desc')],
             // HROne setup parity HP-9d / HP-9f: reward points and the happiness index.
             ['reward_points_this_month', 'People', 'Reward points ledger (this month)', 'Every reward points movement this month: deposits, credits, awards, badge points, redemptions, lapses and expiry.', 'reward_points_ledger',
                 self::rows(['date', 'wallet', 'kind', 'points', 'employee_code', 'name', 'colleague', 'amount', 'paid_in_payroll'], [self::when('date', 'this_month')], 'date', 'desc')],
@@ -165,6 +178,11 @@ final class ReportLibrary
                 self::rows(['date', 'time', 'employee_code', 'name', 'source', 'device', 'processing_error'], [self::when('processing_status', 'equals', 'failed')], 'date', 'desc')],
             ['shift_roster', 'Attendance', 'Current work schedule (roster)', 'The work schedule each employee is on today.', 'shift_roster',
                 self::rows(['employee_code', 'name', 'department', 'location', 'schedule', 'effective_from', 'effective_to'], [self::when('is_current', 'equals', '1')], 'schedule')],
+            // HROne parity TX-5: the day-level roster (Shift rosters → Reports; "Monthly shift roster").
+            ['day_roster_this_month', 'Attendance', 'Shift roster by day (this month)', 'Days rostered this month: the shift or weekly off per employee and date, its timings, source and who changed it.', 'day_roster',
+                self::rows(['date', 'employee_code', 'name', 'employee_status', 'company', 'department', 'designation', 'location', 'shift_code', 'shift_timings', 'auto_shift', 'source', 'changed_by', 'changed_on'], [self::when('date', 'this_month')], 'date')],
+            ['day_roster_changes', 'Attendance', 'Shift roster changes (last 30 days)', 'Rostered days changed in the last 30 days, newest first, with the source and who changed them.', 'day_roster',
+                self::rows(['changed_on', 'date', 'employee_code', 'name', 'department', 'shift_code', 'source', 'reason', 'changed_by'], [self::when('changed_on', 'last_days', '30')], 'changed_on', 'desc')],
             ['holiday_list', 'Attendance', 'Holiday list (this year)', 'Holidays of every calendar in the current year.', 'holidays',
                 self::rows(['calendar', 'date', 'day', 'name', 'type', 'is_half_day'], [self::when('date', 'this_year')], 'date')],
 
@@ -227,6 +245,11 @@ final class ReportLibrary
                 self::grouped('department', [['fn' => 'sum', 'field' => 'days', 'label' => 'Days'], ['fn' => 'count', 'label' => 'Penalties']], [], 'bar')],
             ['attendance_arrear_days', 'Attendance', 'Arrear days', 'Days corrected after the payroll lock, with the paid-day difference.', 'attendance_arrears',
                 self::rows(['date', 'employee_code', 'name', 'status_before', 'status_after', 'delta_days', 'status'], [], 'date', 'desc')],
+            // HROne parity TX-4: paid days before payroll ("Monthly paid day", "Paid day YTD" from attendance).
+            ['paid_days_last_month', 'Attendance', 'Paid days before payroll (last month)', 'Present, paid and unpaid leave, holidays, weekly offs, absent, penalty and arrear days, adjustments and paid days per employee.', 'attendance_paid_days',
+                self::rows(['employee_code', 'name', 'department', 'month', 'present_days', 'paid_leave_days', 'unpaid_leave_days', 'holidays', 'weekly_offs', 'absent_days', 'penalty_days', 'arrear_days', 'adjustment_days', 'paid_days'], [self::when('month_start', 'last_month')], 'employee_code')],
+            ['paid_days_this_year', 'Attendance', 'Paid days before payroll (this financial year)', 'Paid days, penalty and arrear days and adjustments per employee, added up over the financial year so far.', 'attendance_paid_days',
+                self::grouped('employee', [['fn' => 'sum', 'field' => 'paid_days', 'label' => 'Paid days'], ['fn' => 'sum', 'field' => 'penalty_days', 'label' => 'Penalty days'], ['fn' => 'sum', 'field' => 'arrear_days', 'label' => 'Arrear days'], ['fn' => 'sum', 'field' => 'adjustment_days', 'label' => 'Adjustments']], [self::when('month_start', 'this_financial_year')], 'table', 'employee')],
             ['checkin_devices_register', 'Attendance', 'Check-in devices (UUID details)', 'Phones and browsers employees check in from, and their approval.', 'checkin_devices',
                 self::rows(['employee_code', 'name', 'device', 'platform', 'status', 'first_seen', 'last_seen'], [], 'last_seen', 'desc')],
 
@@ -398,6 +421,9 @@ final class ReportLibrary
                 self::rows(['cycle', 'employee_code', 'name', 'department', 'title', 'weight', 'progress', 'due_date', 'status'], [self::when('status', 'equals', 'active')], 'employee_code')],
             ['overdue_goals', 'Performance & learning', 'Overdue goals', 'Active goals past their due date and not complete.', 'goals',
                 self::rows(['employee_code', 'name', 'title', 'progress', 'due_date'], [self::when('is_overdue', 'equals', '1')], 'due_date')],
+            // HROne parity GO-4: company goals (OKRs) with owner, goal status and achievement (HROne "Company goal").
+            ['company_goals', 'Performance & learning', 'Company goals and OKRs', 'Organisation goals with their owner, goal status, linked goals and system / final achievement.', 'goals',
+                self::rows(['cycle', 'level', 'title', 'owner', 'health', 'tags', 'linked_goals', 'system_achievement', 'final_achievement', 'due_date', 'status'], [self::when('level', 'not_equals', 'employee')], 'level')],
             ['rating_distribution', 'Performance & learning', 'Rating distribution', 'Employees per final rating.', 'performance', self::grouped('final_label', [['fn' => 'count']], [self::when('final_label', 'not_empty')], 'pie')],
             ['appraisal_status', 'Performance & learning', 'Appraisal status', 'Appraisals per status in each cycle.', 'performance', self::grouped('status', [['fn' => 'count']], [], 'bar')],
             ['active_pips', 'Performance & learning', 'Active improvement plans', 'Open PIPs with end dates and days left.', 'improvement_plans',
@@ -457,6 +483,9 @@ final class ReportLibrary
                 self::rows(['name', 'email', 'employee_code', 'status', 'roles', 'mfa_enabled', 'last_login', 'days_since_login'], [], 'name')],
             ['users_without_mfa', 'Administration', 'Active users without two-factor', 'Active accounts that have not enabled two-factor authentication.', 'users',
                 self::rows(['name', 'email', 'roles', 'last_login'], [self::when('status', 'equals', 'active'), self::when('mfa_enabled', 'equals', '0')], 'name')],
+            // HROne parity WO-15 (matrix 21 Workforce #3): the business partners report.
+            ['business_partners', 'Administration', 'Business partners', 'Every business partner with type, vendor, contact and sign-in state.', 'partners',
+                self::rows(['code', 'name', 'partner_type', 'vendor', 'official_email', 'personal_email', 'mobile', 'sign_in', 'roles', 'status'], [], 'code')],
             ['dormant_users', 'Administration', 'Dormant users (no sign-in for 60 days)', 'Active accounts unused for 60 days or never used.', 'users',
                 self::rows(['name', 'email', 'roles', 'last_login', 'days_since_login', 'created_on'], [self::when('status', 'equals', 'active'), self::when('days_since_login', 'gt', '60')], 'days_since_login', 'desc')],
         ];

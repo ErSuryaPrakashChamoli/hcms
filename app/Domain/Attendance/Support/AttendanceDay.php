@@ -72,7 +72,9 @@ final class AttendanceDay
             isRegularised: (bool) $record->is_regularised,
             isLocked: (bool) $record->is_locked,
             calculationVersion: $record->calculation_version,
-            adjustments: array_filter(['leave_request_id' => $record->leave_request_id, 'half_day_leave' => $record->is_half_day_leave ?: null, 'regularised' => $record->is_regularised ?: null, 'holiday' => $record->holiday_name, 'penalty_days' => $penaltyDays ?: null]),
+            // HROne parity TX-6: 'half_statuses' (first_half / second_half) only on a day HR set by half.
+            adjustments: array_filter(['leave_request_id' => $record->leave_request_id, 'half_day_leave' => $record->is_half_day_leave ?: null, 'regularised' => $record->is_regularised ?: null, 'holiday' => $record->holiday_name, 'penalty_days' => $penaltyDays ?: null,
+                'half_statuses' => ($record->calculation_basis['half_statuses'] ?? null) ?: null]),
             penaltyDays: $penaltyDays,
         );
     }

@@ -11,28 +11,9 @@
         @if ($modules === [])
             <x-pos.state variant="filtered" size="inline" title="Nothing matches “{{ trim($term) }}”." why="Try another word, or clear the search to see every module. Only settings you have access to are shown." />
         @else
-            <div class="pos-manage-grid">
-                @foreach ($modules as $module)
-                    <div class="pos-panel pos-panel-pad pos-manage" x-data="{ all: false }" wire:key="config-module-{{ $module['key'] }}">
-                        <div class="pos-manage-head">
-                            <span class="pos-stream-icon" aria-hidden="true"><x-filament::icon :icon="$module['icon']" class="size-4" /></span>
-                            <div class="min-w-0">
-                                <h3 class="pos-stream-title font-semibold">{{ $module['label'] }}</h3>
-                                <p class="pos-stream-meta">{{ $module['why'] }}</p>
-                            </div>
-                        </div>
-                        <ul class="pos-manage-list">
-                            @foreach ($module['items'] as $i => $item)
-                                <li @if (! $searching && $i >= 6) x-show="all" x-cloak @endif>
-                                    <a href="{{ $item['url'] }}" wire:navigate class="pos-module-link">{{ $item['label'] }}@if ($item['setting'])<span class="pos-meta ms-auto">Setting</span>@endif</a>
-                                </li>
-                            @endforeach
-                        </ul>
-                        @if (! $searching && count($module['items']) > 6)
-                            <button type="button" class="pos-link" x-on:click="all = ! all" :aria-expanded="all.toString()"><span x-text="all ? 'Show fewer' : 'All {{ count($module['items']) }}'"></span></button>
-                        @endif
-                    </div>
-                @endforeach
+            {{-- A new search starts afresh on its first area (the key replaces the browser instead of morphing it). --}}
+            <div wire:key="config-browse-{{ md5(trim($term)) }}">
+                <x-pos.browse label="Configuration modules" :remember="$searching ? null : 'configuration-finder'" :groups="$this->browseGroups()" />
             </div>
         @endif
     </x-pos.section>

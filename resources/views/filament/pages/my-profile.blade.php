@@ -38,6 +38,30 @@
                     @endif
                 </x-filament::section>
             @endif
+            {{-- HROne parity MS-4: passport / driving licence — the number only as PRV-1 allows (employee.self_sensitive), masked, reveal audited. --}}
+            @if ($personal['identity_documents'] !== [])
+                <x-filament::section heading="Passport and driving licence" :description="$personal['sensitive'] ? 'Numbers are masked to the last four characters. Showing one in full is recorded.' : null">
+                    <table class="w-full text-sm">
+                        <thead><tr class="text-left text-gray-500"><th class="py-1">Document</th><th>Issued on</th><th>Expires on</th><th>Country</th>@if ($personal['sensitive'])<th>Number</th>@endif</tr></thead>
+                        <tbody>
+                            @foreach ($personal['identity_documents'] as $d)
+                                <tr class="border-t border-gray-200 dark:border-gray-700">
+                                    <td class="py-1">{{ $d['label'] }}</td><td>{{ $d['issued'] ?? '—' }}</td><td>{{ $d['expires'] ?? '—' }}</td><td>{{ $d['country'] ?? '—' }}</td>
+                                    @if ($personal['sensitive'])
+                                        <td data-identity-document="{{ $d['id'] }}">{{ $d['number'] }}
+                                            @if ($d['revealed'])
+                                                <x-filament::link tag="button" size="sm" wire:click="conceal('{{ $d['field'] }}')">Hide</x-filament::link>
+                                            @else
+                                                <x-filament::link tag="button" size="sm" wire:click="reveal('{{ $d['field'] }}')">Show</x-filament::link>
+                                            @endif
+                                        </td>
+                                    @endif
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </x-filament::section>
+            @endif
             <x-filament::section heading="Contact">
                 <dl class="grid gap-4 text-sm md:grid-cols-4">
                     @forelse ($personal['contact'] as $label => $value)
@@ -69,16 +93,29 @@
             <x-filament::section heading="Family">
                 <p class="text-sm"><span class="text-gray-500">Marital status:</span> {{ $family['marital_status'] ?? '—' }}</p>
                 <table class="mt-3 w-full text-sm">
-                    <thead><tr class="text-left text-gray-500"><th class="py-1">Name</th><th>Relation</th><th>Date of birth</th><th>Dependent</th><th>Nominee</th></tr></thead>
+                    <thead><tr class="text-left text-gray-500"><th class="py-1">Name</th><th>Relation</th><th>Date of birth</th><th>Dependent</th><th>Nominee</th><th>Notes</th></tr></thead>
                     <tbody>
                         @forelse ($family['members'] as $m)
-                            <tr class="border-t border-gray-200 dark:border-gray-700"><td class="py-1">{{ $m['name'] }}</td><td>{{ $m['relation'] }}</td><td>{{ $m['date_of_birth'] ?? '—' }}</td><td>{{ $m['dependent'] }}</td><td>{{ $m['nominee'] }}</td></tr>
+                            <tr class="border-t border-gray-200 dark:border-gray-700"><td class="py-1">{{ $m['name'] }}</td><td>{{ $m['relation'] }}</td><td>{{ $m['date_of_birth'] ?? '—' }}</td><td>{{ $m['dependent'] }}</td><td>{{ $m['nominee'] }}</td><td>{{ $m['notes'] ?? '—' }}</td></tr>
                         @empty
-                            <tr><td colspan="5" class="py-2 text-gray-500">No family members recorded.</td></tr>
+                            <tr><td colspan="6" class="py-2 text-gray-500">No family members recorded.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </x-filament::section>
+            {{-- HROne parity MS-4: nominations per benefit. --}}
+            @if ($family['nominations'] !== [])
+                <x-filament::section heading="Nominations">
+                    <table class="w-full text-sm">
+                        <thead><tr class="text-left text-gray-500"><th class="py-1">Benefit</th><th>Nominee</th><th>Share</th><th>Guardian</th></tr></thead>
+                        <tbody>
+                            @foreach ($family['nominations'] as $n)
+                                <tr class="border-t border-gray-200 dark:border-gray-700"><td class="py-1">{{ $n['benefit'] }}</td><td>{{ $n['nominee'] ?? '—' }}</td><td>{{ $n['share'] }}</td><td>{{ $n['guardian'] ?? '—' }}</td></tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </x-filament::section>
+            @endif
             @break
 
         @case('professional')
@@ -91,7 +128,7 @@
                         @forelse ($pro['experience'] as $x)
                             <tr class="border-t border-gray-200 dark:border-gray-700"><td class="py-1">{{ $x['employer'] }}</td><td>{{ $x['designation'] ?? '—' }}</td><td>{{ $x['from'] ?? '—' }}</td><td>{{ $x['to'] }}</td><td>{{ $x['months'] ?? '—' }}</td></tr>
                         @empty
-                            <tr><td colspan="5" class="py-2 text-gray-500">No earlier employment recorded.</td></tr>
+                            <tr><td colspan="5" class="py-2 text-gray-500">{{ $pro['fresher'] ? 'Fresher: no earlier employment.' : 'No earlier employment recorded.' }}</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -101,13 +138,59 @@
                     <thead><tr class="text-left text-gray-500"><th class="py-1">Qualification</th><th>Specialisation</th><th>Institute</th><th>Board / university</th><th>Year</th><th>Grade</th></tr></thead>
                     <tbody>
                         @forelse ($pro['education'] as $q)
-                            <tr class="border-t border-gray-200 dark:border-gray-700"><td class="py-1">{{ $q['qualification'] }}</td><td>{{ $q['specialisation'] ?? '—' }}</td><td>{{ $q['institution'] ?? '—' }}</td><td>{{ $q['board'] ?? '—' }}</td><td>{{ $q['year'] ?? '—' }}</td><td>{{ $q['grade'] ?? '—' }}</td></tr>
+                            <tr class="border-t border-gray-200 dark:border-gray-700"><td class="py-1">{{ $q['qualification'] }}@if ($q['highest']) <span class="text-xs text-primary-600">(highest)</span>@endif @if ($q['mode'])<span class="text-xs text-gray-500">· {{ $q['mode'] }}</span>@endif</td><td>{{ $q['specialisation'] ?? '—' }}</td><td>{{ $q['institution'] ?? '—' }}</td><td>{{ $q['board'] ?? '—' }}</td><td>{{ $q['year'] ?? '—' }}</td><td>{{ $q['grade'] ?? '—' }}</td></tr>
                         @empty
                             <tr><td colspan="6" class="py-2 text-gray-500">No qualifications recorded.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </x-filament::section>
+            @break
+
+        {{-- HROne parity MS-5: health insurance — member ids only as PRV-1 allows (employee.self_sensitive), masked, reveal audited. --}}
+        @case('health_insurance')
+            @include('filament.pages.my-profile.edit-units', ['tab' => 'health_insurance'])
+            @php($insurance = $profile->insurance($user, $me, $revealed))
+            @forelse ($insurance['policies'] as $p)
+                <x-filament::section :heading="$p['insurer'].' · '.$p['number']" :description="$insurance['sensitive'] ? 'Member ids are masked to the last four characters. Showing one in full is recorded.' : null">
+                    <dl class="grid gap-4 text-sm md:grid-cols-4">
+                        <div><dt class="text-gray-500">Insurance company</dt><dd>{{ $p['insurer'] }}@if ($p['code']) ({{ $p['code'] }})@endif</dd></div>
+                        <div><dt class="text-gray-500">Sum assured</dt><dd>{{ $p['sum_assured'] ?? '—' }}</dd></div>
+                        <div><dt class="text-gray-500">Issue date</dt><dd>{{ $p['issued'] ?? '—' }}</dd></div>
+                        <div><dt class="text-gray-500">Valid until</dt><dd data-insurance-valid-until="{{ $p['id'] }}">{{ $p['valid_until'] ?? '—' }}@if ($p['expired']) <span class="text-xs text-danger-600">(ended)</span>@endif</dd></div>
+                    </dl>
+                    @if ($p['ecard'])
+                        <p class="mt-3 text-sm"><x-filament::link :href="$p['ecard']" target="_blank" size="sm" icon="heroicon-o-arrow-down-tray">E-card</x-filament::link></p>
+                    @endif
+                    <table class="mt-3 w-full text-sm">
+                        <thead><tr class="text-left text-gray-500"><th class="py-1">Insured person</th><th>Relation</th><th>Date of birth</th><th>Gender</th><th>Parents’ cover</th>@if ($insurance['sensitive'])<th>Member id</th>@endif</tr></thead>
+                        <tbody>
+                            @forelse ($p['members'] as $m)
+                                <tr class="border-t border-gray-200 dark:border-gray-700">
+                                    <td class="py-1">{{ $m['name'] }}</td><td>{{ $m['relation'] }}</td><td>{{ $m['date_of_birth'] ?? '—' }}</td><td>{{ $m['gender'] ?? '—' }}</td><td>{{ $m['parents'] ? 'Yes' : 'No' }}</td>
+                                    @if ($insurance['sensitive'])
+                                        <td data-insured-member="{{ $m['id'] }}">{{ $m['member_id'] ?? '—' }}
+                                            @if ($m['member_id'] !== null)
+                                                @if ($m['revealed'])
+                                                    <x-filament::link tag="button" size="sm" wire:click="conceal('{{ $m['field'] }}')">Hide</x-filament::link>
+                                                @else
+                                                    <x-filament::link tag="button" size="sm" wire:click="reveal('{{ $m['field'] }}')">Show</x-filament::link>
+                                                @endif
+                                            @endif
+                                        </td>
+                                    @endif
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="py-2 text-gray-500">No one is recorded on this policy yet.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </x-filament::section>
+            @empty
+                <x-filament::section heading="Health insurance">
+                    <p class="text-sm text-gray-500">No health insurance recorded.</p>
+                </x-filament::section>
+            @endforelse
             @break
 
         @case('skills')
@@ -185,6 +268,9 @@
                             <div><dt class="text-gray-500">{{ $label }}</dt><dd>{{ $value }}</dd></div>
                         @endforeach
                     </dl>
+                    @if ($previous['note'] ?? null)
+                        <p class="mt-3 text-sm text-gray-500" data-prior-exemptions>{{ $previous['note'] }}</p>
+                    @endif
                 @else
                     <p class="text-sm text-gray-500">No previous employer declared for this financial year.</p>
                 @endif

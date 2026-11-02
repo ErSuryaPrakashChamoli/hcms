@@ -71,10 +71,13 @@ use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Employment\Models\EmployeeStatutoryDetail;
+use App\Domain\Employment\Support\JoiningDayTaskSource;
+use App\Domain\Engagement\Support\EventInvitationTaskSource;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Enterprise\Models\WebhookEndpoint;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\FinalSettlement;
+use App\Domain\Exit\Support\ClearanceTaskSource;
 use App\Domain\Feedback\Support\FeedbackTaskSource;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Identity\Models\Role;
@@ -88,16 +91,19 @@ use App\Domain\Learning\Models\LearningCost;
 use App\Domain\Learning\Models\LearningEvidence;
 use App\Domain\Learning\Models\LearningPath;
 use App\Domain\Letters\Models\Letter;
+use App\Domain\Letters\Support\LetterTaskSource;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Loans\Models\Loan;
 use App\Domain\Notifications\Channels\EmailChannel;
 use App\Domain\Notifications\Channels\InAppChannel;
 use App\Domain\Notifications\Channels\LogChannel;
+use App\Domain\Organisation\Models\BusinessRegion;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
+use App\Domain\Organisation\Models\DimensionValue;
 use App\Domain\Organisation\Models\Division;
 use App\Domain\Organisation\Models\EmployeeCategory;
 use App\Domain\Organisation\Models\EmployeeEstablishmentAssignment;
@@ -107,6 +113,7 @@ use App\Domain\Organisation\Models\JobFamily;
 use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\ProfitCentre;
+use App\Domain\Organisation\Models\Region;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\Payroll\Models\PayrollEntry;
@@ -123,9 +130,14 @@ use App\Domain\Performance\Models\ImprovementPlanCheckpoint;
 use App\Domain\Performance\Models\Kra;
 use App\Domain\Performance\Models\OneOnOne;
 use App\Domain\Performance\Models\PerformanceCheckIn;
+use App\Domain\Performance\Support\AppraisalAcknowledgementTaskSource;
+use App\Domain\Performance\Support\CheckInPromptTaskSource;
 use App\Domain\Performance\Support\Feedback360TaskSource;
+use App\Domain\Performance\Support\GoalSheetTaskSource;
 use App\Domain\Performance\Support\InitiativeFeedbackTaskSource;
 use App\Domain\Performance\Support\OneOnOneFeedbackTaskSource;
+use App\Domain\Performance\Support\PerformanceReviewTaskSource;
+use App\Domain\Performance\Support\PipEvaluationDueTaskSource;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
 use App\Domain\ServiceDesk\DomainActions\AddressChange;
@@ -288,6 +300,9 @@ return [
             'document.verify' => 'Verify or reject documents',
             'document.delete' => 'Delete documents',
             'document.types' => 'Manage document types',
+            // HROne parity WO-14 ("Share letters / documents", rights View and Unpublish): share ready-made files with many
+            // employees at once, see the share batches and the documents shared, unpublish them (hidden, never deleted).
+            'document.share' => 'Share documents with many employees at once (zip + sheet or one common file), see what was shared, unpublish it',
         ],
         'bgv' => [
             'bgv.view' => 'View background verification cases',
@@ -334,7 +349,7 @@ return [
             'compliance.returns.generate' => 'Generate, validate and revise statutory returns',
             'compliance.returns.approve' => 'Approve statutory returns (never the generator)',
             'compliance.returns.export' => 'Export approved statutory returns',
-            'compliance.returns.file' => 'Record filing submission and acknowledgement (never the approver)',
+            'compliance.returns.file' => 'Record filing submission and acknowledgement, and challan payments in the challan register (never the approver)',
             'compliance.reconcile' => 'Reconcile statutory returns against payroll',
             'compliance.tds.manage' => 'Maintain TDS profiles, investment proofs, ledgers and certificates',
             'compliance.parallel.manage' => 'Run parallel payroll cycles: import reference values, compare, review differences, reconcile',
@@ -428,6 +443,9 @@ return [
             'engagement.feedback' => 'Handle employee feedback and refer identified feedback to the service desk',
             // HROne setup parity HP-9f: the mood bot (Engage → Happiness index), off until engage.mood.enabled.
             'engagement.mood' => 'Share how you feel when the mood bot asks (anonymous unless the organisation chose otherwise)',
+            // HROne parity GO-15 (Engage → Events): company events — add, publish, cancel and complete them, see invitations and
+            // RSVPs, mark attendance per session and download it. Invitees answer their own invitations without it.
+            'engagement.events' => 'Run company events: add and publish events to an audience, cancel or complete them, see invitations and RSVPs, mark attendance',
         ],
         'learning' => [
             'learning.view' => 'View courses, paths, sessions and every enrolment',
@@ -508,6 +526,11 @@ return [
             // HROne setup parity AS-B: ask for a new asset, a replacement or a return (managers also for their team).
             'asset.request' => 'Request assets (new, replacement, return) for oneself and, as a manager, for the team',
         ],
+        // Data import DI-1 (Project Management): customers, projects and the people on them.
+        'project' => [
+            'project.view' => 'View customers, projects and project members',
+            'project.manage' => 'Add and change customers, projects and project members (screens and uploads)',
+        ],
         // HROne setup parity (Expense): business expenses, advances and travel (docs/hrone-parity/setup/11-expense-asset-helpdesk.md).
         'expense' => [
             'expense.view' => 'View expense masters, expense policies and (in scope) expense claims, advances and trips',
@@ -556,6 +579,8 @@ return [
             'attendance.punch' => 'Record punches by hand, retry failed punches and upload punch files',
             'attendance.process' => 'Process and reprocess attendance for a day, a range of days or one employee\'s day',
             'attendance.arrears' => 'Work on attendance arrears (corrections to days already used by a finalized payroll run)',
+            // HROne parity TX-12: "Manage holiday" — assign, remove or replace holidays for chosen employees (split out of attendance.manage).
+            'attendance.holiday_change' => 'Assign, remove or replace holidays for chosen employees, on top of their holiday calendar, and undo such changes',
         ],
         'notification' => [
             'notification.view' => 'View notification templates and rules',
@@ -583,6 +608,13 @@ return [
             'employee.message' => 'Send e-mails to employees from their profile or a register (work e-mail; personal e-mail also needs employee.sensitive.view; audited without the body)',
         ],
         // Birthdays: colleagues see the day and month only (never the year); celebration managers see private ones too.
+        // HROne parity WO-15: business partners (people outside the workforce who may be given a sign-in) and the vendor master.
+        // Inviting a partner also needs user.create, disabling or enabling their login user.update; roles stay with
+        // user.assign_roles (RoleGrants).
+        'partner' => [
+            'partner.view' => 'See business partners and vendors',
+            'partner.manage' => 'Add and edit business partners and vendors, invite partners to sign in (with user.create) and disable or enable their login (with user.update)',
+        ],
         'celebration' => [
             'celebration.view' => 'See colleagues\' birthdays (day and month only) and wish them on the day',
             'celebration.manage' => 'See every birthday in my scope (including private ones), receive the monthly and daily birthday lists, and set up birthdays',
@@ -607,6 +639,10 @@ return [
             'feedback.view' => 'See question banks and feedback templates',
             'feedback.manage' => 'Set up question banks and feedback templates, and add templates from the library',
         ],
+        // HROne parity AC-3: product ideas to Markedge (HROne's "Product enhancement request") and Markedge's answers.
+        'product' => [
+            'product.feedback' => 'Suggest improvements to PeopleOS (product ideas to Markedge) and follow their status and Markedge\'s responses',
+        ],
     ],
 
     /*
@@ -621,6 +657,7 @@ return [
         'attendance.punch' => 'attendance.manage',
         'attendance.process' => 'attendance.manage',
         'attendance.arrears' => 'attendance.manage',
+        'attendance.holiday_change' => 'attendance.manage',
         'leave.adjust' => 'leave.manage',
         'leave.carry_forward' => 'leave.manage',
     ],
@@ -642,17 +679,17 @@ return [
         'account-owner' => [
             'name' => 'Account Owner',
             'description' => 'Sets up the organisation, invites people and gives them roles. Payroll, statutory and sensitive data need a specialist role, given explicitly.',
-            'permissions' => ['company.view', 'company.create', 'company.update', 'organisation.view', 'organisation.create', 'organisation.update', 'organisation.design', 'legal_entity.view', 'legal_entity.create', 'legal_entity.update', 'establishment.view', 'establishment.create', 'establishment.update', 'people_setup.view', 'people_setup.create', 'people_setup.update', 'policy.view', 'employee.view', 'employee.create', 'employee.update', 'employee.import', 'user.view', 'user.create', 'user.update', 'user.assign_roles', 'role.view', 'settings.view', 'settings.update', 'features.view', 'security.manage', 'audit.view', 'notification.view', 'data.export', 'task.view', 'task.act', 'task.delegate', 'celebration.view', 'celebration.manage'],
+            'permissions' => ['company.view', 'company.create', 'company.update', 'organisation.view', 'organisation.create', 'organisation.update', 'organisation.design', 'legal_entity.view', 'legal_entity.create', 'legal_entity.update', 'establishment.view', 'establishment.create', 'establishment.update', 'people_setup.view', 'people_setup.create', 'people_setup.update', 'policy.view', 'employee.view', 'employee.create', 'employee.update', 'employee.import', 'user.view', 'user.create', 'user.update', 'user.assign_roles', 'role.view', 'settings.view', 'settings.update', 'features.view', 'security.manage', 'audit.view', 'notification.view', 'data.export', 'task.view', 'task.act', 'task.delegate', 'celebration.view', 'celebration.manage', 'product.feedback'],
         ],
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'bulk.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'integration.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'expense.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view', 'celebration.*', 'recognition.*', 'wall.*', 'feedback.*'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'partner.*', 'bulk.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'integration.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'project.*', 'expense.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view', 'celebration.*', 'recognition.*', 'wall.*', 'feedback.*', 'product.feedback'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
             'description' => 'Operates HR processes.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'employee.message', 'bulk.run', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'expense.view', 'expense.approve', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.view', 'engagement.manage', 'engagement.approve', 'engagement.analytics', 'engagement.comments', 'engagement.responses', 'engagement.participate', 'engagement.feedback', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view', 'celebration.view', 'celebration.manage', 'recognition.view', 'recognition.give', 'recognition.manage', 'recognition.points', 'wall.view', 'wall.post', 'wall.moderate', 'engagement.mood', 'feedback.view'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'employee.create', 'employee.update', 'employee.position', 'employee.lifecycle', 'employee.message', 'bulk.run', 'compensation.view', 'compensation.propose', 'compensation.review', 'form.view', 'form.submit', 'form.approve', 'policy.view', 'configuration.view', 'workflow.view', 'workflow.run', 'task.*', 'notification.view', 'notification.deliveries', 'onboarding.*', 'document.view', 'document.upload', 'document.verify', 'document.share', 'bgv.*', 'attendance.view', 'attendance.approve', 'leave.*', 'expense.view', 'expense.approve', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.view', 'engagement.manage', 'engagement.approve', 'engagement.analytics', 'engagement.comments', 'engagement.responses', 'engagement.participate', 'engagement.feedback', 'engagement.events', 'exit.*', 'letter.*', 'alumni.*', 'analytics.view', 'analytics.reports', 'analytics.export', 'ai.use', 'ai.manager', 'ai.hr', 'ai.workforce', 'user.view', 'audit.view', 'celebration.view', 'celebration.manage', 'recognition.view', 'recognition.give', 'recognition.manage', 'recognition.points', 'wall.view', 'wall.post', 'wall.moderate', 'engagement.mood', 'feedback.view'],
         ],
         'hr-executive' => [
             'name' => 'HR Executive',
@@ -716,7 +753,7 @@ return [
         'auditor' => [
             'name' => 'Auditor',
             'description' => 'Read-only access with full audit visibility.',
-            'permissions' => ['audit.*', 'bulk.view_all', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compensation.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'workforce.view', 'asset.view', 'expense.view', 'servicedesk.view', 'kb.view', 'communication.view', 'engagement.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view', 'feedback.view'],
+            'permissions' => ['audit.*', 'bulk.view_all', 'company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'custom_field.view', 'form.view', 'policy.view', 'configuration.view', 'workflow.view', 'task.view_all', 'notification.view', 'notification.deliveries', 'onboarding.view', 'document.view', 'bgv.view', 'attendance.view', 'leave.view', 'payroll.view', 'compensation.view', 'compliance.view', 'performance.view', 'learning.view', 'skills.view', 'development.view', 'career.view', 'workforce.view', 'asset.view', 'project.view', 'expense.view', 'servicedesk.view', 'kb.view', 'communication.view', 'engagement.view', 'exit.view', 'letter.view', 'alumni.view', 'analytics.view', 'analytics.executive', 'ai.admin', 'webhook.manage', 'user.view', 'role.view', 'settings.view', 'features.view', 'feedback.view'],
         ],
     ],
 
@@ -976,6 +1013,11 @@ return [
         'employee.probation.default_months' => 6,
         'employee.probation.reminder_days' => 14,
         'employee.joining.reminder_days' => 3,
+        // HROne parity WO-4 (matrix 23 §23.3.1, §23.11 #18): "X joins today" in My tasks of HR on the joining day (off: joiners are
+        // found on the Upcoming joiners register, as before); "Send profile-completion mail" to an upcoming joiner's personal
+        // e-mail — what is missing, never a sign-in link (WRK-7 open) — sent only by hand (off: not offered).
+        'employee.joining.day_task' => false,
+        'employee.joining.profile_completion_mail' => false,
         // Birthdays: who sees colleagues' birthdays (organisation | company | team), the built-in greeting ({name},
         // {organisation}), who is nudged on the day (none | manager | team), and the lists for celebration managers: the
         // monthly list goes out digest_lead_days before the month starts (0 = on the 1st), the day's list on the day.
@@ -983,13 +1025,13 @@ return [
         // extra condition on top of permissions (it only hides). Rows = peopleos.profile.sections, columns employee (own
         // profile), manager (their managers), others (anyone else who may open the profile; people who maintain employee
         // records are not an audience). Every box ticked = as before.
-        'profile.section_visibility' => array_fill_keys(['personal', 'family', 'professional', 'skills', 'bank', 'documents', 'previous_employer', 'other_details', 'history'], ['employee' => true, 'manager' => true, 'others' => true]),
+        'profile.section_visibility' => array_fill_keys(['personal', 'family', 'professional', 'health_insurance', 'skills', 'bank', 'documents', 'previous_employer', 'other_details', 'history'], ['employee' => true, 'manager' => true, 'others' => true]),
         // HROne parity MS-3 (Core HR → Profile changes; owner decisions SSE-1 / D-MS2 and SSE-2 / D-MS11 open): which parts
         // of their profile employees change themselves on My profile, and whether a change waits for approval. Rows =
         // peopleos.profile.self_edit_sections; default nothing editable = as before. Bank and identifiers always need
         // approval whatever the box says; legal name and date of birth only with legal_identity on, always with approval
         // and a document. lock_during_bgv: refuse a change while a background verification of the employee is open.
-        'profile.self_edit.sections' => array_fill_keys(['blood_group', 'contact', 'addresses', 'emergency_contacts', 'identifiers', 'family', 'education', 'experience', 'skills', 'other_details', 'bank'], ['editable' => false, 'needs_approval' => true]),
+        'profile.self_edit.sections' => array_fill_keys(['blood_group', 'contact', 'addresses', 'emergency_contacts', 'identifiers', 'family', 'education', 'experience', 'skills', 'other_details', 'bank', 'identity_documents', 'nominations', 'health_insurance'], ['editable' => false, 'needs_approval' => true]),
         'profile.self_edit.legal_identity' => false,
         'profile.self_edit.lock_during_bgv' => false,
         // HROne setup parity CA-6 (Core HR → Employee → Social profile access): extra sections on a person's directory card
@@ -1065,6 +1107,10 @@ return [
         'engage.mood.frequency' => 'weekly',
         'engage.mood.weekday' => 5,
         'engage.mood.privacy' => 'anonymous',
+        // HROne parity GO-18 (Engage → Fundraisers; owner decision D-GO3): fundraiser pledges are paid outside payroll only.
+        // On: a fundraiser may collect through payroll — each pledge deducted once in a payroll month, at the amount pledged,
+        // only with the employee's consent recorded on the pledge (FundraiserDeductionInput).
+        'engagement.fundraisers.payroll_deduction' => false,
         'documents.expiry.reminder_days' => 30,
         // HROne setup parity (Core HR, CA-2): the organisation's website and industry (the default for new companies
         // and establishments), its logo (a Setup file on the documents disk; none = the PeopleOS mark), the workspace
@@ -1072,6 +1118,8 @@ return [
         // applied, so it is not the switch) and whether people may switch light / dark themselves.
         'branding.website' => null,
         'organisation.industry' => null,
+        // Data import DI-1 (decision D5): the organisation's own name for its dimension (blank: "Dimension").
+        'organisation.dimension_label' => null,
         'branding.logo_path' => null,
         'branding.theme_colour' => null,
         'branding.employee_may_change_theme' => true,
@@ -1089,12 +1137,19 @@ return [
         'payroll.pay_cycle' => [],
         'payroll.lop_from_attendance' => true,
         'payroll.proration_basis' => 'calendar_days',
+        // Data import DI-1 (decision D2): the payroll journal voucher — the segment it is split by (department, branch,
+        // business unit, the organisation's own dimension …; JournalVoucher::SEGMENTS) and the account net pay is credited to.
+        'payroll.jv.segment' => 'department',
+        'payroll.jv.net_pay_account' => null,
         'payroll.proration_fixed_days' => 30,
         'payroll.negative_net_policy' => 'block',
         // HROne parity PY-11: approved leave encashments are paid in monthly payroll at a day's pay on this basis
         // (basic | basic_da | gross) over this many days.
         'payroll.encashment_basis' => 'basic',
         'payroll.encashment_divisor' => 30,
+        // HROne parity PO-8: an HR leave encashment batch ("Encash leaves") waits for another person's approval before its
+        // encashments are created (true, the default); false = processed at once in the name of the person who made it.
+        'payroll.encashment.batch_approval' => true,
         // HROne parity PY-02: claims of pay-on-claim reimbursements need bill attachments; claims beyond the balance.
         'payroll.claims.attachment_required' => true,
         'payroll.claims.allow_beyond_balance' => false,
@@ -1105,6 +1160,8 @@ return [
         'payroll.tax.proof_from' => null,
         'payroll.tax.proof_to' => null,
         'payroll.tax.verified_proofs_from' => null,
+        // Data import DI-4 (decision): from salaries paid on this date, pay-by-default reimbursements are taxable beyond their bills (blank = never).
+        'payroll.reimbursement.bills_from' => null,
         'payroll.tax.regime_locked_after_submit' => false,
         'payroll.tax.landlord_pan_required' => false,
         'payroll.tax.max_landlords' => 1,
@@ -1122,6 +1179,13 @@ return [
         'compensation.self_service.show_wage_split' => false,
         'compensation.self_service.show_perquisites' => false,
         'compensation.self_service.show_insight' => false,
+        // HROne parity MS-9: the statutory block and the pay mode on My compensation (off = the page as before), the
+        // password asked again before the pay pages (owner decision PRV-4 / D-MS10 open; off = they open directly) and the
+        // organisation's help text about protected payslip files on My payslips (blank = none; the PDF is BP-14).
+        'compensation.self_service.show_statutory' => false,
+        'compensation.self_service.show_pay_mode' => false,
+        'compensation.self_service.confirm_password' => false,
+        'payroll.payslip.password_help' => null,
         // HROne setup parity BP-9: claims (one open claim per component, never above the bills, reminders to claim:
         // off | monthly | quarter_end | year_end), the day of the month managers are asked for planned variable pay
         // (0 = never) and whether employees see their variable pay schedule on My compensation.
@@ -1129,6 +1193,12 @@ return [
         'payroll.claims.not_above_bills' => false,
         'payroll.claims.reminder_task' => 'off',
         'payroll.variable.task_day' => 0,
+        // HROne parity PO-4 (matrix 25 §25.6.1 #6, §25.6.10 #1): the day of the month open payroll runs (draft, calculated,
+        // validated) are recalculated in the background (peopleos:payroll:auto-calculate). 0 = never (the default).
+        'payroll.auto_calculate_day' => 0,
+        // HROne parity PO-22 (matrix 25 §25.9.3 #5): the employer's statutory bonus percentage, within the BONUS rule
+        // version's minimum and maximum rate (checked when a bonus run is prepared). No default: blank = the rule's minimum.
+        'payroll.bonus.percent' => null,
         'compensation.self_service.show_variable_plan' => false,
         // HROne setup parity BP-13: the pay modes in use (online_transfer | cash | cheque; employees without a payment
         // mode are paid by bank transfer) and whether HR sees the IFSC and branch of employees' bank accounts.
@@ -1147,11 +1217,36 @@ return [
         'attendance.allow_corrections_after_lock' => false,
         // HROne parity CF-08: a weekly off (or also a holiday) between two absent / unpaid-leave days is absent ("sandwich").
         'attendance.sandwich_rule' => 'none',
+        // HROne parity TX-3 (owner decision TIM-1 / D-TX1): HR closes a company's attendance month before it is used. Off:
+        // days lock only when they are finalized, as before. On: closed days refuse requests and overrides like locked days.
+        'attendance.month_close.enabled' => false,
+        // HROne parity TX-3: with month close on, a month does not close while requests on its days wait for a decision.
+        'attendance.close_requires_no_pending' => true,
+        // HROne parity TX-3 (owner decision TIM-5 / D-TX7): HR applies leave on selected absent days for the employees
+        // (approved by HR, balances and limits applied, refusals listed). Off: not offered.
+        'attendance.bulk_apply_leave' => false,
+        // HROne parity TX-4 (owner decision TIM-2 / D-TX2): HR adjusts an employee's paid days for an attendance month (set the
+        // counts, or reduce chosen day categories), read as quantities. Off: only the loss-of-pay adjustment in payroll, as before.
+        'attendance.paid_day_adjustments.enabled' => false,
+        // HROne parity TX-7 (matrix 24 §24.13 #7, team profile "Add punch" / "Delete punch"): managers add, exclude and restore
+        // punches of their direct reports (in their access scope, with a reason, never their own). Off: only holders of
+        // attendance.punch (HR) do, as before.
+        'team.punch_edit' => false,
+        // HROne parity TX-12 ("Manage holiday", owner decision TIM-3 / D-TX3): how many months before the current month HR may
+        // still assign, remove or replace an employee's holiday (2 = from the first day of the month two months back; older
+        // days go through the administrator, as HROne's note says).
+        'attendance.holiday_change_backdate_months' => 2,
+        // HROne parity TX-12 (team "Manage holiday", matrix 24 §24.13 #5): managers change holidays of the people who report
+        // to them (in their access scope, with a reason, never their own). Off: only holders of attendance.holiday_change.
+        'team.holiday_assign' => false,
         // HROne parity CF-08: refuse leave for a day attendance already shows as present.
         'leave.block_on_present_day' => false,
         // Leave donation: which leave types colleagues may give each other (codes) and the most a donor gives per year.
         'leave.donation.allowed_types' => ['EL'],
         'leave.donation.max_days_per_year' => 5,
+        // HROne parity TX-8a: remind HR on the time office desk this many days before a leave year ends, until the year is
+        // carried forward (0 = no reminder).
+        'leave.carry_forward_alert_days' => 0,
         'tenant.base_currency' => 'INR',
         // Phase 11: employees see their own approved compensation (with compensation.self).
         'compensation.self_service' => true,
@@ -1224,6 +1319,12 @@ return [
         'exit.clearance_lead_days' => 7,
         'exit.encashment_basis' => 'basic',
         'exit.notice_recovery' => true,
+        // HROne parity WO-11 (matrix 23 §23.6): resignations accepted or not accepted by HR without a workflow (off: they run
+        // unaccepted, as before); withdrawals that wait for approval (off: withdrawn at once, as before; D-WO8); clearance
+        // stages and exits ready to complete in My tasks (off: found on the exit case and the Clearances register).
+        'exit.resignation.requires_acceptance' => false,
+        'exit.withdrawal.requires_approval' => false,
+        'exit.clearance.my_tasks' => false,
         'exit.it_clearance_role' => 'asset-admin',
         'exit.finance_clearance_role' => 'payroll-admin',
         'exit.hr_clearance_role' => 'tenant-hr-admin',
@@ -1295,6 +1396,13 @@ return [
         // Employees see how and when their reports were paid; reports offer a printable cover letter when switched on.
         'expense.payment.show_to_employee' => true,
         'expense.report.cover_letter' => false,
+        // HROne parity XO-3 (owner decision D-XO7 / EXP-13): approvers may mark an expense line "Suspected" — it is held out
+        // (approved at 0 for now) with a note and decided later by "Clear suspicion". Off (as before): approve or reject only.
+        'expense.review.suspect_button' => false,
+        // HROne parity XO-5 (owner decision D-XO8 / EXP-14): finance may dispense an advance in several payouts up to the
+        // approved amount — the settle-by date counts from the first payout and what is never paid out lapses once the
+        // advance is settled, recovered or written off, or its rest is cancelled. Off (as before): dispensed in full.
+        'expense.advance.partial_dispense' => false,
         // HROne setup parity EX-E: is a payment step required after final approval? Yes (as before): approved reports wait on
         // Pay expenses, which pays them outside payroll or schedules them for payroll. No: an approved report goes straight
         // to the next payroll. Reports still waiting for approval at exit may hold the finance clearance (ignore: as before).
@@ -1387,6 +1495,18 @@ return [
         // manager or approver review back to its reviewer (performance.manage, reason required, before finalization; the
         // earlier submission stays in the audit trail and the reviewer is told; HR never writes the review). Off = today.
         'performance.review.hr_reopen' => false,
+        // HROne parity GO-3 (owner decision PER-2 / D-GO2 open): managers may normalise their own reports' performance
+        // ratings, with a reason, through the same calibration rules (HR sees the changes; the distribution check applies).
+        // Off = today: normalising is HR's (performance.calibrate).
+        'performance.normalise.by_managers' => false,
+        // HROne parity GO-4 (owner decision PER-6 / D-GO7): the goal owner's performance manager or performance HR may enter
+        // the actual achievement of a goal, with a reason, beside the system-calculated one (which is kept); the final
+        // achievement (and the KPI formula rating) then reads it. Off = today: the final achievement is the system's.
+        'performance.goals.achievement_override' => false,
+        // HROne parity WO-13 (Setup → Workforce): e-mail a letter to the employee with the file attached (off: letters are
+        // only issued to the employee's documents, as before); list letters ready to issue in My tasks of people who issue them.
+        'letters.email.enabled' => false,
+        'letters.tasks.issue_queue' => false,
         // HROne parity CA-9 (Access rights → Widget access): Home cards switched off for everyone (HomeComposer block keys;
         // none = every card as before) and the order of the cards the organisation wants first (comma-separated keys; blank
         // = the built-in order). Each person may still hide cards for themselves.
@@ -1485,6 +1605,16 @@ return [
     ],
 
     /*
+    | HROne parity WO-15 (matrix 23 §23.8, setup matrix 01 §1.33): business partners and the vendor master. Both lists are
+    | option lists an organisation extends (OptionLists: `partner_types`, `vendor_kinds`). Recruiters are not a partner type:
+    | recruitment is out of scope (RMS).
+    */
+    'partners' => [
+        'types' => ['customer' => 'Customer', 'bgv' => 'Background verification', 'vendor' => 'Vendor', 'system_consultant' => 'System consultant', 'other' => 'Other'],
+        'vendor_kinds' => ['agency' => 'Agency', 'supplier' => 'Supplier', 'consultant' => 'Consultant', 'other' => 'Other'],
+    ],
+
+    /*
     | People option lists. Kept as configuration so tenants can be given different vocabularies
     | later without schema changes.
     */
@@ -1502,17 +1632,43 @@ return [
         // HROne setup parity (Employee → Separation reasons): the kind of a separation reason, for attrition analytics.
         'separation_kinds' => ['voluntary' => 'Voluntary', 'involuntary' => 'Involuntary'],
         'position_change_types' => ['hire' => 'Hire', 'transfer' => 'Transfer', 'promotion' => 'Promotion', 'demotion' => 'Demotion', 'reassignment' => 'Reassignment', 'correction' => 'Data correction'],
+        // HROne parity MS-4 (person data additions). Option lists an organisation extends (OptionLists): the title used on
+        // letters and lists (no full stop: letters write "{{ employee.salutation }}. {{ employee.name }}"), the benefits a
+        // nomination is for, and how a qualification was studied.
+        'salutations' => ['mr' => 'Mr', 'ms' => 'Ms', 'mrs' => 'Mrs', 'miss' => 'Miss', 'mx' => 'Mx', 'dr' => 'Dr', 'prof' => 'Prof'],
+        'nomination_benefits' => ['pf' => 'Provident fund', 'eps' => 'Pension (EPS)', 'gratuity' => 'Gratuity', 'insurance' => 'Group insurance', 'esi' => 'ESI', 'superannuation' => 'Superannuation', 'other' => 'Other'],
+        'qualification_modes' => ['full_time' => 'Full time', 'part_time' => 'Part time', 'distance' => 'Distance / correspondence', 'online' => 'Online'],
+        // MS-4: identity documents kept on the person (number encrypted at rest; CA-4 linked field of the same key).
+        'identity_document_kinds' => ['passport' => 'Passport', 'driving_licence' => 'Driving licence'],
+        // MS-4: a nominee younger than this (from the family member's date of birth) is a minor and needs a guardian on the
+        // nomination. An age of majority, not a payroll amount.
+        'nominee_majority_age' => 18,
+        // MS-4: international dialling codes (ITU-T E.164) offered beside the phone fields. A phone with a code is stored in
+        // E.164 (+ code and number, 7 to 15 digits); a phone without one stays as typed, as before.
+        'phone_country_codes' => [
+            '91' => 'India (+91)', '1' => 'United States, Canada (+1)', '44' => 'United Kingdom (+44)', '971' => 'United Arab Emirates (+971)',
+            '966' => 'Saudi Arabia (+966)', '974' => 'Qatar (+974)', '965' => 'Kuwait (+965)', '968' => 'Oman (+968)', '973' => 'Bahrain (+973)',
+            '65' => 'Singapore (+65)', '60' => 'Malaysia (+60)', '61' => 'Australia (+61)', '64' => 'New Zealand (+64)', '49' => 'Germany (+49)',
+            '33' => 'France (+33)', '31' => 'Netherlands (+31)', '353' => 'Ireland (+353)', '41' => 'Switzerland (+41)', '46' => 'Sweden (+46)',
+            '81' => 'Japan (+81)', '82' => 'South Korea (+82)', '86' => 'China (+86)', '852' => 'Hong Kong (+852)', '977' => 'Nepal (+977)',
+            '880' => 'Bangladesh (+880)', '94' => 'Sri Lanka (+94)', '975' => 'Bhutan (+975)', '960' => 'Maldives (+960)', '27' => 'South Africa (+27)',
+            '254' => 'Kenya (+254)', '234' => 'Nigeria (+234)', '62' => 'Indonesia (+62)', '63' => 'Philippines (+63)', '66' => 'Thailand (+66)',
+            '84' => 'Vietnam (+84)', '7' => 'Russia, Kazakhstan (+7)', '55' => 'Brazil (+55)', '52' => 'Mexico (+52)',
+        ],
     ],
 
     /*
     | HROne setup parity CA-6 / MS-2: the sections of a person's profile (rows of the profile.section_visibility matrix, the
-    | sections of My profile) and the audiences of the matrix. Health insurance joins with MS-5; candidate profile is RMS.
+    | sections of My profile) and the audiences of the matrix. Health insurance joined with MS-5; candidate profile is RMS.
     */
     'profile' => [
         'sections' => [
             'personal' => 'Personal (identification, contact, addresses, emergency contacts)',
             'family' => 'Family',
             'professional' => 'Professional (experience and education)',
+            // HROne parity MS-5: health insurance policies and insured members (My profile shows the tab only when the
+            // person has a policy or may add one; the Employee 360 "Health insurance" tab also needs employee.sensitive.view).
+            'health_insurance' => 'Health insurance',
             'skills' => 'Skills',
             'bank' => 'Bank',
             'documents' => 'Documents',
@@ -1535,6 +1691,11 @@ return [
             'skills' => 'Skills',
             'other_details' => 'Other details (fields marked "Employee may change it")',
             'bank' => 'Bank account (always with approval)',
+            // HROne parity MS-4: passport / driving licence and the nominations per benefit.
+            'identity_documents' => 'Passport and driving licence (always with approval)',
+            'nominations' => 'Nominations (who receives each benefit, shares totalling 100%)',
+            // HROne parity MS-5: a health insurance policy and the people it covers (members added or changed, never removed).
+            'health_insurance' => 'Health insurance (policy and insured members)',
         ],
     ],
 
@@ -1609,8 +1770,10 @@ return [
     */
     'lifecycle' => [
         'transitions' => [
-            'pre_employee' => ['preboarding', 'onboarding', 'joined'],
-            'preboarding' => ['onboarding', 'joined', 'pre_employee'],
+            // HROne parity WO-4 (D-WO1): not_joined is an end state, reached only from the pre-joining states and only through
+            // "Mark as not joining" (UpcomingJoiners::markNotJoining; LifecycleEngine refuses any other way in).
+            'pre_employee' => ['preboarding', 'onboarding', 'joined', 'not_joined'],
+            'preboarding' => ['onboarding', 'joined', 'pre_employee', 'not_joined'],
             'onboarding' => ['joined', 'probation', 'active'],
             'joined' => ['probation', 'active', 'notice_period', 'exited'],
             'probation' => ['confirmed', 'active', 'notice_period', 'exited', 'suspended'],
@@ -1621,6 +1784,25 @@ return [
             'notice_period' => ['active', 'exited'],
             'exited' => ['alumni', 'active'],
             'alumni' => ['active'],
+            'not_joined' => [],
+        ],
+        // HROne parity WO-4: why an upcoming joiner did not join (option list not_joining_reasons; organisations add, rename or
+        // hide options on Setup → Option lists).
+        'not_joining_reasons' => [
+            'accepted_other_offer' => 'Accepted another offer', 'counter_offer' => 'Counter-offer from the current employer', 'compensation' => 'Compensation',
+            'relocation' => 'Relocation or location', 'personal' => 'Personal or family reasons', 'health' => 'Health', 'higher_studies' => 'Higher studies',
+            'background_check' => 'Background check outcome', 'offer_withdrawn' => 'Offer withdrawn by the organisation', 'no_show' => 'Did not report, no response',
+            'other' => 'Other',
+        ],
+        // HROne parity WO-4: the upcoming joiners register — "Download all documents" zips (kept on the documents disk this many
+        // hours) and the profile sections the profile-completion mail may ask for.
+        'joiners' => [
+            'download_hours' => max(1, (int) env('PEOPLEOS_JOINER_DOWNLOAD_HOURS', 24)),
+            'profile_sections' => ['personal', 'address', 'emergency_contact', 'family', 'education', 'previous_employment', 'bank', 'statutory'],
+            'profile_completion' => [
+                'subject' => 'Before you join {{ tenant.name }}: details we still need',
+                'body' => "Dear {{ employee.first_name }},\n\nWe look forward to welcoming you on {{ joiner.expected_joining_date }}. To get everything ready for your first day, please send us the following:\n\n{{ joiner.missing }}\n\n{{ joiner.note }}\n\nReply to this e-mail or contact your HR team if you have any questions.\n\nRegards,\n{{ initiator.name }}\n{{ tenant.name }}",
+            ],
         ],
     ],
 
@@ -1731,6 +1913,8 @@ return [
                     ['key' => 'credit_round_off', 'label' => 'Round credits to', 'type' => 'select', 'options' => ['none' => 'No rounding', 'half' => 'Nearest half day', 'whole' => 'Nearest whole day']],
                     ['key' => 'max_encash_per_request', 'label' => 'Most days per encashment request (0 = no limit)', 'type' => 'number'],
                     ['key' => 'min_balance_after_encash', 'label' => 'Balance to keep after encashment (days)', 'type' => 'number'],
+                    // HROne parity RQ-4: the encashment form asks for a supporting file (off = optional, as before).
+                    ['key' => 'encash_document_required', 'label' => 'Encashment requests need a supporting file', 'type' => 'boolean'],
                 ]],
             ]],
             'attendance' => ['label' => 'Attendance policy', 'fields' => [
@@ -1789,6 +1973,12 @@ return [
                     ['key' => 'request_lock_from_day', 'label' => 'Locked from day of the month', 'type' => 'number', 'min' => 1, 'max' => 31, 'visible_when' => ['key' => 'request_lock', 'in' => [true, 1, '1']]],
                     ['key' => 'request_lock_to_day', 'label' => 'Locked until day of the month', 'type' => 'number', 'min' => 1, 'max' => 31, 'visible_when' => ['key' => 'request_lock', 'in' => [true, 1, '1']],
                         'help' => 'Requests for days of the month before are refused in these days.'],
+                ]],
+                // HROne parity TX-4: how a partial reduction of paid days is rounded (Paid days → adjust, with paid-day adjustments on).
+                ['key' => 'paid_days', 'label' => 'Paid days', 'type' => 'section', 'fields' => [
+                    ['key' => 'paid_days_round_off', 'label' => 'Round a partial reduction of paid days to', 'type' => 'select',
+                        'options' => ['none' => 'No rounding (two decimals)', 'nearest_half' => 'Nearest half day', 'down_half' => 'Down to a half day', 'up_half' => 'Up to a half day', 'nearest_whole' => 'Nearest whole day', 'down_whole' => 'Down to a whole day', 'up_whole' => 'Up to a whole day'],
+                        'help' => 'Used when HR reduces a share of present days, paid leave, holidays or weekly offs for a month. Blank = two decimals.'],
                 ]],
             ]],
             'overtime' => ['label' => 'Overtime policy', 'fields' => [
@@ -1955,6 +2145,25 @@ return [
                 ['key' => 'clearance_checklist_id', 'label' => 'Map clearance checklist', 'type' => 'select', 'options_from' => 'clearance_checklists', 'help' => 'Blank: the standard clearance items.'],
                 ['key' => 'letter_on_exit', 'label' => 'Letter drafted when the exit starts', 'type' => 'select', 'options_from' => 'letter_templates'],
                 ['key' => 'letter_on_completion', 'label' => 'Letter drafted when the exit completes', 'type' => 'select', 'options_from' => 'letter_templates'],
+                // HROne parity WO-13 (§23.7.1 #27): a resignation acceptance letter when the resignation is accepted (blank = none, as before).
+                ['key' => 'letter_on_acceptance', 'label' => 'Letter drafted when the resignation is accepted', 'type' => 'select', 'options_from' => 'letter_templates', 'letter_types' => ['resignation_acceptance', 'relieving', 'custom'],
+                    'help' => 'Templates of type Resignation acceptance, Relieving or Custom. Drafted for review like any other letter; a missing template never blocks the acceptance.'],
+                // HROne parity WO-11 (§23.6.1 #6): the notice shortfall recovered in the full and final settlement, on this
+                // policy's own rule. Blank keeps the organisation setting (gross pay ÷ 30, as before).
+                ['key' => 'notice_recovery', 'label' => 'Notice shortfall recovery', 'type' => 'section', 'help' => 'The days of notice not served (less any relaxation days HR grants) are recovered in the full and final settlement as days × a daily rate. Blank: the organisation setting "Recover unserved notice in full and final settlement" (gross pay ÷ 30).', 'fields' => [
+                    ['key' => 'notice_recovery_rule', 'label' => 'Recover the notice shortfall', 'type' => 'select', 'options' => ['none' => 'Do not recover', 'policy' => 'On this policy\'s rule (below)'], 'help' => 'Blank: as the organisation setting.'],
+                    ['key' => 'notice_recovery_basis', 'label' => 'Daily rate from', 'type' => 'select', 'options' => ['gross' => 'Gross pay', 'basic' => 'Basic', 'basic_da' => 'Basic + DA', 'ctc' => 'CTC (monthly)'], 'visible_when' => ['key' => 'notice_recovery_rule', 'in' => ['policy']]],
+                    ['key' => 'notice_recovery_divisor', 'label' => 'Divided by', 'type' => 'select', 'options' => ['fixed' => 'A fixed number of days', 'month_days' => 'The days of the month of the last working day'], 'visible_when' => ['key' => 'notice_recovery_rule', 'in' => ['policy']]],
+                    ['key' => 'notice_recovery_days', 'label' => 'Number of days (a fixed divisor)', 'type' => 'number', 'min' => 1, 'max' => 31, 'visible_when' => ['key' => 'notice_recovery_divisor', 'in' => ['fixed']]],
+                ]],
+                // HROne parity WO-11 (§23.6.3 #4): a due date per clearance stage; a mapped checklist's item due days come first.
+                ['key' => 'clearance_due', 'label' => 'Clearance due dates', 'type' => 'section', 'help' => 'Each stage is due this many days before the last working day (a negative number is after it). Blank: no due date. A mapped clearance checklist whose items carry due days sets the stage\'s date instead.', 'fields' => [
+                    ['key' => 'clearance_due_manager', 'label' => 'Manager clearance due (days before the last working day)', 'type' => 'number', 'min' => -60, 'max' => 90],
+                    ['key' => 'clearance_due_it', 'label' => 'IT clearance due (days before the last working day)', 'type' => 'number', 'min' => -60, 'max' => 90],
+                    ['key' => 'clearance_due_finance', 'label' => 'Finance clearance due (days before the last working day)', 'type' => 'number', 'min' => -60, 'max' => 90],
+                    ['key' => 'clearance_due_asset', 'label' => 'Asset clearance due (days before the last working day)', 'type' => 'number', 'min' => -60, 'max' => 90],
+                    ['key' => 'clearance_due_hr', 'label' => 'HR clearance due (days before the last working day)', 'type' => 'number', 'min' => -60, 'max' => 90],
+                ]],
                 ['key' => 'retire_on', 'label' => 'Retire on', 'type' => 'radio', 'options' => ['birthday' => 'The birthday', 'month_end' => 'The end of the birthday month'], 'visible_when' => ['key' => 'retirement_age', 'in' => [55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70']]],
                 // HROne setup parity P13 (08.3 #10–#12): exit interviews answered on feedback templates, each a task in My tasks
                 // raised when the exit starts and due on the last working day (FeedbackRequests::raiseForExit).
@@ -1976,8 +2185,8 @@ return [
                 ['key' => 'max_extensions', 'label' => 'Number of extensions allowed (0 = any)', 'type' => 'number', 'min' => 0, 'max' => 10, 'visible_when' => ['key' => 'allow_extend', 'in' => [true, 1, '1']]],
                 ['key' => 'allow_terminate', 'label' => 'During confirmation, give an option to terminate?', 'type' => 'yes_no'],
                 ['key' => 'letter_on_confirm', 'label' => 'Letter drafted on confirmation', 'type' => 'select', 'options_from' => 'letter_templates'],
-                ['key' => 'letter_on_extend', 'label' => 'Letter drafted on extension', 'type' => 'select', 'options_from' => 'letter_templates'],
-                ['key' => 'letter_on_terminate', 'label' => 'Letter drafted on termination', 'type' => 'select', 'options_from' => 'letter_templates'],
+                ['key' => 'letter_on_extend', 'label' => 'Letter drafted on extension', 'type' => 'select', 'options_from' => 'letter_templates', 'help' => 'Any template; the type Probation extension lists these letters as Extension letters.'],
+                ['key' => 'letter_on_terminate', 'label' => 'Letter drafted on termination', 'type' => 'select', 'options_from' => 'letter_templates', 'help' => 'Any template; the type Termination lists these letters as Termination letters.'],
                 // HROne setup parity P13 (08.1 #11–#12): feedback before the decision, on feedback templates (ConfirmationReviews).
                 ['key' => 'feedback', 'label' => 'Feedback', 'type' => 'section', 'help' => 'Raised as tasks in My tasks when the review opens, due on the probation end date.', 'fields' => [
                     ['key' => 'feedback_template_id', 'label' => 'Would you like to add a feedback? The manager answers this template before the decision', 'type' => 'select', 'options_from' => 'feedback_templates', 'process' => 'confirmation', 'help' => 'The review cannot be decided while the manager\'s feedback is pending (HR may cancel it with a reason).'],
@@ -1991,6 +2200,11 @@ return [
                 ['key' => 'notice_days', 'label' => 'Transfers need this many days notice (0 = immediate)', 'type' => 'number', 'min' => 0],
                 ['key' => 'backdate_days', 'label' => 'Transfers may be backdated by (days)', 'type' => 'number', 'min' => 0],
                 ['key' => 'reason_required', 'label' => 'A transfer reason is required?', 'type' => 'yes_no'],
+                // HROne parity WO-13 (§23.7.1 #25–26): letters drafted for review when the request is approved (intimation) and
+                // when the transfer takes effect (on approval when the date has come, else on the effective date). Blank = none.
+                ['key' => 'letter_on_request_approval', 'label' => 'Transfer intimation letter drafted when the request is approved', 'type' => 'select', 'options_from' => 'letter_templates', 'letter_types' => ['transfer_intimation', 'transfer', 'custom']],
+                ['key' => 'letter_on_effect', 'label' => 'Transfer letter drafted when the transfer takes effect', 'type' => 'select', 'options_from' => 'letter_templates', 'letter_types' => ['transfer', 'transfer_intimation', 'custom'],
+                    'help' => 'On approval when the effective date has come, otherwise on the effective date (daily). A missing template never blocks the transfer.'],
             ]],
             // HROne setup parity HD-C (Helpdesk → Helpdesk policy): which categories and services an employee group may
             // raise, and whether its managers raise requests for their team. No policy: everything as before.
@@ -2346,6 +2560,8 @@ return [
                 WorkMode::class, JobFamily::class,
                 Level::class, Grade::class,
                 Skill::class,
+                // Data import DI-1: branch groupings and the organisation's own dimension values.
+                Region::class, BusinessRegion::class, DimensionValue::class,
             ],
             'medium' => [
                 SalaryComponent::class, SalaryStructure::class,
@@ -2392,6 +2608,10 @@ return [
             'form.submitted' => 'Form submitted', 'configuration.change.proposed' => 'Configuration change proposed',
             'employee.pre_employee' => 'Pre-employee created (from RMS or manually)', 'employee.preboarding' => 'Preboarding started',
             'employee.joining_due' => 'Joining date approaching', 'employee.probation_ending' => 'Probation ending soon', 'employee.probation_overdue' => 'Probation end date passed',
+            // HROne parity MS-4: a passport or driving licence on the person expiring (daily lifecycle sweep; never the number).
+            'employee.identity_document_expiring' => 'Passport or driving licence expiring',
+            // HROne parity MS-5: a health insurance policy's cover ending (daily lifecycle sweep; never a member id).
+            'employee.insurance_expiring' => 'Health insurance policy expiring',
             'employee.birthday' => 'Employee birthday (on the day)',
             'employee.work_anniversary' => 'Employee work anniversary (on the day)', 'employee.wedding_anniversary' => 'Employee wedding anniversary (on the day)',
             'employee.transfer_requested' => 'Transfer requested', 'employee.retirement_due' => 'Retirement due (separation policy)',
@@ -2429,6 +2649,8 @@ return [
             'exit.resignation_submitted' => 'Resignation submitted by the employee',
             // HROne parity MS-3: a self-service profile change (context `section`; a run deciding it approves or rejects it).
             'profile.change_requested' => 'Profile change requested by the employee (My profile)',
+            // HROne parity WO-11 (D-WO8): a request to withdraw a resignation (only while withdrawals need approval).
+            'exit.withdrawal_requested' => 'Resignation withdrawal requested',
         ],
         'subject_types' => [
             Employee::class => 'Employee',
@@ -2458,6 +2680,8 @@ return [
             'App\\Domain\\Compliance\\Models\\EmployeeTaxDeclaration' => 'Investment declaration',
             // HROne parity MS-3.
             'App\\Domain\\People\\Models\\ProfileChangeRequest' => 'Profile change',
+            // HROne parity WO-11.
+            'App\\Domain\\Exit\\Models\\ExitWithdrawalRequest' => 'Resignation withdrawal request',
         ],
         'default_sla_hours' => 48,
     ],
@@ -2481,6 +2705,9 @@ return [
         // window lost its job: it is dispatched again (the delivery claim prevents a double send).
         'sending_lease_minutes' => max(5, (int) env('PEOPLEOS_NOTIFICATIONS_SENDING_LEASE_MINUTES', 15)),
         'requeue_after_minutes' => max(15, (int) env('PEOPLEOS_NOTIFICATIONS_REQUEUE_AFTER_MINUTES', 60)),
+        // HROne parity WO-4: e-mails sent as plain text without the mail layout (its header links to the application), for
+        // people who have no access yet — the profile-completion mail to an upcoming joiner carries no link at all.
+        'plain_text_events' => ['employee.profile_completion_requested'],
         'audience_types' => [
             'subject' => 'The subject employee', 'manager' => "Subject's line manager", 'initiator' => 'Who started it',
             'role' => 'Everyone with a role', 'user' => 'A specific user', 'assignee' => 'Task assignee',
@@ -2500,10 +2727,18 @@ return [
             'payroll.variable_pay_requested', 'payroll.variable_pay_approved', 'payroll.variable_pay_rejected',
             'payroll.tax_declaration_submitted', 'payroll.tax_declaration_verified', 'payroll.tax_declaration_returned',
             'exit.resignation_submitted', 'exit.resignation_accepted',
+            // HROne parity WO-11: withdrawal requests and their decisions, a changed last working day (references only).
+            'exit.withdrawal_requested', 'exit.withdrawal_approved', 'exit.withdrawal_rejected', 'exit.last_working_day_changed',
             // HROne parity MS-3: self-service profile changes (references and the section only, never values).
             'profile.change_requested', 'profile.change_approved', 'profile.change_rejected',
+            // HROne parity AC-3: Markedge changed the status of (or answered) a product idea; told to the person who sent it.
+            'product.idea_status_changed',
             'import.validated', 'import.approved', 'import.rejected', 'import.completed',
             'employee.pre_employee', 'employee.preboarding', 'employee.joining_due', 'employee.probation_ending', 'employee.probation_overdue', 'employee.birthday', 'employee.work_anniversary', 'employee.wedding_anniversary',
+            // HROne parity MS-4: a passport or driving licence expiring (kind and dates only, never the number).
+            'employee.identity_document_expiring',
+            // HROne parity MS-5: a health insurance policy's cover ending (insurer and dates only, never a member id).
+            'employee.insurance_expiring',
             'employee.created', 'employee.transferred', 'employee.promoted', 'employee.manager_changed', 'employee.salary_changed', 'employee.department_changed', 'employee.designation_changed', 'employee.location_changed', 'employee.company_changed', 'employee.rehired', 'employee.transfer_requested', 'employee.retirement_due',
             'onboarding.started', 'onboarding.task.assigned', 'onboarding.completed', 'bgv.initiated', 'bgv.completed', 'document.uploaded', 'document.verified', 'document.rejected', 'document.expiring',
             'attendance.regularisation_requested', 'attendance.regularisation_approved', 'attendance.regularisation_rejected', 'attendance.overtime_recorded', 'attendance.exception',
@@ -2511,6 +2746,8 @@ return [
             'attendance.timeoffice_requested', 'attendance.timeoffice_approved', 'attendance.timeoffice_rejected', 'attendance.timeoffice_cancel_requested', 'attendance.timeoffice_cancelled',
             'attendance.location_requested', 'attendance.location_approved', 'attendance.location_rejected', 'attendance.penalty_applied', 'attendance.penalty_waived',
             'attendance.override_set', 'attendance.arrear_recorded', 'attendance.device_registered', 'attendance.punch_rejected', 'attendance.absence_alert',
+            // HROne parity TX-3: a month run in the background finished (in-app and e-mail to the person who started it).
+            'attendance.month_processed',
             'leave.requested', 'leave.approved', 'leave.rejected', 'leave.cancelled', 'leave.cancel_requested', 'leave.cancellation_rejected', 'leave.balance_changed', 'leave.expired', 'leave.carried_forward', 'leave.encashment_requested', 'leave.encashment_approved', 'leave.balance_adjusted', 'leave.accrued',
             'leave.encashment_rejected', 'leave.encashment_cancelled', 'leave.donation_requested', 'leave.donation_approved', 'leave.donation_rejected', 'leave.comp_off_credited', 'leave.comp_off_expired',
             'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'payroll.payslip_generated', 'payroll.exception', 'payroll.run_created', 'payroll.adjusted',
@@ -2528,6 +2765,8 @@ return [
             'performance.feedback360.requested', 'performance.feedback360.results_ready', 'performance.period_review.opened',
             // HROne parity GO-1: a submitted review reopened by HR (owner decision PER-1 / D-GO1; off unless the setting is on).
             'performance.review.reopened',
+            // HROne parity GO-2: an employee added to a running cycle, or withdrawn from it (names and the cycle only).
+            'performance.appraisal.added', 'performance.appraisal.withdrawn',
             'learning.assigned', 'learning.due_soon', 'learning.overdue', 'learning.completed', 'learning.failed', 'learning.certificate_expiring', 'learning.session.registered',
             'asset.assigned', 'asset.returned', 'asset.transferred', 'asset.repair', 'asset.disposed', 'asset.lost', 'asset.acknowledgement_due',
             // HROne setup parity AS-B: asset requests (raised, to fulfil, decided, fulfilled, cancelled, overdue).
@@ -2588,7 +2827,7 @@ return [
     // HROne setup parity P13 (Forms & templates → Feedback templates): the processes a feedback template serves, who answers,
     // and whose permission reads the answers. Question types are the survey ones (peopleos.engagement.question_types).
     'feedback' => [
-        'modules' => ['workforce' => 'Workforce', 'performance' => 'Performance'],
+        'modules' => ['workforce' => 'Workforce', 'performance' => 'Performance', 'engage' => 'Engage'],
         'processes' => [
             'exit_interview' => ['label' => 'Exit interview by the employee', 'module' => 'workforce', 'read' => 'exit.interview'],
             'exit_interview_manager' => ['label' => 'Exit interview by the manager', 'module' => 'workforce', 'read' => 'exit.interview'],
@@ -2603,6 +2842,10 @@ return [
             // (performance policy), asked of the manager with the manager review.
             'feedback_360' => ['label' => '360 feedback', 'module' => 'performance', 'read' => 'performance.feedback_360'],
             'performance_review' => ['label' => 'Performance review feedback by the manager', 'module' => 'performance', 'read' => 'performance.view'],
+            // HROne parity GO-15: an event's pre-event feedback (asked when an invitee accepts) and post-event feedback (asked
+            // once an attendee is marked attended), answered by the employee; read by whoever runs events.
+            'event_pre' => ['label' => 'Pre-event feedback by the invitee', 'module' => 'engage', 'read' => 'engagement.events'],
+            'event_post' => ['label' => 'Post-event feedback by the attendee', 'module' => 'engage', 'read' => 'engagement.events'],
         ],
         'respondents' => ['employee' => 'The employee', 'manager' => 'The manager', 'hr' => 'HR', 'owner' => 'The task owner'],
     ],
@@ -2615,7 +2858,14 @@ return [
         // HROne setup parity (Document → map to a profile field): the profile fields a document type can support. When a
         // type is linked to one and marked "required with the field", the field cannot be entered or changed while the
         // employee has no current (pending or verified) document of that type.
-        'linked_fields' => ['statutory.pan' => 'PAN', 'statutory.aadhaar' => 'Aadhaar', 'statutory.uan' => 'UAN', 'bank_account' => 'Bank account', 'address' => 'Address'],
+        // HROne parity WO-14: limits of one bulk share. The zip and the common file are uploaded through the panel's
+        // temporary uploads (Livewire allows 12 MB unless the deployment raises livewire.temporary_file_upload.rules and
+        // PHP's upload limits), so a larger zip_max_kb only helps where those are raised too. Every file in the zip is still
+        // checked like any upload (allow-listed types, max_kb, content sniffing).
+        'share' => ['max_rows' => 2000, 'zip_max_kb' => 12288, 'zip_max_entries' => 2000, 'zip_max_uncompressed_kb' => 512000, 'message_max' => 1000],
+        'linked_fields' => ['statutory.pan' => 'PAN', 'statutory.aadhaar' => 'Aadhaar', 'statutory.uan' => 'UAN', 'bank_account' => 'Bank account', 'address' => 'Address',
+            // HROne parity MS-4: the identity documents on the person (person_identity_documents), checked when a number is entered or changed.
+            'passport' => 'Passport', 'driving_licence' => 'Driving licence'],
         'defaults' => [
             ['code' => 'PAN', 'name' => 'PAN card', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => true],
             ['code' => 'AADHAAR', 'name' => 'Aadhaar', 'category' => 'identity', 'requires_expiry' => false, 'mandatory_for_onboarding' => true],
@@ -2685,9 +2935,11 @@ return [
             'lwf_employer' => 'LWF (employer)', 'tds' => 'Income tax (TDS)', 'gratuity' => 'Gratuity provision', 'other_deduction' => 'Other deduction', 'other' => 'Other',
             // HROne parity PY-16: NPS through payroll; TDS counts the employee's share with 80C and the employer's under 80CCD(2).
             'nps_employee' => 'NPS (employee)', 'nps_employer' => 'NPS (employer)',
+            // HROne parity PO-22: ex gratia paid with a bonus run — never counted as statutory bonus paid.
+            'ex_gratia' => 'Ex gratia',
         ],
         'run_statuses' => ['draft' => 'Draft', 'calculated' => 'Calculated', 'validated' => 'Validated', 'approved' => 'Approved', 'finalized' => 'Finalized', 'paid' => 'Paid'],
-        'exception_types' => ['no_salary' => 'No salary assignment', 'no_bank' => 'No primary bank account', 'no_pan' => 'PAN missing (TDS applies)', 'negative_net' => 'Negative net pay', 'attendance_missing' => 'Attendance not processed', 'no_structure' => 'Salary structure has no components', 'formula_error' => 'Formula error', 'statutory_override' => 'Statutory amount overridden'],
+        'exception_types' => ['no_salary' => 'No salary assignment', 'no_bank' => 'No primary bank account', 'no_pan' => 'PAN missing (TDS applies)', 'negative_net' => 'Negative net pay', 'attendance_missing' => 'Attendance not processed', 'no_structure' => 'Salary structure has no components', 'formula_error' => 'Formula error', 'statutory_override' => 'Statutory amount overridden', 'paid_days_adjusted_twice' => 'Paid days adjusted in attendance and loss of pay adjusted in payroll'],
         // Advisory structure checks shown in the breakup preview (never blocking). wage_share: Code on
         // Wages, 2019 s.2(y): allowances above this share of total remuneration count as wages for PF,
         // gratuity and bonus. Verify against current notifications; null switches the check off.
@@ -2715,11 +2967,17 @@ return [
         'measure_types' => ['percentage' => 'Percentage', 'numeric' => 'Number', 'currency' => 'Amount', 'boolean' => 'Done / not done', 'milestone' => 'Milestones'],
         // HP-8d: pending_approval = on a goal sheet submitted for approval (goal sheet policy); never chosen by hand.
         'goal_statuses' => ['draft' => 'Draft', 'pending_approval' => 'Pending approval', 'active' => 'Active', 'completed' => 'Completed', 'cancelled' => 'Cancelled'],
+        // HROne parity GO-4: the health of an open goal, set at check-in (none yet = not started; a closed goal is "Closed"),
+        // and who sees a goal (private only for organisation goals: owner decision PER-5 / D-GO5).
+        'goal_health' => ['not_started' => 'Not started', 'on_track' => 'On track', 'behind' => 'Behind', 'at_risk' => 'At risk'],
+        'goal_visibility' => ['public' => 'Public (everyone who sees organisation goals)', 'private' => 'Private (owner, creator, the visible-to list and performance HR)'],
         // HP-8d: approver = the third review level (the manager's own line manager) of cycles with an "Approver review" stage.
         'review_types' => ['self' => 'Self', 'manager' => 'Manager', 'peer' => 'Peer', 'upward' => 'Upward (direct report)', 'skip_level' => 'Skip level', 'external' => 'External stakeholder', 'approver' => 'Approver (next level)'],
         // HP-8d: goal sheets submitted for approval (goal_plans).
-        'goal_plan_statuses' => ['pending' => 'Waiting for approval', 'approved' => 'Approved', 'rejected' => 'Sent back'],
-        'appraisal_statuses' => ['pending' => 'Pending', 'in_review' => 'In review', 'calibration' => 'Calibration', 'finalized' => 'Finalized', 'acknowledged' => 'Acknowledged'],
+        // HROne parity GO-2: cancelled = the pending goal sheet of an employee withdrawn from the cycle.
+        'goal_plan_statuses' => ['pending' => 'Waiting for approval', 'approved' => 'Approved', 'rejected' => 'Sent back', 'cancelled' => 'Cancelled (withdrawn from the cycle)'],
+        // HROne parity GO-2: withdrawn = left the cycle ("Withdraw from cycle", with a reason; nothing is deleted).
+        'appraisal_statuses' => ['pending' => 'Pending', 'in_review' => 'In review', 'calibration' => 'Calibration', 'finalized' => 'Finalized', 'acknowledged' => 'Acknowledged', 'withdrawn' => 'Withdrawn from the cycle'],
         'feedback_types' => ['praise' => 'Praise', 'constructive' => 'Constructive', 'request' => 'Feedback request'],
         'feedback_visibility' => ['private' => 'Only the recipient', 'manager' => 'Recipient and their manager', 'public' => 'Everyone in the tenant'],
         'competency_categories' => ['core' => 'Core', 'functional' => 'Functional', 'leadership' => 'Leadership', 'behavioural' => 'Behavioural'],
@@ -2753,9 +3011,13 @@ return [
             'default_min_responses' => 3,
         ],
         // HROne setup parity HP-8i (performance policy): periodic review states and the review-chain visibility options.
-        'period_review_statuses' => ['scheduled' => 'Scheduled', 'open' => 'Open', 'submitted' => 'Submitted', 'missed' => 'Missed'],
+        // HROne parity GO-2: withdrawn = the appraisal left the cycle before the review was rated.
+        'period_review_statuses' => ['scheduled' => 'Scheduled', 'open' => 'Open', 'submitted' => 'Submitted', 'missed' => 'Missed', 'withdrawn' => 'Withdrawn'],
         // Analytics never shows a group smaller than this (privacy of individual ratings).
         'analytics_min_group' => (int) env('PEOPLEOS_PERFORMANCE_MIN_GROUP', 5),
+        // HROne parity GO-3: the most rows one normalise grid shows (narrow the people first: an organisation unit or codes).
+        // More changed rows than peopleos.bulk.confirm_over run as a WO-1 bulk run with the typed count.
+        'normalise_grid_max' => 500,
         // Reminder lead time before a stage window or check-in closes.
         'reminder_days_before' => 3,
         'defaults' => [
@@ -3071,9 +3333,23 @@ return [
     'letters' => [
         'types' => ['offer' => 'Offer', 'appointment' => 'Appointment', 'confirmation' => 'Confirmation', 'promotion' => 'Promotion', 'increment' => 'Increment', 'transfer' => 'Transfer', 'relieving' => 'Relieving', 'experience' => 'Experience', 'salary_certificate' => 'Salary certificate', 'employment_certificate' => 'Employment certificate', 'noc' => 'No objection certificate', 'warning' => 'Warning', 'show_cause' => 'Show cause', 'appreciation' => 'Appreciation', 'expense_cover' => 'Expense cover letter', 'badge_certificate' => 'Badge certificate',
             // HROne setup parity HP-8f: letters the PIP policy drafts when a plan starts and when its outcome is recorded.
-            'pip' => 'PIP letter', 'pip_outcome' => 'PIP evaluation letter', 'performance' => 'Performance letter', 'custom' => 'Custom'],
-        'statuses' => ['draft' => 'Draft', 'pending_approval' => 'Pending approval', 'approved' => 'Approved', 'issued' => 'Issued', 'rejected' => 'Rejected'],
+            'pip' => 'PIP letter', 'pip_outcome' => 'PIP evaluation letter', 'performance' => 'Performance letter',
+            // HROne parity WO-13 (§23.7.1 #22–27): the process letter registers HROne keeps per type.
+            'probation_extension' => 'Probation extension', 'termination' => 'Termination', 'contract' => 'Contract', 'transfer_intimation' => 'Transfer intimation',
+            'resignation_acceptance' => 'Resignation acceptance', 'custom' => 'Custom'],
+        // WO-13: revoked = withdrawn from the employee after issue, or replaced by a newer letter (D-WO5 / D-WO6): the file is kept.
+        'statuses' => ['draft' => 'Draft', 'pending_approval' => 'Pending approval', 'approved' => 'Approved', 'issued' => 'Issued', 'rejected' => 'Rejected', 'revoked' => 'Revoked'],
         'number_prefix' => 'LTR',
+        // HROne parity WO-13: letter schedules (§23.7.2 #4) — the employee dates an event-based schedule can follow.
+        'schedule_events' => ['joining_date' => 'Date of joining', 'date_of_birth' => 'Date of birth', 'confirmation_date' => 'Date of confirmation',
+            'resignation_date' => 'Date of resignation', 'exit_date' => 'Date of leaving (last working day)', 'retirement_date' => 'Retirement date',
+            'work_anniversary' => 'Work anniversary', 'absconding' => 'Absconding (exit case started)'],
+        // WO-13 technical limits: letters in one bulk download (zip), hours a prepared zip stays downloadable, copies (CC + BCC)
+        // on one e-mailed letter, employees one schedule run may reach.
+        'bulk_download_max' => 500,
+        'download_hours' => 24,
+        'email_max_copies' => 10,
+        'schedule_max_employees' => 2000,
     ],
     'alumni' => [
         'request_types' => ['experience_letter' => 'Experience letter', 'relieving_letter' => 'Relieving letter', 'employment_verification' => 'Employment verification', 'salary_certificate' => 'Salary certificate', 'payslip' => 'Payslip copy', 'form16' => 'Form 16', 'reference' => 'Reference request', 'other' => 'Other'],
@@ -3240,6 +3516,21 @@ return [
             InitiativeFeedbackTaskSource::class,
             // HROne setup parity HP-8h / HP-8i: 360 nominations to make and feedback to give; periodic reviews to rate.
             Feedback360TaskSource::class,
+            // HROne parity WO-13: approved letters to issue, for people who issue letters (only with letters.tasks.issue_queue on).
+            LetterTaskSource::class,
+            // HROne parity GO-9: performance task kinds — reviews to write in an open stage, goal sheets to create, goal
+            // check-ins due (employee / company / team), published ratings to acknowledge, PIP evaluations due at the plan end.
+            PerformanceReviewTaskSource::class,
+            GoalSheetTaskSource::class,
+            CheckInPromptTaskSource::class,
+            AppraisalAcknowledgementTaskSource::class,
+            PipEvaluationDueTaskSource::class,
+            // HROne parity WO-11: clearance stages to clear and exits ready to complete (only with exit.clearance.my_tasks on).
+            ClearanceTaskSource::class,
+            // HROne parity WO-4: upcoming joiners on their joining day, for HR (only with employee.joining.day_task on).
+            JoiningDayTaskSource::class,
+            // HROne parity GO-15: event invitations to answer (accept / acknowledge, decline) before the event starts.
+            EventInvitationTaskSource::class,
         ],
     ],
     'kb' => [
@@ -3288,6 +3579,15 @@ return [
         'campaign_statuses' => ['draft' => 'Draft', 'in_review' => 'In review', 'approved' => 'Approved', 'scheduled' => 'Scheduled', 'active' => 'Active', 'completed' => 'Completed', 'cancelled' => 'Cancelled'],
         // Optional approval workflows (existing engine); empty = maker-checker by a second person.
         'approval_workflows' => ['survey' => null, 'announcement' => null, 'campaign' => null],
+        // HROne parity GO-15 (Engage → Events): built-in types and sub-types of events (option lists `event_types` and
+        // `event_sub_types`: an organisation adds, renames or hides them), how an event is held, and the most sessions a
+        // recurring event may generate.
+        'event_types' => ['town_hall' => 'Town hall', 'celebration' => 'Celebration', 'training' => 'Training and workshop', 'wellness' => 'Wellness',
+            'team_building' => 'Team building', 'csr' => 'CSR and volunteering', 'sports' => 'Sports', 'other' => 'Other'],
+        'event_sub_types' => ['in_person' => 'In person', 'webinar' => 'Webinar', 'workshop' => 'Workshop', 'competition' => 'Competition', 'festival' => 'Festival',
+            'offsite' => 'Offsite', 'awareness' => 'Awareness session', 'other' => 'Other'],
+        'event_modes' => ['online' => 'Online meeting', 'offline' => 'Offline meeting', 'hybrid' => 'Hybrid'],
+        'event_max_sessions' => 60,
     ],
 
     /*
@@ -3535,6 +3835,11 @@ return [
         // HROne setup parity EX-F: how a journey is made (stays have no mode).
         'travel_modes' => ['air' => 'Air', 'rail' => 'Rail', 'road' => 'Road', 'sea' => 'Sea', 'other' => 'Other'],
         'gst_supply_types' => ['goods' => 'Goods', 'services' => 'Services'],
+        // HROne parity XO-3: bulk "Download documents" on the expense report register — at most this many reports in one zip;
+        // the zip is kept this many hours for the person who asked (peopleos:expense:expire removes it afterwards). An
+        // approver picks at most `review_columns_max` extra receipt fields for the lines of a report (kept per person).
+        'documents' => ['bulk_max' => 200, 'download_hours' => 24],
+        'review_columns_max' => 5,
         // What a receipt's checks noted for the approver (EX-C).
         'receipt_flags' => ['over_limit' => 'Over the limit', 'suspected_duplicate' => 'Suspected duplicate', 'same_invoice_number' => 'Invoice number already claimed', 'distance_edited' => 'Distance edited'],
         'attendance_modes' => ['present' => 'Present on the expense date', 'min_hours' => 'Worked at least a minimum time that day', 'on_duty' => 'On duty that day'],
@@ -3679,6 +3984,8 @@ return [
             'ESI_MC' => ['ip_pattern' => '/^\d{10}$/'],
             'TDS_FORM_138' => ['section_code' => '392'],
         ],
+        // HROne parity PO-13: how a statutory challan was paid (the challan register; not a statutory value).
+        'challan_payment_modes' => ['net_banking' => 'Net banking', 'neft_rtgs' => 'NEFT / RTGS', 'upi' => 'UPI', 'debit_card' => 'Debit card', 'over_the_counter' => 'Over the counter (bank)', 'cheque' => 'Cheque', 'other' => 'Other'],
         'return_statuses' => ['draft' => 'Draft', 'calculated' => 'Calculated', 'validated' => 'Validated', 'approved' => 'Approved', 'exported' => 'Exported (not filed)', 'submitted' => 'Submitted (filing recorded)', 'acknowledged' => 'Acknowledged', 'reconciliation_required' => 'Reconciliation required', 'reconciled' => 'Reconciled', 'revised' => 'Revised', 'cancelled' => 'Cancelled'],
         'registration_statuses' => ['active' => 'Active', 'inactive' => 'Inactive', 'cancelled' => 'Cancelled', 'superseded' => 'Superseded'],
         'registration_verification_statuses' => ['unverified' => 'Unverified', 'verified' => 'Verified against the certificate', 'rejected' => 'Rejected'],
@@ -3714,6 +4021,10 @@ return [
             // HROne setup parity EX-F / AS-B: travel requests and asset requests.
             'travel_request' => ['label' => 'Travel request code', 'module' => 'Expense', 'applicable_on' => 'company', 'model' => 'App\\Domain\\Expense\\Models\\TravelRequest', 'column' => 'number', 'prefix' => 'TRV-{YYYY}-', 'digits' => 5],
             'asset_request' => ['label' => 'Asset request code', 'module' => 'Asset', 'applicable_on' => 'company', 'model' => 'App\\Domain\\Assets\\Models\\AssetRequest', 'column' => 'number', 'prefix' => 'AR-{YYYY}-', 'digits' => 5],
+            // HROne parity WO-15: business partner codes (BP00001 by default). A code may hold only letters, digits and _
+            // (HROne's "Only a-z, A-Z, 0-9 and _"), so a series for it may not use - or /.
+            'business_partner' => ['label' => 'Business partner code', 'module' => 'Workforce', 'applicable_on' => 'enterprise', 'model' => 'App\\Domain\\Partners\\Models\\BusinessPartner', 'column' => 'code', 'prefix' => 'BP', 'digits' => 5,
+                'characters' => '/^[A-Za-z0-9_]*$/', 'characters_hint' => 'letters, digits, _ and {YYYY} {YY} {MM} {FY}'],
         ],
     ],
 
@@ -3807,10 +4118,18 @@ return [
             // HROne parity MS-3: the new values of a self-service profile change until it is decided (encrypted, hidden,
             // never audited; purged on approval, rejection or withdrawal).
             'App\\Domain\\People\\Models\\ProfileChangeRequest' => ['payload'],
+            // HROne parity MS-4: passport / driving licence numbers (encrypted, hidden, masked in audit; last four kept apart).
+            'App\\Domain\\People\\Models\\PersonIdentityDocument' => ['number'],
+            // HROne parity MS-5: the insurer's member id of an insured person (encrypted, hidden, masked in audit; last four kept apart).
+            'App\\Domain\\People\\Models\\InsuredMember' => ['member_id'],
+            // HROne parity WO-15: a vendor's PAN (a consultant's may be personal; encrypted, hidden, masked in audit; last four apart).
+            'App\\Domain\\Partners\\Models\\Vendor' => ['pan'],
         ],
         'financial' => [
             // Phase 11: employee compensation, compensation changes and pay ranges (amounts masked in audit).
             EmployeeSalaryAssignment::class, CompensationChange::class, CompensationRange::class, CompensationBudget::class,
+            // HROne parity PO-17: managers' proposed annual CTC on a shared increment plan (amounts masked in audit).
+            'App\\Domain\\Compensation\\Models\\CompensationCycleProposal',
             PayrollEntry::class, ParallelPayrollLine::class,
             Payslip::class, FinalSettlement::class, LearningCost::class,
             // Phase 10: workforce budgets (amounts masked in audit; workforce.costs only).
@@ -3833,6 +4152,8 @@ return [
             WorkforcePlanVersion::class, WorkforcePlanLine::class, WorkforceScenario::class,
             // Phase 11: compensation cycles (proposed pay for many people) are management-confidential.
             CompensationCycle::class,
+            // HROne parity PO-17: who an increment plan is shared with.
+            'App\\Domain\\Compensation\\Models\\CompensationCycleShare',
         ],
     ],
 

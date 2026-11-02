@@ -3,7 +3,10 @@
 namespace App\Domain\People\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Configuration\Services\OptionLists;
+use App\Domain\Employment\Exceptions\ProfileChangeRefused;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\People\Support\PhoneNumbers;
 use App\Support\Tenancy\BelongsToTenant;
 use Database\Factories\PersonFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,7 +25,7 @@ use InvalidArgumentException;
  * a satellite; everything about the employment lives on Employee.
  */
 #[UseFactory(PersonFactory::class)]
-#[Fillable(['tenant_id', 'first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'birthday_month', 'birthday_day', 'birthday_shared', 'wedding_anniversary_month', 'wedding_anniversary_day', 'wedding_anniversary_shared', 'directory_hidden', 'gender', 'marital_status', 'nationality', 'blood_group', 'personal_email', 'personal_phone', 'photo_path', 'metadata'])]
+#[Fillable(['tenant_id', 'salutation', 'first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'birthday_month', 'birthday_day', 'birthday_shared', 'wedding_anniversary_month', 'wedding_anniversary_day', 'wedding_anniversary_shared', 'directory_hidden', 'gender', 'marital_status', 'nationality', 'blood_group', 'is_fresher', 'personal_email', 'personal_phone_country_code', 'personal_phone', 'photo_path', 'metadata'])]
 class Person extends Model
 {
     /** @use HasFactory<PersonFactory> */
@@ -56,6 +59,13 @@ class Person extends Model
             } elseif (! self::validBirthday((int) $month, (int) $day)) {
                 throw new InvalidArgumentException("{$day}/{$month} is not a day of the year.");
             }
+
+            // HROne parity MS-4: a phone with a country code is kept in E.164; without one, as typed (as before).
+            PhoneNumbers::normaliseOn($person, 'personal_phone', 'personal_phone_country_code');
+            // MS-4: "I am a fresher" means no earlier employment, so it cannot be set while experience rows exist.
+            if ($person->exists && $person->isDirty('is_fresher') && $person->isFresher() && $person->experiences()->exists()) {
+                throw new ProfileChangeRefused('Remove the earlier employment first: a fresher has no previous employer.');
+            }
         });
     }
 
@@ -70,6 +80,7 @@ class Person extends Model
             'wedding_anniversary_month' => 'integer',
             'wedding_anniversary_day' => 'integer',
             'wedding_anniversary_shared' => 'boolean',
+            'is_fresher' => 'boolean',
             'directory_hidden' => 'array',
             'metadata' => 'array',
         ];
@@ -136,6 +147,20 @@ class Person extends Model
         return $this->full_name;
     }
 
+    /** HROne parity MS-4: "I am a fresher" (read safely on a just-created instance, where strict mode forbids a missing attribute). */
+    public function isFresher(): bool
+    {
+        return (bool) ($this->getAttributes()['is_fresher'] ?? false);
+    }
+
+    /** HROne parity MS-4: the recorded salutation's label (option list `salutations`), or null when none is recorded. */
+    public function salutationLabel(): ?string
+    {
+        $code = $this->getAttributes()['salutation'] ?? null;
+
+        return $code === null || $code === '' ? null : app(OptionLists::class)->label('salutations', (string) $code);
+    }
+
     protected function fullName(): Attribute
     {
         return Attribute::get(fn () => trim(collect([$this->first_name, $this->middle_name, $this->last_name])->filter()->implode(' ')));
@@ -191,5 +216,23 @@ class Person extends Model
     public function personSkills(): HasMany
     {
         return $this->hasMany(PersonSkill::class);
+    }
+
+    /** HROne parity MS-4: passport / driving licence (number encrypted). */
+    public function identityDocuments(): HasMany
+    {
+        return $this->hasMany(PersonIdentityDocument::class)->orderBy('kind');
+    }
+
+    /** HROne parity MS-4: nominations per benefit. */
+    public function nominations(): HasMany
+    {
+        return $this->hasMany(PersonNomination::class)->orderBy('benefit')->orderBy('id');
+    }
+
+    /** HROne parity MS-4: the qualification marked "This is the highest qualification". */
+    public function highestQualification(): HasOne
+    {
+        return $this->hasOne(PersonQualification::class)->where('is_highest', true);
     }
 }

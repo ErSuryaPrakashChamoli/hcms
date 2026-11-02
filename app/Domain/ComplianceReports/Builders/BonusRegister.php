@@ -7,6 +7,7 @@ use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\ComplianceReports\Support\ReportContext;
 use App\Domain\ComplianceReports\Support\ReportPeriod;
 use App\Domain\ComplianceReports\Support\ReportSheet;
+use App\Domain\Payroll\Support\BonusBasis;
 use Carbon\CarbonImmutable;
 
 /**
@@ -25,8 +26,6 @@ use Carbon\CarbonImmutable;
  */
 final class BonusRegister extends Builder
 {
-    private const WAGE_CLASSES = ['basic', 'da'];
-
     public const STATUSES = [
         'ELIGIBLE' => 'Eligible', 'INELIGIBLE' => 'Ineligible', 'PENDING_DETERMINATION' => 'Pending determination',
         'INSUFFICIENT_DATA' => 'Insufficient data', 'LEGALLY_UNVERIFIED' => 'Legally unverified',
@@ -55,26 +54,16 @@ final class BonusRegister extends Builder
             foreach ($context->data->payrollFor($context, $month) as $entry) {
                 $entries->push($entry);
                 $key = (int) $entry->employee_id;
-                $wages = $this->byClass($entry, self::WAGE_CLASSES, 'earning');
-                $fullMonth = $this->rate($entry, self::WAGE_CLASSES);
-                $employees[$key] ??= ['employee' => $entry->employee, 'months' => 0, 'days' => 0.0, 'wages' => 0.0, 'bonus_wages' => 0.0, 'over_ceiling' => 0, 'under_ceiling' => 0, 'paid' => 0.0, 'paid_on' => []];
-                $row = &$employees[$key];
-                $row['months']++;
-                $row['days'] += (float) $entry->paid_days;
-                $row['wages'] += $wages;
-                if ($monthRule !== null && $fullMonth > 0) {
-                    $fullMonth > (float) $monthRule->param('eligibility_ceiling') ? $row['over_ceiling']++ : $row['under_ceiling']++;
-                    $ceiling = (float) $monthRule->param('calculation_ceiling');
-                    // A month's wages above the calculation ceiling count at the ceiling, prorated as the wages were.
-                    $row['bonus_wages'] += $ceiling > 0 ? min($wages, $ceiling * $wages / $fullMonth) : $wages;
-                }
-                unset($row);
+                $employees[$key] ??= BonusBasis::row($entry->employee);
+                // HROne parity PO-22: one calculation shared with the bonus run (a month's wages above the calculation
+                // ceiling count at the ceiling, prorated as the wages were).
+                BonusBasis::addMonth($employees[$key], $entry, $monthRule, $month->start->format('Y-m'));
             }
         }
 
         for ($month = $period->start->startOfMonth(); $month->lte($lastPaymentMonth); $month = $month->addMonth()) {
             foreach ($context->data->payrollFor($context, ReportPeriod::month($month->year, $month->month)) as $entry) {
-                $paid = $this->byClass($entry, ['bonus'], 'earning');
+                $paid = BonusBasis::paid($entry);
                 if ($paid > 0 && isset($employees[(int) $entry->employee_id])) {
                     $employees[(int) $entry->employee_id]['paid'] += $paid;
                     $employees[(int) $entry->employee_id]['paid_on'][] = $this->date($entry->run?->paid_at ?? $entry->run?->period?->payment_date);
@@ -84,9 +73,9 @@ final class BonusRegister extends Builder
 
         $rows = [];
         foreach ($employees as $row) {
-            [$determination, $reason] = $this->determine($row, $rule);
-            $computable = $rule !== null && in_array($determination, ['ELIGIBLE', 'PENDING_DETERMINATION'], true);
-            $minimum = $computable ? max(round($row['bonus_wages'] * (float) $rule->param('minimum_rate'), 2), (float) $rule->param('minimum_amount', 0)) : null;
+            [$determination, $reason] = BonusBasis::determine($row, $rule);
+            $computable = $rule !== null && in_array($determination, [BonusBasis::ELIGIBLE, BonusBasis::PENDING], true);
+            $minimum = $computable ? BonusBasis::minimum($row['bonus_wages'], $rule) : null;
             $status = $verified ? $determination : ($rule === null ? 'LEGALLY_UNVERIFIED' : ($determination === 'INSUFFICIENT_DATA' ? 'INSUFFICIENT_DATA' : 'LEGALLY_UNVERIFIED'));
 
             $rows[] = [
@@ -102,7 +91,7 @@ final class BonusRegister extends Builder
                 'reason' => $rule === null ? 'No BONUS statutory rule version applies to this year, so eligibility and bonus are not computed.' : $reason,
                 'bonus_wages' => $computable ? round($row['bonus_wages'], 2) : null,
                 'minimum' => $minimum,
-                'maximum' => $computable ? round($row['bonus_wages'] * (float) $rule->param('maximum_rate'), 2) : null,
+                'maximum' => $computable ? BonusBasis::maximum($row['bonus_wages'], $rule) : null,
                 'paid' => round($row['paid'], 2),
                 'paid_on' => implode(', ', array_unique($row['paid_on'])),
                 'shortfall' => $minimum !== null ? round(max(0, $minimum - $row['paid']), 2) : null,
@@ -134,32 +123,5 @@ final class BonusRegister extends Builder
                 "Bonus paid includes bonus-classified earnings paid in the year and in the {$paymentMonths} months after it.",
             ],
         ])];
-    }
-
-    /** @return array{0: string, 1: string} the determination and why */
-    private function determine(array $row, ?ComplianceRule $rule): array
-    {
-        if ($rule === null) {
-            return ['LEGALLY_UNVERIFIED', ''];
-        }
-        if ($row['months'] === 0 || ($row['over_ceiling'] + $row['under_ceiling']) === 0 || $row['wages'] <= 0) {
-            return ['INSUFFICIENT_DATA', 'No basic or DA wages in finalized payroll for the year.'];
-        }
-        $minimumDays = (float) $rule->param('minimum_days', 0);
-        if ($row['days'] < $minimumDays) {
-            return ['INELIGIBLE', "Paid for {$row['days']} days; at least {$minimumDays} days' work in the year are needed."];
-        }
-        $ceiling = number_format((float) $rule->param('eligibility_ceiling'));
-        if ($row['under_ceiling'] === 0) {
-            return ['INELIGIBLE', "Wages (basic + DA) above ₹{$ceiling} a month throughout the year."];
-        }
-        if ($row['over_ceiling'] > 0) {
-            return ['PENDING_DETERMINATION', "Wages crossed the ₹{$ceiling} eligibility ceiling during the year ({$row['over_ceiling']} month(s) above): decide eligibility for the months below it."];
-        }
-        if ($rule->param('calculation_ceiling_rule') === 'max_with_minimum_wage') {
-            return ['PENDING_DETERMINATION', 'Eligible on wages and days; the calculation ceiling is ₹'.number_format((float) $rule->param('calculation_ceiling')).' or the applicable minimum wage if higher, which PeopleOS does not hold — the bonus shown uses ₹'.number_format((float) $rule->param('calculation_ceiling')).'.'];
-        }
-
-        return ['ELIGIBLE', "Wages at or below ₹{$ceiling} a month and at least {$minimumDays} days' work."];
     }
 }

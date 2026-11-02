@@ -56,7 +56,7 @@ class ProcessAttendanceDay implements ShouldQueue, TenantAwareJob
         try {
             $processor->process($employee, Carbon::parse($this->date));
         } catch (Throwable $e) {
-            AttendancePunch::query()->where('employee_id', $this->employeeId)->whereDate('punched_at', $this->date)->where('processing_status', '!=', 'processed')
+            AttendancePunch::query()->where('employee_id', $this->employeeId)->whereDate('punched_at', $this->date)->whereNotIn('processing_status', ['processed', 'excluded'])
                 ->update(['processing_status' => 'failed', 'processing_error' => mb_substr($e->getMessage(), 0, 1000)]);
             throw $e;
         }

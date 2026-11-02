@@ -21,7 +21,7 @@ final class AttendanceGlance
 
     public function lastCheckIn(Employee $employee): ?Carbon
     {
-        $punch = AttendancePunch::query()->where('employee_id', $employee->getKey())->whereNotIn('processing_status', ['failed', 'ignored'])
+        $punch = AttendancePunch::query()->where('employee_id', $employee->getKey())->whereNotIn('processing_status', ['failed', 'ignored', 'excluded'])
             ->where('punched_at', '<=', now())->orderByDesc('punched_at')->first(['id', 'punched_at']);
 
         return $punch?->punched_at;

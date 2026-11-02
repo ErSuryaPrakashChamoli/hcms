@@ -55,8 +55,9 @@ class EmployeeImportPolicy
             BankAccountImports::TYPE => BankAccountImports::allowed($user) && $uploader,
             AttendanceSheetImports::TYPE => AttendanceSheetImports::allowed($user),
             // HROne parity uploads also need their module permission (leave.manage / attendance.manage).
+            // Data import DI-4: uploads that prepare compensation cycles hold pay, so only their uploader (or checker) sees them.
             default => RowImportTypes::has((string) $model->getAttribute('type'))
-                ? RowImportTypes::allowed($user, (string) $model->getAttribute('type'))
+                ? RowImportTypes::allowed($user, (string) $model->getAttribute('type')) && (! RowImportTypes::uploaderOnly((string) $model->getAttribute('type')) || $uploader)
                 : $user->hasPermission('employee.import'),
         };
     }
