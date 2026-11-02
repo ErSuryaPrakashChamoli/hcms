@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Compliance\Support\RegistrationNumberFormat;
+use App\Domain\Employment\Exceptions\ProfileChangeRefused;
 use App\Domain\Employment\Imports\EmployeeContractImports;
 use App\Domain\Employment\Imports\ImportCatalogue;
 use App\Domain\Employment\Models\EmployeeContract;
@@ -95,7 +96,7 @@ it('records contracts of contract staff with their agency and updates them by co
 it('keeps the service the only way to a contract and checks the right of whoever records it', function () {
     $viewer = tenantUser($this->tenant, ['employee.view']);
     expect(fn () => app(EmployeeContracts::class)->save($this->asha, ['contract_number' => 'C-1', 'start_date' => '2026-04-01'], $viewer))
-        ->toThrow(App\Domain\Employment\Exceptions\ProfileChangeRefused::class);
+        ->toThrow(ProfileChangeRefused::class);
     expect(fn () => app(EmployeeContracts::class)->save($this->asha, ['contract_number' => 'C-1'], $this->hr))->toThrow(ValidationException::class);
 
     Filament\Facades\Filament::getPanel('admin')->boot();

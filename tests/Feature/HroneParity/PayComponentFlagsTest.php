@@ -7,6 +7,7 @@ use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Services\PayrollCalculator;
 use App\Domain\Payroll\Services\PayrollComputation;
 use App\Domain\Payroll\Services\VariablePay;
+use App\Domain\Platform\Services\SettingsRepository;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/../Payroll/PayrollTestHelpers.php';
@@ -65,7 +66,7 @@ it('applies per-component claim rules and keeps variable pay to variable compone
     approveStructureVersion('STANDARD', '2026-01-01', [$fuel->id => 50]);
     $employee = salariedEmployee(600000, from: '2026-01-01', componentValues: ['CONV' => 1600, 'FUEL' => 2000]);
     $claims = app(ReimbursementClaims::class);
-    app(\App\Domain\Platform\Services\SettingsRepository::class)->set('payroll.claims.allow_beyond_balance', true, 'test');
+    app(SettingsRepository::class)->set('payroll.claims.allow_beyond_balance', true, 'test');
 
     expect(fn () => $claims->claim($employee, $fuel, 1500, '2026-09-20', 'Fuel'))->toThrow(RuntimeException::class, 'up to 1,000.00 at a time')
         ->and(fn () => $claims->claim($employee, $fuel, 500, '2026-07-01', 'Fuel'))->toThrow(RuntimeException::class, 'from the last 30 day(s)')
