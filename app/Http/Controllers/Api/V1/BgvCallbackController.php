@@ -36,7 +36,7 @@ use Illuminate\Validation\Rule;
 class BgvCallbackController extends Controller
 {
     public function store(Request $request, string $reference, InboundEvents $events, AuditRecorder $audit): JsonResponse
-    {
+    {    //phase 1
         $key = $request->attributes->get('api_key');
         $system = IntegrationSystem::query()->where('kind', 'bgv')->where('api_key_id', $key->id)->first();
         if ($system === null) {
