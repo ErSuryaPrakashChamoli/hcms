@@ -243,7 +243,8 @@ final class ActionCatalogue
             ['process_bonus', 'payroll', 'Process bonus', 'Statutory bonus and ex gratia for the accounting year', 'Process bonus', ['bonus', 'statutory bonus', 'ex gratia', 'bonus act', 'annual bonus'],
                 fn () => self::page(BonusProcessing::class, ['action' => 'prepareBonus'])],
             ['encash_leaves', 'payroll', 'Encash leaves', 'Encash a leave type for many employees, paid with payroll', 'Encash leaves', ['encash leaves', 'bulk encashment', 'leave encashment', 'encashment batch'],
-                fn () => LeaveEncashmentBatchResource::canCreate() ? self::resource(LeaveEncashmentBatchResource::class, ['action' => 'encashLeaves']) : null],
+                // Batches are made by the "Encash leaves" wizard, not a create page (canCreate() is always false): its own gate.
+                fn () => LeaveEncashmentBatchResource::canAccess() && $can('leave.manage') ? self::resource(LeaveEncashmentBatchResource::class, ['action' => 'encashLeaves']) : null],
             ['generate_challan', 'payroll', 'Generate challan', 'PF, ESI, PT, LWF and TDS by month: generate, pay, record the challan', 'Generate challan', ['challan', 'pf challan', 'esi challan', 'ecr', 'tds challan', 'statutory'],
                 fn () => self::page(StatutoryChallansPage::class) ?? self::page(ComplianceReportsPage::class)],
             ['increment_calculator', 'payroll', 'Increment calculator', 'Plan increments by rating and band', 'Increment calculator', ['increment', 'appraisal hike', 'raise', 'salary revision', 'merit'],
