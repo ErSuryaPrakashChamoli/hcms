@@ -157,9 +157,18 @@ checked by the people who review the deployment.
 
 ## 9. Deploy sequence
 
+`./deploy.sh` (repository root, run on the server after every merge into `main`) runs these steps in order. It asks
+for step 2 rather than taking the backup itself, and reports step 8 without keeping the application down.
+
+git carries source only. A `git pull` without steps 3 and 6 leaves production on the old compiled theme (`public/build`
+is gitignored) and on stale route, config and Filament component caches, so redesigned screens look different from
+local and newer pages are missing.
+
 1. `php artisan down` (or blue/green).
 2. Back up the database (see the backup runbook). **Do not proceed without a fresh backup.**
-3. `composer install --no-dev --optimize-autoloader`
+3. `composer install --no-dev --optimize-autoloader`, then `npm ci --include=dev --ignore-scripts && npm run build`
+   - The build writes `public/build`: the Filament theme (`resources/css/filament/admin/theme.css`, every `.pos-*`
+     component, the attendance and leave calendars) and `resources/js/peopleos.js`. It needs Node 20.19+ or 22.12+.
 4. `php artisan migrate --force --isolated` (migrations are additive. Each Phase 14 `down()` was replayed twice on a disposable database; see the Phase 14 report).
    - `--isolated` takes a cache lock, so a second server running the same step waits and does nothing (SaaS.12, tested).
    - It needs the cache store to exist: on a **first install** with the database cache store, run without `--isolated`, from one server only.
@@ -178,7 +187,10 @@ checked by the people who review the deployment.
    - Provisions the first tenant once, when `PEOPLEOS_BOOTSTRAP_TENANT_NAME` is set (§9a).
    - In production it seeds nothing else: no demo data, no password. The showcase seeders still refuse production.
    - `php artisan peopleos:sync-permissions` alone remains a valid step 5 on an upgrade.
-6. `php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache`
+6. `php artisan optimize:clear --except=cache && php artisan optimize`
+   - Rebuilds the config, route, event and view caches plus Filament's component cache (`filament:optimize`) and the
+     icon cache. A stale Filament component cache hides every page and resource added since it was built.
+   - `--except=cache` keeps the application cache (scheduler locks, heartbeat).
 7. `php artisan queue:restart`
 8. `php artisan peopleos:readiness`: no FAIL lines.
 9. `php artisan up`.
