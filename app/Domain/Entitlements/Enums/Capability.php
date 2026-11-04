@@ -181,7 +181,11 @@ enum Capability: string
                 // HROne setup parity P13: feedback templates and question banks (Forms & templates).
                 'feedback',
                 // HROne parity WO-1: bulk actions on registers (each record keeps its own module's permission).
-                'bulk'],
+                'bulk',
+                // HROne parity WO-15: business partners and the vendor master (Core HR setup §1.33); core workflows route to partners.
+                'partner',
+                // Suggesting improvements to PeopleOS is a customer's channel to Markedge, never sold separately.
+                'product'],
             self::Onboarding => ['onboarding', 'bgv'],
             self::Attendance => ['attendance'],
             self::Leave => ['leave'],
