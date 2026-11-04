@@ -138,8 +138,8 @@ it('keeps today\'s behaviour by default', function () {
     expect(app(LetterContext::class)->build($this->employee->fresh())['employee']['salutation'])->toBe('Dr')
         ->and(app(OptionLists::class)->options('salutations'))->toHaveKey('dr');
 
-    // The import keeps its earlier columns in place; the new ones are appended.
-    expect(array_slice(array_keys(EmployeeImports::FIELDS), -5))->toBe(['person.salutation', 'person.is_fresher', 'person.personal_phone_country_code', 'employee.work_phone_country_code', 'employee.device_user_id'])
+    // The import keeps its earlier columns in place; the new ones are appended (later packages append after them).
+    expect(array_slice(array_keys(EmployeeImports::FIELDS), 30, 5))->toBe(['person.salutation', 'person.is_fresher', 'person.personal_phone_country_code', 'employee.work_phone_country_code', 'employee.device_user_id'])
         ->and(array_keys(EmployeeImports::FIELDS)[29])->toBe('manager_code');
 
     // Previous-employer exemptions are not declared: the tax basis has no such head.
