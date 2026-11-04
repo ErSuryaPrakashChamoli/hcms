@@ -13,7 +13,6 @@ class AttendancePunchController extends Controller
 {
     public function store(Request $request, string $device, PunchIngestion $ingestion): JsonResponse
     {
-        //change 1
         $model = AttendanceDevice::query()->where('code', $device)->where('status', 'active')->firstOrFail();
 
         $result = $ingestion->ingest($model, $request->all());
