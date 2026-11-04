@@ -134,6 +134,20 @@
     --pos-hue-slate: #4a5878;  --pos-hue-slate-bg: #e9ecf3;
     --pos-hue-coral: #b04a22;  --pos-hue-coral-bg: #fbebe3;
 
+    /* Attendance calendar (section K): one tone per attendance status, solid for the code, soft for the day. */
+    --pos-cal-present: #0f7a55;  --pos-cal-present-soft: #e5f4ec;
+    --pos-cal-half: #a16207;     --pos-cal-half-soft: #fdf5d8;
+    --pos-cal-missed: #c2410c;   --pos-cal-missed-soft: #fdeee3;
+    --pos-cal-absent: #b42335;   --pos-cal-absent-soft: #fbe8eb;
+    --pos-cal-leave: #2a5fbf;    --pos-cal-leave-soft: #e8effb;
+    --pos-cal-lwp: #a4235f;      --pos-cal-lwp-soft: #f9e7f0;
+    --pos-cal-wfh: #0f766e;      --pos-cal-wfh-soft: #e0f3f0;
+    --pos-cal-duty: #0e6f8c;     --pos-cal-duty-soft: #e1f1f7;
+    --pos-cal-holiday: #6b3fb8;  --pos-cal-holiday-soft: #f1eafb;
+    --pos-cal-off: #5b6271;      --pos-cal-off-soft: #eff1f4;
+    --pos-cal-on: #ffffff;
+    --pos-cal-print-line: #d6d9e0;
+
     /* The rail: deep midnight ink in both themes; the active item is marked, not filled. */
     --pos-rail-bg: #0f1424;
     --pos-rail-bg-2: #141a2e;
@@ -334,6 +348,18 @@
     --pos-hue-teal: #6fcfd8;   --pos-hue-teal-bg: rgb(80 190 200 / 0.13);
     --pos-hue-slate: #b4bfd9;  --pos-hue-slate-bg: rgb(150 165 200 / 0.14);
     --pos-hue-coral: #f0a483;  --pos-hue-coral-bg: rgb(230 140 100 / 0.14);
+
+    --pos-cal-present: #4cc797;  --pos-cal-present-soft: rgb(76 199 151 / 0.13);
+    --pos-cal-half: #ecc356;     --pos-cal-half-soft: rgb(236 195 86 / 0.13);
+    --pos-cal-missed: #f59a5f;   --pos-cal-missed-soft: rgb(245 154 95 / 0.13);
+    --pos-cal-absent: #f27b84;   --pos-cal-absent-soft: rgb(242 123 132 / 0.14);
+    --pos-cal-leave: #72a5f2;    --pos-cal-leave-soft: rgb(114 165 242 / 0.13);
+    --pos-cal-lwp: #ef86b6;      --pos-cal-lwp-soft: rgb(239 134 182 / 0.13);
+    --pos-cal-wfh: #4fc6b6;      --pos-cal-wfh-soft: rgb(79 198 182 / 0.13);
+    --pos-cal-duty: #5cc3e4;     --pos-cal-duty-soft: rgb(92 195 228 / 0.12);
+    --pos-cal-holiday: #b79af2;  --pos-cal-holiday-soft: rgb(183 154 242 / 0.14);
+    --pos-cal-off: #9aa1ae;      --pos-cal-off-soft: rgb(154 161 174 / 0.09);
+    --pos-cal-on: #0e0f13;
 
     --pos-rail-bg: #0a0b0e;
     --pos-rail-bg-2: #0f1116;
@@ -2681,50 +2707,25 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
    roster, not processed yet) carries its code outlined; a past day not processed is dashed. Tones are always paired
    with a code and a title, never colour alone. */
 .pos-cal {
-    --cal-present: #0f7a55;  --cal-present-soft: #e5f4ec;
-    --cal-half: #a16207;     --cal-half-soft: #fdf5d8;
-    --cal-missed: #c2410c;   --cal-missed-soft: #fdeee3;
-    --cal-absent: #b42335;   --cal-absent-soft: #fbe8eb;
-    --cal-leave: #2a5fbf;    --cal-leave-soft: #e8effb;
-    --cal-lwp: #a4235f;      --cal-lwp-soft: #f9e7f0;
-    --cal-wfh: #0f766e;      --cal-wfh-soft: #e0f3f0;
-    --cal-duty: #0e6f8c;     --cal-duty-soft: #e1f1f7;
-    --cal-holiday: #6b3fb8;  --cal-holiday-soft: #f1eafb;
-    --cal-off: #5b6271;      --cal-off-soft: #eff1f4;
-    --cal-none: var(--pos-text-muted);
-    --cal-on: #ffffff;
+    --pos-cal-none: var(--pos-text-muted);
 
     container-type: inline-size;
     display: grid;
     gap: var(--pos-gap);
 }
 
-.dark .pos-cal {
-    --cal-present: #4cc797;  --cal-present-soft: rgb(76 199 151 / 0.13);
-    --cal-half: #ecc356;     --cal-half-soft: rgb(236 195 86 / 0.13);
-    --cal-missed: #f59a5f;   --cal-missed-soft: rgb(245 154 95 / 0.13);
-    --cal-absent: #f27b84;   --cal-absent-soft: rgb(242 123 132 / 0.14);
-    --cal-leave: #72a5f2;    --cal-leave-soft: rgb(114 165 242 / 0.13);
-    --cal-lwp: #ef86b6;      --cal-lwp-soft: rgb(239 134 182 / 0.13);
-    --cal-wfh: #4fc6b6;      --cal-wfh-soft: rgb(79 198 182 / 0.13);
-    --cal-duty: #5cc3e4;     --cal-duty-soft: rgb(92 195 228 / 0.12);
-    --cal-holiday: #b79af2;  --cal-holiday-soft: rgb(183 154 242 / 0.14);
-    --cal-off: #9aa1ae;      --cal-off-soft: rgb(154 161 174 / 0.09);
-    --cal-on: #0e0f13;
-}
-
-.pos-cal [data-tone='present'] { --tone: var(--cal-present); --tone-soft: var(--cal-present-soft); }
-.pos-cal [data-tone='half_day'] { --tone: var(--cal-half); --tone-soft: var(--cal-half-soft); }
-.pos-cal [data-tone='incomplete'] { --tone: var(--cal-missed); --tone-soft: var(--cal-missed-soft); }
-.pos-cal [data-tone='absent'] { --tone: var(--cal-absent); --tone-soft: var(--cal-absent-soft); }
-.pos-cal [data-tone='leave'] { --tone: var(--cal-leave); --tone-soft: var(--cal-leave-soft); }
-.pos-cal [data-tone='unpaid_leave'] { --tone: var(--cal-lwp); --tone-soft: var(--cal-lwp-soft); }
-.pos-cal [data-tone='wfh'] { --tone: var(--cal-wfh); --tone-soft: var(--cal-wfh-soft); }
-.pos-cal :is([data-tone='on_duty'], [data-tone='field_duty']) { --tone: var(--cal-duty); --tone-soft: var(--cal-duty-soft); }
-.pos-cal [data-tone='holiday'] { --tone: var(--cal-holiday); --tone-soft: var(--cal-holiday-soft); }
-.pos-cal [data-tone='weekly_off'] { --tone: var(--cal-off); --tone-soft: var(--cal-off-soft); }
-.pos-cal :is([data-tone='not_processed'], [data-tone='upcoming'], [data-tone='blank']) { --tone: var(--cal-none); --tone-soft: var(--pos-surface); }
-.pos-cal [data-tone='optional'] { --tone: var(--cal-none); --tone-soft: var(--pos-surface-muted); }
+.pos-cal [data-tone='present'] { --tone: var(--pos-cal-present); --tone-soft: var(--pos-cal-present-soft); }
+.pos-cal [data-tone='half_day'] { --tone: var(--pos-cal-half); --tone-soft: var(--pos-cal-half-soft); }
+.pos-cal [data-tone='incomplete'] { --tone: var(--pos-cal-missed); --tone-soft: var(--pos-cal-missed-soft); }
+.pos-cal [data-tone='absent'] { --tone: var(--pos-cal-absent); --tone-soft: var(--pos-cal-absent-soft); }
+.pos-cal [data-tone='leave'] { --tone: var(--pos-cal-leave); --tone-soft: var(--pos-cal-leave-soft); }
+.pos-cal [data-tone='unpaid_leave'] { --tone: var(--pos-cal-lwp); --tone-soft: var(--pos-cal-lwp-soft); }
+.pos-cal [data-tone='wfh'] { --tone: var(--pos-cal-wfh); --tone-soft: var(--pos-cal-wfh-soft); }
+.pos-cal :is([data-tone='on_duty'], [data-tone='field_duty']) { --tone: var(--pos-cal-duty); --tone-soft: var(--pos-cal-duty-soft); }
+.pos-cal [data-tone='holiday'] { --tone: var(--pos-cal-holiday); --tone-soft: var(--pos-cal-holiday-soft); }
+.pos-cal [data-tone='weekly_off'] { --tone: var(--pos-cal-off); --tone-soft: var(--pos-cal-off-soft); }
+.pos-cal :is([data-tone='not_processed'], [data-tone='upcoming'], [data-tone='blank']) { --tone: var(--pos-cal-none); --tone-soft: var(--pos-surface); }
+.pos-cal [data-tone='optional'] { --tone: var(--pos-cal-none); --tone-soft: var(--pos-surface-muted); }
 .pos-cal [data-tone='paid'] { --tone: var(--pos-primary); --tone-soft: var(--pos-primary-soft); }
 .pos-cal [data-tone='late'] { --tone: var(--pos-warning); --tone-soft: var(--pos-warning-soft); }
 .pos-cal [data-tone='penalty'] { --tone: var(--pos-danger); --tone-soft: var(--pos-danger-soft); }
@@ -2745,7 +2746,7 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 /* The month's totals: tiles, each marked in its tone */
 .pos-cal-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pos-space-2); margin: 0; }
 .pos-cal-stat { position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--pos-space-3) var(--pos-space-3) var(--pos-space-3) var(--pos-space-4); background: var(--pos-surface); border-radius: var(--pos-radius-md); box-shadow: var(--pos-shadow-1); overflow: hidden; }
-.pos-cal-stat::before { content: ''; position: absolute; inset-block: 12px; inset-inline-start: 0; width: 3px; border-radius: 0 3px 3px 0; background: var(--tone); }
+.pos-cal-stat::before { content: ''; position: absolute; inset-block: 12px; inset-inline-start: 0; width: 3px; border-radius: 0 var(--pos-radius-sm) var(--pos-radius-sm) 0; background: var(--tone); }
 .pos-cal-stat dt { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-medium); color: var(--pos-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pos-cal-stat dd { margin: 0; font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
 .pos-cal-stat[data-tone='paid'] { background: var(--pos-primary-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 22%, transparent); }
@@ -2791,7 +2792,7 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     color: var(--pos-text);
     transition: box-shadow var(--pos-dur-1) var(--pos-ease);
 }
-.pos-cal-day[data-tone='weekly_off'] { background-image: repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in srgb, var(--cal-off) 10%, transparent) 7px 8px); }
+.pos-cal-day[data-tone='weekly_off'] { background-image: repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in srgb, var(--pos-cal-off) 10%, transparent) 7px 8px); }
 .pos-cal-day:is([data-tone='upcoming'], [data-tone='blank']) { box-shadow: inset 0 0 0 1px var(--pos-border); }
 .pos-cal-day[data-tone='upcoming'] .pos-cal-date { color: var(--pos-text-muted); }
 .pos-cal-day[data-tone='not_processed'] { box-shadow: none; outline: 1px dashed var(--pos-border-strong); outline-offset: -1px; }
@@ -2803,7 +2804,7 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 .pos-cal-date { display: inline-grid; place-items: center; min-width: 28px; height: 28px; margin-inline-start: -6px; padding: 0 6px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-body); font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums; }
 .pos-cal-day.is-today .pos-cal-date { background: var(--pos-primary); color: var(--pos-text-inverse); }
 
-.pos-cal-code { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 20px; padding: 0 7px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: 1; font-weight: var(--pos-fw-semibold); letter-spacing: 0.02em; color: var(--cal-on); background: var(--tone); white-space: nowrap; }
+.pos-cal-code { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 20px; padding: 0 7px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: 1; font-weight: var(--pos-fw-semibold); letter-spacing: 0.02em; color: var(--pos-cal-on); background: var(--tone); white-space: nowrap; }
 .pos-cal .is-planned .pos-cal-code { color: var(--tone); background: transparent; box-shadow: inset 0 0 0 1.5px var(--tone); }
 .pos-cal [data-tone='not_processed'] .pos-cal-code { color: var(--pos-text-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--pos-border-strong); }
 
@@ -2852,7 +2853,7 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 /* My attendance: the hint over one's own month and the request chips on a day (pending amber, approved green) */
 .pos-cal-hint { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
 .pos-cal-req { flex: none; padding: 0 6px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); color: var(--pos-warning); background: var(--pos-warning-soft); white-space: nowrap; }
-.pos-cal-req[data-state='approved'] { color: var(--cal-present); background: var(--cal-present-soft); }
+.pos-cal-req[data-state='approved'] { color: var(--pos-cal-present); background: var(--pos-cal-present-soft); }
 .pos-cal-req[data-state='rejected'] { color: var(--pos-danger); background: var(--pos-danger-soft); }
 .pos-cal-req[data-state='cancelled'] { color: var(--pos-text-muted); background: var(--pos-surface-muted); }
 
@@ -2861,13 +2862,13 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 @container (min-width: 700px) { .pos-cal-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pos-cal-overview > :first-child { grid-column: 1 / -1; } }
 @container (min-width: 1080px) { .pos-cal-overview { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1.25fr); } .pos-cal-overview > :first-child { grid-column: auto; } }
 .pos-cal-balances { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--pos-space-2); margin: 0; padding: 0; list-style: none; }
-.pos-cal-balances li { display: flex; align-items: center; justify-content: space-between; gap: var(--pos-space-3); min-width: 0; padding: 10px 12px; border-radius: var(--pos-radius-md); background: var(--cal-leave-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cal-leave) 18%, transparent); }
+.pos-cal-balances li { display: flex; align-items: center; justify-content: space-between; gap: var(--pos-space-3); min-width: 0; padding: 10px 12px; border-radius: var(--pos-radius-md); background: var(--pos-cal-leave-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-cal-leave) 18%, transparent); }
 .pos-cal-balances li.is-empty { background: var(--pos-surface-muted); box-shadow: inset 0 0 0 1px var(--pos-border); }
 .pos-cal-bname { display: grid; min-width: 0; }
 .pos-cal-bname strong { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pos-cal-bname span, .pos-cal-bvalue span { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
 .pos-cal-bvalue { display: grid; justify-items: end; flex: none; }
-.pos-cal-bvalue strong { font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); color: var(--cal-leave); font-variant-numeric: tabular-nums; }
+.pos-cal-bvalue strong { font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); color: var(--pos-cal-leave); font-variant-numeric: tabular-nums; }
 .pos-cal-balances li.is-empty .pos-cal-bvalue strong { color: var(--pos-text-muted); }
 .pos-cal-table { width: 100%; border-collapse: collapse; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-variant-numeric: tabular-nums; }
 .pos-cal-table :is(th, td) { padding: 7px 10px; text-align: end; white-space: nowrap; box-shadow: inset 0 -1px 0 var(--pos-border); }
@@ -2877,7 +2878,7 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 .pos-cal-table .is-month { background: var(--pos-primary-soft); }
 .pos-cal-table thead .is-month { color: var(--pos-primary-strong); border-radius: var(--pos-radius-sm) var(--pos-radius-sm) 0 0; }
 .pos-cal-table tbody tr:last-child > * { box-shadow: none; }
-.pos-cal-table [data-row='approved'] td { color: var(--cal-present); }
+.pos-cal-table [data-row='approved'] td { color: var(--pos-cal-present); }
 .pos-cal-table [data-row='pending'] td { color: var(--pos-warning); }
 .pos-cal-table [data-row='rejected'] td { color: var(--pos-danger); }
 .pos-cal-table [data-row='days'] :is(th, td) { box-shadow: inset 0 1px 0 var(--pos-border-strong); }
@@ -2939,7 +2940,7 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-cal { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .pos-cal-noprint { display: none !important; }
     .pos-cal-printonly { display: block; }
-    .pos-cal-bar, .pos-cal-stat, .pos-cal-card { box-shadow: inset 0 0 0 1px #d6d9e0; }
+    .pos-cal-bar, .pos-cal-stat, .pos-cal-card { box-shadow: inset 0 0 0 1px var(--pos-cal-print-line); }
     .pos-cal-day { min-height: 4rem; break-inside: avoid; }
 }
 
@@ -3054,7 +3055,7 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 .pos-actions-section-count { flex: none; min-width: 24px; padding: 0 7px; border-radius: var(--pos-radius-pill); background: var(--pos-surface-muted); text-align: center; font-size: var(--pos-fs-caption); line-height: 20px; font-weight: var(--pos-fw-semibold); color: var(--pos-text-secondary); font-variant-numeric: tabular-nums; }
 .pos-actions-list { display: grid; gap: 1px; margin: 0 0 0 17px; padding: 0 0 0 10px; list-style: none; border-inline-start: 1px solid var(--pos-border); }
 .pos-actions-item { position: relative; display: flex; align-items: center; gap: 2px; border-radius: var(--pos-radius-md); transition: background var(--pos-dur-1) var(--pos-ease); }
-.pos-actions-item::before { content: ''; position: absolute; inset-block: 8px; inset-inline-start: -11px; width: 2px; border-radius: 2px; background: var(--pos-tone); opacity: 0; transition: opacity var(--pos-dur-1) var(--pos-ease); }
+.pos-actions-item::before { content: ''; position: absolute; inset-block: 8px; inset-inline-start: -11px; width: 2px; border-radius: var(--pos-radius-pill); background: var(--pos-tone); opacity: 0; transition: opacity var(--pos-dur-1) var(--pos-ease); }
 .pos-actions-item:is(:hover, :focus-within) { background: var(--pos-tone-bg); }
 .pos-actions-item:is(:hover, :focus-within)::before { opacity: 1; }
 .pos-actions-link { display: flex; align-items: center; flex: 1; min-width: 0; min-height: 36px; padding: 6px 4px 6px 10px; overflow-wrap: anywhere; border-radius: inherit; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); color: var(--pos-text-secondary); transition: color var(--pos-dur-1) var(--pos-ease); }
@@ -3115,7 +3116,7 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 .pos-command-group-count { padding: 0 6px; border-radius: var(--pos-radius-pill); background: var(--pos-surface-muted); letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--pos-text-secondary); }
 .pos-command-item { position: relative; padding-block: 8px; transition: background var(--pos-dur-1) var(--pos-ease); }
 .pos-command-item[aria-selected='true'] { background: linear-gradient(90deg, var(--pos-primary-soft), color-mix(in srgb, var(--pos-primary-soft) 40%, transparent)); }
-.pos-command-item[aria-selected='true']::before { content: ''; position: absolute; inset-block: 8px; inset-inline-start: 0; width: 3px; border-radius: 0 3px 3px 0; background: var(--pos-primary); }
+.pos-command-item[aria-selected='true']::before { content: ''; position: absolute; inset-block: 8px; inset-inline-start: 0; width: 3px; border-radius: 0 var(--pos-radius-sm) var(--pos-radius-sm) 0; background: var(--pos-primary); }
 .pos-command-icon { --pos-tone: var(--pos-text-secondary); --pos-tone-bg: var(--pos-surface-muted); width: 34px; height: 34px; color: var(--pos-tone); background: var(--pos-tone-bg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-tone) 16%, transparent); }
 .pos-command-icon[data-type='action'] { --pos-tone: var(--pos-hue-iris); --pos-tone-bg: var(--pos-hue-iris-bg); }
 .pos-command-icon[data-type='answer'] { --pos-tone: var(--pos-hue-gold); --pos-tone-bg: var(--pos-hue-gold-bg); }
