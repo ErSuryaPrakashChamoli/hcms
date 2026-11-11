@@ -96,6 +96,11 @@ class PlatformBillingAccountsPage extends Page
     /** @var array<int, string> */
     private array $planLabels = [];
 
+    public function getSubheading(): ?string
+    {
+        return 'Each organisation\'s billing profile, terms and open invoices.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

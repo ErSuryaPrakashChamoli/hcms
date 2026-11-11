@@ -151,7 +151,8 @@ class PayrollDesk extends OperationsDeskPage
                 ['label' => 'Loans', 'target' => LoanResource::class, 'params' => ['view' => 'recovering'], 'description' => 'Being recovered through payroll'],
             ]],
             ['label' => 'Payroll processing', 'items' => [
-                ['label' => 'Run payroll', 'target' => PayrollControlRoom::class, 'description' => 'This month per company, readiness checks and the runs'],
+                ['label' => 'Run payroll', 'target' => RunPayroll::class, 'description' => 'Attendance, pre-payroll checks, run, approve, close and publish payslips'],
+                ['label' => 'Payroll overview', 'target' => PayrollControlRoom::class, 'description' => 'Every company\'s month and its runs'],
                 ['label' => 'Payroll runs', 'target' => PayrollRunResource::class, 'description' => 'Runs not yet finalized',
                     'count' => $count(PayrollRunResource::class, fn (Builder $q) => $q->whereNotIn('status', ['finalized', 'paid']))],
                 ['label' => 'Adjustments and arrears', 'target' => PayrollAdjustmentResource::class],

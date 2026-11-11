@@ -45,11 +45,16 @@ class MyDay extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Me';
 
-    protected static ?string $navigationLabel = 'My Day';
+    protected static ?string $navigationLabel = 'My day';
 
     protected static ?int $navigationSort = 0;
 
     protected string $view = 'filament.pages.my-day';
+
+    public function getSubheading(): ?string
+    {
+        return 'Check in or out, see today\'s status and balances, and act on what needs you.';
+    }
 
     public static function canAccess(): bool
     {
@@ -104,7 +109,7 @@ class MyDay extends Page
 
     public function getLatestPayslip(): ?Payslip
     {
-        return Payslip::query()->where('employee_id', $this->employee()->id)->latest('generated_at')->first();
+        return Payslip::query()->where('employee_id', $this->employee()->id)->published()->latest('generated_at')->first();
     }
 
     /** @return array<string, int> */

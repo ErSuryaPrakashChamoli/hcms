@@ -42,6 +42,11 @@ class PlatformHolidayLibraryPage extends Page
 
     protected string $view = 'filament.pages.platform-holiday-library';
 
+    public function getSubheading(): ?string
+    {
+        return 'Upload and publish each country\'s holidays for organisations to adopt.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

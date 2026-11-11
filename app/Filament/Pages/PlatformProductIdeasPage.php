@@ -68,6 +68,11 @@ class PlatformProductIdeasPage extends Page
 
     private ?ProductIdea $selectedCache = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Ideas organisations sent to improve PeopleOS, by module and status.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

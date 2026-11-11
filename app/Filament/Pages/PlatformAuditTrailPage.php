@@ -52,6 +52,11 @@ class PlatformAuditTrailPage extends Page
 
     public int $limit = 50;
 
+    public function getSubheading(): ?string
+    {
+        return 'What platform operators did, to which organisation, when and why.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Payroll\Inputs;
 
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Payroll\Contracts\PayrollInputSource;
 use App\Domain\Payroll\Events\PayrollEvent;
 use App\Domain\Payroll\Models\PayrollEntryLine;
@@ -10,7 +11,7 @@ use App\Domain\Payroll\Services\PayrollComputation;
 
 /**
  * The tagged payroll input sources (HROne parity) and what they share: the per-day rate a source pays or recovers
- * days at, and the settlement of a finalized run.
+ * days at, the settlement of a finalized run, and giving it back when the closed month is reopened.
  */
 final class PayrollInputs
 {
@@ -51,8 +52,51 @@ final class PayrollInputs
             return;
         }
         $run = $event->subject;
+        $carried = self::carried($run);
+
+        foreach (self::sources() as $source) {
+            if (isset($carried[$source->key()])) {
+                $source->settle($run, $carried[$source->key()]);
+            }
+        }
+    }
+
+    /**
+     * Streamline S2 (ST-1): the run's closed month is being reopened — each source gives back what it settled. Called
+     * by PayrollMonthReopen inside its transaction, before the run's entries are recalculated.
+     *
+     * @return array<string, int> source key => records given back
+     */
+    public static function unsettle(PayrollRun $run): array
+    {
+        $carried = self::carried($run);
+        $given = [];
+        foreach (self::sources() as $source) {
+            if (isset($carried[$source->key()])) {
+                $source->unsettle($run, $carried[$source->key()]);
+                $given[$source->key()] = count(array_merge(...array_values($carried[$source->key()])));
+            }
+        }
+
+        return $given;
+    }
+
+    /**
+     * The suffix that keeps a ledger entry keyed by a run unique after the run's month was reopened (ST-1): the first
+     * close posts "payroll-12", a close after one reopening "payroll-12-g1", and so on.
+     */
+    public static function generation(PayrollRun $run): string
+    {
+        return (int) $run->reopen_count > 0 ? '-g'.(int) $run->reopen_count : '';
+    }
+
+    /** @return array<string, array<int, list<int>>> source key => employee id => record ids the run's lines carried */
+    public static function carried(PayrollRun $run): array
+    {
         $carried = [];
-        PayrollEntryLine::query()->whereIn('payroll_entry_id', $run->entries()->select('id'))->whereNotNull('basis')->with('entry:id,employee_id')->get(['id', 'payroll_entry_id', 'basis'])
+        // Every entry of the run, whatever the reader's own access scope: settling and giving back are the whole run's.
+        PayrollEntryLine::query()->whereIn('payroll_entry_id', $run->entries()->withoutGlobalScope(AccessScope::class)->select('id'))->whereNotNull('basis')
+            ->with(['entry' => fn ($q) => $q->withoutGlobalScope(AccessScope::class)->select(['id', 'employee_id'])])->get(['id', 'payroll_entry_id', 'basis'])
             ->each(function (PayrollEntryLine $line) use (&$carried) {
                 $source = $line->basis['source'] ?? null;
                 if (is_array($source) && isset($source['key'], $source['ids'])) {
@@ -62,10 +106,6 @@ final class PayrollInputs
                 }
             });
 
-        foreach (self::sources() as $source) {
-            if (isset($carried[$source->key()])) {
-                $source->settle($run, $carried[$source->key()]);
-            }
-        }
+        return $carried;
     }
 }

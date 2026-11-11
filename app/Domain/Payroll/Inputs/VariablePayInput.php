@@ -36,4 +36,12 @@ final class VariablePayInput implements PayrollInputSource
                 ->each(fn (VariablePayRequest $r) => $r->withAuditReason('Paid in payroll '.$run->period?->label())->update(['status' => 'paid', 'payroll_run_id' => $run->id]));
         }
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        foreach ($idsByEmployee as $ids) {
+            VariablePayRequest::query()->whereIn('id', $ids)->where('status', 'paid')->where('payroll_run_id', $run->id)->get()
+                ->each(fn (VariablePayRequest $r) => $r->withAuditReason('Payroll '.$run->period?->label().' reopened')->update(['status' => 'approved', 'payroll_run_id' => null]));
+        }
+    }
 }

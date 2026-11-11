@@ -32,7 +32,7 @@
     @if ($mode === 'departments')
         @php($depts = $this->departments)
         @if ($depts === [])
-            <x-pos.empty class="mt-6" icon="heroicon-o-building-office" title="No departments to show" why="People you can see are not placed in departments yet." />
+            <x-pos.state class="mt-6" icon="heroicon-o-building-office" title="No departments to show" why="People you can see are not placed in departments yet." />
         @else
             @php($max = max(array_column($depts, 'headcount')) ?: 1)
             <ul class="pos-dept-grid mt-4">
@@ -66,7 +66,7 @@
     @else
         @php($roots = $this->roots())
         @if ($roots === [])
-            <x-pos.empty class="mt-6" icon="heroicon-o-rectangle-group" title="No reporting lines to show" why="People you can see have no current reporting relationships yet." />
+            <x-pos.state class="mt-6" icon="heroicon-o-rectangle-group" title="No reporting lines to show" why="People you can see have no current reporting relationships yet." />
         @else
             <div x-data="{ related: [] }" class="contents">
             @if ($relationsOn && $this->relations !== [])

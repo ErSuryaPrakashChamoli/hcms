@@ -27,7 +27,7 @@ class PlatformRegionsPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Platform';
 
-    protected static ?string $navigationLabel = 'Regions';
+    protected static ?string $navigationLabel = 'Country regions';
 
     protected static ?string $title = 'Regions';
 
@@ -41,6 +41,11 @@ class PlatformRegionsPage extends Page
 
     /** @var array{0: string, 1: Collection<int, CountryRegion>}|null per-request memo: visible() runs several times a render */
     private ?array $memo = null;
+
+    public function getSubheading(): ?string
+    {
+        return 'The states, provinces and regions of each country that holidays and locations use.';
+    }
 
     public static function canAccess(): bool
     {

@@ -45,6 +45,11 @@ class PlatformCommercialPoliciesPage extends Page
 
     protected string $view = 'filament.pages.platform-commercial-policies';
 
+    public function getSubheading(): ?string
+    {
+        return 'Payment terms, notices and the statutory parameters behind billing.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

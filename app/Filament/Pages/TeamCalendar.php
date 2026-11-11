@@ -41,6 +41,11 @@ class TeamCalendar extends Page
     /** @var list<string> event kinds the viewer narrowed the month to (none = every kind shown to them) */
     public array $only = [];
 
+    public function getSubheading(): ?string
+    {
+        return 'Your team\'s leave, holidays, events and birthdays on one calendar.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

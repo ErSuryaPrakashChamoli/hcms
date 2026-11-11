@@ -31,7 +31,7 @@ class ManageBadges extends PeopleManageRecords
                 ->mutateDataUsing(fn (array $data) => BadgeResource::normalise($data)),
             Action::make('standard')->label('Add standard badges')->icon(Heroicon::OutlinedSparkles)->color('gray')
                 ->visible(fn () => auth()->user()->can('recognition.manage'))
-                ->requiresConfirmation()->modalDescription('Adds HROne’s standard badges that are missing. Badges you already have are left as they are.')
+                ->requiresConfirmation()->modalDescription('Adds the standard badges that are missing. Badges you already have are left as they are.')
                 ->action(function () {
                     $added = app(RecognitionDefaults::class)->seed();
                     Notification::make()->success()->title($added.' standard badge'.($added === 1 ? '' : 's').' added')->send();

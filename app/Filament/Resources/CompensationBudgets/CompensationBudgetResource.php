@@ -4,6 +4,7 @@ namespace App\Filament\Resources\CompensationBudgets;
 
 use App\Domain\Compensation\Models\CompensationBudget;
 use App\Domain\Compensation\Services\CompensationBudgets;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Workforce\Models\WorkforceBudget;
@@ -35,7 +36,7 @@ class CompensationBudgetResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Compensation';
 
-    protected static ?string $navigationLabel = 'Budgets';
+    protected static ?string $navigationLabel = 'Pay budgets';
 
     protected static ?int $navigationSort = 50;
 
@@ -52,7 +53,7 @@ class CompensationBudgetResource extends Resource
                     Select::make('location_id')->label('Location (optional)')->options(fn () => Location::query()->orderBy('name')->pluck('name', 'id')->all()),
                     DatePicker::make('period_start')->native(false)->required(),
                     DatePicker::make('period_end')->native(false)->required()->afterOrEqual('period_start'),
-                    Select::make('currency')->options(fn () => array_combine(config('peopleos.compensation.currencies'), config('peopleos.compensation.currencies')))->default(config('peopleos.settings.tenant.base_currency', 'INR'))->required(),
+                    Select::make('currency')->options(fn () => array_combine(config('peopleos.compensation.currencies'), config('peopleos.compensation.currencies')))->default(fn () => app(CurrencyRates::class)->baseCurrency())->required(),
                     TextInput::make('amount')->label('Amount (annualised CTC increase)')->numeric()->minValue(0)->required(),
                     Select::make('workforce_budget_id')->label('Workforce budget (reference, optional)')->options(fn () => WorkforceBudget::query()->orderByDesc('id')->limit(200)->pluck('name', 'id')->all()),
                     Textarea::make('notes')->rows(2),

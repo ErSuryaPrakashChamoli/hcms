@@ -29,6 +29,11 @@ class PlatformReadinessPage extends Page
 
     protected string $view = 'filament.pages.platform-readiness';
 
+    public function getSubheading(): ?string
+    {
+        return 'Whether the platform is ready for production: configuration, health, audit and statutory gates.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

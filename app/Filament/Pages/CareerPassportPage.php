@@ -40,6 +40,11 @@ class CareerPassportPage extends Page
     #[Url]
     public ?int $employee = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Your skills, experience, certificates and aspirations in one record that you choose to share.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

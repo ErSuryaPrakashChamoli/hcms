@@ -15,6 +15,7 @@ use App\Filament\Support\BulkRecordActions;
 use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
+use App\Support\Csv\SpreadsheetCell;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -429,6 +430,6 @@ class AdvanceRecovery extends RegisterTablePage
         $text = is_float($value) ? number_format($value, 2, '.', '') : (string) ($value ?? '');
 
         // Spreadsheet formula injection: a cell starting with = + - @ is read as text.
-        return preg_match('/^[=+\-@]/', $text) === 1 && ! is_numeric($text) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 }

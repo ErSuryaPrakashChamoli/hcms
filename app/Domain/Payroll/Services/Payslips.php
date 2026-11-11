@@ -11,7 +11,7 @@ use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Platform\Services\SettingsRepository;
 
-/** Immutable payslip snapshots (§31). */
+/** Immutable payslip snapshots (§31); employees see them once the run's payslips are published (PayslipPublishing). */
 final class Payslips
 {
     public function __construct(private readonly AuditRecorder $audit, private readonly SettingsRepository $settings) {}
@@ -39,7 +39,9 @@ final class Payslips
         $position = $employee->currentPosition;
         $bank = $employee->bankAccounts->firstWhere('is_primary', true);
         $statutory = $employee->statutoryDetail;
-        $number = sprintf('%s-%d%02d-%s', $this->settings->get('payroll.payslip.prefix', 'PS'), $run->period->year, $run->period->month, $employee->employee_code);
+        // A month closed again after a reopening re-issues its payslips with a revision number (Streamline S2, ST-1).
+        $number = sprintf('%s-%d%02d-%s', $this->settings->get('payroll.payslip.prefix', 'PS'), $run->period->year, $run->period->month, $employee->employee_code)
+            .((int) $run->reopen_count > 0 ? '-R'.(int) $run->reopen_count : '');
 
         $snapshot = [
             'number' => $number,

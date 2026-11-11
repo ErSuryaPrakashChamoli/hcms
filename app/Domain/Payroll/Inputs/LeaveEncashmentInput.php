@@ -58,4 +58,12 @@ final class LeaveEncashmentInput implements PayrollInputSource
                 ->each(fn (LeaveEncashment $e) => $e->withAuditReason('Paid in payroll '.$run->period?->label())->update(['status' => 'paid']));
         }
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        foreach ($idsByEmployee as $employeeId => $ids) {
+            LeaveEncashment::query()->where('employee_id', $employeeId)->whereIn('id', $ids)->where('status', 'paid')->get()
+                ->each(fn (LeaveEncashment $e) => $e->withAuditReason('Payroll '.$run->period?->label().' reopened')->update(['status' => 'approved']));
+        }
+    }
 }

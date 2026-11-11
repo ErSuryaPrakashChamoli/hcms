@@ -34,6 +34,11 @@ class ApiReference extends Page
     /** @var array<string, mixed>|null */
     private ?array $spec = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Every endpoint of the integration API, with its fields and permissions. Download it as OpenAPI JSON.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

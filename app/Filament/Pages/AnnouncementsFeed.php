@@ -28,6 +28,11 @@ class AnnouncementsFeed extends Page
 
     protected string $view = 'filament.pages.announcements-feed';
 
+    public function getSubheading(): ?string
+    {
+        return 'News and notices from the organisation, newest first. Acknowledge the ones that ask for it.';
+    }
+
     public static function canAccess(): bool
     {
         return (auth()->user()?->can('communication.view') ?? false) && ServiceDeskActions::me() !== null;

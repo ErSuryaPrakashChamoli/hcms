@@ -13,6 +13,7 @@ use App\Domain\Experience\Support\InboxActions;
 use App\Domain\Workflow\Services\InboxArchives;
 use App\Domain\Workflow\Services\TaskComments;
 use App\Domain\Workflow\Services\TaskDelegations;
+use App\Filament\Support\Pages\Concerns\HasMasthead;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -32,6 +33,8 @@ use UnitEnum;
  */
 class Approvals extends Page
 {
+    use HasMasthead;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCheckBadge;
 
     protected static string|UnitEnum|null $navigationGroup = 'Workflows';

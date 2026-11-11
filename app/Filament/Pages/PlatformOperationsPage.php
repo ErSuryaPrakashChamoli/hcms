@@ -47,6 +47,11 @@ class PlatformOperationsPage extends Page
     /** @var list<array<string, mixed>>|null */
     private ?array $rows = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Each organisation\'s status, failed notifications and deferred work.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

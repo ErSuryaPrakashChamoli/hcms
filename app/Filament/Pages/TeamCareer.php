@@ -39,6 +39,11 @@ class TeamCareer extends Page
 
     protected string $view = 'filament.pages.team-career';
 
+    public function getSubheading(): ?string
+    {
+        return 'Career interests, development and succession for the people you look after.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

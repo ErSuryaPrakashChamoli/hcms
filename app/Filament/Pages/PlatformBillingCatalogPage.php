@@ -59,6 +59,11 @@ class PlatformBillingCatalogPage extends Page
 
     private ?array $pending = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Currencies, markets and the price of each plan.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

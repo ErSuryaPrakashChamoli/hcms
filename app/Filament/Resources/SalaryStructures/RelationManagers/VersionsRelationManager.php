@@ -4,33 +4,23 @@ namespace App\Filament\Resources\SalaryStructures\RelationManagers;
 
 use App\Domain\Compensation\Models\SalaryStructureVersion;
 use App\Domain\Compensation\Services\CompensationStructures;
-use App\Domain\Payroll\Models\SalaryComponent;
-use App\Domain\Payroll\Services\FormulaEngine;
+use App\Filament\Pages\SalaryStructureBuilder;
 use App\Filament\Support\CompensationActions;
 use App\Filament\Support\SalaryFormulaUi;
 use App\Filament\Support\StructureApplicabilitySchema;
-use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use RuntimeException;
 
 /**
- * Phase 11 §6: a structure's versions. Only a draft is edited; it is submitted and approved by another
- * person, and an approved version never changes — a correction is a new version from a later date.
- * §30: the formula guide, structure parameters and a live breakup preview help build the formulas.
+ * Phase 11 §6: a structure's versions. Only a draft is edited (in the salary structure builder); it is submitted
+ * and approved by another person, and an approved version never changes — a correction is a new version from a
+ * later date. Components shows a version's lines; Preview tries it on a sample CTC.
  */
 class VersionsRelationManager extends RelationManager
 {
@@ -63,10 +53,10 @@ class VersionsRelationManager extends RelationManager
             ])
             ->defaultSort('version', 'desc')
             ->headerActions([
-                Action::make('newVersion')->label('New version')->icon('heroicon-m-document-duplicate')
+                // Components change in the salary structure builder (a new draft from the version in use, or the draft itself).
+                Action::make('newVersion')->label('Change components')->icon('heroicon-m-adjustments-horizontal')
                     ->visible(fn () => auth()->user()->can('compensation.configure'))
-                    ->schema([DatePicker::make('effective_from')->native(false)->required()->default(now()->addMonth()->startOfMonth())->helperText('Copies the latest approved version; edit the draft, then submit it for approval.')])
-                    ->action(fn (array $data) => CompensationActions::run(fn () => app(CompensationStructures::class)->newVersion($this->getOwnerRecord(), auth()->user(), $data['effective_from']), 'Draft version created')),
+                    ->url(fn () => SalaryStructureBuilder::getUrl(['structure' => $this->getOwnerRecord()->getKey()])),
                 SalaryFormulaUi::guideAction(),
             ])
             ->recordActions([
@@ -86,50 +76,9 @@ class VersionsRelationManager extends RelationManager
                     ->modalSubmitAction(false)->modalCancelActionLabel('Close')
                     ->schema(fn (SalaryStructureVersion $record) => SalaryFormulaUi::preview(fn () => $record->formulaLines(), fn () => (array) ($record->parameters ?? []), fn () => $record->effective_from, fn () => $record->formulaOptions())),
                 ActionGroup::make([
-                    Action::make('edit')->label('Edit draft')->icon('heroicon-m-pencil-square')->modalWidth('5xl')
+                    Action::make('edit')->label('Edit draft')->icon('heroicon-m-pencil-square')
                         ->visible(fn (SalaryStructureVersion $record) => $record->status === 'draft' && auth()->user()->can('compensation.configure'))
-                        ->fillForm(fn (SalaryStructureVersion $record) => $record->only(['effective_from', 'currency', 'pay_frequency', 'change_note']) + $record->formulaOptions() + StructureApplicabilitySchema::fill($record) + ['components' => $record->components()->get()->map(fn ($c) => $c->only(['salary_component_id', 'formula_override', 'pay_nature', 'frequency', 'sort_order']))->all()]
-                            + ['parameters' => $record->parameters ?? [], 'preview_ctc' => 600000, 'preview_days' => 30, 'preview_pf' => true, 'preview_pf_ceiling' => true])
-                        ->schema([
-                            DatePicker::make('effective_from')->native(false)->required(),
-                            Select::make('currency')->options(fn () => array_combine(config('peopleos.compensation.currencies'), config('peopleos.compensation.currencies')))->required(),
-                            Select::make('pay_frequency')->options(config('peopleos.compensation.pay_frequencies'))->required(),
-                            ...StructureApplicabilitySchema::fields(),
-                            Textarea::make('change_note')->label('What changes and why')->rows(2),
-                            // HROne setup parity BP-2: CTC mode ("disable CTC") and the CTC balancing component.
-                            Select::make('ctc_mode')->label('Salary is built')->options(SalaryStructureVersion::CTC_MODES)->default('ctc')->required()->live()
-                                ->helperText('From component amounts: no CTC is entered; it is worked out from the amounts that are part of CTC, plus employer PF.'),
-                            Select::make('balancing_component_id')->label('CTC balancing component')->placeholder('None')->searchable()->live()
-                                ->visible(fn (Get $get) => $get('ctc_mode') !== 'components')
-                                ->options(fn (Get $get) => SalaryComponent::query()->whereIn('id', collect($get('components'))->pluck('salary_component_id')->filter()->all())->whereIn('type', ['earning', 'reimbursement'])->where('include_in_ctc', true)->whereNotIn('calculation_method', ['statutory', 'input'])->orderBy('sort_order')->get()->mapWithKeys(fn ($c) => [$c->id => "{$c->name} ({$c->code})"])->all())
-                                ->helperText('Takes CTC less every other CTC component (and employer PF). It must come last; without a formula of its own it gets that remainder formula when the draft is saved.'),
-                            KeyValue::make('parameters')->label('Parameters')->keyLabel('Name')->valueLabel('Number')->addActionLabel('Add parameter')->live(onBlur: true)
-                                ->helperText('Named numbers the formulas can use, e.g. basic_pct = 50 with the formula ctc_monthly * basic_pct / 100. Change a number here instead of rewriting formulas.'),
-                            Repeater::make('components')->hintAction(SalaryFormulaUi::guideAction('componentsGuide'))->schema([
-                                Select::make('salary_component_id')->label('Component')->required()->searchable()->live()
-                                    ->options(fn () => SalaryComponent::query()->where('status', 'active')->where('is_statutory', false)->orderBy('sort_order')->get()->mapWithKeys(fn ($c) => [$c->id => "{$c->name} ({$c->code})"])->all()),
-                                Select::make('pay_nature')->options(config('peopleos.compensation.pay_natures'))->default('fixed')->required(),
-                                Select::make('frequency')->options(config('peopleos.compensation.component_frequencies'))->default('monthly')->required(),
-                                TextInput::make('sort_order')->numeric()->default(100),
-                                Textarea::make('formula_override')->rows(2)->columnSpanFull()->live(onBlur: true)->placeholder(fn (Get $get) => SalaryFormulaUi::defaultFormula($get('salary_component_id')))
-                                    ->helperText('Optional: this structure’s own formula for the component (fixed ones too). It can use the rows above, the parameters and the variables in the formula guide.')
-                                    ->rule(fn () => function (string $attribute, $value, Closure $fail) {
-                                        if (blank($value)) {
-                                            return;
-                                        }
-                                        try {
-                                            app(FormulaEngine::class)->validate((string) $value);
-                                        } catch (RuntimeException $e) {
-                                            $fail($e->getMessage());
-                                        }
-                                    }),
-                            ])->columns(4)->defaultItems(0),
-                            Section::make('Preview breakup')->description('Try this draft on a sample CTC as you edit it. Nothing here is saved.')->collapsible()->collapsed()
-                                ->schema(SalaryFormulaUi::preview(fn (Get $get) => SalaryFormulaUi::linesFromForm($get('components')), fn (Get $get) => SalaryFormulaUi::parametersFromForm($get('parameters')), fn (Get $get) => $get('effective_from'),
-                                    fn (Get $get) => ['ctc_mode' => $get('ctc_mode') ?: 'ctc', 'balancing_component_id' => $get('ctc_mode') === 'components' ? null : $get('balancing_component_id')])),
-                        ])
-                        ->action(fn (SalaryStructureVersion $record, array $data) => CompensationActions::run(fn () => app(CompensationStructures::class)->updateDraft($record, StructureApplicabilitySchema::toServiceData(
-                            ['balancing_component_id' => ($data['ctc_mode'] ?? 'ctc') === 'components' ? null : ($data['balancing_component_id'] ?? null)] + $data), auth()->user()), 'Draft saved')),
+                        ->url(fn () => SalaryStructureBuilder::getUrl(['structure' => $this->getOwnerRecord()->getKey()])),
                     Action::make('submit')->label('Submit for approval')->icon('heroicon-m-paper-airplane')->requiresConfirmation()
                         ->visible(fn (SalaryStructureVersion $record) => $record->status === 'draft' && auth()->user()->can('compensation.configure'))
                         ->action(fn (SalaryStructureVersion $record) => CompensationActions::run(fn () => app(CompensationStructures::class)->submit($record, auth()->user()), 'Submitted for approval')),

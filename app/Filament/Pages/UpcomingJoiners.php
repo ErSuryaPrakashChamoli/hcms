@@ -19,6 +19,7 @@ use App\Filament\Support\EmployeeFilters;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
 use App\Filament\Support\UpcomingJoinerActions;
+use App\Support\Csv\SpreadsheetCell;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -236,7 +237,7 @@ class UpcomingJoiners extends RegisterTablePage
     /** A spreadsheet never runs a cell as a formula. */
     private static function cell(mixed $value): mixed
     {
-        return is_string($value) && $value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$value : $value;
+        return is_string($value) ? SpreadsheetCell::guard($value) : $value;
     }
 
     private function expectedDateFilter(): Filter

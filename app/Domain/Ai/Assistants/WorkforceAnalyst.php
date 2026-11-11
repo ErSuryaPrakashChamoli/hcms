@@ -115,7 +115,7 @@ final class WorkforceAnalyst implements Assistant
         $m = $this->metrics->all(['people_cost', 'cost_per_head'], $user);
         $answer = sprintf('The last finalized payroll cost %s (cost per head %s). Over the last six months monthly people cost was: %s.', $m['people_cost']['value'] === null ? 'n/a' : number_format((float) $m['people_cost']['value']), $m['cost_per_head']['value'] === null ? 'n/a' : number_format((float) $m['cost_per_head']['value']), implode(', ', array_map(fn ($v) => number_format($v), $values)));
 
-        return new AiAnswer($answer, [['label' => 'Finalized payroll runs']], [['label' => 'Payroll control room', 'url' => url('/admin/payroll-control-room')]], 'cost', false, ['people_cost_series' => $values]);
+        return new AiAnswer($answer, [['label' => 'Finalized payroll runs']], [['label' => 'Payroll overview', 'url' => url('/admin/payroll-control-room')]], 'cost', false, ['people_cost_series' => $values]);
     }
 
     private function capacity(): AiAnswer

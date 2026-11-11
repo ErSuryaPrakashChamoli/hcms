@@ -3,6 +3,7 @@
 namespace App\Domain\Expense\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Audit\Services\AuditHistory;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Enterprise\Services\CurrencyRates;
@@ -567,6 +568,25 @@ final class ExpenseReports
                 $locked->withAuditReason(($channel === 'payroll' ? 'Paid with ' : 'Paid in ').$reference)->update(['status' => 'paid', 'payment_channel' => $channel, 'paid_on' => $on,
                     'payment_reference' => mb_substr($reference, 0, 120), 'payroll_run_id' => $payrollRunId, 'final_settlement_id' => $settlementId]);
                 $this->tell('expense.report_paid', $locked, ['amount' => (float) $locked->net_payable, 'reference' => $reference, 'paid_on' => $on, 'channel' => $channel]);
+            });
+        }
+    }
+
+    /**
+     * Streamline S2 (ST-1): the payroll month that paid these reports was reopened — each returns to the approval it was
+     * paid on (read back from its audit trail), payable by the next run of that month.
+     */
+    public function undoPayrollPayment(array $ids, int $payrollRunId, string $note): void
+    {
+        foreach ($ids as $id) {
+            DB::transaction(function () use ($id, $payrollRunId, $note) {
+                $locked = ExpenseReport::query()->withoutGlobalScope(AccessScope::class)->whereKey($id)->lockForUpdate()->first();
+                if ($locked === null || $locked->status !== 'paid' || (int) $locked->payroll_run_id !== $payrollRunId) {
+                    return;
+                }
+                $before = app(AuditHistory::class)->valueBefore($locked, 'status', 'paid');
+                $locked->withAuditReason($note)->update(['status' => in_array($before, ['approved', 'partly_approved'], true) ? $before : 'approved',
+                    'paid_on' => null, 'payment_reference' => null, 'payroll_run_id' => null]);
             });
         }
     }

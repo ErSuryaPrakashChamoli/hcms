@@ -220,7 +220,7 @@ it('opens only for a person with an employee record and the payslip right, and l
     $this->actingAs($this->employee->user);
     $this->get(MySalaryYtd::getUrl())->assertOk();
     app()->forgetInstance(MySpace::class);
-    expect(collect(app(MySpace::class)->available($this->employee->user))->map(fn ($e) => $e['item']->key())->all())->toContain('salary_ytd', 'my_payslips');
+    expect(collect(app(MySpace::class)->available($this->employee->user))->map(fn ($e) => $e['item']->key())->all())->toContain('salary_ytd', 'payslips');
 
     $noRight = employeeWithUser(null, ['employee.self']);
     $this->actingAs($noRight->user);

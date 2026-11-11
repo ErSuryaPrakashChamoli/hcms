@@ -61,6 +61,11 @@ class PlatformTaxSetupPage extends Page
 
     protected string $view = 'filament.pages.platform-tax-setup';
 
+    public function getSubheading(): ?string
+    {
+        return 'Tax rules, suppliers and invoice series, country by country.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

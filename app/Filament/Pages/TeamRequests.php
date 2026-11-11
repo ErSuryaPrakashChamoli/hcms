@@ -35,6 +35,11 @@ class TeamRequests extends Page
 
     protected string $view = 'filament.pages.team-requests';
 
+    public function getSubheading(): ?string
+    {
+        return 'HR requests raised by the people who report to you.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->check() && auth()->user()->hasPermission('servicedesk.team');

@@ -95,4 +95,14 @@ final class BonusInput implements PayrollInputSource
                 'paid_bonus' => round($paid[$line->id]['bonus'] ?? 0.0, 2), 'paid_ex_gratia' => round($paid[$line->id]['ex_gratia'] ?? 0.0, 2),
             ]));
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        $run->loadMissing('period');
+        $ids = array_values(array_unique(array_merge(...array_values($idsByEmployee))));
+        BonusRunLine::query()->withoutGlobalScope(AccessScope::class)->whereIn('id', $ids)->where('paid_payroll_run_id', $run->id)->get()
+            ->each(fn (BonusRunLine $line) => $line->withAuditReason('Payroll '.$run->period?->label().' reopened')->update([
+                'status' => 'processed', 'paid_payroll_run_id' => null, 'paid_at' => null, 'paid_bonus' => null, 'paid_ex_gratia' => null,
+            ]));
+    }
 }

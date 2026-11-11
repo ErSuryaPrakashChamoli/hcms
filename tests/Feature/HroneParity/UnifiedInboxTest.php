@@ -444,9 +444,11 @@ it('shows a leave cancellation with its reason and the balance after cancelling'
     expect(rq8Rows($this->manager->user)->firstWhere('id', 'leave:'.$this->leave->id)->facet)->toBe('leave_cancellation');
 });
 
-it('sits in the My work rail and leaves Approvals and the Task inbox as they were', function () {
+it('is the one inbox in the My work rail, with Approvals and the Task inbox still open from their links', function () {
     $this->actingAs($this->manager->user);
-    expect(array_column(app(ExperienceNavigation::class)->children($this->manager->user, 'work'), 'label'))->toContain('Unified inbox', 'Approvals');
+    // Streamline S4: Inbox acts on approvals and tasks together, so the older Approvals list leaves the rail.
+    $labels = array_column(app(ExperienceNavigation::class)->children($this->manager->user, 'work'), 'label');
+    expect($labels)->toContain('Inbox')->and($labels)->not->toContain('Approvals')->and($labels)->not->toContain('Unified inbox');
     $this->get(Approvals::getUrl())->assertOk();
     $this->get(TaskInbox::getUrl())->assertOk();
     expect(LeaveRequest::query()->whereKey($this->leave->id)->value('status'))->toBe('pending');

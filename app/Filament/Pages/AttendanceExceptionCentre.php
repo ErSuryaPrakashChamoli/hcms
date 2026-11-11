@@ -35,6 +35,11 @@ class AttendanceExceptionCentre extends Page implements HasTable
 
     protected string $view = 'filament.pages.attendance-exception-centre';
 
+    public function getSubheading(): ?string
+    {
+        return 'Days that need attention, such as missed punches, late arrivals and absences, to regularise or explain.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('attendance.view') ?? false;

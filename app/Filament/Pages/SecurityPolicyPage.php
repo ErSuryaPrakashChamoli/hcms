@@ -48,6 +48,11 @@ class SecurityPolicyPage extends Page implements HasSchemas
         'security.password_expiry_warning_days', 'security.password_require_symbol', 'security.password_block_personal', 'security.password_history_count', 'security.disable_login_states',
         'retention.ai_interactions_days', 'retention.notification_deliveries_days', 'retention.report_runs_days', 'retention.api_request_logs_days', 'warehouse.export_enabled', 'warehouse.retention_days'];
 
+    public function getSubheading(): ?string
+    {
+        return 'Who can sign in and how: IP allowlist, MFA, passwords, sessions, and how long data is kept.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('security.manage') ?? false;

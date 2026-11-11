@@ -1,27 +1,32 @@
 <x-filament-panels::page>
-    @php($steps = $this->steps())
-    @php($current = $steps[$this->step] ?? $steps[0])
+    {{-- The policy wizard in the step kit (theme.css .pos-step-*): the step rail on the left, the open step on the right,
+         the review as one card per step with Edit, and Previous / Next naming the steps either side. --}}
+    @php
+        $steps = $this->steps();
+        $current = $steps[$this->step] ?? $steps[0];
+        $count = count($steps);
+        $stepOf = fn (string $label) => collect($steps)->search(fn (array $s) => $s['label'] === $label);
+    @endphp
     <div class="grid gap-6 lg:grid-cols-4">
         <nav aria-label="Policy steps">
             <x-filament::section compact>
-                <ol class="grid gap-1">
+                <ol class="pos-step-rail is-flush">
                     @foreach ($steps as $i => $s)
-                        @php($done = $i < $this->step)
-                        @php($open = $i <= $this->reached)
-                        <li>
-                            <button type="button" wire:click="goTo({{ $i }})" @disabled(! $open)
-                                @class([
-                                    'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-start text-sm',
-                                    'bg-primary-50 font-semibold text-primary-700 dark:bg-primary-400/10 dark:text-primary-300' => $i === $this->step,
-                                    'hover:underline' => $i !== $this->step && $open,
-                                    'text-gray-400' => ! $open,
-                                ])
+                        @php
+                            $state = $i < $this->step ? 'done' : ($i === $this->step ? 'current' : 'waiting');
+                            $open = $i <= $this->reached;
+                        @endphp
+                        <li data-state="{{ $state }}">
+                            <button type="button" wire:click="goTo({{ $i }})" @disabled(! $open) class="pos-step-rail-btn" data-state="{{ $state }}"
                                 @if ($i === $this->step) aria-current="step" @endif>
-                                <span aria-hidden="true"
-                                    style="display:inline-flex;align-items:center;justify-content:center;flex:none;width:1.6rem;height:1.6rem;border-radius:9999px;font-size:.75rem;font-weight:600;{{ $i === $this->step ? 'background:var(--primary-600);color:#fff;' : ($done ? 'background:var(--primary-100);color:var(--primary-700);' : 'box-shadow:inset 0 0 0 1px var(--gray-300);') }}">
-                                    @if ($done) &#10003; @else {{ $i + 1 }} @endif
+                                <span class="pos-step-rail-dot" aria-hidden="true">
+                                    @if ($state === 'done')
+                                        <x-filament::icon icon="heroicon-m-check" class="pos-step-rail-check" />
+                                    @else
+                                        {{ $i + 1 }}
+                                    @endif
                                 </span>
-                                <span>{{ $s['label'] }}</span>
+                                <span class="pos-step-rail-label">{{ $s['label'] }}</span>
                             </button>
                         </li>
                     @endforeach
@@ -32,55 +37,67 @@
         <div class="grid gap-6 lg:col-span-3">
             <form wire:submit="{{ $this->isReview() ? 'saveDraft' : 'next' }}">
                 <x-filament::section :heading="($this->step + 1).'. '.$current['label']" :description="$current['help']">
-                    @if (in_array($current['key'], ['applicability', 'advance'], true) && $this->advancedRules)
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                            Who this policy applies to is set by assignment rules the wizard does not edit (more conditions or other comparisons).
-                            @if ($url = $this->rulesUrl())
-                                Change them in the <a href="{{ $url }}" wire:navigate class="text-primary-600 hover:underline dark:text-primary-400">rule editor</a>.
-                            @endif
-                        </p>
-                    @endif
+                    <div class="pos-step">
+                        <p class="pos-step-count" style="--pos-step-pct: {{ (int) round(($this->step + 1) * 100 / max(1, $count)) }}">Step {{ $this->step + 1 }} of {{ $count }}</p>
 
-                    @if ($this->isReview())
-                        @php($review = $this->review())
-                        <div class="grid gap-6">
-                            @foreach ([['Policy', $review['policy']], ...array_map(fn ($g) => [$g['label'], $g['rows']], $review['settings']), ['Applicability', $review['applicability']]] as [$heading, $rows])
-                                <section>
-                                    <h3 class="text-sm font-semibold">{{ $heading }}</h3>
-                                    <dl class="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-                                        @forelse ($rows as [$label, $value])
-                                            <div class="flex justify-between gap-3 border-b border-gray-100 py-1 dark:border-white/10">
-                                                <dt class="text-gray-500 dark:text-gray-400">{{ $label }}</dt>
-                                                <dd class="text-end">{{ $value }}</dd>
-                                            </div>
-                                        @empty
-                                            <p class="text-gray-500 dark:text-gray-400">Nothing set.</p>
-                                        @endforelse
-                                    </dl>
-                                </section>
-                            @endforeach
-                        </div>
-                        <div class="mt-6"></div>
-                    @endif
-
-                    {{ $this->form }}
-
-                    <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            @if ($this->step > 0)
-                                <x-filament::button color="gray" wire:click="previous" type="button">Previous</x-filament::button>
-                            @endif
-                        </div>
-                        <div class="flex flex-wrap items-center gap-3">
-                            <x-filament::link :href="\App\Filament\Resources\Policies\PolicyResource::getUrl('index')" color="gray">Cancel</x-filament::link>
-                            @if ($this->isReview())
-                                <x-filament::button type="submit" color="gray">Save as draft</x-filament::button>
-                                @if ($this->canPublish())
-                                    <x-filament::button type="button" wire:click="publish" color="success">Publish</x-filament::button>
+                        @if (in_array($current['key'], ['applicability', 'advance'], true) && $this->advancedRules)
+                            <x-pos.step-banner tone="pending" icon="heroicon-o-adjustments-horizontal" title="Set by assignment rules"
+                                sub="Who this policy applies to is set by assignment rules the wizard does not edit (more conditions or other comparisons).">
+                                @if ($url = $this->rulesUrl())
+                                    <x-slot:aside>
+                                        <a href="{{ $url }}" wire:navigate class="pos-step-link">Open the rule editor<x-filament::icon icon="heroicon-m-arrow-up-right" class="pos-step-link-icon" /></a>
+                                    </x-slot:aside>
                                 @endif
-                            @else
-                                <x-filament::button type="submit">Next</x-filament::button>
-                            @endif
+                            </x-pos.step-banner>
+                        @endif
+
+                        @if ($this->isReview())
+                            @php $review = $this->review(); @endphp
+                            <x-pos.step-banner tone="idle" icon="heroicon-o-clipboard-document-check" title="Check the policy"
+                                :sub="$this->canPublish() ? 'Save it as a draft, or publish it to start applying it.' : 'Save it as a draft; it can be published when it is ready.'" />
+                            <div class="pos-step-review">
+                                @foreach ([['Policy', $review['policy']], ...array_map(fn ($g) => [$g['label'], $g['rows']], $review['settings']), ['Applicability', $review['applicability']]] as [$heading, $rows])
+                                    @php $target = $stepOf($heading); @endphp
+                                    <section class="pos-step-group" aria-label="{{ $heading }}">
+                                        <div class="pos-step-group-head">
+                                            <h3 class="pos-step-subhead">{{ $heading }}</h3>
+                                            @if ($target !== false && $target <= $this->reached)
+                                                <button type="button" class="pos-step-link" wire:click="goTo({{ $target }})">Edit<span class="fi-sr-only"> {{ $heading }}</span><x-filament::icon icon="heroicon-m-pencil-square" class="pos-step-link-icon" /></button>
+                                            @endif
+                                        </div>
+                                        @if ($rows === [])
+                                            <p class="pos-step-note">Nothing set.</p>
+                                        @else
+                                            <dl class="pos-step-ledger">
+                                                @foreach ($rows as [$label, $value])
+                                                    <div><dt>{{ $label }}</dt><dd>{{ $value }}</dd></div>
+                                                @endforeach
+                                            </dl>
+                                        @endif
+                                    </section>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        {{ $this->form }}
+
+                        <div class="pos-step-foot">
+                            <div>
+                                @if ($this->step > 0)
+                                    <x-filament::button color="gray" icon="heroicon-m-arrow-left" wire:click="previous" type="button">{{ $steps[$this->step - 1]['label'] }}</x-filament::button>
+                                @endif
+                            </div>
+                            <div class="pos-step-foot-end">
+                                <x-filament::link :href="\App\Filament\Resources\Policies\PolicyResource::getUrl('index')" color="gray">Cancel</x-filament::link>
+                                @if ($this->isReview())
+                                    <x-filament::button type="submit" color="gray" icon="heroicon-m-document">Save as draft</x-filament::button>
+                                    @if ($this->canPublish())
+                                        <x-filament::button type="button" wire:click="publish" color="success" icon="heroicon-m-paper-airplane">Publish</x-filament::button>
+                                    @endif
+                                @else
+                                    <x-filament::button type="submit" icon="heroicon-m-arrow-right" icon-position="after">Next: {{ $steps[$this->step + 1]['label'] ?? 'Review' }}</x-filament::button>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </x-filament::section>

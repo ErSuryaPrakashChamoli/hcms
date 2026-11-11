@@ -38,7 +38,7 @@ class FeedbackRequestResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Me';
 
-    protected static ?string $navigationLabel = 'Feedback';
+    protected static ?string $navigationLabel = 'Feedback requests';
 
     protected static ?string $modelLabel = 'feedback';
 

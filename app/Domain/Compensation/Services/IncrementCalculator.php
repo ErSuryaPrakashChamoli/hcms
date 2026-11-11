@@ -12,9 +12,11 @@ use App\Domain\Compensation\Support\CompensationSnapshot;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Services\EmployeeSelection;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
+use App\Support\Csv\SpreadsheetCell;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -481,7 +483,7 @@ final class IncrementCalculator
             unset($c);
         }
         uasort($byCurrency, fn ($a, $b) => $b['headcount'] <=> $a['headcount']);
-        $main = $budget?->currency ?? (array_key_first($byCurrency) ?? (string) config('peopleos.settings.tenant.base_currency', 'INR'));
+        $main = $budget?->currency ?? (array_key_first($byCurrency) ?? app(CurrencyRates::class)->baseCurrency());
         $totals = $byCurrency[$main] ?? ['headcount' => 0, 'current' => 0.0, 'proposed' => 0.0, 'percents' => [], 'unknown' => 0];
         $increase = round($totals['proposed'] - $totals['current'], 2);
         $out = [
@@ -548,6 +550,6 @@ final class IncrementCalculator
         $text = (string) ($value ?? '');
 
         // Spreadsheet formula injection: a cell starting with = + - @ is read as text.
-        return preg_match('/^[=+\-@]/', $text) === 1 && ! is_numeric($text) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 }

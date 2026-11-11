@@ -28,6 +28,11 @@ class PositionHierarchyPage extends Page
 
     public ?string $on = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Positions and the positions they report to, as a tree.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('workforce.view') ?? false;

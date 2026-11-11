@@ -54,7 +54,7 @@ class LetterTemplateResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Letters';
 
-    protected static ?string $navigationLabel = 'Templates';
+    protected static ?string $navigationLabel = 'Letter templates';
 
     protected static ?int $navigationSort = 20;
 

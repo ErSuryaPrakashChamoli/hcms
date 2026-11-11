@@ -39,7 +39,7 @@ class ManageMoodReasons extends PeopleManageRecords
                 }),
             Action::make('standard')->label('Add standard reasons')->icon(Heroicon::OutlinedSparkles)->color('gray')
                 ->visible(fn () => auth()->user()->can('engagement.manage'))
-                ->requiresConfirmation()->modalDescription('Adds HROne’s standard reasons that are missing (inactive once 20 are active). Reasons you already have are left as they are.')
+                ->requiresConfirmation()->modalDescription('Adds the standard reasons that are missing (inactive once 20 are active). Reasons you already have are left as they are.')
                 ->action(function () {
                     $added = app(MoodDefaults::class)->seed();
                     Notification::make()->success()->title($added.' standard reason'.($added === 1 ? '' : 's').' added')->send();

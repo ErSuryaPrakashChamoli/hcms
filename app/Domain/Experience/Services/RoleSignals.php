@@ -36,6 +36,7 @@ use App\Filament\Pages\MyHr;
 use App\Filament\Pages\MyTeam;
 use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Pages\PlatformReadinessPage;
+use App\Filament\Pages\RunPayroll;
 use App\Filament\Pages\SecurityPolicyPage;
 use App\Filament\Resources\AuditEvents\AuditEventResource;
 use App\Filament\Resources\ConfigurationChanges\ConfigurationChangeResource;
@@ -109,7 +110,7 @@ final class RoleSignals
                 $this->url(fn () => MyHr::canAccess() ? MyHr::getUrl(['tab' => 'documents']) : null));
         }
 
-        $payslip = $this->safe(fn () => Payslip::query()->where('employee_id', $me->id)->where('generated_at', '>=', now()->subDays(14))->whereNull('viewed_at')->latest('generated_at')->first());
+        $payslip = $this->safe(fn () => Payslip::query()->where('employee_id', $me->id)->published()->where('generated_at', '>=', now()->subDays(14))->whereNull('viewed_at')->latest('generated_at')->first());
         if ($payslip !== null && $user->can('view', $payslip)) {
             $items[] = $this->item('payslip', null, 'Your payslip'.($payslip->period?->label() ? ' for '.$payslip->period->label() : '').' is available',
                 'Issued '.$payslip->generated_at->format('j M').'.', 'info', $this->url(fn () => PayslipResource::getUrl('view', ['record' => $payslip])));
@@ -249,10 +250,10 @@ final class RoleSignals
         if (! $user->hasPermission('payroll.view') && ! $user->hasPermission('payroll.calculate')) {
             return [];
         }
-        $url = $this->url(fn () => PayrollControlRoom::canAccess() ? PayrollControlRoom::getUrl() : null);
+        $url = $this->url(fn () => RunPayroll::canAccess() ? RunPayroll::getUrl() : (PayrollControlRoom::canAccess() ? PayrollControlRoom::getUrl() : null));
         $run = $this->safe(fn () => PayrollRun::query()->with('period')->latest('id')->first());
         if ($run === null) {
-            return [$this->item('payroll_none', null, 'No payroll run is open', 'Open a run for the next pay period from the control room.', 'info', $url)];
+            return [$this->item('payroll_none', null, 'No payroll run is open', 'Start the next pay month in Run payroll.', 'info', $url)];
         }
         $label = $run->period?->label() ?? 'Run #'.$run->id;
         $status = (string) config("peopleos.payroll.run_statuses.{$run->status}", $run->status);
@@ -335,7 +336,10 @@ final class RoleSignals
         if ($may(fn () => SecurityPolicyPage::canAccess())) {
             $mfa = $this->safe(fn () => app(SecurityPolicy::class)->mfaRequired(), true);
             $url = $this->url(fn () => SecurityPolicyPage::getUrl());
-            $add('mfa_not_required', $mfa ? 0 : 1, 'Multi-factor sign-in is not required', 'Anyone with a password can sign in. Require an authenticator app in the security policy.', 'warning', $url);
+            // A setting, not a count: no number beside it (it read "1 Multi-factor sign-in is not required")
+            if (! $mfa) {
+                $items[] = $this->item('mfa_not_required', null, 'Multi-factor sign-in is not required', 'Anyone with a password can sign in. Require an authenticator app in the security policy.', 'warning', $url);
+            }
             $facts[] = ['key' => 'mfa', 'label' => 'Multi-factor sign-in', 'value' => $mfa ? 'Required' : 'Optional', 'url' => $url];
         }
         if ($may(fn () => InboundEventResource::canAccess())) {

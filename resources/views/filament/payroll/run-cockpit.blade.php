@@ -5,21 +5,28 @@
             <p class="text-sm text-gray-500">Not available.</p>
         </x-filament::section>
     @else
-        <x-filament::section heading="Run cockpit" description="Where this payroll month stands, step by step. The figures are read from the run, its inputs, the salary holds and the payslips; every action stays in the page header and the employees table.">
-            <div class="grid gap-3 md:grid-cols-3" role="list" aria-label="Payroll steps">
+        <x-filament::section heading="Run cockpit" description="Where this payroll month stands, step by step. Every action stays in the page header and the employees table.">
+            <div class="pos-step-cards" role="list" aria-label="Payroll steps">
                 @foreach ($steps as $i => $step)
-                    <div role="listitem" class="rounded-lg border border-gray-200 p-3 dark:border-gray-700 {{ $step['state'] === 'current' ? 'ring-1 ring-primary-500' : '' }}" data-step="{{ $step['key'] }}" data-state="{{ $step['state'] }}">
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="font-semibold">{{ $i + 1 }}. {{ $step['label'] }}</span>
-                            <x-filament::badge :color="match ($step['state']) { 'done' => 'success', 'current' => 'primary', default => 'gray' }">
+                    <div role="listitem" class="pos-step-card" data-step="{{ $step['key'] }}" data-state="{{ $step['state'] }}">
+                        <div class="pos-step-card-head">
+                            <span class="pos-step-rail-dot" aria-hidden="true">
+                                @if ($step['state'] === 'done')<x-filament::icon icon="heroicon-m-check" class="pos-step-rail-check" />@else{{ $i + 1 }}@endif
+                            </span>
+                            <span class="pos-step-card-title">
+                                <strong>{{ $step['label'] }}</strong>
+                                <span>{{ $step['optional'] ? 'Optional' : 'Mandatory' }}</span>
+                            </span>
+                            <span class="pos-step-pill pos-step-tone" data-tone="{{ match ($step['state']) { 'done' => 'clear', 'current' => 'idle', default => 'na' } }}">
                                 {{ match ($step['state']) { 'done' => 'Done', 'current' => 'Now', default => 'Next' } }}
-                            </x-filament::badge>
+                            </span>
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">{{ $step['optional'] ? 'Optional' : 'Mandatory' }}</p>
-                        <dl class="mt-2 grid grid-cols-2 gap-y-1 text-sm">
+                        <dl class="pos-step-card-counters">
                             @foreach ($step['counters'] as $counter)
-                                <dt class="text-gray-500">{{ $counter['label'] }}</dt>
-                                <dd class="tabular-nums text-end" aria-label="{{ $step['label'] }} · {{ $counter['label'] }}: {{ $counter['value'] ?? '—' }}">{{ $counter['value'] ?? '—' }}</dd>
+                                <div>
+                                    <dt>{{ $counter['label'] }}</dt>
+                                    <dd aria-label="{{ $step['label'] }} · {{ $counter['label'] }}: {{ $counter['value'] ?? '—' }}">{{ $counter['value'] ?? '—' }}</dd>
+                                </div>
                             @endforeach
                         </dl>
                     </div>
@@ -27,7 +34,7 @@
             </div>
         </x-filament::section>
 
-        <x-filament::section heading="Step tables" description="HROne's side tables of each step. Open one to see its rows (the first {{ $screenRows }}), or download it as CSV (audited).">
+        <x-filament::section heading="Step tables" description="The tables behind each step. Open one to see its rows (the first {{ $screenRows }}), or download it as CSV (audited).">
             @php
                 $tableFacts = [
                 'arrears' => 'Pending '.$counters['arrears_pending'].' · held '.$counters['arrears_held'].' · in this run '.$counters['arrears_in_run'].' · settled '.$counters['arrears_settled'].' · void '.$counters['arrears_void'],
@@ -37,15 +44,15 @@
                 'entries' => 'Calculated '.$counters['calculated'].' · checked '.$counters['reviewed'].' · exceptions '.$counters['exceptions'].' · warnings '.$counters['warnings'],
                 ];
             @endphp
-            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Step tables">
-                <table class="w-full text-sm">
-                    <thead><tr class="text-left text-gray-500"><th class="py-1 pe-3">Table</th><th class="py-1 pe-3">Counters</th><th class="py-1 pe-3"><span class="sr-only">Actions</span></th></tr></thead>
+            <div class="pos-step-table-wrap" tabindex="0" role="region" aria-label="Step tables">
+                <table class="pos-step-table">
+                    <thead><tr><th>Table</th><th>Counters</th><th><span class="sr-only">Actions</span></th></tr></thead>
                     <tbody>
                         @foreach ($tables as $key => $label)
-                            <tr class="border-t border-gray-200 dark:border-gray-700" data-table="{{ $key }}">
-                                <td class="py-1 pe-3 font-medium">{{ $label }}</td>
-                                <td class="py-1 pe-3 text-gray-600 dark:text-gray-400">{{ $tableFacts[$key] }}</td>
-                                <td class="py-1 pe-3 whitespace-nowrap text-end">
+                            <tr data-table="{{ $key }}">
+                                <td class="is-strong">{{ $label }}</td>
+                                <td class="is-quiet">{{ $tableFacts[$key] }}</td>
+                                <td class="is-end">
                                     <x-filament::button size="xs" color="gray" wire:click="toggleTable('{{ $key }}')" :aria-pressed="$openTable === $key ? 'true' : 'false'">{{ $openTable === $key ? 'Hide' : 'Open' }}</x-filament::button>
                                     <x-filament::button size="xs" color="gray" icon="heroicon-o-arrow-down-tray" wire:click="download('{{ $key }}')">CSV</x-filament::button>
                                 </td>

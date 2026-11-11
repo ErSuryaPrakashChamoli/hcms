@@ -33,6 +33,7 @@ use App\Filament\Resources\Employees\RelationManagers\AddressesRelationManager;
 use App\Filament\Resources\Employees\RelationManagers\DocumentsRelationManager;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\FormWizard;
 use App\Filament\Support\HireWizardSections;
 use App\Filament\Support\Pages\PeopleCreateRecord;
 use Closure;
@@ -301,6 +302,8 @@ class CreateEmployee extends PeopleCreateRecord
                 ->description('Optional')
                 ->visible(fn () => self::allows('user.create'))
                 ->schema(HireWizardSections::signIn()),
+            // Streamline S6: every wizard ends in the same Review of what was filled in.
+            FormWizard::review(FormWizard::CREATE),
         ];
     }
 

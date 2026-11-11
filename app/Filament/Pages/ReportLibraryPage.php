@@ -97,7 +97,7 @@ class ReportLibraryPage extends Page
     /** @return array<string, string> employee code => "code · name", searched by code or name within the viewer's access */
     private static function employeeOptions(string $search): array
     {
-        $term = '%'.trim($search).'%';
+        $term = '%'.addcslashes(trim($search), '%_\\').'%'; // a typed % or _ is a character, not a wildcard (as EmployeeFilters::search)
 
         return Employee::query()->with('person')
             ->where(fn ($q) => $q->where('employee_code', 'like', $term)

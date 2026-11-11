@@ -31,6 +31,11 @@ class PayrollAuditor extends Page
     #[Url]
     public ?int $run = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Look for unusual pay before payroll closes: changes from last month, outliers and missing inputs.';
+    }
+
     public static function canAccess(): bool
     {
         return (auth()->user()?->can('ai.payroll_auditor') ?? false) && app(FeatureFlags::class)->enabled('ai.payroll_auditor');

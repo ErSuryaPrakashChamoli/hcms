@@ -24,6 +24,7 @@ use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Models\SalaryHold;
 use App\Domain\Payroll\Models\VariablePayRequest;
 use App\Domain\Platform\Services\SettingsRepository;
+use App\Support\Csv\SpreadsheetCell;
 use Carbon\CarbonInterface;
 use Illuminate\Bus\UniqueLock;
 use Illuminate\Contracts\Cache\Repository as Cache;
@@ -488,7 +489,15 @@ final class PayrollRunCockpit
             return null;
         }
         $queued = 0;
-        PayrollRun::query()->whereIn('status', PayrollRun::EDITABLE)->orderBy('id')->get()->each(function (PayrollRun $run) use ($day, &$queued) {
+        PayrollRun::query()->with('period')->whereIn('status', PayrollRun::EDITABLE)->orderBy('id')->get()->each(function (PayrollRun $run) use ($day, &$queued) {
+            // Streamline review: the scheduled recalculation waits for the same things a person's Calculate does — the
+            // month's attendance and the pre-payroll checks (PayrollRunChecklist); a month that is not ready is skipped, with why.
+            $blockers = app(PayrollRunChecklist::class)->blockers((int) $run->company_id, (int) $run->period->year, (int) $run->period->month);
+            if ($blockers !== []) {
+                $this->audit->record(AuditAction::Scheduled, 'payroll', $run, [], null, metadata: ['calculation' => 'automatic', 'day' => $day, 'skipped' => array_slice($blockers, 0, 10)]);
+
+                return;
+            }
             $this->audit->record(AuditAction::Scheduled, 'payroll', $run, [], null, metadata: ['calculation' => 'automatic', 'day' => $day]);
             dispatch(new CalculatePayrollRun($run->id));
             $queued++;
@@ -846,6 +855,6 @@ final class PayrollRunCockpit
         $text = is_float($value) ? number_format($value, 2, '.', '') : (string) ($value ?? '');
 
         // Spreadsheet formula injection: a cell starting with = + - @ is read as text.
-        return preg_match('/^[=+\-@]/', $text) === 1 && ! is_numeric($text) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 }

@@ -122,6 +122,8 @@ enum AuditAction: string
     case PayrollFinalized = 'PAYROLL_FINALIZED';
     case PayrollReopened = 'PAYROLL_REOPENED';
     case PayslipGenerated = 'PAYSLIP_GENERATED';
+    // Streamline S2: payslips reach employees in their own step after payroll closes.
+    case PayslipsPublished = 'PAYSLIPS_PUBLISHED';
     case PayrollAdjusted = 'PAYROLL_ADJUSTED';
     case PayrollAdjustmentApproved = 'PAYROLL_ADJUSTMENT_APPROVED';
     case PayslipAccessed = 'PAYSLIP_ACCESSED';

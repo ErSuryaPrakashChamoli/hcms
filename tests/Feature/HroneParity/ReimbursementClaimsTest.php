@@ -4,8 +4,10 @@ use App\Domain\Claims\Models\ReimbursementLedgerEntry;
 use App\Domain\Claims\Services\ReimbursementClaims;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Payroll\Models\PayrollEntryLine;
+use App\Domain\Payroll\Models\PayrollReopening;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\SalaryComponent;
+use App\Domain\Payroll\Services\PayrollMonthReopen;
 use App\Domain\Payroll\Services\PayrollRuns;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
@@ -38,6 +40,26 @@ function closeMonth(int $month): PayrollRun
 
     return $runs->finalize($runs->approve($runs->validate($run), test()->approver, 'ok'), test()->approver);
 }
+
+it('gives a paid claim and the month\'s accrual back when the month is reopened, and pays the claim once on the next close', function () {
+    closeMonth(9);
+    $claim = $this->claims->claim($this->employee, $this->fuel, 1500, '2026-09-25', 'Fuel for client visits', [['number' => 'B1', 'amount' => 1500]], ['claims/b1.pdf']);
+    $this->claims->approve($claim, 1200, 'One bill is personal', $this->approver);
+    $this->travelTo('2026-10-25 09:00:00');
+    $october = closeMonth(10);
+    expect($claim->refresh()->status)->toBe('paid')->and($this->claims->balance($this->employee, $this->fuel, 2026))->toBe(2800.0);
+
+    // Streamline ST-1: October's accrual and the payout are reversed; the claim is approved and waiting again.
+    $october = app(PayrollMonthReopen::class)->reopen($october, 'Claim belongs to November', $this->approver);
+    expect($claim->refresh()->status)->toBe('approved')->and($claim->payroll_run_id)->toBeNull()
+        ->and($this->claims->balance($this->employee, $this->fuel, 2026))->toBe(800.0) // September's 2000 accrued − 1200 waiting
+        ->and(PayrollReopening::query()->sole()->given_back)->toMatchArray(['reimbursement_claim' => 1]);
+
+    $this->runs->finalize($this->runs->approve($this->runs->validate($this->runs->calculate($october, $this->hr)), $this->approver, 'ok'), $this->approver);
+    expect($claim->refresh()->status)->toBe('paid')
+        ->and($this->claims->balance($this->employee, $this->fuel, 2026))->toBe(2800.0)
+        ->and(PayrollEntryLine::query()->whereHas('entry', fn ($q) => $q->where('payroll_run_id', $october->id))->where('code', 'CLAIM_FUEL')->count())->toBe(1);
+});
 
 it('accrues a pay-on-claim reimbursement instead of paying it, and pays approved claims against the balance', function () {
     $september = closeMonth(9);

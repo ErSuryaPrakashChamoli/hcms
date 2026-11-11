@@ -59,6 +59,11 @@ class MyPayslips extends Page
     #[Url]
     public string $search = '';
 
+    public function getSubheading(): ?string
+    {
+        return 'Your payslips by financial year, as soon as payroll publishes them.';
+    }
+
     public static function canAccess(): bool
     {
         $me = self::me();

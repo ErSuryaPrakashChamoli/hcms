@@ -161,7 +161,7 @@ final class AccessScopeGroups
     /** @return array<int, string> employees as "code · name" (within the viewer's scope) */
     public static function employeeOptions(?array $ids = null, ?string $search = null): array
     {
-        $term = '%'.trim((string) $search).'%';
+        $term = '%'.addcslashes(trim((string) $search), '%_\\').'%'; // a typed % or _ is a character, not a wildcard (as EmployeeFilters::search)
 
         return Employee::query()->with('person')
             ->when($ids !== null, fn (Builder $q) => $q->whereKey($ids))

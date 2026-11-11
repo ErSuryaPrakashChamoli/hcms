@@ -11,11 +11,13 @@ use App\Domain\Engagement\Models\Audience;
 use App\Domain\Engagement\Models\FundraiserCampaign;
 use App\Domain\Engagement\Models\FundraiserPledge;
 use App\Domain\Engagement\Support\Guard;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Identity\Services\CurrentEmployee;
 use App\Domain\Platform\Services\SettingsRepository;
+use App\Support\Csv\SpreadsheetCell;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -74,7 +76,7 @@ final class Fundraisers
 
     public function baseCurrency(): string
     {
-        return strtoupper((string) $this->settings->get('tenant.base_currency', 'INR')) ?: 'INR';
+        return app(CurrencyRates::class)->baseCurrency();
     }
 
     /** The folder on the documents disk that holds campaign documents. */
@@ -655,6 +657,6 @@ final class Fundraisers
         $text = (string) ($value ?? '');
 
         // Spreadsheet formula injection: a cell starting with = + - @ is read as text.
-        return preg_match('/^[=+\-@]/', $text) === 1 && ! is_numeric($text) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 }

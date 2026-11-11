@@ -31,6 +31,11 @@ class MyLearning extends Page
 
     protected string $view = 'filament.pages.my-learning';
 
+    public function getSubheading(): ?string
+    {
+        return 'Your courses, what is due and the certificates you have earned.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->check() && LearningActions::me() !== null && auth()->user()->can('learning.learn');

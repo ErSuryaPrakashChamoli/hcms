@@ -7,6 +7,7 @@ use App\Domain\Experience\Enums\RequestStatus;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\MyRequests as MyRequestsModel;
 use App\Domain\Experience\Services\RequestRegistry;
+use App\Filament\Support\Pages\Concerns\HasMasthead;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
@@ -25,6 +26,8 @@ use UnitEnum;
  */
 class MyRequests extends Page
 {
+    use HasMasthead;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;
 
     protected static string|UnitEnum|null $navigationGroup = 'Me';

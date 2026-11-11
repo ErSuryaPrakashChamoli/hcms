@@ -51,6 +51,11 @@ class TaskInbox extends Page implements HasTable
 
     public ?string $activeTab = 'mine';
 
+    public function getSubheading(): ?string
+    {
+        return 'Tasks assigned to you, sent back to you and handled by you.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('task.view') || auth()->user()?->can('task.view_all');

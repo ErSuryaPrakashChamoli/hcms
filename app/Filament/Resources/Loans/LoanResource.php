@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Loans;
 
 use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Loans\Models\Loan;
 use App\Domain\Loans\Models\LoanGuarantor;
@@ -84,12 +85,12 @@ class LoanResource extends Resource
                 TextEntry::make('number'),
                 TextEntry::make('employee.person.display_name')->label('Employee'),
                 TextEntry::make('loan_type')->label('Type')->formatStateUsing(fn (Loan $record) => $record->typeLabel()),
-                TextEntry::make('principal')->money(fn () => config('peopleos.settings.tenant.base_currency', 'INR')),
+                TextEntry::make('principal')->money(fn () => app(CurrencyRates::class)->baseCurrency()),
                 TextEntry::make('interest_rate')->suffix('% a year'),
                 TextEntry::make('installments')->label('Instalments'),
-                TextEntry::make('emi')->label('Monthly recovery')->money(fn () => config('peopleos.settings.tenant.base_currency', 'INR')),
+                TextEntry::make('emi')->label('Monthly recovery')->money(fn () => app(CurrencyRates::class)->baseCurrency()),
                 TextEntry::make('first_due_month')->label('Recovery from'),
-                TextEntry::make('outstanding')->money(fn () => config('peopleos.settings.tenant.base_currency', 'INR')),
+                TextEntry::make('outstanding')->money(fn () => app(CurrencyRates::class)->baseCurrency()),
                 TextEntry::make('disbursed_through')->label('Paid out by')->formatStateUsing(fn (string $state) => $state === 'bank' ? 'Bank' : 'Payroll'),
                 TextEntry::make('disbursed_on')->date()->placeholder('Not yet'),
                 TextEntry::make('status')->badge()->formatStateUsing(fn (string $state) => Loan::STATUSES[$state] ?? $state),

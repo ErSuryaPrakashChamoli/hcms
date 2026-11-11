@@ -11,6 +11,7 @@ use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\EmploymentType;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\Location;
+use App\Support\Csv\SpreadsheetCell;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
@@ -29,7 +30,7 @@ class CompensationAnalyticsPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Compensation';
 
-    protected static ?string $navigationLabel = 'Analytics';
+    protected static ?string $navigationLabel = 'Pay analytics';
 
     protected static ?string $title = 'Compensation analytics';
 
@@ -50,6 +51,11 @@ class CompensationAnalyticsPage extends Page
     public ?int $gradeId = null;
 
     public ?int $employmentTypeId = null;
+
+    public function getSubheading(): ?string
+    {
+        return 'Pay facts as of a date: ranges, spread and changes, with small groups hidden.';
+    }
 
     public static function canAccess(): bool
     {
@@ -100,7 +106,7 @@ class CompensationAnalyticsPage extends Page
             $out = fopen('php://output', 'w');
             fputcsv($out, ['employee_code', 'effective_from', 'effective_to', 'structure', 'currency', 'ctc_annual', 'variable_target_annual']);
             foreach ($rows as $r) {
-                fputcsv($out, [$r->employee?->employee_code, $r->effective_from->toDateString(), $r->effective_to?->toDateString(), $r->structure?->code, $r->currency, $r->ctc_annual, $r->variable_target_annual]);
+                fputcsv($out, SpreadsheetCell::row([$r->employee?->employee_code, $r->effective_from->toDateString(), $r->effective_to?->toDateString(), $r->structure?->code, $r->currency, $r->ctc_annual, $r->variable_target_annual]));
             }
             fclose($out);
         }, 'compensation-'.$asOf.'.csv', ['Content-Type' => 'text/csv']);

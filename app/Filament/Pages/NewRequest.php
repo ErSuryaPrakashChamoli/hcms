@@ -6,6 +6,7 @@ use App\Domain\Experience\Contracts\RequestType;
 use App\Domain\Experience\Services\ExperiencePreferences;
 use App\Domain\Experience\Services\RequestRegistry;
 use App\Domain\Identity\Services\CurrentEmployee;
+use App\Filament\Support\Pages\Concerns\HasMasthead;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -22,6 +23,8 @@ use UnitEnum;
  */
 class NewRequest extends Page
 {
+    use HasMasthead;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPlusCircle;
 
     protected static string|UnitEnum|null $navigationGroup = 'Me';

@@ -16,6 +16,7 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Pages\Approvals;
 use App\Filament\Pages\MyHr;
+use App\Filament\Pages\MyPayslips;
 use App\Filament\Pages\MySpace as MySpacePage;
 use App\Filament\Pages\MyTeam;
 use App\Filament\Pages\TaskInbox;
@@ -216,7 +217,7 @@ it('fails closed: only for the signed-in person, inside a tenant, and never an i
 // ---- the page ----------------------------------------------------------------------------------------------------
 
 it('lists the person\'s pages grouped, with a chip per group, a search and an empty state', function () {
-    $this->get(MySpacePage::getUrl())->assertOk()->assertSee('My space')->assertSee('Payslips')->assertSee(PayslipResource::getUrl('index'), false);
+    $this->get(MySpacePage::getUrl())->assertOk()->assertSee('My space')->assertSee('My payslips')->assertSee(MyPayslips::getUrl(), false);
 
     $page = Livewire::test(MySpacePage::class)->assertOk();
     $catalogue = $page->instance()->catalogue();
@@ -249,7 +250,7 @@ it('keeps up to twelve favourites per person, only of items they may open, first
     $page->call('toggleFavourite', 'payslips')->call('toggleFavourite', 'goals');
     expect(app(ExperiencePreferences::class)->for($this->asha->user)['favourite_pages'])->toBe(['goals', 'payslips'])
         ->and(collect($page->instance()->catalogue()['favourites'])->pluck('key')->all())->toBe(['goals', 'payslips']);
-    $page->assertSee('Remove Payslips from favourites');
+    $page->assertSee('Remove My payslips from favourites');
 
     // Unknown keys and items the person cannot open are refused.
     $page->call('toggleFavourite', 'nonsense')->call('toggleFavourite', 'alumni_portal');
@@ -262,7 +263,7 @@ it('keeps up to twelve favourites per person, only of items they may open, first
     // The avatar menu: favourites first (after the account entry, which Filament always puts on top), then the existing
     // entries in their order, with "My space" before Preferences.
     $menu = collect(ms1AvatarMenu())->reject(fn ($i) => $i[0] === 'profile')->values();
-    expect($menu[0])->toBe(['myspace-favourite-0', 'Payslips', PayslipResource::getUrl('index')])
+    expect($menu[0])->toBe(['myspace-favourite-0', 'My payslips', MyPayslips::getUrl()])
         ->and($menu->pluck(0)->all())->toContain('my-profile', 'my-hr', 'my-space')
         ->and($menu->pluck(0)->search('my-profile'))->toBe(1)
         ->and($menu->pluck(0)->search('my-space'))->toBeLessThan($menu->pluck(0)->search('preferences'))
@@ -357,9 +358,10 @@ it('finds My space items as navigation results, by their label and by HROne\'s n
     // A page already found as a module is not listed twice.
     $urls = collect($search('payslips'))->pluck('url');
     expect($urls->count())->toBe($urls->unique()->count())
-        ->and($urls->all())->toContain(PayslipResource::getUrl('index'));
+        ->and($urls->all())->toContain(MyPayslips::getUrl());
 
     // Nothing the person cannot open.
     $this->actingAs(ms1Employee('Nopay', array_values(array_diff($this->employeeTemplate, ['payroll.payslip'])))->user);
-    expect(collect($search('payslip'))->pluck('url')->all())->not->toContain(PayslipResource::getUrl('index'));
+    expect(collect($search('payslip'))->pluck('url')->all())->not->toContain(MyPayslips::getUrl())
+        ->and(collect($search('payslip'))->pluck('url')->all())->not->toContain(PayslipResource::getUrl('index'));
 });

@@ -1,13 +1,24 @@
 <x-filament-panels::page>
     @php($c = $this->catalogue)
     <div class="pos-ws pos-new-request">
-        <div class="pos-toolbar">
-            <label class="pos-search">
-                <span class="sr-only">Search requests</span>
-                <x-filament::icon icon="heroicon-m-magnifying-glass" class="size-4 pos-muted" />
-                <input type="search" wire:model.live.debounce.250ms="search" placeholder="Search: leave, loan, travel, asset…" autocomplete="off" />
-            </label>
-        </div>
+        {{-- The masthead: a finder over everything this person may request, with plain-word examples under it --}}
+        <x-pos.masthead icon="heroicon-m-plus" eyebrow="New request" title="What do you need?" :brief="$this->getSubheading()">
+            <div class="pos-adm-find pos-mast-find">
+                <label class="pos-adm-search">
+                    <x-filament::icon icon="heroicon-m-magnifying-glass" class="size-5" />
+                    <span class="sr-only">Search requests</span>
+                    <input type="search" wire:model.live.debounce.250ms="search" placeholder="Search: leave, loan, travel, asset…" autocomplete="off" />
+                    <x-filament::loading-indicator wire:loading wire:target="search" class="size-4 pos-muted" />
+                </label>
+                <div class="pos-adm-try">
+                    <span class="pos-adm-try-label">Try</span>
+                    @foreach (['leave', 'attendance', 'expense', 'loan', 'asset'] as $word)
+                        <button type="button" class="pos-adm-chip" wire:click="$set('search', @js($word))">{{ $word }}</button>
+                    @endforeach
+                    <x-filament::actions :actions="$this->getCachedHeaderActions()" class="pos-mast-actions ms-auto" />
+                </div>
+            </div>
+        </x-pos.masthead>
 
         @foreach ($c['locks'] as $lock)
             <x-pos.state variant="denied" size="inline" title="Some requests are locked for now" :why="$lock" />

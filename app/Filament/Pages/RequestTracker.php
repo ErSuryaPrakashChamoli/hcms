@@ -60,6 +60,11 @@ class RequestTracker extends Page
     /** @var array{0: RequestType, 1: Model}|null */
     private ?array $resolved = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Where your request stands, whom it waits with, and what has happened so far.';
+    }
+
     public static function canAccess(): bool
     {
         return NewRequest::canAccess();

@@ -2,19 +2,84 @@
     $code = 'rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[0.8rem] [font-variant-ligatures:none] text-gray-900 dark:bg-white/10 dark:text-gray-100';
     $th = 'px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400';
     $td = 'px-3 py-2 align-top text-sm text-gray-700 dark:text-gray-200';
+    $box = 'whitespace-pre-wrap rounded-lg bg-gray-50 px-3 py-2 font-mono text-[0.8rem] [font-variant-ligatures:none] text-gray-900 ring-1 ring-gray-950/5 dark:bg-white/5 dark:text-gray-100 dark:ring-white/10';
+    $ways = [
+        ['% of CTC', 'A share of the employee’s CTC. The CTC is yearly; payroll uses a twelfth of it each month.', 'CTC 6,00,000 a year is 50,000 a month, so Basic at 50% is 25,000 a month.', 'Basic is 50% of CTC'],
+        ['% of another component', 'A share of a component, usually Basic. The builder works that component out first.', 'Basic 25,000 → HRA at 40% of Basic is 10,000.', 'HRA is 40% of Basic'],
+        ['Fixed amount', 'The same amount for everyone on the structure, every month. A yearly amount is paid in twelve parts.', 'Conveyance 1,600 a month. Medical 15,000 a year is 1,250 a month.', 'Conveyance is a fixed 1,600 a month'],
+        ['Entered per employee', 'You type the amount on each employee’s salary (or in the salary upload).', 'Food coupons: 2,200 for some, 1,100 for others.', 'Food coupons is entered for each employee'],
+        ['Whatever is left of the CTC', 'CTC less every other component and the employer PF, so the total always equals the CTC. Use it once, usually for Special allowance.', 'CTC 50,000 − Basic 25,000 − HRA 10,000 − employer PF (say 1,800) → Special allowance 13,200.', 'Special allowance is whatever is left of the CTC'],
+        ['Custom formula', 'For rules the other ways cannot say, e.g. an amount per grade or city. See section 6.', 'Grade G1 gets 1,500, everyone else 2,500.', 'Shift allowance = lookup(grade, "G1", 1500, 2500)'],
+    ];
+    $scenarios = [
+        ['Simple CTC split (most companies)', "Basic is 50% of CTC\nHRA is 40% of Basic\nSpecial allowance is whatever is left of the CTC"],
+        ['More allowances, with a floor on Basic', "Basic is 40% of CTC, at least 15,000\nHRA is 50% of Basic\nConveyance is a fixed 1,600 a month\nMedical allowance is 15,000 a year\nLTA is 8.33% of Basic\nSpecial allowance is whatever is left of the CTC"],
+        ['With variable pay inside the CTC', "Basic is 50% of CTC\nHRA is 40% of Basic\nPerformance bonus is 10% of CTC, variable\nSpecial allowance is whatever is left of the CTC"],
+        ['No CTC: amounts typed in for each person', "Basic is entered for each employee\nHRA is 40% of Basic\nSpecial allowance is entered for each employee"],
+        ['Gratuity and a deduction as well', "Basic is 50% of CTC\nHRA is 40% of Basic\nGratuity is 4.81% of Basic (employer contribution)\nCanteen recovery is a fixed 500 a month (deduction)\nSpecial allowance is whatever is left of the CTC"],
+    ];
 @endphp
 <div class="space-y-6 text-sm text-gray-700 dark:text-gray-200">
     <section class="space-y-2">
-        <h3 class="text-base font-semibold text-gray-950 dark:text-white">How salary formulas work</h3>
+        <h3 class="text-base font-semibold text-gray-950 dark:text-white">1. Set up a structure in five steps</h3>
+        <p>Open <em>Salary structures</em> and click <strong>New salary structure</strong>. The builder walks you through:</p>
         <ol class="list-decimal space-y-1.5 pl-5">
-            <li>A component is either a <strong>fixed amount</strong>, set on each employee’s compensation, or a <strong>formula</strong>. A structure row’s <em>formula override</em> replaces the component’s formula in that structure only. It works on fixed components too.</li>
-            <li>Rows are calculated <strong>top to bottom by sort order</strong>, like a spreadsheet column. A formula can use the components <strong>above</strong> it by their lowercase code (<code class="{{ $code }}">basic</code>, <code class="{{ $code }}">hra</code>), the structure’s <strong>parameters</strong>, and the variables below.</li>
-            <li>Every amount is <strong>monthly and for a full month</strong>. Payroll prorates afterwards for joining, exit and loss of pay when the component has “Prorated for LOP” on, so do not multiply a prorated component by <code class="{{ $code }}">paid_days</code> yourself.</li>
-            <li>A result below zero is paid as 0. Wrap a balancing component in <code class="{{ $code }}">max(0, …)</code>.</li>
-            <li>Text values go in quotes and match ignoring case: <code class="{{ $code }}">grade == "M2"</code>.</li>
-            <li><strong>Statutory lines are not formulas.</strong> {{ implode(', ', $statutory) }} are worked out by the compliance engine from each component’s flags (PF wages, ESI wages, taxable) and the rules in force. A formula cannot compute or override them. <code class="{{ $code }}">pf_employer</code> gives the employer-PF estimate for balancing to CTC.</li>
-            <li>To change a structure, create a <strong>new version</strong>, edit the draft, check it with <strong>Preview</strong>, then <strong>submit</strong>. Another person approves it. Approved versions never change, and payroll uses the version in force on each day. Formula mistakes are caught when the draft is saved.</li>
+            <li><strong>Name and company.</strong> What it is called, which company it is for (or all), and the date it starts.</li>
+            <li><strong>How pay is set.</strong> Either you give each employee a yearly <strong>CTC</strong> and the structure splits it (most companies), or you give an <strong>amount for each component</strong> and the CTC is added up.</li>
+            <li><strong>Components.</strong> Pick each one from a list and choose how it is worked out, or write them in plain English (section 3). You can add components that are not in your list yet.</li>
+            <li><strong>Check.</strong> Type a sample CTC and see the monthly and yearly breakup, and whether it adds up.</li>
+            <li><strong>Save.</strong> Save a draft, or send it for approval. Someone with approval rights, other than you, approves it.</li>
         </ol>
+        <p>After approval: give the structure to employees on their salary (or by salary upload) and run payroll. To change a structure later, open it again in the builder; the change starts on the date you pick and earlier months are not touched.</p>
+    </section>
+
+    <section class="space-y-2">
+        <h3 class="text-base font-semibold text-gray-950 dark:text-white">2. Six ways to work out a component</h3>
+        <div class="overflow-x-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-white/5">
+                <thead><tr><th class="{{ $th }}">Way</th><th class="{{ $th }}">What it means</th><th class="{{ $th }}">Example</th><th class="{{ $th }}">In plain English</th></tr></thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                    @foreach ($ways as [$way, $means, $sample, $english])
+                        <tr><td class="{{ $td }} font-semibold">{{ $way }}</td><td class="{{ $td }}">{{ $means }}</td><td class="{{ $td }}">{{ $sample }}</td><td class="{{ $td }}"><code class="{{ $code }}">{{ $english }}</code></td></tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        <p>A percentage can have a limit: <code class="{{ $code }}">at least 15,000</code> (a floor) or <code class="{{ $code }}">at most 20,000</code> (a cap), both monthly. Mark variable pay as <strong>Variable</strong>; everything else is fixed pay.</p>
+    </section>
+
+    <section class="space-y-2">
+        <h3 class="text-base font-semibold text-gray-950 dark:text-white">3. Writing it in plain English</h3>
+        <ul class="list-disc space-y-1.5 pl-5">
+            <li>One component per line, name first: <code class="{{ $code }}">HRA is 40% of Basic</code>. A list on one line works too: <code class="{{ $code }}">Basic 50% of CTC, HRA 40% of basic, conveyance 1600</code>.</li>
+            <li>Amounts can be written <code class="{{ $code }}">1,600</code>, <code class="{{ $code }}">Rs 1600</code>, <code class="{{ $code }}">1.6k</code> or <code class="{{ $code }}">1.5 lakh</code>. Add <code class="{{ $code }}">a year</code> for yearly amounts.</li>
+            <li>Say <code class="{{ $code }}">variable</code> for variable pay, <code class="{{ $code }}">(deduction)</code> for something taken off pay, and <code class="{{ $code }}">(employer contribution)</code> for a cost the company pays on top, such as gratuity.</li>
+            <li>The usual names are recognised: HRA or house rent, conveyance or transport, LTA or leave travel, and so on. A name that is not in your component list is added as a new component when you save.</li>
+            <li>Lines about PF, ESI, professional tax, TDS or LWF are skipped: payroll works those out from the statutory rules.</li>
+            <li>Press <strong>Turn into components</strong>. Every line shows what it was read as, or what to change. Check the result, and fine-tune it under <em>Pick from a list</em> if you like.</li>
+        </ul>
+    </section>
+
+    <section class="space-y-3">
+        <h3 class="text-base font-semibold text-gray-950 dark:text-white">4. Examples for different companies</h3>
+        <p>Copy one into the plain-English box and change the numbers to suit.</p>
+        <div class="grid gap-3 md:grid-cols-2">
+            @foreach ($scenarios as [$title, $text])
+                <div class="space-y-1.5">
+                    <h4 class="font-semibold text-gray-950 dark:text-white">{{ $title }}</h4>
+                    <div class="{{ $box }}">{{ $text }}</div>
+                </div>
+            @endforeach
+        </div>
+    </section>
+
+    <section class="space-y-2">
+        <h3 class="text-base font-semibold text-gray-950 dark:text-white">What payroll does for you</h3>
+        <ul class="list-disc space-y-1.5 pl-5">
+            <li><strong>Statutory amounts are automatic.</strong> {{ implode(', ', $statutory) }} are worked out by payroll from each component’s settings (PF wages, ESI wages, taxable) and the rules in force. Do not add them to a structure.</li>
+            <li><strong>Unpaid days.</strong> Amounts are for a full month. Payroll reduces them for joining, exit and loss-of-pay days.</li>
+            <li><strong>Nothing below zero.</strong> A component that works out below zero is paid as 0.</li>
+        </ul>
     </section>
 
     @if ($example)
@@ -29,8 +94,8 @@
             $first = $rows->first();
         @endphp
         <section class="space-y-3">
-            <h3 class="text-base font-semibold text-gray-950 dark:text-white">Worked example: CTC {{ $money($example['ctc_annual']) }} a year</h3>
-            <p>The <strong>Standard structure</strong> every tenant starts with, for an annual CTC of {{ $money($example['ctc_annual']) }}, which is {{ $money($t['ctc_monthly']) }} a month. Fixed amounts on the employee’s compensation: {{ collect($example['values'])->map(fn ($value, $code) => $code.' = '.$money($value))->implode(', ') }}. A full {{ $example['days'] }}-day month, covered by PF on the wage ceiling, with the statutory rules in force on {{ $example['on']->format('j M Y') }}. <strong>Preview</strong> on the structure gives the same numbers.</p>
+            <h3 class="text-base font-semibold text-gray-950 dark:text-white">5. Worked example: CTC {{ $money($example['ctc_annual']) }} a year</h3>
+            <p>How payroll works a salary out, line by line. This is the <strong>Standard structure</strong> every company starts with, for an annual CTC of {{ $money($example['ctc_annual']) }}, which is {{ $money($t['ctc_monthly']) }} a month. Fixed amounts on the employee’s compensation: {{ collect($example['values'])->map(fn ($value, $code) => $code.' = '.$money($value))->implode(', ') }}. A full {{ $example['days'] }}-day month, covered by PF on the wage ceiling, with the statutory rules in force on {{ $example['on']->format('j M Y') }}. <strong>Preview</strong> on the structure gives the same numbers.</p>
 
             <h4 class="font-semibold text-gray-950 dark:text-white">1. The formulas, top to bottom</h4>
             <div class="overflow-x-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
@@ -101,13 +166,14 @@
         </section>
     @endif
 
-    <section class="space-y-2">
-        <h3 class="text-base font-semibold text-gray-950 dark:text-white">Parameters</h3>
-        <p>Named numbers on a structure version, e.g. <code class="{{ $code }}">basic_pct = 50</code> and <code class="{{ $code }}">min_basic = 15000</code>. Write the formula once (<code class="{{ $code }}">max(ctc_monthly * basic_pct / 100, min_basic)</code>) and give each structure, or each new version, its own numbers. Names use lowercase letters, digits and <code class="{{ $code }}">_</code>.</p>
-    </section>
-
-    <section class="space-y-2">
-        <h3 class="text-base font-semibold text-gray-950 dark:text-white">Pay and month values</h3>
+    <section class="space-y-3">
+        <h3 class="text-base font-semibold text-gray-950 dark:text-white">6. For advanced users: custom formulas</h3>
+        <ul class="list-disc space-y-1.5 pl-5">
+            <li>A formula gives a <strong>monthly</strong> amount. It can use the components worked out before it by their code in small letters (<code class="{{ $code }}">basic</code>, <code class="{{ $code }}">hra</code>) and the values below. The builder puts components in the right order for you.</li>
+            <li>Write 40% as <code class="{{ $code }}">* 40 / 100</code> or <code class="{{ $code }}">* 0.40</code>; <code class="{{ $code }}">%</code> on its own means remainder. Text goes in quotes and ignores case: <code class="{{ $code }}">grade == "M2"</code>.</li>
+            <li>Do not multiply by <code class="{{ $code }}">paid_days</code> yourself for a component that is reduced for unpaid days; payroll already does it.</li>
+        </ul>
+        <h4 class="font-semibold text-gray-950 dark:text-white">Pay and month values</h4>
         <div class="overflow-x-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-white/5">
                 <thead><tr><th class="{{ $th }}">Name</th><th class="{{ $th }}">Value</th><th class="{{ $th }}">Example</th></tr></thead>
@@ -118,10 +184,8 @@
                 </tbody>
             </table>
         </div>
-    </section>
 
-    <section class="space-y-2">
-        <h3 class="text-base font-semibold text-gray-950 dark:text-white">Employee values</h3>
+        <h4 class="font-semibold text-gray-950 dark:text-white">Employee values</h4>
         <p class="pos-caption">Read from the employee’s position on the last day paid in the month. Empty text, or 0, when not recorded.</p>
         <div class="overflow-x-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-white/5">
@@ -133,10 +197,8 @@
                 </tbody>
             </table>
         </div>
-    </section>
 
-    <section class="space-y-2">
-        <h3 class="text-base font-semibold text-gray-950 dark:text-white">Operators and functions</h3>
+        <h4 class="font-semibold text-gray-950 dark:text-white">Operators and functions</h4>
         <p><code class="{{ $code }}">+ - * / %</code>, comparisons <code class="{{ $code }}">&lt; &lt;= &gt; &gt;= == !=</code>, <code class="{{ $code }}">&amp;&amp;</code> (and), <code class="{{ $code }}">||</code> (or), and parentheses. A comparison gives 1 (true) or 0 (false). A division by zero fails the formula only if its result is used, so <code class="{{ $code }}">if(paid_days &gt; 0, x / paid_days, 0)</code> is safe.</p>
         <div class="overflow-x-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-white/5">
@@ -148,10 +210,8 @@
                 </tbody>
             </table>
         </div>
-    </section>
 
-    <section class="space-y-2">
-        <h3 class="text-base font-semibold text-gray-950 dark:text-white">Common patterns</h3>
+        <h4 class="font-semibold text-gray-950 dark:text-white">Ready-made formulas</h4>
         <div class="overflow-x-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-white/5">
                 <thead><tr><th class="{{ $th }}">For</th><th class="{{ $th }}">Formula</th><th class="{{ $th }}">Where</th></tr></thead>
@@ -162,15 +222,5 @@
                 </tbody>
             </table>
         </div>
-    </section>
-
-    <section class="space-y-2">
-        <h3 class="text-base font-semibold text-gray-950 dark:text-white">Adding and changing components</h3>
-        <ul class="list-disc space-y-1.5 pl-5">
-            <li><strong>New pay element</strong> (e.g. LTA, shift allowance): create it under <em>Payroll → Salary components</em>. Pick its type, whether it is fixed or a formula, and its flags (taxable, PF wages, ESI wages, part of CTC / gross, prorated). The flags decide statutory treatment, so set them with your payroll adviser.</li>
-            <li><strong>Use it in a structure</strong>: open the structure, create a new version, add the component to the draft with a sort order below everything its formula uses, and add an override if this structure calculates it differently.</li>
-            <li><strong>Different clients or groups, different rules</strong>: keep one component catalogue and give each structure its own overrides and parameters. Narrow each version to the companies or grades it is for.</li>
-            <li>Editing a component’s formula in the catalogue changes it for every structure that has no override. To change one structure only, use an override in a new version, which goes through approval.</li>
-        </ul>
     </section>
 </div>

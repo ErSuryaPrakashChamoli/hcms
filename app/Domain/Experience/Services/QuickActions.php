@@ -10,6 +10,7 @@ use App\Filament\Pages\Approvals;
 use App\Filament\Pages\ChangeIntelligencePage;
 use App\Filament\Pages\ConfigurationFinder;
 use App\Filament\Pages\Home;
+use App\Filament\Pages\Inbox;
 use App\Filament\Pages\LeaveCalendar;
 use App\Filament\Pages\MyHr;
 use App\Filament\Pages\MyRequests as MyRequestsPage;
@@ -18,6 +19,7 @@ use App\Filament\Pages\NewRequest;
 use App\Filament\Pages\OrganisationMap;
 use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Pages\People;
+use App\Filament\Pages\RunPayroll;
 use App\Filament\Pages\SecurityPolicyPage;
 use App\Filament\Pages\WorkforceCommandCentre;
 use App\Filament\Resources\Announcements\AnnouncementResource;
@@ -27,7 +29,6 @@ use App\Filament\Resources\FeedbackEntries\FeedbackEntryResource;
 use App\Filament\Resources\IntegrationSystems\IntegrationSystemResource;
 use App\Filament\Resources\Letters\LetterResource;
 use App\Filament\Resources\OneOnOnes\OneOnOneResource;
-use App\Filament\Resources\PayrollRuns\PayrollRunResource;
 use App\Filament\Resources\Payslips\PayslipResource;
 use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\Surveys\SurveyResource;
@@ -86,7 +87,7 @@ final class QuickActions
             fn () => Home::getUrl().'?action=askHr', RoleLens::EMPLOYEE, $me !== null && $user->can('servicedesk.request'));
         $add('services', 'Request', 'Browse HR services', 'Letters, certificates, changes and more', 'heroicon-o-squares-2x2', ['service', 'catalogue', 'letter', 'certificate'],
             fn () => MyHr::getUrl(['tab' => 'services']), RoleLens::EMPLOYEE, MyHr::canAccess());
-        $payslip = $me ? Payslip::query()->where('employee_id', $me->id)->latest('generated_at')->first() : null;
+        $payslip = $me ? Payslip::query()->where('employee_id', $me->id)->published()->latest('generated_at')->first() : null;
         $add('payslip', 'Review', 'Open my latest payslip', $payslip ? 'Generated '.$payslip->generated_at?->format('d M Y') : 'No payslip yet', 'heroicon-o-banknotes', ['payslip', 'download payslip', 'salary', 'pay', 'slip'],
             fn () => PayslipResource::getUrl('view', ['record' => $payslip]), RoleLens::EMPLOYEE, $payslip !== null && $user->can('view', $payslip));
         $add('my_documents', 'Review', 'My documents', 'Letters, IDs and certificates', 'heroicon-o-document-text', ['document', 'documents', 'letter', 'files'],
@@ -98,7 +99,7 @@ final class QuickActions
         // Manager.
         $pending = $this->approvals->count($user);
         $add('approvals', 'Approve', $pending > 0 ? "Review {$pending} approval".($pending === 1 ? '' : 's') : 'Open approvals', 'Leave, attendance, compensation, letters, workflow steps', 'heroicon-o-check-badge', ['approve', 'approve leave', 'leave approval', 'approval', 'pending', 'decide'],
-            fn () => Approvals::getUrl(), RoleLens::MANAGER, Approvals::canAccess());
+            fn () => Inbox::canAccess() ? Inbox::getUrl() : Approvals::getUrl(), RoleLens::MANAGER, Approvals::canAccess());
         $add('team_leave', 'Review', 'Team leave calendar', 'Who is away and when', 'heroicon-o-calendar', ['leave', 'calendar', 'team', 'away', 'absence'],
             fn () => LeaveCalendar::getUrl(), RoleLens::MANAGER, LeaveCalendar::canAccess());
         $add('my_team', 'Review', 'My team', 'Your direct reports today', 'heroicon-o-user-group', ['team', 'reports', 'my team', 'show my team', 'direct reports'],
@@ -131,10 +132,11 @@ final class QuickActions
             fn () => SurveyResource::getUrl('create'), RoleLens::HR, SurveyResource::canCreate());
 
         // Payroll.
-        $add('payroll', 'Review', 'Payroll control room', 'Current run, exceptions, sign-off', 'heroicon-o-calculator', ['payroll', 'run', 'salary', 'exceptions'],
-            fn () => PayrollControlRoom::getUrl(), RoleLens::PAYROLL, PayrollControlRoom::canAccess());
-        $add('open_run', 'Create', 'Open a payroll run', 'For the next pay period', 'heroicon-o-plus-circle', ['payroll', 'run', 'new run'],
-            fn () => PayrollRunResource::getUrl('index').'?action=openRun', RoleLens::PAYROLL, PayrollRunResource::canAccess() && $user->can('payroll.calculate'));
+        // Streamline S2: one way to run a month (the wizard); the control room is the read-only overview of every company.
+        $add('run_payroll', 'Create', 'Run payroll', 'Attendance, checks, run, approve, close, publish', 'heroicon-o-play-circle', ['payroll', 'run', 'salary', 'new run', 'process salary', 'payslips'],
+            fn () => RunPayroll::getUrl(), RoleLens::PAYROLL, RunPayroll::canAccess());
+        $add('payroll', 'Review', 'Payroll overview', 'Every company\'s month and its runs', 'heroicon-o-calculator', ['payroll', 'runs', 'exceptions', 'overview'],
+            fn () => PayrollControlRoom::getUrl(), RoleLens::PAYROLL, PayrollControlRoom::canAccess() && ! RunPayroll::canAccess());
 
         // Executive / insights.
         $add('workforce', 'Review', 'Open Workforce pulse', 'What changed across the workforce, and what needs a decision', 'heroicon-o-presentation-chart-line', ['workforce', 'pulse', 'workforce pulse', 'show workforce pulse', 'command center', 'headcount', 'attrition', 'analytics', 'insights'],

@@ -58,6 +58,11 @@ class TeamRatingDistribution extends Page
     /** @var array<int, string>|null per-request memo of the cycle options */
     private ?array $options = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'How your team\'s ratings are spread in a cycle.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->hasPermission('performance.team') ?? false;

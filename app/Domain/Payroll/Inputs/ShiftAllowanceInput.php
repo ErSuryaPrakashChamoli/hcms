@@ -47,4 +47,9 @@ final class ShiftAllowanceInput implements PayrollInputSource
     {
         // Paid from attendance quantities; nothing to mark.
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        // Paid from attendance quantities; nothing was marked.
+    }
 }

@@ -409,7 +409,7 @@ it('links registers to their uploads, reports and payroll actions only where the
     $urls = collect(PayrollRegisters::uploads(['salary', 'stat_overrides'])->getActions())->mapWithKeys(fn (Action $a) => [$a->getName() => $a->isVisible() ? $a->getUrl() : null]);
     expect($urls['payrollUpload_salary'])->toBe(SalaryImportResource::getUrl('index', ['action' => 'create']))
         ->and($urls['payrollUpload_stat_overrides'])->toBe(PayrollUploadResource::getUrl('index', ['action' => 'create', 'actionArguments' => ['type' => StatutoryOverrideImports::TYPE]]));
-    Livewire::test(ListPayrollRuns::class)->assertActionVisible('registerReport')->assertActionVisible('openRun');
+    Livewire::test(ListPayrollRuns::class)->assertActionVisible('registerReport')->assertActionVisible('runPayroll');
     Livewire::test(ManageCompensationChanges::class)->assertActionVisible('registerReport');
 
     $this->actingAs(tenantUser($this->tenant, ['payroll.view', 'compensation.view']));

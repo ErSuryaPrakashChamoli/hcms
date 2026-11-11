@@ -32,7 +32,7 @@ class WorkforceBudgetResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Workforce';
 
-    protected static ?string $navigationLabel = 'Budgets';
+    protected static ?string $navigationLabel = 'Headcount budgets';
 
     protected static ?int $navigationSort = 60;
 

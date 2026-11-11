@@ -54,4 +54,14 @@ final class RewardPointsInput implements PayrollInputSource
                 ->each(fn (RewardPointEntry $r) => $r->withAuditReason('Reward points paid in payroll '.$run->period?->label())->update(['payroll_run_id' => $run->id, 'settled_at' => now()]));
         }
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        $run->loadMissing('period');
+        foreach ($idsByEmployee as $employeeId => $ids) {
+            RewardPointEntry::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employeeId)->whereIn('id', $ids)
+                ->where('kind', 'redeem')->where('payroll_run_id', $run->id)->get()
+                ->each(fn (RewardPointEntry $r) => $r->withAuditReason('Payroll '.$run->period?->label().' reopened')->update(['payroll_run_id' => null, 'settled_at' => null]));
+        }
+    }
 }

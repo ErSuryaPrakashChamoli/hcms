@@ -37,7 +37,7 @@
                 @if ($type === 'person' || $type === 'person-action')
                     @php($p = $this->person)
                     @if ($p === null)
-                        <x-pos.empty icon="heroicon-o-eye-slash" title="Not available" why="This person is not in your directory view, or the record no longer exists." />
+                        <x-pos.state icon="heroicon-o-eye-slash" title="Not available" why="This person is not in your directory view, or the record no longer exists." />
                     @else
                         <div class="flex items-start gap-4">
                             <x-pos.avatar :name="$p['name']" size="xl" />
@@ -101,7 +101,7 @@
                                         </a>
                                     </li>
                                 @empty
-                                    <li><x-pos.empty icon="heroicon-o-lock-closed" title="No changes available" why="Your role cannot change this person’s record." /></li>
+                                    <li><x-pos.state icon="heroicon-o-lock-closed" title="No changes available" why="Your role cannot change this person’s record." /></li>
                                 @endforelse
                             </ul>
                         @endif
@@ -172,7 +172,7 @@
                             <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm mt-4" x-on:click="open = false; $wire.close(); $nextTick(() => lastFocus?.focus?.())">Close</button>
                         </div>
                     @elseif ($this->approval === null)
-                        <x-pos.empty icon="heroicon-o-check-circle" title="Nothing to decide" why="This item was already decided, withdrawn, or is not yours to decide." />
+                        <x-pos.state icon="heroicon-o-check-circle" title="Nothing to decide" why="This item was already decided, withdrawn, or is not yours to decide." />
                     @else
                         <x-pos.approval-card :item="$this->approval" class="pos-approval-flat" />
                     @endif

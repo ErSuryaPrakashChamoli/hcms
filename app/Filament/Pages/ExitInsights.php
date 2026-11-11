@@ -24,6 +24,11 @@ class ExitInsights extends Page
 
     protected string $view = 'filament.pages.exit-insights';
 
+    public function getSubheading(): ?string
+    {
+        return 'Why people leave: reasons, timing and trends from separations and exit interviews.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('exit.interview') || auth()->user()?->can('exit.view');

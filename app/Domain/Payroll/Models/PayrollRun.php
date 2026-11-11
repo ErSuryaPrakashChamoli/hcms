@@ -5,6 +5,7 @@ namespace App\Domain\Payroll\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Models\Company;
+use App\Support\Settlements\SettlementReversal;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** One pass through the payroll pipeline for a period (§31). */
-#[Fillable(['tenant_id', 'company_id', 'payroll_period_id', 'status', 'calculation_version', 'totals', 'rule_versions', 'reconciliation', 'operation_id', 'exception_count', 'created_by', 'calculated_at', 'approved_by', 'approved_at', 'finalized_by', 'finalized_at', 'paid_at', 'notes'])]
+#[Fillable(['tenant_id', 'company_id', 'payroll_period_id', 'status', 'calculation_version', 'totals', 'rule_versions', 'reconciliation', 'operation_id', 'exception_count', 'created_by', 'calculated_at', 'approved_by', 'approved_at', 'finalized_by', 'finalized_at', 'payslips_published_at', 'payslips_published_by', 'reopen_count', 'paid_at', 'notes'])]
 class PayrollRun extends Model
 {
     use Auditable, BelongsToTenant;
@@ -21,13 +22,19 @@ class PayrollRun extends Model
 
     protected static function booted(): void
     {
-        // Finalized payroll is history (Phase 4 §32): its one remaining step is being marked paid. It is never reopened,
-        // changed or deleted, whatever the caller. Pay mistakes go into an open month as arrears or recoveries; a
-        // correction caused by a wrong statutory profile waits for decision C12-D1 (open).
+        // Finalized payroll is history (Phase 4 §32): what it still takes is being marked paid and having its payslips
+        // published (once). Anything else waits for a reopening of the latest closed month (SettlementReversal,
+        // decision ST-1); otherwise pay mistakes go into an open month as arrears or recoveries.
         static::updating(function (self $run): void {
             $from = $run->getOriginal('status');
-            $paying = $from === 'finalized' && $run->status === 'paid' && array_diff(array_keys($run->getDirty()), ['status', 'paid_at', 'updated_at']) === [];
-            if (in_array($from, ['finalized', 'paid'], true) && ! $paying) {
+            if (! in_array($from, ['finalized', 'paid'], true) || SettlementReversal::active()) {
+                return;
+            }
+            $dirty = array_diff(array_keys($run->getDirty()), ['updated_at']);
+            $paying = $from === 'finalized' && $run->status === 'paid' && array_diff($dirty, ['status', 'paid_at']) === [];
+            $publishing = $run->status === $from && $run->getRawOriginal('payslips_published_at') === null
+                && array_diff($dirty, ['payslips_published_at', 'payslips_published_by']) === [];
+            if (! $paying && ! $publishing) {
                 throw new \RuntimeException('Finalized payroll cannot be reopened or changed; correct the month with an arrear or a recovery in an open month.');
             }
         });
@@ -48,6 +55,8 @@ class PayrollRun extends Model
             'calculated_at' => 'datetime',
             'approved_at' => 'datetime',
             'finalized_at' => 'datetime',
+            'payslips_published_at' => 'datetime',
+            'reopen_count' => 'integer',
             'paid_at' => 'datetime',
         ];
     }

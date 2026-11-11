@@ -6,6 +6,7 @@ use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\SalaryAssignments;
 use App\Domain\Compensation\Support\CompensationSnapshot;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Identity\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\KeyValue;
@@ -73,7 +74,7 @@ final class AssignSalaryOperation extends BaseBulkOperation
             ? ['percent' => 'Revise by % of each one\'s CTC in force', 'amount' => 'The same annual CTC for each', 'keep' => 'Keep each one\'s CTC (structure change only)']
             : ($current !== null ? SalaryAssignments::CTC_MODES : ['amount' => SalaryAssignments::CTC_MODES['amount']]);
         $currencies = (array) config('peopleos.compensation.currencies', []);
-        $base = (string) config('peopleos.settings.tenant.base_currency', 'INR');
+        $base = app(CurrencyRates::class)->baseCurrency();
 
         return [
             Grid::make(['default' => 1, 'md' => 2])->schema([

@@ -109,6 +109,8 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('PeopleOS')
             ->brandLogo(fn () => view('filament.shell.brand'))
             ->brandLogoHeight('1.75rem')
+            // The brand monogram (filament.shell.brand); public/favicon.ico is the same mark for pages outside the panel.
+            ->favicon(asset('favicon.svg'))
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->font('Instrument Sans')
             ->serifFont('Instrument Serif')

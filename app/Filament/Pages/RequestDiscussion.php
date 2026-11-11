@@ -50,6 +50,11 @@ class RequestDiscussion extends Page
 
     public string $response = '';
 
+    public function getSubheading(): ?string
+    {
+        return 'The conversation about your request with the people approving it.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user() !== null;

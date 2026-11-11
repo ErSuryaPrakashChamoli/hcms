@@ -67,4 +67,13 @@ final class FundraiserDeductionInput implements PayrollInputSource
             ->update(['status' => 'deducted', 'payroll_run_id' => $run->id, 'deducted_at' => now()]));
         app(Fundraisers::class)->forget();
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        $run->loadMissing('period');
+        $ids = array_values(array_unique(array_map('intval', array_merge(...array_values($idsByEmployee)))));
+        FundraiserPledge::query()->withoutGlobalScope(AccessScope::class)->whereIn('id', $ids)->where('status', 'deducted')->where('payroll_run_id', $run->id)->orderBy('id')->lockForUpdate()->get()
+            ->each(fn (FundraiserPledge $p) => $p->withAuditReason('Payroll '.$run->period?->label().' reopened')->update(['status' => 'pledged', 'payroll_run_id' => null, 'deducted_at' => null]));
+        app(Fundraisers::class)->forget();
+    }
 }

@@ -11,6 +11,7 @@ use App\Domain\Payroll\Contracts\PaidPayReader;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Services\MyPay;
 use App\Domain\Payroll\Services\PayrollRuns;
+use App\Domain\Payroll\Services\PayslipPublishing;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Auth\ConfirmPayPassword;
 use App\Filament\Pages\MyCompensation;
@@ -53,7 +54,8 @@ beforeEach(function () {
     foreach ([8, 9] as $month) {
         $this->travelTo(sprintf('2026-%02d-27 10:00:00', $month));
         $run = $runs->calculate($runs->open($this->company, 2026, $month, $this->hr), $this->hr);
-        $runs->finalize($runs->approve($runs->validate($run), $this->approver), $this->approver);
+        // Streamline S2 (ST-2): employees see payslips once they are published.
+        app(PayslipPublishing::class)->publish($runs->finalize($runs->approve($runs->validate($run), $this->approver), $this->approver), $this->approver);
     }
     // October is calculated but not finalized: it never shows.
     $this->travelTo('2026-10-27 10:00:00');

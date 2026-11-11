@@ -26,6 +26,7 @@ use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Support\FormulaVariables;
 use App\Domain\Platform\Services\SettingsRepository;
+use App\Support\Csv\SpreadsheetCell;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -105,14 +106,14 @@ final class PayrollReadiness
     }
 
     /**
-     * Every check for one company (or every company) and its current pay month.
+     * Every check for one company (or every company) and its current pay month, or the pay month named as [year, month].
      *
      * State per check: `ok` (ran, nothing found), `attention` (ran, see the rows), `no_rule` (a threshold check with no
      * verified rule: it did not run) or `not_run` (nothing to compare with, e.g. no finalized payroll last month).
      *
      * @return array{months: list<array{company: string, label: string, dates: string}>, notes: list<string>, checks: array<string, array{key: string, label: string, description: string, state: string, count: ?int, notes: list<string>, columns: array<string, string>, rows: list<array<string, mixed>>}>}
      */
-    public function evaluate(?int $companyId = null, bool $activeOnly = true, bool $withAmounts = false, ?CarbonInterface $today = null): array
+    public function evaluate(?int $companyId = null, bool $activeOnly = true, bool $withAmounts = false, ?CarbonInterface $today = null, ?array $payMonth = null): array
     {
         $today = CarbonImmutable::parse($today ?? today())->startOfDay();
         $checks = [];
@@ -126,7 +127,14 @@ final class PayrollReadiness
         $companies = Company::query()->when($companyId !== null, fn ($q) => $q->whereKey($companyId))->orderBy('name')->get();
         foreach ($companies as $company) {
             try {
-                [$year, $month, $start, $end] = $this->month((int) $company->id, $today);
+                // Streamline S2: the run's own pay month when one is named (the guided run checks the month it runs),
+                // else the month holding today.
+                if ($payMonth !== null) {
+                    [$year, $month] = [(int) $payMonth[0], (int) $payMonth[1]];
+                    [$start, $end] = $this->bounds((int) $company->id, $year, $month);
+                } else {
+                    [$year, $month, $start, $end] = $this->month((int) $company->id, $today);
+                }
             } catch (RuntimeException $e) {
                 $notes[] = $company->name.': '.$e->getMessage();
 
@@ -592,6 +600,6 @@ final class PayrollReadiness
         $text = is_float($value) ? number_format($value, 2, '.', '') : (string) ($value ?? '');
 
         // Spreadsheet formula injection: a cell starting with = + - @ is read as text.
-        return preg_match('/^[=+\-@]/', $text) === 1 && ! is_numeric($text) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 }

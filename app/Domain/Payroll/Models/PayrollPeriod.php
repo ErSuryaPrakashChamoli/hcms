@@ -5,6 +5,7 @@ namespace App\Domain\Payroll\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Services\PayCycle;
+use App\Support\Settlements\SettlementReversal;
 use App\Support\Tenancy\BelongsToTenant;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,9 +27,9 @@ class PayrollPeriod extends Model
 
     protected static function booted(): void
     {
-        // A month closes when its payroll is finalized, and finalized payroll is never reopened (decision C12-D1 open).
+        // A month closes when its payroll is finalized; only a reopening of the latest closed month opens it again (ST-1).
         static::updating(function (self $period): void {
-            if ($period->getOriginal('status') === 'closed' && $period->status !== 'closed') {
+            if ($period->getOriginal('status') === 'closed' && $period->status !== 'closed' && ! SettlementReversal::active()) {
                 throw new \RuntimeException("{$period->label()} is closed: its payroll is finalized and the month cannot be reopened.");
             }
         });

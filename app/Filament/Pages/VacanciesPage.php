@@ -33,6 +33,11 @@ class VacanciesPage extends Page implements HasTable
 
     protected string $view = 'filament.pages.workforce-vacancies';
 
+    public function getSubheading(): ?string
+    {
+        return 'Positions that are open or about to open, and how long they have been vacant.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('workforce.view') ?? false;

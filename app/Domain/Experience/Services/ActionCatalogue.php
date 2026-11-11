@@ -14,9 +14,9 @@ use App\Filament\Pages\HolidayChanges;
 use App\Filament\Pages\IncrementCalculator;
 use App\Filament\Pages\LeaveCarryForward;
 use App\Filament\Pages\PayExpenses;
-use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Pages\RosterBoard;
 use App\Filament\Pages\RunAttendance;
+use App\Filament\Pages\RunPayroll;
 use App\Filament\Pages\SalaryStructureRegister;
 use App\Filament\Pages\StatutoryChallansPage;
 use App\Filament\Resources\Announcements\AnnouncementResource;
@@ -198,7 +198,7 @@ final class ActionCatalogue
                 fn () => $bulk('employees.change_manager') ? self::resource(EmployeeResource::class, ['action' => 'bulkChangeManager']) : null],
             ['generate_letter', 'workforce', 'Generate letter', 'Any letter from an approved template', 'Generate letter (misc. letter)', ['letter', 'certificate', 'misc letter', 'document'],
                 fn () => $can('letter.issue') ? self::resource(LetterResource::class, ['action' => 'generate']) : null],
-            ['invite_to_sign_in', 'workforce', 'Invite to sign in', 'Sign-ins from work e-mails, or reset links', 'Invite to HROne', ['invite', 'login', 'password', 'access', 'sign in', 'activate'],
+            ['invite_to_sign_in', 'workforce', 'Invite to sign in', 'Sign-ins from work e-mails, or reset links', 'Send login invitation', ['invite', 'login', 'password', 'access', 'sign in', 'activate'],
                 fn () => $bulk('employees.invite_users') || $bulk('employees.send_reset_links') ? self::resource(EmployeeResource::class, ['action' => 'bulkInvite']) : null],
             ['suggest_improvement', 'workforce', 'Suggest a product improvement', 'Tell Markedge what PeopleOS should do better', 'Product enhancement request', ['feature request', 'product enhancement', 'suggestion', 'idea', 'improvement', 'feedback to markedge'],
                 fn () => ProductIdeaResource::canAccess() && ProductIdeaResource::canCreate() ? ProductIdeaResource::suggestUrl() : null],
@@ -255,8 +255,8 @@ final class ActionCatalogue
                 $onBehalf('investment_declaration')],
             ['reimbursement_for_employee', 'payroll', 'Reimbursement for an employee', 'Claim a reimbursement on someone’s behalf', 'Reimbursement request', ['reimbursement', 'claim', 'bills', 'allowance claim'],
                 $onBehalf('reimbursement')],
-            ['run_payroll', 'payroll', 'Run payroll', 'Current run, readiness, exceptions and sign-off', 'Run payroll (salary dashboard)', ['payroll', 'salary dashboard', 'process salary', 'run payroll'],
-                fn () => self::page(PayrollControlRoom::class)],
+            ['run_payroll', 'payroll', 'Run payroll', 'Attendance, pre-payroll checks, run, approve, close and publish payslips', 'Run payroll (salary dashboard)', ['payroll', 'salary dashboard', 'process salary', 'run payroll', 'publish payslips', 'reopen payroll'],
+                fn () => self::page(RunPayroll::class)],
             ['variable_pay_for_employee', 'payroll', 'Variable pay for an employee', 'Incentive or bonus amounts for chosen people', 'Variable pay request', ['variable pay', 'incentive', 'commission', 'one time payment'],
                 $onBehalf('variable_pay')],
 

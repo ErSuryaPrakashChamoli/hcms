@@ -39,6 +39,11 @@ class DataExportPage extends Page
 
     public ?string $revealed = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'A complete export of your organisation\'s data, prepared in the background and downloaded securely.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

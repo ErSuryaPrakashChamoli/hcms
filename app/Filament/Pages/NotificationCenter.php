@@ -31,6 +31,7 @@ use App\Filament\Resources\Letters\LetterResource;
 use App\Filament\Resources\Payslips\PayslipResource;
 use App\Filament\Resources\ProductIdeas\ProductIdeaResource;
 use App\Filament\Resources\Tickets\TicketResource;
+use App\Filament\Support\Pages\Concerns\HasMasthead;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Pages\Page;
@@ -51,6 +52,8 @@ use UnitEnum;
  */
 class NotificationCenter extends Page
 {
+    use HasMasthead;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBell;
 
     protected static string|UnitEnum|null $navigationGroup = 'Me';
@@ -86,11 +89,12 @@ class NotificationCenter extends Page
         $n = auth()->user()->unreadNotifications()->count();
 
         if ($n === 0) {
-            return 'You are all caught up.';
+            return 'Approvals, reminders, announcements and updates about your work arrive here.';
         }
         $first = NotificationCategories::GROUPS[NotificationCategories::ROLE_ORDER[$this->experience()][0]][0] ?? null;
 
-        return $n.' unread'.($first ? ', '.mb_strtolower($first).' first for your role' : '').'. Open one to go straight to its context.';
+        // The masthead's heading gives the unread count; the brief says what comes first and what opening one does.
+        return ($first ? $first.' first for your role. ' : '').'Open one to go straight to its context.';
     }
 
     /** UX.16: the experience that orders unread notifications (same lens as Home, including "Home opens as"). */

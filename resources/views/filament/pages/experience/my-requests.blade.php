@@ -7,13 +7,28 @@
         $filtered = filled($this->type) || filled($this->from) || filled($this->until) || trim($this->search) !== '' || $this->hideClosed;
     @endphp
     <div class="pos-ws pos-my-requests">
-        <nav class="pos-lens pos-lens-scroll" aria-label="Show" x-data x-init="posRevealChip($el, $el.querySelector('[aria-pressed=true]'))">
-            @foreach ($tabs as $key => $label)
-                <button type="button" class="pos-chip" aria-pressed="{{ $this->tab === $key ? 'true' : 'false' }}" wire:click="setTab('{{ $key }}')" data-tab="{{ $key }}">
-                    {{ $label }}@if (($r['counts'][$key] ?? 0) > 0)<span class="pos-count">{{ $r['counts'][$key] }}</span>@endif
-                </button>
-            @endforeach
-        </nav>
+        {{-- The masthead: where your requests stand; New request beside the brief and the status tabs on its band --}}
+        <x-pos.masthead icon="heroicon-m-paper-airplane" :eyebrow="$this->subject() ? 'Requests' : 'My requests'" :title="$this->subject() ? $this->subject()->person?->display_name.'’s requests' : 'Your requests'" :brief="$this->getSubheading()">
+            <x-filament::actions :actions="$this->getCachedHeaderActions()" class="pos-mast-actions" />
+            <x-slot:glance>
+                <x-pos.glance label="Requests at a glance" :rows="[
+                    ['label' => 'Pending', 'value' => (int) ($r['counts']['pending'] ?? 0), 'icon' => 'heroicon-o-clock', 'tone' => 'info', 'meta' => 'With someone else to decide', 'click' => ($r['counts']['pending'] ?? 0) > 0 ? 'setTab(\'pending\')' : null],
+                    ['label' => 'Drafts', 'value' => (int) ($r['counts']['draft'] ?? 0), 'icon' => 'heroicon-o-pencil-square', 'tone' => ($r['counts']['draft'] ?? 0) > 0 ? 'warning' : 'success', 'meta' => 'Started, not yet sent', 'click' => ($r['counts']['draft'] ?? 0) > 0 ? 'setTab(\'draft\')' : null],
+                    ['label' => 'Approved', 'value' => (int) ($r['counts']['approved'] ?? 0), 'icon' => 'heroicon-o-check-circle', 'tone' => 'success', 'meta' => 'Decided in your favour', 'click' => ($r['counts']['approved'] ?? 0) > 0 ? 'setTab(\'approved\')' : null],
+                    ['label' => 'Rejected', 'value' => (int) ($r['counts']['rejected'] ?? 0), 'icon' => 'heroicon-o-x-circle', 'tone' => 'info', 'meta' => 'Each with the reason given', 'click' => ($r['counts']['rejected'] ?? 0) > 0 ? 'setTab(\'rejected\')' : null],
+                ]" />
+            </x-slot:glance>
+            <x-slot:band>
+                <nav class="pos-mw-filters" aria-label="Show" x-data x-init="posRevealChip($el, $el.querySelector('[aria-pressed=true]'))">
+                    @foreach ($tabs as $key => $label)
+                        <button type="button" class="pos-chip" aria-pressed="{{ $this->tab === $key ? 'true' : 'false' }}" wire:click="setTab('{{ $key }}')" data-tab="{{ $key }}">
+                            {{ $label }}@if (($r['counts'][$key] ?? 0) > 0)<span class="pos-count">{{ $r['counts'][$key] }}</span>@endif
+                        </button>
+                    @endforeach
+                </nav>
+            </x-slot:band>
+        </x-pos.masthead>
+
 
         <div class="pos-toolbar" x-data="{ filters: false }">
             <label class="pos-search">

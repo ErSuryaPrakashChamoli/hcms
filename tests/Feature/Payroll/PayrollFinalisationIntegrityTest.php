@@ -15,9 +15,10 @@ use Livewire\Livewire;
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/PayrollTestHelpers.php';
 
-// Finalized payroll is history: never reopened, recalculated, changed or deleted, through the finalize permission or any
-// other path, until decision C12-D1 says how a wrong finalized month is settled. Only an approved run that is not
-// finalized yet returns to draft, decided on the locked row, and it then needs an independent approval again.
+// Finalized payroll is history: never recalculated, changed or deleted, and never reopened through the approval's return
+// to draft or a direct update. Only an approved run that is not finalized yet returns to draft, decided on the locked
+// row, and it then needs an independent approval again. Reopening the latest closed month is PayrollMonthReopen's alone
+// (Streamline S2, decision ST-1; tests/Feature/Payroll/PayrollGuidedRunTest.php).
 beforeEach(function () {
     $this->travelTo('2026-09-21 09:00:00');
     syncComplianceRules();

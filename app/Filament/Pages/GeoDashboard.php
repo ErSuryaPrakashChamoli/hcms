@@ -32,6 +32,11 @@ class GeoDashboard extends Page
 
     protected string $view = 'filament.pages.access.geo-dashboard';
 
+    public function getSubheading(): ?string
+    {
+        return 'Today\'s located check-ins and the headcount by location.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

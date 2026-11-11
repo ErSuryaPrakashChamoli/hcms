@@ -26,7 +26,8 @@ class ListPayrollRuns extends PeopleListRecords
 
     protected function getHeaderActions(): array
     {
-        // HROne parity PO-1: views, the payroll reports and the payroll actions next to the run action.
-        return [...$this->registerToolActions(), PayrollActions::openRun(), PayrollRegisters::actionsMenu()];
+        // HROne parity PO-1: views, the payroll reports and the payroll actions next to the run action (Streamline S2: the
+        // wizard starts and runs a month).
+        return [...$this->registerToolActions(), PayrollActions::runPayroll(), PayrollRegisters::actionsMenu()];
     }
 }

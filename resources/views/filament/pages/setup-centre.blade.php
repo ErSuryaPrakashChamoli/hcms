@@ -65,12 +65,8 @@
             @endif
 
             @if ($this->hasSettings())
-                <form wire:submit="save">
-                    {{ $this->form }}
-                    @if ($this->canSave())
-                        <div class="mt-4"><x-filament::button type="submit">Save settings</x-filament::button></div>
-                    @endif
-                </form>
+                {{-- Streamline S6: the settings are a wizard; "Save settings" sits on its Review step. --}}
+                {{ $this->form }}
             @endif
         </div>
     </div>

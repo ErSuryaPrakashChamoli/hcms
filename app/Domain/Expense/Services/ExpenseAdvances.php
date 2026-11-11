@@ -476,17 +476,17 @@ final class ExpenseAdvances
      *
      * @param  list<int>  $ids
      */
-    public function paidOut(array $ids, string $channel, CarbonInterface|string $on, string $reference, string $note, ?int $payrollRunId = null, ?int $settlementId = null): void
+    public function paidOut(array $ids, string $channel, CarbonInterface|string $on, string $reference, string $note, ?int $payrollRunId = null, ?int $settlementId = null, string $key = 'disbursed'): void
     {
         $on = CarbonImmutable::parse($on)->startOfDay();
         foreach ($ids as $id) {
-            DB::transaction(function () use ($id, $channel, $on, $reference, $note, $payrollRunId, $settlementId) {
+            DB::transaction(function () use ($id, $channel, $on, $reference, $note, $payrollRunId, $settlementId, $key) {
                 $locked = ExpenseAdvance::query()->withoutGlobalScope(AccessScope::class)->whereKey($id)->lockForUpdate()->first();
                 if ($locked === null || $locked->status !== 'approved') {
                     return;
                 }
                 $amount = (float) $locked->approved_amount;
-                $this->post($locked, 'disbursed', $amount, 'disbursed', $on, $reference, mb_substr($note, 0, 255), null, null, ['payroll_run_id' => $payrollRunId, 'final_settlement_id' => $settlementId]);
+                $this->post($locked, 'disbursed', $amount, $key, $on, $reference, mb_substr($note, 0, 255), null, null, ['payroll_run_id' => $payrollRunId, 'final_settlement_id' => $settlementId]);
                 $rules = $this->rulesFor($locked);
                 $settleBy = $this->settleFrom($locked, $on)->addDays($rules->settleWithinDays);
                 $locked->withAuditReason($note)->update(['status' => 'disbursed', 'disbursement_channel' => $channel, 'disbursed_on' => $on->toDateString(), 'disbursement_reference' => mb_substr($reference, 0, 120),
@@ -529,6 +529,59 @@ final class ExpenseAdvances
                     self::closeSchedules($locked, 'The advance was recovered');
                 }
                 $this->tell('expense.advance_recovered', $locked, ['amount' => round((float) $amount, 2), 'reference' => $reference]);
+            });
+        }
+    }
+
+    /**
+     * Streamline S2 (ST-1): the payroll month that paid these advances out was reopened. Each advance gets a reversing
+     * ledger entry ($key) and waits to be paid out again. Refused once the advance was used since (adjusted, refunded,
+     * recovered), because its money then has a history of its own.
+     */
+    public function undoPayrollPayout(array $ids, int $payrollRunId, string $key, string $note): void
+    {
+        foreach ($ids as $id) {
+            DB::transaction(function () use ($id, $payrollRunId, $key, $note) {
+                $locked = ExpenseAdvance::query()->withoutGlobalScope(AccessScope::class)->whereKey($id)->lockForUpdate()->first();
+                if ($locked === null || (int) $locked->disbursed_payroll_run_id !== $payrollRunId) {
+                    return;
+                }
+                $moved = ExpenseAdvanceEntry::query()->withoutGlobalScope(AccessScope::class)->where('expense_advance_id', $locked->id)->where('kind', '!=', 'disbursed')->where('kind', '!=', 'reversed')->exists();
+                if ($locked->status !== 'disbursed' || $moved) {
+                    throw new RuntimeException("Advance {$locked->number} was used after payroll paid it out: its payout cannot be taken back.");
+                }
+                $this->post($locked, 'reversed', -round((float) $locked->approved_amount, 2), $key, CarbonImmutable::today(), null, mb_substr($note, 0, 255), null, null, ['payroll_run_id' => $payrollRunId]);
+                // Still to be paid through payroll: the next run of the month pays it out again.
+                $locked->withAuditReason($note)->update(['status' => 'approved', 'disbursed_on' => null, 'disbursement_reference' => null,
+                    'disbursed_payroll_run_id' => null, 'settle_by' => null, 'recovery_due_on' => null]);
+            });
+        }
+    }
+
+    /**
+     * Streamline S2 (ST-1): the payroll month that recovered these amounts was reopened. Each recovery gets a reversing
+     * ledger entry ($key), its scheduled recovery is due again, and an advance that recovery had closed is open again.
+     *
+     * @param  array<int, float>  $amounts  advance id => amount the run recovered
+     */
+    public function undoPayrollRecovery(array $amounts, int $payrollRunId, string $key, string $note): void
+    {
+        foreach ($amounts as $id => $amount) {
+            DB::transaction(function () use ($id, $amount, $payrollRunId, $key, $note) {
+                $locked = ExpenseAdvance::query()->withoutGlobalScope(AccessScope::class)->whereKey($id)->lockForUpdate()->first();
+                if ($locked === null || round((float) $amount, 2) <= 0) {
+                    return;
+                }
+                if ($this->post($locked, 'reversed', round((float) $amount, 2), $key, CarbonImmutable::today(), null, mb_substr($note, 0, 255), null, null, ['payroll_run_id' => $payrollRunId]) === null) {
+                    return;
+                }
+                ExpenseAdvanceRecoverySchedule::query()->withoutGlobalScope(AccessScope::class)->where('expense_advance_id', $locked->id)->where('payroll_run_id', $payrollRunId)
+                    ->where('status', 'recovered')->lockForUpdate()->get()
+                    ->each(fn (ExpenseAdvanceRecoverySchedule $s) => $s->withAuditReason($note)->update(['status' => 'scheduled', 'recovered_amount' => null, 'recovered_on' => null, 'payroll_run_id' => null]));
+                $locked->refresh();
+                if ($locked->status === 'recovered' && (float) $locked->outstanding > 0) {
+                    $locked->withAuditReason($note)->update(['status' => 'disbursed', 'closed_at' => null]);
+                }
             });
         }
     }

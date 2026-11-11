@@ -32,7 +32,7 @@ class WorkforceReasonResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedListBullet;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Admin';
+    protected static string|UnitEnum|null $navigationGroup = 'People Setup';
 
     protected static ?string $navigationLabel = 'Workforce reasons';
 

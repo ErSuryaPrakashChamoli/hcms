@@ -33,6 +33,11 @@ class ServiceDeskAnalyticsPage extends Page
 
     public string $to = '';
 
+    public function getSubheading(): ?string
+    {
+        return 'HR request volume, backlog, service levels and resolution over a period.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->check() && auth()->user()->hasPermission('servicedesk.analytics');

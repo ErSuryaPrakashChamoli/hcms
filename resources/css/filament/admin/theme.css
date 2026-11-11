@@ -189,6 +189,10 @@
     --pos-hero-glass-strong: rgb(255 255 255 / 0.16);
     --pos-hero-band: rgb(8 10 28 / 0.22);
     --pos-hero-node-iris: #bdb7ff;
+    /* States on the hero's ink (the hero is dark in both themes, so no .dark override): light enough for 7:1 there */
+    --pos-hero-ok: #86e3b5;
+    --pos-hero-warn: #f2cf8a;
+    --pos-hero-alert: #ffa4a4;
     /* The fixed iris button (rail handle hover, back to top): the same in both themes, so no .dark override. */
     --pos-iris-from: #7366e6;
     --pos-iris-to: #463ba6;
@@ -867,7 +871,7 @@ body:has(.pos-form-review:not([style*='display: none'])) .pos-to-top { display: 
 .fi-section {
     border-radius: var(--pos-radius-lg) !important;
     background: var(--pos-surface) !important;
-    box-shadow: var(--pos-shadow-1) !important;
+    box-shadow: var(--pos-shadow-soft) !important;
     --tw-ring-color: transparent !important;
 }
 
@@ -879,7 +883,7 @@ body:has(.pos-form-review:not([style*='display: none'])) .pos-to-top { display: 
 /* Tables: sticky header, quiet chrome, density-aware rows */
 .fi-ta-ctn {
     border-radius: var(--pos-radius-lg) !important;
-    box-shadow: var(--pos-shadow-1) !important;
+    box-shadow: var(--pos-shadow-soft) !important;
     --tw-ring-color: transparent !important;
     background: var(--pos-surface) !important;
 }
@@ -2024,7 +2028,7 @@ html[data-pos-list] .fi-page .fi-ta-content-ctn .fi-ta-table thead { top: 0; }
     .pos-sec-title { display: inline-flex; align-items: baseline; gap: var(--pos-space-2); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; font-weight: var(--pos-fw-semibold); color: var(--pos-text-muted); }
     .pos-sec-title .pos-sec-count { letter-spacing: 0; text-transform: none; font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
     .pos-sec-sub { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
-    .pos-panel { background: var(--pos-surface); border-radius: var(--pos-radius-lg); box-shadow: var(--pos-shadow-1); min-width: 0; }
+    .pos-panel { background: var(--pos-surface); border-radius: var(--pos-radius-lg); box-shadow: var(--pos-shadow-soft); min-width: 0; }
     .pos-panel-pad { padding: var(--pos-card-pad); }
     .pos-panel-flush > :first-child { border-start-start-radius: inherit; border-start-end-radius: inherit; }
 
@@ -2379,6 +2383,9 @@ html[data-pos-list] .fi-page .fi-ta-content-ctn .fi-ta-table thead { top: 0; }
     .fi-ta-content-ctn .fi-ta-row > td:last-child:has(> .fi-ta-actions) { background-color: var(--pos-surface); }
     .fi-ta-content-ctn .fi-ta-table thead th.fi-ta-actions-header-cell:last-child { background: var(--pos-surface-muted); }
     .fi-ta-content-ctn .fi-ta-row:is(:hover, .fi-selected, .fi-striped) > td:last-child:has(> .fi-ta-actions) { background-image: linear-gradient(var(--pos-state-hover), var(--pos-state-hover)); }
+    /* The pinned cell is a stacking context (z 1) under the pinned column headings (z 2), so a menu opened from it,
+       flipped upward on a short table, slid under the headings. While its menu is open the cell rises above them. */
+    .fi-ta-content-ctn .fi-ta-row > td:last-child:has(> .fi-ta-actions .fi-dropdown-trigger [aria-expanded='true']) { z-index: 3; }
 }
 
 
@@ -2762,6 +2769,177 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-home-hero .pos-home-lens { padding: var(--pos-space-2) var(--pos-space-5); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
 }
 
+/* ------------------------------------------------------------------ H2. Home: headings, tiles and the role cards (2026-11-11)
+   Under the hero, Home reads as a set of calm cards. Section headings are titles (sentence case, the count as a pill, the
+   link as a quiet pill); a card's headline figures are tiles with an icon on a wayfinding hue (never a status: the words
+   and, where a value has a meaning, its colour and note carry it); "caught up" states sit on a card instead of the bare
+   canvas; Workforce pulse sets this month's movement beside the headcount trend; Payroll shows where the latest run
+   stands on its way from draft to paid. Scoped to .pos-home (the sparkline marker and signal-row text are shared). */
+
+/* Section headings */
+.pos-home .pos-sec-head { align-items: center; min-height: 28px; }
+.pos-home .pos-sec-title { align-items: center; font-size: var(--pos-fs-lead); line-height: var(--pos-lh-lead); letter-spacing: -0.01em; text-transform: none; color: var(--pos-text); }
+.pos-home .pos-sec-title .pos-sec-count { height: 20px; min-width: 22px; padding-inline: 7px; font-size: var(--pos-fs-caption); }
+.pos-home .pos-sec-head > .pos-link { display: inline-flex; align-items: center; gap: var(--pos-space-1); min-height: 28px; padding: 0 var(--pos-space-3); border-radius: var(--pos-radius-pill);
+    font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold); text-decoration: none; transition: background var(--pos-dur-1) var(--pos-ease); }
+.pos-home .pos-sec-head > .pos-link:hover { background: var(--pos-primary-soft); }
+.pos-home .pos-sec-head > .pos-link > span { transition: transform var(--pos-dur-1) var(--pos-ease); }
+.pos-home .pos-sec-head > .pos-link:hover > span { transform: translateX(2px); }
+
+/* "Caught up" and other inline states on their own: a quiet card, a trace of green when all is well */
+.pos-home .pos-sec > .pos-state[data-size='inline'] { align-items: center; padding: var(--pos-space-4) var(--pos-space-5); border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-soft); }
+.pos-home .pos-sec > .pos-state[data-variant='caught-up'] { background: linear-gradient(100deg, color-mix(in srgb, var(--pos-success-soft) 80%, var(--pos-surface)) 0%, var(--pos-surface) 48%); }
+.pos-home .pos-sec > .pos-state[data-size='inline'] .pos-state-icon { width: 36px; height: 36px; }
+
+/* Lists in Home cards line up with the cards' padding */
+@media (min-width: 768px) {
+    .pos-home .pos-panel .pos-stream-row { padding-inline: var(--pos-space-5); }
+    .pos-home .pos-panel .pos-signal-row { padding-block: var(--pos-space-3); }
+}
+
+/* The signal sentence follows its count ("7 people approve…"); beside a count tile it starts with a capital */
+.pos-signal-text { display: block; }
+.pos-signal-text::first-letter { text-transform: uppercase; }
+/* A signal that is a setting or a state, not a count: its severity as an icon where the count would be */
+.pos-signal-flag { display: grid; place-items: center; color: var(--pos-text-muted); }
+.pos-signal-row[data-tone='danger'] > .pos-signal-flag { color: var(--pos-danger); }
+.pos-signal-row[data-tone='warning'] > .pos-signal-flag { color: var(--pos-warning); }
+.pos-signal-row[data-tone='info'] > .pos-signal-flag { color: var(--pos-info); }
+
+/* A role card: padded, its lists running edge to edge below the figures */
+.pos-home-card { container: pos-home-card / inline-size; display: grid; gap: var(--pos-space-5); padding: var(--pos-space-5); }
+.pos-home-card .pos-home-flush { margin-inline: calc(var(--pos-space-5) * -1); }
+.pos-home-card:has(> .pos-home-flush:last-child, > .pos-phone-cap:last-child) { padding-bottom: 0; }
+.pos-home-card > .pos-state.pos-home-flush { margin-bottom: 0; padding-inline: var(--pos-space-5); box-shadow: inset 0 1px 0 var(--pos-border); padding-block: var(--pos-space-4); }
+.pos-home-card > .pos-state:not(.pos-home-flush) { padding: 0; }
+.pos-home-kicker { margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); }
+.pos-home-foot { display: flex; align-items: flex-start; gap: var(--pos-space-2); margin: 0; padding-top: var(--pos-space-4); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-home-foot > svg { flex: none; color: var(--pos-success); }
+
+/* Tiles: an icon on its hue, the value, the label (and a note). A linked tile lifts and shows where it goes. */
+/* One row of equal tiles when the card is wide; otherwise they wrap and the last row's tiles share its width (five
+   tiles read 3 + 2, never 4 + 1). The card (or the glance) is the container. */
+.pos-home-glance { container-type: inline-size; }
+.pos-home-tiles { display: flex; flex-wrap: wrap; gap: var(--pos-space-3); }
+.pos-home-tiles > .pos-home-tile { flex: 1 1 180px; }
+@container (min-width: 720px) {
+    .pos-home-tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+}
+.pos-home-tile {
+    --pos-home-hue: var(--pos-hue-slate);
+    --pos-home-hue-bg: var(--pos-hue-slate-bg);
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 2px;
+    min-width: 0;
+    padding: var(--pos-space-4);
+    border-radius: var(--pos-radius-lg);
+    color: var(--pos-text);
+    text-decoration: none;
+    background: radial-gradient(130% 100% at 0% 0%, color-mix(in srgb, var(--pos-home-hue-bg) 85%, transparent), transparent 64%), var(--pos-surface);
+    box-shadow: inset 0 0 0 1px var(--pos-border);
+    transition: box-shadow var(--pos-dur-2) var(--pos-ease), transform var(--pos-dur-2) var(--pos-ease);
+}
+.pos-home-tile[data-hue='iris'] { --pos-home-hue: var(--pos-hue-iris); --pos-home-hue-bg: var(--pos-hue-iris-bg); }
+.pos-home-tile[data-hue='blue'] { --pos-home-hue: var(--pos-hue-blue); --pos-home-hue-bg: var(--pos-hue-blue-bg); }
+.pos-home-tile[data-hue='green'] { --pos-home-hue: var(--pos-hue-green); --pos-home-hue-bg: var(--pos-hue-green-bg); }
+.pos-home-tile[data-hue='gold'] { --pos-home-hue: var(--pos-hue-gold); --pos-home-hue-bg: var(--pos-hue-gold-bg); }
+.pos-home-tile[data-hue='plum'] { --pos-home-hue: var(--pos-hue-plum); --pos-home-hue-bg: var(--pos-hue-plum-bg); }
+.pos-home-tile[data-hue='teal'] { --pos-home-hue: var(--pos-hue-teal); --pos-home-hue-bg: var(--pos-hue-teal-bg); }
+.pos-home-tile[data-hue='coral'] { --pos-home-hue: var(--pos-hue-coral); --pos-home-hue-bg: var(--pos-hue-coral-bg); }
+.pos-home-tile-icon { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: var(--pos-space-3); border-radius: var(--pos-radius-md);
+    color: var(--pos-home-hue); background: var(--pos-home-hue-bg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-home-hue) 16%, transparent); }
+.pos-home-tile-value { font-size: 26px; line-height: 32px; font-weight: var(--pos-fw-semibold); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--pos-text); overflow-wrap: anywhere; }
+.pos-home-tile-label { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-home-tile-note { margin-top: 2px; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-home-tile :is(.pos-home-tile-value, .pos-home-tile-note)[data-meaning='bad'] { color: var(--pos-danger); }
+.pos-home-tile :is(.pos-home-tile-value, .pos-home-tile-note)[data-meaning='warning'] { color: var(--pos-warning); }
+.pos-home-tile .pos-home-tile-value[data-meaning='good'] { color: var(--pos-success); }
+.pos-home-tile-go { position: absolute; top: var(--pos-space-4); inset-inline-end: var(--pos-space-4); color: var(--pos-text-muted); opacity: 0;
+    transition: opacity var(--pos-dur-1) var(--pos-ease), transform var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+a.pos-home-tile:hover { transform: translateY(-1px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-home-hue) 38%, var(--pos-border)), 0 12px 26px -18px color-mix(in srgb, var(--pos-home-hue) 75%, transparent); }
+a.pos-home-tile:hover .pos-home-tile-go, a.pos-home-tile:focus-visible .pos-home-tile-go { opacity: 1; color: var(--pos-home-hue); transform: translate(1px, -1px); }
+a.pos-home-tile:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+/* Tiles that stand on the canvas ("At a glance") are cards themselves */
+.pos-home-tiles-standalone .pos-home-tile { box-shadow: var(--pos-shadow-soft); }
+.pos-home-tiles-standalone a.pos-home-tile:hover { box-shadow: var(--pos-shadow-soft), 0 14px 30px -18px color-mix(in srgb, var(--pos-home-hue) 75%, transparent); }
+
+/* Workforce pulse: this month's movement beside the headcount trend */
+.pos-home-pulse { display: grid; gap: var(--pos-space-5); grid-template-columns: minmax(0, 1fr); }
+@container pos-home-card (min-width: 700px) {
+    .pos-home-pulse:not(.is-solo) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+.pos-home-block { display: grid; gap: var(--pos-space-3); align-content: start; min-width: 0; }
+.pos-home-move { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pos-space-2); margin: 0; }
+.pos-home-move-item { display: grid; gap: 2px; min-width: 0; padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-md); background: var(--pos-surface-sunken); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-home-move-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.pos-home-move-item dt { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-home-move-item dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--pos-space-2); margin: 0; }
+.pos-home-move-now { font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); letter-spacing: -0.01em; color: var(--pos-text); }
+.pos-home-move-last { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-home-move-item[data-meaning='warning'] .pos-home-move-now { color: var(--pos-warning); }
+.pos-home-trend { padding: var(--pos-space-4) var(--pos-space-4) var(--pos-space-3); border-radius: var(--pos-radius-md); background: linear-gradient(180deg, var(--pos-surface-sunken), var(--pos-surface)); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-home-trend .pos-spark-fig { display: grid; gap: var(--pos-space-2); margin: 0; }
+
+/* Sparkline: the latest point, marked over the chart (shared component) */
+.pos-spark-box { position: relative; }
+.pos-spark-dot { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: currentColor; transform: translate(-50%, -50%); pointer-events: none;
+    box-shadow: 0 0 0 3px var(--pos-surface), 0 0 0 6px color-mix(in srgb, currentColor 22%, transparent); }
+
+/* Payroll: the latest run, where it stands, its figures */
+.pos-home-pay-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-3) var(--pos-space-4); }
+.pos-home-pay-mark { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: var(--pos-radius-lg); color: var(--pos-iris-text);
+    background: linear-gradient(135deg, var(--pos-iris-from), var(--pos-iris-to)); box-shadow: 0 10px 22px -12px var(--pos-iris-to), inset 0 0 0 1px rgb(255 255 255 / 0.18); }
+.pos-home-pay-text { display: grid; gap: 2px; flex: 1 1 160px; min-width: 0; }
+.pos-home-pay-title { margin: 0; font-family: var(--font-display); font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); letter-spacing: -0.01em; color: var(--pos-text); }
+.pos-home-pay-go { gap: var(--pos-space-1); }
+
+.pos-home-steps { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 0; padding: var(--pos-space-4) 0; list-style: none;
+    border-radius: var(--pos-radius-md); background: var(--pos-surface-sunken); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-home-step { position: relative; display: grid; justify-items: center; gap: var(--pos-space-2); min-width: 0; text-align: center; }
+.pos-home-step::before { content: ''; position: absolute; top: 11px; inset-inline: calc(-50% + 16px) calc(50% + 16px); height: 2px; border-radius: 2px; background: var(--pos-border-strong); }
+.pos-home-step:first-child::before { display: none; }
+.pos-home-step[data-state='done']::before { background: var(--pos-success); }
+.pos-home-step[data-state='current']::before { background: linear-gradient(90deg, var(--pos-success), var(--pos-primary)); }
+.pos-home-step-dot { position: relative; z-index: 1; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: var(--pos-on-fill);
+    background: var(--pos-surface); box-shadow: inset 0 0 0 2px var(--pos-border-strong); }
+.pos-home-step[data-state='done'] .pos-home-step-dot { background: var(--pos-success); box-shadow: none; }
+.pos-home-step[data-state='current'] .pos-home-step-dot { background: var(--pos-primary); box-shadow: 0 0 0 5px color-mix(in srgb, var(--pos-primary) 18%, transparent); }
+.pos-home-step[data-state='current'] .pos-home-step-dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--pos-on-fill); }
+.pos-home-step-label { max-width: 100%; padding-inline: var(--pos-space-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+.pos-home-step[data-state='done'] .pos-home-step-label { color: var(--pos-text-secondary); }
+.pos-home-step[data-state='current'] .pos-home-step-label { font-weight: var(--pos-fw-semibold); color: var(--pos-primary-strong); }
+
+/* Start something: each row's icon on its own hue, in turn (wayfinding only) */
+.pos-home-actions > :nth-child(6n + 2) .pos-stream-icon { background: var(--pos-hue-blue-bg); color: var(--pos-hue-blue); }
+.pos-home-actions > :nth-child(6n + 3) .pos-stream-icon { background: var(--pos-hue-green-bg); color: var(--pos-hue-green); }
+.pos-home-actions > :nth-child(6n + 4) .pos-stream-icon { background: var(--pos-hue-gold-bg); color: var(--pos-hue-gold); }
+.pos-home-actions > :nth-child(6n + 5) .pos-stream-icon { background: var(--pos-hue-plum-bg); color: var(--pos-hue-plum); }
+.pos-home-actions > :nth-child(6n + 6) .pos-stream-icon { background: var(--pos-hue-teal-bg); color: var(--pos-hue-teal); }
+.pos-home-actions .pos-stream-title { font-weight: var(--pos-fw-semibold); }
+.pos-home-actions > .pos-stream-more { padding: var(--pos-space-3); }
+
+@media (prefers-reduced-motion: reduce) {
+    .pos-home-tile, a.pos-home-tile:hover { transition: none; transform: none; }
+}
+
+/* Phones: two tiles a row, smaller; the run's steps keep only the current one's name in sight */
+@media (max-width: 767px) {
+    .pos-home .pos-wide-only { display: none; }
+    .pos-home-card { gap: var(--pos-space-4); padding: var(--pos-space-4); }
+    .pos-home-card .pos-home-flush { margin-inline: calc(var(--pos-space-4) * -1); }
+    .pos-home-tiles { gap: var(--pos-space-2); }
+    .pos-home-tiles > .pos-home-tile { flex-basis: 128px; }
+    .pos-home-tile { padding: var(--pos-space-3); }
+    .pos-home-tile-icon { width: 30px; height: 30px; margin-bottom: var(--pos-space-2); }
+    .pos-home-tile-value { font-size: var(--pos-fs-section); line-height: var(--pos-lh-section); }
+    .pos-home-pay-mark { width: 40px; height: 40px; }
+    .pos-home-pay-title { font-size: var(--pos-fs-section); line-height: var(--pos-lh-section); font-family: inherit; font-weight: var(--pos-fw-semibold); }
+    .pos-home-step:not([data-state='current']) .pos-home-step-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .pos-home-step[data-state='current'] .pos-home-step-label { overflow: visible; }
+}
+
 /* ------------------------------------------------------------------ I. Compliance reports: the States filter
    States the company operates in read green and selectable; states with no establishment are greyed out, so the two
    groups part at a glance (keyed on whether a group holds enabled options, so either may be absent) */
@@ -2774,32 +2952,88 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
    Every record form is filled in step by step, as the policy wizard is: on record pages the numbered steps sit in a
    rail beside the step being filled in (one section at a time, Previous / Next under it, Create or Save on Review); in
    drawers the steps wrap above the step and the buttons stay in view. Built on Filament's wizard markup, so its
-   keyboard, focus and validation behaviour (a step with an error opens) stay as they are. */
+   keyboard, focus and validation behaviour (a step with an error opens) stay as they are.
+   In the step kit's language (Run payroll): steps joined by a line, done ones green with a tick, the open one solid
+   indigo and the only one that shows its description; the open step headed "Step 2 of 5" over a progress bar (every
+   step is stamped with data-pos-step / data-pos-steps / data-pos-label / --pos-step-pct, PeopleOsUi::stepStamp); on
+   record pages the open step is one card, and a step that is a single section takes that section's heading as its title. */
+
+/* The step list, every layout */
 .pos-wizard .fi-sc-wizard-header-step-separator { display: none; }
 .pos-wizard .fi-sc-wizard-header-step-text { width: auto; max-width: none; }
-.pos-wizard .fi-sc-wizard-header-step-number { font-size: var(--pos-fs-caption); }
+.pos-wizard .fi-sc-wizard-header-step-btn { border-radius: var(--pos-radius-md); transition: background-color var(--pos-dur-1) var(--pos-ease); }
 .pos-wizard .fi-sc-wizard-header-step-btn:disabled { cursor: default; }
-.pos-wizard .fi-sc-wizard-header-step-btn:not(:disabled):hover .fi-sc-wizard-header-step-label { text-decoration: underline; text-underline-offset: 3px; }
-.pos-wizard .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-label { font-weight: var(--pos-fw-semibold); }
+.pos-wizard .fi-sc-wizard-header-step-btn:not(:disabled):hover { background: var(--pos-surface-muted); }
+.pos-wizard .fi-sc-wizard-header-step-btn:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-wizard .fi-sc-wizard-header-step-icon-ctn { border: 0; background: var(--pos-surface); box-shadow: inset 0 0 0 1.5px var(--pos-border-strong);
+    transition: background-color var(--pos-dur-2) var(--pos-ease), box-shadow var(--pos-dur-2) var(--pos-ease); }
+.pos-wizard .fi-sc-wizard-header-step-number { font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); color: var(--pos-text-muted); font-variant-numeric: tabular-nums; }
+.pos-wizard .fi-sc-wizard-header-step.fi-completed .fi-sc-wizard-header-step-icon-ctn { background: var(--pos-success-soft); box-shadow: none; }
+.pos-wizard .fi-sc-wizard-header-step.fi-completed .fi-sc-wizard-header-step-icon-ctn .fi-icon { color: var(--pos-success); }
+.pos-wizard .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-icon-ctn { background: var(--pos-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pos-primary) 18%, transparent); }
+.pos-wizard .fi-sc-wizard-header-step.fi-active :is(.fi-sc-wizard-header-step-number, .fi-sc-wizard-header-step-icon-ctn .fi-icon) { color: var(--pos-text-inverse); }
+.pos-wizard .fi-sc-wizard-header-step-label { font-weight: var(--pos-fw-medium); color: var(--pos-text-secondary); }
+.pos-wizard .fi-sc-wizard-header-step.fi-completed .fi-sc-wizard-header-step-label { color: var(--pos-text); }
+.pos-wizard .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-label { font-weight: var(--pos-fw-semibold); color: var(--pos-primary-strong); }
+.pos-wizard .fi-sc-wizard-header-step-description { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-wizard .fi-sc-wizard-header-step:not(.fi-active) .fi-sc-wizard-header-step-description { display: none; }
+
+/* The open step: "Step 2 of 5 · Name" over a bar filled to where it is (the name is left out where a section heading names the step) */
+.pos-wizard > .fi-sc-wizard-step[data-pos-step]::before {
+    content: 'Step ' attr(data-pos-step) ' of ' attr(data-pos-steps) '  ·  ' attr(data-pos-label);
+    display: block;
+    margin-bottom: var(--pos-space-5);
+    padding-bottom: var(--pos-space-3);
+    font-size: var(--pos-fs-caption);
+    line-height: var(--pos-lh-caption);
+    font-weight: var(--pos-fw-semibold);
+    letter-spacing: var(--pos-tracking-label);
+    text-transform: uppercase;
+    color: var(--pos-primary-strong);
+    background:
+        linear-gradient(var(--pos-primary), var(--pos-primary)) 0 100% / calc(var(--pos-step-pct, 0) * 1%) 3px no-repeat,
+        linear-gradient(var(--pos-border), var(--pos-border)) 0 100% / 100% 3px no-repeat;
+}
+.pos-wizard > .fi-sc-wizard-step[data-pos-step]:has(> .fi-sc > .fi-grid-col:only-child > .fi-sc-component > .fi-sc-section > .fi-section-has-header)::before {
+    content: 'Step ' attr(data-pos-step) ' of ' attr(data-pos-steps);
+}
 .pos-wizard > .fi-sc-wizard-footer { padding-top: var(--pos-space-4); }
+
+/* Record pages: the open step is one card; a single section inside it gives up its own card and names the step */
+.pos-wizard-page > .fi-sc-wizard-step.fi-active { padding: var(--pos-space-5) var(--pos-space-6) var(--pos-space-6); background: var(--pos-surface); border-radius: var(--pos-radius-lg); box-shadow: var(--pos-shadow-1); }
+.pos-wizard-page > .fi-sc-wizard-step > .fi-sc > .fi-grid-col:only-child > .fi-sc-component > .fi-sc-section > .fi-section { background: transparent !important; box-shadow: none !important; border-radius: 0 !important; }
+.pos-wizard-page > .fi-sc-wizard-step > .fi-sc > .fi-grid-col:only-child > .fi-sc-component > .fi-sc-section > .fi-section > .fi-section-header { padding: 0 0 var(--pos-space-5); }
+.pos-wizard-page > .fi-sc-wizard-step > .fi-sc > .fi-grid-col:only-child > .fi-sc-component > .fi-sc-section > .fi-section > .fi-section-content-ctn { border-top: 0; }
+.pos-wizard-page > .fi-sc-wizard-step > .fi-sc > .fi-grid-col:only-child > .fi-sc-component > .fi-sc-section > .fi-section > .fi-section-content-ctn > .fi-section-content { padding: 0; }
+.pos-wizard-page > .fi-sc-wizard-step > .fi-sc > .fi-grid-col:only-child > .fi-sc-component > .fi-sc-section > .fi-section .fi-section-header-heading {
+    font-size: var(--pos-fs-title) !important; line-height: var(--pos-lh-title) !important; letter-spacing: normal; text-transform: none; color: var(--pos-text) !important; }
+@media (max-width: 767px) { .pos-wizard-page > .fi-sc-wizard-step.fi-active { padding: var(--pos-space-4); } }
 
 @media (min-width: 1024px) {
     .pos-wizard-page { display: grid; grid-template-columns: 15rem minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: var(--pos-space-6); align-items: start; }
-    .pos-wizard-page > .fi-sc-wizard-header { grid-column: 1; grid-row: 1 / span 2; position: sticky; top: calc(var(--pos-sticky-top, 0px) + var(--pos-space-4)); display: flex; flex-direction: column; gap: var(--pos-space-1); overflow: visible; padding: var(--pos-space-2); background: var(--pos-surface); border-radius: var(--pos-radius-lg); box-shadow: var(--pos-shadow-soft); }
+    .pos-wizard-page > .fi-sc-wizard-header { grid-column: 1; grid-row: 1 / span 2; position: sticky; top: calc(var(--pos-sticky-top, 0px) + var(--pos-space-4)); display: flex; flex-direction: column; gap: var(--pos-space-1); overflow: visible; padding: var(--pos-space-2); background: var(--pos-surface); border-radius: var(--pos-radius-lg); box-shadow: var(--pos-shadow-1); }
     .pos-wizard-page > .fi-sc-wizard-step { grid-column: 2; grid-row: 1; }
     .pos-wizard-page > .fi-sc-wizard-step.fi-active { margin-top: 0; }
     .pos-wizard-page > .fi-sc-wizard-footer { grid-column: 2; grid-row: 2; }
     .pos-wizard-page .fi-sc-wizard-header-step { display: flex; }
-    .pos-wizard-page .fi-sc-wizard-header-step-btn { width: 100%; height: auto; gap: var(--pos-space-3); padding: var(--pos-space-2) var(--pos-space-3); border-radius: var(--pos-radius-md); }
+    .pos-wizard-page .fi-sc-wizard-header-step-btn { align-items: flex-start; width: 100%; height: auto; gap: var(--pos-space-3); padding: var(--pos-space-2) var(--pos-space-3); }
+    .pos-wizard-page .fi-sc-wizard-header-step-text { padding-top: 4px; }
     .pos-wizard-page .fi-sc-wizard-header-step-icon-ctn { width: 28px; height: 28px; }
     .pos-wizard-page .fi-sc-wizard-header-step-icon-ctn .fi-icon { width: 16px; height: 16px; }
     .pos-wizard-page .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-btn { background: var(--pos-primary-soft); }
+    /* The line joining the steps: green as far as the steps are done */
+    .pos-wizard-page .fi-sc-wizard-header-step:not(:last-child)::after { content: ''; position: absolute; inset-inline-start: calc(var(--pos-space-3) + 13px); top: calc(var(--pos-space-2) + 31px);
+        bottom: calc(-1 * var(--pos-space-1) - var(--pos-space-2) + 3px); width: 2px; border-radius: var(--pos-radius-pill); background: var(--pos-border); pointer-events: none; }
+    .pos-wizard-page .fi-sc-wizard-header-step.fi-completed:not(:last-child)::after { background: color-mix(in srgb, var(--pos-success) 45%, var(--pos-border)); }
 }
 
-.pos-wizard-drawer > .fi-sc-wizard-header { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: var(--pos-space-1); overflow: visible; padding-bottom: var(--pos-space-3); background: none; border-radius: 0; box-shadow: inset 0 -1px 0 var(--pos-border); }
-.pos-wizard-drawer .fi-sc-wizard-header-step-btn { gap: var(--pos-space-2); padding: var(--pos-space-2); }
+/* Drawers: the steps wrap above the step; the buttons stay in view */
+.pos-wizard-drawer > .fi-sc-wizard-header { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: var(--pos-space-1); overflow: visible; padding-bottom: var(--pos-space-1); background: none; border-radius: 0; box-shadow: none; }
+.pos-wizard-drawer .fi-sc-wizard-header-step-btn { align-items: center; gap: var(--pos-space-2); padding: var(--pos-space-2); }
+.pos-wizard-drawer .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-btn { background: var(--pos-primary-soft); }
 .pos-wizard-drawer .fi-sc-wizard-header-step-icon-ctn { width: 24px; height: 24px; }
 .pos-wizard-drawer .fi-sc-wizard-header-step-icon-ctn .fi-icon { width: 14px; height: 14px; }
+.pos-wizard-drawer .fi-sc-wizard-header-step-description { display: none; }
 .pos-wizard-drawer > .fi-sc-wizard-step.fi-active { margin-top: var(--pos-space-4); }
 .pos-wizard-drawer > .fi-sc-wizard-footer { position: sticky; bottom: 0; z-index: 1; padding-block: var(--pos-space-3); background: var(--pos-surface-elevated); box-shadow: 0 -1px 0 var(--pos-border); }
 
@@ -2811,14 +3045,26 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-wizard .fi-sc-wizard-header-step-icon-ctn { width: 28px; height: 28px; }
     .pos-wizard .fi-sc-wizard-header-step-icon-ctn .fi-icon { width: 16px; height: 16px; }
     .pos-wizard .fi-sc-wizard-header-step:not(.fi-active) .fi-sc-wizard-header-step-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .pos-wizard .fi-sc-wizard-header-step-description { display: none; }
 }
 
-/* Review: what was filled in or changed, step by step */
+/* Review: a banner, then what was filled in or changed as one card per step, each with Edit to go back to that step */
 .pos-wizard-review { display: grid; gap: var(--pos-space-4); }
-.pos-wizard-review .pos-form-review-list { max-height: none; overflow: visible; }
-.pos-wizard-review-group { display: grid; gap: var(--pos-space-2); }
-.pos-wizard-review-group + .pos-wizard-review-group { padding-top: var(--pos-space-4); box-shadow: inset 0 1px 0 var(--pos-border); }
-.pos-wizard-review-heading { margin: 0; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-wizard-review-group { display: grid; gap: var(--pos-space-2); padding: var(--pos-space-3) var(--pos-space-4) var(--pos-space-2); border-radius: var(--pos-radius-lg); background: var(--pos-surface);
+    box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-wizard-review-head { display: flex; align-items: center; justify-content: space-between; gap: var(--pos-space-3); }
+.pos-wizard-review-heading { margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); }
+.pos-wizard-review-list { display: grid; margin: 0; }
+.pos-wizard-review-row { display: grid; grid-template-columns: minmax(8rem, 2fr) minmax(0, 3fr); gap: var(--pos-space-3); padding: 9px 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-wizard-review-row + .pos-wizard-review-row { box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-wizard-review-row dt { color: var(--pos-text-secondary); overflow-wrap: anywhere; }
+.pos-wizard-review-row dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--pos-space-2); margin: 0; font-weight: var(--pos-fw-medium); color: var(--pos-text); overflow-wrap: anywhere; }
+.pos-wizard-review-row .pos-change-before { font-weight: var(--pos-fw-regular); color: var(--pos-text-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--pos-text-muted) 60%, transparent); }
+.pos-wizard-review-empty { margin: 0; padding: var(--pos-space-6) var(--pos-space-4); border-radius: var(--pos-radius-lg); text-align: center; font-size: var(--pos-fs-meta); color: var(--pos-text-muted);
+    background: var(--pos-surface-sunken); outline: 1px dashed var(--pos-border-strong); outline-offset: -1px; }
+.pos-wizard-review-foot { display: flex; align-items: center; gap: var(--pos-space-2); margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-wizard-review-foot svg { flex: none; width: 16px; height: 16px; }
+@media (max-width: 559px) { .pos-wizard-review-row { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 
 /* ------------------------------------------------------------------ K. Attendance calendar
    One tone per attendance status, so a month reads at a glance: the day takes the soft fill, its code the solid one.
@@ -3404,3 +3650,825 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 .pos-fmt-notes li { display: flex; gap: var(--pos-space-2); line-height: 1.55; color: var(--pos-text); }
 .pos-fmt-notes li svg { flex: none; width: 16px; height: 16px; margin-top: 3px; color: var(--pos-info); }
 .pos-fmt-wrap { container-type: inline-size; }
+
+/* Run payroll · pre-payroll checks (.pos-prc, resources/views/filament/pages/run-payroll/checks.blade.php): a progress
+   header (ring, one headline, a bar of the month's checks), then what needs a look as one line each (a count tile in its
+   tone, opened in place to see who and why), then what is clear as quiet chips. Red blocked, amber to tick, blue waiting
+   for approval, green checked or clear, grey not applicable; always paired with words, never colour alone. */
+.pos-prc { container-type: inline-size; display: grid; gap: var(--pos-space-6); }
+/* Step tones (the checks and the whole step kit below): set on a step container, or on any step piece standing alone */
+:is(.pos-step, .pos-prc) :is([data-tone='blocked']), :is(.pos-prc, .pos-step-tone)[data-tone='blocked'] { --tone: var(--pos-danger); --tone-soft: var(--pos-danger-soft); }
+:is(.pos-step, .pos-prc) :is([data-tone='warning']), :is(.pos-prc, .pos-step-tone)[data-tone='warning'] { --tone: var(--pos-warning); --tone-soft: var(--pos-warning-soft); }
+:is(.pos-step, .pos-prc) :is([data-tone='pending']), :is(.pos-prc, .pos-step-tone)[data-tone='pending'] { --tone: var(--pos-info); --tone-soft: var(--pos-info-soft); }
+:is(.pos-step, .pos-prc) :is([data-tone='clear'], [data-tone='checked']), :is(.pos-prc, .pos-step-tone)[data-tone='clear'] { --tone: var(--pos-success); --tone-soft: var(--pos-success-soft); }
+:is(.pos-step, .pos-prc) :is([data-tone='na']), :is(.pos-prc, .pos-step-tone)[data-tone='na'] { --tone: var(--pos-text-muted); --tone-soft: var(--pos-surface-muted); }
+:is(.pos-step, .pos-prc) :is([data-tone='idle']), :is(.pos-prc, .pos-step-tone)[data-tone='idle'] { --tone: var(--pos-primary); --tone-soft: var(--pos-primary-soft); }
+
+/* The header */
+.pos-prc-head { display: flex; align-items: center; gap: var(--pos-space-5); padding: var(--pos-space-4) var(--pos-space-5); border-radius: var(--pos-radius-lg);
+    background: linear-gradient(120deg, var(--tone-soft), color-mix(in srgb, var(--tone-soft) 20%, var(--pos-surface)) 75%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent); }
+.pos-prc-ring { position: relative; display: grid; place-items: center; flex: none; inline-size: 64px; block-size: 64px; border-radius: var(--pos-radius-pill);
+    background: conic-gradient(var(--tone) calc(var(--pct, 0) * 1%), color-mix(in srgb, var(--tone) 14%, transparent) 0); }
+.pos-prc-ring::before { content: ''; position: absolute; inset: 6px; border-radius: inherit; background: var(--pos-surface); }
+.pos-prc-ring > span { position: relative; font-size: var(--pos-fs-caption); line-height: 1; color: var(--pos-text-muted); font-variant-numeric: tabular-nums; }
+.pos-prc-ring strong { font-size: var(--pos-fs-section); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-prc-head-body { display: grid; flex: 1; gap: var(--pos-space-2); min-width: 0; }
+.pos-prc-head-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-1) var(--pos-space-4); }
+.pos-prc-headline { margin: 0; font-size: var(--pos-fs-section); line-height: var(--pos-lh-section); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-prc-asof { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 0; border-radius: var(--pos-radius-pill); background: transparent; font-size: var(--pos-fs-caption);
+    line-height: var(--pos-lh-caption); color: var(--pos-text-muted); cursor: pointer; transition: color var(--pos-dur-1) var(--pos-ease), background-color var(--pos-dur-1) var(--pos-ease); }
+.pos-prc-asof:hover { color: var(--pos-text); background: var(--pos-surface); }
+.pos-prc-asof:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-prc-asof-icon { width: 14px; height: 14px; }
+.pos-prc-bar { display: flex; gap: 3px; height: 8px; }
+.pos-prc-bar > span { min-width: 6px; border-radius: var(--pos-radius-pill); background: var(--tone); }
+.pos-prc-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; padding: 0; list-style: none; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-secondary); }
+.pos-prc-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.pos-prc-legend strong { font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
+.pos-prc-dot { width: 8px; height: 8px; border-radius: var(--pos-radius-pill); background: var(--tone); }
+.pos-prc :is(.pos-prc-bar > [data-tone='checked'], [data-tone='checked'] > .pos-prc-dot) { background: color-mix(in srgb, var(--pos-success) 50%, var(--pos-surface)); }
+.pos-prc :is(.pos-prc-bar > [data-tone='na'], [data-tone='na'] > .pos-prc-dot) { background: var(--pos-border-strong); }
+
+/* A group: its name in small capitals with a count */
+.pos-prc-group { display: grid; gap: var(--pos-space-3); }
+.pos-prc-group-title { display: flex; align-items: center; gap: var(--pos-space-2); margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold);
+    letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); }
+.pos-prc-group-title span { padding: 0 7px; border-radius: var(--pos-radius-pill); background: var(--pos-surface-muted); color: var(--pos-text-secondary); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+
+/* Needs a look: one line each, a tone stripe on the left; the line opens in place */
+.pos-prc-list { display: grid; gap: var(--pos-space-2); margin: 0; padding: 0; list-style: none; }
+.pos-prc-item { position: relative; overflow: hidden; border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); transition: box-shadow var(--pos-dur-1) var(--pos-ease); }
+.pos-prc-item::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 3px; background: var(--tone); }
+.pos-prc-item:hover, .pos-prc-item.is-open { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 35%, var(--pos-border)), var(--pos-shadow-1); }
+.pos-prc-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2) var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); }
+.pos-prc-toggle { display: flex; flex: 1 1 18rem; align-items: center; gap: var(--pos-space-3); min-width: 0; padding: 0; border: 0; border-radius: var(--pos-radius-md); background: transparent; color: inherit; text-align: start; cursor: pointer; }
+.pos-prc-toggle:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 4px; }
+.pos-prc-tile { display: grid; place-items: center; flex: none; inline-size: 40px; block-size: 40px; border-radius: var(--pos-radius-md); background: var(--tone-soft); color: var(--tone);
+    font-size: var(--pos-fs-section); font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums; }
+.pos-prc-tile-icon { width: 20px; height: 20px; }
+.pos-prc-main { display: grid; gap: 1px; min-width: 0; }
+.pos-prc-label { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-prc-meta { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+.pos-prc-item:is([data-tone='blocked'], [data-tone='checked']) .pos-prc-meta { color: var(--tone); }
+.pos-prc-chevron { flex: none; width: 18px; height: 18px; margin-inline-start: auto; color: var(--pos-text-muted); transition: transform var(--pos-dur-2) var(--pos-ease); }
+.pos-prc-toggle:hover .pos-prc-chevron { color: var(--pos-text); }
+.pos-prc-item.is-open .pos-prc-chevron { transform: rotate(180deg); }
+.pos-prc-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--pos-space-2); margin-inline-start: auto; }
+.pos-prc-link { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta);
+    font-weight: var(--pos-fw-medium); color: var(--pos-primary); text-decoration: none; transition: background-color var(--pos-dur-1) var(--pos-ease); }
+.pos-prc-link:hover { background: var(--pos-primary-soft); }
+.pos-prc-link:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-prc-link-icon { width: 14px; height: 14px; }
+
+/* Opened: what the check covers, then who and why */
+.pos-prc-detail-inner { display: grid; gap: var(--pos-space-3); padding: 0 var(--pos-space-4) var(--pos-space-4); }
+@container (min-width: 640px) { .pos-prc-detail-inner { padding-inline-start: calc(var(--pos-space-4) + 40px + var(--pos-space-3)); } }
+.pos-prc-desc { margin: 0; max-width: 72ch; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-prc-people { display: grid; max-height: 20rem; overflow-y: auto; border-radius: var(--pos-radius-md); background: var(--pos-surface-sunken); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-prc-people:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-prc-person { display: grid; grid-template-columns: 7rem minmax(0, 1fr) minmax(0, 1.6fr); align-items: baseline; gap: var(--pos-space-3); padding: 8px 12px; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-prc-person + .pos-prc-person { box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-prc-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--pos-fs-caption); color: var(--pos-text-muted); overflow-wrap: anywhere; }
+.pos-prc-name { font-weight: var(--pos-fw-medium); color: var(--pos-text); overflow-wrap: anywhere; }
+.pos-prc-why { color: var(--pos-text-secondary); }
+@container (max-width: 560px) { .pos-prc-person { grid-template-columns: auto minmax(0, 1fr); } .pos-prc-why { grid-column: 1 / -1; } }
+.pos-prc-more { margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-prc-more a { color: var(--pos-primary); font-weight: var(--pos-fw-medium); }
+
+/* All clear: quiet chips; what each covers is in its title */
+.pos-prc-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--pos-space-2); margin: 0; padding: 0; list-style: none; }
+.pos-prc-chips li { display: flex; align-items: center; gap: var(--pos-space-2); min-width: 0; padding: 8px 12px; border-radius: var(--pos-radius-md); background: var(--pos-surface-muted);
+    font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); cursor: default; }
+.pos-prc-chips li > span:not(.pos-prc-chip-note) { min-width: 0; overflow-wrap: anywhere; }
+.pos-prc-chips li[data-tone='na'] { color: var(--pos-text-muted); }
+.pos-prc-chip-icon { flex: none; width: 18px; height: 18px; color: var(--tone); }
+.pos-prc-chip-note { flex: none; margin-inline-start: auto; padding: 0 6px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); box-shadow: inset 0 0 0 1px var(--pos-border-strong); }
+
+@container (max-width: 480px) {
+    .pos-prc-head { flex-direction: column; align-items: flex-start; gap: var(--pos-space-3); }
+    .pos-prc-actions { width: 100%; justify-content: flex-start; padding-inline-start: calc(40px + var(--pos-space-3)); }
+}
+
+/* The step kit (.pos-step-*): every guided flow's step is built from the same pieces, in the checks' language.
+   x-pos.step-banner (the step's status, said once), x-pos.step-wait (a step that waits on an earlier one), stat tiles,
+   facts, a ledger, numbered tasks, the action row and the footer that names the steps either side. Run payroll is the
+   first user (resources/views/filament/pages/run-payroll/*). */
+.pos-step { container-type: inline-size; display: grid; gap: var(--pos-space-5); }
+.pos-step-loading { display: flex; align-items: center; gap: var(--pos-space-2); padding: var(--pos-space-6) 0; font-size: var(--pos-fs-body); color: var(--pos-text-muted); }
+.pos-step-loading-icon { width: 20px; height: 20px; }
+
+/* The banner: an icon disc in the tone, a headline, a line under it, and an aside for the step's main action */
+.pos-step-banner { display: flex; align-items: flex-start; gap: var(--pos-space-4); padding: var(--pos-space-4) var(--pos-space-5); border-radius: var(--pos-radius-lg);
+    background: linear-gradient(120deg, var(--tone-soft), color-mix(in srgb, var(--tone-soft) 20%, var(--pos-surface)) 75%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent); }
+.pos-step-banner-icon { display: grid; place-items: center; flex: none; inline-size: 44px; block-size: 44px; border-radius: var(--pos-radius-pill); color: var(--tone); background: var(--pos-surface);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 12%, transparent); }
+.pos-step-banner-svg { width: 24px; height: 24px; }
+.pos-step-banner-body { display: grid; flex: 1; align-self: center; gap: 2px; min-width: 0; }
+.pos-step-banner-title { margin: 0; font-size: var(--pos-fs-section); line-height: var(--pos-lh-section); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-step-banner-sub { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-step-banner-aside { display: flex; flex: none; flex-wrap: wrap; align-self: center; align-items: center; gap: var(--pos-space-2); }
+@container (max-width: 560px) { .pos-step-banner { flex-wrap: wrap; } .pos-step-banner-aside { width: 100%; padding-inline-start: calc(44px + var(--pos-space-4)); } }
+
+/* Reasons under a banner, and quiet notes */
+.pos-step-reasons { display: grid; gap: 6px; margin: var(--pos-space-2) 0 0; padding: 0; list-style: none; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text); }
+.pos-step-reasons li { display: flex; align-items: baseline; gap: var(--pos-space-2); }
+.pos-step-reasons li::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: var(--pos-radius-pill); background: var(--tone); transform: translateY(-2px); }
+.pos-step-reasons strong { font-weight: var(--pos-fw-semibold); }
+.pos-step-note { display: flex; align-items: center; gap: var(--pos-space-2); margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+.pos-step-note.is-good { color: var(--pos-success); }
+.pos-step-note-icon { flex: none; width: 18px; height: 18px; }
+
+/* Waiting on an earlier step: a calm dashed panel with the way back */
+.pos-step-wait { display: grid; justify-items: center; gap: var(--pos-space-2); padding: var(--pos-space-10) var(--pos-space-4); border-radius: var(--pos-radius-lg); text-align: center;
+    background: var(--pos-surface-sunken); outline: 1px dashed var(--pos-border-strong); outline-offset: -1px; }
+.pos-step-wait-icon { display: grid; place-items: center; inline-size: 56px; block-size: 56px; margin-bottom: var(--pos-space-2); border-radius: var(--pos-radius-pill); color: var(--pos-text-muted);
+    background: var(--pos-surface); box-shadow: var(--pos-shadow-1); }
+.pos-step-wait-svg { width: 28px; height: 28px; }
+.pos-step-wait-title { margin: 0; font-size: var(--pos-fs-section); line-height: var(--pos-lh-section); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-step-wait-text { margin: 0; max-width: 46ch; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-step-wait-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--pos-space-2); margin-top: var(--pos-space-3); }
+
+/* Stat tiles: a tone stripe, the label, the figure; the key figure on indigo; a meter or a change line under it */
+.pos-step-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--pos-space-3); margin: 0; }
+.pos-step-stat { position: relative; display: grid; align-content: start; gap: 2px; min-width: 0; padding: var(--pos-space-3) var(--pos-space-4); overflow: hidden; border-radius: var(--pos-radius-md);
+    background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-step-stat::before { content: ''; position: absolute; inset-block: 12px; inset-inline-start: 0; width: 3px; border-radius: 0 var(--pos-radius-sm) var(--pos-radius-sm) 0; background: var(--tone, var(--pos-border-strong)); }
+.pos-step-stat dt { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-medium); color: var(--pos-text-secondary); }
+.pos-step-stat dd { margin: 0; font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pos-step-stat.is-key { background: var(--pos-primary-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 22%, transparent); }
+.pos-step-stat.is-key::before { background: var(--pos-primary); }
+.pos-step-stat.is-key dd { color: var(--pos-primary-strong); }
+.pos-step-meter { display: block; height: 4px; margin-top: 6px; overflow: hidden; border-radius: var(--pos-radius-pill); background: color-mix(in srgb, var(--tone) 15%, transparent); }
+.pos-step-meter > span { display: block; width: calc(var(--pct, 0) * 1%); height: 100%; border-radius: inherit; background: var(--tone); transition: width var(--pos-dur-3) var(--pos-ease); }
+.pos-step-delta { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-step-delta-icon { flex: none; width: 14px; height: 14px; }
+
+/* The month as a calendar card, with where it stands */
+.pos-step-hero { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-4); padding: var(--pos-space-4) var(--pos-space-5); border-radius: var(--pos-radius-lg);
+    background: linear-gradient(120deg, var(--pos-primary-soft), color-mix(in srgb, var(--pos-primary-soft) 20%, var(--pos-surface)) 75%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 16%, transparent); }
+.pos-step-cal { display: grid; flex: none; width: 60px; overflow: hidden; border-radius: var(--pos-radius-md); text-align: center; background: var(--pos-surface); box-shadow: var(--pos-shadow-1); }
+.pos-step-cal span { padding: 3px 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase;
+    color: var(--pos-text-inverse); background: var(--pos-primary); }
+.pos-step-cal strong { padding: 4px 0 6px; font-size: var(--pos-fs-section); line-height: var(--pos-lh-section); font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
+.pos-step-hero-text { display: grid; flex: 1 1 14rem; gap: 2px; min-width: 0; }
+.pos-step-hero-title { margin: 0; font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-step-hero-sub { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-step-pill { display: inline-flex; flex: none; align-items: center; gap: 6px; padding: 4px 12px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta);
+    font-weight: var(--pos-fw-semibold); color: var(--tone); background: var(--pos-surface); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 30%, transparent); }
+.pos-step-pill::before { content: ''; width: 8px; height: 8px; border-radius: var(--pos-radius-pill); background: var(--tone); }
+
+/* Facts: small tiles with an icon */
+.pos-step-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--pos-space-3); }
+.pos-step-fact { display: flex; align-items: center; gap: var(--pos-space-3); min-width: 0; padding: var(--pos-space-3) var(--pos-space-4); border: 0; border-radius: var(--pos-radius-md);
+    background: var(--pos-surface-muted); color: inherit; text-align: start; font: inherit; }
+.pos-step-fact.is-link { cursor: pointer; transition: box-shadow var(--pos-dur-1) var(--pos-ease), background-color var(--pos-dur-1) var(--pos-ease); }
+.pos-step-fact.is-link:hover { background: var(--pos-primary-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 22%, transparent); }
+.pos-step-fact.is-link:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-step-fact-icon { display: grid; place-items: center; flex: none; inline-size: 36px; block-size: 36px; border-radius: var(--pos-radius-md); color: var(--pos-primary); background: var(--pos-surface); box-shadow: var(--pos-shadow-1); }
+.pos-step-fact-svg { width: 20px; height: 20px; }
+.pos-step-fact-text { display: grid; min-width: 0; }
+.pos-step-fact-text > span { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-step-fact-text > strong { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); overflow-wrap: anywhere; }
+
+/* Groups, the ledger and tables */
+.pos-step-review { display: grid; gap: var(--pos-space-5); }
+.pos-step-group { display: grid; gap: var(--pos-space-3); }
+.pos-step-subhead { display: flex; align-items: center; gap: var(--pos-space-2); margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold);
+    letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); }
+.pos-step-subhead span { padding: 0 7px; border-radius: var(--pos-radius-pill); background: var(--pos-surface-muted); color: var(--pos-text-secondary); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.pos-step-ledger { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); column-gap: var(--pos-space-6); margin: 0; padding: var(--pos-space-1) var(--pos-space-4); border-radius: var(--pos-radius-lg);
+    background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-step-ledger > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--pos-space-3); padding: 9px 0; box-shadow: inset 0 -1px 0 var(--pos-border); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-step-ledger dt { color: var(--pos-text-secondary); }
+.pos-step-ledger dd { margin: 0; font-weight: var(--pos-fw-semibold); color: var(--pos-text); text-align: end; font-variant-numeric: tabular-nums; }
+.pos-step-table-wrap { overflow-x: auto; border-radius: var(--pos-radius-md); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-step-table-wrap:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-step-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-step-table th { padding: 8px 12px; text-align: start; font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); background: var(--pos-surface-muted); white-space: nowrap; }
+.pos-step-table td { padding: 8px 12px; color: var(--pos-text); box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-step-table .is-num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pos-step-table .is-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--pos-fs-caption); color: var(--pos-text-muted); }
+.pos-step-table tbody tr:hover td { background: color-mix(in srgb, var(--pos-surface-muted) 60%, transparent); }
+
+/* Numbered tasks, each with its own button */
+.pos-step-tasks { display: grid; gap: var(--pos-space-2); margin: 0; padding: 0; list-style: none; }
+.pos-step-task { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-3) var(--pos-space-4); padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-lg);
+    background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-step-task-n { display: grid; place-items: center; flex: none; inline-size: 32px; block-size: 32px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-semibold);
+    color: var(--pos-primary); background: var(--pos-primary-soft); }
+.pos-step-task[data-done] .pos-step-task-n { color: var(--pos-success); background: var(--pos-success-soft); }
+.pos-step-task-check { width: 18px; height: 18px; }
+.pos-step-task-text { display: grid; flex: 1 1 14rem; min-width: 0; }
+.pos-step-task-text strong { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-step-task-text span { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+
+/* Actions, links and the footer */
+.pos-step-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-3); }
+.pos-step-actions:not(:has(*)) { display: none; }
+.pos-step-link { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta);
+    font-weight: var(--pos-fw-medium); color: var(--pos-primary); text-decoration: none; transition: background-color var(--pos-dur-1) var(--pos-ease); justify-self: start; }
+.pos-step-link:hover { background: var(--pos-primary-soft); }
+.pos-step-link:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-step-link-icon { width: 14px; height: 14px; }
+.pos-step-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-3); margin-top: var(--pos-space-2); padding-top: var(--pos-space-4);
+    box-shadow: inset 0 1px 0 var(--pos-border); }
+
+/* The pickers and the step rail: a line joins the steps; done green, needs a look amber, the open step indigo */
+.pos-step-pickers { display: grid; gap: var(--pos-space-3); }
+.pos-step-picker { display: grid; gap: 6px; }
+.pos-step-picker > span { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); }
+.pos-step-rail { display: grid; gap: 4px; margin: var(--pos-space-5) 0 0; padding: var(--pos-space-4) 0 0; list-style: none; box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-step-rail li { position: relative; }
+.pos-step-rail li:not(:last-child)::after { content: ''; position: absolute; inset-inline-start: calc(12px + 0.8rem - 1px); top: calc(8px + 1.6rem + 3px); bottom: -9px; width: 2px; border-radius: var(--pos-radius-pill); background: var(--pos-border); }
+.pos-step-rail li[data-state='done']:not(:last-child)::after { background: color-mix(in srgb, var(--pos-success) 45%, var(--pos-border)); }
+.pos-step-rail-btn { display: flex; align-items: center; gap: var(--pos-space-3); width: 100%; padding: 8px 12px; border: 0; border-radius: var(--pos-radius-md); background: transparent; color: var(--pos-text-secondary);
+    text-align: start; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); cursor: pointer; transition: background-color var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+.pos-step-rail-btn:hover { background: var(--pos-surface-muted); color: var(--pos-text); }
+.pos-step-rail-btn:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-step-rail-dot { display: grid; place-items: center; flex: none; inline-size: 1.6rem; block-size: 1.6rem; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold);
+    color: var(--pos-text-muted); background: var(--pos-surface); box-shadow: inset 0 0 0 1.5px var(--pos-border-strong); font-variant-numeric: tabular-nums; }
+.pos-step-rail-check { width: 16px; height: 16px; }
+.pos-step-rail [data-state='done'] .pos-step-rail-dot { color: var(--pos-success); background: var(--pos-success-soft); box-shadow: none; }
+.pos-step-rail [data-state='attention'] .pos-step-rail-dot { color: var(--pos-warning); background: var(--pos-warning-soft); box-shadow: none; }
+.pos-step-rail .pos-step-rail-btn[aria-current='step'] { background: var(--pos-primary-soft); color: var(--pos-primary-strong); font-weight: var(--pos-fw-semibold); }
+.pos-step-rail .pos-step-rail-btn[aria-current='step'] .pos-step-rail-dot { color: var(--pos-text-inverse); background: var(--pos-primary); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pos-primary) 18%, transparent); }
+/* Step kit, more pieces: a rail with nothing above it, steps not reached yet, "Step 2 of 5" over its bar (the same line
+   every Filament wizard draws on its open step), a group heading with Edit, and the end of the footer */
+.pos-step-rail.is-flush { margin-top: 0; padding-top: 0; box-shadow: none; }
+.pos-step-rail-btn:disabled { color: var(--pos-text-disabled); cursor: default; }
+.pos-step-rail-btn:disabled:hover { background: transparent; color: var(--pos-text-disabled); }
+.pos-step-rail-btn:disabled .pos-step-rail-dot { color: var(--pos-text-disabled); box-shadow: inset 0 0 0 1.5px var(--pos-border); }
+.pos-step-count { margin: 0; padding-bottom: var(--pos-space-3); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label);
+    text-transform: uppercase; color: var(--pos-primary-strong);
+    background:
+        linear-gradient(var(--pos-primary), var(--pos-primary)) 0 100% / calc(var(--pos-step-pct, 0) * 1%) 3px no-repeat,
+        linear-gradient(var(--pos-border), var(--pos-border)) 0 100% / 100% 3px no-repeat; }
+.pos-step-group-head { display: flex; align-items: center; justify-content: space-between; gap: var(--pos-space-3); }
+.pos-step-foot-end { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-3); }
+/* Step kit, for desks like Run attendance: pickers in a row, the hero's own action, count tiles that open a list,
+   a figure that is a button, and side-by-side panels of plain lines */
+.pos-step-pickers.is-row { grid-template-columns: repeat(auto-fit, minmax(14rem, 18rem)); }
+.pos-step-picker.is-narrow { max-width: 24rem; }
+.pos-step-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); }
+.pos-step-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--pos-space-2); }
+.pos-step-tile { display: flex; align-items: center; gap: var(--pos-space-3); min-width: 0; padding: var(--pos-space-2) var(--pos-space-3); border: 0; border-radius: var(--pos-radius-md); background: var(--pos-surface);
+    box-shadow: inset 0 0 0 1px var(--pos-border); color: var(--pos-text); text-align: start; font: inherit; cursor: pointer;
+    transition: box-shadow var(--pos-dur-1) var(--pos-ease), background-color var(--pos-dur-1) var(--pos-ease); }
+.pos-step-tile:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 40%, var(--pos-border)), var(--pos-shadow-1); }
+.pos-step-tile:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-step-tile[aria-pressed='true'] { background: var(--tone-soft); box-shadow: inset 0 0 0 1.5px var(--tone); }
+.pos-step-tile-n { display: grid; place-items: center; flex: none; min-width: 36px; height: 36px; padding: 0 6px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-section); font-weight: var(--pos-fw-semibold);
+    color: var(--tone); background: var(--tone-soft); font-variant-numeric: tabular-nums; }
+.pos-step-tile-label { flex: 1; min-width: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); font-weight: var(--pos-fw-medium); }
+.pos-step-tile-icon { flex: none; width: 16px; height: 16px; color: var(--tone); }
+.pos-step-stat-of { font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-regular); color: var(--pos-text-muted); }
+.pos-step-stat-btn { padding: 0; border: 0; background: none; font: inherit; color: var(--tone); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; cursor: pointer; }
+.pos-step-stat-btn:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; border-radius: var(--pos-radius-sm); }
+.pos-step-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--pos-space-3); }
+.pos-step-panel { display: grid; align-content: start; gap: 4px; padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-lg); background: var(--pos-surface-muted);
+    font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text); }
+.pos-step-panel > .pos-step-subhead { margin-bottom: 4px; }
+.pos-step-panel p { margin: 0; }
+.pos-step-panel .is-muted { color: var(--pos-text-muted); }
+.pos-step-table td.is-end { text-align: end; white-space: nowrap; }
+.pos-step-task-text .pos-step-meter { margin-top: 8px; }
+/* Step kit: a grid of step cards (the payroll run cockpit), each with its dot, name, Done / Now / Next and its counters */
+.pos-step-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: var(--pos-space-3); }
+.pos-step-card { display: grid; align-content: start; gap: var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-lg); background: var(--pos-surface);
+    box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-step-card[data-state='current'] { box-shadow: inset 0 0 0 1.5px var(--pos-primary), 0 0 0 4px color-mix(in srgb, var(--pos-primary) 10%, transparent); }
+.pos-step-card[data-state='done'] .pos-step-rail-dot { color: var(--pos-success); background: var(--pos-success-soft); box-shadow: none; }
+.pos-step-card[data-state='current'] .pos-step-rail-dot { color: var(--pos-text-inverse); background: var(--pos-primary); box-shadow: none; }
+.pos-step-card-head { display: flex; align-items: center; gap: var(--pos-space-3); }
+.pos-step-card-title { display: grid; flex: 1; min-width: 0; }
+.pos-step-card-title strong { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-step-card-title span { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-step-card .pos-step-pill { padding: 2px 10px; font-size: var(--pos-fs-caption); }
+.pos-step-card-counters { display: grid; margin: 0; }
+.pos-step-card-counters > div { display: flex; justify-content: space-between; gap: var(--pos-space-3); padding: 6px 0; box-shadow: inset 0 1px 0 var(--pos-border); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-step-card-counters dt { color: var(--pos-text-secondary); }
+.pos-step-card-counters dd { margin: 0; font-weight: var(--pos-fw-semibold); color: var(--pos-text); font-variant-numeric: tabular-nums; }
+.pos-step-table td.is-strong { font-weight: var(--pos-fw-semibold); }
+.pos-step-table td.is-quiet { color: var(--pos-text-secondary); }
+/* The compact stepper (x-pos.stepper) joins its steps with a short line, green as far as they are done, like the rails */
+.pos-stepper > li:not(:last-child)::after { content: ''; flex: none; width: 20px; height: 2px; margin-inline-start: 6px; border-radius: var(--pos-radius-pill); background: var(--pos-border-strong); }
+.pos-stepper > li[data-state='done']:not(:last-child)::after { background: color-mix(in srgb, var(--pos-success) 50%, var(--pos-border)); }
+.pos-stepper > li[data-state='done'] { color: var(--pos-text-secondary); }
+
+/* Operations desks (.pos-desk, resources/views/filament/pages/operations-desk.blade.php): what is waiting is said once
+   at the top — one row per register with something in it, its count in an amber tile — then the desk's registers, whose
+   descriptions stay to two lines (the full text is on the register itself). */
+.pos-desk-waiting { display: grid; gap: var(--pos-space-3); }
+.pos-desk-waiting-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); gap: var(--pos-space-2); margin: 0; padding: 0; list-style: none; }
+.pos-desk-waiting-row { --tone: var(--pos-warning); --tone-soft: var(--pos-warning-soft);
+    position: relative; display: flex; align-items: center; gap: var(--pos-space-3); min-width: 0; height: 100%; padding: var(--pos-space-3) var(--pos-space-4); overflow: hidden;
+    border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); color: inherit; text-decoration: none;
+    transition: box-shadow var(--pos-dur-1) var(--pos-ease); }
+.pos-desk-waiting-row::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 3px; background: var(--tone); }
+.pos-desk-waiting-row:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 35%, var(--pos-border)), var(--pos-shadow-1); }
+.pos-desk-waiting-row:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-desk-waiting-n { display: grid; place-items: center; flex: none; min-width: 40px; height: 40px; padding: 0 6px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-section); font-weight: var(--pos-fw-semibold);
+    color: var(--tone); background: var(--tone-soft); font-variant-numeric: tabular-nums; }
+.pos-desk-waiting-text { display: grid; flex: 1; min-width: 0; }
+.pos-desk-waiting-text strong { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-desk-waiting-text > span { overflow: hidden; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); text-overflow: ellipsis; white-space: nowrap; }
+.pos-desk-waiting-go { flex: none; width: 16px; height: 16px; color: var(--pos-text-muted); transition: transform var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+.pos-desk-waiting-row:hover .pos-desk-waiting-go { color: var(--pos-primary); transform: translateX(2px); }
+.pos-desk-browse .pos-browse-link-meta { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pos-desk-browse .pos-browse-link-count { color: var(--pos-warning); background: var(--pos-warning-soft); }
+
+/* Step kit for overview pages (the payroll overview): companies as a grid of cards, a ledger without its own frame,
+   a checkbox beside the pickers, the line under a checks headline, a one-line description on a checks row */
+.pos-step-company-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: var(--pos-space-4); }
+.pos-step-ledger.is-plain { padding: 0; background: none; box-shadow: none; }
+.pos-step-ledger.is-plain > div:last-child { box-shadow: none; }
+.pos-step-ledger dd.is-warning { color: var(--pos-warning); }
+.pos-step-check { display: inline-flex; align-items: center; gap: var(--pos-space-2); align-self: end; padding-bottom: 10px; font-size: var(--pos-fs-meta); color: var(--pos-text); cursor: pointer; }
+.pos-prc-sub { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-prc-meta.is-clamped { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-prc-item.is-open .pos-prc-meta.is-clamped { white-space: normal; }
+/* Step kit: a list of rules, each with its status (the compliance control room) */
+.pos-step-rules { display: grid; margin: 0; padding: 0; list-style: none; border-radius: var(--pos-radius-lg); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-step-rules > li { display: flex; align-items: flex-start; gap: var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); }
+.pos-step-rules > li + li { box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-step-rule-icon { flex: none; padding-top: 1px; color: var(--tone); }
+.pos-step-rule-svg { width: 18px; height: 18px; }
+.pos-step-rule-text { display: grid; flex: 1; gap: 2px; min-width: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+.pos-step-rule-text strong { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-step-rule-text .is-alert { color: var(--pos-danger); }
+.pos-step-rules .pos-step-pill { padding: 2px 10px; font-size: var(--pos-fs-caption); text-transform: capitalize; }
+.pos-step-ledger dd.is-danger { color: var(--pos-danger); }
+.pos-step > .pos-step-pill { justify-self: start; }
+
+/* Plain fields in custom views: a native select or input still carrying the old `border-gray-300` utility (17 views:
+   analytics filters, desks, setup pages) drew no border at all; it now looks like a PeopleOS field in both themes. */
+:is(select, input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='range'])).border-gray-300 {
+    min-height: 2.5rem; padding: 0.45rem 0.75rem; border: 1px solid var(--pos-border-strong); border-radius: var(--pos-radius-md);
+    background-color: var(--pos-surface); color: var(--pos-text); font-size: var(--pos-fs-body); line-height: var(--pos-lh-body);
+    transition: border-color var(--pos-dur-1) var(--pos-ease), box-shadow var(--pos-dur-1) var(--pos-ease); }
+select.border-gray-300 { padding-inline-end: 2.25rem; }
+:is(select, input).border-gray-300:hover { border-color: color-mix(in srgb, var(--pos-primary) 35%, var(--pos-border-strong)); }
+:is(select, input).border-gray-300:focus-visible { outline: none; border-color: var(--pos-primary); box-shadow: var(--pos-focus-ring); }
+input[type='checkbox'].border-gray-300 { border: 1px solid var(--pos-border-strong); border-radius: var(--pos-radius-sm); }
+
+/* ------------------------------------------------------------------ N2. Salary structure builder: the components table
+   (SalaryStructureBuilder, Repeater ->extraAttributes(class pos-rules)). Rows read like a sentence — component, how, value,
+   pay — with a stripe in the component's type tone, quiet chips for amounts that come from elsewhere, and limits only
+   when asked for. Filament's table repeater turns rows into labelled cards on narrow screens; this keeps that. */
+.pos-rules > table { overflow: hidden; border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: var(--pos-shadow-soft); }
+.pos-rules > table > thead > tr > th { padding: 10px 16px; border: 0 !important; background: var(--pos-surface-muted); text-align: start;
+    font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label);
+    text-transform: uppercase; color: var(--pos-text-muted); }
+.pos-rules .fi-fo-table-repeater-header-required-mark { display: none; }
+.pos-rules > table > tbody > tr { --pos-rule-tone: var(--pos-border-strong); transition: background-color var(--pos-dur-1) var(--pos-ease); }
+.pos-rules > table > tbody > tr:hover { background: color-mix(in srgb, var(--pos-surface-muted) 55%, transparent); }
+.pos-rules > table > tbody > tr > td { vertical-align: middle; }
+.pos-rules > table > tbody > tr > td:first-child { box-shadow: inset 3px 0 0 var(--pos-rule-tone); }
+.pos-rules tr:has(.pos-rule-name[data-pos-type='earning']) { --pos-rule-tone: var(--pos-primary); }
+.pos-rules tr:has(.pos-rule-name[data-pos-type='deduction']) { --pos-rule-tone: var(--pos-danger); }
+.pos-rules tr:has(.pos-rule-name[data-pos-type='employer_contribution']) { --pos-rule-tone: var(--pos-hue-gold); }
+.pos-rules tr:has(.pos-rule-name[data-pos-type='reimbursement']) { --pos-rule-tone: var(--pos-hue-teal); }
+@container (min-width: 36rem) {
+    .pos-rules > table > tbody > tr > td { padding: 12px 10px; }
+    .pos-rules > table > tbody > tr > td:first-child { padding-inline-start: 16px; }
+}
+/* Tighter stacks inside a cell */
+.pos-rules .pos-rule-name, .pos-rules .pos-rule-value, .pos-rules .pos-rule-value .fi-sc { gap: 6px; }
+/* A component the rules add: a small chip under its name, not a second full-size field */
+.pos-rules .pos-rule-chip { justify-self: start; min-height: 0; border-radius: var(--pos-radius-pill); background: var(--pos-info-soft); box-shadow: none !important; --tw-ring-shadow: 0 0 #0000 !important; }
+.pos-rules .pos-rule-chip select { height: 26px; min-height: 0; padding-block: 0; padding-inline: 10px 28px; font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); color: var(--pos-info); background-position: right 6px center; }
+/* Amounts: no spinners; limits a size smaller; formulas in a code face */
+.pos-rules input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
+.pos-rules input[type='number']::-webkit-inner-spin-button, .pos-rules input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.pos-rules .pos-rule-limit input { font-size: var(--pos-fs-meta); }
+.pos-rules .pos-rule-limit .fi-input-wrp-prefix { font-size: var(--pos-fs-caption); color: var(--pos-text-muted); }
+.pos-rules .pos-rule-formula input { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--pos-fs-meta); font-variant-ligatures: none; }
+.pos-rules .pos-rule-value .fi-sc-text.fi-badge { justify-self: start; }
+.pos-rules .pos-rule-value .fi-sc-actions .fi-link { font-size: var(--pos-fs-caption); }
+/* Fixed / Variable as one small switch */
+.pos-rules .pos-rule-pay .fi-btn { padding-inline: 10px; font-size: var(--pos-fs-meta); }
+/* Remove is quiet until hovered; adding is one wide dashed row */
+.pos-rules .fi-fo-table-repeater-actions .fi-icon-btn { color: var(--pos-text-muted); }
+.pos-rules .fi-fo-table-repeater-actions .fi-icon-btn:hover { color: var(--pos-danger); background: var(--pos-danger-soft); }
+.pos-rules .fi-fo-table-repeater-add { display: block; }
+.pos-rules .fi-fo-table-repeater-add .fi-btn { width: 100%; justify-content: center; min-height: 44px; border-radius: var(--pos-radius-lg); background: transparent;
+    box-shadow: none; outline: 1.5px dashed color-mix(in srgb, var(--pos-primary) 35%, var(--pos-border)); outline-offset: -1.5px; color: var(--pos-primary); }
+.pos-rules .fi-fo-table-repeater-add .fi-btn:hover { background: var(--pos-primary-soft); }
+
+/* ------------------------------------------------------------------ O. Admin Centre: the hero, the finder and the glance
+   The top of the Admin Centre is one hero band in the Home language (ink into iris, a dot field, rings): the heading
+   and brief, the finder as a large light field with plain-word examples under it, and governance as a glass "At a
+   glance" card beside it. The finder's matches float over the page below (the hero keeps overflow visible; its
+   decoration is clipped in its own layer). Everything is scoped to .pos-adm; colours come from --pos-hero-* tokens. */
+.pos-adm .pos-adm-hero {
+    position: relative;
+    z-index: 2;
+    isolation: isolate;
+    container: pos-adm-hero / inline-size;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+    align-items: center;
+    gap: var(--pos-space-8) var(--pos-space-10);
+    padding: var(--pos-space-10);
+    border-radius: var(--pos-radius-xl);
+    color: var(--pos-hero-text);
+    background:
+        radial-gradient(55% 95% at 88% 6%, var(--pos-hero-glow), transparent 70%),
+        radial-gradient(45% 80% at 2% 100%, var(--pos-hero-warm), transparent 70%),
+        linear-gradient(118deg, var(--pos-hero-ink) 0%, var(--pos-hero-mid) 58%, var(--pos-hero-iris) 100%);
+    box-shadow: var(--pos-shadow-hero);
+}
+.pos-adm .pos-adm-hero[data-solo] { grid-template-columns: minmax(0, 1fr); }
+/* Decoration: a dot field fading in to the right and rings behind the glance, clipped to the band */
+.pos-adm-hero-art { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.pos-adm-hero-art::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(var(--pos-hero-line) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(100deg, transparent 30%, #000 85%);
+}
+.pos-adm-hero-art::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    inset-inline-end: -140px;
+    width: 560px;
+    height: 560px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background: repeating-radial-gradient(circle, transparent 0 55px, var(--pos-hero-line-strong) 55px 56px);
+    mask-image: radial-gradient(circle, #000 20%, transparent 70%);
+    opacity: 0.55;
+}
+
+.pos-adm-hero-main { display: grid; gap: var(--pos-space-6); min-width: 0; }
+.pos-adm-hero .pos-ws-head-text { gap: var(--pos-space-3); max-width: 62ch; }
+.pos-adm-hero .pos-ws-eyebrow { display: inline-flex; align-items: center; gap: var(--pos-space-2); color: var(--pos-hero-text-muted); }
+.pos-adm-mark { display: grid; place-items: center; width: 26px; height: 26px; flex: none; border-radius: var(--pos-radius-md); color: var(--pos-hero-text);
+    background: linear-gradient(135deg, var(--pos-iris-from), var(--pos-iris-to)); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong), 0 6px 16px -6px rgb(8 10 28 / 0.6); }
+.pos-adm-hero .pos-ws-title { color: var(--pos-hero-text); letter-spacing: -0.015em; }
+.pos-adm-hero .pos-ws-brief { color: var(--pos-hero-text-secondary); }
+.pos-adm-hero :focus-visible { outline-color: var(--pos-hero-text); }
+
+/* The finder: a light field on the ink, its matches floating beneath it */
+.pos-adm-find { position: relative; display: grid; gap: var(--pos-space-3); max-width: 720px; }
+.pos-adm-search { display: flex; align-items: center; gap: var(--pos-space-3); height: 52px; padding: 0 var(--pos-space-4); border-radius: var(--pos-radius-lg); cursor: text;
+    color: var(--pos-text); background: var(--pos-surface); box-shadow: 0 14px 32px -16px rgb(8 10 28 / 0.75), inset 0 0 0 1px var(--pos-border);
+    transition: box-shadow var(--pos-dur-1) var(--pos-ease); }
+.pos-adm-search > svg:first-child { flex: none; color: var(--pos-primary); }
+.pos-adm-search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--pos-hero-node-iris) 60%, transparent), 0 14px 32px -16px rgb(8 10 28 / 0.75); }
+.pos-adm-search input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: none; background: transparent; font-size: var(--pos-fs-lead); color: var(--pos-text); }
+.pos-adm-search input:focus, .pos-adm-search input:focus-visible { outline: none; box-shadow: none; }
+.pos-adm-search input::placeholder { color: var(--pos-text-muted); }
+.pos-adm-search input::-webkit-search-cancel-button { cursor: pointer; }
+
+.pos-adm-results { position: absolute; top: calc(52px + var(--pos-space-2)); inset-inline: 0; z-index: var(--pos-z-dropdown); max-height: min(440px, 60vh); overflow-y: auto; overscroll-behavior: contain;
+    border-radius: var(--pos-radius-lg); color: var(--pos-text); background: var(--pos-surface-elevated); box-shadow: var(--pos-shadow-3), 0 0 0 1px var(--pos-border); }
+.pos-adm-results-head { position: sticky; top: 0; z-index: 1; margin: 0; padding: var(--pos-space-2) var(--pos-space-4); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption);
+    font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); background: var(--pos-surface-elevated); box-shadow: inset 0 -1px 0 var(--pos-border); }
+.pos-adm-results .pos-stream-icon { border-radius: var(--pos-radius-md); background: var(--pos-primary-soft); color: var(--pos-primary); }
+.pos-adm-results .pos-stream-row:hover, .pos-adm-results .pos-stream-row:focus-visible { background: var(--pos-surface-muted); }
+.pos-adm-results .pos-stream-row:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: -2px; }
+.pos-adm-go { color: var(--pos-text-muted); transition: transform var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+.pos-adm-results .pos-stream-row:hover .pos-adm-go { transform: translateX(3px); color: var(--pos-primary); }
+.pos-adm-results > .pos-state { padding: var(--pos-space-4); }
+
+/* Plain-word examples: glass chips that fill the finder */
+.pos-adm-try { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); }
+.pos-adm-try-label { margin-inline-end: var(--pos-space-1); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold);
+    letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-hero-text-muted); }
+.pos-adm-chip { display: inline-flex; align-items: center; min-height: 28px; padding: 3px 12px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta);
+    font-weight: var(--pos-fw-medium); color: var(--pos-hero-text); background: var(--pos-hero-glass); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); backdrop-filter: blur(6px);
+    transition: background var(--pos-dur-1) var(--pos-ease), transform var(--pos-dur-1) var(--pos-ease); }
+.pos-adm-chip:hover { background: var(--pos-hero-glass-strong); transform: translateY(-1px); }
+.pos-adm-chip:focus-visible { outline: 2px solid var(--pos-hero-text); outline-offset: 2px; }
+
+/* At a glance: a glass card of ruled rows, each figure's state on its icon and in the card's head */
+.pos-adm-glance { display: grid; gap: var(--pos-space-3); align-self: center; min-width: 0; padding: var(--pos-space-4) var(--pos-space-4) var(--pos-space-2); border-radius: var(--pos-radius-lg);
+    background: var(--pos-hero-glass); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong), 0 18px 40px -24px rgb(8 10 28 / 0.7); backdrop-filter: blur(10px); }
+.pos-adm-glance-head { display: flex; align-items: center; justify-content: space-between; gap: var(--pos-space-3); margin: 0; padding-inline: var(--pos-space-1);
+    font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-hero-text-muted); }
+.pos-adm-glance-state { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: var(--pos-radius-pill); letter-spacing: normal; text-transform: none;
+    font-size: var(--pos-fs-caption); color: var(--pos-hero-text); background: var(--pos-hero-glass-strong); }
+.pos-adm-glance-state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--pos-hero-ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pos-hero-ok) 25%, transparent); }
+.pos-adm-glance-state[data-tone='warning']::before { background: var(--pos-hero-warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pos-hero-warn) 25%, transparent); }
+.pos-adm-stats { display: grid; margin: 0; padding: 0; list-style: none; }
+.pos-adm-stats > li + li { box-shadow: inset 0 1px 0 var(--pos-hero-line); }
+.pos-adm-stat { --pos-adm-tone: var(--pos-hero-ok); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--pos-space-3);
+    margin-inline: calc(var(--pos-space-2) * -1); padding: var(--pos-space-3) var(--pos-space-2); border-radius: var(--pos-radius-md); color: var(--pos-hero-text);
+    transition: background var(--pos-dur-1) var(--pos-ease); }
+.pos-adm-stat[data-tone='warning'] { --pos-adm-tone: var(--pos-hero-warn); }
+.pos-adm-stat[data-tone='danger'] { --pos-adm-tone: var(--pos-hero-alert); }
+a.pos-adm-stat:hover { background: var(--pos-hero-glass); }
+a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-offset: 0; }
+.pos-adm-stat-icon { position: relative; display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--pos-radius-md); color: var(--pos-adm-tone);
+    background: color-mix(in srgb, var(--pos-adm-tone) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-adm-tone) 30%, transparent); }
+.pos-adm-stat-body { display: grid; min-width: 0; }
+.pos-adm-stat-label { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-medium); color: var(--pos-hero-text); }
+.pos-adm-stat-meta { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-hero-text-muted); }
+.pos-adm-stat-value { min-width: 2ch; font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em; text-align: end; color: var(--pos-hero-text); }
+.pos-adm-stat:not([data-tone='success']) .pos-adm-stat-value { color: var(--pos-adm-tone); }
+
+/* What is waiting and what changed: side by side when both are there */
+.pos-adm-activity { display: grid; gap: var(--pos-section-gap); grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); align-items: start; }
+.pos-adm-activity .pos-panel { box-shadow: var(--pos-shadow-soft); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .pos-adm .pos-adm-hero { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) backwards; }
+    .pos-adm .pos-adm-hero ~ * { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) 100ms backwards; }
+}
+
+/* Too narrow for the finder and the glance side by side: the glance drops under the finder, its rows in columns */
+@container pos-adm-hero (max-width: 62rem) {
+    .pos-adm-hero .pos-adm-glance { grid-column: 1 / -1; }
+    .pos-adm-stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); column-gap: var(--pos-space-4); }
+    .pos-adm-stats > li + li { box-shadow: none; }
+}
+@media (max-width: 1023px) {
+    .pos-adm .pos-adm-hero { grid-template-columns: minmax(0, 1fr); padding: var(--pos-space-8); }
+}
+@media (max-width: 767px) {
+    .pos-adm .pos-adm-hero { gap: var(--pos-space-6); padding: var(--pos-space-6) var(--pos-space-5); border-radius: var(--pos-radius-lg); }
+    .pos-adm-hero .pos-ws-title-display { font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); }
+    .pos-adm-hero .pos-ws-brief { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); }
+    .pos-adm-hero-art::after { top: -120px; inset-inline-end: -220px; transform: none; opacity: 0.4; }
+    .pos-adm-search { height: 48px; }
+    .pos-adm-results { top: calc(48px + var(--pos-space-2)); }
+}
+
+/* ------------------------------------------------------------------ P. Workspace masthead, glance and the work streams
+   The opening band every workspace can share (x-pos.masthead): the Home and Admin Centre language (ink into iris, a dot
+   field, rings) with the heading and brief, an optional next step under them, a glass "At a glance" card beside them
+   (x-pos.glance) and a footer band for filters. Then My work's own pieces: the next step as a light card on the ink,
+   toned icon tiles on its rows, and link lists whose arrow leans in. Colours come from the --pos-hero-* tokens. */
+.pos-mast {
+    --pos-mast-pad: var(--pos-space-10);
+    position: relative;
+    isolation: isolate;
+    container: pos-mast / inline-size;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+    align-items: center;
+    /* Compact like Home's hero (2026-11-11): less padding above, a smaller gap to the band, slimmer glance rows */
+    gap: var(--pos-space-6) var(--pos-space-10);
+    padding: var(--pos-space-8) var(--pos-mast-pad);
+    border-radius: var(--pos-radius-xl);
+    color: var(--pos-hero-text);
+    background:
+        radial-gradient(55% 95% at 88% 6%, var(--pos-hero-glow), transparent 70%),
+        radial-gradient(45% 80% at 2% 100%, var(--pos-hero-warm), transparent 70%),
+        linear-gradient(118deg, var(--pos-hero-ink) 0%, var(--pos-hero-mid) 58%, var(--pos-hero-iris) 100%);
+    box-shadow: var(--pos-shadow-hero);
+}
+.pos-mast[data-solo] { grid-template-columns: minmax(0, 1fr); }
+.pos-mast:has(> .pos-mast-band) { padding-block-end: 0; }
+.pos-mast-art { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.pos-mast-art::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(var(--pos-hero-line) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(100deg, transparent 30%, #000 85%);
+}
+.pos-mast-art::after {
+    content: '';
+    position: absolute;
+    top: 42%;
+    inset-inline-end: -140px;
+    width: 560px;
+    height: 560px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background: repeating-radial-gradient(circle, transparent 0 55px, var(--pos-hero-line-strong) 55px 56px);
+    mask-image: radial-gradient(circle, #000 20%, transparent 70%);
+    opacity: 0.55;
+}
+.pos-mast-main { display: grid; align-content: center; gap: var(--pos-space-4); min-width: 0; }
+.pos-mast .pos-ws-head-text { gap: var(--pos-space-2); max-width: 64ch; }
+.pos-mast .pos-ws-eyebrow { display: inline-flex; align-items: center; gap: var(--pos-space-2); color: var(--pos-hero-text-muted); }
+.pos-mast-mark { display: grid; place-items: center; width: 26px; height: 26px; flex: none; border-radius: var(--pos-radius-md); color: var(--pos-hero-text);
+    background: linear-gradient(135deg, var(--pos-iris-from), var(--pos-iris-to)); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong), 0 6px 16px -6px rgb(8 10 28 / 0.6); }
+.pos-mast .pos-ws-title { color: var(--pos-hero-text); letter-spacing: -0.015em; }
+.pos-mast .pos-ws-brief { color: var(--pos-hero-text-secondary); }
+.pos-mast .pos-ws-brief :is(b, strong) { color: var(--pos-hero-text); }
+.pos-mast :focus-visible { outline-color: var(--pos-hero-text); }
+.pos-mast .pos-btn-secondary { background: var(--pos-hero-glass); color: var(--pos-hero-text); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); }
+.pos-mast .pos-btn-secondary:hover { background: var(--pos-hero-glass-strong); }
+
+/* The footer band: filters on the ink, the chosen one solid white */
+.pos-mast-band {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: var(--pos-space-3) var(--pos-space-6);
+    min-width: 0;
+    margin-inline: calc(var(--pos-mast-pad) * -1);
+    padding: 10px var(--pos-mast-pad);
+    border-end-start-radius: inherit;
+    border-end-end-radius: inherit;
+    background: var(--pos-hero-band);
+    box-shadow: inset 0 1px 0 var(--pos-hero-line);
+}
+.pos-mast-band .pos-chip { height: 30px; padding-inline: 12px; color: var(--pos-hero-text-secondary); background: transparent; box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong);
+    transition: background var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+.pos-mast-band .pos-chip:hover { background: var(--pos-hero-glass); color: var(--pos-hero-text); }
+.pos-mast-band .pos-chip[aria-pressed='true'] { background: var(--pos-hero-text); color: var(--pos-hero-on-light); box-shadow: none; }
+.pos-mast-band .pos-chip .pos-count { margin-inline-start: 6px; background: var(--pos-hero-glass-strong); color: var(--pos-hero-text); }
+.pos-mast-band .pos-chip[aria-pressed='true'] .pos-count { background: var(--pos-primary-soft); color: var(--pos-hero-on-light); }
+.pos-mast-band .pos-kbd { color: var(--pos-hero-text); background: var(--pos-hero-glass); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); }
+.pos-mast-note { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-hero-text-muted); }
+.pos-mast-band .pos-select { height: 30px; padding-block: 0; color: var(--pos-hero-text); background-color: var(--pos-hero-glass); border-color: var(--pos-hero-line-strong); }
+.pos-mast-band .pos-select > option { color: var(--pos-text); background: var(--pos-surface); }
+.pos-mast-band .pos-btn-ghost { color: var(--pos-hero-text); }
+.pos-mast-band .pos-btn-ghost:hover, .pos-mast-band .pos-btn-ghost[aria-pressed='true'] { background: var(--pos-hero-glass-strong); }
+.pos-mast-band > nav:only-child, .pos-inbox-filters { flex: 1 1 auto; }
+.pos-mast-band .pos-tabs { padding: 3px; background: var(--pos-hero-glass); box-shadow: inset 0 0 0 1px var(--pos-hero-line); }
+.pos-mast-band .pos-tab { padding: 4px 12px; font-size: var(--pos-fs-meta); color: var(--pos-hero-text-secondary); }
+.pos-mast-band .pos-tab:hover { color: var(--pos-hero-text); }
+.pos-mast-band .pos-tab[aria-selected='true'] { background: var(--pos-hero-text); color: var(--pos-hero-on-light); box-shadow: none; }
+.pos-mast-band .pos-tab .pos-count { background: var(--pos-hero-glass-strong); color: var(--pos-hero-text); }
+.pos-mast-band .pos-tab[aria-selected='true'] .pos-count { background: var(--pos-primary-soft); color: var(--pos-hero-on-light); }
+.pos-mast-band .pos-tab .pos-count[data-tone='danger'] { background: var(--pos-danger); color: #fff; }
+.pos-mast-band .pos-btn-secondary { background: var(--pos-hero-glass); color: var(--pos-hero-text); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); }
+.pos-mast-band .pos-btn-secondary:hover { background: var(--pos-hero-glass-strong); }
+/* The page's own header actions (Filament buttons) on the ink: the primary one solid white, the rest glass */
+.pos-mast-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); }
+.pos-mast .fi-ac .fi-btn { background: var(--pos-hero-glass); color: var(--pos-hero-text); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); }
+.pos-mast .fi-ac .fi-btn:hover { background: var(--pos-hero-glass-strong); }
+.pos-mast .fi-ac .fi-btn .fi-icon { color: currentColor; }
+.pos-mast .fi-ac .fi-btn.fi-color-primary:not(.fi-outlined) { background: var(--pos-hero-text); color: var(--pos-hero-on-light); box-shadow: none; }
+.pos-mast .fi-ac .fi-btn.fi-color-primary:not(.fi-outlined):hover { background: color-mix(in srgb, var(--pos-hero-text) 88%, var(--pos-hero-node-iris)); }
+
+/* At a glance: a glass card of ruled rows, each figure's state on its icon and once in the card's head */
+.pos-glance { display: grid; gap: var(--pos-space-1); align-self: center; min-width: 0; padding: var(--pos-space-3) var(--pos-space-4) var(--pos-space-1); border-radius: var(--pos-radius-lg);
+    background: var(--pos-hero-glass); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong), 0 18px 40px -24px rgb(8 10 28 / 0.7); backdrop-filter: blur(10px); }
+.pos-glance-head { display: flex; align-items: center; justify-content: space-between; gap: var(--pos-space-3); margin: 0; padding-inline: var(--pos-space-1);
+    font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-hero-text-muted); }
+.pos-glance-state { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: var(--pos-radius-pill); letter-spacing: normal; text-transform: none;
+    font-size: var(--pos-fs-caption); color: var(--pos-hero-text); background: var(--pos-hero-glass-strong); white-space: nowrap; }
+.pos-glance-state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--pos-hero-ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pos-hero-ok) 25%, transparent); }
+.pos-glance-state[data-tone='warning']::before { background: var(--pos-hero-warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pos-hero-warn) 25%, transparent); }
+.pos-glance-rows { display: grid; margin: 0; padding: 0; list-style: none; }
+.pos-glance-rows > li + li { box-shadow: inset 0 1px 0 var(--pos-hero-line); }
+.pos-glance-row { --pos-glance-tone: var(--pos-hero-ok); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--pos-space-3); width: calc(100% + var(--pos-space-4));
+    margin-inline: calc(var(--pos-space-2) * -1); padding: 6px var(--pos-space-2); border-radius: var(--pos-radius-md); text-align: start; color: var(--pos-hero-text);
+    transition: background var(--pos-dur-1) var(--pos-ease); }
+.pos-glance-row[data-tone='warning'] { --pos-glance-tone: var(--pos-hero-warn); }
+.pos-glance-row[data-tone='danger'] { --pos-glance-tone: var(--pos-hero-alert); }
+.pos-glance-row[data-tone='info'], .pos-glance-row[data-tone='neutral'] { --pos-glance-tone: var(--pos-hero-node-iris); }
+:is(a, button).pos-glance-row { cursor: pointer; }
+:is(a, button).pos-glance-row:hover { background: var(--pos-hero-glass); }
+:is(a, button).pos-glance-row:focus-visible { outline: 2px solid var(--pos-hero-text); outline-offset: 0; }
+.pos-glance-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--pos-radius-md); color: var(--pos-glance-tone);
+    background: color-mix(in srgb, var(--pos-glance-tone) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-glance-tone) 30%, transparent); }
+.pos-glance-body { display: grid; min-width: 0; }
+.pos-glance-label { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-medium); color: var(--pos-hero-text); }
+.pos-glance-meta { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-hero-text-muted); }
+.pos-glance-value { min-width: 2ch; font-size: 20px; line-height: 26px; font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em; text-align: end; color: var(--pos-hero-text); }
+.pos-glance-row:is([data-tone='warning'], [data-tone='danger']) .pos-glance-value { color: var(--pos-glance-tone); }
+
+/* My work: the next step as a light card on the ink, toned by how urgent it is */
+.pos-mw-next { --pos-mw-tone: var(--pos-warning); --pos-mw-tone-soft: var(--pos-warning-soft);
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--pos-space-3) var(--pos-space-4); max-width: 760px;
+    padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-lg); color: var(--pos-text);
+    background: linear-gradient(90deg, var(--pos-mw-tone-soft), transparent 46%), var(--pos-surface);
+    box-shadow: 0 16px 36px -18px rgb(8 10 28 / 0.75), inset 3px 0 0 var(--pos-mw-tone); }
+.pos-mw-next[data-tone='danger'] { --pos-mw-tone: var(--pos-danger); --pos-mw-tone-soft: var(--pos-danger-soft); }
+.pos-mw-next :focus-visible { outline-color: var(--pos-focus); }
+.pos-mw-next-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--pos-radius-md); color: var(--pos-mw-tone); background: var(--pos-mw-tone-soft); }
+.pos-mw-next-body { display: grid; gap: 2px; min-width: 0; }
+.pos-mw-next-eyebrow { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-mw-tone); }
+.pos-mw-next-title { font-size: var(--pos-fs-lead); line-height: var(--pos-lh-lead); font-weight: var(--pos-fw-semibold); color: var(--pos-text); overflow-wrap: anywhere; }
+.pos-mw-next-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--pos-space-1); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+.pos-mw-next-actions { display: flex; align-items: center; gap: var(--pos-space-2); }
+
+/* The filters and the keyboard hint share the band */
+.pos-mw-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); min-width: 0; }
+.pos-mw-filters-label { margin-inline-end: var(--pos-space-1); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-hero-text-muted); }
+.pos-mw-keys { align-items: center; gap: 4px; margin-inline-start: auto; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-hero-text-muted); white-space: nowrap; }
+.pos-mw-keys .pos-kbd + :not(.pos-kbd) { margin-inline-start: 2px; }
+
+/* The streams: cards with a soft lift, every row led by a toned icon tile (upcoming work in the identity tint) */
+.pos-mw .pos-panel { box-shadow: var(--pos-shadow-soft); }
+.pos-mw .pos-work-row { padding-block: var(--pos-space-3); }
+.pos-mw .pos-work-row > .pos-stream-icon { width: 36px; height: 36px; border-radius: var(--pos-radius-md); }
+.pos-mw .pos-work-row[data-tone='neutral'] > .pos-stream-icon { background: var(--pos-primary-soft); color: var(--pos-primary); }
+.pos-mw .pos-work-row[data-tone='danger'] { background: linear-gradient(90deg, color-mix(in srgb, var(--pos-danger-soft) 55%, transparent), transparent 38%); }
+.pos-mw .pos-work-row[data-focused] { background: var(--pos-state-selected); }
+.pos-mw-empty > .pos-state { padding-block: var(--pos-space-10); }
+
+/* Everywhere: section titles read a shade stronger with their counts as pills; role-signal counts are tinted tiles that
+   carry the row's severity (Home's treatment, now on My work, Employee 360 and every page that lists signals) */
+.pos-sec-title { color: var(--pos-text-secondary); }
+.pos-sec-title .pos-sec-count { align-self: center; display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding-inline: var(--pos-space-1);
+    border-radius: var(--pos-radius-pill); background: var(--pos-primary-soft); color: var(--pos-state-selected-text); line-height: 1; }
+.pos-signal-row > .pos-signal-count { display: grid; place-items: center; inline-size: auto; min-inline-size: 44px; block-size: 44px; padding-inline: var(--pos-space-1);
+    border-radius: var(--pos-radius-md); background: var(--pos-surface-muted); color: var(--pos-text); font-size: var(--pos-fs-section); }
+.pos-signal-row[data-tone='danger'] > .pos-signal-count { background: var(--pos-danger-soft); color: var(--pos-danger); }
+.pos-signal-row[data-tone='warning'] > .pos-signal-count { background: var(--pos-warning-soft); color: var(--pos-warning); }
+.pos-signal-row[data-tone='success'] > .pos-signal-count { background: var(--pos-success-soft); color: var(--pos-success); }
+.pos-signal-row[data-tone='info'] > .pos-signal-count { background: var(--pos-info-soft); color: var(--pos-info); }
+.pos-signal-row[data-tone='accent'] > .pos-signal-count { background: var(--pos-accent-soft); color: var(--pos-accent); }
+.pos-mw-next-count { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; margin-inline-end: 4px; padding-inline: 6px; vertical-align: 1px;
+    border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); font-variant-numeric: tabular-nums; color: var(--pos-mw-tone); background: var(--pos-mw-tone-soft); }
+
+/* Earlier custom pages: their plain tables (w-full text-sm under a grey header row) read as PeopleOS data tables, with
+   the same header band as Filament's tables, hairline rows and a hover; alignment stays with each cell's own classes */
+.fi-main :is(table.w-full, table.min-w-full):not([class*='pos-'], .fi-ta-table) { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+.fi-main :is(table.w-full, table.min-w-full):not([class*='pos-'], .fi-ta-table) > thead > tr > th {
+    padding: var(--pos-space-2) var(--pos-space-3); background: var(--pos-surface-muted); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption);
+    font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); white-space: nowrap; }
+.fi-main :is(table.w-full, table.min-w-full):not([class*='pos-'], .fi-ta-table) > thead > tr > th:first-child { border-start-start-radius: var(--pos-radius-md); border-end-start-radius: var(--pos-radius-md); }
+.fi-main :is(table.w-full, table.min-w-full):not([class*='pos-'], .fi-ta-table) > thead > tr > th:last-child { border-start-end-radius: var(--pos-radius-md); border-end-end-radius: var(--pos-radius-md); }
+.fi-main :is(table.w-full, table.min-w-full):not([class*='pos-'], .fi-ta-table) > tbody > tr > :is(td, th) { padding: var(--pos-space-2) var(--pos-space-3); box-shadow: inset 0 1px 0 var(--pos-border); }
+.fi-main :is(table.w-full, table.min-w-full):not([class*='pos-'], .fi-ta-table) > tbody > tr:first-child > :is(td, th) { box-shadow: none; }
+.fi-main :is(table.w-full, table.min-w-full):not([class*='pos-'], .fi-ta-table) > tbody > tr { transition: background var(--pos-dur-1) var(--pos-ease); }
+.fi-main :is(table.w-full, table.min-w-full):not([class*='pos-'], .fi-ta-table) > tbody > tr:hover { background: var(--pos-state-hover); }
+.fi-main :is(table.w-full, table.min-w-full):not([class*='pos-'], .fi-ta-table) > tfoot > tr > :is(td, th) { padding: var(--pos-space-2) var(--pos-space-3); box-shadow: inset 0 1px 0 var(--pos-border-strong); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+
+/* Empty tables: the tray on an identity-tinted tile instead of a grey disc */
+.fi-ta-empty-state-icon-bg { border-radius: var(--pos-radius-lg) !important; background: var(--pos-primary-soft) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 14%, transparent); }
+.fi-ta-empty-state-icon-bg .fi-icon { color: var(--pos-primary) !important; }
+.fi-ta-empty-state-description { color: var(--pos-text-muted) !important; }
+
+/* Payroll auditor: the run with its findings counted by severity, then one readable row per finding */
+.pos-audit-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--pos-space-4) var(--pos-space-8); padding: var(--pos-space-5) var(--pos-space-6); }
+.pos-audit-run { display: grid; gap: 2px; min-width: 0; }
+.pos-audit-counts { display: flex; gap: var(--pos-space-2); margin: 0; padding: 0; list-style: none; }
+.pos-audit-count { --pos-audit-tone: var(--pos-text-muted); --pos-audit-bg: var(--pos-surface-muted); display: grid; justify-items: center; min-width: 76px; padding: var(--pos-space-2) var(--pos-space-3);
+    border-radius: var(--pos-radius-md); background: var(--pos-audit-bg); }
+.pos-audit-count[data-tone='danger'] { --pos-audit-tone: var(--pos-danger); --pos-audit-bg: var(--pos-danger-soft); }
+.pos-audit-count[data-tone='warning'] { --pos-audit-tone: var(--pos-warning); --pos-audit-bg: var(--pos-warning-soft); }
+.pos-audit-count[data-tone='info'] { --pos-audit-tone: var(--pos-info); --pos-audit-bg: var(--pos-info-soft); }
+.pos-audit-count-value { font-size: var(--pos-fs-metric); line-height: var(--pos-lh-metric); font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums; color: var(--pos-audit-tone); }
+.pos-audit-count-label { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label); text-transform: uppercase; color: var(--pos-text-muted); }
+.pos-audit-rules { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: var(--pos-space-2); margin: 0; padding-top: var(--pos-space-3); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta);
+    color: var(--pos-text-muted); box-shadow: inset 0 1px 0 var(--pos-border); }
+.pos-audit-rules > svg { flex: none; margin-top: 1px; }
+.pos-audit-row { align-items: start; padding-block: var(--pos-space-4); }
+.pos-audit-row > .pos-stream-icon { width: 36px; height: 36px; border-radius: var(--pos-radius-md); }
+.pos-audit-message { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); color: var(--pos-text-secondary); }
+.pos-audit-exceptions { display: grid; gap: var(--pos-space-1); margin: var(--pos-space-2) 0 0; padding: var(--pos-space-3) var(--pos-space-4) var(--pos-space-3) var(--pos-space-8); border-radius: var(--pos-radius-md);
+    list-style: disc; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); background: var(--pos-surface-muted); }
+.pos-audit-exceptions > li::marker { color: var(--pos-danger); }
+.pos-audit-evidence { display: flex; flex-wrap: wrap; gap: var(--pos-space-1) var(--pos-space-2); margin-top: var(--pos-space-2); }
+.pos-audit-pair { display: inline-flex; gap: 6px; padding: 2px 8px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-variant-numeric: tabular-nums;
+    color: var(--pos-text); background: var(--pos-surface-muted); }
+.pos-audit-pair > span { color: var(--pos-text-muted); }
+.pos-audit-tags { flex-direction: column; align-items: flex-end; gap: var(--pos-space-1); }
+.pos-audit-sev { padding: 2px 8px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); color: var(--pos-text-secondary); background: var(--pos-surface-muted); }
+.pos-audit-row[data-tone='danger'] .pos-audit-sev { color: var(--pos-danger); background: var(--pos-danger-soft); }
+.pos-audit-row[data-tone='warning'] .pos-audit-sev { color: var(--pos-warning); background: var(--pos-warning-soft); }
+.pos-audit-row[data-tone='info'] .pos-audit-sev { color: var(--pos-info); background: var(--pos-info-soft); }
+.pos-audit-type { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); white-space: nowrap; }
+@media (max-width: 767px) {
+    .pos-audit-summary { grid-template-columns: minmax(0, 1fr); padding: var(--pos-space-4); }
+    .pos-audit-count { flex: 1 1 0; min-width: 0; }
+    .pos-audit-row { grid-template-columns: auto minmax(0, 1fr); }
+    .pos-audit-tags { grid-column: 2; flex-direction: row; justify-self: start; align-items: center; }
+}
+
+/* Link lists (Jump to): identity-tinted tiles, the arrow leans in on hover */
+.pos-links .pos-stream-icon { width: 36px; height: 36px; border-radius: var(--pos-radius-md); background: var(--pos-primary-soft); color: var(--pos-primary); }
+.pos-links-go { color: var(--pos-text-muted); transition: transform var(--pos-dur-1) var(--pos-ease), color var(--pos-dur-1) var(--pos-ease); }
+.pos-links .pos-stream-row:hover .pos-links-go { transform: translateX(3px); color: var(--pos-primary); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .pos-mast { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) backwards; }
+    .pos-mast ~ * { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) 100ms backwards; }
+}
+
+/* Too narrow for the heading and the glance side by side: the glance drops under it, its rows in columns */
+@container pos-mast (max-width: 62rem) {
+    .pos-mast > .pos-glance { grid-column: 1 / -1; }
+    .pos-glance-rows { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); column-gap: var(--pos-space-4); }
+    .pos-glance-rows > li + li { box-shadow: none; }
+}
+@media (max-width: 1023px) {
+    .pos-mast { --pos-mast-pad: var(--pos-space-8); grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767px) {
+    .pos-mast { --pos-mast-pad: var(--pos-space-5); gap: var(--pos-space-6); padding-block-start: var(--pos-space-6); border-radius: var(--pos-radius-lg); }
+    .pos-mast:not(:has(> .pos-mast-band)) { padding-block-end: var(--pos-space-6); }
+    .pos-mast .pos-ws-title-display { font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); }
+    .pos-mast .pos-ws-brief { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); }
+    .pos-mast-art::after { top: -120px; inset-inline-end: -220px; transform: none; opacity: 0.4; }
+    .pos-mast-band { padding-block: var(--pos-space-2); }
+    .pos-mw-filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+    .pos-mw-filters::-webkit-scrollbar { display: none; }
+    .pos-mw-filters > * { flex: none; }
+    .pos-mw-next { grid-template-columns: auto minmax(0, 1fr); padding: var(--pos-space-4); }
+    .pos-mw-next-actions { grid-column: 1 / -1; }
+    .pos-mw-next-actions > * { flex: 1 1 auto; }
+    .pos-signal-row > .pos-signal-count { min-inline-size: 40px; block-size: 40px; }
+    .pos-mw-filters-label { display: none; }
+    .pos-glance-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--pos-space-3); }
+    .pos-glance-row { gap: var(--pos-space-2); }
+    .pos-glance-icon { width: 32px; height: 32px; }
+    .pos-glance-meta { display: none; }
+}

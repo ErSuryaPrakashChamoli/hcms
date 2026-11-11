@@ -24,6 +24,11 @@ class CountryPacksPage extends Page
 
     protected string $view = 'filament.pages.country-packs';
 
+    public function getSubheading(): ?string
+    {
+        return 'What each country pack sets up (statutory rules, holidays and defaults) and where it applies.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('company.view') ?? false;

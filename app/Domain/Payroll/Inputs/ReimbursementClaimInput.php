@@ -32,4 +32,9 @@ final class ReimbursementClaimInput implements PayrollInputSource
     {
         app(ReimbursementClaims::class)->paid(array_merge(...array_values($idsByEmployee)), $run->loadMissing('period'));
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        app(ReimbursementClaims::class)->undoPaid(array_merge(...array_values($idsByEmployee)), $run);
+    }
 }

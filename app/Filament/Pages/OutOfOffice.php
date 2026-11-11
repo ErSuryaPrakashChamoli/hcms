@@ -49,6 +49,11 @@ class OutOfOffice extends Page implements HasTable
 
     protected string $view = 'filament.pages.out-of-office';
 
+    public function getSubheading(): ?string
+    {
+        return 'Hand your approvals to someone else while you are away, and take them back when you return.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

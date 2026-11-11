@@ -129,7 +129,25 @@ final class ExpenseAdvanceRecoveryInput implements PayrollInputSource
                 }
             });
         $carried = array_flip(array_map('intval', array_merge(...array_values($idsByEmployee))));
-        app(ExpenseAdvances::class)->recovered(array_intersect_key($amounts, $carried), 'payroll-'.$run->id, $on, 'Payroll '.$run->period?->label(),
+        app(ExpenseAdvances::class)->recovered(array_intersect_key($amounts, $carried), 'payroll-'.$run->id.PayrollInputs::generation($run), $on, 'Payroll '.$run->period?->label(),
             'Recovered in payroll '.$run->period?->label(), (int) $run->id, null, $schedules);
+    }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        $run->loadMissing('period');
+        // What the run's lines recovered from each advance (the amounts settle() posted).
+        $amounts = [];
+        PayrollEntryLine::query()->whereIn('payroll_entry_id', $run->entries()->withoutGlobalScope(AccessScope::class)->select('id'))->where('code', 'EXP_ADV_RECOVERY')->get(['id', 'amount', 'basis'])
+            ->each(function (PayrollEntryLine $line) use (&$amounts) {
+                if (($line->basis['source']['key'] ?? null) === PayrollCommitments::RECOVERY) {
+                    foreach ((array) $line->basis['source']['ids'] as $id) {
+                        $amounts[(int) $id] = round(($amounts[(int) $id] ?? 0) + (float) $line->amount, 2);
+                    }
+                }
+            });
+        $carried = array_flip(array_map('intval', array_merge(...array_values($idsByEmployee))));
+        app(ExpenseAdvances::class)->undoPayrollRecovery(array_intersect_key($amounts, $carried), (int) $run->id,
+            'payroll-'.$run->id.PayrollInputs::generation($run).'-reversed', 'Payroll '.$run->period?->label().' reopened');
     }
 }

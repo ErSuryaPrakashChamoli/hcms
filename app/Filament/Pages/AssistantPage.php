@@ -36,6 +36,11 @@ class AssistantPage extends Page
 
     public string $question = '';
 
+    public function getSubheading(): ?string
+    {
+        return 'Ask about policies, leave, pay and requests. Answers come from your own records and published policies.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user() !== null && app(AiGateway::class)->assistantsFor(auth()->user()) !== [];

@@ -76,4 +76,13 @@ interface CompensationOutput
      * @return array<int, CompensationSnapshot> employee id => snapshot
      */
     public function inForceOn(array $employeeIds, CarbonInterface|string|null $date = null): array;
+
+    /**
+     * Streamline S2: revisions not in force yet (submitted, under review, approved or scheduled) that take effect on or
+     * before the date, for the pre-payroll checklist — dates and states only, never amounts.
+     *
+     * @param  list<int>  $employeeIds
+     * @return list<array{employee_id: int, effective_from: ?string, status: string}>
+     */
+    public function pendingChanges(array $employeeIds, CarbonInterface|string $until): array;
 }

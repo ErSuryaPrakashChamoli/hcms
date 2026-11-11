@@ -21,6 +21,7 @@ use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Notifications\Jobs\DeliverNotification;
 use App\Domain\Notifications\Models\NotificationDelivery;
 use App\Domain\Notifications\Services\Notifier;
+use App\Support\Csv\SpreadsheetCell;
 use App\Support\Storage\FileSafety;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Collection;
@@ -756,7 +757,7 @@ final class DocumentShares
         $out = fopen('php://temp', 'r+');
         foreach ($rows as $row) {
             // A spreadsheet never runs a cell as a formula.
-            fputcsv($out, array_map(fn ($v) => is_string($v) && $v !== '' && in_array($v[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$v : $v, $row), escape: '\\');
+            fputcsv($out, SpreadsheetCell::row($row), escape: '\\');
         }
         rewind($out);
         $csv = (string) stream_get_contents($out);

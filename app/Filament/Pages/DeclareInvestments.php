@@ -145,7 +145,8 @@ class DeclareInvestments extends Page implements HasSchemas
             Callout::make('The declaration window is closed')->warning()
                 ->description(fn () => 'Declarations can be changed '.app(TaxSettings::class)->declarationWindow().'. If something needs to change, contact your payroll team.')
                 ->visible(fn () => $this->employee() !== null && $this->declaration()?->status !== 'verified' && ! $this->declarations()->windowOpenFor(auth()->user())),
-            Wizard::make($steps)->skippable()
+            // Streamline S6: the step rail every page wizard has.
+            Wizard::make($steps)->skippable()->contained(false)->extraAttributes(['class' => 'pos-wizard pos-wizard-page'])
                 ->visible(fn () => $this->employee() !== null)
                 ->submitAction(view('filament.pages.declare-investments.submit', ['page' => $this])), // rendered late: knows the current selection
         ]);

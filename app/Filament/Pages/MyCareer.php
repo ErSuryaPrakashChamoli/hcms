@@ -52,6 +52,11 @@ class MyCareer extends Page
 
     protected string $view = 'filament.pages.my-career';
 
+    public function getSubheading(): ?string
+    {
+        return 'Your career profile, aspirations, goals and the roles you are interested in.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->check() && TalentActions::me() !== null && auth()->user()->can('career.self');

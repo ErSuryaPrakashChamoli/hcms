@@ -15,10 +15,12 @@
                         @if ($s['count'] !== null)
                             <span class="pos-figure-value pos-signal-count" aria-hidden="true">{{ number_format($s['count']) }}</span>
                         @else
-                            <span class="pos-stream-mark" aria-hidden="true"></span>
+                            {{-- A setting or a state rather than a count: its severity as an icon in the same place --}}
+                            <span class="pos-signal-count pos-signal-flag" aria-hidden="true"><x-filament::icon :icon="$s['severity'] === 'info' ? 'heroicon-m-information-circle' : 'heroicon-m-exclamation-triangle'" class="size-5" /></span>
                         @endif
                         <div class="pos-stream-body">
-                            <p class="pos-stream-title">@if ($s['count'] !== null)<span class="sr-only">{{ number_format($s['count']) }} </span>@endif{{ $s['title'] }}</p>
+                            {{-- The sentence follows its count ("7 people approve…"); shown beside a count tile, it starts with a capital (CSS) --}}
+                            <p class="pos-stream-title">@if ($s['count'] !== null)<span class="sr-only">{{ number_format($s['count']) }} </span>@endif<span class="pos-signal-text">{{ $s['title'] }}</span></p>
                             <p class="pos-stream-meta">{{ $s['why'] }}</p>
                         </div>
                         <div class="pos-stream-end">

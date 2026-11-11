@@ -6,6 +6,7 @@ use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
+use App\Support\Settlements\SettlementReversal;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -51,7 +52,8 @@ class FundraiserPledge extends Model
             if (array_intersect(array_keys($pledge->getDirty()), self::CHOSEN) !== []) {
                 throw new RuntimeException('A pledge keeps the amount, mode, month and consent it was made with.');
             }
-            if ($pledge->isDirty('status') && $pledge->getRawOriginal('status') !== 'pledged') {
+            // A reopened payroll month gives a deducted pledge back to be collected again (SettlementReversal, ST-1).
+            if ($pledge->isDirty('status') && $pledge->getRawOriginal('status') !== 'pledged' && ! SettlementReversal::active()) {
                 throw new RuntimeException('Only a pledge still to be collected changes status.');
             }
         });

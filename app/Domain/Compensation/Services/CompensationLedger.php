@@ -3,6 +3,7 @@
 namespace App\Domain\Compensation\Services;
 
 use App\Domain\Compensation\Contracts\CompensationOutput;
+use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructureVersion;
 use App\Domain\Compensation\Support\CompensationComponentLine;
@@ -139,6 +140,20 @@ final class CompensationLedger implements CompensationOutput
         return EmployeeSalaryAssignment::query()->active()->whereIn('employee_id', $ids)->effectiveOn($date)
             ->with('structure:id,code')->orderBy('effective_from')->orderBy('id')->get()
             ->mapWithKeys(fn (EmployeeSalaryAssignment $row) => [(int) $row->employee_id => CompensationSnapshot::fromRow($row, $row->structure?->code)])
+            ->all();
+    }
+
+    public function pendingChanges(array $employeeIds, CarbonInterface|string $until): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $employeeIds)));
+        if ($ids === []) {
+            return [];
+        }
+
+        return CompensationChange::query()->whereIn('employee_id', $ids)->whereIn('status', ['submitted', 'under_review', 'approved', 'scheduled'])
+            ->whereDate('effective_from', '<=', Carbon::parse($until)->toDateString())->orderBy('effective_from')->orderBy('id')
+            ->get(['employee_id', 'effective_from', 'status'])
+            ->map(fn (CompensationChange $c) => ['employee_id' => (int) $c->employee_id, 'effective_from' => $c->effective_from?->toDateString(), 'status' => (string) $c->status])
             ->all();
     }
 

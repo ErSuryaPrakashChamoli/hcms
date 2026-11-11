@@ -64,4 +64,12 @@ final class TransferAllowanceInput implements PayrollInputSource
         TransferRequest::query()->withoutGlobalScope(AccessScope::class)->whereIn('id', $ids)->whereNull('allowances_payroll_run_id')->get()
             ->each(fn (TransferRequest $r) => $r->withAuditReason('Transfer allowances paid in payroll '.$run->period?->label())->update(['allowances_payroll_run_id' => $run->id, 'allowances_paid_at' => now()]));
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        $run->loadMissing('period');
+        $ids = array_values(array_unique(array_merge(...array_values($idsByEmployee))));
+        TransferRequest::query()->withoutGlobalScope(AccessScope::class)->whereIn('id', $ids)->where('allowances_payroll_run_id', $run->id)->get()
+            ->each(fn (TransferRequest $r) => $r->withAuditReason('Payroll '.$run->period?->label().' reopened')->update(['allowances_payroll_run_id' => null, 'allowances_paid_at' => null]));
+    }
 }

@@ -12,6 +12,7 @@ use App\Filament\Resources\Articles\Pages\ViewArticle;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\RuleConditionsSchema;
 use App\Filament\Support\ServiceDeskActions;
+use App\Support\Csv\SpreadsheetCell;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -209,8 +210,8 @@ class ArticleResource extends Resource
             fputcsv($out, ['Employee code', 'Name', 'Department', 'Designation', 'Read at', 'Acknowledged at', 'Source']);
             foreach ($rows as $row) {
                 $e = $row['employee'];
-                fputcsv($out, [$e->employee_code, $e->person?->display_name, $e->currentPosition?->department?->name, $e->currentPosition?->designation?->name,
-                    $row['read_at']?->format('Y-m-d H:i'), $row['acknowledged_at']?->format('Y-m-d H:i'), $row['source']]);
+                fputcsv($out, SpreadsheetCell::row([$e->employee_code, $e->person?->display_name, $e->currentPosition?->department?->name, $e->currentPosition?->designation?->name,
+                    $row['read_at']?->format('Y-m-d H:i'), $row['acknowledged_at']?->format('Y-m-d H:i'), $row['source']]));
             }
             fclose($out);
         }, 'acknowledgements-'.($record->slug ?: $record->id).'-v'.$record->published_version.'.csv', ['Content-Type' => 'text/csv']);

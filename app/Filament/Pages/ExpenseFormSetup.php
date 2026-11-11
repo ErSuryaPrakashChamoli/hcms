@@ -5,7 +5,9 @@ namespace App\Filament\Pages;
 use App\Domain\Expense\Exceptions\ExpenseRuleViolation;
 use App\Domain\Expense\Services\ExpenseForms;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\FormWizard;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -15,7 +17,6 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
@@ -79,34 +80,39 @@ class ExpenseFormSetup extends Page implements HasSchemas
         $editable = static::canEdit();
         $label = fn (array $state) => $state['default_label'] ?? null;
 
-        return $schema->statePath('data')->components([
-            Tabs::make('forms')->tabs([
-                Tab::make('Expense form')->schema([
-                    Repeater::make('expense')->hiddenLabel()->addable(false)->deletable(false)->reorderable(false)->columns(2)->itemLabel($label)
-                        ->schema([
-                            Hidden::make('key'),
-                            Hidden::make('default_label'),
-                            Hidden::make('custom'),
-                            TextInput::make('label')->label('Rename label')->maxLength(60)->disabled(fn ($get) => (bool) $get('custom') || ! $editable)
-                                ->helperText(fn ($get) => (bool) $get('custom') ? 'A custom field: rename it under Custom fields.' : null)->columnSpanFull(),
-                            CheckboxList::make('visible')->label('Visible on')->options($sections)->columns(4)->disabled(! $editable),
-                            CheckboxList::make('mandatory')->label('Mandatory on')->options($sections)->columns(4)->disabled(! $editable),
-                        ]),
-                ]),
-                Tab::make('Travel form')->schema([
-                    Repeater::make('travel')->hiddenLabel()->addable(false)->deletable(false)->reorderable(false)->columns(3)->itemLabel($label)
-                        ->schema([
-                            Hidden::make('key'),
-                            Hidden::make('default_label'),
-                            Hidden::make('custom'),
-                            TextInput::make('label')->label('Rename label')->maxLength(60)->disabled(fn ($get) => (bool) $get('custom') || ! $editable)
-                                ->helperText(fn ($get) => (bool) $get('custom') ? 'A custom field: rename it under Custom fields.' : null),
-                            Toggle::make('visible')->label('Visible on travel form')->disabled(! $editable),
-                            Toggle::make('mandatory')->label('Mandatory on travel form')->disabled(! $editable),
-                        ]),
-                ]),
+        // Streamline S6: the two forms are the wizard's steps (they were tabs), then Review, saved there.
+        $schema->statePath('data')->components([
+            Section::make('Expense form')->description('Rename each field, and choose where it shows and where it must be filled in.')->schema([
+                Repeater::make('expense')->hiddenLabel()->addable(false)->deletable(false)->reorderable(false)->columns(2)->itemLabel($label)
+                    ->schema([
+                        Hidden::make('key'),
+                        Hidden::make('default_label'),
+                        Hidden::make('custom'),
+                        TextInput::make('label')->label('Rename label')->maxLength(60)->disabled(fn ($get) => (bool) $get('custom') || ! $editable)
+                            ->helperText(fn ($get) => (bool) $get('custom') ? 'A custom field: rename it under Custom fields.' : null)->columnSpanFull(),
+                        CheckboxList::make('visible')->label('Visible on')->options($sections)->columns(4)->disabled(! $editable),
+                        CheckboxList::make('mandatory')->label('Mandatory on')->options($sections)->columns(4)->disabled(! $editable),
+                    ]),
             ]),
-            Section::make('Save')->compact()->visible($editable)->schema([AuditReasonField::make()]),
+            Section::make('Travel form')->description('Rename each field of the travel request, and choose whether it shows and must be filled in.')->schema([
+                Repeater::make('travel')->hiddenLabel()->addable(false)->deletable(false)->reorderable(false)->columns(3)->itemLabel($label)
+                    ->schema([
+                        Hidden::make('key'),
+                        Hidden::make('default_label'),
+                        Hidden::make('custom'),
+                        TextInput::make('label')->label('Rename label')->maxLength(60)->disabled(fn ($get) => (bool) $get('custom') || ! $editable)
+                            ->helperText(fn ($get) => (bool) $get('custom') ? 'A custom field: rename it under Custom fields.' : null),
+                        Toggle::make('visible')->label('Visible on travel form')->disabled(! $editable),
+                        Toggle::make('mandatory')->label('Mandatory on travel form')->disabled(! $editable),
+                    ]),
+            ]),
+            ...($editable ? [AuditReasonField::make()] : []),
+        ]);
+
+        return $schema->components([
+            FormWizard::wizard(FormWizard::steps($schema, FormWizard::EDIT, 'Expense form'), FormWizard::EDIT, 'page')
+                ->submitAction($editable ? Action::make('save')->label('Save forms')->action('save') : null)
+                ->alpineSubmitHandler('$wire.save()'),
         ]);
     }
 

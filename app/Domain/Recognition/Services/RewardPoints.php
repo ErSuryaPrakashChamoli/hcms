@@ -5,6 +5,7 @@ namespace App\Domain\Recognition\Services;
 use App\Domain\Configuration\Models\PolicyVersion;
 use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Experience\Services\RoleLens;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
@@ -78,7 +79,7 @@ final class RewardPoints
 
     public function baseCurrency(): string
     {
-        return strtoupper((string) $this->settings->get('tenant.base_currency', 'INR')) ?: 'INR';
+        return app(CurrencyRates::class)->baseCurrency();
     }
 
     public function currency(): string

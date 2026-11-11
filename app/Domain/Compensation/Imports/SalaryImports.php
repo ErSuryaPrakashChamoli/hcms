@@ -15,6 +15,7 @@ use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Imports\ImportGovernance;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
@@ -106,7 +107,7 @@ final class SalaryImports
         $example = [
             'employee_code' => Employee::query()->orderBy('id')->value('employee_code'),
             'structure_code' => SalaryStructure::query()->where('status', 'active')->orderBy('id')->value('code'),
-            'ctc_annual' => '600000', 'effective_from' => now()->toDateString(), 'currency' => config('peopleos.settings.tenant.base_currency', 'INR'),
+            'ctc_annual' => '600000', 'effective_from' => now()->toDateString(), 'currency' => app(CurrencyRates::class)->baseCurrency(),
         ];
         $fields = self::fields();
 
@@ -129,7 +130,7 @@ final class SalaryImports
             'structure_code' => ['Code of an active salary structure (Compensation › Salary structures).', SalaryStructure::query()->where('status', 'active')->orderBy('id')->value('code') ?? 'STANDARD'],
             'ctc_annual' => ['Annual cost to company. Commas are fine (6,00,000).', '600000'],
             'effective_from' => ['YYYY-MM-DD. Leave blank to use the default date you choose when mapping.', now()->toDateString()],
-            'currency' => ['Three-letter code; blank means the organisation\'s base currency.', config('peopleos.settings.tenant.base_currency', 'INR')],
+            'currency' => ['Three-letter code; blank means the organisation\'s base currency.', app(CurrencyRates::class)->baseCurrency()],
             'variable_target_annual' => ['Annual variable pay at target, if any.', '60000'],
             'change_type' => ['One of: '.implode(', ', array_keys(config('peopleos.compensation.change_types', []))).'. Blank means hire for a first CTC and revision otherwise; use correction to replace a CTC that starts on the same date.', 'annual_increment'],
             'reason' => ['Shown on the change; blank uses the file name.', 'FY27 increments'],

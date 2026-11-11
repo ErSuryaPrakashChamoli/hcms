@@ -41,7 +41,7 @@ class FeedbackTemplateResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleBottomCenterText;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Admin';
+    protected static string|UnitEnum|null $navigationGroup = 'Customisation';
 
     protected static ?string $navigationLabel = 'Feedback templates';
 

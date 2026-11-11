@@ -20,6 +20,7 @@ use App\Domain\Platform\Models\Tenant;
 use App\Filament\Pages\Home;
 use App\Filament\Pages\MyWork;
 use App\Filament\Pages\PayrollControlRoom;
+use App\Filament\Pages\RunPayroll;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Livewire\Experience\AiAssistant;
@@ -111,8 +112,8 @@ it('gives payroll its own contextual experience inside the shared platform', fun
         ->and(array_column(app(MobileNavigation::class)->items($payroll), 'key'))->toContain('payroll')
         ->and(AiAssistant::preferredFor($payroll, app(AiGateway::class)->assistantsFor($payroll)))->toBe('payroll_auditor');
 
-    // Home and My Work lead with the run and send the person to the control room, which opens.
-    $this->get(Home::getUrl())->assertOk()->assertSee(PayrollControlRoom::getUrl(), false);
+    // Home and My Work lead with the run and send the person to Run payroll (Streamline S2); the control room still opens.
+    $this->get(Home::getUrl())->assertOk()->assertSee(RunPayroll::getUrl(), false);
     $this->get(MyWork::getUrl())->assertOk()->assertSee('The current run and what blocks sign-off.');
     $this->get(PayrollControlRoom::getUrl())->assertOk();
 

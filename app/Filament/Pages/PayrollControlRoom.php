@@ -36,9 +36,9 @@ class PayrollControlRoom extends Page implements HasTable
 
     protected static string|UnitEnum|null $navigationGroup = 'Payroll';
 
-    protected static ?string $navigationLabel = 'Control room';
+    protected static ?string $navigationLabel = 'Payroll overview';
 
-    protected static ?string $title = 'Payroll control room';
+    protected static ?string $title = 'Payroll overview';
 
     protected static ?int $navigationSort = 1;
 
@@ -68,15 +68,16 @@ class PayrollControlRoom extends Page implements HasTable
     {
         $unverified = app(ComplianceRules::class)->unverified()->pluck('code')->unique();
 
+        // Streamline review: one name for the read-only view of every company's month (it used to carry three).
         return $unverified->isEmpty()
-            ? null
+            ? 'Every company\'s pay month and its runs at a glance. Run a month in Run payroll.'
             : 'Statutory rules '.$unverified->implode(', ').' are not VERIFIED against official sources'.(ComplianceRules::enforced() ? '; payroll using them cannot be finalized.' : ' (enforcement is off in this environment).');
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            PayrollActions::openRun(),
+            PayrollActions::runPayroll(),
             Action::make('payCycle')->label('Pay cycle')->icon(Heroicon::OutlinedCalendarDays)->color('gray')
                 ->visible(fn () => PayCyclePage::canAccess())->url(fn () => PayCyclePage::getUrl()),
             // Phase 5: statutory outputs built from finalized payroll live in the Compliance control room.

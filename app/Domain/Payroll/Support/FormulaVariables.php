@@ -66,8 +66,8 @@ final class FormulaVariables
 
     /** Ready-made patterns for the guide: [what for, formula, where it goes]. */
     public const RECIPES = [
-        ['Basic as a share of CTC, tunable per structure', 'ctc_monthly * basic_pct / 100', 'BASIC; parameter basic_pct = 50'],
-        ['Basic with a minimum', 'max(ctc_monthly * basic_pct / 100, min_basic)', 'BASIC; parameters basic_pct, min_basic'],
+        ['Basic as a share of CTC', 'ctc_monthly * 50 / 100', 'Basic (the builder’s “50% of CTC”)'],
+        ['Basic with a minimum', 'max(ctc_monthly * 40 / 100, 15000)', 'Basic (“40% of CTC, at least 15,000”)'],
         ['HRA: 50% of basic in metro cities, 40% elsewhere', 'basic * if(in(work_city, "Mumbai", "Delhi", "Kolkata", "Chennai"), 0.50, 0.40)', 'HRA, below BASIC'],
         ['An allowance per grade', 'lookup(grade, "G1", 1600, "G2", 2400, 3200)', 'any allowance'],
         ['An allowance by CTC band', 'slab(ctc_monthly, 25000, 1000, 50000, 2000, 3500)', 'any allowance'],

@@ -29,6 +29,40 @@
         x-on:resize.window.debounce.150ms="wide = window.matchMedia('(min-width: 1280px)').matches"
         x-on:pos-inbox-bulk-done.window="picked = []; bulkNote = ''">
 
+        {{-- The masthead: what is waiting and how urgent it is; the views and quick filters on its band --}}
+        <x-pos.masthead icon="heroicon-m-inbox" eyebrow="Inbox" :title="$this->getHeading()" :brief="$this->getSubheading()">
+            <x-slot:glance>
+                <x-pos.glance label="Waiting at a glance" :rows="[
+                    ['label' => 'Overdue', 'value' => $counts['overdue'], 'icon' => 'heroicon-o-fire', 'tone' => $counts['overdue'] > 0 ? 'danger' : 'success', 'meta' => 'Past the time they were due', 'click' => $counts['overdue'] > 0 ? 'setShow(\'overdue\')' : null],
+                    ['label' => 'Due today', 'value' => $counts['due_today'], 'icon' => 'heroicon-o-sun', 'tone' => $counts['due_today'] > 0 ? 'warning' : 'success', 'meta' => 'To decide or finish today', 'click' => $counts['due_today'] > 0 ? 'setShow(\'due_today\')' : null],
+                    ['label' => 'Due tomorrow', 'value' => $counts['due_tomorrow'], 'icon' => 'heroicon-o-calendar-days', 'tone' => 'info', 'meta' => 'Coming up next', 'click' => $counts['due_tomorrow'] > 0 ? 'setShow(\'due_tomorrow\')' : null],
+                    ['label' => 'Unread', 'value' => $counts['unread'], 'icon' => 'heroicon-o-envelope', 'tone' => 'info', 'meta' => 'Not opened yet', 'click' => $counts['unread'] > 0 ? 'setShow(\'unread\')' : null],
+                ]" />
+            </x-slot:glance>
+            <x-slot:band>
+            {{-- §20.2.1 #9 / #12: the "All messages" views and the quick filters; Archive and Not relevant --}}
+            <nav class="pos-mw-filters pos-inbox-filters" aria-label="Show">
+                <label class="sr-only" for="pos-inbox-view">Show</label>
+                <select id="pos-inbox-view" class="pos-select" wire:change="setShow($event.target.value)" aria-label="Messages">
+                    @foreach ($views as $key => $label)<option value="{{ $key }}" @selected($this->show === $key)>{{ $label }} ({{ $counts[$key] }})</option>@endforeach
+                    @if (! isset($views[$this->show]))<option value="{{ $this->show }}" selected>{{ $allLabel }}</option>@endif
+                </select>
+                @foreach ($quick as $key => $label)
+                    <button type="button" class="pos-chip" aria-pressed="{{ $this->show === $key ? 'true' : 'false' }}" wire:click="setShow(@js($this->show === $key ? 'all' : $key))" data-show="{{ $key }}">
+                        {{ $label }}@if ($counts[$key] > 0)<span class="pos-count">{{ $counts[$key] }}</span>@endif
+                    </button>
+                @endforeach
+                @if ($counts['archived'] > 0 || $this->show === 'archived')
+                    <button type="button" class="pos-chip" aria-pressed="{{ $this->show === 'archived' ? 'true' : 'false' }}" wire:click="setShow(@js($this->show === 'archived' ? 'all' : 'archived'))" data-show="archived">Archive<span class="pos-count">{{ $counts['archived'] }}</span></button>
+                @endif
+                @if ($counts['not_relevant'] > 0 || $canIgnore)
+                    <button type="button" class="pos-chip" aria-pressed="{{ $this->show === 'not_relevant' ? 'true' : 'false' }}" wire:click="setShow(@js($this->show === 'not_relevant' ? 'all' : 'not_relevant'))" data-show="not_relevant">Not relevant @if ($counts['not_relevant'] > 0)<span class="pos-count">{{ $counts['not_relevant'] }}</span>@endif</button>
+                @endif
+                <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm ms-auto" wire:click="setFocus(@js(! $this->focus))" aria-pressed="{{ $this->focus ? 'true' : 'false' }}" data-focus-toggle>{{ $this->focus ? 'Back to the list' : 'One at a time' }}</button>
+            </nav>
+            </x-slot:band>
+        </x-pos.masthead>
+
         {{-- §20.2.1 #7: the approver's own responsiveness (decided, on time, delayed) --}}
         <section class="pos-panel pos-panel-pad" aria-label="Insight" data-inbox-insight>
             <div class="flex flex-wrap items-center gap-3">
@@ -48,26 +82,6 @@
             <p class="pos-caption pos-muted mt-2">{{ $insight['person'] }}: workflow steps and Approval Center decisions{{ $insight['timed'] < $insight['decided'] ? ' ('.$insight['timed'].' of them had a due time)' : '' }}. Decisions taken on a module's own screen are not counted.</p>
         </section>
 
-        {{-- §20.2.1 #9 / #12: the "All messages" views and the quick filters; Archive and Not relevant --}}
-        <nav class="pos-lens pos-lens-scroll" aria-label="Show">
-            <label class="sr-only" for="pos-inbox-view">Show</label>
-            <select id="pos-inbox-view" class="pos-select" wire:change="setShow($event.target.value)" aria-label="Messages">
-                @foreach ($views as $key => $label)<option value="{{ $key }}" @selected($this->show === $key)>{{ $label }} ({{ $counts[$key] }})</option>@endforeach
-                @if (! isset($views[$this->show]))<option value="{{ $this->show }}" selected>{{ $allLabel }}</option>@endif
-            </select>
-            @foreach ($quick as $key => $label)
-                <button type="button" class="pos-chip" aria-pressed="{{ $this->show === $key ? 'true' : 'false' }}" wire:click="setShow(@js($this->show === $key ? 'all' : $key))" data-show="{{ $key }}">
-                    {{ $label }}@if ($counts[$key] > 0)<span class="pos-count">{{ $counts[$key] }}</span>@endif
-                </button>
-            @endforeach
-            @if ($counts['archived'] > 0 || $this->show === 'archived')
-                <button type="button" class="pos-chip" aria-pressed="{{ $this->show === 'archived' ? 'true' : 'false' }}" wire:click="setShow(@js($this->show === 'archived' ? 'all' : 'archived'))" data-show="archived">Archive<span class="pos-count">{{ $counts['archived'] }}</span></button>
-            @endif
-            @if ($counts['not_relevant'] > 0 || $canIgnore)
-                <button type="button" class="pos-chip" aria-pressed="{{ $this->show === 'not_relevant' ? 'true' : 'false' }}" wire:click="setShow(@js($this->show === 'not_relevant' ? 'all' : 'not_relevant'))" data-show="not_relevant">Not relevant @if ($counts['not_relevant'] > 0)<span class="pos-count">{{ $counts['not_relevant'] }}</span>@endif</button>
-            @endif
-            <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm ms-auto" wire:click="setFocus(@js(! $this->focus))" aria-pressed="{{ $this->focus ? 'true' : 'false' }}" data-focus-toggle>{{ $this->focus ? 'Back to the list' : 'One at a time' }}</button>
-        </nav>
 
         <div class="grid gap-4 lg:grid-cols-4">
             {{-- §20.2.1 #4 / #5: request types with counts, and a search over their names --}}

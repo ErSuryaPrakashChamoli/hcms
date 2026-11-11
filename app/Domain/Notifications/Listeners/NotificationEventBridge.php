@@ -629,8 +629,8 @@ final class NotificationEventBridge
         $employee = $subject instanceof Payslip ? $subject->employee()->with('user')->first() : null;
         $sent = $this->engine->fire($event->name, $this->context->build($employee ?? $subject, ['payroll' => $event->context]), $subject);
 
-        // Payslips always reach the employee, rule or no rule.
-        if ($event->name === 'payroll.payslip_generated' && $sent->isEmpty() && $employee?->user?->isActive()) {
+        // Payslips always reach the employee, rule or no rule — once they are published (Streamline S2, ST-2).
+        if ($event->name === 'payroll.payslip_published' && $sent->isEmpty() && $employee?->user?->isActive()) {
             $this->notifier->send([$employee->user], ['in_app'], 'Payslip for '.$event->context['period'], 'Your payslip for '.$event->context['period'].' is ready.', $event->name, $subject);
         }
 

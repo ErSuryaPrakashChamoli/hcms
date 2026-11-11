@@ -44,7 +44,7 @@ class PerformanceCycleResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Performance';
 
-    protected static ?string $navigationLabel = 'Cycles';
+    protected static ?string $navigationLabel = 'Review cycles';
 
     protected static ?int $navigationSort = 10;
 

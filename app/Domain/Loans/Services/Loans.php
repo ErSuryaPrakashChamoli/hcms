@@ -298,6 +298,37 @@ final class Loans
         Loan::query()->whereIn('id', LoanInstallment::query()->whereIn('id', $installmentIds)->select('loan_id'))->get()->each(fn (Loan $l) => $this->refreshOutstanding($l));
     }
 
+    /**
+     * Streamline S2 (ST-1): the payroll month that recovered these instalments was reopened — they are due again, and a
+     * loan that recovery had closed is active again with its outstanding restored.
+     */
+    public function undoRecovery(array $installmentIds, int $runId, string $note): void
+    {
+        $installments = LoanInstallment::query()->whereIn('id', $installmentIds)->where('status', 'recovered')->where('payroll_run_id', $runId)->get();
+        $installments->each(fn (LoanInstallment $i) => $i->withAuditReason($note)->update(['status' => 'due', 'payroll_run_id' => null, 'recovered_on' => null]));
+        Loan::query()->whereIn('id', $installments->pluck('loan_id')->unique())->get()->each(function (Loan $loan) use ($note) {
+            $outstanding = $this->outstanding($loan);
+            $loan->withAuditReason($note)->update(['outstanding' => $outstanding] + ($loan->status === 'closed' && $outstanding > 0 ? ['status' => 'active', 'closed_at' => null] : []));
+        });
+    }
+
+    /**
+     * Streamline S2 (ST-1): the payroll month that paid this loan out was reopened — it waits to be paid out again. Refused
+     * once any instalment was recovered or prepaid since, because the money has then been used.
+     */
+    public function undoDisbursement(Loan $loan, string $note): Loan
+    {
+        if ($loan->status !== 'active') {
+            throw new RuntimeException("Loan {$loan->number} is {$loan->status}: its payout cannot be taken back.");
+        }
+        if ($loan->schedule()->whereIn('status', ['recovered', 'prepaid'])->exists()) {
+            throw new RuntimeException("Loan {$loan->number} has instalments recovered since it was paid out: its payout cannot be taken back.");
+        }
+        $loan->withAuditReason($note)->update(['status' => 'approved', 'disbursed_on' => null]);
+
+        return $loan;
+    }
+
     /** Settled in full and final settlement: every due instalment is recovered there. */
     public function settledAtExit(Loan $loan, string $note): Loan
     {

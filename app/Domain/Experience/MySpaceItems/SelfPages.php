@@ -59,7 +59,6 @@ use App\Filament\Resources\MyInvestmentProofs\MyInvestmentProofResource;
 use App\Filament\Resources\MyLeaveEncashments\MyLeaveEncashmentResource;
 use App\Filament\Resources\MyTaxCertificates\MyTaxCertificateResource;
 use App\Filament\Resources\OneOnOnes\OneOnOneResource;
-use App\Filament\Resources\Payslips\PayslipResource;
 use App\Filament\Resources\PerformanceCheckIns\PerformanceCheckInResource;
 use App\Filament\Resources\Recognitions\RecognitionResource;
 use App\Filament\Resources\ReimbursementClaims\ReimbursementClaimResource;
@@ -143,10 +142,9 @@ final class SelfPages
         // Pay ----------------------------------------------------------------------------------------------------------
         'compensation' => ['label' => 'My compensation', 'group' => 'pay', 'icon' => 'heroicon-o-banknotes', 'target' => MyCompensation::class,
             'description' => 'Your CTC and salary structure', 'keywords' => ['ctc', 'salary', 'salary structure', 'pay']],
-        'payslips' => ['label' => 'Payslips', 'group' => 'pay', 'icon' => 'heroicon-o-document-currency-rupee', 'target' => PayslipResource::class,
-            'description' => 'Your payslips by month', 'keywords' => ['payslip', 'salary slip']],
-        // HROne parity MS-9 / MS-10: the financial year's payslips and tax slips; the year's pay month by month.
-        'my_payslips' => ['label' => 'My payslips', 'group' => 'pay', 'icon' => 'heroicon-o-document-text', 'target' => MyPayslips::class,
+        // HROne parity MS-9 / MS-10: the financial year's payslips and tax slips. Streamline S4: the one payslip entry (it
+        // used to list the payslip register as well, a second way to the same slips).
+        'payslips' => ['label' => 'My payslips', 'group' => 'pay', 'icon' => 'heroicon-o-document-text', 'target' => MyPayslips::class,
             'description' => 'Salary and tax slips of a financial year', 'keywords' => ['payslip', 'tax slip', 'salary slip', 'monthly tax']],
         'salary_ytd' => ['label' => 'My salary YTD', 'group' => 'pay', 'icon' => 'heroicon-o-table-cells', 'target' => MySalaryYtd::class,
             'description' => 'Each component paid month by month this financial year, with PF, ESI, PT and LWF', 'keywords' => ['salary ytd', 'year to date', 'ytd', 'provident fund', 'esi', 'professional tax']],

@@ -15,6 +15,7 @@ use App\Filament\Support\ExpenseRegisters;
 use App\Filament\Support\ExpenseReview;
 use App\Filament\Support\Pages\Concerns\HasRegisterTools;
 use App\Filament\Support\Pages\RegisterTablePage;
+use App\Support\Csv\SpreadsheetCell;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -93,6 +94,11 @@ class PayExpenses extends RegisterTablePage
 
     /** @var array<int, bool> report id => its chosen month was finalized without it (this request) */
     private array $missed = [];
+
+    public function getSubheading(): ?string
+    {
+        return 'Approved expense reports still owed to employees. Record each payment made outside payroll.';
+    }
 
     public static function canAccess(): bool
     {
@@ -597,6 +603,6 @@ class PayExpenses extends RegisterTablePage
         $text = is_float($value) ? number_format($value, 2, '.', '') : (string) ($value ?? '');
 
         // Spreadsheet formula injection: a cell starting with = + - @ is read as text.
-        return preg_match('/^[=+\-@]/', $text) === 1 && ! is_numeric($text) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 }

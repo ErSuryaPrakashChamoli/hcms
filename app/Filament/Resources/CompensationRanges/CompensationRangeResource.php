@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CompensationRanges;
 use App\Domain\Compensation\Models\CompensationRange;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\CompensationRanges;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Grade;
@@ -54,7 +55,7 @@ class CompensationRangeResource extends Resource
             Select::make('company_id')->label('Company (optional)')->options(fn () => Company::query()->orderBy('name')->pluck('name', 'id')->all()),
             Select::make('job_family_id')->label('Job family (optional)')->options(fn () => JobFamily::query()->orderBy('name')->pluck('name', 'id')->all()),
             Select::make('designation_id')->label('Designation (optional)')->options(fn () => Designation::query()->orderBy('name')->pluck('name', 'id')->all())->searchable(),
-            Select::make('currency')->options(fn () => array_combine(config('peopleos.compensation.currencies'), config('peopleos.compensation.currencies')))->default(config('peopleos.settings.tenant.base_currency', 'INR'))->required(),
+            Select::make('currency')->options(fn () => array_combine(config('peopleos.compensation.currencies'), config('peopleos.compensation.currencies')))->default(fn () => app(CurrencyRates::class)->baseCurrency())->required(),
             Select::make('frequency')->options(['annual' => 'Annual', 'monthly' => 'Monthly'])->default('annual')->required(),
             TextInput::make('minimum')->numeric()->minValue(0)->required(),
             TextInput::make('midpoint')->numeric()->minValue(0)->required($midpointRequired)->helperText($midpointRequired ? null : 'Optional under the min / max range model.'),

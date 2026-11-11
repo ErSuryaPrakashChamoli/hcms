@@ -12,6 +12,7 @@ use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
@@ -381,7 +382,7 @@ final class CompensationChanges
             throw new CompensationRuleViolation('A variable target cannot be negative.');
         }
 
-        $currency = strtoupper(trim((string) ($data['currency'] ?? config('peopleos.settings.tenant.base_currency', 'INR'))));
+        $currency = strtoupper(trim((string) ($data['currency'] ?? app(CurrencyRates::class)->baseCurrency())));
         if (! in_array($currency, config('peopleos.compensation.currencies', []), true)) {
             throw new CompensationRuleViolation("[{$currency}] is not a supported ISO 4217 currency.");
         }

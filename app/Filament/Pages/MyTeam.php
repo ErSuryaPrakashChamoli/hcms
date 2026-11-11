@@ -30,13 +30,18 @@ class MyTeam extends Page implements HasTable
 
     protected static string|UnitEnum|null $navigationGroup = 'Me';
 
-    protected static ?string $navigationLabel = 'My Team';
+    protected static ?string $navigationLabel = 'My team';
 
     protected static ?string $title = 'My team';
 
     protected static ?int $navigationSort = 1;
 
     protected string $view = 'filament.pages.my-team';
+
+    public function getSubheading(): ?string
+    {
+        return 'The people who report to you: who is in today, who is away, and what waits for you.';
+    }
 
     public static function canAccess(): bool
     {

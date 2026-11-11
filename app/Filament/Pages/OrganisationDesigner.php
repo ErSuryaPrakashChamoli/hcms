@@ -39,6 +39,11 @@ class OrganisationDesigner extends Page
 
     public string $mode = 'tree';
 
+    public function getSubheading(): ?string
+    {
+        return 'Build and rearrange the organisation\'s structure. Every change is recorded.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('organisation.design') ?? false;

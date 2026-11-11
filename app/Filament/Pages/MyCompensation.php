@@ -59,6 +59,11 @@ class MyCompensation extends Page
 
     protected string $view = 'filament.pages.my-compensation';
 
+    public function getSubheading(): ?string
+    {
+        return 'Your pay in force today, what is scheduled, and how it changed over time.';
+    }
+
     public static function canAccess(): bool
     {
         $me = self::employee();

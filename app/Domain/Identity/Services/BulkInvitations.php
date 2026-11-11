@@ -14,6 +14,7 @@ use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Notifications\Jobs\DeliverNotification;
 use App\Domain\Notifications\Models\NotificationDelivery;
+use App\Support\Csv\SpreadsheetCell;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -355,7 +356,7 @@ final class BulkInvitations
 
     private static function cell(string $text): string
     {
-        return $text !== '' && in_array($text[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 
     /** @param  list<string>  $cc */

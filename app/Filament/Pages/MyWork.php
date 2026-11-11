@@ -10,6 +10,7 @@ use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -43,6 +44,12 @@ class MyWork extends Page
     public static function canAccess(): bool
     {
         return auth()->check() && app(TenantContext::class)->has();
+    }
+
+    /** The masthead inside the page carries the heading, the brief and the filters; the default header is not rendered. */
+    public function getHeader(): ?View
+    {
+        return view('filament.shell.empty');
     }
 
     #[Computed]
@@ -125,6 +132,29 @@ class MyWork extends Page
     }
 
     /**
+     * The one thing to do next: the first open inbox item; when the inbox has none, the first signal from the person's
+     * own kind of work (role lead) that needs attention and opens somewhere. Either can be put off until tomorrow.
+     *
+     * @return ?array<string, mixed>
+     */
+    #[Computed]
+    public function nextUp(): ?array
+    {
+        if ($this->work['next'] !== null) {
+            return $this->work['next'];
+        }
+        $snoozed = app(ExperiencePreferences::class)->for(auth()->user())['snoozed'] ?? [];
+        $signal = collect($this->role['lead']['items'] ?? [])
+            ->first(fn (array $s) => $s['severity'] !== 'info' && ($s['url'] ?? null) && ! isset($snoozed['home:signal:'.$s['key']]));
+
+        return $signal === null ? null : [
+            'key' => 'signal:'.$signal['key'], 'kind' => 'signal', 'title' => $signal['title'], 'url' => $signal['url'], 'approval_id' => null,
+            'severity' => $signal['severity'] === 'danger' ? 'danger' : 'warning', 'domain' => $this->role['lead']['title'], 'detail' => $signal['why'],
+            'subject' => null, 'subject_id' => null, 'reason' => null, 'due' => null, 'count' => $signal['count'] ?? null,
+        ];
+    }
+
+    /**
      * UX.16: My Work leads with the person's own kind of work before the shared streams: what is about you (employee),
      * your team (manager), people operations (HR), payroll, the workforce (executive) or governance (administrator).
      * The same signals as Home (RoleSignals), so both answer the same way and are gated the same way.
@@ -146,7 +176,7 @@ class MyWork extends Page
                 $url(fn () => MyTeam::canAccess() ? MyTeam::getUrl() : null), 'My team'],
             'hr' => ['People operations', 'Lifecycle, service, documents and workflows for the people you look after.', $safe(fn () => $signals->operations($user), []), null, null],
             'payroll' => ['Payroll', 'The current run and what blocks sign-off.', $safe(fn () => $signals->payroll($user), []),
-                $url(fn () => PayrollControlRoom::canAccess() ? PayrollControlRoom::getUrl() : null), 'Control room'],
+                $url(fn () => RunPayroll::canAccess() ? RunPayroll::getUrl() : (PayrollControlRoom::canAccess() ? PayrollControlRoom::getUrl() : null)), RunPayroll::canAccess() ? 'Run payroll' : 'Payroll overview'],
             'executive' => $this->workforceLead($safe(fn () => $signals->workforce($user, false), null), $url),
             'admin' => ['Governance', 'Configuration, access, security, integrations and failures that need an administrator.', $safe(fn () => $signals->governance($user)['attention'], []),
                 $url(fn () => AdminCentre::canAccess() ? AdminCentre::getUrl() : null), 'Admin Centre'],
@@ -178,6 +208,7 @@ class MyWork extends Page
     {
         app(ExperiencePreferences::class)->snooze(auth()->user(), 'home:'.mb_substr($key, 0, 120), now()->addDay()->startOfDay()->toIso8601String());
         unset($this->work);
+        unset($this->nextUp);
     }
 
     public function getSubheading(): ?string

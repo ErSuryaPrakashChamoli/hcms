@@ -451,6 +451,16 @@ components.posFormReview = (mode = 'edit') => ({
         return groups;
     },
     submit() { this.form?.requestSubmit(); },
+    // The wizard's own step button for a step (named as in the step list); Review's Edit presses it to go back there.
+    stepButton(label) {
+        const labels = [...(this.form?.querySelectorAll(':scope > .fi-sc-wizard-header .fi-sc-wizard-header-step-label') ?? [])];
+        return labels.find((l) => l.textContent.trim() === label)?.closest('.fi-sc-wizard-header-step-btn') ?? null;
+    },
+    canEdit(label) { return !!this.stepButton(label); },
+    editStep(label) {
+        const button = this.stepButton(label);
+        if (button && !button.disabled) button.click();
+    },
 });
 
 /*

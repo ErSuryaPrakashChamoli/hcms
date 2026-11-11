@@ -48,7 +48,7 @@ class CompensationCycleResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Compensation';
 
-    protected static ?string $navigationLabel = 'Cycles';
+    protected static ?string $navigationLabel = 'Pay review cycles';
 
     protected static ?int $navigationSort = 40;
 

@@ -9,10 +9,8 @@
         @endforeach
     </div>
 
-    <form wire:submit="save">
-        {{ $this->form }}
-        <div class="mt-4"><x-filament::button type="submit">Save pay cycle</x-filament::button></div>
-    </form>
+    {{-- Streamline S6: a wizard; "Save pay cycle" sits on its Review step. --}}
+    {{ $this->form }}
 
     @php($companies = $this->preview())
     <x-filament::section

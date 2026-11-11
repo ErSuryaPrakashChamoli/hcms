@@ -12,6 +12,7 @@ use App\Domain\Leave\Models\LeaveLedgerEntry;
 use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Platform\Services\SettingsRepository;
+use App\Support\Csv\SpreadsheetCell;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -510,6 +511,6 @@ final class LeaveYearEnd
     {
         $text = (string) ($value ?? '');
 
-        return $text !== '' && in_array($text[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 }

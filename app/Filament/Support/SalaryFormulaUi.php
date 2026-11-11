@@ -25,15 +25,18 @@ use Throwable;
  */
 final class SalaryFormulaUi
 {
+    /** The downloaded guide: one HTML page that opens in any browser and prints (or saves) as a PDF. */
+    public const GUIDE_FILE = 'salary-structure-guide.html';
+
     public static function guideAction(string $name = 'formulaGuide'): Action
     {
         return Action::make($name)->label('Formula guide')->icon('heroicon-m-book-open')->color('gray')
-            ->modalHeading('Salary formula guide')->modalWidth('5xl')->slideOver()
+            ->modalHeading('Salary structure guide')->modalWidth('5xl')->slideOver()
             ->modalSubmitAction(false)->modalCancelActionLabel('Close')
             ->modalContent(fn () => view('filament.payroll.formula-guide', self::guideData()))
             ->extraModalFooterActions([
-                Action::make('downloadGuide')->label('Download')->icon('heroicon-m-arrow-down-tray')->color('gray')
-                    ->action(fn () => response()->streamDownload(fn () => print (self::guideDocument()), 'salary-formula-guide.html', ['Content-Type' => 'text/html'])),
+                Action::make('downloadGuide')->label('Download guide')->icon('heroicon-m-arrow-down-tray')->color('gray')
+                    ->action(fn () => response()->streamDownload(fn () => print (self::guideDocument()), self::GUIDE_FILE, ['Content-Type' => 'text/html'])),
             ]);
     }
 

@@ -13,9 +13,9 @@
             </div>
             <div class="mt-3">
                 @if ($today['checked_in'])
-                    <x-filament::button size="sm" color="warning" x-on:click="window.peoplePunch($wire, 'out', @js($today['needs_location']))">Check out</x-filament::button>
+                    <x-filament::button size="sm" color="warning" x-on:click="window.peoplePunch($wire, 'out', {{ $today['needs_location'] ? 'true' : 'false' }})">Check out</x-filament::button>
                 @else
-                    <x-filament::button size="sm" color="success" x-on:click="window.peoplePunch($wire, 'in', @js($today['needs_location']))">Check in</x-filament::button>
+                    <x-filament::button size="sm" color="success" x-on:click="window.peoplePunch($wire, 'in', {{ $today['needs_location'] ? 'true' : 'false' }})">Check in</x-filament::button>
                 @endif
             </div>
         </x-filament::section>

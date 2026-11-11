@@ -59,4 +59,10 @@ final class ExpenseReportInput implements PayrollInputSource
         $on = ($run->period?->payment_date ?? $run->period?->end_date ?? now())->toDateString();
         app(ExpenseReports::class)->paidThrough(array_merge(...array_values($idsByEmployee)), 'payroll', $on, 'Payroll '.$run->period?->label(), (int) $run->id);
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        $run->loadMissing('period');
+        app(ExpenseReports::class)->undoPayrollPayment(array_merge(...array_values($idsByEmployee)), (int) $run->id, 'Payroll '.$run->period?->label().' reopened');
+    }
 }

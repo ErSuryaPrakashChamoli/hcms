@@ -4,6 +4,7 @@ use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Services\PayrollRuns;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Resources\ComplianceRules\ComplianceRuleResource;
 use App\Filament\Resources\Employees\EmployeeResource;
@@ -57,6 +58,10 @@ it('renders the payroll pages and the salary tab', function () {
 
 it('drives the pipeline from the run page and shows the employee only their own payslip', function () {
     actAsTenant($this->tenant);
+    // Streamline S2: Calculate waits for attendance and the ticked pre-payroll checks (tests/Feature/Payroll/RunPayrollPageTest.php);
+    // this test is about the run page's own pipeline, so the organisation runs without those gates.
+    app(SettingsRepository::class)->set('payroll.run.attendance_first', false);
+    app(SettingsRepository::class)->set('payroll.run.checklist_required', false);
     Livewire::test(ViewPayrollRun::class, ['record' => $this->run->id])->callAction('calculate')->assertNotified();
     Livewire::test(ViewPayrollRun::class, ['record' => $this->run->id])->callAction('validate')->assertNotified();
     expect($this->run->refresh()->status)->toBe('validated');
@@ -66,8 +71,9 @@ it('drives the pipeline from the run page and shows the employee only their own 
 
     $this->actingAs($this->approver);
     Livewire::test(ViewPayrollRun::class, ['record' => $this->run->id])->callAction('approve')->assertNotified('Run approved');
-    Livewire::test(ViewPayrollRun::class, ['record' => $this->run->id])->callAction('finalize')->assertNotified('Run finalized; payslips generated');
+    Livewire::test(ViewPayrollRun::class, ['record' => $this->run->id])->callAction('finalize')->assertNotified('Payroll closed; payslips ready to publish');
     expect(PayrollRun::query()->find($this->run->id)->status)->toBe('finalized')->and(Payslip::query()->count())->toBe(1);
+    Livewire::test(ViewPayrollRun::class, ['record' => $this->run->id])->callAction('publishPayslips')->assertNotified('Payslips published to employees');
 
     $other = salariedEmployee(300000, ['payroll.payslip']);
     $payslip = Payslip::query()->first();

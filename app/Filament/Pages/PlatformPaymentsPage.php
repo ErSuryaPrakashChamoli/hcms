@@ -53,6 +53,11 @@ class PlatformPaymentsPage extends Page
 
     private bool $resolved = false;
 
+    public function getSubheading(): ?string
+    {
+        return 'Payments received, reconciliation exceptions and payment provider events.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

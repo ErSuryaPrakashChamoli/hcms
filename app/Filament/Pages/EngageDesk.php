@@ -73,7 +73,7 @@ class EngageDesk extends OperationsDeskPage
 
     public function getSubheading(): ?string
     {
-        return 'The handbook, announcements, events, surveys, recognition and the wall in one place, in HROne\'s Engage order.';
+        return 'The handbook, announcements, events, surveys, recognition and the wall in one place, in the order a year of engagement runs.';
     }
 
     protected function sections(): array
@@ -110,7 +110,7 @@ class EngageDesk extends OperationsDeskPage
             // HROne parity GO-18: fundraisers and HROne's "Initiate fundraise" (the wizard opens directly with ?action=).
             ['label' => 'Fundraiser', 'items' => [
                 ['label' => 'Fundraisers', 'target' => FundraiserCampaignResource::class, 'description' => 'Collected against target, pledges and outside payments'],
-                ['label' => 'Start a fundraiser', 'target' => FundraiserCampaignResource::class, 'params' => ['action' => FundraiserActions::START], 'description' => 'HROne: Initiate fundraise',
+                ['label' => 'Start a fundraiser', 'target' => FundraiserCampaignResource::class, 'params' => ['action' => FundraiserActions::START], 'description' => 'Set a cause, a target and how people give',
                     'visible' => fn () => app(Fundraisers::class)->manages(auth()->user())],
             ]],
             ['label' => 'Reports', 'items' => [

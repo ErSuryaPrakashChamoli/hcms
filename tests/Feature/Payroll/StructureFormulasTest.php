@@ -3,6 +3,7 @@
 use App\Domain\Compensation\Exceptions\CompensationRuleViolation;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\CompensationStructures;
+use App\Domain\Compensation\Services\StructureBuilder;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\Location;
@@ -161,23 +162,29 @@ it('previews the breakup the payroll calculator pays, with guardrail warnings', 
     expect($this->formulas->preview($version->formulaLines(), [], ['ctc_annual' => 600000, 'values' => ['CONV' => 1600], 'on' => '2026-09-30'])['warnings'])->toBe([]);
 });
 
-it('shows the formula guide and the preview on the structure screen, and saves parameters from the draft form', function () {
+it('shows the formula guide and the preview on the structure screen, and reads parameters into the builder as numbers', function () {
     expect(SalaryFormulaUi::guideAction()->getModalContent()->render())
-        ->toContain('How salary formulas work')->toContain('lookup(key, k1, v1, k2, v2, …, otherwise)')->toContain('PF_EE')->toContain('years_of_service');
+        ->toContain('Six ways to work out a component')->toContain('lookup(key, k1, v1, k2, v2, …, otherwise)')->toContain('PF_EE')->toContain('years_of_service');
 
     $version = $this->standard->versions()->sole();
     $result = $this->formulas->preview($version->formulaLines(), [], ['ctc_annual' => 600000, 'values' => ['CONV' => 1600], 'on' => '2026-09-30']);
     expect(view('filament.payroll.structure-preview', ['result' => $result, 'failure' => null])->render())
         ->toContain('Breakup total vs CTC')->toContain('20,000.00')->toContain('Special allowance')->toContain('Code on Wages');
 
-    $draft = $this->structures->newVersion($this->standard, $this->admin, '2026-10-01');
     $screen = fn () => Livewire::test(VersionsRelationManager::class, ['ownerRecord' => $this->standard, 'pageClass' => EditSalaryStructure::class])->assertOk();
     $screen()->mountAction(TestAction::make('formulaGuide')->table())->assertActionMounted(TestAction::make('formulaGuide')->table());
     $screen()->mountAction(TestAction::make('preview')->table($version))->assertActionMounted(TestAction::make('preview')->table($version));
-    $screen()->callAction(TestAction::make('edit')->table($draft), ['parameters' => ['basic_pct' => '50'], 'preview_ctc' => 900000])
-        ->assertHasNoFormErrors()->assertNotified('Draft saved');
 
-    expect($draft->refresh()->parameters)->toEqual(['basic_pct' => 50]);
+    // A draft written with parameters (before the builder) opens in the builder with the numbers put in, and saves without them.
+    $draft = $this->structures->newVersion($this->standard, $this->admin, '2026-10-01');
+    $this->structures->updateDraft($draft, ['parameters' => ['basic_pct' => 45], 'components' => standardRows($draft, ['BASIC' => 'ctc_monthly * basic_pct / 100'])], $this->admin);
+    $builder = app(StructureBuilder::class);
+    $state = $builder->load($this->standard);
+    expect(collect($state['rules'])->firstWhere('component', (string) ($this->component)('BASIC')->id))->toMatchArray(['how' => 'percent_ctc', 'value' => 45.0]);
+
+    $builder->save($state, $this->standard, $this->admin);
+    expect($draft->refresh()->parameters)->toBeNull()
+        ->and($draft->components()->whereHas('component', fn ($q) => $q->where('code', 'BASIC'))->value('formula_override'))->toBe('ctc_monthly * 45 / 100');
 });
 
 it('works the Standard structure through for a sample CTC in the guide, and downloads the guide', function () {
@@ -192,9 +199,9 @@ it('works the Standard structure through for a sample CTC in the guide, and down
         ->and($example['lop'])->toMatchArray(['paid_days' => 28, 'gross' => 44426.66])
         ->and($example['lop']['amounts']['BASIC'])->toBe(18666.67);
 
-    expect(SalaryFormulaUi::guideDocument())->toStartWith('<!doctype html>')->toContain('Worked example: CTC 600,000.00 a year')
+    expect(SalaryFormulaUi::guideDocument())->toStartWith('<!doctype html>')->toContain('5. Worked example: CTC 600,000.00 a year')
         ->toContain('max(0, 50000 - 20000 - 10000 - 1600 - 2400)')->toContain('45,200.00')->toContain('above the 21,000.00 ceiling')->toContain('lookup(key, k1, v1, k2, v2, …, otherwise)');
 
     Livewire::test(VersionsRelationManager::class, ['ownerRecord' => $this->standard, 'pageClass' => EditSalaryStructure::class])
-        ->callAction([TestAction::make('formulaGuide')->table(), TestAction::make('downloadGuide')])->assertFileDownloaded('salary-formula-guide.html');
+        ->callAction([TestAction::make('formulaGuide')->table(), TestAction::make('downloadGuide')])->assertFileDownloaded(SalaryFormulaUi::GUIDE_FILE);
 });

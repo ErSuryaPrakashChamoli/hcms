@@ -74,6 +74,6 @@ it('lets the learner complete modules and pass the quiz, and assigns an asset fr
     $this->actingAs($this->employee->user);
     $this->get(AssetResource::getUrl('index'))->assertOk()->assertSee('My assets')->assertSee('LT-001');
     $this->get(AssetCategoryResource::getUrl('index'))->assertForbidden();
-    $this->get(LearningEnrolmentResource::getUrl('index'))->assertOk()->assertSee('My learning');
+    $this->get(LearningEnrolmentResource::getUrl('index'))->assertOk()->assertSee('My courses');
     $this->get(LearningCertificateResource::getUrl('index'))->assertOk()->assertSee('CERT-POSH');
 });

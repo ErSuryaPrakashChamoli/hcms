@@ -56,4 +56,12 @@ final class AttendanceArrearInput implements PayrollInputSource
                 ->each(fn (AttendanceArrear $a) => $a->withAuditReason('Settled in payroll '.$run->period?->label())->update(['status' => 'settled', 'settled_period_id' => $run->payroll_period_id, 'settled_at' => now()]));
         }
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        foreach ($idsByEmployee as $employeeId => $ids) {
+            AttendanceArrear::query()->where('employee_id', $employeeId)->whereIn('id', $ids)->where('status', 'settled')->where('settled_period_id', $run->payroll_period_id)->get()
+                ->each(fn (AttendanceArrear $a) => $a->withAuditReason('Payroll '.$run->period?->label().' reopened')->update(['status' => 'pending', 'settled_period_id' => null, 'settled_at' => null]));
+        }
+    }
 }

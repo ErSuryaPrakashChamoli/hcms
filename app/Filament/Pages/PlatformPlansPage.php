@@ -57,6 +57,11 @@ class PlatformPlansPage extends Page
     /** The selected plan, read once per request (Livewire does not keep non-public properties between requests). */
     private ?Plan $selected = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'The plans PeopleOS sells, their versions and what each one includes.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

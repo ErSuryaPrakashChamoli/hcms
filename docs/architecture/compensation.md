@@ -133,6 +133,10 @@ draft ─submit─► pending_approval ─approve (≠ preparer)─► scheduled
   `StructureFormulas::check` and refuses the draft on any formula error. Payroll receives the
   parameters on `CompensationSegment::$parameters`. The contract version and fingerprint are
   unchanged, since a version's parameters never change once approved. See payroll-architecture §2.1.
+- **Salary structure builder (2026-11-11):** drafts are now built and changed in the five-step builder
+  (plain rules, or plain English, compiled to formula overrides in calculation order); it writes the
+  numbers into the formulas and saves drafts without parameters. Approved versions that use parameters
+  keep them and pay the same. See [salary-structure-builder.md](salary-structure-builder.md).
 
 ## 5. Ranges, range position and compa-ratio (§8, §25)
 

@@ -25,7 +25,7 @@ class ExpenseAdvanceEntry extends Model
 {
     use Auditable, BelongsToTenant, ScopedByEmployee;
 
-    public const KINDS = ['disbursed' => 'Dispensed', 'adjusted' => 'Adjusted against a report', 'refunded' => 'Refunded', 'written_off' => 'Written off', 'recovered' => 'Recovered'];
+    public const KINDS = ['disbursed' => 'Dispensed', 'adjusted' => 'Adjusted against a report', 'refunded' => 'Refunded', 'written_off' => 'Written off', 'recovered' => 'Recovered', 'reversed' => 'Reversed (payroll month reopened)'];
 
     /** HROne parity XO-6: how a refund outside payroll was paid. */
     public const REFUND_MODES = ['bank_transfer' => 'Bank transfer', 'cheque' => 'Cheque', 'cash' => 'Cash'];

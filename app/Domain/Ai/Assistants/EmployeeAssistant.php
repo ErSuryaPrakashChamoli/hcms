@@ -105,7 +105,7 @@ final class EmployeeAssistant implements Assistant
 
     private function payslip(Employee $employee): AiAnswer
     {
-        $payslip = Payslip::query()->where('employee_id', $employee->id)->latest('generated_at')->first();
+        $payslip = Payslip::query()->where('employee_id', $employee->id)->published()->latest('generated_at')->first();
         if ($payslip === null) {
             return AiAnswer::text('No payslip has been issued to you yet. Payslips appear here once payroll for a month is finalized.', 'payslip');
         }

@@ -30,9 +30,15 @@ class StatutoryProfileResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Payroll';
 
-    protected static ?string $navigationLabel = 'Company statutory profiles (legacy)';
+    protected static ?string $navigationLabel = 'Company statutory profiles (older setup)';
 
     protected static ?int $navigationSort = 50;
+
+    /** Streamline S4: establishment statutory profiles replaced these; the older screen is listed only while it still holds profiles. */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return parent::shouldRegisterNavigation() && CompanyStatutoryProfile::query()->exists();
+    }
 
     public static function getEloquentQuery(): Builder
     {

@@ -33,7 +33,7 @@ class PerformanceTemplateResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Performance';
 
-    protected static ?string $navigationLabel = 'Templates';
+    protected static ?string $navigationLabel = 'Review templates';
 
     protected static ?int $navigationSort = 11;
 

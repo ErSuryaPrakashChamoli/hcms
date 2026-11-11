@@ -12,6 +12,7 @@ use App\Domain\People\Services\Birthdays as BirthdayService;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Resources\Employees\Schemas\EmployeeForm;
 use App\Filament\Support\BirthdayActions;
+use App\Support\Csv\SpreadsheetCell;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -365,7 +366,7 @@ class Birthdays extends Page
                     $out = fopen('php://output', 'w');
                     fputcsv($out, ['Date', 'Employee code', 'Name', 'Designation', 'Department', 'Work email', 'Shared with colleagues', 'Differs from date of birth']);
                     foreach ($rows as $e) {
-                        fputcsv($out, [$this->dateOf($e), $e->employee_code, $e->person->display_name, $e->currentPosition?->designation?->name, $e->currentPosition?->department?->name, $e->work_email, $e->person->birthday_shared ? 'Yes' : 'No', $e->person->celebratesOtherDay() ? 'Yes' : 'No']);
+                        fputcsv($out, SpreadsheetCell::row([$this->dateOf($e), $e->employee_code, $e->person->display_name, $e->currentPosition?->designation?->name, $e->currentPosition?->department?->name, $e->work_email, $e->person->birthday_shared ? 'Yes' : 'No', $e->person->celebratesOtherDay() ? 'Yes' : 'No']));
                     }
                     fclose($out);
                 }, $name, ['Content-Type' => 'text/csv']);
@@ -384,8 +385,8 @@ class Birthdays extends Page
             fputcsv($out, ['Date', 'Employee code', 'Name', 'Designation', 'Department', 'Work email', ...($kind === 'work_anniversary' ? ['Joining date', 'Years'] : ['Shared with colleagues'])]);
             foreach ($rows as $e) {
                 $date = Anniversaries::dateIn($kind, $e, $this->year);
-                fputcsv($out, [$date->format('D j M'), $e->employee_code, $e->person->display_name, $e->currentPosition?->designation?->name, $e->currentPosition?->department?->name, $e->work_email,
-                    ...($kind === 'work_anniversary' ? [$e->joining_date->toDateString(), Anniversaries::years($e, $date)] : [$e->person->wedding_anniversary_shared ? 'Yes' : 'No'])]);
+                fputcsv($out, SpreadsheetCell::row([$date->format('D j M'), $e->employee_code, $e->person->display_name, $e->currentPosition?->designation?->name, $e->currentPosition?->department?->name, $e->work_email,
+                    ...($kind === 'work_anniversary' ? [$e->joining_date->toDateString(), Anniversaries::years($e, $date)] : [$e->person->wedding_anniversary_shared ? 'Yes' : 'No'])]));
             }
             fclose($out);
         }, $name, ['Content-Type' => 'text/csv']);

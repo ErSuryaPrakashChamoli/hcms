@@ -10,6 +10,7 @@ use App\Domain\Compensation\Support\CompensationComponentLine;
 use App\Domain\Compensation\Support\CompensationSegment;
 use App\Domain\Compensation\Support\CompensationSnapshot;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
@@ -263,7 +264,7 @@ final class SalaryAssignments
             'salary_structure_id' => $structureId,
             'ctc_annual' => $ctc,
             // A percentage revises the CTC in its own currency.
-            'currency' => $mode === 'amount' && filled($input['currency'] ?? null) ? (string) $input['currency'] : ($current?->currency ?? (string) config('peopleos.settings.tenant.base_currency', 'INR')),
+            'currency' => $mode === 'amount' && filled($input['currency'] ?? null) ? (string) $input['currency'] : ($current?->currency ?? app(CurrencyRates::class)->baseCurrency()),
             'pay_frequency' => $current?->payFrequency ?? 'monthly',
             'component_values' => $values,
             'variable_target_annual' => array_key_exists('variable_target_annual', $input) ? $input['variable_target_annual'] : $current?->variableTargetAnnual,
@@ -338,7 +339,7 @@ final class SalaryAssignments
             structureId: (int) $structure->id,
             structureVersionId: (int) $version->id,
             structureCode: $structure->code,
-            currency: (string) ($proposal['currency'] ?? config('peopleos.settings.tenant.base_currency', 'INR')),
+            currency: (string) ($proposal['currency'] ?? app(CurrencyRates::class)->baseCurrency()),
             payFrequency: (string) ($proposal['pay_frequency'] ?? 'monthly'),
             ctcAnnual: (float) ($proposal['ctc_annual'] ?? 0),
             variableTargetAnnual: $variable !== null && $variable !== '' ? (float) $variable : null,

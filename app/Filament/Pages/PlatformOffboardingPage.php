@@ -68,6 +68,11 @@ class PlatformOffboardingPage extends Page
 
     private ?array $planCache = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Organisations leaving PeopleOS: exports, legal holds, retention and deletion.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

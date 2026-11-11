@@ -31,6 +31,11 @@ class TeamWorkforce extends Page
 
     protected string $view = 'filament.pages.team-workforce';
 
+    public function getSubheading(): ?string
+    {
+        return 'Positions in your part of the organisation: filled, open and planned.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

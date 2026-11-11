@@ -34,7 +34,7 @@ class LearningEnrolmentResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return auth()->user()?->can('learning.view') ? 'Enrolments' : 'My learning';
+        return auth()->user()?->can('learning.view') ? 'Enrolments' : 'My courses';
     }
 
     public static function canCreate(): bool

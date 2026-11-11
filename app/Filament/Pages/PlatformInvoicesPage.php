@@ -74,6 +74,11 @@ class PlatformInvoicesPage extends Page
 
     private bool $resolved = false;
 
+    public function getSubheading(): ?string
+    {
+        return 'Every organisation\'s invoices, and each invoice as it was issued.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

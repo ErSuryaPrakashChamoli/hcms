@@ -28,6 +28,11 @@ class WorkforceIntelligence extends Page
 
     protected string $view = 'filament.pages.workforce-intelligence';
 
+    public function getSubheading(): ?string
+    {
+        return 'Attrition and capacity facts and critical-skill coverage, in aggregate only.';
+    }
+
     public static function canAccess(): bool
     {
         return (auth()->user()?->can('ai.workforce') ?? false) && app(FeatureFlags::class)->enabled('ai.workforce_intelligence');

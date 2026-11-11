@@ -57,6 +57,11 @@ class DispenseAdvances extends Page implements HasTable
     #[Url(as: 'tab')]
     public string $dispenseTab = 'to_dispense';
 
+    public function getSubheading(): ?string
+    {
+        return 'Approved expense advances waiting to be paid. Record each payment made outside payroll.';
+    }
+
     public static function canAccess(): bool
     {
         return (bool) auth()->user()?->can('expense.pay');

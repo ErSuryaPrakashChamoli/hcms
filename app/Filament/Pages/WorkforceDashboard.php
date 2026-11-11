@@ -19,7 +19,7 @@ class WorkforceDashboard extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Workforce';
 
-    protected static ?string $navigationLabel = 'Dashboard';
+    protected static ?string $navigationLabel = 'Workforce overview';
 
     protected static ?string $title = 'Workforce overview';
 
@@ -28,6 +28,11 @@ class WorkforceDashboard extends Page
     protected static ?int $navigationSort = 0;
 
     protected string $view = 'filament.pages.workforce-dashboard';
+
+    public function getSubheading(): ?string
+    {
+        return 'Headcount, movement and positions across the organisation today.';
+    }
 
     public static function canAccess(): bool
     {

@@ -130,7 +130,7 @@ final class DataInventory
         // (leave type, pay month, who was chosen, the reviewed lines per employee, who made / approved / unprocessed it);
         // leave_encashments.leave_encashment_batch_id / pay_month are columns of the encashment row.
         'leave' => ['leave_balances', 'leave_encashments', 'leave_ledger_entries', 'leave_requests', 'leave_types', 'leave_donations', 'leave_encashment_batches'],
-        'payroll' => ['payroll_adjustments', 'payroll_entries', 'payroll_entry_lines', 'payroll_periods', 'payroll_runs', 'payslips', 'salary_components',
+        'payroll' => ['payroll_adjustments', 'payroll_entries', 'payroll_entry_lines', 'payroll_periods', 'payroll_prerun_checks', 'payroll_reopenings', 'payroll_runs', 'payslips', 'salary_components',
             // HROne parity HP-2: loans and salary advances.
             'loans', 'loan_installments', 'salary_holds', 'variable_pay_requests', 'reimbursement_claims', 'reimbursement_ledger_entries',
             // HROne setup parity BP-9: loan guarantors and variable pay plans.

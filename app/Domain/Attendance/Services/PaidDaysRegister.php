@@ -13,6 +13,7 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Support\Csv\SpreadsheetCell;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -251,6 +252,6 @@ final class PaidDaysRegister
         }
         $text = (string) ($value ?? '');
 
-        return $text !== '' && in_array($text[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 }

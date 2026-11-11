@@ -54,6 +54,11 @@ class TeamIncrements extends Page implements HasTable
     /** @var Collection<int, CompensationCycleProposal>|null this manager's proposals by line (per request) */
     private ?Collection $proposals = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Increment plans HR shared with you for your team.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Salary formula guide</title>
+    <title>Salary structure guide</title>
     {{-- Standalone: the in-app guide's Tailwind classes do nothing here, so its elements are styled directly. --}}
     <style>
         body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.55; color: #1f2937; background: #fff; max-width: 980px; margin: 32px auto; padding: 0 16px; }
@@ -26,12 +26,17 @@
         .bg-gray-50 { background: #f9fafb; }
         .text-gray-500, .pos-caption { color: #6b7280; }
         .pos-caption { font-size: 12px; }
-        @media print { body { margin: 0; max-width: none; } section { break-inside: auto; } tr { break-inside: avoid; } }
+        .whitespace-pre-wrap { white-space: pre-wrap; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+        .grid { display: grid; gap: 12px; }
+        @media (min-width: 768px) { .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .print { float: right; margin-top: 2px; font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; cursor: pointer; }
+        @media print { body { margin: 0; max-width: none; } section { break-inside: auto; } tr { break-inside: avoid; } .print { display: none; } }
     </style>
 </head>
 <body>
     <header>
-        <h1>Salary formula guide</h1>
+        <button type="button" class="print" onclick="window.print()">Print or save as PDF</button>
+        <h1>Salary structure guide</h1>
         <p>{{ $tenant ? $tenant.' · ' : '' }}PeopleOS · downloaded {{ now()->format('j M Y') }}</p>
     </header>
     @include('filament.payroll.formula-guide')

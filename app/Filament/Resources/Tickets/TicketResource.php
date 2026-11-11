@@ -67,7 +67,7 @@ class TicketResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return ServiceDeskActions::isAgent() ? 'HR queue' : 'My requests';
+        return ServiceDeskActions::isAgent() ? 'HR queue' : 'My HR tickets';
     }
 
     public static function getModelLabel(): string

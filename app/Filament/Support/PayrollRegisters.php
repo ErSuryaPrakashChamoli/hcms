@@ -13,7 +13,7 @@ use App\Domain\Employment\Imports\RowImportTypes;
 use App\Filament\Pages\ComplianceReportsPage;
 use App\Filament\Pages\DeclareInvestments;
 use App\Filament\Pages\IncrementCalculator;
-use App\Filament\Pages\PayrollControlRoom;
+use App\Filament\Pages\RunPayroll;
 use App\Filament\Pages\StatutoryChallansPage;
 use App\Filament\Resources\LeaveEncashmentBatches\LeaveEncashmentBatchResource;
 use App\Filament\Resources\Loans\LoanResource;
@@ -244,8 +244,8 @@ final class PayrollRegisters
 
         return ActionGroup::make([
             Action::make('posPayRun')->label('Run payroll')->icon(Heroicon::OutlinedPlayCircle)
-                ->visible($opens(fn () => PayrollControlRoom::canAccess() && $can('payroll.calculate')))
-                ->url(fn () => PayrollControlRoom::getUrl(['action' => 'openRun'])),
+                ->visible($opens(fn () => RunPayroll::canAccess()))
+                ->url(fn () => RunPayroll::getUrl()),
             Action::make('posPaySalaryUpload')->label('Assign salary structures (upload)')->icon(Heroicon::OutlinedArrowUpTray)
                 ->visible($opens(fn () => SalaryImportResource::canCreate()))
                 ->url(fn () => SalaryImportResource::getUrl('index', ['action' => 'create'])),

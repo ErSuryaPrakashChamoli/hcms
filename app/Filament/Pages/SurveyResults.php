@@ -37,6 +37,11 @@ class SurveyResults extends Page
     #[Url]
     public ?int $version = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'A survey\'s answers as totals only. Small groups are hidden to protect anonymity.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

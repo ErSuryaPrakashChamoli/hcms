@@ -19,19 +19,32 @@
         x-on:pos-approval-decided.window="$nextTick(() => { const next = document.querySelector('.pos-queue-row'); selected = next ? next.dataset.approvalId : null })"
         x-on:pos-approval-bulk-done.window="picked = []; bulkNote = ''">
 
-        <div class="pos-lens">
-            @if (isset($posAi['manager']) && $pending->isNotEmpty())
-                <button type="button" class="pos-btn pos-btn-ghost pos-btn-sm" x-on:click="$dispatch('pos-ai-open', { assistant: 'manager', prompt: 'What is pending for me?' })">
-                    <span class="pos-ai-orb pos-ai-orb-sm" aria-hidden="true"></span> Summarise what is pending
-                </button>
-            @endif
-            <span class="pos-meta ms-auto hidden md:inline" aria-hidden="true"><span class="pos-kbd">J</span> <span class="pos-kbd">K</span> move · <span class="pos-kbd">A</span> approve · <span class="pos-kbd">R</span> reject · <span class="pos-kbd">Esc</span> cancel</span>
-        </div>
+        {{-- The masthead: how many decisions need you and how urgent they are; the keys and the summary on its band --}}
+        <x-pos.masthead icon="heroicon-m-check-badge" eyebrow="Approval Center" :title="$this->getHeading()" :brief="$this->getSubheading()">
+            <x-slot:glance>
+                <x-pos.glance label="Decisions at a glance" :rows="[
+                    ['label' => 'Urgent', 'value' => $groups['urgent']->count(), 'icon' => 'heroicon-o-fire', 'tone' => $groups['urgent']->isNotEmpty() ? 'danger' : 'success', 'meta' => 'Overdue, starting within a day, or flagged'],
+                    ['label' => 'This week', 'value' => $groups['today']->count(), 'icon' => 'heroicon-o-clock', 'tone' => $groups['today']->isNotEmpty() ? 'warning' : 'success', 'meta' => 'Due soon or waiting two days'],
+                    ['label' => 'Later', 'value' => $groups['upcoming']->count(), 'icon' => 'heroicon-o-calendar-days', 'tone' => 'info', 'meta' => 'Later this month and beyond'],
+                    ['label' => 'Decided', 'value' => $groups['completed']->count(), 'icon' => 'heroicon-o-check-circle', 'tone' => 'success', 'meta' => 'By you in the last two weeks'],
+                ]" />
+            </x-slot:glance>
+            <x-slot:band>
+                @if (isset($posAi['manager']) && $pending->isNotEmpty())
+                    <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm" x-on:click="$dispatch('pos-ai-open', { assistant: 'manager', prompt: 'What is pending for me?' })">
+                        <span class="pos-ai-orb pos-ai-orb-sm" aria-hidden="true"></span> Summarise what is pending
+                    </button>
+                @else
+                    <span class="pos-mast-note">{{ $pending->isEmpty() ? 'Leave, attendance corrections, pay changes, letters and workflow steps that need you arrive here.' : 'Select a decision to see its context beside the queue.' }}</span>
+                @endif
+                <span class="pos-mw-keys hidden lg:inline-flex" aria-hidden="true"><span class="pos-kbd">J</span><span class="pos-kbd">K</span> move <span class="pos-kbd">A</span> approve <span class="pos-kbd">R</span> reject <span class="pos-kbd">Esc</span> cancel</span>
+            </x-slot:band>
+        </x-pos.masthead>
 
         {{-- Keyboard list navigation (J/K move, A/R decide, Enter open) over the queue, always wired --}}
         <div class="contents" x-data="posListNav('.pos-approval')" x-on:keydown.window="handle($event)">
         @if ($pending->isEmpty())
-            <x-pos.state variant="caught-up" title="You’re all caught up." why="No decisions require your attention right now. Leave, attendance corrections, pay changes, letters and workflow steps that need you will appear here, with the context to decide." />
+            <div class="pos-panel pos-mw-empty"><x-pos.state variant="caught-up" title="You’re all caught up." why="No decisions require your attention right now. Leave, attendance corrections, pay changes, letters and workflow steps that need you will appear here, with the context to decide." /></div>
         @else
             <div class="pos-decide-ws">
                 {{-- The queue: most urgent first; selecting shows the decision beside it (a drawer on smaller screens) --}}

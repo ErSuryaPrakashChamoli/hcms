@@ -35,6 +35,11 @@ class TeamLearning extends Page
 
     protected string $view = 'filament.pages.team-learning';
 
+    public function getSubheading(): ?string
+    {
+        return 'Your team\'s learning: what is due, mandatory training and skill gaps.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

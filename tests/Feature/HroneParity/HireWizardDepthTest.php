@@ -246,7 +246,7 @@ it('offers the identity, bank, starting-state and sign-in parts only to people w
     $this->actingAs($clerk);
     $page = Livewire::test(CreateEmployee::class)->fillForm(wo3Data());
 
-    expect(wo3Steps($page))->toBe(['Person', 'Employment', 'Position', 'Manager', 'Address', 'Family', 'Previous employment']);
+    expect(wo3Steps($page))->toBe(['Person', 'Employment', 'Position', 'Manager', 'Address', 'Family', 'Previous employment', 'Review']);
     $page->assertFormFieldHidden('start_state')->assertFormFieldHidden('position_id');
 
     // Forged values for hidden parts record nothing.

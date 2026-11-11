@@ -30,6 +30,11 @@ class WorkforceSnapshotsPage extends Page
 
     public ?string $on = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Headcount frozen at a date, to compare with today.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('workforce.view') ?? false;

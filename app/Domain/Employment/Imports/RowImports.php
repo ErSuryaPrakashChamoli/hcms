@@ -116,10 +116,17 @@ abstract class RowImports
         return $import;
     }
 
+    /** The most data rows one upload of this type may have (config peopleos.imports.max_rows unless a type says otherwise). */
+    protected function maxRows(): int
+    {
+        return (int) config('peopleos.imports.max_rows', 50000);
+    }
+
     public function inspect(EmployeeImport $import): EmployeeImport
     {
         $this->assert($import, ['uploaded', 'inspected']);
-        $max = (int) config('peopleos.attendance.import_max_rows', 50000);
+        // Streamline S3: the generic imports' own limit (they used to borrow attendance's key; same value).
+        $max = $this->maxRows();
 
         $csv = Reader::from(Storage::disk($import->disk)->readStream($import->path));
         $csv->setHeaderOffset(0);

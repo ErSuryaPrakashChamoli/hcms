@@ -217,6 +217,12 @@ final class FinalSettlements
 
         return DB::transaction(function () use ($settlement, $approver, $note) {
             $employee = $settlement->employee()->firstOrFail();
+            // Streamline S2: the final month's salary is paid once. A payroll run that closed after this settlement was
+            // calculated already paid it, so the settlement's salary lines would pay it again.
+            if (($settlement->inputs['salary_already_paid'] ?? true) === false && $settlement->lines()->where('code', 'like', 'SAL_%')->exists()
+                && PayrollEntry::query()->where('employee_id', $employee->id)->whereHas('run', fn ($q) => $q->whereIn('status', ['finalized', 'paid'])->whereHas('period', fn ($p) => $p->whereDate('start_date', '<=', $settlement->inputs['last_working_day'] ?? now()->toDateString())->whereDate('end_date', '>=', $settlement->inputs['last_working_day'] ?? now()->toDateString())))->exists()) {
+                throw new RuntimeException('Payroll for '.($settlement->inputs['salary_period'] ?? 'the final month').' was closed after this settlement was calculated and already paid that month: recalculate the settlement before approving it.');
+            }
             foreach ($settlement->lines()->where('code', 'like', 'ENCASH_%')->get() as $line) {
                 $type = LeaveType::query()->find($line->basis['leave_type_id'] ?? 0);
                 if ($type) {

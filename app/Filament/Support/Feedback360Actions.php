@@ -13,6 +13,7 @@ use App\Domain\Performance\Services\FeedbackNominations;
 use App\Domain\Performance\Services\FeedbackRoundResults;
 use App\Domain\Performance\Services\FeedbackRounds;
 use App\Filament\Resources\FeedbackRequests\FeedbackRequestResource;
+use App\Support\Csv\SpreadsheetCell;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -80,7 +81,7 @@ final class Feedback360Actions
             $out = fopen('php://output', 'w');
             fputcsv($out, ['Employee code', 'Employee', 'Source', 'Anonymous', 'Asked', 'Answered', 'Average score %', 'Note']);
             foreach ($rows as $row) {
-                fputcsv($out, array_values($row));
+                fputcsv($out, SpreadsheetCell::row(array_values($row)));
             }
             fclose($out);
         }, 'feedback-360-'.$round->id.'.csv', ['Content-Type' => 'text/csv']);

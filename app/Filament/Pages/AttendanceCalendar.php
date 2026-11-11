@@ -116,6 +116,11 @@ class AttendanceCalendar extends Page
         'unpaid_leave' => 'LWP', 'wfh' => 'WFH', 'on_duty' => 'OD', 'field_duty' => 'FD', 'not_processed' => '–',
     ];
 
+    public function getSubheading(): ?string
+    {
+        return 'A month at a glance: each day\'s status and times, the paid days, and requests for the days that need one.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

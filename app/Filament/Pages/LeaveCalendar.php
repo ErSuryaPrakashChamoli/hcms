@@ -37,6 +37,11 @@ class LeaveCalendar extends Page implements HasTable
 
     protected string $view = 'filament.pages.leave-calendar';
 
+    public function getSubheading(): ?string
+    {
+        return 'Who is away when, across the teams you can see.';
+    }
+
     public static function canAccess(): bool
     {
         return (auth()->user()?->can('leave.view') ?? false) || (auth()->user()?->can('leave.approve') ?? false);

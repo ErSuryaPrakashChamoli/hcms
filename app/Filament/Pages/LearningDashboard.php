@@ -15,7 +15,7 @@ class LearningDashboard extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Learning';
 
-    protected static ?string $navigationLabel = 'Dashboard';
+    protected static ?string $navigationLabel = 'Learning overview';
 
     protected static ?string $title = 'Learning & development';
 
@@ -24,6 +24,11 @@ class LearningDashboard extends Page
     protected static ?int $navigationSort = 0;
 
     protected string $view = 'filament.pages.learning-dashboard';
+
+    public function getSubheading(): ?string
+    {
+        return 'Enrolments, completions, mandatory training and certificates across the organisation.';
+    }
 
     public static function canAccess(): bool
     {

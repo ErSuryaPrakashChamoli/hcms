@@ -33,6 +33,7 @@ use App\Filament\Pages\LeaveCalendar;
 use App\Filament\Pages\MyEvents as MyEventsPage;
 use App\Filament\Pages\MyTeam;
 use App\Filament\Pages\PayrollControlRoom;
+use App\Filament\Pages\RunPayroll;
 use App\Filament\Pages\SocialWall as SocialWallPage;
 use App\Filament\Resources\FundraiserCampaigns\FundraiserCampaignResource;
 use App\Filament\Resources\Payslips\PayslipResource;
@@ -491,7 +492,7 @@ final class HomeComposer
                 report($e);
             }
         }
-        $payslip = Payslip::query()->where('employee_id', $employee->id)->latest('generated_at')->first();
+        $payslip = Payslip::query()->where('employee_id', $employee->id)->published()->latest('generated_at')->first();
         $nextLeave = LeaveRequest::query()->with('leaveType')->where('employee_id', $employee->id)->whereIn('status', ['approved', 'pending'])->whereDate('to_date', '>=', $today)->orderBy('from_date')->first();
 
         return [
@@ -553,9 +554,11 @@ final class HomeComposer
         $run = PayrollRun::query()->with('period')->latest('id')->first();
 
         return [
-            'run' => $run ? ['label' => $run->period?->label() ?? 'Run #'.$run->id, 'status' => config("peopleos.payroll.run_statuses.{$run->status}", $run->status), 'exceptions' => (int) $run->exception_count,
-                'employees' => (int) $run->total('employees'), 'net' => $run->total('net_pay')] : null,
-            'url' => PayrollControlRoom::canAccess() ? PayrollControlRoom::getUrl() : null,
+            // 'stage' is the raw status, so Home can place the run on its way from draft to paid. Run totals keep net pay
+            // under 'net' (PayrollRuns::calculate); 'net_pay' is the entry column and always read 0 here.
+            'run' => $run ? ['label' => $run->period?->label() ?? 'Run #'.$run->id, 'status' => config("peopleos.payroll.run_statuses.{$run->status}", $run->status), 'stage' => (string) $run->status,
+                'exceptions' => (int) $run->exception_count, 'employees' => (int) $run->total('employees'), 'net' => $run->total('net')] : null,
+            'url' => RunPayroll::canAccess() ? RunPayroll::getUrl() : (PayrollControlRoom::canAccess() ? PayrollControlRoom::getUrl() : null),
         ];
     }
 }

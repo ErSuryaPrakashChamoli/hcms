@@ -19,7 +19,7 @@ class TalentAnalyticsPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Talent';
 
-    protected static ?string $navigationLabel = 'Analytics';
+    protected static ?string $navigationLabel = 'Talent analytics';
 
     protected static ?string $title = 'Talent analytics';
 
@@ -28,6 +28,11 @@ class TalentAnalyticsPage extends Page
     protected static ?int $navigationSort = 100;
 
     protected string $view = 'filament.pages.talent-analytics';
+
+    public function getSubheading(): ?string
+    {
+        return 'Succession coverage, bench strength, readiness and development progress.';
+    }
 
     public static function canAccess(): bool
     {

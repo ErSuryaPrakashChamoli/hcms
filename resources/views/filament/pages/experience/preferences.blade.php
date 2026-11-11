@@ -1,6 +1,7 @@
 <x-filament-panels::page>
     @php($p = $this->prefs)
-    <div class="grid max-w-3xl gap-[var(--pos-gap)]">
+    {{-- Two columns on wide screens so the cards fill the page instead of leaving its right half empty --}}
+    <div class="grid items-start gap-[var(--pos-gap)] lg:grid-cols-2">
         <section class="pos-card" aria-labelledby="pref-density">
             <h2 id="pref-density" class="pos-h3">Density</h2>
             <p class="pos-body-sm mt-1">Comfortable gives content room to breathe. Compact fits more rows in tables and lists.</p>

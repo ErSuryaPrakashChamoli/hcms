@@ -51,6 +51,14 @@ final class ExpenseAdvancePayoutInput implements PayrollInputSource
     {
         $run->loadMissing('period');
         $on = ($run->period?->payment_date ?? $run->period?->end_date ?? now())->toDateString();
-        app(ExpenseAdvances::class)->paidOut(array_merge(...array_values($idsByEmployee)), 'payroll', $on, 'Payroll '.$run->period?->label(), 'Paid out in payroll '.$run->period?->label(), (int) $run->id);
+        app(ExpenseAdvances::class)->paidOut(array_merge(...array_values($idsByEmployee)), 'payroll', $on, 'Payroll '.$run->period?->label(), 'Paid out in payroll '.$run->period?->label(), (int) $run->id,
+            key: 'disbursed'.PayrollInputs::generation($run));
+    }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        $run->loadMissing('period');
+        app(ExpenseAdvances::class)->undoPayrollPayout(array_merge(...array_values($idsByEmployee)), (int) $run->id,
+            'disbursed'.PayrollInputs::generation($run).'-reversed', 'Payroll '.$run->period?->label().' reopened');
     }
 }

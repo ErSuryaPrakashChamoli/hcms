@@ -14,6 +14,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\Payroll\Events\PayrollEvent;
+use App\Domain\Payroll\Inputs\PayrollInputs;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Platform\Services\SettingsRepository;
@@ -259,11 +260,43 @@ final class ReimbursementClaims
     /** The run paid these claims. */
     public function paid(array $claimIds, PayrollRun $run): void
     {
-        ReimbursementClaim::query()->whereIn('id', $claimIds)->where('status', 'approved')->get()->each(function (ReimbursementClaim $claim) use ($run) {
+        // A month closed again after a reopening posts under a new key (the first close's entry was reversed, ST-1).
+        $generation = PayrollInputs::generation($run);
+        ReimbursementClaim::query()->whereIn('id', $claimIds)->where('status', 'approved')->get()->each(function (ReimbursementClaim $claim) use ($run, $generation) {
             $claim->withAuditReason('Paid in payroll '.$run->period?->label())->update(['status' => 'paid', 'payroll_run_id' => $run->id]);
-            $this->post($claim->employee_id, $claim->salary_component_id, $claim->financial_year, sprintf('%04d-%02d', $run->period->year, $run->period->month), 'paid', -$claim->payable(), "claim-{$claim->id}", 'Claim of '.$claim->claim_date->format('d M Y'));
+            $this->post($claim->employee_id, $claim->salary_component_id, $claim->financial_year, sprintf('%04d-%02d', $run->period->year, $run->period->month), 'paid', -$claim->payable(), "claim-{$claim->id}{$generation}", 'Claim of '.$claim->claim_date->format('d M Y'));
             $this->event('payroll.claim_paid', $claim);
         });
+    }
+
+    /**
+     * Streamline S2 (ST-1): the payroll month that paid these claims was reopened — each claim is approved and payable
+     * again, and its ledger debit gets a reversing adjustment.
+     */
+    public function undoPaid(array $claimIds, PayrollRun $run): void
+    {
+        $run->loadMissing('period');
+        $generation = PayrollInputs::generation($run);
+        $month = sprintf('%04d-%02d', $run->period->year, $run->period->month);
+        ReimbursementClaim::query()->whereIn('id', $claimIds)->where('status', 'paid')->where('payroll_run_id', $run->id)->get()->each(function (ReimbursementClaim $claim) use ($run, $generation, $month) {
+            $claim->withAuditReason('Payroll '.$run->period->label().' reopened')->update(['status' => 'approved', 'payroll_run_id' => null]);
+            $this->post($claim->employee_id, $claim->salary_component_id, $claim->financial_year, $month, 'adjustment', $claim->payable(), "claim-{$claim->id}{$generation}-reversed", 'Payroll '.$run->period->label().' reopened');
+        });
+    }
+
+    /** Streamline S2 (ST-1): the run's closed month was reopened — the pay-on-claim amounts it accrued are reversed. */
+    public function undoAccruals(PayrollRun $run): void
+    {
+        $run->loadMissing('period');
+        $month = sprintf('%04d-%02d', $run->period->year, $run->period->month);
+        $fy = $this->financialYear($run->period->end_date);
+        foreach ($run->entries()->withoutGlobalScope(AccessScope::class)->get(['id', 'employee_id', 'inputs']) as $entry) {
+            foreach ((array) ($entry->inputs['claim_accruals'] ?? []) as $componentId => $amount) {
+                if ((float) $amount > 0 && ReimbursementLedgerEntry::query()->where('employee_id', $entry->employee_id)->where('salary_component_id', (int) $componentId)->where('entry_key', "accrual-{$entry->id}")->exists()) {
+                    $this->post((int) $entry->employee_id, (int) $componentId, $fy, $month, 'adjustment', -(float) $amount, "accrual-{$entry->id}-reversed", 'Payroll '.$run->period->label().' reopened');
+                }
+            }
+        }
     }
 
     private function post(int $employeeId, int $componentId, int $fy, ?string $month, string $kind, float $amount, string $key, string $note): ?ReimbursementLedgerEntry

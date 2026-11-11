@@ -20,7 +20,7 @@ class PerformanceAnalyticsPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Performance';
 
-    protected static ?string $navigationLabel = 'Analytics';
+    protected static ?string $navigationLabel = 'Performance analytics';
 
     protected static ?string $title = 'Performance analytics';
 
@@ -32,6 +32,11 @@ class PerformanceAnalyticsPage extends Page
 
     #[Url]
     public ?int $cycle = null;
+
+    public function getSubheading(): ?string
+    {
+        return 'Rating distribution, review progress and goals across cycles.';
+    }
 
     public static function canAccess(): bool
     {

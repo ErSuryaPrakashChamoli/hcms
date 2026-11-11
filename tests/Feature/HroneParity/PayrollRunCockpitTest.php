@@ -278,6 +278,9 @@ it('calculates in the background: queued for the run and the tenant, told when d
         ->and($job->middleware()[0])->toBeInstanceOf(BindTenantContext::class)->and($job->notify)->toBeFalse();
 
     $run = $this->runs->open($this->company, 2026, 9, $this->hr);
+    // Streamline S2: the run's actions wait for attendance and the ticked checks (RunPayrollPageTest); this test is about the queue.
+    app(SettingsRepository::class)->set('payroll.run.attendance_first', false);
+    app(SettingsRepository::class)->set('payroll.run.checklist_required', false);
     Queue::fake();
     Livewire::test(ViewPayrollRun::class, ['record' => $run->id])->assertActionVisible('calculateInBackground')->callAction('calculateInBackground')->assertNotified();
     Queue::assertPushed(CalculatePayrollRun::class, fn (CalculatePayrollRun $job) => $job->runId === $run->id && $job->actorId === $this->hr->id && $job->notify && $job->tenantId === $this->tenant->id);
@@ -334,6 +337,10 @@ it('recalculates only open runs on payroll.auto_calculate_day, once a month, nev
     expect($snapshot())->toBe($before);
 
     app(SettingsRepository::class)->set('payroll.auto_calculate_day', 5);
+    // Streamline review: the sweep waits for attendance and the ticked checks like Calculate does (PayrollGuidedRunTest);
+    // this test is about which runs it touches.
+    app(SettingsRepository::class)->set('payroll.run.attendance_first', false);
+    app(SettingsRepository::class)->set('payroll.run.checklist_required', false);
     Artisan::call('peopleos:payroll:auto-calculate', ['--date' => '2026-09-04', '--tenant' => $this->tenant->slug]);
     expect($snapshot())->toBe($before);
 

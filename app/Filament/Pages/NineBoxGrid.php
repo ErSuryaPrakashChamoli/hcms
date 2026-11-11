@@ -63,6 +63,11 @@ class NineBoxGrid extends Page
     /** @var list<int>|null per-request memo: employees the viewer may assign an initiative to */
     private ?array $assignable = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Performance against potential for a cycle, and the actions agreed for each box.';
+    }
+
     public static function canAccess(): bool
     {
         return NineBox::viewMode(auth()->user()) !== null;

@@ -41,4 +41,9 @@ final class LoanRecoveryInput implements PayrollInputSource
         $on = ($run->period?->payment_date ?? $run->period?->end_date ?? now())->toDateString();
         app(Loans::class)->recovered(array_merge(...array_values($idsByEmployee)), $run->id, $on);
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        app(Loans::class)->undoRecovery(array_merge(...array_values($idsByEmployee)), (int) $run->id, 'Payroll '.$run->period?->label().' reopened');
+    }
 }

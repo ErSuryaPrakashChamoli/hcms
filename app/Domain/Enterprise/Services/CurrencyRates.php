@@ -3,6 +3,7 @@
 namespace App\Domain\Enterprise\Services;
 
 use App\Domain\Enterprise\Models\ExchangeRate;
+use App\Domain\Platform\Services\SettingsRepository;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -13,9 +14,15 @@ final class CurrencyRates
 {
     public function __construct(private readonly TenantContext $tenants) {}
 
+    /**
+     * Streamline S3: the one answer to "which currency is this organisation's base" (it was worked out three ways):
+     * the organisation's own currency, else its base-currency setting, else the platform default.
+     */
     public function baseCurrency(): string
     {
-        return strtoupper($this->tenants->current()?->currency ?: config('peopleos.settings.tenant.base_currency', 'INR'));
+        $currency = $this->tenants->current()?->currency ?: (string) app(SettingsRepository::class)->get('tenant.base_currency', 'INR');
+
+        return strtoupper($currency) ?: 'INR';
     }
 
     public function rate(string $from, string $to, CarbonInterface|string|null $on = null): float

@@ -32,6 +32,12 @@ class PayslipResource extends Resource
 
     protected static ?string $navigationLabel = 'Payslips';
 
+    /** Streamline review: HR's payslip register; employees reach their own through My payslips (one menu entry each). */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return parent::shouldRegisterNavigation() && (auth()->user()?->can('payroll.view') ?? false);
+    }
+
     protected static ?int $navigationSort = 30;
 
     /** HROne parity MS-9: own payslips ask for the password again while the organisation asks for it (payroll staff are not asked). */
@@ -47,7 +53,8 @@ class PayslipResource extends Resource
         $query = parent::getEloquentQuery()->with(['employee.person']);
 
         if (! auth()->user()->can('payroll.view')) {
-            $query->whereHas('employee', fn (Builder $q) => $q->where('user_id', auth()->id()));
+            // An employee sees their own payslips once they are published (Streamline S2, ST-2).
+            $query->whereHas('employee', fn (Builder $q) => $q->where('user_id', auth()->id()))->published();
         }
 
         return $query;

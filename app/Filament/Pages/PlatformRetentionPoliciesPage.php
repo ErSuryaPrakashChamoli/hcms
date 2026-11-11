@@ -41,6 +41,11 @@ class PlatformRetentionPoliciesPage extends Page
 
     protected string $view = 'filament.pages.platform-retention-policies';
 
+    public function getSubheading(): ?string
+    {
+        return 'How long each kind of data is kept, per jurisdiction, approved by a second operator.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

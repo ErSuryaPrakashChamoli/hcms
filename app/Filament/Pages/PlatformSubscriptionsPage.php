@@ -60,6 +60,11 @@ class PlatformSubscriptionsPage extends Page
     /** @var array<int, string> */
     private array $labels = [];
 
+    public function getSubheading(): ?string
+    {
+        return 'Each organisation\'s subscription and trial, today and over time.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

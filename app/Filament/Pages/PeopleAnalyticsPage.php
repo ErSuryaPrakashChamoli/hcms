@@ -31,6 +31,11 @@ class PeopleAnalyticsPage extends Page
 
     public string $asOf = '';
 
+    public function getSubheading(): ?string
+    {
+        return 'One factual overview of headcount, movement, time, pay and performance, with small groups hidden.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

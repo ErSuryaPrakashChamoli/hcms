@@ -17,6 +17,7 @@ use App\Domain\Workflow\Models\WorkflowTask;
 use App\Domain\Workflow\Services\InboxArchives;
 use App\Domain\Workflow\Services\SystemTasks;
 use App\Domain\Workflow\Services\TaskComments;
+use App\Filament\Support\Pages\Concerns\HasMasthead;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -42,11 +43,13 @@ use UnitEnum;
  */
 class Inbox extends Page
 {
+    use HasMasthead;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInboxStack;
 
     protected static string|UnitEnum|null $navigationGroup = 'Workflows';
 
-    protected static ?string $navigationLabel = 'Unified inbox';
+    protected static ?string $navigationLabel = 'Inbox';
 
     protected static ?string $title = 'Inbox';
 

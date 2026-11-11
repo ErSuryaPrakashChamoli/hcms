@@ -5,30 +5,43 @@
         $groups = ['all' => 'All'] + collect(\App\Domain\Experience\Support\NotificationCategories::GROUPS)->map(fn ($g) => $g[0])->all();
         $snoozedCount = $this->items->whereNotNull('snoozed_until')->count();
     @endphp
-    <div class="pos-toolbar">
-        <nav class="pos-tabs" role="tablist" aria-label="Notification groups">
-            @foreach ($groups as $key => $label)
-                <button type="button" role="tab" class="pos-tab" aria-selected="{{ $group === $key && ! $snoozedOnly ? 'true' : 'false' }}" wire:click="setGroup('{{ $key }}')">
-                    {{ $label }} @if (($counts[$key] ?? 0) > 0)<span class="pos-count" data-tone="{{ $key === 'attention' ? 'danger' : 'neutral' }}">{{ $counts[$key] }}</span>@endif
-                </button>
-            @endforeach
-        </nav>
-        <div class="ms-auto flex flex-wrap items-center gap-2">
-            <button type="button" class="pos-chip" aria-pressed="{{ $unread ? 'true' : 'false' }}" wire:click="$toggle('unread')">Unread only</button>
-            @if ($snoozedCount > 0)
-                <button type="button" class="pos-chip" aria-pressed="{{ $snoozedOnly ? 'true' : 'false' }}" wire:click="$toggle('snoozedOnly')">Snoozed {{ $snoozedCount }}</button>
-            @endif
-            @if (($counts['all'] ?? 0) > 0)
-                <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm" wire:click="markAllRead">Mark all read</button>
-            @endif
-            @if (\App\Filament\Pages\MyHr::canAccess())
-                <a href="{{ \App\Filament\Pages\MyHr::getUrl(['tab' => 'preferences']) }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Preferences</a>
-            @endif
-        </div>
-    </div>
+    {{-- The masthead: how much is unread and in which groups; the groups and the read controls on its band --}}
+    <x-pos.masthead icon="heroicon-m-bell" eyebrow="Notifications" :title="($counts['all'] ?? 0) > 0 ? ($counts['all'].' unread') : 'You’re all caught up'" :brief="$this->getSubheading()">
+        <x-slot:glance>
+            <x-pos.glance label="Unread by group" title="Unread by group" :rows="collect(['attention', 'approvals', 'mentions', 'announcements'])->map(fn ($k) => [
+                'label' => \App\Domain\Experience\Support\NotificationCategories::GROUPS[$k][0],
+                'value' => (int) ($counts[$k] ?? 0),
+                'icon' => \App\Domain\Experience\Support\NotificationCategories::GROUPS[$k][1],
+                'tone' => ($counts[$k] ?? 0) > 0 ? ['attention' => 'danger', 'approvals' => 'warning'][$k] ?? 'info' : 'success',
+                'click' => ($counts[$k] ?? 0) > 0 ? 'setGroup(\''.$k.'\')' : null,
+            ])->all()" />
+        </x-slot:glance>
+        <x-slot:band>
+                <nav class="pos-tabs" role="tablist" aria-label="Notification groups">
+                    @foreach ($groups as $key => $label)
+                        <button type="button" role="tab" class="pos-tab" aria-selected="{{ $group === $key && ! $snoozedOnly ? 'true' : 'false' }}" wire:click="setGroup('{{ $key }}')">
+                            {{ $label }} @if (($counts[$key] ?? 0) > 0)<span class="pos-count" data-tone="{{ $key === 'attention' ? 'danger' : 'neutral' }}">{{ $counts[$key] }}</span>@endif
+                        </button>
+                    @endforeach
+                </nav>
+                <div class="ms-auto flex flex-wrap items-center gap-2">
+                    <button type="button" class="pos-chip" aria-pressed="{{ $unread ? 'true' : 'false' }}" wire:click="$toggle('unread')">Unread only</button>
+                    @if ($snoozedCount > 0)
+                        <button type="button" class="pos-chip" aria-pressed="{{ $snoozedOnly ? 'true' : 'false' }}" wire:click="$toggle('snoozedOnly')">Snoozed {{ $snoozedCount }}</button>
+                    @endif
+                    @if (($counts['all'] ?? 0) > 0)
+                        <button type="button" class="pos-btn pos-btn-secondary pos-btn-sm" wire:click="markAllRead">Mark all read</button>
+                    @endif
+                    @if (\App\Filament\Pages\MyHr::canAccess())
+                        <a href="{{ \App\Filament\Pages\MyHr::getUrl(['tab' => 'preferences']) }}" wire:navigate class="pos-btn pos-btn-ghost pos-btn-sm">Preferences</a>
+                    @endif
+                </div>
+
+        </x-slot:band>
+    </x-pos.masthead>
 
     @if ($rows->isEmpty())
-        <x-pos.empty class="mt-6" icon="heroicon-o-bell"
+        <x-pos.state class="mt-6" icon="heroicon-o-bell"
             :title="$snoozedOnly ? 'Nothing snoozed' : ($unread || $group !== 'all' ? 'Nothing here with these filters' : 'No notifications yet')"
             :why="$snoozedOnly ? 'Snoozed notifications come back on their own at the time you chose.' : ($unread || $group !== 'all' ? 'Try All, or include read notifications.' : 'Approvals, reminders, announcements and updates about your work will appear here.')" />
     @else

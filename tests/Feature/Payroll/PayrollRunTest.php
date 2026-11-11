@@ -14,6 +14,7 @@ use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Services\BankFile;
 use App\Domain\Payroll\Services\PayrollCalculator;
 use App\Domain\Payroll\Services\PayrollRuns;
+use App\Domain\Payroll\Services\PayslipPublishing;
 use App\Domain\Payroll\Services\Payslips;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
@@ -81,15 +82,18 @@ it('runs the pipeline end to end with separation of duties, locking, payslips an
         ->and(Payslip::query()->count())->toBe(2)
         ->and((float) Payslip::query()->where('employee_id', $a->id)->first()->get('totals.net'))->toBe((float) $run->entries()->where('employee_id', $a->id)->value('net_pay'))
         ->and(Payslip::query()->where('employee_id', $a->id)->first()->get('employee.bank.account'))->toBe('••••7890')
-        ->and($a->user->notifications()->count())->toBe(1)
+        // Streamline S2 (ST-2): employees hear about their payslip once it is published, not when payroll closes.
+        ->and($a->user->notifications()->count())->toBe(0)
         ->and(fn () => $this->runs->open($this->company, 2026, 9))->toThrow(RuntimeException::class, 'closed');
+    app(PayslipPublishing::class)->publish($run, $this->approver);
+    expect($a->user->notifications()->count())->toBe(1);
 
     $csv = app(BankFile::class)->csv($run);
     expect($csv)->toContain('HDFC0000001', '1234567890', 'Salary Sep 2026')
         ->and(AuditEvent::query()->where('action', 'EXPORT')->where('module', 'payroll')->exists())->toBeTrue();
 
-    // Finalized payroll is never reopened (decision C12-D1 open): payslips, locks and the closed period stay, and the
-    // attempt is audited. A correction goes forward as an arrear or a recovery.
+    // The approval's return to draft never reopens a closed month: payslips, locks and the closed period stay, and the
+    // attempt is audited. Only PayrollMonthReopen reopens the latest closed month (Streamline S2, decision ST-1).
     expect(fn () => $this->runs->reopen($run, 'Missed an adjustment', $this->approver))->toThrow(RuntimeException::class, 'cannot be reopened');
     expect($run->refresh()->status)->toBe('finalized')
         ->and(Payslip::query()->count())->toBe(2)

@@ -15,7 +15,7 @@ class TalentDashboard extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Talent';
 
-    protected static ?string $navigationLabel = 'Dashboard';
+    protected static ?string $navigationLabel = 'Talent overview';
 
     protected static ?string $title = 'Talent & succession';
 
@@ -24,6 +24,11 @@ class TalentDashboard extends Page
     protected static ?int $navigationSort = 0;
 
     protected string $view = 'filament.pages.talent-dashboard';
+
+    public function getSubheading(): ?string
+    {
+        return 'Critical positions, successors, talent pools and reviews at a glance.';
+    }
 
     public static function canAccess(): bool
     {

@@ -6,6 +6,7 @@ use App\Domain\Configuration\Services\SettingFiles;
 use App\Domain\Configuration\Services\SetupCatalogue;
 use App\Domain\Performance\Support\PerformanceLabels;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\FormWizard;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
@@ -145,22 +146,29 @@ class SetupCentre extends Page implements HasSchemas
             return $schema->statePath('data')->components([]);
         }
         $reason = $editable ? [AuditReasonField::make()] : [];
-        // A module whose settings carry a `group` (HROne's headings, e.g. Expense / Travel / Exceptional expense) shows one
-        // headed block per group, in the catalogue's order; otherwise one "Settings" block, as before.
-        if (array_keys($groups) === ['']) {
-            return $schema->statePath('data')->components([
-                Section::make('Settings')->description('Organisation-wide settings of this module.')->schema([...$fields, ...$reason])->columns(1),
-            ]);
-        }
+        // A module whose settings carry a `group` (e.g. Expense / Travel / Exceptional expense) shows one headed step per
+        // group, in the catalogue's order; otherwise the settings are steps of a few each. Streamline S6: like every other
+        // form, the settings are a wizard ending in Review (what changed, before → after, and the reason), saved there.
         $sections = [];
-        foreach ($groups as $label => $indexes) {
-            $sections[] = Section::make($label === '' ? 'General' : $label)->compact()->columns(1)->schema(array_map(fn (int $i) => $fields[$i], $indexes));
+        if (array_keys($groups) === ['']) {
+            $parts = array_chunk($fields, FormWizard::LOOSE_STEP_MAXIMUM);
+            foreach ($parts as $i => $part) {
+                $from = $i * FormWizard::LOOSE_STEP_MAXIMUM + 1;
+                $sections[] = Section::make(count($parts) === 1 ? 'Settings' : 'Settings '.$from.'–'.($from + count($part) - 1).' of '.count($fields))
+                    ->description($i === 0 ? 'Organisation-wide settings of this module.' : null)->columns(1)->schema($part);
+            }
+        } else {
+            foreach ($groups as $label => $indexes) {
+                $sections[] = Section::make($label === '' ? 'General' : $label)->compact()->columns(1)->schema(array_map(fn (int $i) => $fields[$i], $indexes));
+            }
         }
-        if ($reason !== []) {
-            $sections[] = Section::make('Save')->compact()->schema($reason);
-        }
+        $schema->statePath('data')->components([...$sections, ...$reason]);
 
-        return $schema->statePath('data')->components($sections);
+        return $schema->components([
+            FormWizard::wizard(FormWizard::steps($schema, FormWizard::EDIT, 'Settings'), FormWizard::EDIT, 'page')
+                ->submitAction($this->canSave() ? Action::make('save')->label('Save settings')->action('save') : null)
+                ->alpineSubmitHandler('$wire.save()'),
+        ]);
     }
 
     /** HROne setup parity CA-1: a matrix setting is one row of tick boxes per row (each row's ticked columns). */

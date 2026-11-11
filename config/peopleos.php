@@ -328,6 +328,9 @@ return [
             'payroll.request' => 'Request loans and salary advances, claim reimbursements and request variable pay for oneself',
             // HROne parity HP-3 (PY-14).
             'payroll.override' => 'Override calculated PF, ESI, PT, LWF and TDS amounts for an employee in an open pay month (audited)',
+            // Streamline S2: the guided run's last steps.
+            'payroll.publish' => 'Publish payslips to employees after payroll closes',
+            'payroll.reopen_closed' => 'Reopen the latest closed payroll month to change it (before it is marked paid or a return is filed)',
         ],
         'legal_structure' => [
             'legal_entity.view' => 'View legal entities (ADR-0001)',
@@ -1196,6 +1199,11 @@ return [
         // HROne parity PO-4 (matrix 25 §25.6.1 #6, §25.6.10 #1): the day of the month open payroll runs (draft, calculated,
         // validated) are recalculated in the background (peopleos:payroll:auto-calculate). 0 = never (the default).
         'payroll.auto_calculate_day' => 0,
+        // Streamline S2 (decisions ST-2..4): payslips reach employees when published (manual) or as the month closes
+        // (at_close); the run waits for the month's attendance and for every pre-payroll check to be ticked.
+        'payroll.payslips.release' => 'manual',
+        'payroll.run.attendance_first' => true,
+        'payroll.run.checklist_required' => true,
         // HROne parity PO-22 (matrix 25 §25.9.3 #5): the employer's statutory bonus percentage, within the BONUS rule
         // version's minimum and maximum rate (checked when a bonus run is prepared). No default: blank = the rule's minimum.
         'payroll.bonus.percent' => null,
@@ -2751,6 +2759,8 @@ return [
             'leave.requested', 'leave.approved', 'leave.rejected', 'leave.cancelled', 'leave.cancel_requested', 'leave.cancellation_rejected', 'leave.balance_changed', 'leave.expired', 'leave.carried_forward', 'leave.encashment_requested', 'leave.encashment_approved', 'leave.balance_adjusted', 'leave.accrued',
             'leave.encashment_rejected', 'leave.encashment_cancelled', 'leave.donation_requested', 'leave.donation_approved', 'leave.donation_rejected', 'leave.comp_off_credited', 'leave.comp_off_expired',
             'payroll.calculated', 'payroll.approved', 'payroll.finalized', 'payroll.paid', 'payroll.payslip_generated', 'payroll.exception', 'payroll.run_created', 'payroll.adjusted',
+            // Streamline S2: payslips published to employees (one per payslip, then the run) and a closed month reopened.
+            'payroll.payslip_published', 'payroll.payslips_published', 'payroll.reopened',
             'performance.cycle.launched', 'performance.cycle.stage_changed', 'performance.review.assigned', 'performance.review.submitted', 'performance.appraisal.finalized',
             'performance.feedback.received', 'performance.feedback.requested', 'performance.goal.assigned', 'performance.pip.opened', 'performance.promotion.recommended',
             // HROne setup parity HP-8b: scheduled goal check-in prompts.
@@ -4085,6 +4095,11 @@ return [
     | and AI restrictions; the classes listed must keep their sensitive attributes masked in audit
     | and behind the *.sensitive permissions. Checked by the architecture tests.
     */
+    // Streamline S3: the generic row imports (Data import's uploads on RowImports); attendance and people imports keep theirs.
+    'imports' => [
+        'max_rows' => 50000,
+    ],
+
     'data_classification' => [
         'levels' => ['public', 'internal', 'confidential', 'sensitive', 'highly_sensitive', 'statutory', 'financial'],
         'highly_sensitive' => [

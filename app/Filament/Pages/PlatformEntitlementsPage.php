@@ -59,6 +59,11 @@ class PlatformEntitlementsPage extends Page
     #[Url]
     public ?string $day = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'What each organisation may use, layer by layer, on a chosen date.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

@@ -9,11 +9,21 @@
     'emptyTitle' => 'Nothing needs governance attention.', 'emptyWhy' => 'Configuration awaiting approval, access gaps, security settings and integration, delivery or workflow failures appear here.',
 ])
 @if ($g['facts'] !== [])
+    {{-- Each fact as a tile: its own icon and hue (wayfinding only); the sign-in policy is a setting, so its value says
+         whether it is required in words, coloured by what that means --}}
+    @php($look = [
+        'config_week' => ['heroicon-o-adjustments-horizontal', 'gold'], 'active_users' => ['heroicon-o-users', 'iris'], 'roles' => ['heroicon-o-shield-check', 'plum'],
+        'mfa' => ['heroicon-o-finger-print', 'green'], 'audit_week' => ['heroicon-o-document-magnifying-glass', 'teal'],
+    ])
     <x-pos.section title="At a glance">
-        <div class="pos-panel pos-panel-pad pos-figures">
+        <div class="pos-home-glance"><div class="pos-home-tiles pos-home-tiles-standalone">
             @foreach ($g['facts'] as $f)
-                <x-pos.figure :value="$f['value']" :label="$f['label']" :href="$f['url']" />
+                @include('filament.pages.home.tile', ['f' => $f + [
+                    'icon' => $look[$f['key']][0] ?? 'heroicon-o-chart-bar',
+                    'hue' => $f['key'] === 'mfa' && $f['value'] !== 'Required' ? 'coral' : ($look[$f['key']][1] ?? 'slate'),
+                    'meaning' => $f['key'] === 'mfa' ? ($f['value'] === 'Required' ? 'good' : 'warning') : null,
+                ]])
             @endforeach
-        </div>
+        </div></div>
     </x-pos.section>
 @endif

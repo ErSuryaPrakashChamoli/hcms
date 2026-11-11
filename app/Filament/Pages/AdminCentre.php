@@ -17,6 +17,7 @@ use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -85,8 +86,17 @@ class AdminCentre extends Page
         'data' => ['Integrations, data and audit', 'Integration hub, inbound events, reports, audit and configuration packs.', 'heroicon-o-circle-stack', ['Integrations', 'Analytics', 'Audit', 'Configuration', 'Platform']],
     ];
 
+    /** Plain-word examples offered under the finder; each lands on a setting or a module. */
+    public const SUGGESTIONS = ['leave policy', 'probation period', 'who can approve', 'single sign-on'];
+
     /** Find a setting: plain words in, the configuration or module to open out. */
     public string $find = '';
+
+    /** The hero inside the page carries the heading, the brief and the finder; the default header is not rendered. */
+    public function getHeader(): ?View
+    {
+        return view('filament.shell.empty');
+    }
 
     public function getHeading(): string
     {
@@ -96,8 +106,9 @@ class AdminCentre extends Page
     public function getSubheading(): ?string
     {
         $g = $this->governance;
+        $pending = $g['pending_count'] ?? 0;
         $parts = array_filter([
-            $g['pending'] !== null && $g['pending']->count() > 0 ? $g['pending']->count().' configuration '.($g['pending']->count() === 1 ? 'change awaits' : 'changes await').' approval' : null,
+            $pending > 0 ? $pending.' configuration '.($pending === 1 ? 'change awaits' : 'changes await').' approval' : null,
             ($g['dead_letters'] ?? 0) > 0 ? $g['dead_letters'].' integration '.($g['dead_letters'] === 1 ? 'message needs' : 'messages need').' attention' : null,
             ($g['failed_jobs'] ?? 0) > 0 ? $g['failed_jobs'].' background '.($g['failed_jobs'] === 1 ? 'job has' : 'jobs have').' failed' : null,
         ]);
@@ -147,7 +158,7 @@ class AdminCentre extends Page
     /**
      * Governance at a glance. Each figure appears only for viewers who may open the screen it summarises.
      *
-     * @return array{pending: ?Collection, recent: ?Collection, dead_letters: ?int, failed_jobs: ?int, links: array<string, string>}
+     * @return array{pending: ?Collection, pending_count: ?int, recent: ?Collection, dead_letters: ?int, failed_jobs: ?int, links: array<string, string>}
      */
     #[Computed]
     public function governance(): array
@@ -158,6 +169,7 @@ class AdminCentre extends Page
 
         return [
             'pending' => $canConfig ? ConfigurationChange::query()->where('status', ChangeStatus::PendingApproval)->latest('id')->limit(5)->get() : null,
+            'pending_count' => $canConfig ? ConfigurationChange::query()->where('status', ChangeStatus::PendingApproval)->count() : null,
             'recent' => $canConfig ? ConfigurationChange::query()->where('status', ChangeStatus::Published)->latest('published_at')->limit(3)->get() : null,
             'dead_letters' => $canIntegrations ? InboundEvent::query()->where('status', 'dead_letter')->count() + WebhookDelivery::query()->where('status', 'dead_letter')->count() : null,
             'failed_jobs' => $canReadiness && Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->count() : null,

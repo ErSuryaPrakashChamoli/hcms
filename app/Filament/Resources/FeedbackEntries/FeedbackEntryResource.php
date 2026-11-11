@@ -34,7 +34,7 @@ class FeedbackEntryResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Performance';
 
-    protected static ?string $navigationLabel = 'Feedback';
+    protected static ?string $navigationLabel = 'Continuous feedback';
 
     protected static ?int $navigationSort = 30;
 

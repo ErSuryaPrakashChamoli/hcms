@@ -13,6 +13,7 @@ use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Enums\LifecycleState;
+use App\Support\Csv\SpreadsheetCell;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -366,7 +367,7 @@ final class AttendanceMonthDesk
     {
         $text = is_float($value) ? number_format($value, 2, '.', '') : (string) ($value ?? '');
 
-        return $text !== '' && in_array($text[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 
     /** States a month's people can be in (for the population note on the page). */

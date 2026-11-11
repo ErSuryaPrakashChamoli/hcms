@@ -8,6 +8,7 @@ use App\Domain\Analytics\Models\ReportSchedule;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Identity\Models\User;
+use App\Support\Csv\SpreadsheetCell;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use League\Csv\Writer;
@@ -23,7 +24,7 @@ final class ReportExports
         $writer->setOutputBOM(Writer::BOM_UTF8);
         $writer->insertOne(array_values($result->columns));
         foreach ($result->rows as $row) {
-            $writer->insertOne(array_map(fn ($key) => is_bool($row[$key] ?? null) ? ($row[$key] ? 'Yes' : 'No') : ($row[$key] ?? ''), array_keys($result->columns)));
+            $writer->insertOne(SpreadsheetCell::row(array_map(fn ($key) => is_bool($row[$key] ?? null) ? ($row[$key] ? 'Yes' : 'No') : ($row[$key] ?? ''), array_keys($result->columns))));
         }
 
         return $writer->toString();

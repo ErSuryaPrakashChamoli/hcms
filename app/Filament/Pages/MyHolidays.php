@@ -44,6 +44,11 @@ class MyHolidays extends Page
     #[Url]
     public string $tab = 'fixed';
 
+    public function getSubheading(): ?string
+    {
+        return 'The holidays of the year, from the calendar that applies to you.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

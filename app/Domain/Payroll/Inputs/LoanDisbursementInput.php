@@ -32,4 +32,12 @@ final class LoanDisbursementInput implements PayrollInputSource
                 ->each(fn (Loan $loan) => app(Loans::class)->markDisbursed($loan, $on, 'Paid out in payroll '.$run->period?->label()));
         }
     }
+
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void
+    {
+        foreach ($idsByEmployee as $ids) {
+            Loan::query()->whereIn('id', $ids)->where('status', 'active')->get()
+                ->each(fn (Loan $loan) => app(Loans::class)->undoDisbursement($loan, 'Payroll '.$run->period?->label().' reopened'));
+        }
+    }
 }

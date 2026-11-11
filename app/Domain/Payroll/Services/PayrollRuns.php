@@ -10,6 +10,7 @@ use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Entitlements\Enums\Capability;
 use App\Domain\Entitlements\Services\Entitlements;
+use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Lifecycle\Enums\LifecycleState;
@@ -89,11 +90,33 @@ final class PayrollRuns
      */
     public function populationIn(int $companyId, CarbonInterface $start, CarbonInterface $end): Builder
     {
+        $settled = $this->settledInFinalSettlement($companyId, $start, $end);
+
         return Employee::query()
+            ->when($settled !== [], fn ($q) => $q->whereKeyNot($settled))
             ->whereHas('positions', fn ($q) => $q->where('company_id', $companyId)->effectiveOn($end))
             ->where(fn ($q) => $q->whereNull('joining_date')->orWhere('joining_date', '<=', $end->toDateString().' 23:59:59'))
             ->where(fn ($q) => $q->whereNull('exit_date')->orWhere('exit_date', '>=', $start->toDateString()))
             ->whereIn('lifecycle_state', LifecycleState::payrollEligibleValues());
+    }
+
+    /**
+     * Streamline S2: leavers whose approved or paid full and final settlement already carries their salary for this pay
+     * month (FinalSettlements adds it while no closed run covers the month). The month's run leaves them out, so the
+     * final month is never paid twice; the pre-payroll checklist lists them.
+     *
+     * @return list<int>
+     */
+    public function settledInFinalSettlement(int $companyId, CarbonInterface $start, CarbonInterface $end): array
+    {
+        // A pay month is named after the month it ends in (PayrollPeriod::label()).
+        $label = Carbon::parse($end)->format('M Y');
+
+        return FinalSettlement::query()->withoutGlobalScope(AccessScope::class)->whereIn('status', ['approved', 'paid'])
+            ->whereHas('employee', fn ($q) => $q->withoutGlobalScope(AccessScope::class)->whereDate('exit_date', '>=', $start->toDateString())->whereDate('exit_date', '<=', $end->toDateString()))
+            ->get(['id', 'employee_id', 'inputs'])
+            ->filter(fn (FinalSettlement $s) => ($s->inputs['salary_already_paid'] ?? true) === false && ($s->inputs['salary_period'] ?? null) === $label)
+            ->pluck('employee_id')->map(fn ($id) => (int) $id)->values()->all();
     }
 
     public function calculate(PayrollRun $run, ?User $actor = null): PayrollRun
@@ -231,7 +254,7 @@ final class PayrollRuns
             throw new RuntimeException('Only an approved run can be finalized.');
         }
 
-        return DB::transaction(function () use ($run, $actor) {
+        $run = DB::transaction(function () use ($run, $actor) {
             // Two finalizations cannot race: lock, then re-check everything on the locked row.
             $run = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail()->loadMissing('period');
             if ($run->status !== 'approved') {
@@ -270,6 +293,23 @@ final class PayrollRuns
 
             return $run->refresh();
         });
+
+        // Streamline S2 (ST-2): employees see payslips once they are published — at once only when the tenant chose so.
+        return app(PayslipPublishing::class)->atClose() ? app(PayslipPublishing::class)->publish($run, $actor) : $run;
+    }
+
+    /**
+     * Streamline S2 (ST-1): a reopened month's attendance days are open again (finalize locked them). Only for
+     * PayrollMonthReopen, inside its transaction; this is the one payroll service that locks and unlocks days.
+     *
+     * @param  iterable<int>  $employeeIds
+     */
+    public function unlockAttendance(PayrollRun $run, iterable $employeeIds): void
+    {
+        $run->loadMissing('period');
+        AttendanceRecord::query()->withoutGlobalScope(AccessScope::class)->whereIn('employee_id', collect($employeeIds)->all())
+            ->whereBetween('date', [$run->period->start_date->toDateString(), $run->period->end_date->toDateString()])
+            ->update(['is_locked' => false, 'finalized_at' => null]);
     }
 
     private function assertCompensationUnchanged(PayrollRun $run): void
@@ -297,6 +337,10 @@ final class PayrollRuns
 
         return DB::transaction(function () use ($run, $paymentDate, $reason, $actor) {
             $run = PayrollRun::query()->whereKey($run->getKey())->lockForUpdate()->firstOrFail()->loadMissing('period');
+            // Re-checked on the locked row: an approval or a close that committed meanwhile is never undone here.
+            if (! $run->isEditable()) {
+                throw new RuntimeException("The payment date of a {$run->status} run cannot change. Reopen it first.");
+            }
             $before = $run->period->payment_date?->toDateString();
             $run->period->update(['payment_date' => Carbon::parse($paymentDate)->toDateString()]);
             if ($run->status !== 'draft') {

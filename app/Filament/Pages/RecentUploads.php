@@ -62,6 +62,11 @@ class RecentUploads extends Page implements HasTable
 
     protected string $view = 'filament.pages.recent-uploads';
 
+    public function getSubheading(): ?string
+    {
+        return 'Every upload of the last twelve months, by module, with its result and its files.';
+    }
+
     public static function canAccess(): bool
     {
         return ImportTypes::allowedTypes(auth()->user()) !== [];

@@ -25,13 +25,18 @@ class ConfigurationPacks extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Configuration';
 
-    protected static ?string $navigationLabel = 'Packs & Blueprints';
+    protected static ?string $navigationLabel = 'Packs & blueprints';
 
     protected static ?string $title = 'Configuration packs & blueprints';
 
     protected static ?int $navigationSort = 20;
 
     protected string $view = 'filament.pages.configuration-packs';
+
+    public function getSubheading(): ?string
+    {
+        return 'Ready-made sets of policies and settings to start from, and blueprints of your own to reuse.';
+    }
 
     public static function canAccess(): bool
     {

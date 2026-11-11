@@ -65,6 +65,11 @@ class MySalaryYtd extends Page
     /** @var array<string, array<string, mixed>> the years read for this request, by financial year */
     private array $read = [];
 
+    public function getSubheading(): ?string
+    {
+        return 'What you were paid in the financial year, component by component and month by month.';
+    }
+
     public static function canAccess(): bool
     {
         $me = self::me();

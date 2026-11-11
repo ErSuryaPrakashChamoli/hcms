@@ -2,15 +2,21 @@
 
 use App\Domain\Attendance\Models\AttendanceDevice;
 use App\Domain\Attendance\Models\Shift;
+use App\Domain\Organisation\Models\Company;
+use App\Domain\Platform\Services\SettingsRepository;
+use App\Filament\Pages\RunAttendance;
 use App\Filament\Pages\SecurityPolicyPage;
 use App\Filament\Resources\AttendanceDevices\Pages\ManageAttendanceDevices;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\ExchangeRates\Pages\ManageExchangeRates;
+use App\Filament\Resources\MoodReasons\Pages\ManageMoodReasons;
 use App\Filament\Resources\Shifts\Pages\CreateShift;
 use App\Filament\Resources\Shifts\Pages\EditShift;
 use App\Filament\Resources\Shifts\ShiftResource;
+use App\Filament\Support\Actions\PeopleAction;
 use App\Filament\Support\Actions\PeopleCreateAction;
 use App\Filament\Support\Actions\PeopleEditAction;
+use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\Forms\PeopleWizard;
 use App\Filament\Support\FormWizard;
 use Filament\Actions\CreateAction;
@@ -18,6 +24,7 @@ use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
@@ -28,8 +35,9 @@ use Livewire\Livewire;
 require_once __DIR__.'/../Attendance/AttendanceTestHelpers.php';
 
 /*
-| Record forms are followed as wizards (FormWizard): every record page, and every drawer whose form has sections,
-| goes section by section and ends in Review, on the same fields, validation and save path as before.
+| Record forms are followed as wizards (FormWizard): every record page, and every drawer or action modal with sections or
+| four fields or more, goes section by section (long runs of fields a few at a time) and ends in Review, on the same
+| fields, validation and save path as before. A short note, status change or quick edit stays one screen.
 */
 
 beforeEach(function () {
@@ -125,7 +133,7 @@ it('keeps a page that builds its own wizard (the hire wizard) as it is', functio
         ->and(stepLabels(formWizard($page)))->toContain('Person', 'Employment');
 });
 
-it('turns a drawer with sections into a wizard and leaves a short one as a single screen', function () {
+it('turns a drawer with sections or four fields into a wizard, and leaves a quick edit as one screen', function () {
     $page = Livewire::test(ManageAttendanceDevices::class)->mountAction('create');
     $action = $page->instance()->getMountedAction();
 
@@ -133,8 +141,35 @@ it('turns a drawer with sections into a wizard and leaves a short one as a singl
         ->and($action->isWizard())->toBeTrue()
         ->and(stepLabels(formWizard($page, drawer: true)))->toBe(['Attendance device', 'Sync server', 'Alert when nothing arrives', 'Review']);
 
-    $short = Livewire::test(ManageExchangeRates::class)->mountAction('create');
-    expect($short->instance()->getMountedAction()->isWizard())->toBeFalse();
+    // Streamline S6: four fields without sections are a wizard too (one step, then Review) ...
+    $four = Livewire::test(ManageExchangeRates::class)->mountAction('create');
+    expect($four->instance()->getMountedAction()->isWizard())->toBeTrue()
+        ->and(stepLabels(formWizard($four, drawer: true)))->toBe(['Exchange rate', 'Review']);
+
+    // ... while a two-field quick edit stays one screen (the review panel sits under it).
+    $quick = Livewire::test(ManageMoodReasons::class)->mountAction('create');
+    expect($quick->instance()->getMountedAction()->isWizard())->toBeFalse();
+});
+
+it('follows an action\'s modal form as a wizard once it asks for four fields or more, a few fields at a time', function () {
+    $company = Company::factory()->create();
+    $page = Livewire::test(RunAttendance::class, ['company' => (string) $company->id])->mountAction('processMonth');
+    $action = $page->instance()->getMountedAction();
+
+    // Nine fields without sections: two steps of about equal size, then Review.
+    expect($action)->toBeInstanceOf(PeopleAction::class)
+        ->and($action->isWizard())->toBeTrue()
+        ->and(stepLabels(formWizard($page, drawer: true)))->toBe(['Details', 'More details', 'Review'])
+        ->and(formWizard($page, drawer: true)->getExtraAttributes()['class'] ?? '')->toContain('pos-wizard-drawer');
+});
+
+it('leaves a short confirmation as one screen', function () {
+    app(SettingsRepository::class)->set('attendance.month_close.enabled', true);
+    $company = Company::factory()->create();
+    $page = Livewire::test(RunAttendance::class, ['company' => (string) $company->id])->mountAction('closeMonth');
+
+    expect($page->instance()->getMountedAction()->isWizard())->toBeFalse()
+        ->and(FormWizard::fieldCount([Textarea::make('note'), Hidden::make('id'), AuditReasonField::make()]))->toBe(1);
 });
 
 it('creates and edits through a drawer wizard as before', function () {

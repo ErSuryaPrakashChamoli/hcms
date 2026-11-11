@@ -2,11 +2,11 @@
 
 namespace App\Domain\Performance\Services;
 
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Performance\Models\Competency;
 use App\Domain\Performance\Models\PerformanceLookup;
 use App\Domain\Performance\Models\PerformanceUnit;
 use App\Domain\Performance\Models\RatingScale;
-use App\Domain\Platform\Services\SettingsRepository;
 
 /** Starter rating scale and competencies for every tenant (§35), and the standard performance masters (HP-8a). */
 final class PerformanceDefaults
@@ -41,7 +41,7 @@ final class PerformanceDefaults
             }
         }
 
-        $currency = strtoupper((string) app(SettingsRepository::class)->get('tenant.base_currency', 'INR')) ?: 'INR';
+        $currency = app(CurrencyRates::class)->baseCurrency();
         foreach ((array) config('peopleos.performance.defaults.units', []) as $row) {
             $code = strtoupper(str_replace('{currency}', $currency, $row['code']));
             $unit = PerformanceUnit::query()->firstOrCreate(['code' => $code], [

@@ -20,7 +20,7 @@
 
         <div class="{{ $embedded ? '' : 'pos-drawer-body' }}">
             @if ($available === [])
-                <x-pos.empty icon="heroicon-o-sparkles" title="The assistant is not available to you" why="It is switched off for your organisation or your role does not include it." />
+                <x-pos.state icon="heroicon-o-sparkles" title="The assistant is not available to you" why="It is switched off for your organisation or your role does not include it." />
             @else
                 @if ($this->interactions->isEmpty())
                     <p class="pos-section-title">Ask about what you can see</p>

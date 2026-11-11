@@ -50,6 +50,11 @@ class ChangeIntelligencePage extends Page implements HasTable
     #[Url]
     public ?int $employee = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Who changed what, when and why, across people, pay, policies and integrations.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->hasPermission('audit.view') ?? false;

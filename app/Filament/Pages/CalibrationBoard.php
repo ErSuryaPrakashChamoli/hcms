@@ -70,6 +70,11 @@ class CalibrationBoard extends Page implements HasTable
     #[Url]
     public ?int $grade = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Compare a cycle\'s ratings across teams, calibrate them and publish the final ones.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('performance.calibrate') ?? false;

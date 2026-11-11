@@ -58,7 +58,7 @@ it('renders My Day, My Team and the employee-side pages with the right scope', f
     $this->actingAs($this->employee->user);
     $this->get(MyDay::getUrl())->assertOk()->assertSee('Needs attention')->assertSee('Check in')->assertSee('Ask HR');
     $this->get(MyTeam::getUrl())->assertForbidden();
-    $this->get(TicketResource::getUrl('index'))->assertOk()->assertSee('My requests')->assertSee('TKT-2026-00001');
+    $this->get(TicketResource::getUrl('index'))->assertOk()->assertSee('My HR tickets')->assertSee('TKT-2026-00001');
     $this->get(GrievanceResource::getUrl('index'))->assertOk()->assertSee('GRV-2026-00001');
     $this->get(ArticleResource::getUrl('index'))->assertOk()->assertSee('Knowledge base')->assertSee('Leave policy');
     $this->get(ArticleResource::getUrl('view', ['record' => $this->article]))->assertOk()->assertSee('I have read and understood');

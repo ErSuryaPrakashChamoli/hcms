@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Services\PayCycle;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\FormWizard;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -74,7 +75,7 @@ class PayCyclePage extends Page implements HasSchemas
 
     public function form(Schema $schema): Schema
     {
-        return $schema->statePath('data')->components([
+        $schema->statePath('data')->components([
             Section::make('Set the pay cycle')
                 ->description('Pick the first day of the first month on the cycle, and the payroll month it runs to. That day of the month then starts every month: pick 25 Nov 2026 and December runs from 25 November to 24 December, January from 25 December to 24 January. Pick the 1st of a month for calendar months.')
                 ->schema([
@@ -89,8 +90,15 @@ class PayCyclePage extends Page implements HasSchemas
                             ->helperText('Pick the same month for one month only. After the last month, months go back to the cycle they had.'),
                     ]),
                     Text::make(fn () => $this->outcome()),
-                    AuditReasonField::make(),
                 ]),
+            AuditReasonField::make(),
+        ]);
+
+        // Streamline S6: set the cycle, then Review (what changes, and why), saved there.
+        return $schema->components([
+            FormWizard::wizard(FormWizard::steps($schema, FormWizard::EDIT, 'Pay cycle'), FormWizard::EDIT, 'page')
+                ->submitAction(Action::make('save')->label('Save pay cycle')->action('save'))
+                ->alpineSubmitHandler('$wire.save()'),
         ]);
     }
 

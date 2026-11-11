@@ -131,7 +131,7 @@ final class LeaveBalanceImports extends RowImports
                 ['Days', 'Yes', 'Days to set (opening) or add / take away (adjustment, e.g. -1.5).', '12'],
                 ['Kind (opening/adjustment)', 'No', 'opening (default): the balance at the start of the year, posted once. adjustment: a change to the balance.', 'opening'],
                 ['Leave year', 'No', 'The leave year; blank is the current one.', (string) app(LeaveYear::class)->periodFor(now())],
-                ['Note', 'No', 'Why the balance is set or changed.', 'Balance carried from HROne'],
+                ['Note', 'No', 'Why the balance is set or changed.', 'Balance carried from the previous system'],
                 ['Leave category', 'No', 'Only leave types of this category: '.implode(', ', array_keys((array) config('peopleos.leave.categories', []))).' (blank: any).', ''],
             ],
             'notes' => [

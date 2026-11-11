@@ -10,6 +10,7 @@ use App\Domain\Compensation\Services\CompensationPlanning;
 use App\Domain\Compensation\Services\CompensationRanges;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Services\SensitiveAccessAuditor;
+use App\Domain\Enterprise\Services\CurrencyRates;
 use App\Domain\Workforce\Models\Position;
 use App\Filament\Support\CompensationActions;
 use App\Filament\Support\WorkforceActions;
@@ -107,7 +108,7 @@ class CompensationRelationManager extends RelationManager
                         TextInput::make('ctc_annual')->label('Annual CTC')->numeric()->minValue(1)
                             ->required(fn (Get $get) => ! self::componentsMode($get('salary_structure_id'), $get('effective_from')))
                             ->helperText(fn (Get $get) => self::componentsMode($get('salary_structure_id'), $get('effective_from')) ? 'Worked out from the component amounts below (and employer PF) when saved.' : null),
-                        Select::make('currency')->options(fn () => array_combine(config('peopleos.compensation.currencies'), config('peopleos.compensation.currencies')))->default(config('peopleos.settings.tenant.base_currency', 'INR'))->required(),
+                        Select::make('currency')->options(fn () => array_combine(config('peopleos.compensation.currencies'), config('peopleos.compensation.currencies')))->default(fn () => app(CurrencyRates::class)->baseCurrency())->required(),
                         TextInput::make('variable_target_annual')->label('Variable target (annual)')->numeric()->minValue(0),
                         KeyValue::make('component_values')->label('Fixed component amounts and inputs (monthly)')->keyLabel('Component code')->valueLabel('Amount')->helperText('For components calculated as "fixed" or "input", e.g. CONV = 1600'),
                         Textarea::make('reason')->required()->maxLength(2000),

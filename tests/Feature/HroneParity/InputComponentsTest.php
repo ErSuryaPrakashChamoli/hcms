@@ -6,6 +6,7 @@ use App\Domain\Compensation\Imports\SalaryImports;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
 use App\Domain\Compensation\Services\CompensationStructures;
+use App\Domain\Compensation\Services\StructureBuilder;
 use App\Domain\Compliance\Services\StatutoryEngine;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Payroll\Models\PayrollPeriod;
@@ -13,10 +14,6 @@ use App\Domain\Payroll\Models\SalaryComponent;
 use App\Domain\Payroll\Services\PayrollCalculator;
 use App\Domain\Payroll\Services\StructureFormulas;
 use App\Filament\Pages\MyCompensation;
-use App\Filament\Resources\SalaryStructures\Pages\EditSalaryStructure;
-use App\Filament\Resources\SalaryStructures\RelationManagers\VersionsRelationManager;
-use Filament\Actions\Testing\TestAction;
-use Livewire\Livewire;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 require_once __DIR__.'/../Payroll/PayrollTestHelpers.php';
@@ -154,13 +151,13 @@ it('works out CTC from component amounts in a structure built without CTC and pa
         'components' => [['salary_component_id' => ($this->component)('BASIC')->id, 'sort_order' => 10]]]))->toThrow(CompensationRuleViolation::class, 'built from component amounts');
 });
 
-it('sets the CTC mode and balancing component on the draft screen', function () {
-    $version = $this->structures->newVersion(SalaryStructure::query()->where('code', 'STANDARD')->firstOrFail(), $this->hr, '2026-10-01');
+it('sets the CTC mode and balancing component in the structure builder', function () {
+    $standard = SalaryStructure::query()->where('code', 'STANDARD')->firstOrFail();
     $special = ($this->component)('SPECIAL');
+    $builder = app(StructureBuilder::class);
+    $state = $builder->load($standard);
+    expect(collect($state['rules'])->firstWhere('component', (string) $special->id)['how'])->toBe('balance');
 
-    Livewire::test(VersionsRelationManager::class, ['ownerRecord' => SalaryStructure::query()->where('code', 'STANDARD')->firstOrFail(), 'pageClass' => EditSalaryStructure::class])
-        ->callAction(TestAction::make('edit')->table($version), ['ctc_mode' => 'ctc', 'balancing_component_id' => $special->id])
-        ->assertHasNoFormErrors()->assertNotified('Draft saved');
-
-    expect($version->refresh()->formulaOptions())->toBe(['ctc_mode' => 'ctc', 'balancing_component_id' => $special->id]);
+    $version = $builder->save(['effective_from' => '2026-10-01'] + $state, $standard, $this->hr);
+    expect($version->formulaOptions())->toBe(['ctc_mode' => 'ctc', 'balancing_component_id' => $special->id]);
 });

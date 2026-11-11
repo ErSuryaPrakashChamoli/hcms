@@ -15,7 +15,7 @@ class WorkforceAnalyticsPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Workforce';
 
-    protected static ?string $navigationLabel = 'Analytics';
+    protected static ?string $navigationLabel = 'Workforce analytics';
 
     protected static ?string $title = 'Workforce analytics';
 
@@ -24,6 +24,11 @@ class WorkforceAnalyticsPage extends Page
     protected static ?int $navigationSort = 100;
 
     protected string $view = 'filament.pages.workforce-analytics';
+
+    public function getSubheading(): ?string
+    {
+        return 'Headcount, joiners, leavers and movement over time.';
+    }
 
     public static function canAccess(): bool
     {

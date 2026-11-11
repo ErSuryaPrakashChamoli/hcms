@@ -10,7 +10,8 @@ use App\Domain\Payroll\Services\PayrollComputation;
  * arrears, loans, claims, variable pay …). Sources are tagged `peopleos.payroll_inputs`. The calculator asks each
  * for the lines due to the employee in the period (after adjustments, before statutory, so taxable lines are taxed);
  * each line names the source records it pays in `ids`. When a run is finalized the source settles exactly the
- * records its lines carried. A source never changes the calculation of anything else.
+ * records its lines carried, and a reopening of that month gives them back (unsettle). A source never changes the
+ * calculation of anything else.
  */
 interface PayrollInputSource
 {
@@ -30,4 +31,14 @@ interface PayrollInputSource
      * @param  array<int, list<int>>  $idsByEmployee  employee id => source record ids carried by the run's lines
      */
     public function settle(PayrollRun $run, array $idsByEmployee): void;
+
+    /**
+     * Streamline S2 (decision ST-1): the run's closed month was reopened. Give back exactly what settle() marked for
+     * these records, so they are due again for the recalculated run (a ledger gets a reversing entry, never an edit).
+     * Runs inside the reopening's transaction, under SettlementReversal; refuse (throw) when a record has moved on
+     * since and cannot be given back.
+     *
+     * @param  array<int, list<int>>  $idsByEmployee  employee id => source record ids carried by the run's lines
+     */
+    public function unsettle(PayrollRun $run, array $idsByEmployee): void;
 }

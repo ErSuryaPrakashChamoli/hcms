@@ -7,6 +7,7 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Concerns\ScopedByEmployee;
 use App\Domain\Identity\Models\User;
 use App\Domain\Payroll\Models\PayrollRun;
+use App\Support\Settlements\SettlementReversal;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -46,7 +47,8 @@ class RewardPointEntry extends Model
             }
         });
         static::updating(function (self $entry): void {
-            if (array_diff(array_keys($entry->getDirty()), self::SETTLEMENT) !== [] || $entry->getRawOriginal('payroll_run_id') !== null) {
+            // A reopened payroll month takes a redemption's settlement back (SettlementReversal, ST-1); nothing else changes.
+            if (array_diff(array_keys($entry->getDirty()), self::SETTLEMENT) !== [] || ($entry->getRawOriginal('payroll_run_id') !== null && ! SettlementReversal::active())) {
                 throw new RuntimeException('The reward points ledger is append-only.');
             }
         });

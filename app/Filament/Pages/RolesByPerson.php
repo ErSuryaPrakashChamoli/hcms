@@ -43,6 +43,11 @@ class RolesByPerson extends Page implements HasTable
 
     protected string $view = 'filament.pages.roles-by-person';
 
+    public function getSubheading(): ?string
+    {
+        return 'Each person\'s roles, read-only. Change them from Roles or from the person\'s sign-in.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

@@ -196,8 +196,7 @@ final class MyPay
 
     private function payslipQuery(User $viewer, Employee $employee)
     {
-        return Payslip::query()->where('employee_id', self::isOwn($viewer, $employee) ? $employee->getKey() : 0)
-            ->whereHas('entry.run', fn ($q) => $q->whereIn('status', PaidPay::FINAL));
+        return Payslip::query()->where('employee_id', self::isOwn($viewer, $employee) ? $employee->getKey() : 0)->published();
     }
 
     private function yearOf(Payslip $payslip): ?string

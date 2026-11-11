@@ -30,7 +30,7 @@ class PlatformApprovalsPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Platform';
 
-    protected static ?string $navigationLabel = 'Approvals';
+    protected static ?string $navigationLabel = 'Financial approvals';
 
     protected static ?string $title = 'Financial approvals';
 
@@ -45,6 +45,11 @@ class PlatformApprovalsPage extends Page
 
     #[Url]
     public ?string $status = 'pending';
+
+    public function getSubheading(): ?string
+    {
+        return 'Platform requests waiting for a second operator: what each one does, before and after, and who asked.';
+    }
 
     public static function canAccess(): bool
     {

@@ -12,6 +12,7 @@ use App\Filament\Pages\MyWork;
 use App\Filament\Pages\OrganisationMap;
 use App\Filament\Pages\PayrollControlRoom;
 use App\Filament\Pages\People;
+use App\Filament\Pages\RunPayroll;
 use App\Filament\Pages\WorkforceCommandCentre;
 use App\Filament\Resources\Tickets\TicketResource;
 use App\Filament\Resources\Users\UserResource;
@@ -110,7 +111,7 @@ final class MobileNavigation
                 'people' => People::canAccess() ? ['label' => 'People', 'icon' => 'pos-rail-people', 'url' => People::getUrl(), 'routes' => ['filament.admin.pages.people', 'filament.admin.resources.employees.*', 'filament.admin.pages.organisation-map']] : null,
                 'services' => MyHr::canAccess() ? ['label' => 'Services', 'icon' => 'pos-rail-services', 'url' => MyHr::getUrl(), 'routes' => ['filament.admin.pages.my-hr']] : null,
                 'requests' => TicketResource::canAccess() ? ['label' => 'Requests', 'icon' => 'heroicon-o-chat-bubble-left-right', 'url' => TicketResource::getUrl('index'), 'routes' => ['filament.admin.resources.tickets.*']] : null,
-                'payroll' => PayrollControlRoom::canAccess() ? ['label' => 'Payroll', 'icon' => 'heroicon-o-banknotes', 'url' => PayrollControlRoom::getUrl(), 'routes' => ['filament.admin.pages.payroll-control-room', 'filament.admin.resources.payroll-runs.*']] : null,
+                'payroll' => PayrollControlRoom::canAccess() ? ['label' => 'Payroll', 'icon' => 'heroicon-o-banknotes', 'url' => RunPayroll::canAccess() ? RunPayroll::getUrl() : PayrollControlRoom::getUrl(), 'routes' => ['filament.admin.pages.run-payroll', 'filament.admin.pages.payroll-control-room', 'filament.admin.resources.payroll-runs.*']] : null,
                 'pulse' => WorkforceCommandCentre::canAccess() ? ['label' => 'Pulse', 'icon' => 'pos-rail-insights', 'url' => WorkforceCommandCentre::getUrl(), 'routes' => ['filament.admin.pages.workforce-command-centre']] : null,
                 'org' => OrganisationMap::canAccess() ? ['label' => 'Org map', 'icon' => 'pos-rail-organisation', 'url' => OrganisationMap::getUrl(), 'routes' => ['filament.admin.pages.organisation-map']] : null,
                 'admin' => AdminCentre::canAccess() ? ['label' => 'Admin', 'icon' => 'pos-rail-admin', 'url' => AdminCentre::getUrl(), 'routes' => ['filament.admin.pages.admin-centre']] : null,

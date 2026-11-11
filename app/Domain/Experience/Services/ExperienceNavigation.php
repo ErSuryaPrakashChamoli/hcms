@@ -349,7 +349,14 @@ final class ExperienceNavigation
             $order = ['MyWork' => 0, 'Inbox' => 1, 'Approvals' => 2, 'TaskInbox' => 3, 'TeamRequests' => 4, 'MyRequests' => 5, 'NewRequest' => 6];
             usort($modules, fn ($a, $b) => ($order[class_basename($a['key'])] ?? 9) <=> ($order[class_basename($b['key'])] ?? 9));
 
-            return array_map(fn (array $m) => ['key' => $m['label'], 'label' => class_basename($m['key']) === 'MyWork' ? 'Inbox' : (self::AREA_LABELS[$m['label']] ?? $m['label']), 'url' => $m['url'],
+            // Streamline S4: one inbox. "My work" is the overview, "Inbox" acts on approvals and tasks together, so the older
+            // Approvals list leaves the rail when the Inbox opens for the person (its links and notifications still open it).
+            $keys = array_map(fn (array $m) => class_basename($m['key']), $modules);
+            if (in_array('Inbox', $keys, true)) {
+                $modules = array_values(array_filter($modules, fn (array $m) => class_basename($m['key']) !== 'Approvals'));
+            }
+
+            return array_map(fn (array $m) => ['key' => $m['label'], 'label' => self::AREA_LABELS[$m['label']] ?? $m['label'], 'url' => $m['url'],
                 'active' => $current !== null && $current['key'] === $m['key'], 'modules' => [$m]], $modules);
         }
         $plain = array_filter($modules, fn (array $m) => ! isset(self::MODULE_AREA[class_basename($m['key'])]));

@@ -38,6 +38,11 @@ class HappinessIndex extends Page
 
     public ?string $commentsFor = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'How people feel, period by period: check-ins, the average mood and its reasons.';
+    }
+
     public static function canAccess(): bool
     {
         $user = auth()->user();

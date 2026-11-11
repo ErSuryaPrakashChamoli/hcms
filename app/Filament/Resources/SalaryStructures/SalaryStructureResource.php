@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\SalaryStructures;
 
 use App\Domain\Compensation\Models\SalaryStructure;
+use App\Domain\Compensation\Models\SalaryStructureVersion;
+use App\Domain\Compensation\Services\StructureBuilder;
 use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Filament\Pages\SalaryStructureBuilder;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
 use App\Filament\Resources\SalaryStructures\Pages\CreateSalaryStructure;
 use App\Filament\Resources\SalaryStructures\Pages\EditSalaryStructure;
@@ -11,6 +14,7 @@ use App\Filament\Resources\SalaryStructures\Pages\ListSalaryStructures;
 use App\Filament\Resources\SalaryStructures\RelationManagers\VersionsRelationManager;
 use App\Filament\Support\AuditReasonField;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -52,12 +56,25 @@ class SalaryStructureResource extends Resource
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('code'),
-                TextColumn::make('current_version')->label('Version in force')->state(fn (SalaryStructure $record) => ($v = $record->versionOn()) ? 'v'.$v->version.' since '.$v->effective_from->toDateString() : '—'),
+                TextColumn::make('current_version')->label('In use')->state(fn (SalaryStructure $record) => ($v = $record->versionOn()) ? 'Since '.$v->effective_from->format('j M Y') : 'Not yet'),
+                TextColumn::make('change')->label('Change')->badge()->placeholder('—')
+                    ->state(fn (SalaryStructure $record) => match (app(StructureBuilder::class)->versionFor($record)?->status) {
+                        'draft' => 'Draft', 'pending_approval' => 'Waiting for approval', 'scheduled' => 'Approved, starts later', default => null,
+                    })
+                    ->color(fn (?string $state) => match ($state) {
+                        'Waiting for approval' => 'warning', 'Approved, starts later' => 'info', default => 'gray'
+                    }),
                 TextColumn::make('versions_count')->counts('versions')->label('Versions'),
                 TextColumn::make('assignments_count')->counts('assignments')->label('Employees'),
                 TextColumn::make('status')->badge(),
             ])
-            ->recordActions([EditAction::make()]);
+            ->recordUrl(fn (SalaryStructure $record) => SalaryStructureBuilder::canAccess() ? SalaryStructureBuilder::getUrl(['structure' => $record->getKey()]) : static::getUrl('edit', ['record' => $record]))
+            ->recordActions([
+                Action::make('build')->label('Change')->icon('heroicon-m-adjustments-horizontal')->visible(fn () => SalaryStructureBuilder::canAccess())
+                    ->url(fn (SalaryStructure $record) => SalaryStructureBuilder::getUrl(['structure' => $record->getKey()])),
+                EditAction::make()->label(fn (SalaryStructure $record) => SalaryStructureVersion::query()->where('salary_structure_id', $record->getKey())->where('status', 'pending_approval')->exists() ? 'Approve' : 'Versions')
+                    ->icon('heroicon-m-clock')->color('gray'),
+            ]);
     }
 
     public static function getRelations(): array

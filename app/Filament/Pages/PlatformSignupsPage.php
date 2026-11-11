@@ -56,6 +56,11 @@ class PlatformSignupsPage extends Page
     /** @var Collection<int, SignupApplication>|null */
     private ?Collection $rowsCache = null;
 
+    public function getSubheading(): ?string
+    {
+        return 'Self-service signups: whether signup is open, and each application.';
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isPlatformAdmin() ?? false;

@@ -19,7 +19,7 @@ use Illuminate\Contracts\Support\Htmlable;
  * (create) or changed (edit) and asks for the reason for change. Steps are made from the form's own components, so
  * fields, validation, relationships and the page's save path stay exactly as the resource defines them.
  *
- * Used by record pages (Pages\Concerns\FollowsFormWizard) and record drawers (Actions\Concerns\FollowsFormWizard).
+ * Used by record pages (Pages\Concerns\FollowsFormWizard), record drawers and action modals (Actions\Concerns\FollowsFormWizard).
  */
 final class FormWizard
 {
@@ -27,8 +27,26 @@ final class FormWizard
 
     public const EDIT = 'edit';
 
-    /** The fewest content steps (Review not counted) that make a drawer form a wizard; record pages always are. */
+    /** An action's modal form (not a record form): filled in once, then the action's own button (Streamline S6). */
+    public const ACTION = 'action';
+
+    /** The fewest content steps (Review not counted) that make a drawer or modal form a wizard; record pages always are. */
     public const DRAWER_MINIMUM = 2;
+
+    /**
+     * Or this many fields (streamline S6 and its review, owner 2026-11-10: a wizard wherever there is something to fill in,
+     * but a short note, status change or quick edit stays one screen).
+     */
+    public const MODAL_MINIMUM_FIELDS = 4;
+
+    /** Whether a drawer's or modal's form is long enough to be followed as a wizard. */
+    public static function wants(?Schema $form): bool
+    {
+        return $form !== null && (self::contentSteps($form) >= self::DRAWER_MINIMUM || self::fieldCount($form) >= self::MODAL_MINIMUM_FIELDS);
+    }
+
+    /** The most loose components in one step: longer runs of fields are split into steps of about this size. */
+    public const LOOSE_STEP_MAXIMUM = 6;
 
     /**
      * The steps of a form, ending in Review; null when the form has nothing to fill in. Read from the form's schema, so
@@ -63,12 +81,24 @@ final class FormWizard
         return $form === null ? 0 : count(self::parts($form->getComponents(withHidden: true))['steps']);
     }
 
+    /** Fields a person fills in: at the top and inside layout (a repeater counts once), not hidden ones or the reason for change. */
+    public static function fieldCount(Schema|array|null $form): int
+    {
+        $components = $form instanceof Schema ? $form->getComponents(withHidden: true) : (array) $form;
+
+        return (int) collect($components)->sum(fn (mixed $c): int => match (true) {
+            $c instanceof Field => $c->getName() === AuditReasonField::NAME || $c instanceof Hidden ? 0 : 1,
+            $c instanceof Component => self::fieldCount((array) $c->getDefaultChildComponents()),
+            default => 0,
+        });
+    }
+
     /** The wizard around the steps: a step list beside the step on record pages, above it in drawers. */
     public static function wizard(array $steps, string $mode, string $layout): PeopleWizard
     {
         return PeopleWizard::make($steps)
             ->label('Steps')
-            // Editing: any step can be opened from the list (the record is complete already); creating goes in order.
+            // Editing: any step can be opened from the list (the record is complete already); creating and actions go in order.
             ->skippable($mode === self::EDIT)
             ->contained(false)
             ->extraAttributes(['class' => "pos-wizard pos-wizard-{$layout}"]);
@@ -94,20 +124,33 @@ final class FormWizard
             } elseif ($component instanceof Hidden) {
                 $hidden[] = $component;
             } elseif (self::isTitled($component)) {
-                if ($loose !== []) {
-                    $steps[] = $loose;
-                    $loose = [];
-                }
+                array_push($steps, ...self::chunk($loose));
+                $loose = [];
                 $steps[] = $component;
             } else {
                 $loose[] = $component;
             }
         }
-        if ($loose !== []) {
-            $steps[] = $loose;
-        }
+        array_push($steps, ...self::chunk($loose));
 
         return ['steps' => $steps, 'hidden' => $hidden, 'reason' => $reason];
+    }
+
+    /**
+     * A run of loose components as steps: one step, or (more than LOOSE_STEP_MAXIMUM) steps of about equal size in
+     * the form's own order, so a long form without sections is still filled in a few fields at a time.
+     *
+     * @param  list<mixed>  $loose
+     * @return list<list<mixed>>
+     */
+    private static function chunk(array $loose): array
+    {
+        if ($loose === []) {
+            return [];
+        }
+        $parts = (int) ceil(count($loose) / self::LOOSE_STEP_MAXIMUM);
+
+        return array_chunk($loose, (int) ceil(count($loose) / $parts));
     }
 
     private static function isTitled(Component $component): bool
@@ -137,6 +180,12 @@ final class FormWizard
         return $taken === 0 ? $label : $label.' ('.($taken + 1).')';
     }
 
+    /** The Review step on its own, for a wizard that builds its own steps (the hire wizard). */
+    public static function review(string $mode = self::CREATE): Step
+    {
+        return self::reviewStep('Review', $mode, [], []);
+    }
+
     /**
      * @param  list<Component>  $reason
      * @param  list<Component>  $hidden
@@ -145,10 +194,13 @@ final class FormWizard
     {
         return Step::make($label)->columns(1)->schema([
             Section::make($label)
-                ->description($mode === self::CREATE
-                    ? 'What you filled in, step by step. Go back to any step to change it, then create.'
-                    : 'What you changed, before → after. Open any step to change more, then save.')
-                ->schema([View::make('filament.shell.wizard-review')->viewData(['mode' => $mode]), ...$reason]),
+                ->description(match ($mode) {
+                    self::CREATE => 'What you filled in, step by step. Go back to any step to change it, then create.',
+                    self::ACTION => 'What you filled in, step by step. Go back to any step to change it, then confirm.',
+                    default => 'What you changed, before → after. Open any step to change more, then save.',
+                })
+                // The review lists what was filled in for creating and for actions, and what changed for editing.
+                ->schema([View::make('filament.shell.wizard-review')->viewData(['mode' => $mode === self::EDIT ? self::EDIT : self::CREATE]), ...$reason]),
             ...$hidden,
         ]);
     }

@@ -21,6 +21,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\CurrentEmployee;
 use App\Domain\Organisation\Models\Location;
+use App\Support\Csv\SpreadsheetCell;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -893,6 +894,6 @@ final class CompanyEvents
     {
         $text = (string) ($value ?? '');
 
-        return preg_match('/^[=+\-@]/', $text) === 1 && ! is_numeric($text) ? "'".$text : $text;
+        return SpreadsheetCell::guard($text);
     }
 }

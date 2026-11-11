@@ -33,6 +33,11 @@ class AlumniPortal extends Page
 
     protected string $view = 'filament.pages.alumni-portal';
 
+    public function getSubheading(): ?string
+    {
+        return 'Your documents, payslips and news from your former employer, and how to stay in touch.';
+    }
+
     public static function canAccess(): bool
     {
         return (auth()->user()?->can('alumni.portal') ?? false) && self::profile() !== null;
@@ -58,7 +63,7 @@ class AlumniPortal extends Page
 
     public function getPayslips(): Collection
     {
-        return Payslip::query()->where('employee_id', $this->getProfile()->employee_id)->latest('generated_at')->limit(12)->get()
+        return Payslip::query()->where('employee_id', $this->getProfile()->employee_id)->published()->latest('generated_at')->limit(12)->get()
             ->map(fn (Payslip $p) => ['label' => $p->get('period.label'), 'net' => (float) $p->get('totals.net'), 'url' => PayslipResource::getUrl('view', ['record' => $p])]);
     }
 

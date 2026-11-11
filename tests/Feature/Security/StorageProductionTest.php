@@ -38,7 +38,8 @@ it('ships the official S3 adapter with a private, failure-raising s3 disk and of
     $disk = Storage::disk('s3');
     expect($disk->getAdapter())->toBeInstanceOf(AwsS3V3Adapter::class);
     $url = $disk->temporaryUrl('tenants/1/employees/1/doc.pdf', now()->addMinutes(5));
-    expect($url)->toContain('X-Amz-Signature=')->toContain('X-Amz-Expires=300')->not->toContain('test-secret');
+    // Five minutes: the SDK signs against the real clock, so a busy machine may already be a second into them.
+    expect($url)->toContain('X-Amz-Signature=')->toMatch('/X-Amz-Expires=(299|300)(&|$)/')->not->toContain('test-secret');
 });
 
 it('fails loudly, and records nothing, when the object store is unreachable', function () {

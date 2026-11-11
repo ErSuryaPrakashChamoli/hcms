@@ -72,6 +72,11 @@ class MyProfile extends Page
     #[Locked]
     public array $revealed = [];
 
+    public function getSubheading(): ?string
+    {
+        return 'Your own record, section by section. Ask for a change where the organisation allows it.';
+    }
+
     public static function canAccess(): bool
     {
         $me = self::me();
