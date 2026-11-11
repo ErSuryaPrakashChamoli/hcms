@@ -548,61 +548,42 @@ document.addEventListener('keydown', (e) => {
 })();
 
 /*
- * Rail sections: resting the mouse on a section opens its areas under it, and moving off the section (its row and its
- * areas) folds it again, so one section is open at a time; the current section's areas are always open. A short grace
- * keeps a section open while the pointer slips over a gap. Folding a section above the pointer moves the rows under
- * it, so a pending open only happens if its section is still under the pointer. Touch never hovers: a tap opens the
- * section's page, which shows its areas. Livewire replaces the rail on navigation, so the listeners sit on the document.
+ * Rail sections: a section of several areas is a button (sidebar/item.blade.php). Clicking it opens its areas under it
+ * and folds the section that was open, so one section is open at a time; clicking it again folds it. It never opens a
+ * page: each area does. The current section's areas start open. On a folded desktop rail a click first opens the rail
+ * over the page (the hover peek of posRail), so the areas can be seen. Livewire replaces the rail on navigation, so
+ * the listener sits on the document.
  */
 (() => {
-    const OPEN = 'data-pos-rail-open';
-    let opening = null;
-    let closing = null;
-    let x = 0;
-    let y = 0;
-    const opened = () => document.querySelector(`.fi-sidebar [${OPEN}]`);
-    const fold = () => document.querySelectorAll(`.fi-sidebar [${OPEN}]`).forEach((li) => li.removeAttribute(OPEN));
-    const sectionOf = (target) => {
-        const li = target?.closest?.('.fi-sidebar.fi-sidebar-open .fi-sidebar-item-btn')?.parentElement;
-        return li?.querySelector(':scope > .fi-sidebar-sub-group-items[data-pos-rail-closed]') ? li : null;
+    const set = (button, open) => {
+        button.setAttribute('aria-expanded', open ? 'true' : 'false');
+        document.getElementById(button.getAttribute('aria-controls'))?.toggleAttribute('data-pos-rail-closed', !open);
+        // Marks a section opened by a click (its areas fade in); the current section's are simply there.
+        button.parentElement.toggleAttribute('data-pos-rail-open', open);
     };
-    const close = () => {
-        if (closing === null) closing = setTimeout(() => { closing = null; fold(); }, 200);
-    };
-    const open = (li) => {
-        clearTimeout(closing);
-        closing = null;
-        fold();
-        li.setAttribute(OPEN, '');
-        // Areas that open below the rail's edge scroll into sight; the pointer then rests on them, not on another section.
+    document.addEventListener('click', (e) => {
+        const button = e.target.closest?.('.fi-sidebar [data-pos-rail-toggle]');
+        if (!button) return;
+        e.preventDefault();
+        const open = button.getAttribute('aria-expanded') !== 'true';
+        document.querySelectorAll('.fi-sidebar [data-pos-rail-toggle][aria-expanded="true"]').forEach((other) => { if (other !== button) set(other, false); });
+        set(button, open);
+        if (!open) return;
+        const sidebar = window.Alpine?.store('sidebar');
+        if (sidebar && !sidebar.isOpen && window.innerWidth >= 1024) {
+            document.documentElement.setAttribute('data-pos-rail-peek', '');
+            sidebar.isOpen = true;
+        }
+        // Areas that open below the rail's edge scroll into sight.
+        const li = button.parentElement;
         const nav = li.closest('.fi-sidebar-nav');
         if (!nav) return;
-        const edge = nav.getBoundingClientRect();
-        const box = li.getBoundingClientRect();
-        const by = Math.min(box.bottom + 12 - edge.bottom, box.top - edge.top);
-        if (by > 0) nav.scrollBy({ top: by, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-    };
-    document.addEventListener('pointermove', (e) => { x = e.clientX; y = e.clientY; }, { passive: true });
-    document.addEventListener('pointerover', (e) => {
-        if (e.pointerType !== 'mouse') return;
-        x = e.clientX;
-        y = e.clientY;
-        clearTimeout(opening);
-        const current = opened();
-        if (current?.contains(e.target)) {
-            clearTimeout(closing);
-            closing = null;
-            return;
-        }
-        if (current) close();
-        const li = sectionOf(e.target);
-        if (li) opening = setTimeout(() => { if (sectionOf(document.elementFromPoint(x, y)) === li) open(li); }, 120);
-    });
-    // Leaving the window fires no pointerover anywhere.
-    document.addEventListener('pointerout', (e) => {
-        if (e.pointerType !== 'mouse' || e.relatedTarget) return;
-        clearTimeout(opening);
-        if (opened()) close();
+        requestAnimationFrame(() => {
+            const edge = nav.getBoundingClientRect();
+            const box = li.getBoundingClientRect();
+            const by = Math.min(box.bottom + 12 - edge.bottom, box.top - edge.top);
+            if (by > 0) nav.scrollBy({ top: by, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        });
     });
 })();
 

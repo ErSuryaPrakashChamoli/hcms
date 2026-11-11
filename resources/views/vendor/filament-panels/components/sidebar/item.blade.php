@@ -22,6 +22,15 @@
     use Filament\Support\View\ComponentAttributeBag;
 
     $sidebarCollapsible = $sidebarCollapsible && filament()->isSidebarCollapsibleOnDesktop();
+
+    // PeopleOS: a rail section of several areas (ExperienceNavigation marks it data-pos-section) is a button, not a
+    // link: clicking it opens or folds its list of areas (rail sections in resources/js/peopleos.js). Its areas start
+    // open only while one of them is the current page.
+    $section = filled($childItems) ? $attributes->get('data-pos-section') : null;
+    $areasId = filled($section) ? 'pos-rail-areas-'.$section : null;
+    $areasOpen = $active || $activeChildItems;
+    // A rail section shows its icon on a tile in its own hue (data-pos-hue) and its name in the rail's title style.
+    $tile = filled($attributes->get('data-pos-hue')) && (! $subGrouped);
 @endphp
 
 <li
@@ -34,12 +43,20 @@
         ])
     }}
 >
+    @if (filled($section))
+    <button
+        type="button"
+        aria-expanded="{{ $areasOpen ? 'true' : 'false' }}"
+        aria-controls="{{ $areasId }}"
+        data-pos-rail-toggle
+    @else
     <a
         {{ \Filament\Support\generate_href_html($url, $shouldOpenUrlInNewTab) }}
         @if ($active)
             aria-current="page"
         @endif
         x-on:click="window.matchMedia(`(max-width: 1024px)`).matches && $store.sidebar.close()"
+    @endif
         @if ($sidebarCollapsible && (! $subNavigation))
             x-bind:aria-label="$store.sidebar.isOpen ? null : @js(trim(strip_tags($slot->toHtml())))"
             x-data="{ tooltip: false }"
@@ -57,11 +74,17 @@
         class="fi-sidebar-item-btn"
     >
         @if (filled($icon) && ((! $subGrouped) || ($sidebarCollapsible && (! $subNavigation))))
+            @if ($tile)
+                <span class="pos-rail-tile">
+            @endif
             {{
-                \Filament\Support\generate_icon_html(($active && $activeIcon) ? $activeIcon : $icon, attributes: (new ComponentAttributeBag([
+                \Filament\Support\generate_icon_html((($active || $activeChildItems) && $activeIcon) ? $activeIcon : $icon, attributes: (new ComponentAttributeBag([
                     'x-show' => ($subGrouped && $sidebarCollapsible) ? '! $store.sidebar.isOpen' : false,
                 ]))->class(['fi-sidebar-item-icon']), size: IconSize::Large)
             }}
+            @if ($tile)
+                </span>
+            @endif
         @endif
 
         @if ((blank($icon) && $grouped) || $subGrouped)
@@ -96,7 +119,11 @@
             @endif
             class="fi-sidebar-item-label"
         >
-            {{ $slot }}
+            @if ($tile)
+                <span class="pos-rail-title">{{ $slot }}</span>
+            @else
+                {{ $slot }}
+            @endif
         </span>
 
         @if (filled($badge))
@@ -117,15 +144,34 @@
                 </x-filament::badge>
             </span>
         @endif
+
+        {{-- The toggle: a small orb whose plus turns into a minus as the areas open (CSS draws it). --}}
+        @if (filled($section))
+            <span
+                @if ($sidebarCollapsible)
+                    x-show="$store.sidebar.isOpen"
+                @endif
+                class="pos-rail-orb"
+                aria-hidden="true"
+            ></span>
+        @endif
+    @if (filled($section))
+    </button>
+    @else
     </a>
+    @endif
 
     {{-- PeopleOS: Filament renders a section's areas only while the section is current. Every section's areas are in the
-         page here, folded (data-pos-rail-closed), so resting the mouse on a section opens them (rail sections in
-         resources/js/peopleos.js). The only change from Filament 5.8's sidebar/item.blade.php. --}}
+         page here, folded (data-pos-rail-closed) unless the current page is one of them, so clicking the section opens
+         them. These, the section button above (its tile, title and orb) are the only changes from Filament 5.8's
+         sidebar/item.blade.php. --}}
     @if ($childItems)
         <ul
             class="fi-sidebar-sub-group-items"
-            @unless (blank($url) || $active || $activeChildItems)
+            @if ($areasId)
+                id="{{ $areasId }}"
+            @endif
+            @unless ((blank($section) && blank($url)) || $areasOpen)
                 data-pos-rail-closed
             @endunless
         >

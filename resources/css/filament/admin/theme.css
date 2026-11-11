@@ -160,6 +160,17 @@
     --pos-rail-line: rgb(255 255 255 / 0.08);
     --pos-rail-badge: #c4314b;
     --pos-rail-gold: #e2c48c;
+    /* Each rail section's wayfinding hue (ExperienceNavigation::SECTIONS): light tints that read on the rail's ink, so
+       the same in both themes. Its icon tile, toggle and areas take it; never a status. */
+    --pos-rail-hue-iris: #b3adf7;
+    --pos-rail-hue-blue: #8fb5f2;
+    --pos-rail-hue-green: #74d3ac;
+    --pos-rail-hue-gold: #e6c27e;
+    --pos-rail-hue-plum: #eaa6c8;
+    --pos-rail-hue-teal: #6fcfd8;
+    --pos-rail-hue-slate: #b4bfd9;
+    --pos-rail-hue-coral: #f0a483;
+    --pos-rail-hue-lime: #c4dc80;
 
     /* The Home hero: the identity at full strength, once per screen. Deep ink (the rail's) into iris, a trace of gold.
        Text on it is white; its secondary (84%) and muted (72%) whites stay above 7:1 where text sits (the ink side). */
@@ -481,21 +492,130 @@ html {
 .fi-sidebar .fi-sidebar-item-grouped-border > * { background: var(--pos-rail-line) !important; }
 .fi-sidebar .fi-sidebar-item .fi-sidebar-item .fi-sidebar-item-btn { padding-block: 6px !important; }
 .fi-sidebar .fi-sidebar-item .fi-sidebar-item.fi-active > .fi-sidebar-item-btn { background: var(--pos-rail-active) !important; box-shadow: none; }
-/* The current area: its label in the accent and a larger, haloed dot, so it stands apart from its neighbours */
-.fi-sidebar .fi-sidebar-item .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-label { color: var(--pos-rail-indicator) !important; }
+/* The current area: its label in its section's hue and a larger, haloed dot, so it stands apart from its neighbours */
+.fi-sidebar .fi-sidebar-item .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-label { color: var(--pos-rail-tone, var(--pos-rail-indicator)) !important; }
 .fi-sidebar .fi-sidebar-item .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-grouped-border-part {
     width: 9px;
     height: 9px;
-    background: var(--pos-rail-indicator) !important;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pos-rail-indicator) 26%, transparent);
+    background: var(--pos-rail-tone, var(--pos-rail-indicator)) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pos-rail-tone, var(--pos-rail-indicator)) 26%, transparent);
 }
-/* Every section's areas are in the page, folded; resting the mouse on a section opens them under it (rail sections
-   in resources/js/peopleos.js). The current section's stay open; a folded rail shows none until it opens. */
+/* Every section's areas are in the page, folded; a section of several areas is a button that opens them under it
+   (rail sections in resources/js/peopleos.js). The current section's start open; a folded rail shows none until it
+   opens. */
 .fi-sidebar .fi-sidebar-sub-group-items[data-pos-rail-closed] { display: none; }
-.fi-sidebar.fi-sidebar-open .fi-sidebar-item[data-pos-rail-open] { display: flex; flex-direction: column; gap: 4px; }
-.fi-sidebar.fi-sidebar-open .fi-sidebar-item[data-pos-rail-open] > .fi-sidebar-sub-group-items[data-pos-rail-closed] {
-    display: flex;
+.fi-sidebar .fi-sidebar-item[data-pos-rail-open] { display: flex; flex-direction: column; gap: 4px; }
+.fi-sidebar.fi-sidebar-open .fi-sidebar-item[data-pos-rail-open] > .fi-sidebar-sub-group-items {
     animation: pos-rail-areas var(--pos-dur-2) var(--pos-ease-emphasised);
+}
+.fi-sidebar button.fi-sidebar-item-btn { width: 100%; text-align: start; cursor: pointer; }
+
+/* Rail sections (data-pos-hue): the icon on a tile in the section's own hue, the name in semibold, and on a section of
+   areas a small orb whose plus turns into a minus as they open. The section holding the current
+   page fills its tile with its hue and washes its row; its areas hang off a thread in the same hue. */
+.fi-sidebar .fi-sidebar-item[data-pos-hue] { --pos-rail-tone: var(--pos-rail-hue-iris); }
+.fi-sidebar .fi-sidebar-item[data-pos-hue='blue'] { --pos-rail-tone: var(--pos-rail-hue-blue); }
+.fi-sidebar .fi-sidebar-item[data-pos-hue='green'] { --pos-rail-tone: var(--pos-rail-hue-green); }
+.fi-sidebar .fi-sidebar-item[data-pos-hue='gold'] { --pos-rail-tone: var(--pos-rail-hue-gold); }
+.fi-sidebar .fi-sidebar-item[data-pos-hue='plum'] { --pos-rail-tone: var(--pos-rail-hue-plum); }
+.fi-sidebar .fi-sidebar-item[data-pos-hue='teal'] { --pos-rail-tone: var(--pos-rail-hue-teal); }
+.fi-sidebar .fi-sidebar-item[data-pos-hue='slate'] { --pos-rail-tone: var(--pos-rail-hue-slate); }
+.fi-sidebar .fi-sidebar-item[data-pos-hue='coral'] { --pos-rail-tone: var(--pos-rail-hue-coral); }
+.fi-sidebar .fi-sidebar-item[data-pos-hue='lime'] { --pos-rail-tone: var(--pos-rail-hue-lime); }
+
+.fi-sidebar .fi-sidebar-item[data-pos-hue] > .fi-sidebar-item-btn { padding-block: 5px !important; padding-inline-end: 10px; }
+.fi-sidebar.fi-sidebar-open .fi-sidebar-item[data-pos-hue] > .fi-sidebar-item-btn { padding-inline-start: 8px; }
+.fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item[data-pos-hue] > .fi-sidebar-item-btn { padding-inline: 4px; }
+.fi-sidebar .fi-sidebar-item[data-pos-hue]:is(.fi-active, .fi-sidebar-item-has-active-child-items) > .fi-sidebar-item-btn {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--pos-rail-tone) 15%, transparent), color-mix(in srgb, var(--pos-rail-tone) 3%, transparent)) !important;
+    box-shadow: none;
+}
+
+.fi-sidebar .pos-rail-tile {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--pos-radius-lg);
+    background: color-mix(in srgb, var(--pos-rail-tone) 13%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-rail-tone) 22%, transparent);
+    transition: background var(--pos-dur-2) var(--pos-ease), box-shadow var(--pos-dur-2) var(--pos-ease), scale var(--pos-dur-2) var(--pos-ease-emphasised);
+}
+.fi-sidebar .pos-rail-tile > .fi-icon { width: 20px; height: 20px; color: var(--pos-rail-tone) !important; }
+.fi-sidebar .fi-sidebar-item-btn:hover > .pos-rail-tile { background: color-mix(in srgb, var(--pos-rail-tone) 22%, transparent); scale: 1.06; }
+.fi-sidebar .fi-sidebar-item:is(.fi-active, .fi-sidebar-item-has-active-child-items) > .fi-sidebar-item-btn > .pos-rail-tile {
+    background: linear-gradient(140deg, var(--pos-rail-tone), color-mix(in srgb, var(--pos-rail-tone) 58%, var(--pos-rail-bg)));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 8px 18px -8px color-mix(in srgb, var(--pos-rail-tone) 80%, transparent);
+}
+.fi-sidebar .fi-sidebar-item:is(.fi-active, .fi-sidebar-item-has-active-child-items) > .fi-sidebar-item-btn > .pos-rail-tile > .fi-icon { color: var(--pos-rail-bg) !important; }
+
+.fi-sidebar .pos-rail-title {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--pos-fs-body);
+    line-height: 18px;
+    font-weight: var(--pos-fw-semibold);
+    letter-spacing: -0.006em;
+    color: var(--pos-rail-text);
+    transition: color var(--pos-dur-1) var(--pos-ease);
+}
+.fi-sidebar .fi-sidebar-item-btn:hover .pos-rail-title,
+.fi-sidebar .fi-sidebar-item-btn[aria-expanded='true'] .pos-rail-title,
+.fi-sidebar .fi-sidebar-item:is(.fi-active, .fi-sidebar-item-has-active-child-items) > .fi-sidebar-item-btn .pos-rail-title { color: var(--pos-rail-strong); }
+
+.fi-sidebar .pos-rail-orb {
+    position: relative;
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--pos-radius-pill);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
+    transition: background var(--pos-dur-2) var(--pos-ease), box-shadow var(--pos-dur-2) var(--pos-ease), rotate var(--pos-dur-4) var(--pos-ease-emphasised);
+}
+.fi-sidebar .pos-rail-orb::before,
+.fi-sidebar .pos-rail-orb::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 2px;
+    margin: -1px 0 0 -4px;
+    border-radius: 1px;
+    background: var(--pos-rail-muted);
+    transition: rotate var(--pos-dur-4) var(--pos-ease-emphasised), background var(--pos-dur-1) var(--pos-ease);
+}
+.fi-sidebar .pos-rail-orb::after { rotate: 90deg; }
+.fi-sidebar .fi-sidebar-item-btn:hover > .pos-rail-orb {
+    background: color-mix(in srgb, var(--pos-rail-tone) 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-rail-tone) 60%, transparent);
+}
+.fi-sidebar .fi-sidebar-item-btn:hover > .pos-rail-orb::before,
+.fi-sidebar .fi-sidebar-item-btn:hover > .pos-rail-orb::after { background: var(--pos-rail-tone); }
+.fi-sidebar .fi-sidebar-item-btn[aria-expanded='true'] > .pos-rail-orb {
+    rotate: 180deg;
+    background: var(--pos-rail-tone);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--pos-rail-tone) 16%, transparent), 0 4px 12px -4px color-mix(in srgb, var(--pos-rail-tone) 70%, transparent);
+}
+.fi-sidebar .fi-sidebar-item-btn[aria-expanded='true'] > .pos-rail-orb::before,
+.fi-sidebar .fi-sidebar-item-btn[aria-expanded='true'] > .pos-rail-orb::after { background: var(--pos-rail-bg); }
+.fi-sidebar .fi-sidebar-item-btn[aria-expanded='true'] > .pos-rail-orb::after { rotate: 0deg; }
+
+/* A section's areas: a thread in its hue, labels lined up under the section's name, the current one washed in the hue.
+   A folded rail shows only the tiles: its areas, nameless dots there, wait for it to open. */
+.fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item[data-pos-hue] > .fi-sidebar-sub-group-items { display: none; }
+.fi-sidebar .fi-sidebar-item[data-pos-hue] .fi-sidebar-item-grouped-border > * { background: color-mix(in srgb, var(--pos-rail-tone) 24%, transparent) !important; }
+.fi-sidebar .fi-sidebar-item[data-pos-hue] .fi-sidebar-item.fi-active > .fi-sidebar-item-btn { background: color-mix(in srgb, var(--pos-rail-tone) 12%, transparent) !important; }
+.fi-sidebar .fi-sidebar-item[data-pos-hue] .fi-sidebar-item .fi-sidebar-item-btn { column-gap: 16px; }
+.fi-sidebar .fi-sidebar-item[data-pos-hue] .fi-sidebar-item .fi-sidebar-item-btn:hover .fi-sidebar-item-label { color: var(--pos-rail-strong) !important; }
+@media (prefers-reduced-motion: reduce) {
+    .fi-sidebar .pos-rail-tile,
+    .fi-sidebar .pos-rail-orb,
+    .fi-sidebar .pos-rail-orb::before,
+    .fi-sidebar .pos-rail-orb::after { transition: none; }
 }
 @keyframes pos-rail-areas {
     from { opacity: 0; transform: translateY(-4px); }

@@ -92,23 +92,28 @@ final class MobileNavigation
         return $items;
     }
 
-    /** @return array{label: string, icon: string, url: ?string, routes: list<string>}|null */
+    /**
+     * A destination that is also a rail section shows that section's own icon (ExperienceNavigation::SECTIONS), so a
+     * module looks the same on the phone and on the desktop; the others keep their stock icons.
+     *
+     * @return array{label: string, icon: string, url: ?string, routes: list<string>}|null
+     */
     private function destination(string $key): ?array
     {
         try {
             return match ($key) {
                 'actions' => ['label' => 'Actions', 'icon' => 'heroicon-m-plus', 'url' => null, 'routes' => []],
-                'home' => ['label' => 'Home', 'icon' => 'heroicon-o-sun', 'url' => Home::getUrl(), 'routes' => ['filament.admin.pages.home', 'filament.admin.pages.dashboard']],
-                'work' => MyWork::canAccess() ? ['label' => 'Work', 'icon' => 'heroicon-o-inbox-stack', 'url' => MyWork::getUrl(), 'routes' => ['filament.admin.pages.my-work', 'filament.admin.pages.task-inbox', 'filament.admin.pages.notifications']] : null,
+                'home' => ['label' => 'Home', 'icon' => 'pos-rail-home', 'url' => Home::getUrl(), 'routes' => ['filament.admin.pages.home', 'filament.admin.pages.dashboard']],
+                'work' => MyWork::canAccess() ? ['label' => 'Work', 'icon' => 'pos-rail-work', 'url' => MyWork::getUrl(), 'routes' => ['filament.admin.pages.my-work', 'filament.admin.pages.task-inbox', 'filament.admin.pages.notifications']] : null,
                 'approvals' => Approvals::canAccess() ? ['label' => 'Approvals', 'icon' => 'heroicon-o-check-badge', 'url' => Approvals::getUrl(), 'routes' => ['filament.admin.pages.approvals']] : null,
                 'team' => MyTeam::canAccess() ? ['label' => 'Team', 'icon' => 'heroicon-o-user-group', 'url' => MyTeam::getUrl(), 'routes' => ['filament.admin.pages.my-team', 'filament.admin.pages.team-*', 'filament.admin.pages.people', 'filament.admin.resources.employees.*']] : null,
-                'people' => People::canAccess() ? ['label' => 'People', 'icon' => 'heroicon-o-users', 'url' => People::getUrl(), 'routes' => ['filament.admin.pages.people', 'filament.admin.resources.employees.*', 'filament.admin.pages.organisation-map']] : null,
-                'services' => MyHr::canAccess() ? ['label' => 'Services', 'icon' => 'heroicon-o-lifebuoy', 'url' => MyHr::getUrl(), 'routes' => ['filament.admin.pages.my-hr']] : null,
+                'people' => People::canAccess() ? ['label' => 'People', 'icon' => 'pos-rail-people', 'url' => People::getUrl(), 'routes' => ['filament.admin.pages.people', 'filament.admin.resources.employees.*', 'filament.admin.pages.organisation-map']] : null,
+                'services' => MyHr::canAccess() ? ['label' => 'Services', 'icon' => 'pos-rail-services', 'url' => MyHr::getUrl(), 'routes' => ['filament.admin.pages.my-hr']] : null,
                 'requests' => TicketResource::canAccess() ? ['label' => 'Requests', 'icon' => 'heroicon-o-chat-bubble-left-right', 'url' => TicketResource::getUrl('index'), 'routes' => ['filament.admin.resources.tickets.*']] : null,
                 'payroll' => PayrollControlRoom::canAccess() ? ['label' => 'Payroll', 'icon' => 'heroicon-o-banknotes', 'url' => PayrollControlRoom::getUrl(), 'routes' => ['filament.admin.pages.payroll-control-room', 'filament.admin.resources.payroll-runs.*']] : null,
-                'pulse' => WorkforceCommandCentre::canAccess() ? ['label' => 'Pulse', 'icon' => 'heroicon-o-presentation-chart-line', 'url' => WorkforceCommandCentre::getUrl(), 'routes' => ['filament.admin.pages.workforce-command-centre']] : null,
-                'org' => OrganisationMap::canAccess() ? ['label' => 'Org map', 'icon' => 'heroicon-o-building-office-2', 'url' => OrganisationMap::getUrl(), 'routes' => ['filament.admin.pages.organisation-map']] : null,
-                'admin' => AdminCentre::canAccess() ? ['label' => 'Admin', 'icon' => 'heroicon-o-cog-6-tooth', 'url' => AdminCentre::getUrl(), 'routes' => ['filament.admin.pages.admin-centre']] : null,
+                'pulse' => WorkforceCommandCentre::canAccess() ? ['label' => 'Pulse', 'icon' => 'pos-rail-insights', 'url' => WorkforceCommandCentre::getUrl(), 'routes' => ['filament.admin.pages.workforce-command-centre']] : null,
+                'org' => OrganisationMap::canAccess() ? ['label' => 'Org map', 'icon' => 'pos-rail-organisation', 'url' => OrganisationMap::getUrl(), 'routes' => ['filament.admin.pages.organisation-map']] : null,
+                'admin' => AdminCentre::canAccess() ? ['label' => 'Admin', 'icon' => 'pos-rail-admin', 'url' => AdminCentre::getUrl(), 'routes' => ['filament.admin.pages.admin-centre']] : null,
                 'users' => UserResource::canAccess() ? ['label' => 'Users', 'icon' => 'heroicon-o-key', 'url' => UserResource::getUrl('index'), 'routes' => ['filament.admin.resources.users.*', 'filament.admin.resources.roles.*']] : null,
                 default => null,
             };

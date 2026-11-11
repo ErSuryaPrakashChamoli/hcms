@@ -4,7 +4,6 @@ namespace App\Domain\Experience\Services;
 
 use App\Domain\Identity\Models\User;
 use Filament\Navigation\NavigationItem;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
@@ -19,16 +18,21 @@ use Throwable;
  */
 final class ExperienceNavigation
 {
+    /**
+     * The rail's sections. Each has its own icon, drawn for its name (resources/svg/peopleos/rail-*.svg: a house, a
+     * clipboard of ticked tasks, two people, an org chart, rising bars with a spark, a flow whose routes meet, a help-desk
+     * headset, two speech bubbles, a gear), and its own wayfinding hue (--pos-rail-hue-*) for its tile, toggle and areas.
+     */
     public const SECTIONS = [
-        'home' => ['label' => 'Home', 'icon' => Heroicon::OutlinedHome, 'active' => Heroicon::Home],
-        'work' => ['label' => 'My work', 'icon' => Heroicon::OutlinedInboxStack, 'active' => Heroicon::InboxStack],
-        'people' => ['label' => 'People', 'icon' => Heroicon::OutlinedUsers, 'active' => Heroicon::Users],
-        'organisation' => ['label' => 'Organisation', 'icon' => Heroicon::OutlinedBuildingOffice2, 'active' => Heroicon::BuildingOffice2],
-        'insights' => ['label' => 'Insights', 'icon' => Heroicon::OutlinedPresentationChartLine, 'active' => Heroicon::PresentationChartLine],
-        'workflows' => ['label' => 'Workflows', 'icon' => Heroicon::OutlinedArrowsRightLeft, 'active' => Heroicon::ArrowsRightLeft],
-        'services' => ['label' => 'Services', 'icon' => Heroicon::OutlinedLifebuoy, 'active' => Heroicon::Lifebuoy],
-        'communication' => ['label' => 'Communication', 'icon' => Heroicon::OutlinedMegaphone, 'active' => Heroicon::Megaphone],
-        'admin' => ['label' => 'Admin', 'icon' => Heroicon::OutlinedCog6Tooth, 'active' => Heroicon::Cog6Tooth],
+        'home' => ['label' => 'Home', 'icon' => 'pos-rail-home', 'hue' => 'iris'],
+        'work' => ['label' => 'My work', 'icon' => 'pos-rail-work', 'hue' => 'gold'],
+        'people' => ['label' => 'People', 'icon' => 'pos-rail-people', 'hue' => 'blue'],
+        'organisation' => ['label' => 'Organisation', 'icon' => 'pos-rail-organisation', 'hue' => 'green'],
+        'insights' => ['label' => 'Insights', 'icon' => 'pos-rail-insights', 'hue' => 'plum'],
+        'workflows' => ['label' => 'Workflows', 'icon' => 'pos-rail-workflows', 'hue' => 'lime'],
+        'services' => ['label' => 'Services', 'icon' => 'pos-rail-services', 'hue' => 'teal'],
+        'communication' => ['label' => 'Communication', 'icon' => 'pos-rail-communication', 'hue' => 'coral'],
+        'admin' => ['label' => 'Admin', 'icon' => 'pos-rail-admin', 'hue' => 'slate'],
     ];
 
     /** Space (ModuleCatalogue) → section. */
@@ -91,6 +95,18 @@ final class ExperienceNavigation
      * "Payroll desk"). Only operators can open a desk; everyone else opens the area as before.
      */
     public const DESKS = ['WorkforceDesk', 'TimeOfficeDesk', 'PayrollDesk', 'ExpenseDesk', 'PerformanceDesk', 'EngageDesk', 'AssetDesk'];
+
+    /**
+     * Rail names of areas that would otherwise repeat their section's name ("Organisation › Organisation" reads as one
+     * level, not two). The area keeps its own name as its key: its landing (AREA_LANDING) and everyday modules
+     * (EVERYDAY) stay filed under it. My work's overview page is an area of the My work section.
+     */
+    public const AREA_LABELS = [
+        'My work' => 'Overview',
+        'Organisation' => 'Structure',
+        'Communication' => 'Messaging',
+        'Workflows' => 'Process flows',
+    ];
 
     /** Preferred landing per section, by class basename; the first one the viewer can open wins. */
     public const LANDING = [
@@ -198,18 +214,23 @@ final class ExperienceNavigation
             $item = NavigationItem::make($section['label'])
                 ->key('pos-'.$key)
                 ->icon($section['icon'])
-                ->activeIcon($section['active'])
-                ->url($landing['url'])
                 ->sort($sort++)
                 ->isActiveWhen(fn () => $current === $key && ! $this->anyChildActive($children));
             if ($key === 'work' && ($count = $this->workCount($user)) > 0) {
                 $item->badge((string) min($count, 99), 'primary');
             }
+            // The rail's sidebar item view puts the section's icon on a tile in its hue.
+            $attributes = ['data-pos-hue' => $section['hue']];
             if (count($children) > 1) {
-                $item->childItems(array_map(fn (array $child) => NavigationItem::make($child['label'])
-                    ->key('pos-'.$key.'-'.md5($child['label']))
-                    ->url($child['url'])
-                    ->isActiveWhen(fn () => $child['active']), $children));
+                // A section of several areas is not a page: clicking it only opens its list of areas (the view draws it
+                // as a button), and each area opens its own page.
+                $item->extraAttributes($attributes + ['data-pos-section' => $key])
+                    ->childItems(array_map(fn (array $child) => NavigationItem::make($child['label'])
+                        ->key('pos-'.$key.'-'.md5($child['key']))
+                        ->url($child['url'])
+                        ->isActiveWhen(fn () => $child['active']), $children));
+            } else {
+                $item->extraAttributes($attributes)->url($landing['url']);
             }
             $items[] = $item;
         }
@@ -311,7 +332,7 @@ final class ExperienceNavigation
      * The context rail of a section: its spaces when it spans several, otherwise its groups. Each area
      * opens its preferred module. The Home and My work sections list their own pages.
      *
-     * @return list<array{label: string, url: string, active: bool, modules: list<array<string, mixed>>}>
+     * @return list<array{key: string, label: string, url: string, active: bool, modules: list<array<string, mixed>>}> key = the area's own name, label = its rail name (AREA_LABELS)
      */
     public function children(User $user, string $section): array
     {
@@ -328,7 +349,7 @@ final class ExperienceNavigation
             $order = ['MyWork' => 0, 'Inbox' => 1, 'Approvals' => 2, 'TaskInbox' => 3, 'TeamRequests' => 4, 'MyRequests' => 5, 'NewRequest' => 6];
             usort($modules, fn ($a, $b) => ($order[class_basename($a['key'])] ?? 9) <=> ($order[class_basename($b['key'])] ?? 9));
 
-            return array_map(fn (array $m) => ['label' => class_basename($m['key']) === 'MyWork' ? 'Inbox' : $m['label'], 'url' => $m['url'],
+            return array_map(fn (array $m) => ['key' => $m['label'], 'label' => class_basename($m['key']) === 'MyWork' ? 'Inbox' : (self::AREA_LABELS[$m['label']] ?? $m['label']), 'url' => $m['url'],
                 'active' => $current !== null && $current['key'] === $m['key'], 'modules' => [$m]], $modules);
         }
         $plain = array_filter($modules, fn (array $m) => ! isset(self::MODULE_AREA[class_basename($m['key'])]));
@@ -341,7 +362,8 @@ final class ExperienceNavigation
         foreach ($areas as $label => $areaModules) {
             $landing = $this->areaLanding($label, $areaModules);
             $active = $current !== null && in_array($current['key'], array_column($areaModules, 'key'), true);
-            $out[] = ['label' => (string) $label, 'url' => $landing['url'], 'active' => $active, 'modules' => $areaModules, 'pinned' => in_array($label, self::MODULE_AREA, true)];
+            $out[] = ['key' => (string) $label, 'label' => self::AREA_LABELS[$label] ?? (string) $label, 'url' => $landing['url'], 'active' => $active,
+                'modules' => $areaModules, 'pinned' => in_array($label, self::MODULE_AREA, true)];
         }
         // Dedicated pages (Directory, Org map, My team) first, then the areas in catalogue order.
         $pinned = array_values(array_filter($out, fn ($a) => $a['pinned']));
@@ -371,7 +393,7 @@ final class ExperienceNavigation
         foreach ($this->children($user, $section) as $child) {
             // Even a one-module area shows the bar: it tells people where they are (section / area / page).
             if ($child['active']) {
-                return ['section' => self::SECTIONS[$section]['label'], 'label' => $child['label'], 'modules' => $child['modules']];
+                return ['section' => self::SECTIONS[$section]['label'], 'key' => $child['key'], 'label' => $child['label'], 'modules' => $child['modules']];
             }
         }
 
@@ -411,7 +433,7 @@ final class ExperienceNavigation
         }
         $current = $this->currentModule($user);
         $current = $current !== null ? ($byKey[$current['key']] ?? null) : null;
-        $everyday = self::EVERYDAY[$area['label']] ?? null;
+        $everyday = self::EVERYDAY[$area['key'] ?? $area['label']] ?? null;
         if ($everyday === null || count($modules) <= 6) {
             $primary = $modules;
         } else {
