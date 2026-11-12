@@ -122,17 +122,13 @@ final class ExperienceNavigation
     ];
 
     /**
-     * UX.16: section order per experience. Home first everywhere, then the person's own kind of work; every other
-     * section the person can open follows (nothing is hidden to look simpler, and each still checks canAccess()).
+     * The rail's section order: one order for everyone and for every "View as" view. (UX.16 gave each view its own
+     * order, so the rail reshuffled whenever someone switched view, and two accounts — or the same account on two
+     * servers — saw different sequences; owner 2026-11-12.) A stable order keeps each section where people expect it.
+     * The view still decides where a section opens (ROLE_LANDING); sections a person cannot open are left out, and
+     * each still checks canAccess().
      */
-    public const ORDER = [
-        'employee' => ['home', 'work', 'people', 'services', 'communication', 'organisation', 'insights', 'workflows', 'admin'],
-        'manager' => ['home', 'work', 'people', 'organisation', 'insights', 'services', 'communication', 'workflows', 'admin'],
-        'hr' => ['home', 'work', 'people', 'organisation', 'workflows', 'services', 'communication', 'insights', 'admin'],
-        'payroll' => ['home', 'work', 'people', 'insights', 'services', 'organisation', 'workflows', 'communication', 'admin'],
-        'executive' => ['home', 'insights', 'people', 'organisation', 'work', 'communication', 'services', 'workflows', 'admin'],
-        'admin' => ['home', 'admin', 'organisation', 'people', 'workflows', 'insights', 'work', 'services', 'communication'],
-    ];
+    public const ORDER = ['home', 'work', 'people', 'organisation', 'workflows', 'services', 'communication', 'insights', 'admin'];
 
     /** UX.16: a role's preferred landing for a section, tried before LANDING (still only what the person can open). */
     public const ROLE_LANDING = [
@@ -204,7 +200,7 @@ final class ExperienceNavigation
         $sort = 0;
         $current = $this->currentSection($user);
         $experience = $this->experience($user);
-        foreach (self::ORDER[$experience] ?? array_keys(self::SECTIONS) as $key) {
+        foreach (self::ORDER as $key) {
             $section = self::SECTIONS[$key];
             $landing = $this->landing($user, $key, $experience);
             if ($landing === null) {
@@ -238,12 +234,12 @@ final class ExperienceNavigation
         return $items;
     }
 
-    /** @return list<string> sections the viewer can open, in the order of their experience */
+    /** @return list<string> sections the viewer can open, in the rail's one order */
     public function sections(User $user): array
     {
         $experience = $this->experience($user);
 
-        return array_values(array_filter(self::ORDER[$experience] ?? array_keys(self::SECTIONS), fn (string $key) => $this->landing($user, $key, $experience) !== null));
+        return array_values(array_filter(self::ORDER, fn (string $key) => $this->landing($user, $key, $experience) !== null));
     }
 
     /** UX.16: the experience that orders the navigation (the same primary lens as Home, including "Home opens as"). */

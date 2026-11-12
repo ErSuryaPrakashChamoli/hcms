@@ -201,16 +201,20 @@ it('orders unread notifications by what matters to the role', function () {
     expect(Livewire::test(NotificationCenter::class)->instance()->visible()->first()['title'])->toBe('Webhook endpoint failing');
 });
 
-it('orders the navigation by role and hides nothing the person may open', function () {
+it('keeps one navigation order for every role and view, and hides nothing the person may open', function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     $nav = app(ExperienceNavigation::class);
+    // Owner 2026-11-12: the rail no longer reshuffles by view; each person sees the one order, less what they cannot open.
+    $inOrder = fn (array $sections) => array_values(array_intersect(ExperienceNavigation::ORDER, $sections));
 
     $this->actingAs($this->admin);
     $adminSections = $nav->sections($this->admin);
-    expect(array_slice($adminSections, 0, 2))->toBe(['home', 'admin'])->and($adminSections)->toContain('insights', 'people', 'workflows');
+    expect($adminSections)->toBe($inOrder($adminSections))->and(array_slice($adminSections, 0, 2))->toBe(['home', 'work'])
+        ->and($adminSections)->toContain('insights', 'people', 'workflows', 'admin');
 
     $this->actingAs($this->executive);
-    expect($nav->sections($this->executive)[1])->toBe('insights');
+    $executiveSections = $nav->sections($this->executive);
+    expect($executiveSections)->toBe($inOrder($executiveSections))->and($executiveSections[1])->toBe('work');
 
     $this->actingAs($this->employee);
     expect($nav->sections($this->employee))->toContain('home', 'work', 'people')->not->toContain('admin', 'insights');
