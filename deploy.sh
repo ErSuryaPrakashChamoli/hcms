@@ -6,17 +6,21 @@
 # vendor/, node_modules/ and the caches in bootstrap/cache are built here, so a `git pull` alone leaves production
 # showing the old screens, and pages added since the last `php artisan optimize` stay missing.
 #
-# Usage: ./deploy.sh [branch, default main] [--yes]
-#   --yes  skip the backup question (only when a fresh database backup was taken: §9 step 2)
+# Usage: ./deploy.sh [branch, default main] [--yes] [--demo]
+#   --yes   skip the backup question (only when a fresh database backup was taken: §9 step 2)
+#   --demo  also create or top up the fictional demo organisation "Demo Group" (§9b): DemoOrganisationSeeder, after the
+#           caches are rebuilt so it reads the current .env (PEOPLEOS_DEMO_PASSWORD). Safe on every deploy.
 # On a failure after maintenance mode is on, the application stays down: fix the cause and run the script again.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 BRANCH=main
 CONFIRMED=0
+DEMO=0
 for arg in "$@"; do
   case "$arg" in
     --yes) CONFIRMED=1 ;;
+    --demo) DEMO=1 ;;
     -*) echo "Unknown option: $arg" >&2; exit 2 ;;
     *) BRANCH="$arg" ;;
   esac
@@ -72,6 +76,13 @@ step "Caches: clear the stale ones, rebuild config, routes, events, views, Filam
 php artisan optimize:clear --except=cache
 php artisan optimize
 php artisan queue:restart
+
+if [ "$DEMO" -eq 1 ]; then
+  step "Demo organisation (fictional data, demo.local sign-ins)"
+  # Reported, never keeps the application down: the real tenants do not depend on the demo.
+  php artisan db:seed --class='Database\Seeders\Demo\DemoOrganisationSeeder' --force ||
+    echo "The demo organisation step failed (see above); the deploy itself is complete. Fix and rerun that command." >&2
+fi
 
 step "Readiness (reported, does not keep the application down)"
 php artisan peopleos:readiness || echo "Readiness reported FAIL lines above: review them (§9 step 8)." >&2

@@ -24,6 +24,7 @@ use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\People\Models\Skill;
 use App\Domain\Platform\Services\FeatureFlags;
 use App\Domain\Platform\Services\SettingsRepository;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -88,9 +89,12 @@ final class Blueprints
 
     /**
      * @param  array<string, mixed>  $blueprint
+     * @param  CarbonInterface|string|null  $policiesEffectiveFrom  the date a new or changed policy version takes effect
+     *                                                              (default today; the demo organisation's policies date
+     *                                                              from before its first joiner)
      * @return array<string, int> section => records touched
      */
-    public function import(array $blueprint, ?string $reason = null): array
+    public function import(array $blueprint, ?string $reason = null, CarbonInterface|string|null $policiesEffectiveFrom = null): array
     {
         if (($blueprint['format'] ?? null) !== self::FORMAT) {
             throw new ConfigurationException('Unrecognised blueprint format.');
@@ -99,7 +103,7 @@ final class Blueprints
         $reason ??= 'Blueprint import';
         $counts = [];
 
-        DB::transaction(function () use ($blueprint, $reason, &$counts) {
+        DB::transaction(function () use ($blueprint, $reason, $policiesEffectiveFrom, &$counts) {
             foreach ($blueprint['settings'] ?? [] as $key => $value) {
                 if ($value !== null) {
                     $this->settings->set($key, $value, $reason);
@@ -186,7 +190,7 @@ final class Blueprints
 
                 if ($current === null || $current->settings != ($row['settings'] ?? [])) {
                     $this->policies->draft($policy, $row['settings'] ?? [], $reason);
-                    $this->policies->publish($policy, now(), $reason);
+                    $this->policies->publish($policy, $policiesEffectiveFrom ?? now(), $reason);
                 }
 
                 foreach ($row['rules'] ?? [] as $ruleRow) {
@@ -237,7 +241,7 @@ final class Blueprints
     }
 
     /** @return array<string, int> */
-    public function applyPack(string $key, ?string $reason = null): array
+    public function applyPack(string $key, ?string $reason = null, CarbonInterface|string|null $policiesEffectiveFrom = null): array
     {
         $path = config('peopleos.configuration.packs_path')."/{$key}.json";
 
@@ -247,6 +251,6 @@ final class Blueprints
 
         $blueprint = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
 
-        return $this->import($blueprint, $reason ?? "Applied configuration pack: {$key}");
+        return $this->import($blueprint, $reason ?? "Applied configuration pack: {$key}", $policiesEffectiveFrom);
     }
 }

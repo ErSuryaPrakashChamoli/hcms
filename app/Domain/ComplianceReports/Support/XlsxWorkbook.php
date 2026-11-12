@@ -3,6 +3,7 @@
 namespace App\Domain\ComplianceReports\Support;
 
 use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Cell\StringCell;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Writer\XLSX\Options;
@@ -49,7 +50,7 @@ final class XlsxWorkbook
 
             $writer->addRow(Row::fromValues([$sheet->title], $title));
             foreach ($sheet->header as [$name, $value]) {
-                $writer->addRow(new Row([Cell::fromValue($name, $label), Cell::fromValue((string) $value)]));
+                $writer->addRow(new Row([self::cell($name, $label), self::cell((string) $value, null)]));
             }
             $writer->addRow(Row::fromValues([]));
             $writer->addRow(Row::fromValues(array_values($sheet->columns), $heading));
@@ -105,6 +106,11 @@ final class XlsxWorkbook
             $value = $value->format('d-m-Y');
         } elseif (is_array($value)) {
             $value = implode(', ', $value);
+        }
+        // QA audit 2026-11-12: OpenSpout writes any string starting with "=" as a live formula. Names and addresses
+        // here are typed by people themselves, so text always stays text (a formula would run when HR opens the file).
+        if (is_string($value) && str_starts_with($value, '=')) {
+            return new StringCell($value, $style);
         }
 
         return Cell::fromValue($value, $style);

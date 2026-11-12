@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Storage;
  */
 final class StagedUpload
 {
+    /** The folder every staged upload lands in (the forms' FileUpload ->directory()); nothing outside it is ever read or deleted. */
+    public const DIRECTORY = 'tmp-uploads';
+
     public static function disk(): string
     {
         return (string) config('peopleos.storage.staging_disk', 'local');
@@ -29,6 +32,7 @@ final class StagedUpload
      */
     public static function toUploadedFile(string $path): UploadedFile
     {
+        self::assertStaged($path);
         $disk = self::storage();
         $tmp = tempnam(sys_get_temp_dir(), 'peopleos-upload-');
         $in = $disk->readStream($path) ?: throw new \RuntimeException('The uploaded file is no longer available.');
@@ -43,9 +47,21 @@ final class StagedUpload
     /** Remove the staged object and any temporary local copy. */
     public static function discard(string $path, ?UploadedFile $copy = null): void
     {
+        self::assertStaged($path);
         self::storage()->delete($path);
         if ($copy !== null && is_file($copy->getPathname())) {
             @unlink($copy->getPathname());
+        }
+    }
+
+    /**
+     * QA audit 2026-11-12: the path comes from a form field, which the browser can set to any stored file (another
+     * organisation's report, someone's attachment). Only a file in the staging folder is a staged upload.
+     */
+    private static function assertStaged(string $path): void
+    {
+        if (! str_starts_with($path, self::DIRECTORY.'/') || str_contains($path, '..')) {
+            throw new \RuntimeException('The uploaded file is no longer available.');
         }
     }
 }

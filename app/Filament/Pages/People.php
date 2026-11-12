@@ -143,9 +143,11 @@ class People extends Page
     /**
      * The people shown, grouped when a grouping is chosen.
      *
+     * For the Blade template only. QA audit 2026-11-12: not public — Livewire lets the browser call any public method and returns its result (whole records).
+     *
      * @return array<string, Collection<int, Employee>>
      */
-    public function grouped(): array
+    protected function grouped(): array
     {
         if ($this->group === null) {
             return ['' => $this->people];
@@ -221,7 +223,7 @@ class People extends Page
             // UX.16: a manager's own team first (integer ids only; the query itself is the viewer's PeopleVisibility query).
             ->when($team !== [], fn (Builder $q) => $q->orderByRaw('CASE WHEN employees.id IN ('.implode(',', array_map('intval', $team)).') THEN 0 ELSE 1 END'))
             ->orderBy('people.first_name')->orderBy('people.last_name')
-            ->select('employees.*')->limit($this->limit)->get();
+            ->select('employees.*')->limit(min(500, max(1, $this->limit)))->get();
     }
 
     #[Computed]

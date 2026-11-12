@@ -184,7 +184,10 @@ class SetupCentre extends Page implements HasSchemas
     /** HROne setup parity CA-1: a file setting is stored on the private documents disk (SettingFiles checks the bytes). */
     private static function fileField(array $setting): FileUpload
     {
+        // The form is filled with the file the setting holds (not a record's): that path, inside this organisation's
+        // settings folder, may come back unchanged; any other typed-in path is refused (SettingFiles re-checks it too).
         $field = FileUpload::make($setting['field'])->disk(SettingFiles::disk())->directory(fn () => app(SettingFiles::class)->directory())->visibility('private')
+            ->preventFilePathTampering(allowFilePathUsing: fn (string $file): bool => str_starts_with($file, app(SettingFiles::class)->directory().'/') && ! str_contains($file, '..'))
             ->maxSize((int) ($setting['max_kb'] ?? config('peopleos.documents.max_kb', 10240)))->downloadable(false)->previewable(false)
             ->hintAction(Action::make('open_'.$setting['field'])->label('Open the current file')->openUrlInNewTab()
                 ->url(fn () => app(SettingFiles::class)->url($setting['key']))->visible(fn () => app(SettingFiles::class)->url($setting['key']) !== null));

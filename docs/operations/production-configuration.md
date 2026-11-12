@@ -186,6 +186,7 @@ local and newer pages are missing.
    - Creates the first platform operator once, when `PEOPLEOS_BOOTSTRAP_OPERATOR_EMAIL` is set (§9a).
    - Provisions the first tenant once, when `PEOPLEOS_BOOTSTRAP_TENANT_NAME` is set (§9a).
    - In production it seeds nothing else: no demo data, no password. The showcase seeders still refuse production.
+     A demo organisation is a separate, deliberate step (§9b, `./deploy.sh --demo`).
    - `php artisan peopleos:sync-permissions` alone remains a valid step 5 on an upgrade.
 6. `php artisan optimize:clear --except=cache && php artisan optimize`
    - Rebuilds the config, route, event and view caches plus Filament's component cache (`filament:optimize`) and the
@@ -224,6 +225,26 @@ on the platform pages:
 - loading and verifying the billing statutory dataset;
 - verifying statutory rules;
 - retention policies (D-8);
-- demo data.
+- demo data (§9b: a separate seeder, never run by `db:seed`).
 
 The seeder prints these remaining steps at the end of its run.
+
+### 9b. Demo organisation (`DemoOrganisationSeeder`)
+
+To show PeopleOS working on a server, a fictional tenant, **Demo Group** (address `demo`), is filled through the domain
+services: organisation, two dozen people, attendance, leave, payroll, performance, learning, assets, help desk,
+knowledge, announcements, exits, expenses, recognition and notifications. It runs only when asked:
+
+```bash
+php artisan db:seed --class='Database\Seeders\Demo\DemoOrganisationSeeder' --force   # or ./deploy.sh --demo
+```
+
+- Idempotent: safe on every deploy; records people changed in the demo stay as they are.
+- Every account is on `demo.local` and shares `PEOPLEOS_DEMO_PASSWORD` (12+ characters; unset, each run generates one
+  and prints it). Each run sets every demo account to that password, so changing the value rotates them.
+- Production never mails a reserved, undeliverable domain (`SuppressUndeliverableMail`), so nothing bounces.
+- `peopleos:readiness` keeps the FAIL line "No demo or test sign-in accounts" while the demo can sign in, on purpose.
+- It refuses a tenant at the address `demo` that it did not create (`metadata.demo_organisation`).
+- It creates no platform operator.
+
+Sign-ins and the full command list: [deploy-commands.md](deploy-commands.md).

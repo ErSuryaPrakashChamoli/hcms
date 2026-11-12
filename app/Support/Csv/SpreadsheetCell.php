@@ -16,6 +16,15 @@ final class SpreadsheetCell
     }
 
     /**
+     * The reverse of guard(), for a file that comes back to be imported (an export edited and uploaded again): the
+     * apostrophe guard() added in front of = + - @ is dropped, so the value is read exactly as it was exported.
+     */
+    public static function unguard(string $text): string
+    {
+        return strlen($text) > 1 && $text[0] === "'" && in_array($text[1], ['=', '+', '-', '@'], true) ? substr($text, 1) : $text;
+    }
+
+    /**
      * A row for fputcsv / League\Csv: text values guarded, everything else (numbers, null) as it is.
      *
      * @param  array<int|string, mixed>  $values

@@ -28,6 +28,7 @@ use App\Domain\People\Actions\UpdatePersonAction;
 use App\Domain\People\Services\PersonMatcher;
 use App\Domain\People\Support\PhoneNumbers;
 use App\Domain\Platform\Services\FeatureFlags;
+use App\Support\Csv\SpreadsheetCell;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -167,7 +168,8 @@ final class EmployeeImports
                 if ($count > $max) {
                     throw new RuntimeException("The file has more than {$max} rows; split it.");
                 }
-                EmployeeImportRow::create(['employee_import_id' => $import->getKey(), 'row_number' => $count, 'data' => array_map(fn ($v) => is_string($v) ? trim($v) : $v, $record)]);
+                // QA audit 2026-11-12: export() guards formula-looking text with an apostrophe; an edited export reads back as exported.
+                EmployeeImportRow::create(['employee_import_id' => $import->getKey(), 'row_number' => $count, 'data' => array_map(fn ($v) => is_string($v) ? SpreadsheetCell::unguard(trim($v)) : $v, $record)]);
             }
 
             $import->update(['headers' => $headers, 'row_count' => $count, 'mapping' => $import->mapping ?: $this->suggestMapping($headers), 'status' => 'inspected']);
@@ -288,7 +290,9 @@ final class EmployeeImports
         $csv->insertOne(array_column(self::FIELDS, 0));
         $count = 0;
         foreach ($employees->with(['person', 'currentPosition', 'currentManager.manager'])->lazyById(500) as $employee) {
-            $csv->insertOne(array_map(function (string $field) use ($employee, $codes, $value) {
+            // QA audit 2026-11-12: names, e-mails and phones are typed by people themselves; a value a spreadsheet would run
+            // as a formula is written as text (the import reads it back unchanged: SpreadsheetCell::unguard()).
+            $csv->insertOne(SpreadsheetCell::row(array_map(function (string $field) use ($employee, $codes, $value) {
                 [$group, $key] = str_contains($field, '.') ? explode('.', $field, 2) : [$field, ''];
 
                 return match ($group) {
@@ -297,7 +301,7 @@ final class EmployeeImports
                     'position' => $codes[$key][$employee->currentPosition?->getAttribute(self::ORGANISATION[$key][0])] ?? null,
                     default => $employee->currentManager?->manager?->employee_code,
                 };
-            }, array_keys(self::FIELDS)));
+            }, array_keys(self::FIELDS))));
             $count++;
         }
 

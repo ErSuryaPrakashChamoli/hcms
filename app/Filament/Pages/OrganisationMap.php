@@ -154,8 +154,13 @@ class OrganisationMap extends Page
         return $this->children[$id] ?? [];
     }
 
-    /** @return array<int, Employee> */
-    public function nodes(array $ids): array
+    /**
+     * The map's cards, for its Blade template only. QA audit 2026-11-12: not public — Livewire lets the browser call any public method and returns its result (full
+     * employee records of anyone, past the map's own visibility rules).
+     *
+     * @return array<int, Employee>
+     */
+    protected function nodes(array $ids): array
     {
         return Employee::query()->with(['person', 'currentPosition.designation', 'currentPosition.department'])->whereKey($ids)->get()->keyBy('id')->all();
     }

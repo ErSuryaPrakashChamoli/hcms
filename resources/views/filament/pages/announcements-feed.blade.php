@@ -3,7 +3,7 @@
         @php($a = $item['announcement'])
         @php($read = $item['read'])
         <x-filament::section :heading="$a->title" :description="config('peopleos.communication.types.' . $a->type) . ' · ' . ($a->publish_at?->diffForHumans() ?? '') . ($a->is_pinned ? ' · pinned' : '') . ($read ? '' : ' · unread')" collapsible :collapsed="(bool) $read">
-            <div class="prose prose-sm max-w-none dark:prose-invert">{!! \Illuminate\Support\Str::markdown($a->body) !!}</div>
+            <div class="prose prose-sm max-w-none dark:prose-invert">{!! \Illuminate\Support\Str::markdown($a->body, ['html_input' => 'escape', 'allow_unsafe_links' => false]) !!}</div>
             @if ($a->article_id)
                 <div class="mt-3"><x-filament::link :href="\App\Filament\Resources\Articles\ArticleResource::getUrl('view', ['record' => $a->article_id])" size="sm">Read the full article</x-filament::link></div>
             @endif

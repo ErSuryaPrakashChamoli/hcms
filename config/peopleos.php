@@ -919,6 +919,14 @@ return [
         'password' => env('PEOPLEOS_SEED_PASSWORD'),
     ],
     /*
+    | The fictional demo organisation (Database\Seeders\Demo\DemoOrganisationSeeder), seeded on a server only when someone
+    | runs that class (deploy.sh --demo). Every demo account (demo.local) gets this password, 12+ characters; unset, each
+    | run generates one and prints it once.
+    */
+    'demo' => [
+        'password' => env('PEOPLEOS_DEMO_PASSWORD'),
+    ],
+    /*
     | ProductionSeeder (`php artisan db:seed --force`): the first platform operator and, optionally, the first tenant,
     | each created once and never changed afterwards. No password exists here: the operator receives a password-reset
     | link and enrols MFA at the first sign-in; the tenant's administrator receives an invitation. Leave empty to skip.

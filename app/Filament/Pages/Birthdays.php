@@ -215,8 +215,11 @@ class Birthdays extends Page
         return $this->kind === 'birthday' || $this->me === null ? collect() : $this->anniversaries()->wishesFor($this->kind, $this->me, $this->birthdays()->today()->year);
     }
 
-    /** "Mon 3 Nov · 3 years" (work anniversaries carry the years completed that day); $when: today | next | month. */
-    public function anniversaryLine(Employee $employee, string $when = 'today'): string
+    /**
+     * "Mon 3 Nov · 3 years" (work anniversaries carry the years completed that day); $when: today | next | month. For the
+     * Blade template only: QA audit 2026-11-12: not public — Livewire lets the browser call any public method and returns its result, and would date anyone's anniversary or birthday, shared or not.
+     */
+    protected function anniversaryLine(Employee $employee, string $when = 'today'): string
     {
         $today = $this->birthdays()->today();
         $date = match ($when) {
@@ -238,12 +241,12 @@ class Birthdays extends Page
         return (int) $employee->user_id !== (int) auth()->id() && ! in_array($employee->id, $this->anniversariesWished, true);
     }
 
-    public function dateOf(Employee $employee): string
+    protected function dateOf(Employee $employee): string
     {
         return BirthdayService::dateIn($employee->person->birthday_key, $this->year)->format('D j M');
     }
 
-    public function nextOf(Employee $employee): string
+    protected function nextOf(Employee $employee): string
     {
         $next = BirthdayService::next($employee->person->birthday_key, $this->birthdays()->today());
         $days = (int) $this->birthdays()->today()->diffInDays($next);

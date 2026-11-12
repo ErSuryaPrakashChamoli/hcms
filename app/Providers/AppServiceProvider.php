@@ -402,7 +402,9 @@ use App\Domain\Workforce\Policies\WorkforcePlanningPolicy;
 use App\Domain\Workforce\Services\PositionSeats;
 use App\Support\Http\DnsHostResolver;
 use App\Support\Http\HostResolver;
+use App\Support\Observability\SuppressUndeliverableMail;
 use App\Support\Tenancy\TenantContext;
+use Filament\Forms\Components\FileUpload;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -414,6 +416,7 @@ use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Log\Context\Repository as ContextRepository;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Carbon;
@@ -527,6 +530,10 @@ class AppServiceProvider extends ServiceProvider
         $this->propagateTenantToQueuedJobs();
         $this->registerObservability();
         $this->trustConfiguredProxies();
+        // QA audit 2026-11-12: a file field's value is a path the browser can set ($wire.set(...)). Only a file uploaded
+        // in that form, or the one its record already holds, may reach the code that copies, serves or deletes it —
+        // Filament's own check is off by default. A form filled from elsewhere allows its own folder (SetupCentre).
+        FileUpload::configureUsing(fn (FileUpload $upload) => $upload->preventFilePathTampering());
 
         // Phase 11: the salary models moved from Payroll to Compensation. Polymorphic references stored
         // before the move (timeline sources, configuration changes) keep resolving; new rows use the
@@ -541,6 +548,8 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         Event::subscribe(RecordAuthenticationEvents::class);
+        // Production never mails a reserved, undeliverable domain (the demo organisation's demo.local accounts).
+        Event::listen(MessageSending::class, SuppressUndeliverableMail::class);
         Event::subscribe(WorkflowTrigger::class);
         Event::subscribe(NotificationEventBridge::class);
         Event::subscribe(WebhookEventBridge::class);
