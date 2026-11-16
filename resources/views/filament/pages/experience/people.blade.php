@@ -94,17 +94,18 @@
                             <h2 class="pos-sec-title mb-2">{{ $groupLabel }}<span class="pos-sec-count">{{ $members->count() }}</span></h2>
                         @endif
                         @if ($display === 'list')
-                            {{-- UX.17: under 640 px each row reads as a card (name and status, role, department · location); no sideways scroll --}}
+                            {{-- UX.17: under 640 px each row reads as a card (name and status, role, department · location); no sideways scroll. The employee ID column shows from 640 px up (the card's drawer shows it on phones). --}}
                             <div class="pos-panel overflow-x-auto">
                                 <table class="pos-table pos-table-cards">
-                                    <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col" class="hidden md:table-cell">Department</th><th scope="col" class="hidden lg:table-cell">Location</th><th scope="col" class="hidden lg:table-cell">Manager</th><th scope="col">Status</th></tr></thead>
+                                    <thead><tr><th scope="col" class="hidden sm:table-cell">Employee ID</th><th scope="col">Name</th><th scope="col">Role</th><th scope="col" class="hidden md:table-cell">Department</th><th scope="col" class="hidden lg:table-cell">Location</th><th scope="col" class="hidden lg:table-cell">Manager</th><th scope="col">Status</th></tr></thead>
                                     <tbody>
                                         @foreach ($members as $e)
                                             @php($p = $e->currentPosition)
                                             @php($m = $e->currentManager?->manager)
                                             <tr wire:key="pl-{{ $e->id }}">
-                                                <td><x-pos.person :id="$e->id" :name="$e->display_name" /></td>
-                                                <td class="pos-secondary">{{ $p?->designation?->name ?? '—' }}</td>
+                                                <td class="hidden sm:table-cell pos-secondary pos-num whitespace-nowrap">{{ $e->employee_code ?? '—' }}</td>
+                                                <td class="pos-card-lead"><x-pos.person :id="$e->id" :name="$e->display_name" /></td>
+                                                <td class="pos-card-sub pos-secondary">{{ $p?->designation?->name ?? '—' }}</td>
                                                 <td class="hidden md:table-cell pos-secondary pos-card-meta">{{ $p?->department?->name ?? '—' }}</td>
                                                 <td class="hidden lg:table-cell pos-secondary pos-card-meta">{{ $p?->location?->name ?? '—' }}</td>
                                                 <td class="hidden lg:table-cell">@if ($m)<x-pos.person :id="$m->id" :name="$m->person?->display_name" :avatar="false" />@else<span class="pos-muted">—</span>@endif</td>

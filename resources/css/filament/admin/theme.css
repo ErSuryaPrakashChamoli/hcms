@@ -216,7 +216,9 @@
     --pos-fs-body: 14px;      --pos-lh-body: 21px;
     --pos-fs-lead: 16px;      --pos-lh-lead: 24px;
     --pos-fs-section: 18px;   --pos-lh-section: 26px;
+    --pos-fs-glance: 20px;    --pos-lh-glance: 26px;   /* At-a-glance figures (§P masthead) */
     --pos-fs-metric: 22px;    --pos-lh-metric: 28px;
+    --pos-fs-tile: 26px;      --pos-lh-tile: 32px;     /* Home signal-tile figures (§H2) */
     --pos-fs-title: 28px;     --pos-lh-title: 34px;
     --pos-fs-display: 36px;   --pos-lh-display: 42px;
     --pos-fw-regular: 400;
@@ -2568,9 +2570,9 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
     .pos-table-cards tr + tr { border-top: 1px solid var(--pos-border); }
     .pos-table-cards td { display: block; padding: 0; border: 0; }
     .pos-table-cards td.hidden:not(.pos-card-meta) { display: none; }
-    .pos-table-cards td:first-child { flex: 1 1 auto; min-width: 0; }
+    .pos-table-cards td.pos-card-lead { flex: 1 1 auto; min-width: 0; }
     .pos-table-cards td.pos-card-status { flex: none; margin-inline-start: auto; }
-    .pos-table-cards td:nth-child(2) { flex: 1 1 100%; font-size: var(--pos-fs-meta); }
+    .pos-table-cards td.pos-card-sub { flex: 1 1 100%; font-size: var(--pos-fs-meta); }
     .pos-table-cards td.pos-card-meta { flex: none; font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
     .pos-table-cards td.pos-card-meta + td.pos-card-meta::before { content: '·'; margin-inline-end: var(--pos-space-2); }
 }
@@ -2850,7 +2852,7 @@ html[data-pos360-view]:not([data-pos360-view='records']) .fi-resource-employees.
 .pos-home-tile[data-hue='coral'] { --pos-home-hue: var(--pos-hue-coral); --pos-home-hue-bg: var(--pos-hue-coral-bg); }
 .pos-home-tile-icon { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: var(--pos-space-3); border-radius: var(--pos-radius-md);
     color: var(--pos-home-hue); background: var(--pos-home-hue-bg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-home-hue) 16%, transparent); }
-.pos-home-tile-value { font-size: 26px; line-height: 32px; font-weight: var(--pos-fw-semibold); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--pos-text); overflow-wrap: anywhere; }
+.pos-home-tile-value { font-size: var(--pos-fs-tile); line-height: var(--pos-lh-tile); font-weight: var(--pos-fw-semibold); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--pos-text); overflow-wrap: anywhere; }
 .pos-home-tile-label { font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
 .pos-home-tile-note { margin-top: 2px; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
 .pos-home-tile :is(.pos-home-tile-value, .pos-home-tile-note)[data-meaning='bad'] { color: var(--pos-danger); }
@@ -4328,7 +4330,7 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 .pos-glance-body { display: grid; min-width: 0; }
 .pos-glance-label { font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-medium); color: var(--pos-hero-text); }
 .pos-glance-meta { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-hero-text-muted); }
-.pos-glance-value { min-width: 2ch; font-size: 20px; line-height: 26px; font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums;
+.pos-glance-value { min-width: 2ch; font-size: var(--pos-fs-glance); line-height: var(--pos-lh-glance); font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em; text-align: end; color: var(--pos-hero-text); }
 .pos-glance-row:is([data-tone='warning'], [data-tone='danger']) .pos-glance-value { color: var(--pos-glance-tone); }
 
@@ -4472,3 +4474,284 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
     .pos-glance-icon { width: 32px; height: 32px; }
     .pos-glance-meta { display: none; }
 }
+
+/* ------------------------------------------------------------------ Q. Sign-in page (branded sign-in, HROne-style)
+   App\Filament\Auth\Login + resources/views/filament/auth/login.blade.php. A split page: the art on the left (laptops and
+   up), the form on the right. A browser that remembers an organisation shows its sign-in picture or logo there; any other
+   shows the PeopleOS hero. Filament's centred card becomes the full window (Login::getMaxContentWidth → .pos-signin-main). */
+.fi-simple-main.pos-signin-main {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    align-self: stretch;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.fi-simple-main-ctn:has(> .pos-signin-main) { align-items: stretch; }
+
+.pos-signin {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 100dvh;
+    background: var(--pos-surface);
+}
+.pos-signin-art { display: none; }
+
+/* The form column: the organisation's logo, the heading, the form and the footer on one left edge */
+.pos-signin-form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: var(--pos-space-6);
+    padding: var(--pos-space-12) var(--pos-space-6);
+}
+.pos-signin-form > :is(.fi-simple-page, .pos-signin-org, .pos-signin-foot) { width: 100%; max-width: 400px; }
+.pos-signin .fi-simple-header { align-items: flex-start; }
+.pos-signin .fi-simple-header .fi-logo { margin-bottom: var(--pos-space-8); }
+.pos-signin .fi-simple-header-heading {
+    text-align: start;
+    font-family: var(--font-display);
+    font-weight: var(--pos-fw-regular);
+    font-size: var(--pos-fs-display);
+    line-height: var(--pos-lh-display);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    color: var(--pos-text);
+}
+.pos-signin .fi-simple-header-subheading { text-align: start; color: var(--pos-text-muted); }
+
+.pos-signin-org-logo { display: block; height: 56px; width: auto; max-width: 240px; object-fit: contain; object-position: left center; }
+.pos-signin-org-monogram,
+.pos-signin-stage-monogram {
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--pos-radius-lg);
+    background: var(--primary-600);
+    color: #ffffff;
+    font-weight: var(--pos-fw-semibold);
+    letter-spacing: 0.02em;
+}
+.pos-signin-org-monogram { width: 56px; height: 56px; font-size: 20px; }
+
+.pos-signin-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pos-space-2) var(--pos-space-4);
+    padding-top: var(--pos-space-4);
+    border-top: 1px solid var(--pos-border);
+    font-size: var(--pos-fs-meta);
+    line-height: var(--pos-lh-meta);
+    color: var(--pos-text-muted);
+}
+.pos-signin-switch {
+    min-height: 24px;
+    color: var(--primary-600);
+    font-weight: var(--pos-fw-medium);
+    text-align: start;
+    cursor: pointer;
+}
+.pos-signin-switch:hover { text-decoration: underline; text-underline-offset: 3px; }
+.dark .pos-signin-switch { color: var(--primary-400); }
+.pos-signin-powered strong { font-weight: var(--pos-fw-semibold); color: var(--pos-text-secondary); }
+
+@media (min-width: 1024px) {
+    .pos-signin { grid-template-columns: minmax(0, 1.15fr) minmax(460px, 1fr); }
+    .pos-signin-art { position: relative; isolation: isolate; overflow: hidden; display: flex; }
+    /* The PeopleOS page already names PeopleOS in the art: the form drops its own mark */
+    .pos-signin.is-peopleos .fi-simple-header .fi-logo { display: none; }
+}
+
+/* The PeopleOS hero: the Home hero's ink-to-iris field, its orbit art and the promise in the display serif */
+.pos-signin-art.is-peopleos {
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--pos-space-10);
+    padding: clamp(40px, 5vw, 72px);
+    color: var(--pos-hero-text);
+    background:
+        radial-gradient(60% 70% at 88% 8%, var(--pos-hero-glow), transparent 70%),
+        radial-gradient(50% 60% at 0% 100%, var(--pos-hero-warm), transparent 70%),
+        linear-gradient(150deg, var(--pos-hero-ink) 0%, var(--pos-hero-mid) 58%, var(--pos-hero-iris) 100%);
+}
+.pos-signin-art.is-peopleos::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: radial-gradient(var(--pos-hero-line) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(160deg, transparent 25%, #000 90%);
+}
+.pos-signin-art .pos-home-hero-art {
+    top: -8%;
+    inset-inline-end: -22%;
+    width: min(82%, 640px);
+    height: auto;
+    aspect-ratio: 1;
+    transform: none;
+    mask-image: radial-gradient(closest-side, #000 70%, transparent);
+}
+.pos-signin-art-brand { display: flex; align-items: center; gap: var(--pos-space-3); }
+.pos-signin-art-brand svg { width: 36px; height: 36px; }
+.pos-signin-art-brand span { font-family: var(--font-display); font-size: 26px; line-height: 1; letter-spacing: -0.01em; }
+.pos-signin-art-brand b { font-weight: inherit; color: var(--pos-hero-node-iris); }
+.pos-signin-art-copy { max-width: 30rem; }
+.pos-signin-art-title {
+    font-family: var(--font-display);
+    font-size: clamp(44px, 4.6vw, 68px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+.pos-signin-art-title em { font-style: italic; color: var(--pos-rail-gold); }
+.pos-signin-art-lead {
+    margin-top: var(--pos-space-5);
+    max-width: 26rem;
+    font-size: var(--pos-fs-lead);
+    line-height: var(--pos-lh-lead);
+    color: var(--pos-hero-text-secondary);
+}
+
+/* The organisation's sign-in picture fills the half */
+.pos-signin-art.is-picture { background: var(--pos-surface-sunken); }
+.pos-signin-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* No picture: the organisation's logo, large, on a soft wash of its colour */
+.pos-signin-art.is-logo {
+    align-items: center;
+    justify-content: center;
+    padding: var(--pos-space-16);
+    border-inline-end: 1px solid var(--pos-border);
+    background:
+        radial-gradient(65% 55% at 50% 45%, color-mix(in oklab, var(--primary-500) 12%, transparent), transparent 75%),
+        var(--pos-surface-muted);
+}
+/* Logos are drawn for white paper: the large one sits on a white plate (the small one too, in the dark theme) */
+.pos-signin-stage-logo {
+    max-width: min(72%, 560px);
+    max-height: 62%;
+    object-fit: contain;
+    padding: var(--pos-space-8);
+    border-radius: var(--pos-radius-xl);
+    background: #ffffff;
+    box-shadow: var(--pos-shadow-hero);
+}
+.dark .pos-signin-org-logo { padding: var(--pos-space-1) var(--pos-space-2); border-radius: var(--pos-radius-md); background: #ffffff; }
+.pos-signin-stage-monogram { width: 168px; height: 168px; border-radius: 40px; font-size: 64px; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .pos-signin-form > * { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) backwards; }
+    .pos-signin-art-copy { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) 80ms backwards; }
+}
+@media (max-width: 767px) {
+    .pos-signin-form { justify-content: flex-start; padding: var(--pos-space-10) var(--pos-space-4) var(--pos-space-8); }
+    .pos-signin .fi-simple-header-heading { font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); }
+}
+
+/* ------------------------------------------------------------------ R. Sign-in page: platform notice, help and app links
+   Platform → Public website → Sign-in page (Website::signIn()), in resources/views/filament/auth/login.blade.php: a notice
+   above the form (maintenance, a change of address), then a help link, a way back to the public website and the
+   mobile app links under it. Same 400px column as the form (§Q). */
+.pos-signin-form > :is(.pos-signin-notice, .pos-signin-extras) { width: 100%; max-width: 400px; }
+.pos-signin-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--pos-space-3);
+    padding: var(--pos-space-3) var(--pos-space-4);
+    border-radius: var(--pos-radius-lg);
+    background: var(--pos-info-soft);
+    color: var(--pos-text);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pos-info) 22%, transparent);
+    font-size: var(--pos-fs-meta);
+    line-height: var(--pos-lh-meta);
+}
+.pos-signin-notice > svg { color: var(--pos-info); margin-top: -1px; }
+.pos-signin-notice[data-tone='warning'] { background: var(--pos-warning-soft); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--pos-warning) 26%, transparent); }
+.pos-signin-notice[data-tone='warning'] > svg { color: var(--pos-warning); }
+.pos-signin-extras { display: grid; gap: var(--pos-space-4); }
+.pos-signin-help { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-2) var(--pos-space-4); margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-signin-help a { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--primary-600); font-weight: var(--pos-fw-medium); }
+.pos-signin-help a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.dark .pos-signin-help a { color: var(--primary-400); }
+.pos-signin-help .pos-signin-site { color: var(--pos-text-muted); }
+.pos-signin-apps { display: grid; gap: var(--pos-space-2); padding-top: var(--pos-space-4); border-top: 1px solid var(--pos-border); }
+.pos-signin-apps-label { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); text-align: center; }
+.pos-signin-apps-row { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--pos-space-2); }
+.pos-signin-app {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pos-space-2);
+    min-height: 44px;
+    padding: 6px 14px 6px 10px;
+    border-radius: var(--pos-radius-lg);
+    background: #12142c;
+    color: #ffffff;
+    font-weight: var(--pos-fw-semibold);
+    font-size: 14px;
+    line-height: 1.1;
+}
+.pos-signin-app small { display: block; font-size: 10px; font-weight: var(--pos-fw-regular); opacity: 0.8; }
+.pos-signin-app:hover { background: #262170; }
+.dark .pos-signin-app { background: var(--pos-surface-muted); box-shadow: inset 0 0 0 1px var(--pos-border); }
+
+/* ------------------------------------------------------------------ S. Platform → Public website (the site editor)
+   App\Filament\Pages\PlatformWebsitePage: areas down the left, the open area's panel beside them (the browse layout). */
+.pos-site-editor { display: grid; gap: var(--pos-space-4); margin-top: var(--pos-space-4); }
+@media (min-width: 1024px) { .pos-site-editor { grid-template-columns: 280px minmax(0, 1fr); align-items: start; } }
+.pos-site-areas { display: grid; gap: 2px; }
+@media (min-width: 1024px) { .pos-site-areas { position: sticky; top: calc(var(--pos-topbar-h, 64px) + 16px); } }
+.pos-site-area {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--pos-space-3);
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--pos-radius-lg);
+    text-align: start;
+    color: var(--pos-text-secondary);
+    transition: background var(--pos-dur-1) var(--pos-ease);
+}
+.pos-site-area:hover { background: var(--pos-surface-muted); }
+.pos-site-area[aria-current='true'] { background: var(--pos-primary-soft); color: var(--pos-primary); }
+.pos-site-area > svg { margin-top: 1px; }
+.pos-site-area-label { display: flex; align-items: center; gap: 6px; font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-site-area[aria-current='true'] .pos-site-area-label { color: var(--pos-primary); }
+.pos-site-area-sub { display: block; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-site-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pos-warning); box-shadow: 0 0 0 3px var(--pos-warning-soft); }
+.pos-site-panel { padding: 0; overflow: hidden; }
+.pos-site-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pos-space-3); padding: var(--pos-space-4) var(--pos-space-5, 20px); border-bottom: 1px solid var(--pos-border); }
+.pos-site-panel-body { padding: var(--pos-space-4) var(--pos-space-5, 20px) var(--pos-space-5, 20px); }
+.pos-site-rows { display: grid; }
+.pos-site-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-3); padding: 12px 0; border-bottom: 1px solid var(--pos-border); }
+.pos-site-row:last-child { border-bottom: 0; }
+.pos-site-row-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-site-row-meta { margin: 2px 0 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); overflow-wrap: anywhere; }
+.pos-site-row-links { margin: 4px 0 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-site-note { margin: 0 0 var(--pos-space-3); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-site-icon-link { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--pos-radius-md); color: var(--pos-text-muted); }
+.pos-site-icon-link:hover { background: var(--pos-surface-muted); color: var(--pos-primary); }
+.pos-site-facts { display: grid; gap: var(--pos-space-3); margin: 0 0 var(--pos-space-3); }
+@media (min-width: 768px) { .pos-site-facts { grid-template-columns: 180px minmax(0, 1fr); } .pos-site-facts > div { display: contents; } }
+.pos-site-facts dt { font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
+.pos-site-facts dd { margin: 0; color: var(--pos-text); }
+/* The announcement and sign-in previews: miniatures in the website's own ink */
+.pos-site-mock-announce { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-bottom: var(--pos-space-3); padding: 10px 16px; border-radius: var(--pos-radius-lg); background: #0e1130; color: rgb(255 255 255 / 0.86); font-size: 13px; }
+.pos-site-mock-announce[data-off] { opacity: 0.45; }
+.pos-site-mock-badge { padding: 2px 8px; border-radius: 999px; background: #e2c48c; color: #0e1130; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.pos-site-mock-link { color: #ffffff; font-weight: 600; }
+.pos-site-signin { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); margin-bottom: var(--pos-space-3); border-radius: var(--pos-radius-lg); overflow: hidden; box-shadow: inset 0 0 0 1px var(--pos-border); min-height: 220px; }
+.pos-site-signin-art { display: grid; align-content: end; gap: 8px; padding: 20px; color: #ffffff; background: radial-gradient(60% 70% at 88% 8%, var(--pos-hero-glow), transparent 70%), linear-gradient(150deg, var(--pos-hero-ink), var(--pos-hero-mid) 58%, var(--pos-hero-iris)); }
+.pos-site-signin-title { margin: 0; font-family: var(--font-display); font-size: 26px; line-height: 1.1; }
+.pos-site-signin-title em { color: #e2c48c; }
+.pos-site-signin-lead { margin: 0; font-size: 12.5px; color: rgb(255 255 255 / 0.78); }
+.pos-site-signin-form { display: grid; align-content: center; gap: 8px; padding: 20px; background: var(--pos-surface); }
+.pos-site-signin-field { height: 30px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-site-signin-button { height: 30px; border-radius: 8px; background: var(--pos-primary); opacity: 0.85; }
+.pos-site-signin-notice { margin: 0; padding: 6px 10px; border-radius: 8px; font-size: 12px; background: var(--pos-info-soft); }
+.pos-site-signin-notice[data-tone='warning'] { background: var(--pos-warning-soft); }
+@media (max-width: 640px) { .pos-site-signin { grid-template-columns: minmax(0, 1fr); } }

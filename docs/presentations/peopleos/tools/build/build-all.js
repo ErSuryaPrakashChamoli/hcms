@@ -14,11 +14,13 @@ const lib = require('./lib');
     const reportPath = path.join(__dirname, '../build-report.json');
     const usage = fs.existsSync(usagePath) ? JSON.parse(fs.readFileSync(usagePath, 'utf8')) : {};
     const report = fs.existsSync(reportPath) ? JSON.parse(fs.readFileSync(reportPath, 'utf8')) : {};
+    const built = [];
     for (const f of mods) {
         lib.WARN.length = 0;
         const deck = await require(path.join(dir, f))(lib);
         const r = await deck.save();
         const key = String(deck.meta.num).padStart(2, '0');
+        built.push(key);
         usage[key] = r.shots.sort();
         report[key] = { file: deck.meta.file, title: deck.meta.title, slides: r.slides, screenshots: r.shots.length, warnings: [...lib.WARN], built_at: new Date().toISOString() };
         console.log(`${deck.meta.file}: ${r.slides} slides, ${r.shots.length} screenshots${lib.WARN.length ? `, ${lib.WARN.length} warnings` : ''}`);
@@ -26,4 +28,10 @@ const lib = require('./lib');
     }
     fs.writeFileSync(usagePath, JSON.stringify(usage, null, 2));
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+    // Navigable (modular) decks: re-read the written files and validate every internal link before calling it built.
+    const navigable = built.filter((k) => fs.existsSync(path.join(__dirname, '../nav-maps', `${k}.json`)));
+    if (navigable.length) {
+        const r = require('child_process').spawnSync(process.execPath, [path.join(__dirname, 'check-nav.js'), ...navigable], { stdio: 'inherit' });
+        if (r.status !== 0) { console.error('Navigation check failed: see tools/nav-check-*.json'); process.exit(1); }
+    }
 })().catch((e) => { console.error(e); process.exit(1); });

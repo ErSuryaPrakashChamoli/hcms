@@ -122,8 +122,10 @@ final class TaxRules
             throw new RuntimeException('A rule code is capital letters, digits, dot, colon, dash or underscore.');
         }
 
+        // QA audit 2026-11-12: $details is passed in for the statutory notes (it was missing here, so every rule — the
+        // shipped dataset's legal basis and verification record included — was stored without its notes).
         return DB::transaction(function () use ($regime, $jurisdiction, $category, $from, $to, $normalised, $rounding, $classification, $conditions, $basis, $text,
-            $sourceDate, $ruleCode, $attributes, $actor) {
+            $sourceDate, $ruleCode, $attributes, $actor, $details) {
             $subdivision = $jurisdiction->subdivision ?? '';
             $locality = $jurisdiction->locality ?? '';
             $version = (int) TaxRule::query()->where(['regime' => $regime, 'country' => $jurisdiction->country, 'subdivision' => $subdivision, 'locality' => $locality,

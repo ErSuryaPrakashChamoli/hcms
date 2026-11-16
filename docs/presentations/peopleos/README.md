@@ -23,6 +23,7 @@ PeopleOS is **not yet generally available**: the release gate is NO-GO (10 of 14
 | 10-PeopleOS-HCM-System-Architecture-and-Workflows.pptx | 43 | 10 | 1.4 MB |
 | 11-PeopleOS-Implementation-UAT-and-Go-Live-Checklist.pptx | 46 | 20 | 2.7 MB |
 | 12-PeopleOS-Reporting-and-Analytics-Training.pptx | 38 | 29 | 3.3 MB |
+| 13-PeopleOS-Organisation-Administrator-Training.pptx (added 16 Nov 2026) | 227 | 220 (222 placements) | 22.4 MB |
 
 - **684 slides**; every slide has speaker notes; all 12 files pass the pptx validator and open in PowerPoint-compatible tools.
 - **481 genuine screenshots** in `screenshots/` (unannotated originals; a few earlier full-size originals are kept in
@@ -31,7 +32,7 @@ PeopleOS is **not yet generally available**: the release gate is NO-GO (10 of 14
 - **86 workflows** in `FEATURE-TO-PRESENTATION-MATRIX.md`; all but one process stage have screenshot evidence in a deck.
 - **Two review passes** of every slide; results in `QA-REPORT.md`.
 
-## The 12 decks
+## The decks
 
 | # | File | For | What it teaches |
 |---|---|---|---|
@@ -47,6 +48,38 @@ PeopleOS is **not yet generally available**: the release gate is NO-GO (10 of 14
 | 10 | `10-PeopleOS-HCM-System-Architecture-and-Workflows.pptx` | Architects and engineers | Layers, tenancy, access, effective dating, audit, workflows, payroll safeguards, integration boundaries |
 | 11 | `11-PeopleOS-Implementation-UAT-and-Go-Live-Checklist.pptx` | Customer UAT lead, implementation team | Environment, data, configuration and role testing, UAT cases with reference runs, defects, go-live criteria |
 | 12 | `12-PeopleOS-Reporting-and-Analytics-Training.pptx` | HR analysts, executives, auditors | Dashboards, analytics pages, reports and export, audit and operational reports, known gaps |
+| 13 | `13-PeopleOS-Organisation-Administrator-Training.pptx` | The customer's organisation administrators (Account Owner, Tenant Super Admin, Tenant HR Admin) | Set-up and running of an organisation in 13 modules and five learning groups, with clickable navigation (see below) |
+
+## Deck 13: the navigable design system
+
+Deck 13 joins the set-up screens of deck 04 with the operations screens of deck 03 and presents them as a modular
+course built inside PowerPoint. It reuses the 21 October 2026 captures; no new screenshots were taken.
+
+- **Navigation bar** on every instructional slide: the PeopleOS mark, a **Contents** (Home) button, the current module
+  highlighted in its colour, the current submodule, module progress (slide n of m and a bar), and Previous / Next.
+  Module dividers use a simplified bar; the cover has none.
+- **Clickable contents:** the main contents has one card per module in five learning groups. Each module has a
+  divider, a submodule contents slide (rows link to each submodule's first slide), and a summary with Next module,
+  Module contents, Main contents and related-module links. Five set-up and exit modules end with an administrator checklist.
+- **Footer** on every slide with chrome: PeopleOS HCM · course name · module identifier · submodule progress · slide
+  number (a live field) in the module colour.
+- **Layouts** (in `tools/build/modular.js`, on top of the shared ones in `lib.js`): module introduction, submodule
+  contents, navigation instructions (`navigate`), step-by-step procedure (`procedure`), annotated screenshot (`shot`,
+  `wide`), form fields (`fields`), actions and buttons (`actions`), workflow diagram (`purpose`), process flow
+  (`diagram`), calculation example (`calculation`), comparison (`table`, `compare`), warning (`warning`),
+  troubleshooting (`troubleshoot`), administrator checklist (`checklist`) and module summary (`summary`).
+- **One place for colours and geometry:** `tools/build/design.js`. Brand values come from the application
+  (`resources/css/filament/admin/theme.css`, `public/favicon.svg`, the Heroicons the app renders and the rail's Home
+  icon). Eight module colours are the app's `--pos-hue-*` wayfinding hues; five are deck-only extensions at the same
+  depth. Every build fails if a module colour carries white text below 4.5:1.
+- **Stable slide keys, not slide numbers:** links are written against keys such as `toc`, `M05`, `M05.contents`,
+  `M05.5.2`, `M05.summary`, and resolved to slide numbers when the deck is built. Insert or move slides, rebuild, and
+  every link follows; a link to an unknown key fails the build. The resolved map is written to `tools/nav-maps/13.json`.
+- **Clickable areas** are transparent shapes laid over each button or card (named `Link · …`), so the whole area works
+  in slideshow mode and no text carries an underlined run-level hyperlink.
+- **Link check:** `node build/check-nav.js 13` re-reads the written .pptx and verifies every Home, Previous, Next,
+  contents card, submodule row, summary and related-module link, plus chrome placement, slide bounds and footers.
+  It writes `tools/nav-check-13.json` and exits non-zero on any failure. Run it after every rebuild.
 
 ## Supporting documents
 
@@ -108,6 +141,7 @@ node capture/00-operator-mfa.mjs && node capture/10-leave-flow.mjs && node captu
 
 # 3. Build
 node build/build-all.js          # all decks (or: node build/build-all.js 04 07)
+node build/check-nav.js          # deck 13 (also run by build-all): every internal link, chrome placement, footer
 node build/supporting.js         # checklists and UAT workbook
 node build/inventory.js          # SCREENSHOT-INVENTORY.md
 node build/matrix.js             # FEATURE-TO-PRESENTATION-MATRIX.md
@@ -125,5 +159,9 @@ already-used database may find records in a different state.
   update the accuracy register and the matrix.
 - When a release gate changes, update `tools/build/decks/common.js` (`statusDetailed`, `RELEASE_LINE` in `build/lib.js`)
   and rebuild every deck.
+- Deck 13: change module colours, chrome geometry or brand values only in `tools/build/design.js`; add slides inside
+  a module with `d.sub(id)` before the first slide of a submodule, and rebuild then run `build/check-nav.js 13`.
+  Its screenshots are the 21 October 2026 captures and predate the November navigation redesign of the application;
+  re-capture before using the deck with customers on the current release.
 - Contact details, prices, hosting region and service levels are not stated anywhere in the repository; the decks say
   "to be confirmed with the SaaS provider" rather than inventing them.

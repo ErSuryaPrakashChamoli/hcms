@@ -1,3 +1,0 @@
-# PeopleOS is a private HR platform: nothing here is for search engines (SaaS.11).
-User-agent: *
-Disallow: /

@@ -377,8 +377,11 @@ SaaS.11 additions (production assurance):
 117. **A release switch is never on in production without the owner's recorded authorisation**: registration and tenant
      deletion need their authorisation reference. Live payments, a demo seed password and HSTS under a year are refused
      outright (`ProductionConfigValidator::releaseGates`).
-118. **PeopleOS is never indexed**: every response carries `X-Robots-Tag` (`noindex, nofollow` by default), and
-     `robots.txt` disallows everything.
+118. **The workspace is never indexed**: every response carries `X-Robots-Tag` (`noindex, nofollow` by default), and
+     `robots.txt` (served by `SiteController::robots`, no static file) disallows everything. The one exception
+     (2026-11-16, public website): published site pages say `index, follow` only while a platform operator has turned
+     on "Allow search engines" for the website and the site is live; robots.txt then disallows every workspace path
+     and the draft preview always stays `noindex`.
 119. **Production readiness fails while any platform operator who can sign in has no MFA enrolled.**
 
 SaaS.12 additions (release programme):
@@ -398,6 +401,17 @@ SaaS.13 additions:
      offboarding tick reports it.
 125. **Production readiness fails while a demo or test account can sign in** (an account on a reserved domain: `.local`,
      `.test`, `example.*`).
+
+Public website additions (2026-11-16):
+
+126. **Visitors only ever see the published website**: operators edit one draft; site pages, menus, the footer and the
+     sign-in page's PeopleOS copy come from the published revision (`Website::published()`), and the draft is visible
+     only to platform operators through the preview (404 for everyone else).
+127. **Operator content cannot inject script into public pages**: every text is escaped, links pass `SiteLink::href`
+     (site paths, http(s), mailto, tel; anything else becomes `#`), Markdown is rendered with HTML escaped and unsafe
+     links dropped, block types, illustrations and icons come from fixed lists.
+128. **A site page never shadows a workspace route**: the page route is a fallback route, and `Website::assertSlugAllowed`
+     refuses addresses whose first part is used by any registered route or a public/ path.
 
 ### Phase 14 review of raw queries and scope bypasses
 

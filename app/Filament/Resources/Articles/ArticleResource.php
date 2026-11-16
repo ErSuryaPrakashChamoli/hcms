@@ -104,7 +104,7 @@ class ArticleResource extends Resource
             Section::make('Audience & acknowledgement')->columns(2)->schema([
                 Toggle::make('requires_acknowledgement')->label('Employees must acknowledge'),
                 Toggle::make('is_mandatory_reading')->label('Mandatory reading (shows in Needs Attention)'),
-                RuleConditionsSchema::repeater()->statePath('audience')->label('Audience (empty = everyone)')->columnSpanFull(),
+                RuleConditionsSchema::repeater()->statePath('audience')->label('Audience (empty = everyone)')->minItems(0)->defaultItems(0)->columnSpanFull(),
             ]),
             AuditReasonField::make()->visibleOn('edit'),
         ]);

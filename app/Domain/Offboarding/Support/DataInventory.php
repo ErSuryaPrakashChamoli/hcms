@@ -271,6 +271,9 @@ final class DataInventory
         'signup_applications',
         // The holiday library: platform holiday lists tenants copy from (a copied holiday is the tenant's own row in `holidays`).
         'holiday_library_lists', 'holiday_library_entries', 'country_regions',
+        // The public website (Platform → Public website): Markedge's marketing site revisions and the prospects' "talk to
+        // sales" enquiries. No tenant data; a tenant deletion never touches them.
+        'website_revisions', 'website_enquiries',
     ];
 
     /**

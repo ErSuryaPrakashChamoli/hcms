@@ -224,6 +224,8 @@ final class ProductionConfigValidator
         $this->require(blank(config('peopleos.seed.password')), 'PEOPLEOS_SEED_PASSWORD', 'insecure', 'A demo-seed password must not exist in production (demo data is never seeded there).');
         $this->require((int) config('peopleos.security.hsts_max_age', 0) >= 31_536_000, 'PEOPLEOS_HSTS_MAX_AGE', 'insecure', 'HTTPS responses must send Strict-Transport-Security for at least a year.');
         $this->advise(filled(config('peopleos.security.robots_tag')), 'PEOPLEOS_ROBOTS_TAG', 'Pages should carry X-Robots-Tag noindex: a private platform is never indexed.');
+        $this->advise(config('peopleos.sms.driver', 'log') !== 'log', 'PEOPLEOS_SMS_DRIVER',
+            'No SMS provider: one-time codes (the website contact form\'s mobile verification) are only written to the log, so visitors cannot verify their number. Set msg91 or twilio with its credentials.');
         // SaaS.12: a restore must never bring back a deleted tenant unnoticed; the register lives outside the database.
         $register = config('peopleos.offboarding.register_disk');
         $this->require(! config('peopleos.offboarding.deletion_enabled') || filled($register), 'PEOPLEOS_DELETION_REGISTER_DISK', 'missing',

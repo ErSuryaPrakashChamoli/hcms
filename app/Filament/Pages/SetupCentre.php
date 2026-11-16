@@ -4,9 +4,11 @@ namespace App\Filament\Pages;
 
 use App\Domain\Configuration\Services\SettingFiles;
 use App\Domain\Configuration\Services\SetupCatalogue;
+use App\Domain\Identity\Services\RememberedWorkspace;
 use App\Domain\Performance\Support\PerformanceLabels;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\FormWizard;
+use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
@@ -199,6 +201,16 @@ class SetupCentre extends Page implements HasSchemas
     protected function getHeaderActions(): array
     {
         return [
+            // Branded sign-in: the organisation's sign-in link, which shows its sign-in page from the first visit.
+            Action::make('signInLink')->label('Sign-in link')->icon(Heroicon::OutlinedLink)->color('gray')
+                ->visible(fn () => $this->module === 'core' && app(TenantContext::class)->current() !== null)
+                ->modalHeading('Your sign-in link')
+                ->modalDescription('Share it with your people, for example in the welcome e-mail. Opening it shows your logo, name, colour and sign-in picture on the sign-in page from the very first visit; after someone signs in, that browser remembers your organisation anyway. The link signs nobody in.')
+                ->schema([
+                    TextInput::make('link')->label('Link')->readOnly()->copyable(copyMessage: 'Link copied')
+                        ->default(fn () => RememberedWorkspace::signInLink(app(TenantContext::class)->current())),
+                ])
+                ->modalSubmitAction(false)->modalCancelActionLabel('Close'),
             Action::make('useOkrTerms')->label('Use OKR terms')->icon(Heroicon::OutlinedLanguage)->color('gray')
                 ->visible(fn () => $this->module === 'performance' && (auth()->user()?->can('settings.update') ?? false))
                 ->modalDescription('KRA is called "Objective", KPI "Key result" and achievement "Progress". You can change each term afterwards.')

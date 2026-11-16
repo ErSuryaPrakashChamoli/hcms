@@ -327,3 +327,16 @@ it('issues a US invoice with the state leg and the local leg of the customer\'s 
         ->and($issued->snapshot['customer']['tax_locality'])->toBe('TX-FICTIONAL-01')
         ->and(array_column($issued->snapshot['tax']['legs'], 'role'))->toBe(['supplier', 'destination', 'destination_local']);
 });
+
+it('keeps each loaded rule\'s statutory notes and the dataset\'s verification record with it (QA audit 2026-11-12)', function () {
+    $this->dataset->load('2026.10', 'Load the shipped statutory values', $this->maker);
+    $shipped = collect(json_decode((string) file_get_contents(base_path('database/data/statutory/peopleos-statutory-2026.10.json')), true)['tax_rules'])->keyBy('key');
+    $rules = TaxRule::query()->where('dataset_version', '2026.10')->get();
+
+    expect($rules)->toHaveCount($shipped->count());
+    foreach ($rules as $rule) {
+        $entry = $shipped[$rule->dataset_key];
+        expect($rule->statutory_notes)->toMatchArray($entry['statutory_notes'])
+            ->and($rule->statutory_notes['dataset_verification'] ?? null)->toBe($entry['verification']);
+    }
+});

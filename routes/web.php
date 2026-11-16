@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Website\Services\Website;
 use App\Http\Controllers\AnnouncementAttachmentController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\EmployeeDocumentDownloadController;
@@ -16,15 +17,20 @@ use App\Http\Controllers\MyDocumentsZipController;
 use App\Http\Controllers\Offboarding\ExportDownloadController;
 use App\Http\Controllers\ParityFileController;
 use App\Http\Controllers\SettingFileController;
+use App\Http\Controllers\SignIn\BrandImageController;
+use App\Http\Controllers\SignIn\SignInLinkController;
 use App\Http\Controllers\Sso\SsoController;
 use App\Http\Controllers\TicketAttachmentController;
+use App\Http\Controllers\Website\SiteController;
 use App\Http\Middleware\EnforceAccountSecurity;
 use App\Http\Middleware\EnforceSecurityPolicy;
 use App\Http\Middleware\EnsureSessionIsValid;
 use App\Http\Middleware\ResolveTenant;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect('/admin'));
+// Public website (Platform → Public website): the home page once an operator has published the site; until then "/" goes
+// to the workspace sign-in as before. The site's other routes are at the end of this file.
+Route::get('/', [SiteController::class, 'home'])->middleware('web')->name('website.home');
 
 /*
 | SaaS.2: protected downloads run the same session checks as the workspace, not just `auth`: the session
@@ -127,5 +133,48 @@ Route::match(['get', 'post'], '/feedback/360/{tenant}/{token}', Feedback360Exter
     ->whereNumber('tenant')->where('token', '[A-Za-z0-9]{40,80}')
     ->name('feedback360.external');
 
+// Branded sign-in (HROne-style): the remembered organisation's logo and sign-in picture for the signed-out sign-in page
+// (the encrypted workspace cookie picks the organisation, never the link), and its signed sign-in link.
+Route::get('/sign-in/brand/{asset}', BrandImageController::class)
+    ->middleware(['web', 'throttle:120,1'])
+    ->whereIn('asset', ['logo', 'picture'])
+    ->name('sign-in.brand');
+Route::get('/sign-in/link/{workspace}', SignInLinkController::class)
+    ->middleware(['web', 'signed', 'throttle:30,1'])
+    ->where('workspace', '[a-z0-9-]{1,100}')
+    ->name('sign-in.link');
+
 Route::get('/sso/{connection}/redirect', [SsoController::class, 'redirect'])->middleware('web')->name('sso.redirect');
 Route::get('/sso/{connection}/callback', [SsoController::class, 'callback'])->middleware('web')->name('sso.callback');
+
+/*
+| Public website (App\Domain\Website): "/login" for people who type it, robots.txt and the sitemap (indexing stays off
+| unless an operator allows it), the draft preview for platform operators, the "talk to sales" form, and the operator's
+| pages. The page route is a fallback route, so every workspace route above (and any added later) wins over it, and
+| Website::assertSlugAllowed() refuses page addresses that start like a workspace route.
+*/
+// Named "login": Laravel's auth middleware sends signed-out visitors of protected routes (downloads, the preview) here,
+// and so on to the workspace sign-in, which returns them to the page they asked for.
+Route::redirect('/login', '/admin/login')->name('login');
+Route::get('/robots.txt', [SiteController::class, 'robots'])->name('website.robots');
+Route::get('/sitemap.xml', [SiteController::class, 'sitemap'])->name('website.sitemap');
+Route::get('/site-preview/{slug?}', [SiteController::class, 'preview'])
+    ->middleware($protected)
+    ->where('slug', Website::SLUG_PATTERN)
+    ->name('website.preview');
+Route::post('/enquiry', [SiteController::class, 'enquire'])
+    ->middleware(['web', 'throttle:5,1'])
+    ->name('website.enquiry');
+// Mobile verification for the contact form: send a one-time code (also limited per number and per address inside
+// PhoneVerifications) and check it.
+Route::post('/enquiry/code', [SiteController::class, 'sendCode'])
+    ->middleware(['web', 'throttle:10,1'])
+    ->name('website.enquiry.code');
+Route::post('/enquiry/code/verify', [SiteController::class, 'verifyCode'])
+    ->middleware(['web', 'throttle:30,1'])
+    ->name('website.enquiry.verify');
+Route::get('/{slug}', [SiteController::class, 'page'])
+    ->middleware('web')
+    ->where('slug', Website::SLUG_PATTERN)
+    ->fallback()
+    ->name('website.page');

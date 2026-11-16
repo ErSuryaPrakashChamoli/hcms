@@ -919,6 +919,28 @@ return [
         'password' => env('PEOPLEOS_SEED_PASSWORD'),
     ],
     /*
+    | SMS (App\Support\Sms\SmsGateway): one-time codes that verify a mobile number (the public website's contact form).
+    | log (default): the message is only written to the application log, and on a local or testing server the code is also
+    | shown on screen so the flow can be tried without a provider. msg91: India (DLT-approved Flow template whose OTP
+    | variable is PEOPLEOS_SMS_MSG91_OTP_VAR). twilio: international.
+    */
+    'sms' => [
+        'driver' => env('PEOPLEOS_SMS_DRIVER', 'log'),
+        'otp_length' => 6,
+        'otp_minutes' => 10,
+        'msg91' => [
+            'auth_key' => env('PEOPLEOS_SMS_MSG91_AUTH_KEY'),
+            'template_id' => env('PEOPLEOS_SMS_MSG91_TEMPLATE_ID'),
+            'otp_var' => env('PEOPLEOS_SMS_MSG91_OTP_VAR', 'otp'),
+            'base_url' => env('PEOPLEOS_SMS_MSG91_URL', 'https://control.msg91.com/api/v5/flow'),
+        ],
+        'twilio' => [
+            'account_sid' => env('PEOPLEOS_SMS_TWILIO_SID'),
+            'auth_token' => env('PEOPLEOS_SMS_TWILIO_TOKEN'),
+            'from' => env('PEOPLEOS_SMS_TWILIO_FROM'),
+        ],
+    ],
+    /*
     | The fictional demo organisation (Database\Seeders\Demo\DemoOrganisationSeeder), seeded on a server only when someone
     | runs that class (deploy.sh --demo). Every demo account (demo.local) gets this password, 12+ characters; unset, each
     | run generates one and prints it once.
@@ -1134,6 +1156,10 @@ return [
         'branding.logo_path' => null,
         'branding.theme_colour' => null,
         'branding.employee_may_change_theme' => true,
+        // Branded sign-in (HROne-style): once someone has signed in on a device, the sign-in page there shows the
+        // organisation's logo, name, colour and sign-in picture (a Setup file; none = the logo). Off: the PeopleOS page.
+        'branding.sign_in_page' => true,
+        'branding.sign_in_picture_path' => null,
         // HROne setup parity (Core HR → Document, CA-4): an onboarding employee cannot join while a document type marked
         // "mandatory for onboarding" is missing (off: the flag is informative, as before).
         'documents.block_joining_without_mandatory' => false,

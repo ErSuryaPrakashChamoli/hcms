@@ -495,3 +495,14 @@ it('keeps TX-3 attendance and leave code free of payroll words and wires the con
     }
     expect(app(PendingLeaveReader::class))->toBeInstanceOf(AttendancePendingLeaveReader::class);
 });
+
+it('filters an attendance register by attendance policy and punch type (QA audit 2026-11-12)', function () {
+    // The filters resolve every employed person's policy; with more than one, each person's details must be loaded with
+    // the batch (a lazy load per person threw in strict mode, and was one query per employee in production).
+    $policy = tx3Policy('attendance', ['punch_mode' => 'single'], 'ATT_SINGLE');
+
+    Livewire::test(ListAttendanceArrears::class)
+        ->filterTable('attendance_policy', (string) $policy->id)->assertOk()
+        ->call('removeTableFilters')
+        ->filterTable('punch_mode', 'single')->assertOk();
+});

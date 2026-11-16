@@ -64,7 +64,7 @@ class PerformanceCycleResource extends Resource
                 TextInput::make('name')->required()->maxLength(255),
                 TextInput::make('code')->required()->maxLength(32)->alphaDash()->disabled(fn (string $operation) => $operation === 'edit')->dehydrated(),
                 // HP-8b: the default type and, with a performance year set, the period of that type containing today.
-                Select::make('type')->options(config('peopleos.performance.cycle_types'))->default(fn () => PerformancePeriods::defaultType())->required()->live()
+                Select::make('type')->options(config('peopleos.performance.cycle_types'))->default(fn () => PerformancePeriods::defaultType())->required()->disabled($locked)->live()
                     ->afterStateUpdated(function (Set $set, ?string $state, string $operation) {
                         if ($operation === 'create' && ($period = PerformancePeriods::containing((string) $state)) !== null) {
                             $set('period_start', $period[0]->toDateString());
@@ -90,7 +90,10 @@ class PerformanceCycleResource extends Resource
                     ->options(fn () => Competency::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all())
                     ->default(fn () => Competency::query()->where('status', 'active')->pluck('id')->all()),
             ]),
-            Section::make('Stages')->schema([
+            // QA audit 2026-11-12: like the fields above, the stages, options and eligibility are frozen once the cycle is
+            // scheduled or launched (PerformanceCycle::booted). Shown, not sent back: they were editable and returned on
+            // every save, so saving a launched cycle (even only its name) failed on that guard.
+            Section::make('Stages')->disabled($locked)->schema([
                 Repeater::make('stages')->hiddenLabel()->columns(4)->reorderable()->minItems(1)
                     ->default(fn (Get $get) => PerformanceCycle::defaultStages(Carbon::parse($get('period_end') ?? now()->endOfYear())))
                     ->schema([
@@ -100,7 +103,7 @@ class PerformanceCycleResource extends Resource
                         DatePicker::make('ends_on')->native(false),
                     ]),
             ]),
-            Section::make('Options')->columns(3)->schema([
+            Section::make('Options')->columns(3)->disabled($locked)->schema([
                 Toggle::make('settings.allow_resubmit')->label('Allow reviewers to resubmit'),
                 // HP-8b: both options are read (AppraisalVisibility::selfReviewVisible, Appraisals::addPeerReview).
                 Toggle::make('settings.show_self_to_manager')->label('Show self review to manager')->default(true)
@@ -108,8 +111,8 @@ class PerformanceCycleResource extends Resource
                 Toggle::make('settings.peer_anonymous')->label('Peer reviews anonymous by default')
                     ->helperText('New reviewers are anonymous to the employee unless chosen otherwise.'),
             ]),
-            Section::make('Eligibility')->description('Leave empty to include every employed person as of the period end.')->schema([
-                RuleConditionsSchema::repeater()->statePath('eligibility')->hiddenLabel(),
+            Section::make('Eligibility')->description('Leave empty to include every employed person as of the period end.')->disabled($locked)->schema([
+                RuleConditionsSchema::repeater()->statePath('eligibility')->minItems(0)->defaultItems(0)->hiddenLabel(),
             ])->collapsed(),
             AuditReasonField::make()->visibleOn('edit'),
         ]);

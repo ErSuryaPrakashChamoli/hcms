@@ -41,6 +41,8 @@ use App\Domain\People\Models\Person;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Signup\Models\SignupApplication;
 use App\Domain\Tax\Models\TaxRule;
+use App\Domain\Website\Models\WebsiteEnquiry;
+use App\Domain\Website\Models\WebsiteRevision;
 use App\Filament\Support\Pages\PeopleCreateRecord;
 use App\Filament\Support\Pages\PeopleEditRecord;
 use App\Filament\Support\Pages\PeopleListRecords;
@@ -120,6 +122,8 @@ it('scopes every domain model to a tenant except the documented platform-level m
         // Holiday library: the platform's holiday lists per country, region and year, and its region list per country
         // (no tenant). A tenant's copy of a holiday is a tenant-scoped Holiday.
         HolidayLibraryList::class, HolidayLibraryEntry::class, CountryRegion::class,
+        // Public website: Markedge's marketing site revisions and the prospects' enquiries (no tenant).
+        WebsiteRevision::class, WebsiteEnquiry::class,
     ];
 
     $unscoped = collect(domainModelClasses())
@@ -270,6 +274,9 @@ it('audits every domain model except the documented append-only or derived table
         'Attendance\Models\HolidayLibraryList', 'Attendance\Models\HolidayLibraryEntry',
         // The region list: audited explicitly by CountryRegions on the platform chain (add, rename, retire, restore, sync).
         'Attendance\Models\CountryRegion',
+        // Public website: audited explicitly by Website and Enquiries on the platform chain (module website: each draft
+        // change with its area, publish, discard, restore, enquiry status). A visitor's enquiry is anonymous until handled.
+        'Website\Models\WebsiteRevision', 'Website\Models\WebsiteEnquiry',
         // HROne parity PO-13: a TDS challan's per-employee allocation is written once with the challan (never changed) and
         // audited on the challan (its CREATE event and an ASSIGN event listing the employees and the amount).
         'Compliance\Models\StatutoryChallanAllocation',

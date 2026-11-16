@@ -22,6 +22,9 @@ class PerformanceCycle extends Model
     protected $attributes = ['status' => 'draft'];
 
     /** Phase 7: Open / In progress / Review / Calibration are the active cycle's pinned stages. */
+    /** The configuration a scheduled or launched cycle keeps (booted() refuses a change; the edit page never sends them). */
+    public const FROZEN = ['period_start', 'period_end', 'rating_scale_id', 'weights', 'competency_ids', 'stages', 'eligibility', 'settings', 'type', 'performance_template_version_id', 'competency_rating_scale_id'];
+
     public const STATUSES = ['draft' => 'Draft', 'scheduled' => 'Scheduled', 'active' => 'Active (open, in progress, review, calibration)', 'closed' => 'Closed', 'archived' => 'Archived'];
 
     protected static function booted(): void
@@ -32,7 +35,7 @@ class PerformanceCycle extends Model
             // Phase 7: once scheduled or launched, the configuration is frozen (the launched cycle pins a
             // template version); an archived cycle changes nothing at all.
             if ($cycle->exists && ! in_array($cycle->getRawOriginal('status'), ['draft'], true)) {
-                foreach (['period_start', 'period_end', 'rating_scale_id', 'weights', 'competency_ids', 'stages', 'eligibility', 'settings', 'type', 'performance_template_version_id', 'competency_rating_scale_id'] as $locked) {
+                foreach (self::FROZEN as $locked) {
                     if ($cycle->isDirty($locked) && ! ($locked === 'performance_template_version_id' && $cycle->getRawOriginal('performance_template_version_id') === null && $cycle->getRawOriginal('status') === 'scheduled')) {
                         throw new \RuntimeException('A scheduled or launched cycle keeps its configuration. Create a new cycle instead.');
                     }

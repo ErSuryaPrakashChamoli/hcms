@@ -92,7 +92,9 @@ it('refuses a platform operator who prepared a payroll run the approval of that 
 });
 
 it('keeps the whole platform out of search engines: robots.txt disallows everything (SaaS.11)', function () {
-    expect(file_get_contents(public_path('robots.txt')))->toContain("User-agent: *\nDisallow: /");
+    // The public website serves robots.txt (no static file shadows the route); with no website published it disallows all.
+    expect(file_exists(public_path('robots.txt')))->toBeFalse();
+    $this->get('/robots.txt')->assertOk()->assertSee("User-agent: *\nDisallow: /", false);
     $this->get('/admin/login')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
     $this->get('/admin/signup')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 });

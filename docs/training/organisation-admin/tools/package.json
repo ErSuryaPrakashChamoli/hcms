@@ -1,0 +1,6 @@
+{
+  "name": "peopleos-organisation-admin-training",
+  "private": true,
+  "description": "Builds the PeopleOS Organisation Administrator training from genuine screens of a disposable training database. Uses pptxgenjs and sharp from docs/presentations/peopleos/tools.",
+  "type": "commonjs"
+}

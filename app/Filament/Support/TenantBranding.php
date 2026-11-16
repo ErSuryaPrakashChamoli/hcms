@@ -17,10 +17,16 @@ use Throwable;
  */
 final class TenantBranding
 {
-    /** A signed link to the organisation's logo, or null (no tenant, nobody signed in, or no logo). */
+    /**
+     * A signed link to the organisation's logo, or null (no tenant, or no logo). Signed out, the logo of the organisation
+     * the browser remembers (branded sign-in, SignInBranding), if any.
+     */
     public static function logoUrl(): ?string
     {
-        if (auth()->user() === null || app(TenantContext::class)->id() === null) {
+        if (auth()->user() === null) {
+            return SignInBranding::current()['logo'] ?? null;
+        }
+        if (app(TenantContext::class)->id() === null) {
             return null;
         }
         try {
@@ -30,11 +36,14 @@ final class TenantBranding
         }
     }
 
-    /** The organisation's workspace colour (#rrggbb), or null for the PeopleOS colour. */
+    /**
+     * The organisation's workspace colour (#rrggbb), or null for the PeopleOS colour. Signed out, the colour of the
+     * organisation the browser remembers (branded sign-in), if any.
+     */
     public static function themeColour(): ?string
     {
         if (app(TenantContext::class)->id() === null) {
-            return null;
+            return auth()->guest() ? (SignInBranding::current()['colour'] ?? null) : null;
         }
         $colour = app(SettingsRepository::class)->get('branding.theme_colour');
 

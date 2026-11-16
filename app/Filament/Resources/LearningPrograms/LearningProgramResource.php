@@ -88,7 +88,7 @@ class LearningProgramResource extends Resource
                         TextInput::make('min_optional')->label('Optional items to complete')->numeric()->minValue(0)->default(0),
                         Toggle::make('issues_certificate')->label('Issue a program certificate'),
                         TextInput::make('validity_months')->numeric()->minValue(1)->suffix('months')->placeholder('No expiry'),
-                        RuleConditionsSchema::repeater()->label('Eligibility (empty = everyone)'),
+                        RuleConditionsSchema::repeater()->label('Eligibility (empty = everyone)')->minItems(0)->defaultItems(0),
                     ])
                     ->action(fn (LearningProgram $record, array $data) => LearningActions::run(fn () => app(Programs::class)->publish($record, [
                         'starts_on' => $data['starts_on'] ?? null, 'ends_on' => $data['ends_on'] ?? null, 'eligibility' => $data['conditions'] ?? null,

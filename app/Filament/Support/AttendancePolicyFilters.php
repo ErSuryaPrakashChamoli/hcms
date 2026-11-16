@@ -80,7 +80,8 @@ final class AttendancePolicyFilters
     {
         $resolver = app(PolicyResolver::class);
         $out = [];
-        foreach (Employee::query()->employed()->orderBy('id')->lazyById(200) as $employee) {
+        // QA audit 2026-11-12: the policy's eligibility reads each person's details; loaded with the batch, not one by one.
+        foreach (Employee::query()->with('person')->employed()->orderBy('id')->lazyById(200) as $employee) {
             $version = $resolver->resolve('attendance', $employee, today());
             $out[(int) $employee->id] = ['policy' => $version?->policy_id !== null ? (int) $version->policy_id : null, 'mode' => (string) ($version?->setting('punch_mode') ?? 'double')];
         }

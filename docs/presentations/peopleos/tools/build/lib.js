@@ -227,6 +227,14 @@ class Deck {
         s.addText(String(n), { x, y, w: d, h: d, shape: this.pres.shapes.OVAL, fill: { color }, line: { color: 'FFFFFF', width: 1.5 }, color: 'FFFFFF', bold: true, fontSize: d > 0.3 ? 13 : 11, align: 'center', valign: 'middle', margin: 0, isTextBox: true, objectName: `Callout ${n}` });
     }
 
+    // Accent hooks: a modular deck sets this.accent / this.accentSoft per module; other decks keep the brand values.
+    acc() { return this.accent ?? HEX.primary; }
+    accS() { return this.accent ?? this.C.accent1; }
+    accSoft() { return this.accentSoft ?? HEX.soft2; }
+    accDark() { return this.accent ?? HEX.navy; }
+    /** Status pill in the top-right corner (a modular deck moves it into the eyebrow row, below its navigation bar). */
+    topPill(s, label) { this.pill(s, label, W - MX - 3.4, 0.3, 3.4); }
+
     /** Place a screenshot inside box (contain), draw callouts. opts: crop, callouts (array of numbers to show | false), frame */
     async image(s, name, box, opts = {}) {
         const e = entry(name);
@@ -366,7 +374,7 @@ class Deck {
                 const col = Math.floor(i / rows), row = i % rows;
                 const x = MX + col * (cw + 0.3), y = y0 + row * (ch + gap);
                 s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x, y, w: cw, h: ch, rectRadius: 0.1, fill: { color: HEX.soft }, line: { color: HEX.soft } });
-                this.badge(s, i + 1, x + 0.2, y + (ch - 0.42) / 2, 0.42, HEX.primary);
+                this.badge(s, i + 1, x + 0.2, y + (ch - 0.42) / 2, 0.42, this.acc());
                 const [head, body] = Array.isArray(it) ? it : [it, ''];
                 const runs = [{ text: head, options: { bold: true, color: this.C.text2, breakLine: !!body } }];
                 if (body) runs.push({ text: body, options: { color: HEX.muted, fontSize: 13 } });
@@ -388,7 +396,7 @@ class Deck {
             cards.forEach(([h, b], i) => {
                 const x = MX + i * (cw + 0.2);
                 s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x, y: 3.05, w: cw, h: 1.75, rectRadius: 0.1, fill: { color: HEX.soft }, line: { color: HEX.soft } });
-                this.text(s, h.toUpperCase(), { x: x + 0.25, y: 3.2, w: cw - 0.5, h: 0.3, fontSize: 11, bold: true, color: this.C.accent1, charSpacing: 1 });
+                this.text(s, h.toUpperCase(), { x: x + 0.25, y: 3.2, w: cw - 0.5, h: 0.3, fontSize: 11, bold: true, color: this.accS(), charSpacing: 1 });
                 this.text(s, b, { x: x + 0.25, y: 3.55, w: cw - 0.5, h: 1.15, fontSize: 14 });
             });
             if (status) this.pill(s, status, W - MX - 3.6, 1.65, 3.6);
@@ -402,8 +410,8 @@ class Deck {
         steps.forEach((st, i) => {
             const [label, sub] = Array.isArray(st) ? st : [st, ''];
             const x = MX + i * (bw + gap);
-            s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x, y, w: bw, h: 1.25, rectRadius: 0.1, fill: { color: i === 0 ? HEX.primary : HEX.white }, line: { color: HEX.primary, width: 1.25 } });
-            s.addText([{ text: label, options: { bold: true, fontSize: 13, color: i === 0 ? 'FFFFFF' : this.C.text2, breakLine: !!sub } }, ...(sub ? [{ text: sub, options: { fontSize: 11, color: i === 0 ? 'E4E2F7' : HEX.muted } }] : [])],
+            s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x, y, w: bw, h: 1.25, rectRadius: 0.1, fill: { color: i === 0 ? this.acc() : HEX.white }, line: { color: this.acc(), width: 1.25 } });
+            s.addText([{ text: label, options: { bold: true, fontSize: 13, color: i === 0 ? 'FFFFFF' : this.C.text2, breakLine: !!sub } }, ...(sub ? [{ text: sub, options: { fontSize: 11, color: i === 0 ? (this.accent ? 'FFFFFF' : 'E4E2F7') : HEX.muted } }] : [])],
                 { x: x + 0.1, y: y + 0.08, w: bw - 0.2, h: 1.09, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
             checkFit(`${this.meta.num}#${this.n}`, `${label}\n${sub}`, bw - 0.2, 1.09, 12);
             if (i < n - 1) s.addShape(this.pres.shapes.RIGHT_ARROW, { x: x + bw + 0.05, y: y + 0.5, w: gap - 0.1, h: 0.25, fill: { color: HEX.gold }, line: { color: HEX.gold } });
@@ -467,7 +475,7 @@ class Deck {
                 const boxY = Math.max(y + 0.1, 6.25 - resH - (steps.length ? 0 : 0));
                 const by = steps.length ? Math.min(y + 0.1, 6.25 - resH) : 2.05;
                 s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x: px, y: by, w: pw, h: resH, rectRadius: 0.08, fill: { color: HEX.soft }, line: { color: HEX.soft } });
-                s.addText([{ text: tip ? 'TIP  ' : 'RESULT  ', options: { bold: true, color: this.C.accent1, fontSize: 10.5, charSpacing: 1 } }, { text: result, options: { fontSize: 12.5, color: this.C.text1 } }],
+                s.addText([{ text: tip ? 'TIP  ' : 'RESULT  ', options: { bold: true, color: this.accS(), fontSize: 10.5, charSpacing: 1 } }, { text: result, options: { fontSize: 12.5, color: this.C.text1 } }],
                     { x: px + 0.15, y: by + 0.1, w: pw - 0.3, h: resH - 0.2, valign: 'top', margin: 0, isTextBox: true });
             }
             this.text(s, source ?? this.sourceLine(e, im.cropped), { x: px, y: 6.28, w: pw, h: 0.68, fontSize: 9, color: HEX.faint });
@@ -490,7 +498,7 @@ class Deck {
             }
             this.text(s, caption ?? '', { x: MX, y: 6.3, w: legend ? 8.9 : W - 2 * MX, h: 0.48, fontSize: 12.5, color: this.C.text1 });
             s.addText(this.sourceLine(e, im.cropped), { x: MX, y: 6.78, w: W - 2 * MX, h: 0.2, fontSize: 9, color: HEX.faint, margin: 0, isTextBox: true });
-            if (!legend) this.pill(s, status ?? e.status, W - MX - 3.4, 0.3, 3.4);
+            if (!legend) this.topPill(s, status ?? e.status);
         });
     }
 
@@ -526,7 +534,7 @@ class Deck {
             const gap = 0.25, cw = (W - 2 * MX - (c - 1) * gap) / c, ch = (6.85 - y0 - (rows - 1) * gap) / rows;
             cards.forEach((cd, i) => {
                 const x = MX + (i % c) * (cw + gap), y = y0 + Math.floor(i / c) * (ch + gap);
-                const tone = { bad: 'FBE6E4', warn: 'FDF0DD', good: 'E3F3EA', info: HEX.soft2 }[cd.tone] ?? HEX.soft;
+                const tone = { bad: 'FBE6E4', warn: 'FDF0DD', good: 'E3F3EA', info: this.accSoft() }[cd.tone] ?? HEX.soft;
                 s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x, y, w: cw, h: ch, rectRadius: 0.1, fill: { color: tone }, line: { color: tone } });
                 const headLines = estLines(cd.head, cw - 0.6, 16);
                 const hh = headLines > 1 ? 0.62 : 0.4;
@@ -551,7 +559,7 @@ class Deck {
             if (intro && pi === 0) { this.text(s, intro, { x: MX, y: 1.48, w: W - 2 * MX, h: 0.62, fontSize: 14, color: HEX.muted }); y = 2.15; }
             const tw = W - 2 * MX;
             const widths = colW ?? columns.map(() => tw / columns.length);
-            const head = columns.map((c) => ({ text: c, options: { bold: true, color: 'FFFFFF', fill: { color: HEX.navy }, fontSize: fontSize - 0.5 } }));
+            const head = columns.map((c) => ({ text: c, options: { bold: true, color: 'FFFFFF', fill: { color: this.accDark() }, fontSize: fontSize - 0.5 } }));
             const body = page.map((r, ri) => r.map((cell) => {
                 const st = STATUS[cell];
                 const gate = typeof cell === 'string' && /^(PASS|BLOCKED|FAIL)\b/.test(cell) ? (cell.includes('BLOCKED') && cell.includes('PASS') ? ['8A5A00', 'FDF0DD'] : cell.startsWith('PASS') ? [HEX.green, 'E3F3EA'] : [HEX.red, 'FBE6E4']) : null;
@@ -576,7 +584,7 @@ class Deck {
                 const lh = Math.min(0.95, (5.0 - (layers.length - 1) * 0.12) / layers.length);
                 layers.forEach((L, i) => {
                     const y = 1.6 + i * (lh + 0.12);
-                    s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x: MX, y, w: 2.9, h: lh, rectRadius: 0.08, fill: { color: i === 0 ? HEX.primary : HEX.navy }, line: { color: HEX.navy } });
+                    s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x: MX, y, w: 2.9, h: lh, rectRadius: 0.08, fill: { color: i === 0 ? this.acc() : HEX.navy }, line: { color: HEX.navy } });
                     this.text(s, L.name, { x: MX + 0.15, y: y + 0.05, w: 2.6, h: lh - 0.1, fontSize: 14, bold: true, color: 'FFFFFF', valign: 'middle' });
                     const parts = L.parts ?? [];
                     const pw = (W - 2 * MX - 3.1 - (parts.length - 1) * 0.1) / Math.max(parts.length, 1);
@@ -674,8 +682,8 @@ class Deck {
             const n = tasks.length, gap = 0.18, ch = Math.min(1.0, (5.2 - (n - 1) * gap) / n);
             tasks.forEach((t, i) => {
                 const y = 1.6 + i * (ch + gap);
-                s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x: MX, y, w: W - 2 * MX, h: ch, rectRadius: 0.1, fill: { color: HEX.soft2 }, line: { color: HEX.soft2 } });
-                this.badge(s, i + 1, MX + 0.2, y + (ch - 0.4) / 2, 0.4, HEX.primary);
+                s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x: MX, y, w: W - 2 * MX, h: ch, rectRadius: 0.1, fill: { color: this.accSoft() }, line: { color: this.accSoft() } });
+                this.badge(s, i + 1, MX + 0.2, y + (ch - 0.4) / 2, 0.4, this.acc());
                 this.text(s, t, { x: MX + 0.8, y: y + 0.08, w: W - 2 * MX - 1.0, h: ch - 0.16, fontSize: 15, valign: 'middle' });
             });
             s.addText('Answer key: on the next slide, and in the speaker notes.', { x: MX, y: 6.6, w: 9, h: 0.28, fontSize: 11, italic: true, color: HEX.muted, margin: 0, isTextBox: true });
@@ -716,7 +724,7 @@ class Deck {
 
     async save() {
         for (const fn of this.queue) await fn();
-        const out = path.join(ROOT, this.meta.file);
+        const out = path.join(process.env.PEOPLEOS_DECK_OUT || ROOT, this.meta.file);
         await this.pres.writeFile({ fileName: out });
         await applyTheme(out);
         return { file: out, slides: this.n, shots: [...this.used] };
@@ -724,7 +732,7 @@ class Deck {
 }
 
 async function applyTheme(file) {
-    const zip = await JSZip.loadAsync(fs.readFileSync(file));
+    const zip = await JSZip.loadAsync(fs.readFileSync(file), { createFolders: false });   // no folder entries: cloud services refuse them
     const slot = (k) => `<a:${k}><a:srgbClr val="${THEME.colors[k]}"/></a:${k}>`;
     const scheme = `<a:clrScheme name="PeopleOS">${['dk1', 'lt1', 'dk2', 'lt2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'].map(slot).join('')}</a:clrScheme>`;
     for (const name of Object.keys(zip.files).filter((n) => /^ppt\/theme\/theme\d+\.xml$/.test(n))) {
@@ -732,7 +740,8 @@ async function applyTheme(file) {
         xml = xml.replace(/<a:clrScheme[\s\S]*?<\/a:clrScheme>/, scheme).replace(/(<a:theme[^>]*\sname=")[^"]*(")/, '$1PeopleOS Training$2');
         zip.file(name, xml);
     }
+    for (const n of Object.keys(zip.files)) if (zip.files[n].dir) delete zip.files[n];   // the file entries stay; only bare folder entries go
     fs.writeFileSync(file, await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
 }
 
-module.exports = { Deck, HEX, STATUS, THEME, WARN, entry, manifest, has, find, RELEASE_LINE, ROOT };
+module.exports = { Deck, HEX, STATUS, THEME, WARN, entry, manifest, has, find, derive, estLines, checkFit, applyTheme, RELEASE_LINE, ROOT, W, H, MX };

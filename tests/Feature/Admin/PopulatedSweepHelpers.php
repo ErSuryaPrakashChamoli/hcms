@@ -36,6 +36,9 @@ function actAsDemoPersona(string $email): User
 {
     $user = User::query()->where('email', $email)->sole();
     app('auth')->forgetGuards();
+    // A fresh session, as a new sign-in has: a session stamped for the previous person is (rightly) signed out by
+    // EnsureSessionIsValid, which would send this person to the sign-in page on every screen.
+    app('session')->driver()->flush();
     test()->actingAs($user);
 
     return $user;

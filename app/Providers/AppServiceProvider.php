@@ -555,6 +555,8 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(WebhookEventBridge::class);
         // SaaS.2: every login is stamped and starts without MFA proof; signing out ends operator tenant access.
         Event::listen(Login::class, SecureNewSession::class);
+        // Branded sign-in: the browser remembers the organisation, so its sign-in page shows the organisation's look.
+        Event::listen(Login::class, \App\Domain\Identity\Listeners\RememberSignInWorkspace::class);
         Event::listen(Logout::class, EndPlatformAccessOnLogout::class);
         Event::listen(EmployeeLifecycleChanged::class, AutoStartOnboarding::class);
         Event::listen(WorkflowCompleted::class, LeaveWorkflowBridge::class);

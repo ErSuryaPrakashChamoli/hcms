@@ -1,0 +1,2720 @@
+{
+  "deck": 13,
+  "file": "13-PeopleOS-Organisation-Administrator-Training.pptx",
+  "title": "Organisation Administrator Training",
+  "slides": 227,
+  "toc": 2,
+  "keys": {
+    "cover": 1,
+    "toc": 2,
+    "M01": 3,
+    "M01.contents": 4,
+    "M01.1.1": 5,
+    "howto": 5,
+    "M01.1.2": 9,
+    "M01.1.3": 12,
+    "M01.1.4": 15,
+    "M01.checklist": 17,
+    "M01.summary": 18,
+    "M02": 19,
+    "M02.contents": 20,
+    "M02.2.1": 21,
+    "M02.2.2": 24,
+    "M02.2.3": 28,
+    "M02.2.4": 30,
+    "M02.2.5": 37,
+    "M02.checklist": 42,
+    "M02.summary": 43,
+    "M03": 44,
+    "M03.contents": 45,
+    "M03.3.1": 46,
+    "M03.3.2": 49,
+    "M03.3.3": 51,
+    "M03.3.4": 53,
+    "M03.3.5": 55,
+    "M03.checklist": 60,
+    "M03.summary": 61,
+    "M04": 62,
+    "M04.contents": 63,
+    "M04.4.1": 64,
+    "M04.4.2": 70,
+    "M04.4.3": 75,
+    "M04.4.4": 77,
+    "M04.4.5": 81,
+    "M04.checklist": 85,
+    "M04.summary": 86,
+    "M05": 87,
+    "M05.contents": 88,
+    "M05.5.1": 89,
+    "M05.5.2": 91,
+    "M05.5.3": 98,
+    "M05.5.4": 105,
+    "M05.5.5": 114,
+    "M05.5.6": 118,
+    "M05.summary": 121,
+    "M06": 122,
+    "M06.contents": 123,
+    "M06.6.1": 124,
+    "M06.6.2": 129,
+    "M06.summary": 133,
+    "M07": 134,
+    "M07.contents": 135,
+    "M07.7.1": 136,
+    "M07.summary": 141,
+    "M08": 142,
+    "M08.contents": 143,
+    "M08.8.1": 144,
+    "M08.8.2": 148,
+    "M08.8.3": 150,
+    "M08.summary": 155,
+    "M09": 156,
+    "M09.contents": 157,
+    "M09.9.1": 158,
+    "M09.9.2": 166,
+    "M09.9.3": 170,
+    "M09.summary": 174,
+    "M10": 175,
+    "M10.contents": 176,
+    "M10.10.1": 177,
+    "M10.10.2": 179,
+    "M10.10.3": 180,
+    "M10.summary": 182,
+    "M11": 183,
+    "M11.contents": 184,
+    "M11.11.1": 185,
+    "M11.11.2": 191,
+    "M11.summary": 192,
+    "M12": 193,
+    "M12.contents": 194,
+    "M12.12.1": 195,
+    "M12.12.2": 200,
+    "M12.12.3": 203,
+    "M12.summary": 207,
+    "M13": 208,
+    "M13.contents": 209,
+    "M13.13.1": 210,
+    "M13.13.2": 217,
+    "M13.13.3": 220,
+    "M13.checklist": 222,
+    "M13.summary": 223,
+    "review": 224
+  },
+  "plan": [
+    {
+      "n": 1,
+      "key": "cover",
+      "alias": null,
+      "kind": "cover",
+      "module": null,
+      "sub": null,
+      "section": "Course"
+    },
+    {
+      "n": 2,
+      "key": "toc",
+      "alias": null,
+      "kind": "toc",
+      "module": null,
+      "sub": null,
+      "section": "Contents"
+    },
+    {
+      "n": 3,
+      "key": "M01",
+      "alias": null,
+      "kind": "divider",
+      "module": "M01",
+      "sub": null,
+      "section": "M01  Start here"
+    },
+    {
+      "n": 4,
+      "key": "M01.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M01",
+      "sub": null,
+      "section": "M01  Start here"
+    },
+    {
+      "n": 5,
+      "key": "M01.1.1",
+      "alias": "howto",
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.1",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 6,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.1",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 7,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.1",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 8,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.1",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 9,
+      "key": "M01.1.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.2",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 10,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.2",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 11,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.2",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 12,
+      "key": "M01.1.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.3",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 13,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.3",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 14,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.3",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 15,
+      "key": "M01.1.4",
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.4",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 16,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M01",
+      "sub": "1.4",
+      "section": "M01  Start here"
+    },
+    {
+      "n": 17,
+      "key": "M01.checklist",
+      "alias": null,
+      "kind": "checklist",
+      "module": "M01",
+      "sub": null,
+      "section": "M01  Start here"
+    },
+    {
+      "n": 18,
+      "key": "M01.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M01",
+      "sub": null,
+      "section": "M01  Start here"
+    },
+    {
+      "n": 19,
+      "key": "M02",
+      "alias": null,
+      "kind": "divider",
+      "module": "M02",
+      "sub": null,
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 20,
+      "key": "M02.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M02",
+      "sub": null,
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 21,
+      "key": "M02.2.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.1",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 22,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.1",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 23,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.1",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 24,
+      "key": "M02.2.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.2",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 25,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.2",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 26,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.2",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 27,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.2",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 28,
+      "key": "M02.2.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.3",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 29,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.3",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 30,
+      "key": "M02.2.4",
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.4",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 31,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.4",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 32,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.4",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 33,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.4",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 34,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.4",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 35,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.4",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 36,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.4",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 37,
+      "key": "M02.2.5",
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.5",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 38,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.5",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 39,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.5",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 40,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.5",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 41,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M02",
+      "sub": "2.5",
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 42,
+      "key": "M02.checklist",
+      "alias": null,
+      "kind": "checklist",
+      "module": "M02",
+      "sub": null,
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 43,
+      "key": "M02.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M02",
+      "sub": null,
+      "section": "M02  Organisation structure"
+    },
+    {
+      "n": 44,
+      "key": "M03",
+      "alias": null,
+      "kind": "divider",
+      "module": "M03",
+      "sub": null,
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 45,
+      "key": "M03.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M03",
+      "sub": null,
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 46,
+      "key": "M03.3.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.1",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 47,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.1",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 48,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.1",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 49,
+      "key": "M03.3.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.2",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 50,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.2",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 51,
+      "key": "M03.3.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.3",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 52,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.3",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 53,
+      "key": "M03.3.4",
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.4",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 54,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.4",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 55,
+      "key": "M03.3.5",
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.5",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 56,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.5",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 57,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.5",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 58,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.5",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 59,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M03",
+      "sub": "3.5",
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 60,
+      "key": "M03.checklist",
+      "alias": null,
+      "kind": "checklist",
+      "module": "M03",
+      "sub": null,
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 61,
+      "key": "M03.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M03",
+      "sub": null,
+      "section": "M03  Users, roles & access"
+    },
+    {
+      "n": 62,
+      "key": "M04",
+      "alias": null,
+      "kind": "divider",
+      "module": "M04",
+      "sub": null,
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 63,
+      "key": "M04.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M04",
+      "sub": null,
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 64,
+      "key": "M04.4.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.1",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 65,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.1",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 66,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.1",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 67,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.1",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 68,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.1",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 69,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.1",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 70,
+      "key": "M04.4.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.2",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 71,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.2",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 72,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.2",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 73,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.2",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 74,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.2",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 75,
+      "key": "M04.4.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.3",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 76,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.3",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 77,
+      "key": "M04.4.4",
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.4",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 78,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.4",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 79,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.4",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 80,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.4",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 81,
+      "key": "M04.4.5",
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.5",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 82,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.5",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 83,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.5",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 84,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M04",
+      "sub": "4.5",
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 85,
+      "key": "M04.checklist",
+      "alias": null,
+      "kind": "checklist",
+      "module": "M04",
+      "sub": null,
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 86,
+      "key": "M04.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M04",
+      "sub": null,
+      "section": "M04  Policies & set-up"
+    },
+    {
+      "n": 87,
+      "key": "M05",
+      "alias": null,
+      "kind": "divider",
+      "module": "M05",
+      "sub": null,
+      "section": "M05  People records"
+    },
+    {
+      "n": 88,
+      "key": "M05.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M05",
+      "sub": null,
+      "section": "M05  People records"
+    },
+    {
+      "n": 89,
+      "key": "M05.5.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.1",
+      "section": "M05  People records"
+    },
+    {
+      "n": 90,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.1",
+      "section": "M05  People records"
+    },
+    {
+      "n": 91,
+      "key": "M05.5.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.2",
+      "section": "M05  People records"
+    },
+    {
+      "n": 92,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.2",
+      "section": "M05  People records"
+    },
+    {
+      "n": 93,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.2",
+      "section": "M05  People records"
+    },
+    {
+      "n": 94,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.2",
+      "section": "M05  People records"
+    },
+    {
+      "n": 95,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.2",
+      "section": "M05  People records"
+    },
+    {
+      "n": 96,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.2",
+      "section": "M05  People records"
+    },
+    {
+      "n": 97,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.2",
+      "section": "M05  People records"
+    },
+    {
+      "n": 98,
+      "key": "M05.5.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.3",
+      "section": "M05  People records"
+    },
+    {
+      "n": 99,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.3",
+      "section": "M05  People records"
+    },
+    {
+      "n": 100,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.3",
+      "section": "M05  People records"
+    },
+    {
+      "n": 101,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.3",
+      "section": "M05  People records"
+    },
+    {
+      "n": 102,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.3",
+      "section": "M05  People records"
+    },
+    {
+      "n": 103,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.3",
+      "section": "M05  People records"
+    },
+    {
+      "n": 104,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.3",
+      "section": "M05  People records"
+    },
+    {
+      "n": 105,
+      "key": "M05.5.4",
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.4",
+      "section": "M05  People records"
+    },
+    {
+      "n": 106,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.4",
+      "section": "M05  People records"
+    },
+    {
+      "n": 107,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.4",
+      "section": "M05  People records"
+    },
+    {
+      "n": 108,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.4",
+      "section": "M05  People records"
+    },
+    {
+      "n": 109,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.4",
+      "section": "M05  People records"
+    },
+    {
+      "n": 110,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.4",
+      "section": "M05  People records"
+    },
+    {
+      "n": 111,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.4",
+      "section": "M05  People records"
+    },
+    {
+      "n": 112,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.4",
+      "section": "M05  People records"
+    },
+    {
+      "n": 113,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.4",
+      "section": "M05  People records"
+    },
+    {
+      "n": 114,
+      "key": "M05.5.5",
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.5",
+      "section": "M05  People records"
+    },
+    {
+      "n": 115,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.5",
+      "section": "M05  People records"
+    },
+    {
+      "n": 116,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.5",
+      "section": "M05  People records"
+    },
+    {
+      "n": 117,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.5",
+      "section": "M05  People records"
+    },
+    {
+      "n": 118,
+      "key": "M05.5.6",
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.6",
+      "section": "M05  People records"
+    },
+    {
+      "n": 119,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.6",
+      "section": "M05  People records"
+    },
+    {
+      "n": 120,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M05",
+      "sub": "5.6",
+      "section": "M05  People records"
+    },
+    {
+      "n": 121,
+      "key": "M05.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M05",
+      "sub": null,
+      "section": "M05  People records"
+    },
+    {
+      "n": 122,
+      "key": "M06",
+      "alias": null,
+      "kind": "divider",
+      "module": "M06",
+      "sub": null,
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 123,
+      "key": "M06.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M06",
+      "sub": null,
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 124,
+      "key": "M06.6.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M06",
+      "sub": "6.1",
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 125,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M06",
+      "sub": "6.1",
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 126,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M06",
+      "sub": "6.1",
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 127,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M06",
+      "sub": "6.1",
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 128,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M06",
+      "sub": "6.1",
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 129,
+      "key": "M06.6.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M06",
+      "sub": "6.2",
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 130,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M06",
+      "sub": "6.2",
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 131,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M06",
+      "sub": "6.2",
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 132,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M06",
+      "sub": "6.2",
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 133,
+      "key": "M06.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M06",
+      "sub": null,
+      "section": "M06  Onboarding & documents"
+    },
+    {
+      "n": 134,
+      "key": "M07",
+      "alias": null,
+      "kind": "divider",
+      "module": "M07",
+      "sub": null,
+      "section": "M07  Attendance"
+    },
+    {
+      "n": 135,
+      "key": "M07.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M07",
+      "sub": null,
+      "section": "M07  Attendance"
+    },
+    {
+      "n": 136,
+      "key": "M07.7.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M07",
+      "sub": "7.1",
+      "section": "M07  Attendance"
+    },
+    {
+      "n": 137,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M07",
+      "sub": "7.1",
+      "section": "M07  Attendance"
+    },
+    {
+      "n": 138,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M07",
+      "sub": "7.1",
+      "section": "M07  Attendance"
+    },
+    {
+      "n": 139,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M07",
+      "sub": "7.1",
+      "section": "M07  Attendance"
+    },
+    {
+      "n": 140,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M07",
+      "sub": "7.1",
+      "section": "M07  Attendance"
+    },
+    {
+      "n": 141,
+      "key": "M07.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M07",
+      "sub": null,
+      "section": "M07  Attendance"
+    },
+    {
+      "n": 142,
+      "key": "M08",
+      "alias": null,
+      "kind": "divider",
+      "module": "M08",
+      "sub": null,
+      "section": "M08  Leave"
+    },
+    {
+      "n": 143,
+      "key": "M08.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M08",
+      "sub": null,
+      "section": "M08  Leave"
+    },
+    {
+      "n": 144,
+      "key": "M08.8.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.1",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 145,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.1",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 146,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.1",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 147,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.1",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 148,
+      "key": "M08.8.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.2",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 149,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.2",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 150,
+      "key": "M08.8.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.3",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 151,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.3",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 152,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.3",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 153,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.3",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 154,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M08",
+      "sub": "8.3",
+      "section": "M08  Leave"
+    },
+    {
+      "n": 155,
+      "key": "M08.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M08",
+      "sub": null,
+      "section": "M08  Leave"
+    },
+    {
+      "n": 156,
+      "key": "M09",
+      "alias": null,
+      "kind": "divider",
+      "module": "M09",
+      "sub": null,
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 157,
+      "key": "M09.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M09",
+      "sub": null,
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 158,
+      "key": "M09.9.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.1",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 159,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.1",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 160,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.1",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 161,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.1",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 162,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.1",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 163,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.1",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 164,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.1",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 165,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.1",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 166,
+      "key": "M09.9.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.2",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 167,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.2",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 168,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.2",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 169,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.2",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 170,
+      "key": "M09.9.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.3",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 171,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.3",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 172,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.3",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 173,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M09",
+      "sub": "9.3",
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 174,
+      "key": "M09.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M09",
+      "sub": null,
+      "section": "M09  Payroll & statutory"
+    },
+    {
+      "n": 175,
+      "key": "M10",
+      "alias": null,
+      "kind": "divider",
+      "module": "M10",
+      "sub": null,
+      "section": "M10  Performance & workforce"
+    },
+    {
+      "n": 176,
+      "key": "M10.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M10",
+      "sub": null,
+      "section": "M10  Performance & workforce"
+    },
+    {
+      "n": 177,
+      "key": "M10.10.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M10",
+      "sub": "10.1",
+      "section": "M10  Performance & workforce"
+    },
+    {
+      "n": 178,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M10",
+      "sub": "10.1",
+      "section": "M10  Performance & workforce"
+    },
+    {
+      "n": 179,
+      "key": "M10.10.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M10",
+      "sub": "10.2",
+      "section": "M10  Performance & workforce"
+    },
+    {
+      "n": 180,
+      "key": "M10.10.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M10",
+      "sub": "10.3",
+      "section": "M10  Performance & workforce"
+    },
+    {
+      "n": 181,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M10",
+      "sub": "10.3",
+      "section": "M10  Performance & workforce"
+    },
+    {
+      "n": 182,
+      "key": "M10.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M10",
+      "sub": null,
+      "section": "M10  Performance & workforce"
+    },
+    {
+      "n": 183,
+      "key": "M11",
+      "alias": null,
+      "kind": "divider",
+      "module": "M11",
+      "sub": null,
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 184,
+      "key": "M11.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M11",
+      "sub": null,
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 185,
+      "key": "M11.11.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M11",
+      "sub": "11.1",
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 186,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M11",
+      "sub": "11.1",
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 187,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M11",
+      "sub": "11.1",
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 188,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M11",
+      "sub": "11.1",
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 189,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M11",
+      "sub": "11.1",
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 190,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M11",
+      "sub": "11.1",
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 191,
+      "key": "M11.11.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M11",
+      "sub": "11.2",
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 192,
+      "key": "M11.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M11",
+      "sub": null,
+      "section": "M11  Compensation"
+    },
+    {
+      "n": 193,
+      "key": "M12",
+      "alias": null,
+      "kind": "divider",
+      "module": "M12",
+      "sub": null,
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 194,
+      "key": "M12.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M12",
+      "sub": null,
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 195,
+      "key": "M12.12.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.1",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 196,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.1",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 197,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.1",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 198,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.1",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 199,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.1",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 200,
+      "key": "M12.12.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.2",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 201,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.2",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 202,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.2",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 203,
+      "key": "M12.12.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.3",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 204,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.3",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 205,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.3",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 206,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M12",
+      "sub": "12.3",
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 207,
+      "key": "M12.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M12",
+      "sub": null,
+      "section": "M12  Letters, assets & requests"
+    },
+    {
+      "n": 208,
+      "key": "M13",
+      "alias": null,
+      "kind": "divider",
+      "module": "M13",
+      "sub": null,
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 209,
+      "key": "M13.contents",
+      "alias": null,
+      "kind": "contents",
+      "module": "M13",
+      "sub": null,
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 210,
+      "key": "M13.13.1",
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.1",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 211,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.1",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 212,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.1",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 213,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.1",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 214,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.1",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 215,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.1",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 216,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.1",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 217,
+      "key": "M13.13.2",
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.2",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 218,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.2",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 219,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.2",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 220,
+      "key": "M13.13.3",
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.3",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 221,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": "M13",
+      "sub": "13.3",
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 222,
+      "key": "M13.checklist",
+      "alias": null,
+      "kind": "checklist",
+      "module": "M13",
+      "sub": null,
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 223,
+      "key": "M13.summary",
+      "alias": null,
+      "kind": "summary",
+      "module": "M13",
+      "sub": null,
+      "section": "M13  Exit & alumni"
+    },
+    {
+      "n": 224,
+      "key": "review",
+      "alias": null,
+      "kind": "content",
+      "module": null,
+      "sub": null,
+      "section": "Course review"
+    },
+    {
+      "n": 225,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": null,
+      "sub": null,
+      "section": "Course review"
+    },
+    {
+      "n": 226,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": null,
+      "sub": null,
+      "section": "Course review"
+    },
+    {
+      "n": 227,
+      "key": null,
+      "alias": null,
+      "kind": "content",
+      "module": null,
+      "sub": null,
+      "section": "Course review"
+    }
+  ],
+  "modules": [
+    {
+      "code": "M01",
+      "num": 1,
+      "name": "Start here",
+      "color": "2B2577",
+      "group": "A",
+      "start": 3,
+      "contents": 4,
+      "summary": 18,
+      "checklist": 17,
+      "subs": [
+        {
+          "id": "1.1",
+          "name": "Using this course",
+          "start": 5
+        },
+        {
+          "id": "1.2",
+          "name": "Your role",
+          "start": 9
+        },
+        {
+          "id": "1.3",
+          "name": "First sign-in",
+          "start": 12
+        },
+        {
+          "id": "1.4",
+          "name": "Find your way",
+          "start": 15
+        }
+      ],
+      "related": [
+        {
+          "code": "M02",
+          "start": 19
+        },
+        {
+          "code": "M03",
+          "start": 44
+        }
+      ],
+      "next": 19
+    },
+    {
+      "code": "M02",
+      "num": 2,
+      "name": "Organisation structure",
+      "color": "2F5FB3",
+      "group": "A",
+      "start": 19,
+      "contents": 20,
+      "summary": 43,
+      "checklist": 42,
+      "subs": [
+        {
+          "id": "2.1",
+          "name": "Company",
+          "start": 21
+        },
+        {
+          "id": "2.2",
+          "name": "Legal entities and establishments",
+          "start": 24
+        },
+        {
+          "id": "2.3",
+          "name": "Locations",
+          "start": 28
+        },
+        {
+          "id": "2.4",
+          "name": "Units and the Organisation Designer",
+          "start": 30
+        },
+        {
+          "id": "2.5",
+          "name": "Job architecture and positions",
+          "start": 37
+        }
+      ],
+      "related": [
+        {
+          "code": "M03",
+          "start": 44
+        },
+        {
+          "code": "M04",
+          "start": 62
+        },
+        {
+          "code": "M05",
+          "start": 87
+        }
+      ],
+      "next": 44
+    },
+    {
+      "code": "M03",
+      "num": 3,
+      "name": "Users, roles & access",
+      "color": "7442A8",
+      "group": "A",
+      "start": 44,
+      "contents": 45,
+      "summary": 61,
+      "checklist": 60,
+      "subs": [
+        {
+          "id": "3.1",
+          "name": "Roles and permissions",
+          "start": 46
+        },
+        {
+          "id": "3.2",
+          "name": "Invite users",
+          "start": 49
+        },
+        {
+          "id": "3.3",
+          "name": "Test access",
+          "start": 51
+        },
+        {
+          "id": "3.4",
+          "name": "Security and settings",
+          "start": 53
+        },
+        {
+          "id": "3.5",
+          "name": "Audit and change governance",
+          "start": 55
+        }
+      ],
+      "related": [
+        {
+          "code": "M01",
+          "start": 3
+        },
+        {
+          "code": "M02",
+          "start": 19
+        },
+        {
+          "code": "M05",
+          "start": 87
+        }
+      ],
+      "next": 62
+    },
+    {
+      "code": "M04",
+      "num": 4,
+      "name": "Policies & set-up",
+      "color": "0E6F7A",
+      "group": "A",
+      "start": 62,
+      "contents": 63,
+      "summary": 86,
+      "checklist": 85,
+      "subs": [
+        {
+          "id": "4.1",
+          "name": "Shifts, schedules and holidays",
+          "start": 64
+        },
+        {
+          "id": "4.2",
+          "name": "Leave policy",
+          "start": 70
+        },
+        {
+          "id": "4.3",
+          "name": "Pay components and structures",
+          "start": 75
+        },
+        {
+          "id": "4.4",
+          "name": "Statutory registrations",
+          "start": 77
+        },
+        {
+          "id": "4.5",
+          "name": "Workflows and notifications",
+          "start": 81
+        }
+      ],
+      "related": [
+        {
+          "code": "M07",
+          "start": 134
+        },
+        {
+          "code": "M08",
+          "start": 142
+        },
+        {
+          "code": "M09",
+          "start": 156
+        }
+      ],
+      "next": 87
+    },
+    {
+      "code": "M05",
+      "num": 5,
+      "name": "People records",
+      "color": "574BC4",
+      "group": "B",
+      "start": 87,
+      "contents": 88,
+      "summary": 121,
+      "checklist": null,
+      "subs": [
+        {
+          "id": "5.1",
+          "name": "Directory and register",
+          "start": 89
+        },
+        {
+          "id": "5.2",
+          "name": "Employee 360",
+          "start": 91
+        },
+        {
+          "id": "5.3",
+          "name": "Hire an employee",
+          "start": 98
+        },
+        {
+          "id": "5.4",
+          "name": "Job, manager and lifecycle changes",
+          "start": 105
+        },
+        {
+          "id": "5.5",
+          "name": "Bulk import",
+          "start": 114
+        },
+        {
+          "id": "5.6",
+          "name": "Troubleshooting",
+          "start": 118
+        }
+      ],
+      "related": [
+        {
+          "code": "M02",
+          "start": 19
+        },
+        {
+          "code": "M06",
+          "start": 122
+        },
+        {
+          "code": "M13",
+          "start": 208
+        }
+      ],
+      "next": 122
+    },
+    {
+      "code": "M06",
+      "num": 6,
+      "name": "Onboarding & documents",
+      "color": "5A6A17",
+      "group": "B",
+      "start": 122,
+      "contents": 123,
+      "summary": 133,
+      "checklist": null,
+      "subs": [
+        {
+          "id": "6.1",
+          "name": "Onboarding plans and tasks",
+          "start": 124
+        },
+        {
+          "id": "6.2",
+          "name": "Employee documents",
+          "start": 129
+        }
+      ],
+      "related": [
+        {
+          "code": "M05",
+          "start": 87
+        },
+        {
+          "code": "M03",
+          "start": 44
+        }
+      ],
+      "next": 134
+    },
+    {
+      "code": "M07",
+      "num": 7,
+      "name": "Attendance",
+      "color": "1D7656",
+      "group": "C",
+      "start": 134,
+      "contents": 135,
+      "summary": 141,
+      "checklist": null,
+      "subs": [
+        {
+          "id": "7.1",
+          "name": "Daily attendance administration",
+          "start": 136
+        }
+      ],
+      "related": [
+        {
+          "code": "M04",
+          "start": 62
+        },
+        {
+          "code": "M08",
+          "start": 142
+        },
+        {
+          "code": "M09",
+          "start": 156
+        }
+      ],
+      "next": 142
+    },
+    {
+      "code": "M08",
+      "num": 8,
+      "name": "Leave",
+      "color": "8A6418",
+      "group": "C",
+      "start": 142,
+      "contents": 143,
+      "summary": 155,
+      "checklist": null,
+      "subs": [
+        {
+          "id": "8.1",
+          "name": "Balances and the ledger",
+          "start": 144
+        },
+        {
+          "id": "8.2",
+          "name": "Leave types and policies",
+          "start": 148
+        },
+        {
+          "id": "8.3",
+          "name": "Leave requests",
+          "start": 150
+        }
+      ],
+      "related": [
+        {
+          "code": "M04",
+          "start": 62
+        },
+        {
+          "code": "M07",
+          "start": 134
+        },
+        {
+          "code": "M09",
+          "start": 156
+        }
+      ],
+      "next": 156
+    },
+    {
+      "code": "M09",
+      "num": 9,
+      "name": "Payroll & statutory",
+      "color": "B04A22",
+      "group": "C",
+      "start": 156,
+      "contents": 157,
+      "summary": 174,
+      "checklist": null,
+      "subs": [
+        {
+          "id": "9.1",
+          "name": "The payroll run",
+          "start": 158
+        },
+        {
+          "id": "9.2",
+          "name": "Structures and inputs",
+          "start": 166
+        },
+        {
+          "id": "9.3",
+          "name": "Statutory compliance",
+          "start": 170
+        }
+      ],
+      "related": [
+        {
+          "code": "M04",
+          "start": 62
+        },
+        {
+          "code": "M11",
+          "start": 183
+        },
+        {
+          "code": "M13",
+          "start": 208
+        }
+      ],
+      "next": 175
+    },
+    {
+      "code": "M10",
+      "num": 10,
+      "name": "Performance & workforce",
+      "color": "94416F",
+      "group": "D",
+      "start": 175,
+      "contents": 176,
+      "summary": 182,
+      "checklist": null,
+      "subs": [
+        {
+          "id": "10.1",
+          "name": "Performance cycles and calibration",
+          "start": 177
+        },
+        {
+          "id": "10.2",
+          "name": "Goals and learning",
+          "start": 179
+        },
+        {
+          "id": "10.3",
+          "name": "Positions and the org map",
+          "start": 180
+        }
+      ],
+      "related": [
+        {
+          "code": "M02",
+          "start": 19
+        },
+        {
+          "code": "M11",
+          "start": 183
+        }
+      ],
+      "next": 183
+    },
+    {
+      "code": "M11",
+      "num": 11,
+      "name": "Compensation",
+      "color": "146C94",
+      "group": "D",
+      "start": 183,
+      "contents": 184,
+      "summary": 192,
+      "checklist": null,
+      "subs": [
+        {
+          "id": "11.1",
+          "name": "The four-person flow",
+          "start": 185
+        },
+        {
+          "id": "11.2",
+          "name": "Worked example",
+          "start": 191
+        }
+      ],
+      "related": [
+        {
+          "code": "M09",
+          "start": 156
+        },
+        {
+          "code": "M10",
+          "start": 175
+        }
+      ],
+      "next": 193
+    },
+    {
+      "code": "M12",
+      "num": 12,
+      "name": "Letters, assets & requests",
+      "color": "4A5878",
+      "group": "E",
+      "start": 193,
+      "contents": 194,
+      "summary": 207,
+      "checklist": null,
+      "subs": [
+        {
+          "id": "12.1",
+          "name": "Letters",
+          "start": 195
+        },
+        {
+          "id": "12.2",
+          "name": "Assets",
+          "start": 200
+        },
+        {
+          "id": "12.3",
+          "name": "HR requests",
+          "start": 203
+        }
+      ],
+      "related": [
+        {
+          "code": "M06",
+          "start": 122
+        },
+        {
+          "code": "M13",
+          "start": 208
+        }
+      ],
+      "next": 208
+    },
+    {
+      "code": "M13",
+      "num": 13,
+      "name": "Exit & alumni",
+      "color": "6B5444",
+      "group": "E",
+      "start": 208,
+      "contents": 209,
+      "summary": 223,
+      "checklist": 222,
+      "subs": [
+        {
+          "id": "13.1",
+          "name": "Resignation and clearance",
+          "start": 210
+        },
+        {
+          "id": "13.2",
+          "name": "Full and final settlement",
+          "start": 217
+        },
+        {
+          "id": "13.3",
+          "name": "Alumni",
+          "start": 220
+        }
+      ],
+      "related": [
+        {
+          "code": "M12",
+          "start": 193
+        },
+        {
+          "code": "M09",
+          "start": 156
+        },
+        {
+          "code": "M05",
+          "start": 87
+        }
+      ],
+      "next": 224
+    }
+  ],
+  "review": 224,
+  "howto": 5
+}

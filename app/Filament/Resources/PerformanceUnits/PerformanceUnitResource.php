@@ -66,7 +66,7 @@ class PerformanceUnitResource extends Resource
                 Select::make('status')->options(['active' => 'Active', 'inactive' => 'Inactive'])->default('active')->required()->native(false),
             ]),
             Section::make('Applies to')->description('Leave empty to offer the unit for everyone\'s goals; otherwise only goals of employees matching every condition use it.')->schema([
-                RuleConditionsSchema::repeater()->statePath('applicability')->hiddenLabel(),
+                RuleConditionsSchema::repeater()->statePath('applicability')->minItems(0)->defaultItems(0)->hiddenLabel(),
             ])->collapsed(),
             AuditReasonField::make()->visibleOn('edit'),
         ]);
