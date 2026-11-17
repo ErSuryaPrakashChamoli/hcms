@@ -1,0 +1,10 @@
+[
+ { "flow": "m13-october-checks", "module": "M13", "as": "arjun.bose@demo.local", "steps": [
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=checks" }, { "wait": 8000 },
+   { "snap": { "id": "04-pre-payroll-checks", "screen": "Run payroll: 3 Pre-payroll checks", "path": "People › Pay › Run payroll", "full": true, "labels": ["Mark as checked"] } },
+   { "clickAll": "Mark as checked", "max": 12, "after": 2500 }, { "wait": 3000 },
+   { "snap": { "id": "05-checks-ticked", "screen": "Run payroll: checks marked as checked", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=calculate" }, { "wait": 7000 },
+   { "snap": { "id": "06-ready-to-calculate", "screen": "Run payroll: 4 Run payroll (ready)", "path": "People › Pay › Run payroll", "full": true, "labels": ["Calculate", "Calculate in background", "Set payment date"] } }
+ ] }
+]

@@ -1,0 +1,14 @@
+[
+ { "flow": "m12-builder", "module": "M12", "steps": [ { "goto": "/admin/salary-structure-builder" }, { "snap": { "id": "01-builder-start", "screen": "Salary structure builder: 1 Structure", "path": "People › Pay › Salary structures › New salary structure", "full": true } },
+   { "fill": { "Structure name": "Training structure" } }, { "click": "Next", "after": 1500 }, { "snap": { "id": "02-builder-how-pay-is-set", "screen": "Salary structure builder: 2 How pay is set", "path": "Salary structure builder", "full": true } },
+   { "click": "Next", "after": 1500 }, { "snap": { "id": "03-builder-components", "screen": "Salary structure builder: 3 Components", "path": "Salary structure builder", "full": true } },
+   { "click": "Next", "after": 1800 }, { "snap": { "id": "04-builder-check", "screen": "Salary structure builder: 4 Check", "path": "Salary structure builder", "full": true } },
+   { "click": "Next", "after": 1500 }, { "snap": { "id": "05-builder-save", "screen": "Salary structure builder: 5 Save", "path": "Salary structure builder", "full": true } } ] },
+ { "flow": "m12-assign-salary", "module": "M12", "steps": [ { "goto": "/admin/employee-salary-structures" }, { "clickRow": { "row": "EMP00003", "action": "Assign salary" } },
+   { "snap": { "id": "01-assign-salary", "screen": "Assign salary to an employee", "path": "People › Pay › Employee salary structures › Assign salary" } } ] },
+ { "flow": "m12-component-step2", "module": "M12", "steps": [ { "goto": "/admin/salary-components/create" }, { "snap": { "id": "01-component-identity", "screen": "New salary component: 1", "path": "People › Pay › Salary components › New", "full": true } } ] },
+ { "flow": "m12-salary-upload", "module": "M12", "steps": [ { "goto": "/admin/salary-uploads" }, { "click": "Upload salaries CSV", "after": 1500 },
+   { "snap": { "id": "01-upload-salaries", "screen": "Upload a salary file", "path": "People › Pay › Salary uploads › Upload salaries CSV" } } ] },
+ { "flow": "m12-structure-versions", "module": "M12", "steps": [ { "goto": "/admin/salary-structures/1/edit" }, { "scrollTo": "Versions" },
+   { "snap": { "id": "01-structure-versions", "screen": "A salary structure and its versions", "path": "People › Pay › Salary structures › Edit", "full": true } } ] }
+]

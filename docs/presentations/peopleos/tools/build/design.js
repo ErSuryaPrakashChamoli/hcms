@@ -61,6 +61,20 @@ const PALETTE = {
     ocean: { hex: '146C94', source: 'deck extension' },
     slate: { hex: '4A5878', source: '--pos-hue-slate' },
     umber: { hex: '6B5444', source: 'deck extension' },
+    // Extensions for the 26-module Organisation Administrator course (same depth; white text ≥ 4.5:1).
+    steel: { hex: '3C6E8F', source: 'deck extension' },
+    pine: { hex: '2F6B3A', source: 'deck extension' },
+    rose: { hex: 'A33A5C', source: 'deck extension' },
+    magenta: { hex: '8E2C8A', source: 'deck extension' },
+    indigo: { hex: '3B3F9E', source: 'deck extension' },
+    bronze: { hex: '8B4A2B', source: 'deck extension' },
+    cyan: { hex: '0B6F86', source: 'deck extension' },
+    berry: { hex: '7D2E4F', source: 'deck extension' },
+    navy: { hex: '1F3B73', source: 'deck extension' },
+    graphite: { hex: '4B4F57', source: 'deck extension' },
+    forest: { hex: '2E5E2E', source: 'deck extension' },
+    wine: { hex: '6E2340', source: 'deck extension' },
+    ink: { hex: '1E2A44', source: 'deck extension' },
 };
 
 // ---------------------------------------------------------------- chrome geometry (inches, 13.333 × 7.5 slide)

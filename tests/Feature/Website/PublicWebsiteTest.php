@@ -41,6 +41,17 @@ it('keeps "/" on the workspace sign-in and site pages unknown until the website 
     $this->get('/robots.txt')->assertOk()->assertSee("User-agent: *\nDisallow: /", false);
 });
 
+it('publishes the default site on a fresh server without a throw-away edit first, then needs a draft', function () {
+    expect($this->website->canPublish())->toBeTrue();
+
+    $this->website->publish($this->operator, 'First publish');
+
+    $this->get('/')->assertOk()->assertSee(SiteDefaults::content()['site']['tagline']);
+    expect(WebsiteRevision::query()->where('status', RevisionStatus::Published->value)->count())->toBe(1)
+        ->and($this->website->canPublish())->toBeFalse();
+    expect(fn () => $this->website->publish($this->operator))->toThrow(InvalidArgumentException::class, 'There are no unpublished changes.');
+});
+
 it('serves the published home page with its menus, mega-menu links and footer', function () {
     publishWebsite();
 
@@ -52,6 +63,28 @@ it('serves the published home page with its menus, mega-menu links and footer', 
         ->assertSee('href="/product/payroll"', false)
         ->assertSee('Book a demo')
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+});
+
+it('shows the footer contact cards and social profiles only when set, dropping unsafe profile links', function () {
+    publishWebsite();
+    expect($this->get('/')->assertOk()->getContent())
+        ->not->toContain('ps-footer-contact')
+        ->not->toContain('class="ps-social"');
+
+    $this->website->saveArea('site', ['contact_email' => 'sales@example.com', 'contact_phone' => '+91 98765 43210'], $this->operator);
+    $this->website->saveArea('footer', ['social' => [
+        ['network' => 'linkedin', 'url' => 'https://www.linkedin.com/company/example'],
+        ['network' => 'youtube', 'url' => 'javascript:alert(1)'],
+    ]], $this->operator);
+    $this->website->publish($this->operator);
+
+    expect($this->get('/')->assertOk()->getContent())
+        ->toContain('href="mailto:sales@example.com"')
+        ->toContain('href="tel:+919876543210"')
+        ->toContain('+91 98765 43210')
+        ->toContain('href="https://www.linkedin.com/company/example" target="_blank" rel="noopener noreferrer" aria-label="PeopleOS on LinkedIn"')
+        ->not->toContain('on YouTube')
+        ->not->toContain('javascript:alert');
 });
 
 it('renders every default page without errors', function () {

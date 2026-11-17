@@ -160,8 +160,8 @@ class PlatformWebsitePage extends Page
     public function publishAction(): Action
     {
         return Action::make('publish')->label('Publish')->icon(Heroicon::OutlinedRocketLaunch)->color('primary')
-            ->disabled(fn () => $this->website()->draftRevision() === null)
-            ->tooltip(fn () => $this->website()->draftRevision() === null ? 'Nothing to publish: no unpublished changes.' : null)
+            ->disabled(fn () => ! $this->website()->canPublish())
+            ->tooltip(fn () => $this->website()->canPublish() ? null : 'Nothing to publish: no unpublished changes.')
             ->modalHeading('Publish the website')
             ->modalDescription(function () {
                 $changed = $this->website()->changedAreas();
@@ -391,7 +391,9 @@ class PlatformWebsitePage extends Page
         try {
             $callback();
             if ($success !== null) {
-                Notification::make()->success()->title($success)->send();
+                Notification::make()->success()->title($success)
+                    ->body(str_ends_with($success, 'saved to the draft') ? 'Visitors see it only after you click Publish at the top of this page.' : null)
+                    ->send();
             }
         } catch (InvalidArgumentException $e) {
             Notification::make()->danger()->title($e->getMessage())->send();

@@ -1,0 +1,611 @@
+{
+ "M24": {
+  "intro": "The routines that keep PeopleOS accurate: what to look at every day, week, month, quarter and year, each pointing to the module and screen where it is done.",
+  "why": "Most payroll and compliance problems start as a small item left waiting: a missed punch, an unapproved request, a salary not executed.",
+  "who": "The organisation administrator, with the HR, payroll and time-office leads who own each step.",
+  "where": "Home and My work every day; the module screens named in each routine.",
+  "objectives": [
+   "Clear Home, My work and the inbox every day",
+   "Close attendance and run payroll in the right order each month",
+   "Review access, policies and data every quarter and year"
+  ],
+  "depends_on": [
+   "M01 Sign in, Home and navigation",
+   "M02 My work and approvals",
+   "M10 Attendance and time office",
+   "M13 Payroll",
+   "M05 Users, access and integrations"
+  ],
+  "subs": [
+   {
+    "id": "24.1",
+    "name": "Every day",
+    "desc": "Home, My work, joiners, exceptions and requests.",
+    "screens": []
+   },
+   {
+    "id": "24.2",
+    "name": "Every week",
+    "desc": "Requests, data changes, stuck approvals, assets and service.",
+    "screens": []
+   },
+   {
+    "id": "24.3",
+    "name": "Every month",
+    "desc": "Attendance close, payroll run, expenses, statutory and reports.",
+    "screens": []
+   },
+   {
+    "id": "24.4",
+    "name": "Every quarter",
+    "desc": "Access review, policy review, data audit and the audit chain.",
+    "screens": []
+   },
+   {
+    "id": "24.5",
+    "name": "Every year",
+    "desc": "Leave carry forward, holidays, performance cycle, tax year and structure.",
+    "screens": []
+   }
+  ],
+  "screens": {},
+  "procedures": [
+   {
+    "sub": "24.1",
+    "title": "Your daily routine",
+    "before": "Signed in with your authenticator (M01).",
+    "steps": [
+     [
+      "Read Home",
+      "Act on every Governance item and the decisions waiting for you (M01)."
+     ],
+     [
+      "Clear My work",
+      "Inbox: approve, reject or send back what waits for you; chase anything Overdue (M02)."
+     ],
+     [
+      "Check new joiners",
+      "People › Lifecycle › Upcoming joiners: position, manager and documents ready for day one (M08)."
+     ],
+     [
+      "Work attendance exceptions",
+      "Time & leave › Exception centre and Attendance records › Incomplete (M10)."
+     ],
+     [
+      "Answer employees",
+      "Services › HR queue: take, reply and resolve within the SLA (M20)."
+     ],
+     [
+      "Read notifications",
+      "The bell: failures, reminders and decisions addressed to you (M01)."
+     ]
+    ],
+    "result": "Nothing waits on you at the end of the day, and problems are found while they are small."
+   },
+   {
+    "sub": "24.2",
+    "title": "Your weekly routine",
+    "before": "The daily routine is up to date.",
+    "steps": [
+     [
+      "Leave and regularisations",
+      "Leave requests and Regularisations: nothing old still pending (M10, M11)."
+     ],
+     [
+      "Employee data changes",
+      "Insights › Audit › Change history: review the week's changes to people, roles and pay (M23)."
+     ],
+     [
+      "Stuck approvals",
+      "Task inbox › All open tasks and Workflows › Runs: steps waiting for people who left or are away (M02, M06)."
+     ],
+     [
+      "Assets and service",
+      "Asset requests and the HR queue's breached SLAs (M18, M20)."
+     ],
+     [
+      "Sign-in failures",
+      "Change history filtered on failed and blocked logins (M26)."
+     ]
+    ],
+    "result": "Requests keep moving and unusual changes are noticed within a week."
+   },
+   {
+    "sub": "24.3",
+    "title": "Your monthly routine",
+    "before": "The month has ended; its requests are decided.",
+    "steps": [
+     [
+      "Close attendance",
+      "Run attendance: absences genuine, overtime and penalties decided, every day processed (M10)."
+     ],
+     [
+      "Check paid days",
+      "Paid days for a few employees; unpaid leave approved (M10, M11)."
+     ],
+     [
+      "Run payroll",
+      "Run payroll: inputs, checks, calculate, review, approve by a second person, close, publish (M13)."
+     ],
+     [
+      "Pay and reconcile",
+      "Bank file and journal voucher, then Mark as paid once the bank has paid (M13)."
+     ],
+     [
+      "Expenses",
+      "Expense desk and Pay expenses: claims paid or scheduled with payroll (M15)."
+     ],
+     [
+      "Statutory",
+      "After closing: returns and challans per establishment, where the rules are verified (M14)."
+     ],
+     [
+      "Report",
+      "Run your monthly reports from the Report library (M22)."
+     ]
+    ],
+    "result": "A closed, published and paid month, with its statutory work started."
+   },
+   {
+    "sub": "24.4",
+    "title": "Your quarterly routine",
+    "before": "A quiet week after a payroll close.",
+    "steps": [
+     [
+      "Access review",
+      "User access review report, Tenant Super Admin holders, scopes and dormant accounts (M05)."
+     ],
+     [
+      "Policy review",
+      "Policies: versions in force and who each reaches; remove stray drafts (M06)."
+     ],
+     [
+      "Employee master audit",
+      "Employee master report: missing PAN, UAN, bank, manager or location (M07, M22)."
+     ],
+     [
+      "Audit chain",
+      "Change history › verify the chain and keep the result as evidence (M23)."
+     ],
+     [
+      "Performance check-in",
+      "Goal sheets and check-ins on track for the cycle (M16)."
+     ]
+    ],
+    "result": "Access, policies and data are still right, with evidence kept."
+   },
+   {
+    "sub": "24.5",
+    "title": "Your annual routine",
+    "before": "Agree the year's calendar with HR and payroll.",
+    "steps": [
+     [
+      "Holidays",
+      "Next year's holiday calendars published per location (M10)."
+     ],
+     [
+      "Leave year end",
+      "Carry forward leaves: preview, then post; check new opening balances (M11)."
+     ],
+     [
+      "Tax year",
+      "Declarations window, proofs, Form 130 certificates and Form 138 statements (M14)."
+     ],
+     [
+      "Performance cycle",
+      "Launch, run and close the review cycle; publish ratings (M16)."
+     ],
+     [
+      "Pay review",
+      "Pay review cycle, ranges and budgets; revisions through compensation changes (M12)."
+     ],
+     [
+      "Structure review",
+      "Companies, units, designations and positions still match the organisation (M03, M19)."
+     ]
+    ],
+    "result": "The new year starts with correct balances, calendars, policies and structure."
+   }
+  ],
+  "calculations": [],
+  "warnings": [
+   {
+    "sub": "24.3",
+    "title": "Do the month in order",
+    "level": "important",
+    "headline": "Attendance first, then payroll, then statutory work.",
+    "body": "Payroll reads the month's processed attendance and approved leave. Returns and challans are generated only from a closed payroll month.",
+    "points": [
+     "Changing attendance after payroll is calculated means recalculating the run.",
+     "A closed month can be reopened only until it is marked paid or a return is filed."
+    ],
+    "todo": "Follow the monthly routine top to bottom and do not skip a step."
+   }
+  ],
+  "troubleshooting": [],
+  "checklist": [
+   [
+    "Daily: Home and My work cleared",
+    "Governance items and decisions acted on."
+   ],
+   [
+    "Daily: exceptions worked",
+    "Incomplete days and requests followed up."
+   ],
+   [
+    "Weekly: Change history read",
+    "People, role and pay changes reviewed."
+   ],
+   [
+    "Monthly: attendance closed before payroll",
+    "Every day processed; LWP approved."
+   ],
+   [
+    "Monthly: second approver used",
+    "The person who ran payroll did not approve it."
+   ],
+   [
+    "Monthly: payslips published and paid",
+    "Bank file sent; month marked paid."
+   ],
+   [
+    "Quarterly: access review done",
+    "Report run, scopes checked, leavers suspended."
+   ],
+   [
+    "Quarterly: audit chain verified",
+    "Result kept as evidence."
+   ],
+   [
+    "Annual: carry forward posted",
+    "New opening balances checked."
+   ],
+   [
+    "Annual: calendars and cycle set",
+    "Holidays published; review cycle launched."
+   ]
+  ],
+  "summary": [
+   "Every day: Home, My work, joiners, exceptions and the HR queue.",
+   "Every week: requests, Change history and stuck approvals.",
+   "Every month: attendance, then payroll with a second approver, then payment and statutory work.",
+   "Every quarter: access review, policy review, data audit and the audit chain.",
+   "Every year: carry forward, holidays, tax year, performance cycle and structure review."
+  ],
+  "gaps": []
+ },
+ "M25": {
+  "intro": "What to do when something does not work as expected: the symptom you see, why it happens and the safe fix, collected from every module of this course.",
+  "why": "Most problems have a simple cause inside your organisation's set-up; knowing where to look saves time and keeps data safe.",
+  "who": "The organisation administrator, first line for your own users.",
+  "where": "The screen where the problem appears, then the module named in the last column.",
+  "objectives": [
+   "Recognise the common messages and what causes them",
+   "Fix the cause safely, without editing closed records",
+   "Know when to contact PeopleOS support and what to send"
+  ],
+  "depends_on": [
+   "M05 Users, access and integrations",
+   "M13 Payroll",
+   "M10 Attendance and time office",
+   "M02 My work and approvals"
+  ],
+  "subs": [
+   {
+    "id": "25.1",
+    "name": "Signing in and access",
+    "desc": "Passwords, two-factor, suspended users and missing menus.",
+    "screens": []
+   },
+   {
+    "id": "25.2",
+    "name": "People records",
+    "desc": "Duplicates, hiring refusals, managers and exits.",
+    "screens": []
+   },
+   {
+    "id": "25.3",
+    "name": "Attendance and leave",
+    "desc": "Incomplete days, missing shifts and balances.",
+    "screens": []
+   },
+   {
+    "id": "25.4",
+    "name": "Salary and payroll",
+    "desc": "Missing salaries, exceptions, totals and payslips.",
+    "screens": []
+   },
+   {
+    "id": "25.5",
+    "name": "Approvals and workflows",
+    "desc": "Requests not arriving, stuck approvals and governed changes.",
+    "screens": []
+   },
+   {
+    "id": "25.6",
+    "name": "Contacting PeopleOS support",
+    "desc": "What only the provider can do, and what to send.",
+    "screens": []
+   }
+  ],
+  "screens": {},
+  "procedures": [
+   {
+    "sub": "25.6",
+    "title": "Before you contact PeopleOS support",
+    "before": "You have tried the fix in this module and in the module named.",
+    "steps": [
+     [
+      "Note the exact message",
+      "Copy the text on screen, or take a screenshot without personal data."
+     ],
+     [
+      "Note where and when",
+      "The page (menu path), the date and time, and who was signed in."
+     ],
+     [
+      "Name the record",
+      "Employee code, request number or payroll month, never bank or ID numbers."
+     ],
+     [
+      "Check Change history",
+      "Insights › Audit › Change history for what changed just before (M23)."
+     ],
+     [
+      "Contact support",
+      "Send the above through your organisation's agreed support channel."
+     ]
+    ],
+    "result": "Support can reproduce the problem quickly without seeing sensitive data."
+   }
+  ],
+  "calculations": [],
+  "warnings": [
+   {
+    "sub": "25.6",
+    "title": "What only PeopleOS can do",
+    "level": "important",
+    "headline": "Some settings and records are maintained by PeopleOS, not by your organisation.",
+    "points": [
+     "Verifying statutory rule versions and resolving regulatory changes.",
+     "Switching on features that are turned off for your organisation.",
+     "Session and sign-in settings that are not on your Security policy.",
+     "Correcting records your screens refuse to change after payroll is closed."
+    ],
+    "todo": "Ask PeopleOS support, with the details listed on the previous slide."
+   }
+  ],
+  "troubleshooting": [],
+  "troubleshoot_by_sub": {
+   "25.1": [
+    [
+     "'Too many login attempts. Please try again in N seconds.'",
+     "Five attempts in a minute from this network address.",
+     "Wait the seconds shown, then try once, or reset the password.",
+     "M01"
+    ],
+    [
+     "'This password reset link is invalid or has expired. Request a new one.'",
+     "The link is older than 60 minutes, was used, or a newer one was requested.",
+     "Request a new link and use only the newest e-mail.",
+     "M01"
+    ],
+    [
+     "The page 'Choose a new password' after signing in",
+     "Your password is older than the organisation's Expire after days.",
+     "Enter Current password, a new one twice and click Change password.",
+     "M01"
+    ],
+    [
+     "The page 'Set up two-factor authentication'",
+     "Your organisation requires two-factor sign-in and you have no authenticator.",
+     "Set up the authenticator app, keep the recovery codes, then Continue.",
+     "M01"
+    ],
+    [
+     "User cannot sign in, status Suspended",
+     "Suspended by hand, by completing their exit, or by the Disable login rule for their employee status.",
+     "If they should work, set Status to Active with a reason; check Security policy › Disable login.",
+     "M05"
+    ],
+    [
+     "User cannot see a module or menu",
+     "None of their active roles holds the permission the page needs, the role is inactive, or the grant is limited to another company.",
+     "Check Roles by person; add a role or the missing key; check the Companies column in the role's Members tab.",
+     "M05"
+    ],
+    [
+     "User sees nobody in one module",
+     "They belong to a data access group that is not valid, or that reaches nobody.",
+     "Open Data access groups; fix the group whose Check column shows a warning, or switch it off.",
+     "M05"
+    ],
+    [
+     "User cannot sign in from the office or home",
+     "Their address is not in the Security policy IP allowlist.",
+     "Add the address or range under Access › IP allowlist, or ask them to use an allowed network.",
+     "M05"
+    ]
+   ],
+   "25.2": [
+    [
+     "Red message \"This person already exists\" after the Person step",
+     "Another person has the same personal e-mail, personal phone or work e-mail.",
+     "Select that person in Existing person, or correct the details. Someone who worked here before returns with Rehire / reactivate.",
+     "M07"
+    ],
+    [
+     "\"Not hired\" with a reason",
+     "One part (seat, starting state, bank, returning check…) was refused; the hire is one transaction.",
+     "Nothing was saved. Fix the step named in the message and create again.",
+     "M07"
+    ],
+    [
+     "The manager I want is not in the list",
+     "Only employed people in your access scope are offered: not pre-joiners, exited, alumni or not joined, and never the person themselves.",
+     "Mark the manager as joined first, or ask for a wider access scope.",
+     "M07"
+    ],
+    [
+     "Task shows Unassigned",
+     "Its owner could not be found when the plan started.",
+     "Complete or skip it as HR, or use role owners in the template.",
+     "M08"
+    ],
+    [
+     "\"Assets still in custody: … Take them back, or record a recoverable amount.\"",
+     "Assets are still assigned to the leaver.",
+     "Return them in Assets, or enter Amount to recover in F&F.",
+     "M09"
+    ],
+    [
+     "Assets can only be assigned to current employees.",
+     "The chosen person has left or is not employed",
+     "Choose a current employee",
+     "M18"
+    ]
+   ],
+   "25.3": [
+    [
+     "A day shows Incomplete",
+     "Only an IN or only an OUT punch fell in the shift's punch window",
+     "Regularise with the missing time, or add a Manual punch with a note",
+     "M10"
+    ],
+    [
+     "Working days show Absent with 'No shift assigned'",
+     "No work schedule, schedule rule or rostered day covers the employee",
+     "Add an Applies to rule or roster the days, then Reprocess",
+     "M10"
+    ],
+    [
+     "Balance looks wrong",
+     "Pending requests reserve days, or an entry is missing",
+     "Read Transactions for the employee, type and period; adjust with a note",
+     "M11"
+    ],
+    [
+     "'Insufficient … balance' at approval",
+     "Another approval or adjustment used the days meanwhile",
+     "Check Balances; adjust or ask for another type",
+     "M11"
+    ],
+    [
+     "Opening balance row skipped",
+     "An opening balance for that year is already on file",
+     "Use Kind adjustment for the difference",
+     "M11"
+    ]
+   ],
+   "25.4": [
+    [
+     "Salary structure missing: N to clear",
+     "People in the month have no approved salary in force.",
+     "Assign salary structures (M12), then count again.",
+     "M13"
+    ],
+    [
+     "'Structure X has no approved version in force on <date>.'",
+     "The version is still a draft, waiting for approval, or starts after the effective date.",
+     "Get the version approved, or use an effective date on or after its start.",
+     "M12"
+    ],
+    [
+     "Revision approved but payslip shows the old salary",
+     "The change is Approved, not executed; or the run was calculated before execution.",
+     "Execute (schedule) it, then recalculate the payroll run.",
+     "M12"
+    ],
+    [
+     "Not allowed: Finish the steps before the run in Run payroll first …",
+     "Attendance is not done (e.g. the month has not ended) or a pre-payroll check is blocked or not ticked.",
+     "Open Run payroll, finish Attendance and Pre-payroll checks, then calculate.",
+     "M13"
+    ],
+    [
+     "N employee(s) have blocking exceptions. Fix the inputs and recalculate.",
+     "Validate found employees with Status Exception.",
+     "Filter Employees by Exception, open Breakdown, fix the cause, recalculate.",
+     "M13"
+    ],
+    [
+     "Compensation changed for N employee(s) since the run was calculated …",
+     "A salary was approved or changed after calculation.",
+     "Recalculate, validate and approve again.",
+     "M13"
+    ],
+    [
+     "Run totals do not reconcile with its entries …",
+     "Totals no longer match the entries.",
+     "Recalculate the run.",
+     "M13"
+    ],
+    [
+     "An employee cannot see their payslip",
+     "Payslips are not published yet.",
+     "Run payroll › Publish payslips › Publish payslips.",
+     "M13"
+    ],
+    [
+     "No primary bank account although one was added",
+     "The run was calculated before the account was added.",
+     "Recalculate the run.",
+     "M13"
+    ],
+    [
+     "Payroll exception 'formula_error' naming a component",
+     "A formula failed, e.g. an unknown name or a lookup() with no entry and no final value.",
+     "Fix the formula in the builder (or component) and recalculate; the line was paid as 0.",
+     "M12"
+    ]
+   ],
+   "25.5": [
+    [
+     "An approver says the request is not in their inbox",
+     "They lack the approval right, the employee is outside their access scope, or a workflow now decides it.",
+     "Check their roles and scope (M05); open Workflow and policy on the request to see who it waits with.",
+     "M02"
+    ],
+    [
+     "The decision fails with \"This item is no longer waiting for your decision\"",
+     "Someone else decided it, it was withdrawn, or your rights changed.",
+     "Refresh the inbox; check the request's trail with Workflow and policy.",
+     "M02"
+    ],
+    [
+     "Approval waits for a manager who has left",
+     "The manager's account is inactive and no manager reliever is set.",
+     "Reassign the task; set the reliever for the line manager in Admin › Setup › Automation.",
+     "M06"
+    ],
+    [
+     "Manager is not in the route",
+     "The employee has no current reporting manager, or the manager has no sign-in.",
+     "Set the reporting manager on the employee (M07) and give the manager a sign-in (M05).",
+     "M06"
+    ],
+    [
+     "Submitted for approval when you save",
+     "Configuration approval is on and the record is at or above the minimum risk.",
+     "An approver opens Change Centre › Pending approval and approves it.",
+     "M04"
+    ],
+    [
+     "A manager sees requests from the whole organisation",
+     "The manager's user has no access scope, so it reaches every employee.",
+     "Edit the user and add an access scope (for example their team) in Admin › Setup › Users.",
+     "M02"
+    ]
+   ]
+  },
+  "checklist": [],
+  "summary": [
+   "Read the exact message: most name their cause.",
+   "Access problems are usually roles, scopes or a suspended account.",
+   "Payroll problems are usually missing salaries, unprocessed attendance or late changes: recalculate after fixing.",
+   "Never edit a closed month: correct it in the next month or reopen it while that is allowed.",
+   "Contact PeopleOS support for provider-maintained rules and switched-off features."
+  ],
+  "gaps": []
+ }
+}

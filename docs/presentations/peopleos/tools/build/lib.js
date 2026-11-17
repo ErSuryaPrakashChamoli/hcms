@@ -11,8 +11,8 @@ const sharp = require('sharp');
 const JSZip = require(require.resolve('jszip', { paths: [require.resolve('pptxgenjs')] }));
 
 const ROOT = path.resolve(__dirname, '../..');                 // docs/presentations/peopleos
-const SHOTS = path.join(ROOT, 'screenshots');
-const DERIVED = path.join(__dirname, '../.work/derived');
+let SHOTS = path.join(ROOT, 'screenshots');
+let DERIVED = path.join(__dirname, '../.work/derived');
 const MANIFESTS = path.join(__dirname, '../manifests');
 
 // ---------------------------------------------------------------- design tokens
@@ -45,6 +45,14 @@ const RELEASE_LINE = 'Release gate: NO-GO (10 of 14 gates blocked, re-verified 1
 
 // ---------------------------------------------------------------- manifest + images
 let MANIFEST = null;
+/** Point the builders at another screenshot folder and its entries (used by decks outside this library). */
+let DERIVE = { maxW: 1920, quality: 86 };
+function useScreens(dir, entries, derivedDir, derive = {}) {
+    SHOTS = dir;
+    DERIVED = derivedDir ?? path.join(dir, '../tools/.work/derived');
+    MANIFEST = entries;
+    DERIVE = { ...DERIVE, ...derive };
+}
 function manifest() {
     if (MANIFEST) return MANIFEST;
     MANIFEST = {};
@@ -129,7 +137,7 @@ async function derive(name, crop, maxAspect = 0.95) {
         if (crop && crop.h / crop.w > maxAspect) crop = { ...crop, h: Math.round(crop.w * maxAspect) };
         else if (!crop && m0.height / m0.width > maxAspect) crop = { x: 0, y: 0, w: m0.width, h: Math.round(m0.width * maxAspect) };
     }
-    const key = crop ? `${name.replace(/\//g, '__')}__${crop.x}_${crop.y}_${crop.w}_${crop.h}` : name.replace(/\//g, '__');
+    const key = (crop ? `${name.replace(/\//g, '__')}__${crop.x}_${crop.y}_${crop.w}_${crop.h}` : name.replace(/\//g, '__')) + (DERIVE.maxW === 1920 ? '' : `__w${DERIVE.maxW}`);
     const out = path.join(DERIVED, `${key}.jpg`);
     fs.mkdirSync(DERIVED, { recursive: true });
     const meta = await sharp(src).metadata();
@@ -138,9 +146,8 @@ async function derive(name, crop, maxAspect = 0.95) {
     if (!fs.existsSync(out) || fs.statSync(out).mtimeMs < fs.statSync(src).mtimeMs) {
         let img = sharp(src);
         if (crop) img = img.extract({ left: crop.x, top: crop.y, width: w, height: h });
-        const maxW = 1920;
-        if (w > maxW) img = img.resize({ width: maxW });
-        await img.jpeg({ quality: 86, chromaSubsampling: '4:4:4', mozjpeg: true }).toFile(out);
+        if (w > DERIVE.maxW) img = img.resize({ width: DERIVE.maxW });
+        await img.jpeg({ quality: DERIVE.quality, chromaSubsampling: '4:4:4', mozjpeg: true }).toFile(out);
     }
     return { file: out, w, h, crop };
 }
@@ -727,8 +734,31 @@ class Deck {
         const out = path.join(process.env.PEOPLEOS_DECK_OUT || ROOT, this.meta.file);
         await this.pres.writeFile({ fileName: out });
         await applyTheme(out);
+        if (this.meta.dedupeMedia) await dedupeMedia(out);
         return { file: out, slides: this.n, shots: [...this.used] };
     }
+}
+
+/** Store identical pictures once: pptxgenjs writes one media file per placement; slides then point at the shared copy. */
+async function dedupeMedia(file) {
+    const crypto = require('crypto');
+    const zip = await JSZip.loadAsync(fs.readFileSync(file), { createFolders: false });
+    const firstOf = {}, alias = {};
+    for (const name of Object.keys(zip.files).filter((n) => n.startsWith('ppt/media/')).sort()) {
+        const h = crypto.createHash('sha1').update(await zip.file(name).async('nodebuffer')).digest('hex');
+        if (firstOf[h]) alias[path.basename(name)] = path.basename(firstOf[h]); else firstOf[h] = name;
+    }
+    if (!Object.keys(alias).length) return 0;
+    for (const rel of Object.keys(zip.files).filter((n) => /^ppt\/(slides|slideLayouts|slideMasters|notesSlides)\/_rels\/.*\.rels$/.test(n))) {
+        let xml = await zip.file(rel).async('string');
+        const before = xml;
+        xml = xml.replace(/Target="\.\.\/media\/([^"]+)"/g, (m, f) => (alias[f] ? `Target="../media/${alias[f]}"` : m));
+        if (xml !== before) zip.file(rel, xml);
+    }
+    for (const f of Object.keys(alias)) zip.remove(`ppt/media/${f}`);
+    for (const n of Object.keys(zip.files)) if (zip.files[n].dir) delete zip.files[n];
+    fs.writeFileSync(file, await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
+    return Object.keys(alias).length;
 }
 
 async function applyTheme(file) {
@@ -744,4 +774,4 @@ async function applyTheme(file) {
     fs.writeFileSync(file, await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
 }
 
-module.exports = { Deck, HEX, STATUS, THEME, WARN, entry, manifest, has, find, derive, estLines, checkFit, applyTheme, RELEASE_LINE, ROOT, W, H, MX };
+module.exports = { Deck, HEX, STATUS, THEME, WARN, entry, manifest, has, find, derive, estLines, checkFit, applyTheme, useScreens, RELEASE_LINE, ROOT, W, H, MX };

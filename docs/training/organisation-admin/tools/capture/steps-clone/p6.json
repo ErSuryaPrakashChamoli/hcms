@@ -1,0 +1,14 @@
+[
+ { "flow": "m13-october-payslips", "module": "M13", "as": "admin@demo.local", "steps": [
+   { "goto": "/admin/payslips" }, { "snap": { "id": "22-payslips", "screen": "Payslips of the closed month", "path": "People › Pay › Payslips", "full": true } },
+   { "clickRow": { "row": "Oct", "action": "View" } }, { "wait": 1500 },
+   { "snap": { "id": "23-payslip", "screen": "A payslip", "path": "People › Pay › Payslips › a payslip", "full": true } } ] },
+ { "flow": "m13-october-closed-run", "module": "M13", "as": "admin@demo.local", "steps": [
+   { "goto": "/admin/payroll-runs/2" }, { "wait": 1500 }, { "snap": { "id": "24-closed-run", "screen": "The closed run: run cockpit", "path": "People › Pay › Payroll runs › October", "full": true } },
+   { "click": "More", "within": "main", "after": 1200 }, { "snap": { "id": "25-closed-run-more", "screen": "The closed run: More menu", "path": "People › Pay › Payroll runs › October › More" } } ] },
+ { "flow": "m13-october-pay", "module": "M13", "as": "admin@demo.local", "steps": [
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=pay" }, { "wait": 7000 },
+   { "snap": { "id": "26-pay-step", "screen": "Run payroll: 8 Pay", "path": "People › Pay › Run payroll", "full": true, "labels": ["Bank file", "Journal voucher (JV)", "Mark as paid"] } },
+   { "click": "Mark as paid", "within": "main", "after": 2000 },
+   { "snap": { "id": "27-mark-as-paid-dialog", "screen": "Mark the month as paid", "path": "People › Pay › Run payroll › Mark as paid" } } ] }
+]

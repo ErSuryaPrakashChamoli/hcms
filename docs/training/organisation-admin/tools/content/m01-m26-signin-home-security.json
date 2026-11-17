@@ -1,0 +1,1579 @@
+{
+ "M01": {
+  "intro": "This module gets you into PeopleOS and around it. You sign in on your organisation's sign-in page, land on a Home page that ranks what needs you, and move through the rail, the area bar, search and the Actions panel.",
+  "why": "Every other module starts here. If you cannot sign in securely, read Home's signals or find a screen quickly, set-up and approvals slow down and security gaps go unnoticed.",
+  "who": "Everyone who signs in. What appears depends on roles: as Tenant Super Admin (full control of your organisation) you see all nine rail sections and the Administration view of Home; HR, payroll and employee roles see less.",
+  "where": "Sign-in: /admin/login. Home: rail › Home (/admin). Account security and Preferences: avatar menu (your initials, top right). Search, Actions, New and notifications: top bar.",
+  "objectives": [
+   "Sign in, recover a forgotten password and set up an authenticator app for two-factor sign-in.",
+   "Read every card of Home in the Administration view and act on governance items and decisions.",
+   "Find any screen with the rail, the area bar, Ctrl K search and the Actions panel."
+  ],
+  "depends_on": [
+   "M05 Users, access and integrations: your user, roles, the Security policy and single sign-on are managed there",
+   "M02 My work and approvals: Home's decisions lead to the Approval Center and My work",
+   "M04 Masters and configuration: Open Admin Centre and What do you want to configure? lead there",
+   "M26 Signing out and staying secure: sign-out, sessions and safe handling of data"
+  ],
+  "subs": [
+   {
+    "id": "1.1",
+    "name": "Sign in and first access",
+    "desc": "Sign-in page, remembered organisation, invitation and forgotten password.",
+    "screens": []
+   },
+   {
+    "id": "1.2",
+    "name": "Account security",
+    "desc": "Password rules and expiry, two-factor sign-in, recovery codes and throttling.",
+    "screens": []
+   },
+   {
+    "id": "1.3",
+    "name": "Home",
+    "desc": "The Administration view of Home, its cards and the View as switch.",
+    "screens": [
+     "home/home"
+    ]
+   },
+   {
+    "id": "1.4",
+    "name": "Rail and area bar",
+    "desc": "Nine rail sections, their areas, favourites and the All in … menu.",
+    "screens": []
+   },
+   {
+    "id": "1.5",
+    "name": "Search, Actions and New",
+    "desc": "The Ctrl K command center, the Actions panel and Start something.",
+    "screens": []
+   },
+   {
+    "id": "1.6",
+    "name": "Top bar and avatar menu",
+    "desc": "Notifications bell, Account security, Preferences, theme and Ask PeopleOS.",
+    "screens": []
+   },
+   {
+    "id": "1.7",
+    "name": "Working on a page",
+    "desc": "Lists, filters, Views, pagination, drawers, step forms and the review step.",
+    "screens": []
+   }
+  ],
+  "screens": {
+   "home/home": {
+    "purpose": "Your starting page. It greets you, sums up in one sentence what needs you today and ranks governance items, decisions and shortcuts for the view you choose.",
+    "when": "Every time you sign in, and whenever you want to see what is waiting for you.",
+    "elements": [
+     [
+      "Greeting and brief",
+      "Date, organisation and one sentence from real counts (example: 2 governance items need attention, 8 decisions wait)."
+     ],
+     [
+      "Open Admin Centre / Start something",
+      "Open Admin Centre opens All modules; Start something opens search in Actions mode, like New."
+     ],
+     [
+      "View as",
+      "Switches Home between People operations, Administration, Payroll and Company. Your choice is remembered."
+     ],
+     [
+      "Governance",
+      "Access and security gaps, most severe first, each with its reason and a Review button to the screen that fixes it."
+     ],
+     [
+      "At a glance",
+      "Tiles: configuration changes this week, active users, roles, multi-factor sign-in, audited events. Each tile opens its page."
+     ],
+     [
+      "Decisions waiting for you",
+      "Up to four requests waiting for you; Review opens it in a side drawer. Approval Center lists them all."
+     ],
+     [
+      "PeopleOS Intelligence",
+      "Generated statements from records you may see, each with its source and a link. It suggests; you decide."
+     ],
+     [
+      "Wall of fame / Start something",
+      "Most badges this month (link: Recognition) and your usual admin actions; All actions shows every action."
+     ]
+    ],
+    "fields": [],
+    "after": "Your choices are saved for you alone: View as becomes how Home opens (also in Preferences › Home opens as); Got it hides the welcome note for good.",
+    "permission": "Open to every signed-in person. The Administration view needs user.assign_roles, settings.update or configuration.publish; each card needs access to the screen it opens (e.g. security.manage for the MFA item).",
+    "depends": "An active organisation and user. Personal cards (For you, My day, leave) appear only when your user is linked to an employee record.",
+    "limits": "Counts are worked out when the page loads; reload to refresh. The Administration view has no What changed feed. Cards for everyone are set in Setup › Access rights › Widget access.",
+    "source": "app/Filament/Pages/Home.php; resources/views/filament/pages/home.blade.php and home/*.blade.php; app/Domain/Experience/Services/HomeComposer.php, RoleLens.php, RoleSignals.php (governance), QuickActions.php, ContextualIntelligence.php"
+   }
+  },
+  "procedures": [
+   {
+    "sub": "1.1",
+    "title": "Activate your account from the invitation",
+    "before": "You have the e-mail 'You have been invited to <organisation> on PeopleOS'. Its link works once and the e-mail states when it expires (UTC).",
+    "steps": [
+     [
+      "Open the link",
+      "Click Accept the invitation in the e-mail. The page Accept your invitation says: Choose a password for <your e-mail>."
+     ],
+     [
+      "Choose a password",
+      "Type it in Password and again in Confirm password, following your organisation's password rules. The eye icon shows what you typed."
+     ],
+     [
+      "Activate",
+      "Click Activate my account. You see 'Your account is ready. Sign in with your new password.' and the sign-in page opens."
+     ],
+     [
+      "Sign in",
+      "Enter your work e-mail and new password and click Sign in. If two-factor sign-in is required, set up your authenticator first."
+     ]
+    ],
+    "result": "Your account is active and your e-mail address is confirmed. This browser now remembers your organisation for the sign-in page.",
+    "screens": [],
+    "source": "app/Filament/Auth/AcceptInvitation.php; app/Domain/Identity/Services/UserInvitations.php; Notifications/InvitationLink.php"
+   },
+   {
+    "sub": "1.1",
+    "title": "Sign in",
+    "before": "Your account is active. Use your work e-mail address.",
+    "steps": [
+     [
+      "Open the sign-in page",
+      "Go to /admin/login (/login also leads there). A browser that has signed in before shows 'Sign in to <your organisation>' with your logo."
+     ],
+     [
+      "Enter your details",
+      "Fill Email address and Password (both required). The eye icon in the Password box shows the password."
+     ],
+     [
+      "Remember me only on your own device",
+      "Tick Remember me only on a device that nobody else uses: it keeps this browser signed in until you sign out."
+     ],
+     [
+      "Sign in",
+      "Click Sign in. If you use an authenticator, the page asks Verify your identity: enter the 6-digit code and click Confirm sign in."
+     ],
+     [
+      "Arrive",
+      "Home opens in your chosen view. If a link sent you to sign in, you go back to the page that link pointed to."
+     ]
+    ],
+    "result": "You are signed in. Sign-ins and failed attempts are recorded in the audit trail (Insights › Audit › Change history).",
+    "screens": [],
+    "source": "app/Filament/Auth/Login.php; resources/views/filament/auth/login.blade.php; vendor Filament Auth/Pages/Login.php (fields, 5 attempts a minute); app/Domain/Audit/Listeners/RecordAuthenticationEvents.php"
+   },
+   {
+    "sub": "1.1",
+    "title": "Reset a forgotten password",
+    "before": "Your account is active. A person who has not yet activated an invitation must use the invitation instead.",
+    "steps": [
+     [
+      "Open Forgot password?",
+      "On the sign-in page click Forgot password? beside Password."
+     ],
+     [
+      "Request the link",
+      "Enter your Email address and click Send email. The answer is always the same, so it never reveals whether an address has an account."
+     ],
+     [
+      "Open the e-mail",
+      "Subject 'Reset your PeopleOS password'. Click Choose a new password. The link works once and expires after the minutes stated (60 as set)."
+     ],
+     [
+      "Choose the new password",
+      "On Reset your password, your e-mail is filled in. Enter Password and Confirm password under your organisation's rules; click Reset password."
+     ],
+     [
+      "Sign in again",
+      "You see 'Your password has been changed. Sign in with it now.' Every other session of yours has been signed out."
+     ]
+    ],
+    "result": "A new password is set and all old sessions are ended. Two-factor sign-in is unchanged: you still need your authenticator.",
+    "screens": [],
+    "source": "app/Filament/Auth/RequestPasswordReset.php, ResetPassword.php; app/Domain/Identity/Services/PasswordResets.php; config/auth.php (expire 60)"
+   },
+   {
+    "sub": "1.2",
+    "title": "Set up two-factor sign-in (authenticator app)",
+    "before": "Install an authenticator app on your phone, for example Google Authenticator.",
+    "steps": [
+     [
+      "Open Account security",
+      "Click your initials (top right) › Account security."
+     ],
+     [
+      "Start set-up",
+      "Under Two-factor authentication (2FA), next to Authenticator app, click Set up."
+     ],
+     [
+      "Link the app",
+      "Scan the QR code with the app, or type the code shown under 'Or enter this code manually'."
+     ],
+     [
+      "Prove it",
+      "Enter the 6-digit code from the app and your Current password, then continue."
+     ],
+     [
+      "Keep the recovery codes",
+      "Copy or download the recovery codes and store them offline. They are shown once; each works once if you lose the phone."
+     ],
+     [
+      "Finish",
+      "Click Enable authenticator app. Authenticator app now reads Enabled, with Regenerate recovery codes and Turn off."
+     ]
+    ],
+    "result": "From the next sign-in PeopleOS asks for a 6-digit code after your password, also when a remembered browser opens a new session.",
+    "screens": [],
+    "source": "app/Filament/Auth/EditProfile.php; AdminPanelProvider (AppAuthentication recoverable); app/Domain/Identity/Services/MultiFactor.php; Filament MFA set-up action"
+   },
+   {
+    "sub": "1.2",
+    "title": "Sign in with a recovery code (phone lost)",
+    "before": "You have your saved recovery codes.",
+    "steps": [
+     [
+      "Sign in with your password",
+      "Enter Email address and Password and click Sign in. The page asks Verify your identity."
+     ],
+     [
+      "Switch to a recovery code",
+      "Click Use a recovery code instead, enter one code in Or, enter a recovery code and click Confirm sign in."
+     ],
+     [
+      "Re-secure your account",
+      "Open Account security. Turn off the old authenticator and Set up the new phone, or Regenerate recovery codes."
+     ]
+    ],
+    "result": "You are back in with a new authenticator. The used recovery code no longer works; the change is recorded in the audit trail.",
+    "screens": [],
+    "source": "Filament AppAuthentication login form; app/Domain/Identity/Services/MultiFactor.php (recoveryCodesChanged)"
+   },
+   {
+    "sub": "1.2",
+    "title": "Change your own password",
+    "before": "You know your current password.",
+    "steps": [
+     [
+      "Open Account security",
+      "Click your initials › Account security."
+     ],
+     [
+      "Enter the new password",
+      "Fill New password and Confirm new password. Current password appears once you type; fill it too."
+     ],
+     [
+      "Save",
+      "Click Save changes. A rule you miss is named under the field, e.g. 'Include a number.'"
+     ]
+    ],
+    "result": "The new password applies at once; your other open sessions on other devices are signed out at their next click.",
+    "screens": [],
+    "source": "app/Filament/Auth/EditProfile.php; app/Domain/Identity/Services/PasswordPolicy.php; app/Domain/Enterprise/Services/SecurityPolicy.php"
+   },
+   {
+    "sub": "1.3",
+    "title": "Start your day from Home",
+    "before": "You are signed in; Home opens in the Administration view (or the view you chose).",
+    "steps": [
+     [
+      "Read the brief",
+      "The sentence under the greeting counts governance items and decisions waiting for you. 'You're all caught up' means nothing needs you."
+     ],
+     [
+      "Work through Governance",
+      "Read each item's reason and click Review. In the example, 'Multi-factor sign-in is not required' opens the Security policy."
+     ],
+     [
+      "Check At a glance",
+      "Click a tile to open its list: Active users and Roles open Users and Roles; Audited events this week opens Change history."
+     ],
+     [
+      "Decide waiting requests",
+      "In Decisions waiting for you click Review: the request opens in a side drawer. 'n more in the Approval Center' lists the rest."
+     ],
+     [
+      "Start something",
+      "Use the shortcuts on the right (Invite a user, What do you want to configure?, All modules, Manage roles and permissions) or All actions."
+     ]
+    ],
+    "result": "Governance gaps and waiting decisions are handled or knowingly left; Home's counts fall when you reload it.",
+    "screens": [
+     "home/home"
+    ],
+    "source": "app/Filament/Pages/Home.php; resources/views/filament/pages/home.blade.php and home/*.blade.php; app/Domain/Experience/Services/HomeComposer.php, RoleLens.php, RoleSignals.php (governance), QuickActions.php, ContextualIntelligence.php"
+   },
+   {
+    "sub": "1.3",
+    "title": "Change the Home view and how Home opens",
+    "before": "You hold more than one kind of work (for an administrator: People operations, Administration, Payroll, Company).",
+    "steps": [
+     [
+      "Switch the view",
+      "In the hero's View as row click a chip, e.g. Payroll: Home shows the latest pay run, its stage and exceptions."
+     ],
+     [
+      "Fix how Home opens",
+      "Your last chip is remembered. Or open avatar menu › Preferences › Home opens as and pick a view, or Automatic."
+     ],
+     [
+      "Restore hidden cards",
+      "Preferences › Home and history › Restore hidden Home cards brings back cards you hid."
+     ]
+    ],
+    "result": "Home, the rail's preferred landings, search result order and the phone bar follow your chosen view. Access never changes with the view.",
+    "screens": [
+     "home/home"
+    ],
+    "source": "app/Filament/Pages/Home.php (switchLens); app/Filament/Pages/Preferences.php; app/Domain/Experience/Services/RoleLens.php, ExperienceNavigation.php, MobileNavigation.php"
+   },
+   {
+    "sub": "1.4",
+    "title": "Open a screen with the rail and area bar",
+    "before": "None.",
+    "steps": [
+     [
+      "Open a section",
+      "In the rail click a section, e.g. People. Its areas unfold under it (its plus turns to a minus); any other open section folds."
+     ],
+     [
+      "Open an area",
+      "Click an area, e.g. Lifecycle. It opens on its desk (Lifecycle desk) or its main page."
+     ],
+     [
+      "Use the area bar",
+      "The bar above the page reads 'People / Lifecycle' and lists the page you are on first, then favourites, the desk and everyday pages."
+     ],
+     [
+      "Star a favourite",
+      "Click the star beside the current page's name. Starred pages stay at the front of the bar and in a Favourites row."
+     ],
+     [
+      "See every page",
+      "Click All in … (the area name) (with its count) to list every page grouped by purpose; type in Find in the area to narrow it."
+     ]
+    ],
+    "result": "You reach any page in two or three clicks and keep your everyday pages one click away.",
+    "screens": [],
+    "source": "app/Domain/Experience/Services/ExperienceNavigation.php; resources/views/livewire/experience/area-bar.blade.php; resources/views/vendor/filament-panels/components/sidebar/item.blade.php; resources/js/peopleos.js"
+   },
+   {
+    "sub": "1.5",
+    "title": "Find anything with Ctrl K",
+    "before": "None.",
+    "steps": [
+     [
+      "Open search",
+      "Click the top-bar box 'Search people, requests, actions…', or press Ctrl K (⌘K on a Mac) or /."
+     ],
+     [
+      "Type",
+      "Type a name, request number, policy word or what you want to do, e.g. 'leave'. Results are grouped: Intelligence, Actions, Navigation, People and more."
+     ],
+     [
+      "Narrow the scope",
+      "Click Everything, Actions or People (or press Tab) to search only that."
+     ],
+     [
+      "Open",
+      "Move with the arrow keys and press Enter to open; Ctrl+Enter previews; the right arrow shows a result's actions; Esc closes."
+     ]
+    ],
+    "result": "The page, person or form opens. Items you open are kept as Recent, at the top of search and in the rail.",
+    "screens": [],
+    "source": "app/Livewire/Experience/CommandCenter.php; resources/views/livewire/experience/command-center.blade.php; app/Domain/Experience/Services/CommandSearch.php"
+   },
+   {
+    "sub": "1.5",
+    "title": "Run an HR action from the Actions panel",
+    "before": "Your roles allow at least one HR action (the button shows only then).",
+    "steps": [
+     [
+      "Open Actions",
+      "Click Actions in the top bar. A full-screen panel lists actions by module: Workforce, Time office, Payroll, Expense & travel, and more."
+     ],
+     [
+      "Find the action",
+      "Type in Search actions… to filter as you type, or scan a module's list."
+     ],
+     [
+      "Pin what you use",
+      "Click the pin beside an action. Pinned and Recent actions appear as chips at the top of the panel."
+     ],
+     [
+      "Run it",
+      "Click the action. Its screen, or the form on that screen, opens; the module's own checks and approvals apply."
+     ]
+    ],
+    "result": "The action's form is open in its module. Esc or the close button leaves the panel.",
+    "screens": [],
+    "source": "app/Livewire/Experience/ActionCentre.php; app/Domain/Experience/Services/ActionCatalogue.php; resources/views/livewire/experience/action-centre.blade.php"
+   },
+   {
+    "sub": "1.6",
+    "title": "Read and clear notifications",
+    "before": "None.",
+    "steps": [
+     [
+      "Open the bell",
+      "Click the bell in the top bar; its number is your unread notifications (25 in the example). A Notifications panel slides in."
+     ],
+     [
+      "Act",
+      "Open a notification's link, or use Mark all as read and Clear."
+     ],
+     [
+      "See them grouped",
+      "For tabs (All, Needs attention, Approvals, Mentions, Announcements, Updates, System) open My work › Notifications."
+     ]
+    ],
+    "result": "Unread items are handled. The bell refreshes on its own about every 30 seconds.",
+    "screens": [],
+    "source": "AdminPanelProvider (databaseNotifications); app/Filament/Pages/NotificationCenter.php; crawl work/notifications"
+   },
+   {
+    "sub": "1.7",
+    "title": "Work with a list page",
+    "before": "Open a list, e.g. People › Lifecycle › Employees.",
+    "steps": [
+     [
+      "Search and filter",
+      "Type in the search box; click the funnel (its badge counts active filters), set filters and apply them."
+     ],
+     [
+      "Save a view",
+      "Views › Save this view… keeps filters, search, sort and columns under a name for you only; tick 'Open this register with this view' for a default."
+     ],
+     [
+      "Sort and choose columns",
+      "Click a column heading to sort; the columns icon at the right of the toolbar shows or hides columns."
+     ],
+     [
+      "Page through",
+      "At the bottom: 'Showing 1 to 10 of 23 results', Per page and page numbers."
+     ],
+     [
+      "Open a record",
+      "Use the row's View or Edit. Forms run as steps and end with a review of your changes before you save."
+     ]
+    ],
+    "result": "You see exactly the records you need; your saved view returns next time.",
+    "screens": [],
+    "source": "app/Filament/Support/Pages/Concerns/HasRegisterTools.php; app/Domain/Experience/Services/SavedViews.php; app/Filament/Support/PeopleOsUi.php; resources/views/filament/shell/form-review.blade.php"
+   }
+  ],
+  "calculations": [
+   {
+    "sub": "1.3",
+    "title": "Decisions waiting for you on Home",
+    "intro": "Home lists at most four decisions and links to the rest in the Approval Center. Figures are from the example organisation.",
+    "lines": [
+     [
+      "",
+      "Decisions listed on Home",
+      "4"
+     ],
+     [
+      "+",
+      "More in the Approval Center (link '4 more in the Approval Center')",
+      "4"
+     ]
+    ],
+    "total": [
+     "Decisions waiting for you",
+     "8"
+    ],
+    "explain": [
+     [
+      "Rule",
+      "Home takes the first four pending items; the link shows the count minus four. A '+' means more wait than the queue could count."
+     ],
+     [
+      "Where you see it",
+      "The brief, the card heading count and the My work badge in the rail."
+     ]
+    ],
+    "source": "app/Domain/Experience/Services/HomeComposer.php (take(4), decision_count); resources/views/filament/pages/home/decisions.blade.php; screenshot home/home"
+   },
+   {
+    "sub": "1.2",
+    "title": "When a password expires and when the reminder comes",
+    "intro": "Illustrative: the example organisation has expiry off (Expire after days = 0). With 90 days and a 7-day reminder:",
+    "lines": [
+     [
+      "",
+      "Password last changed",
+      "01 Jan 2026"
+     ],
+     [
+      "+",
+      "Expire after days",
+      "90 days"
+     ]
+    ],
+    "total": [
+     "Password expires",
+     "01 Apr 2026"
+    ],
+    "explain": [
+     [
+      "Formula",
+      "Expiry date = date of last change + Expire after days. The reminder (in-app and e-mail) comes once, from 7 days before: 25 Mar 2026."
+     ],
+     [
+      "What happens then",
+      "At the next sign-in or click after expiry, the person must choose a new password. Single sign-on sessions are not affected."
+     ]
+    ],
+    "source": "app/Domain/Enterprise/Services/SecurityPolicy.php (passwordExpiresAt); app/Console/Commands/LifecycleReminders.php (warnPasswordsExpiring); app/Http/Middleware/EnforceAccountSecurity.php"
+   }
+  ],
+  "warnings": [
+   {
+    "sub": "1.2",
+    "title": "Set up your own authenticator before requiring it",
+    "level": "important",
+    "headline": "Requiring two-factor sign-in affects everyone at their next click, you included.",
+    "body": "When 'Require authenticator-app MFA for every tenant login' is on, anyone without an authenticator is sent to Set up two-factor authentication before anything else.",
+    "points": [
+     "Set up yours in Account security first.",
+     "Tell people to install an authenticator app beforehand.",
+     "Only the authenticator app method is offered."
+    ],
+    "todo": "Turn the rule on in Admin › Platform › Security policy (see M05)."
+   },
+   {
+    "sub": "1.2",
+    "title": "Keep your recovery codes",
+    "level": "warning",
+    "headline": "You cannot reset your own authenticator.",
+    "body": "Recovery codes are shown once. Without your phone and codes, another administrator with security.manage must use Reset multi-factor authentication on your user.",
+    "points": [
+     "Store the codes offline, not on the phone.",
+     "Make sure a second administrator exists.",
+     "If you are the only administrator, ask PeopleOS support."
+    ],
+    "todo": "Download or copy the codes during set-up; regenerate them if you think they were seen."
+   },
+   {
+    "sub": "1.3",
+    "title": "Multi-factor sign-in is not required",
+    "level": "warning",
+    "headline": "The example organisation's Home shows this governance item.",
+    "body": "Anyone with a password can sign in. A leaked password is then enough to reach salaries and personal data.",
+    "points": [
+     "The At a glance tile reads Optional while it is off.",
+     "Review opens the Security policy."
+    ],
+    "todo": "Turn on two-factor sign-in once your people have authenticators."
+   },
+   {
+    "sub": "1.1",
+    "title": "Sign-in pauses, not account locks",
+    "level": "important",
+    "headline": "After five failed attempts in a minute from one network, the form pauses.",
+    "body": "You see 'Too many login attempts' with the seconds to wait. There is no permanent lock on the account; a wrong password and an inactive account show the same message on purpose.",
+    "points": [
+     "Wait the seconds shown.",
+     "Use Forgot password? if unsure.",
+     "Failed attempts are recorded in the audit trail."
+    ],
+    "todo": null
+   },
+   {
+    "sub": "1.1",
+    "title": "Single sign-on has no button on the sign-in page",
+    "level": "important",
+    "headline": "People who sign in through your identity provider need its Login URL.",
+    "body": "The sign-in page offers e-mail and password only. Each single sign-on connection has its own Login URL (/sso/<slug>/redirect).",
+    "points": [
+     "Copy the Login URL from Admin › Platform › Single sign-on (M05).",
+     "Share it in your welcome e-mail."
+    ],
+    "todo": null
+   }
+  ],
+  "troubleshooting": [
+   [
+    "'These credentials do not match our records.'",
+    "Wrong e-mail or password, or the account cannot sign in (invited, suspended, organisation suspended). The message is the same on purpose.",
+    "Check the address and Caps Lock; use Forgot password?; ask another administrator to check your user in Admin › Setup › Users.",
+    ""
+   ],
+   [
+    "'Too many login attempts. Please try again in N seconds.'",
+    "Five attempts in a minute from this network address.",
+    "Wait the seconds shown, then try once, or reset the password.",
+    ""
+   ],
+   [
+    "'This invitation link is invalid or has expired…'",
+    "The link was used, replaced by a newer invitation or has expired.",
+    "For your own account ask PeopleOS support; for your people use Send a new invitation on the user's Account menu.",
+    ""
+   ],
+   [
+    "'This password reset link is invalid or has expired. Request a new one.'",
+    "The link is older than 60 minutes, was used, or a newer one was requested.",
+    "Request a new link and use only the newest e-mail.",
+    ""
+   ],
+   [
+    "The page 'Choose a new password' after signing in",
+    "Your password is older than the organisation's Expire after days.",
+    "Enter Current password, a new one twice and click Change password.",
+    ""
+   ],
+   [
+    "The page 'Set up two-factor authentication'",
+    "Your organisation requires two-factor sign-in and you have no authenticator.",
+    "Set up the authenticator app, keep the recovery codes, then Continue.",
+    ""
+   ],
+   [
+    "The page 'Confirm it is you'",
+    "A remembered or single sign-on session must still prove your authenticator.",
+    "Enter a code or a recovery code and click Verify, or Sign out.",
+    ""
+   ],
+   [
+    "'Your network is not allowed to access this tenant.'",
+    "The Security policy's IP allowlist does not include your network.",
+    "Use an allowed network or ask an administrator to add yours; if nobody can reach PeopleOS, ask PeopleOS support.",
+    ""
+   ],
+   [
+    "A section or page is missing from the rail",
+    "Sections and pages appear only when your roles let you open them.",
+    "Check your roles in Admin › Setup › Users (M05).",
+    ""
+   ],
+   [
+    "Another organisation's logo on the sign-in page",
+    "The browser remembers the last organisation that signed in on it.",
+    "Click 'Not <name>? Use another organisation' under the form.",
+    ""
+   ]
+  ],
+  "checklist": [
+   [
+    "Activate your account",
+    "Accept the invitation before it expires and choose a strong password."
+   ],
+   [
+    "Set up your authenticator",
+    "Account security › Set up; keep the recovery codes offline."
+   ],
+   [
+    "Clear Home's Governance card",
+    "Review each item, fix it or confirm it is intended."
+   ],
+   [
+    "Choose how Home opens",
+    "View as, or Preferences › Home opens as."
+   ],
+   [
+    "Star your everyday pages",
+    "Use the area bar star so they stay first."
+   ],
+   [
+    "Learn the shortcuts",
+    "Press ? for the list; Ctrl K searches; N starts something new."
+   ],
+   [
+    "Share your sign-in link",
+    "Admin › Setup › Setup (Core HR) › Sign-in link, for welcome e-mails."
+   ]
+  ],
+  "summary": [
+   "Sign in at /admin/login with your work e-mail; once a browser has signed in, the page shows your organisation.",
+   "Password rules, expiry, reuse and two-factor sign-in are checked on every page, not only at sign-in.",
+   "Home's Administration view shows governance gaps, key counts and decisions waiting, each with Review.",
+   "The rail has nine sections; the area bar shows an area's pages, your starred favourites and All in ….",
+   "Ctrl K finds people, pages and actions; Actions lists every HR action by module; New starts something.",
+   "You only ever see what your roles allow: navigation and views never grant access."
+  ],
+  "captures_needed": [
+   {
+    "title": "Sign-in page (PeopleOS look)",
+    "url": "/admin/login",
+    "how": "Fresh browser with no cookies (screenshots/probe/login.png already shows it)."
+   },
+   {
+    "title": "Sign-in page in the organisation's look",
+    "url": "/admin/login",
+    "how": "Sign in as admin@demo.local, then Sign out from the avatar menu: the page reads 'Sign in to Demo Group' with 'Not Demo Group? Use another organisation'."
+   },
+   {
+    "title": "Forgot password page and its confirmation",
+    "url": "/admin/password-reset/request",
+    "how": "Click Forgot password? on the sign-in page; then enter admin@demo.local and click Send email to show the green notice."
+   },
+   {
+    "title": "Reset your password page",
+    "url": "/admin/password-reset/reset?email=…&token=…&signature=…",
+    "how": "Open the signed link from the 'Reset your PeopleOS password' e-mail (needs the training mail catcher)."
+   },
+   {
+    "title": "Accept your invitation page",
+    "url": "/admin/invitation/<token>",
+    "how": "Use an invitation link from a training e-mail; also capture an invalid token (any 64 letters) for the 'invalid or has expired' state. Must be signed out."
+   },
+   {
+    "title": "Verify your identity (code step of sign-in)",
+    "url": "/admin/login",
+    "how": "Sign in as a training user that has an authenticator set up; capture the code step, then click Use a recovery code instead."
+   },
+   {
+    "title": "Account security page",
+    "url": "/admin/profile",
+    "how": "Avatar menu › Account security as admin@demo.local; type in New password to show Current password."
+   },
+   {
+    "title": "Authenticator set-up dialog (QR and recovery codes)",
+    "url": "/admin/profile",
+    "how": "Click Set up next to Authenticator app; capture the QR step and the recovery codes step (use a throwaway training user)."
+   },
+   {
+    "title": "Set up two-factor authentication (required)",
+    "url": "/admin/multi-factor-authentication/set-up",
+    "how": "Turn on MFA in Security policy on the training database, then sign in as a user without an authenticator."
+   },
+   {
+    "title": "Choose your own / a new password",
+    "url": "/admin/password/expired",
+    "how": "Generate a temporary password for a training user (Users › edit › Account) and sign in with it."
+   },
+   {
+    "title": "Avatar menu open",
+    "url": "/admin",
+    "how": "Click the initials (DA) at the top right."
+   },
+   {
+    "title": "Command center open",
+    "url": "/admin",
+    "how": "Press Ctrl K: capture empty (Recent / Suggested) and with 'leave' typed."
+   },
+   {
+    "title": "Actions panel open",
+    "url": "/admin",
+    "how": "Click Actions in the top bar; capture the module columns and the Search actions… box."
+   },
+   {
+    "title": "Start something (New)",
+    "url": "/admin",
+    "how": "Click New in the top bar (or press N)."
+   },
+   {
+    "title": "Notifications slide-over",
+    "url": "/admin",
+    "how": "Click the bell (25 unread in the example)."
+   },
+   {
+    "title": "Rail section open and folded rail",
+    "url": "/admin/employees",
+    "how": "Show People open with its areas; then click the rail handle to fold the rail and rest the mouse on it to show the peek."
+   },
+   {
+    "title": "All in Lifecycle menu",
+    "url": "/admin/employees",
+    "how": "Click All in Lifecycle 24 in the area bar; star Employees to show the Favourites row."
+   },
+   {
+    "title": "Keyboard shortcuts dialog",
+    "url": "/admin",
+    "how": "Press ? (not inside a text box)."
+   },
+   {
+    "title": "Ask PeopleOS panel",
+    "url": "/admin",
+    "how": "Click Ask PeopleOS at the bottom of the rail."
+   },
+   {
+    "title": "Home in the other views",
+    "url": "/admin",
+    "how": "Click View as › People operations, Payroll and Company in turn; switch back to Administration afterwards."
+   },
+   {
+    "title": "Decision review drawer",
+    "url": "/admin",
+    "how": "Click Review on 'Casual leave · 1 day' in Decisions waiting for you; do not approve."
+   },
+   {
+    "title": "Preferences page",
+    "url": "/admin/preferences",
+    "how": "Avatar menu › Preferences."
+   },
+   {
+    "title": "Home on a phone",
+    "url": "/admin",
+    "how": "390 px wide viewport: bottom bar with Home, Admin, the + button, Users and Work."
+   },
+   {
+    "title": "Views menu on a list",
+    "url": "/admin/employees",
+    "how": "Click Views in the toolbar to show presets, Save this view… and saved views."
+   }
+  ],
+  "gaps": [
+   "Sign-in, forgot/reset password, invitation, two-factor, expired-password, Account security and Preferences pages are not in the crawl; described from source code only.",
+   "There is no separate Help menu in the workspace; help comes from page subheadings, the ? shortcuts list, Ask PeopleOS and Knowledge articles.",
+   "Remember me duration and the server session lifetime are service settings not visible to the organisation (framework default for Remember me is about 400 days); confirm with PeopleOS support.",
+   "When an idle timeout or an ended session signs a person out, the sign-in page does not show the reason (the message is stored but not displayed).",
+   "The number of actions in the Actions panel for this role and the rail's Pinned people / Recent lists were not captured.",
+   "The rail's Recent list fills only from items opened through Ctrl K search, not from every page visited.",
+   "Approvals (Approval Center, /admin/approvals) is not listed in the rail for this role; it is reached from Home, G then A, or the phone bar."
+  ],
+  "navigation_map": [
+   [
+    "Home",
+    "—",
+    "/admin",
+    "Your Home page (opens in your chosen view)."
+   ],
+   [
+    "My work",
+    "Overview · Inbox · Task inbox · Team HR requests · My requests · New request · Notifications",
+    "/admin/my-work",
+    "Badge = tasks and approvals waiting (shown up to 99)."
+   ],
+   [
+    "People",
+    "Directory · My team",
+    "/admin/people · /admin/team-calendar",
+    "Directory of everyone you may see; team calendar."
+   ],
+   [
+    "People",
+    "Lifecycle (24 pages)",
+    "/admin/workforce-desk",
+    "Opens on the Lifecycle desk: employees, onboarding, letters, exits, alumni."
+   ],
+   [
+    "People",
+    "Growth (55 pages)",
+    "/admin/performance-desk",
+    "Performance, goals, learning, skills, careers, talent."
+   ],
+   [
+    "People",
+    "Time & leave (35 pages)",
+    "/admin/time-office-desk",
+    "Attendance, shifts, leave, holidays, punches."
+   ],
+   [
+    "People",
+    "Pay (68 pages)",
+    "/admin/payroll-desk",
+    "Payroll, salary structures, compliance, tax, expenses."
+   ],
+   [
+    "Organisation",
+    "Org map · Assets (6) · Structure (18) · Workforce (11)",
+    "/admin/organisation-map",
+    "Structure opens Organisation Designer; Assets the Asset desk; Workforce the Workforce overview."
+   ],
+   [
+    "Workflows",
+    "Policies · Process flows (2)",
+    "/admin/policies",
+    "Process flows: Workflows and their Runs."
+   ],
+   [
+    "Services",
+    "Knowledge · Grievances (2) · Service Desk (6)",
+    "/admin/tickets",
+    "Articles, grievance cases, the HR queue and SLAs."
+   ],
+   [
+    "Communication",
+    "Fundraisers · Messaging (4) · Engagement (12)",
+    "/admin/announcements",
+    "Announcements, notification rules and templates; Engage desk."
+   ],
+   [
+    "Insights",
+    "Audit (3) · Analytics (7)",
+    "/admin/change-intelligence · /admin/reports",
+    "Change history, Change intelligence, AI interactions; reports and dashboards."
+   ],
+   [
+    "Admin",
+    "All modules · Data import (2) · Setup (26) · Platform (14)",
+    "/admin/admin-centre",
+    "Setup opens What do you want to configure?; Platform opens Integration hub and holds Security policy and Single sign-on."
+   ]
+  ],
+  "extra_screens": {
+   "auth/login": {
+    "url": "/admin/login",
+    "purpose": "The sign-in page. Your form is on the right; the left shows your organisation's picture or logo once this browser has signed in to it, otherwise the PeopleOS artwork.",
+    "when": "Each time you start working, or when a session has ended.",
+    "elements": [
+     [
+      "Sign in to <organisation>",
+      "Heading; reads 'Sign in to PeopleOS' in a browser that remembers no organisation."
+     ],
+     [
+      "Forgot password?",
+      "Link beside Password to the password reset request."
+     ],
+     [
+      "Eye icon",
+      "Shows or hides the password you typed."
+     ],
+     [
+      "Not <name>? Use another organisation",
+      "Makes this browser forget your organisation and show the PeopleOS page."
+     ],
+     [
+      "Powered by PeopleOS",
+      "Shown under a branded form."
+     ]
+    ],
+    "fields": [
+     {
+      "label": "Email address",
+      "meaning": "Your work e-mail address.",
+      "rule": "Required"
+     },
+     {
+      "label": "Password",
+      "meaning": "Your PeopleOS password (case-sensitive).",
+      "rule": "Required"
+     },
+     {
+      "label": "Remember me",
+      "meaning": "Keeps this browser signed in until you sign out. Only on your own device.",
+      "rule": "Optional"
+     }
+    ],
+    "after": "With an authenticator the same page asks for a 6-digit code (Verify your identity › Confirm sign in); then Home opens.",
+    "permission": "None (public page).",
+    "depends": "An active user in an active organisation.",
+    "limits": "No single sign-on button; no permanent account lock, only a short pause after five attempts a minute.",
+    "source": "app/Filament/Auth/Login.php; resources/views/filament/auth/login.blade.php; vendor Filament Auth/Pages/Login.php (fields, 5 attempts a minute); app/Filament/Support/SignInBranding.php; app/Domain/Identity/Services/RememberedWorkspace.php"
+   },
+   "auth/forgot-password": {
+    "url": "/admin/password-reset/request",
+    "purpose": "Asks PeopleOS to e-mail a one-time link to choose a new password.",
+    "when": "When you have forgotten your password.",
+    "elements": [
+     [
+      "Send email",
+      "Sends the link if the address belongs to an active account; the answer is the same either way."
+     ],
+     [
+      "back to login",
+      "Returns to the sign-in page."
+     ]
+    ],
+    "fields": [
+     {
+      "label": "Email address",
+      "meaning": "The address you sign in with.",
+      "rule": "Required"
+     }
+    ],
+    "after": "Notice: 'If an account uses that address, we have sent it a link to choose a new password.' The link expires in 60 minutes.",
+    "permission": "None (public page).",
+    "depends": "An active account. Invited people use their invitation instead.",
+    "limits": "Two requests a minute from one network; each address is also limited.",
+    "source": "app/Filament/Auth/RequestPasswordReset.php; app/Domain/Identity/Services/PasswordResets.php"
+   },
+   "auth/reset-password": {
+    "url": "/admin/password-reset/reset (signed link from the e-mail)",
+    "purpose": "Choose a new password from the e-mailed link.",
+    "when": "Right after requesting a reset.",
+    "elements": [
+     [
+      "Reset password",
+      "Saves the new password if the link is valid."
+     ]
+    ],
+    "fields": [
+     {
+      "label": "Email address",
+      "meaning": "Filled in from the link.",
+      "rule": "Locked"
+     },
+     {
+      "label": "Password",
+      "meaning": "New password under your organisation's rules.",
+      "rule": "Required"
+     },
+     {
+      "label": "Confirm password",
+      "meaning": "The same password again.",
+      "rule": "Required"
+     }
+    ],
+    "after": "All your sessions end; sign in with the new password. Two-factor sign-in stays as it was.",
+    "permission": "None (link only).",
+    "depends": "A link less than 60 minutes old, not yet used.",
+    "limits": "Any problem with the link shows one message: 'This password reset link is invalid or has expired. Request a new one.'",
+    "source": "app/Filament/Auth/ResetPassword.php; app/Domain/Identity/Services/PasswordResets.php"
+   },
+   "auth/accept-invitation": {
+    "url": "/admin/invitation/<token>",
+    "purpose": "Activates an invited account: the invitee chooses a password, then signs in.",
+    "when": "First access of an invited account (for you, the e-mail from PeopleOS).",
+    "elements": [
+     [
+      "Activate my account",
+      "Saves the password and activates the account."
+     ]
+    ],
+    "fields": [
+     {
+      "label": "Password",
+      "meaning": "Your new password under the organisation's rules.",
+      "rule": "Required"
+     },
+     {
+      "label": "Confirm password",
+      "meaning": "The same password again.",
+      "rule": "Required"
+     }
+    ],
+    "after": "'Your account is ready. Sign in with your new password.' and the sign-in page opens.",
+    "permission": "None (link only).",
+    "depends": "A pending invitation; you must be signed out.",
+    "limits": "Works once; expires at the time stated in the e-mail.",
+    "source": "app/Filament/Auth/AcceptInvitation.php; app/Domain/Identity/Services/UserInvitations.php"
+   },
+   "auth/choose-password": {
+    "url": "/admin/password/expired",
+    "purpose": "Shown before anything else when a password has expired ('Choose a new password') or after signing in with a temporary password ('Choose your own password').",
+    "when": "At the first click after expiry, or at the first sign-in with a temporary password.",
+    "elements": [
+     [
+      "Change password",
+      "Saves the new password and continues to the page you wanted."
+     ],
+     [
+      "Sign out",
+      "Leaves without changing."
+     ]
+    ],
+    "fields": [
+     {
+      "label": "Current password / Temporary password",
+      "meaning": "The password you signed in with.",
+      "rule": "Required"
+     },
+     {
+      "label": "New password",
+      "meaning": "Must differ from the current one and meet the rules.",
+      "rule": "Required"
+     },
+     {
+      "label": "Confirm new password",
+      "meaning": "The same new password again.",
+      "rule": "Required"
+     }
+    ],
+    "after": "'Your password has been changed.' Your other sessions are signed out; this one continues.",
+    "permission": "Signed in.",
+    "depends": "Expiry set in Security policy, or a temporary password from an administrator.",
+    "limits": "Single sign-on sessions are never sent here.",
+    "source": "app/Filament/Auth/ChangeExpiredPassword.php; app/Http/Middleware/EnforceAccountSecurity.php"
+   },
+   "auth/confirm-it-is-you": {
+    "url": "/admin/multi-factor-authentication/verify",
+    "purpose": "Asks for your authenticator code when a session started without the code step (Remember me or single sign-on).",
+    "when": "When a remembered browser or single sign-on opens a new session and you have an authenticator.",
+    "elements": [
+     [
+      "Verify",
+      "Checks the code and continues."
+     ],
+     [
+      "Use a recovery code instead",
+      "Switches to a one-time recovery code."
+     ],
+     [
+      "Sign out",
+      "Leaves the session."
+     ]
+    ],
+    "fields": [
+     {
+      "label": "Enter the 6-digit code from the authenticator app",
+      "meaning": "The current code in your app.",
+      "rule": "Required"
+     }
+    ],
+    "after": "You continue to the page you asked for.",
+    "permission": "Signed in.",
+    "depends": "An authenticator set up on your account.",
+    "limits": "Five tries a minute.",
+    "source": "app/Filament/Auth/ConfirmMultiFactorAuthentication.php"
+   },
+   "me/account-security": {
+    "url": "/admin/profile",
+    "purpose": "Your own password and two-factor sign-in. Name and e-mail are managed by administrators in Users, not here.",
+    "when": "To change your password or set up, renew or turn off your authenticator.",
+    "elements": [
+     [
+      "Two-factor authentication (2FA)",
+      "Authenticator app: Set up, or when enabled Regenerate recovery codes and Turn off."
+     ],
+     [
+      "Save changes",
+      "Saves a new password."
+     ]
+    ],
+    "fields": [
+     {
+      "label": "New password",
+      "meaning": "Your new password under the organisation's rules.",
+      "rule": "Optional"
+     },
+     {
+      "label": "Confirm new password",
+      "meaning": "The same password again.",
+      "rule": "Optional"
+     },
+     {
+      "label": "Current password",
+      "meaning": "Appears once you type a new password; proves it is you.",
+      "rule": "Required"
+     }
+    ],
+    "after": "Your other sessions end at their next click. The change is recorded in the audit trail.",
+    "permission": "Signed in.",
+    "depends": null,
+    "limits": "Only the authenticator-app method is offered.",
+    "source": "app/Filament/Auth/EditProfile.php; Filament EditProfile and AppAuthentication"
+   },
+   "me/preferences": {
+    "url": "/admin/preferences",
+    "purpose": "How PeopleOS looks and opens for you alone: density, how Home opens, pinned people, hidden Home cards and recent items.",
+    "when": "When you want Home to open in a fixed view or a more compact layout.",
+    "elements": [
+     [
+      "Density",
+      "Comfortable or Compact."
+     ],
+     [
+      "Home opens as",
+      "Automatic or one of your views."
+     ],
+     [
+      "Pinned people",
+      "People you pinned from a person preview; Unpin."
+     ],
+     [
+      "Home and history",
+      "Restore hidden Home cards; Clear recent items; Notification preferences."
+     ]
+    ],
+    "fields": [],
+    "after": "Saved at once for you only.",
+    "permission": "Signed in.",
+    "depends": null,
+    "limits": "Directory card appears only when your user is linked to an employee record.",
+    "source": "app/Filament/Pages/Preferences.php; resources/views/filament/pages/experience/preferences.blade.php"
+   }
+  }
+ },
+ "M26": {
+  "intro": "Signing out ends your session in this browser. This module explains what sign-out ends and what it does not, how to use shared devices safely, how to look after your password and authenticator, and how to handle payroll and employee data.",
+  "why": "An organisation administrator can see and change everything. A session left open or a weak password exposes the salaries, bank details and identity data of every employee.",
+  "who": "Everyone signs out the same way. The organisation-wide controls (Security policy, Sign out everywhere, Reset multi-factor authentication) need security.manage or the right to update users; Tenant Super Admin holds both.",
+  "where": "Avatar menu (your initials, top right) › Sign out. Avatar menu › Account security. Admin › Platform › Security policy. Admin › Setup › Users › a user › Account.",
+  "objectives": [
+   "Sign out correctly and know what stays signed in elsewhere.",
+   "Protect your account with a strong password, an authenticator and recovery codes.",
+   "Run a regular security routine for your organisation."
+  ],
+  "depends_on": [
+   "M01 Sign in, Home and navigation: Account security and two-factor sign-in",
+   "M05 Users, access and integrations: Security policy, users, roles and single sign-on",
+   "M23 Audit, change history and data import: sign-ins, sign-outs and changes are recorded"
+  ],
+  "subs": [
+   {
+    "id": "26.1",
+    "name": "Signing out",
+    "desc": "Where Sign out is and what it ends.",
+    "screens": []
+   },
+   {
+    "id": "26.2",
+    "name": "Shared and public devices",
+    "desc": "Remember me, downloads and the remembered organisation.",
+    "screens": []
+   },
+   {
+    "id": "26.3",
+    "name": "Password and authenticator care",
+    "desc": "Strong passwords, recovery codes and ending your other sessions.",
+    "screens": []
+   },
+   {
+    "id": "26.4",
+    "name": "Sessions you control as administrator",
+    "desc": "Idle timeout, IP allowlist, Sign out everywhere, authenticator reset.",
+    "screens": []
+   },
+   {
+    "id": "26.5",
+    "name": "Handling sensitive data",
+    "desc": "Pay pages, exports, the assistant and the audit trail.",
+    "screens": []
+   },
+   {
+    "id": "26.6",
+    "name": "Your security routine",
+    "desc": "A checklist for every day, week and month.",
+    "screens": []
+   }
+  ],
+  "screens": {},
+  "procedures": [
+   {
+    "sub": "26.1",
+    "title": "Sign out",
+    "before": "Save your work: a form with unsaved changes asks before you leave it.",
+    "steps": [
+     [
+      "Open the avatar menu",
+      "Click your initials at the top right of any page."
+     ],
+     [
+      "Sign out",
+      "Click Sign out, the last item in the menu."
+     ],
+     [
+      "Check",
+      "The sign-in page opens. On a shared device, close every browser window too."
+     ]
+    ],
+    "result": "This browser's session is over and Remember me no longer works on any device. The sign-out is recorded in the audit trail.",
+    "screens": [],
+    "source": "Filament user menu (logout) and LogoutController; Laravel SessionGuard::logout; app/Domain/Audit/Listeners/RecordAuthenticationEvents.php"
+   },
+   {
+    "sub": "26.2",
+    "title": "Leave a shared computer safely",
+    "before": "You signed in on a computer other people use.",
+    "steps": [
+     [
+      "Do not tick Remember me",
+      "Leave Remember me empty, and do not let the browser save your password."
+     ],
+     [
+      "Remove downloads",
+      "Delete payslips, reports, bank files and exports you saved; PeopleOS cannot protect files on the computer."
+     ],
+     [
+      "Sign out",
+      "Avatar menu › Sign out."
+     ],
+     [
+      "Forget the organisation (optional)",
+      "On the sign-in page click 'Not <organisation>? Use another organisation' so the page no longer shows your logo."
+     ],
+     [
+      "Close the browser",
+      "Close all its windows."
+     ]
+    ],
+    "result": "Nothing of your session, password or downloaded data is left on the device.",
+    "screens": [],
+    "source": "resources/views/filament/auth/login.blade.php; app/Domain/Identity/Services/RememberedWorkspace.php"
+   },
+   {
+    "sub": "26.3",
+    "title": "End your sessions on other devices",
+    "before": "You think you left PeopleOS open elsewhere, or your password may be known.",
+    "steps": [
+     [
+      "Open Account security",
+      "Avatar menu › Account security."
+     ],
+     [
+      "Set a new password",
+      "Fill New password, Confirm new password and Current password, then Save changes."
+     ],
+     [
+      "Check two-factor sign-in",
+      "If your recovery codes may have been seen, click Regenerate recovery codes."
+     ]
+    ],
+    "result": "Every other session of yours is signed out at its next click; this one continues.",
+    "screens": [],
+    "source": "app/Filament/Auth/EditProfile.php; Filament AuthenticateSession middleware"
+   },
+   {
+    "sub": "26.4",
+    "title": "Sign a person out everywhere or reset their authenticator",
+    "before": "A device is lost or stolen, or a person must lose access at once. You cannot do this for your own account.",
+    "steps": [
+     [
+      "Open the user",
+      "Admin › Setup › Users, then Edit on the person's row."
+     ],
+     [
+      "Open Account",
+      "Click the Account button at the top of the page."
+     ],
+     [
+      "Sign out everywhere",
+      "Click Sign out everywhere, give a Reason (5 characters or more) and confirm: 'Signed out on every device.'"
+     ],
+     [
+      "Lost phone",
+      "Click Reset multi-factor authentication (needs security.manage) with a reason; they set up a new authenticator at their next sign-in."
+     ],
+     [
+      "Password may be known",
+      "Click E-mail a temporary password: the old password stops working and they choose their own at sign-in."
+     ]
+    ],
+    "result": "The person's sessions end on every device; the action and your reason are in the audit trail.",
+    "screens": [],
+    "source": "app/Filament/Resources/Users/Pages/EditUser.php; app/Filament/Support/SignInActions.php; app/Domain/Identity/Services/SessionSecurity.php, MultiFactor.php"
+   },
+   {
+    "sub": "26.4",
+    "title": "Set automatic sign-out and access rules",
+    "before": "You hold security.manage.",
+    "steps": [
+     [
+      "Open the policy",
+      "Admin › Platform › Security policy. The form runs in steps: Access, Passwords, Disable login, Retention, Data warehouse feed, Review."
+     ],
+     [
+      "Access",
+      "Set Sign out after idle minutes (0 = never), Require authenticator-app MFA for every tenant login and, if needed, the IP allowlist."
+     ],
+     [
+      "Passwords",
+      "Minimum length, Expire after days, Remind before expiry (days), Recently used passwords that cannot be reused and the two Strict password options."
+     ],
+     [
+      "Save",
+      "Go to Review and click Save policy: 'Security policy saved'."
+     ]
+    ],
+    "result": "The rules apply at everyone's next click. Details of every field are in M05.",
+    "screens": [],
+    "source": "app/Filament/Pages/SecurityPolicyPage.php; app/Http/Middleware/EnforceSecurityPolicy.php, EnforceAccountSecurity.php"
+   }
+  ],
+  "calculations": [
+   {
+    "sub": "26.4",
+    "title": "When the idle timeout signs someone out",
+    "intro": "Illustrative: the example organisation has Sign out after idle minutes = 0 (never). With 30 minutes:",
+    "lines": [
+     [
+      "",
+      "Last click in PeopleOS",
+      "10:00"
+     ],
+     [
+      "+",
+      "Sign out after idle minutes",
+      "30 min"
+     ]
+    ],
+    "total": [
+     "First click after this time signs the person out",
+     "10:30"
+    ],
+    "explain": [
+     [
+      "Rule",
+      "On each click PeopleOS compares the time since the previous click with the setting; more than the setting ends the session."
+     ],
+     [
+      "What the person sees",
+      "The sign-in page, without a message. Unsaved form entries are lost."
+     ]
+    ],
+    "source": "app/Http/Middleware/EnforceSecurityPolicy.php (now - last_activity > idle × 60)"
+   }
+  ],
+  "warnings": [
+   {
+    "sub": "26.4",
+    "title": "The IP allowlist can lock you out",
+    "level": "blocked",
+    "headline": "The allowlist applies to everyone in your organisation, you included.",
+    "body": "From a network that is not listed, every page answers 'Your network is not allowed to access this tenant.' Only PeopleOS platform staff are exempt.",
+    "points": [
+     "Add your own office and VPN addresses first.",
+     "Use exact IPs, 10.0.* style or CIDR (10.0.0.0/8).",
+     "Leave it empty for no restriction."
+    ],
+    "todo": "If no administrator can reach PeopleOS after a change, ask PeopleOS support."
+   },
+   {
+    "sub": "26.1",
+    "title": "Signing out here does not sign you out elsewhere",
+    "level": "warning",
+    "headline": "Open sessions on other devices continue.",
+    "body": "Sign-out ends this browser's session and stops Remember me everywhere, but a browser that is already signed in elsewhere stays in until it times out.",
+    "points": [
+     "Change your password to end them all.",
+     "An administrator can use Sign out everywhere on another person."
+    ],
+    "todo": null
+   },
+   {
+    "sub": "26.5",
+    "title": "Downloaded files leave PeopleOS's protection",
+    "level": "important",
+    "headline": "Access rules stop at the download.",
+    "body": "Payslips, reports, bank files and data exports saved to a computer are readable by anyone with that computer.",
+    "points": [
+     "Download only what you need.",
+     "Store files in your organisation's secure storage.",
+     "Delete local copies after use."
+    ],
+    "todo": null
+   },
+   {
+    "sub": "26.3",
+    "title": "Never share an account",
+    "level": "important",
+    "headline": "Every change is recorded under the person who signed in.",
+    "body": "The audit trail names who did what. PeopleOS never shows anyone's password; a generated temporary password is shown once, to hand over.",
+    "points": [
+     "Give each person their own user and role.",
+     "Do not ask for or send passwords by e-mail or chat."
+    ],
+    "todo": null
+   }
+  ],
+  "troubleshooting": [
+   [
+    "Back on the sign-in page while working, with no message",
+    "Idle timeout, your password changed elsewhere, Sign out everywhere or an authenticator reset by an administrator, or the account was suspended.",
+    "Sign in again. If you did not expect it, change your password and tell another administrator.",
+    ""
+   ],
+   [
+    "Signed out after a short break",
+    "Sign out after idle minutes is set in Security policy.",
+    "Sign in again; save forms before you step away.",
+    ""
+   ],
+   [
+    "The sign-in page still shows your logo after sign-out",
+    "By design: the browser remembers your organisation's look; this grants nothing.",
+    "Click 'Not <name>? Use another organisation' to make the browser forget it.",
+    ""
+   ],
+   [
+    "'Enter your password' before My payslips or My compensation",
+    "Setup › Payroll: 'Ask for the password again before My compensation, My payslips and My salary YTD' is on.",
+    "Enter your sign-in password; it is not asked again for 15 minutes.",
+    ""
+   ],
+   [
+    "You cannot see Sign out everywhere for yourself",
+    "The action is offered only for other people's users.",
+    "Change your own password in Account security instead.",
+    ""
+   ]
+  ],
+  "checklist": [
+   [
+    "Every day: sign out",
+    "Avatar menu › Sign out when you stop; close the browser on shared devices."
+   ],
+   [
+    "Every day: read Governance on Home",
+    "Act on MFA, role and scope gaps and on failures it lists."
+   ],
+   [
+    "Every day: no Remember me on shared devices",
+    "Tick it only on a device that only you use."
+   ],
+   [
+    "Every week: check Change history",
+    "Insights › Audit › Change history: filter Action by Login Failed, Login and Mfa Changed."
+   ],
+   [
+    "Every week: delete local downloads",
+    "Payslips, reports, bank files and exports after use."
+   ],
+   [
+    "Every month: review Users",
+    "Leavers inactive, everyone with a role, approvers scoped to their organisation."
+   ],
+   [
+    "Keep two-factor sign-in required",
+    "Security policy › Require authenticator-app MFA for every tenant login."
+   ],
+   [
+    "Set an idle timeout",
+    "Security policy › Sign out after idle minutes: choose a value that suits your organisation."
+   ],
+   [
+    "Keep a second administrator",
+    "Someone with security.manage who can reset your authenticator."
+   ],
+   [
+    "Keep recovery codes offline",
+    "Regenerate them if they may have been seen."
+   ],
+   [
+    "Control the assistant's data",
+    "Setup › Governance › Data the assistant may send to an external AI provider."
+   ]
+  ],
+  "summary": [
+   "Sign out from the avatar menu; it ends this browser's session and Remember me on every device.",
+   "Other open sessions stay in until they time out; change your password to end them all.",
+   "Use Remember me only on your own device; on shared ones sign out, delete downloads and close the browser.",
+   "Keep two-factor sign-in on, recovery codes offline and a second administrator who can reset you.",
+   "Treat payslips, reports and exports as confidential: once downloaded, PeopleOS cannot protect them."
+  ],
+  "captures_needed": [
+   {
+    "title": "Avatar menu with Sign out",
+    "url": "/admin",
+    "how": "Click the initials (DA) at the top right; Sign out is the last item."
+   },
+   {
+    "title": "Sign-in page after sign-out (organisation look)",
+    "url": "/admin/login",
+    "how": "Click Sign out; capture 'Sign in to Demo Group' and 'Not Demo Group? Use another organisation'."
+   },
+   {
+    "title": "User Account menu",
+    "url": "/admin/users/<id>/edit",
+    "how": "Admin › Setup › Users › Edit on an active user other than admin@demo.local; click Account (E-mail a temporary password, Send password reset link, Sign out everywhere…)."
+   },
+   {
+    "title": "Sign out everywhere dialog",
+    "url": "/admin/users/<id>/edit",
+    "how": "Account › Sign out everywhere; capture the Reason field, then cancel."
+   },
+   {
+    "title": "Account security with a new password typed",
+    "url": "/admin/profile",
+    "how": "Type into New password to show Current password; do not save."
+   },
+   {
+    "title": "Enter your password (pay pages)",
+    "url": "/admin/pay/confirm-password",
+    "how": "Turn on the Payroll setting 'Ask for the password again…' and open My payslips as an employee user (e.g. rahul.sharma)."
+   }
+  ],
+  "gaps": [
+   "There is no 'sign out of all my devices' button for your own account; changing your password is the way.",
+   "After an automatic sign-out (idle, ended session, suspended account) the sign-in page shows no reason.",
+   "There is no per-account lock after repeated wrong passwords, only a short pause per network address.",
+   "Without an idle timeout, how long an unused session lasts is a service setting; ask PeopleOS support for the value.",
+   "No sign-out, Account menu or pay-password screens were captured; described from source code."
+  ]
+ }
+}

@@ -1,0 +1,24 @@
+[
+ { "flow": "m13-october-approve", "module": "M13", "as": "admin@demo.local", "steps": [
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=approve" }, { "wait": 8000 },
+   { "snap": { "id": "12-approve-ready", "screen": "Run payroll: 5 Review and approve (another person approves)", "path": "People › Pay › Run payroll", "full": true, "labels": ["Approve"] } },
+   { "click": "Approve", "within": "main", "after": 2500 }, { "fill": { "Note": "Reviewed totals against last month and the pre-payroll checks." } },
+   { "snap": { "id": "13-approve-dialog", "screen": "Approve the run: add a note", "path": "People › Pay › Run payroll › Approve", "labels": ["Note", "Submit", "Cancel"] } },
+   { "clickAny": ["Submit", "Confirm"], "after": 12000 },
+   { "snap": { "id": "14-approved", "screen": "Run payroll: approved", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=close" }, { "wait": 8000 },
+   { "snap": { "id": "15-close-ready", "screen": "Run payroll: 6 Close payroll", "path": "People › Pay › Run payroll", "full": true, "labels": ["Close payroll"] } },
+   { "click": "Close payroll", "within": "main", "after": 2500 },
+   { "snap": { "id": "16-close-dialog", "screen": "Close payroll: confirmation", "path": "People › Pay › Run payroll › Close payroll" } },
+   { "clickAny": ["Confirm", "Submit", "Close payroll"], "after": 20000 },
+   { "snap": { "id": "17-closed", "screen": "Run payroll: payroll closed", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=publish" }, { "wait": 8000 },
+   { "snap": { "id": "18-publish-ready", "screen": "Run payroll: 7 Publish payslips", "path": "People › Pay › Run payroll", "full": true, "labels": ["Publish payslips"] } },
+   { "click": "Publish payslips", "within": "main", "after": 2500 },
+   { "snap": { "id": "19-publish-dialog", "screen": "Publish payslips: confirmation", "path": "People › Pay › Run payroll › Publish payslips" } },
+   { "clickAny": ["Confirm", "Submit", "Publish"], "after": 20000 },
+   { "snap": { "id": "20-published", "screen": "Run payroll: payslips published", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=pay" }, { "wait": 8000 },
+   { "snap": { "id": "21-pay", "screen": "Run payroll: 8 Pay", "path": "People › Pay › Run payroll", "full": true } }
+ ] }
+]

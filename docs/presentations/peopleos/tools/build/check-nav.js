@@ -96,8 +96,13 @@ function check(deck, map) {
         }
     }
     // Main contents: one card per module
-    const toc = deck.slides[map.toc - 1];
-    for (const m of map.modules) expect(toc, `Module ${m.code}`, m.start, `contents card ${m.code}`);
+    const tocPages = (map.tocPages ?? [map.toc]).map((n) => deck.slides[n - 1]);
+    for (const m of map.modules) {
+        const page = tocPages.find((t) => link(t, `Module ${m.code}`).length);
+        if (!page) fails.push(`contents: no card for module ${m.code}`);
+        else expect(page, `Module ${m.code}`, m.start, `contents card ${m.code}`);
+    }
+    const toc = tocPages[0];
     if (map.howto) expect(toc, 'How to use this course', map.howto, 'contents button');
     if (map.review) expect(toc, 'Course review', map.review, 'contents button');
     // Modules: divider buttons, submodule contents, summary
@@ -122,7 +127,7 @@ function check(deck, map) {
 
 (async () => {
     const want = process.argv.slice(2);
-    const dir = path.join(__dirname, '../nav-maps');
+    const dir = process.env.NAV_MAP_DIR || path.join(__dirname, '../nav-maps');
     const maps = fs.readdirSync(dir).filter((f) => f.endsWith('.json') && (!want.length || want.includes(f.slice(0, 2))));
     let bad = 0;
     for (const f of maps) {
@@ -131,7 +136,7 @@ function check(deck, map) {
         const deck = await readDeck(file);
         const { fails, stats } = check(deck, map);
         const report = { file: map.file, checked_at: new Date().toISOString(), slides: stats.slides, internal_links: stats.links, failures: fails };
-        fs.writeFileSync(path.join(__dirname, `../nav-check-${f.slice(0, 2)}.json`), JSON.stringify(report, null, 2));
+        fs.writeFileSync(path.join(process.env.NAV_MAP_DIR || path.join(__dirname, '..'), `nav-check-${f.slice(0, 2)}.json`), JSON.stringify(report, null, 2));
         console.log(`${map.file}: ${stats.slides} slides, ${stats.links} internal links checked, ${fails.length} failure(s)`);
         for (const x of fails.slice(0, 60)) console.log('   ✗ ' + x);
         if (fails.length > 60) console.log(`   … ${fails.length - 60} more in nav-check-${f.slice(0, 2)}.json`);

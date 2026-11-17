@@ -1,0 +1,553 @@
+{
+ "flows": [
+  {
+   "key": "flows/signin/01-sign-in",
+   "module": "M01",
+   "sub": "1.1",
+   "caption": "Open your organisation's PeopleOS address. Enter your work e-mail and password, then Sign in."
+  },
+  {
+   "key": "flows/signin/02-forgot-password",
+   "module": "M01",
+   "sub": "1.1",
+   "caption": "Forgot password? opens this page. Enter your work e-mail and click Send email."
+  },
+  {
+   "key": "flows/signin/03-reset-sent",
+   "module": "M01",
+   "sub": "1.1",
+   "caption": "PeopleOS confirms without saying whether the address exists. The link in the e-mail lets you choose a new password."
+  },
+  {
+   "key": "flows/profile/01-edit-profile",
+   "module": "M01",
+   "sub": "1.2",
+   "caption": "Avatar menu › Account security: change your password and set up the authenticator app."
+  },
+  {
+   "key": "flows/m01-account-security/01-new-password-typed",
+   "module": "M01",
+   "sub": "1.2",
+   "caption": "Typing a new password asks for your current password too, before Save changes."
+  },
+  {
+   "key": "flows/shell/01-home",
+   "module": "M01",
+   "sub": "1.3",
+   "caption": "Home: the rail on the left, search, Actions, New and your initials at the top, your work in the middle."
+  },
+  {
+   "key": "flows/m01-view-as/04-view-as-administration",
+   "module": "M01",
+   "sub": "1.3",
+   "caption": "View as Administration: governance items and decisions for the organisation administrator."
+  },
+  {
+   "key": "flows/m01-view-as/02-view-as-people-operations",
+   "module": "M01",
+   "sub": "1.3",
+   "caption": "View as People operations: the HR team's view of the same Home."
+  },
+  {
+   "key": "flows/m01-view-as/01-view-as-payroll",
+   "module": "M01",
+   "sub": "1.3",
+   "caption": "View as Payroll: the payroll team's view."
+  },
+  {
+   "key": "flows/m01-view-as/03-view-as-company",
+   "module": "M01",
+   "sub": "1.3",
+   "caption": "View as Company: the leadership view."
+  },
+  {
+   "key": "flows/m01-decision-review/01-review-drawer",
+   "module": "M01",
+   "sub": "1.3",
+   "caption": "Review on a decision opens it beside Home, so you can decide without leaving the page."
+  },
+  {
+   "key": "flows/m01-phone/01-home-on-phone",
+   "module": "M01",
+   "sub": "1.3",
+   "caption": "On a phone, the same Home with a bottom bar."
+  },
+  {
+   "key": "flows/m01-rail-admin/01-admin-centre",
+   "module": "M01",
+   "sub": "1.4",
+   "caption": "Admin › All modules: every module you can open, by area."
+  },
+  {
+   "key": "flows/m01-area-menu/01-all-in-lifecycle",
+   "module": "M01",
+   "sub": "1.4",
+   "caption": "The area bar's All in … menu lists every module of the area; star the ones you use most."
+  },
+  {
+   "key": "flows/shell/07-area-menu",
+   "module": "M01",
+   "sub": "1.4",
+   "caption": "The area bar on a payroll page: the current module first, then the others of the area."
+  },
+  {
+   "key": "flows/m01-command-empty/01-search-open",
+   "module": "M01",
+   "sub": "1.5",
+   "caption": "Ctrl K opens search: recent and suggested pages before you type."
+  },
+  {
+   "key": "flows/shell/02-command-search",
+   "module": "M01",
+   "sub": "1.5",
+   "caption": "Typing filters actions, pages and people as you type."
+  },
+  {
+   "key": "flows/shell/03-actions-panel",
+   "module": "M01",
+   "sub": "1.5",
+   "caption": "Actions lists every action you may start, by module."
+  },
+  {
+   "key": "flows/shell/04-new-menu",
+   "module": "M01",
+   "sub": "1.5",
+   "caption": "New starts something: the most common actions first."
+  },
+  {
+   "key": "flows/shell/05-notifications",
+   "module": "M01",
+   "sub": "1.6",
+   "caption": "The bell lists your notifications; mark them read or clear them."
+  },
+  {
+   "key": "flows/shell/06-profile-menu",
+   "module": "M01",
+   "sub": "1.6",
+   "caption": "Your initials open the avatar menu: Account security, Preferences, theme and Sign out."
+  },
+  {
+   "key": "flows/m01-preferences/01-preferences",
+   "module": "M01",
+   "sub": "1.6",
+   "caption": "Preferences: how Home opens and other personal choices."
+  },
+  {
+   "key": "flows/m01-ask/01-ask-peopleos",
+   "module": "M01",
+   "sub": "1.6",
+   "caption": "Ask PeopleOS explains with sources; it never decides for you."
+  },
+  {
+   "key": "flows/m01-shortcuts/01-keyboard-shortcuts",
+   "module": "M01",
+   "sub": "1.6",
+   "caption": "Press ? for the keyboard shortcuts."
+  },
+  {
+   "key": "flows/m01-views-menu/01-views-menu",
+   "module": "M01",
+   "sub": "1.7",
+   "caption": "Views on a list: ready-made presets, and Save this view… for your own filters."
+  },
+  {
+   "key": "flows/signout/01-profile-menu",
+   "module": "M26",
+   "sub": "26.1",
+   "caption": "Click your initials, then Sign out."
+  },
+  {
+   "key": "flows/signout/02-signed-out",
+   "module": "M26",
+   "sub": "26.1",
+   "caption": "You are back on the sign-in page; this browser's session has ended."
+  },
+  {
+   "key": "flows/employee360/01-now",
+   "module": "M07",
+   "sub": "7.4",
+   "caption": "Now: the person's current status and what is next for them."
+  },
+  {
+   "key": "flows/employee360/02-journey",
+   "module": "M07",
+   "sub": "7.4",
+   "caption": "Journey: every stage of the lifecycle with its dates."
+  },
+  {
+   "key": "flows/employee360/03-work",
+   "module": "M07",
+   "sub": "7.4",
+   "caption": "Work: position, team, manager and relationships."
+  },
+  {
+   "key": "flows/employee360/04-growth",
+   "module": "M07",
+   "sub": "7.4",
+   "caption": "Growth: performance, goals, learning, skills and career."
+  },
+  {
+   "key": "flows/employee360/05-rewards",
+   "module": "M07",
+   "sub": "7.4",
+   "caption": "Rewards: pay and compensation, shown only with the matching permission."
+  },
+  {
+   "key": "flows/employee360/06-documents",
+   "module": "M07",
+   "sub": "7.4",
+   "caption": "Documents: documents, letters, communications and transitions."
+  },
+  {
+   "key": "flows/employee360/07-records",
+   "module": "M07",
+   "sub": "7.4",
+   "caption": "Records: the detailed records, in tabs."
+  },
+  {
+   "key": "flows/employee360/18-records-timeline",
+   "module": "M07",
+   "sub": "7.4",
+   "caption": "Records › Timeline: every change in date order."
+  },
+  {
+   "key": "flows/employee360/19-records-employment",
+   "module": "M07",
+   "sub": "7.4",
+   "caption": "Records › Employment: positions and reporting lines with their dates."
+  },
+  {
+   "key": "flows/m10-calendar/01-attendance-calendar",
+   "module": "M10",
+   "sub": "10.4",
+   "caption": "The attendance calendar of one employee: each day's status in its colour."
+  },
+  {
+   "key": "flows/m10-process-dates/01-process-dates",
+   "module": "M10",
+   "sub": "10.4",
+   "caption": "Process dates turns punches and approved corrections into attendance records."
+  },
+  {
+   "key": "flows/m10-run-attendance/01-run-attendance-oct",
+   "module": "M10",
+   "sub": "10.5",
+   "caption": "Run attendance takes a month step by step: absences, arrears, then processing every day."
+  },
+  {
+   "key": "flows/m10-paid-days/01-paid-days-breakdown",
+   "module": "M10",
+   "sub": "10.5",
+   "caption": "Paid days with one employee's breakdown for the month."
+  },
+  {
+   "key": "flows/m10-holidays-tab/01-holiday-calendar-holidays",
+   "module": "M10",
+   "sub": "10.1",
+   "caption": "A holiday calendar and its holidays."
+  },
+  {
+   "key": "flows/m11-leave-type/01-leave-type-earned",
+   "module": "M11",
+   "sub": "11.1",
+   "caption": "A leave type: Earned leave and its settings."
+  },
+  {
+   "key": "flows/m11-apply-on-behalf/01-apply-on-behalf",
+   "module": "M11",
+   "sub": "11.2",
+   "caption": "Apply on behalf: choose the employee, the type and the dates; the balance is shown before you submit."
+  },
+  {
+   "key": "flows/m11-adjust/01-adjust-balance",
+   "module": "M11",
+   "sub": "11.3",
+   "caption": "Adjust a balance: days (+ or −) and a note, posted to the ledger."
+  },
+  {
+   "key": "flows/m11-encash/01-encash-for-employee",
+   "module": "M11",
+   "sub": "11.4",
+   "caption": "Encash leave for an employee: a short wizard."
+  },
+  {
+   "key": "flows/m12-component-step2/01-component-identity",
+   "module": "M12",
+   "sub": "12.1",
+   "caption": "A new salary component starts with its identity: name, code and type."
+  },
+  {
+   "key": "flows/m12-builder/01-builder-start",
+   "module": "M12",
+   "sub": "12.2",
+   "caption": "The salary structure builder, step 1: name and start date."
+  },
+  {
+   "key": "flows/m12-builder/02-builder-how-pay-is-set",
+   "module": "M12",
+   "sub": "12.2",
+   "caption": "Step 2: how pay is set."
+  },
+  {
+   "key": "flows/m12-builder/03-builder-components",
+   "module": "M12",
+   "sub": "12.2",
+   "caption": "Step 3: pick components from a list, or write them in plain English."
+  },
+  {
+   "key": "flows/m12-builder/04-builder-check",
+   "module": "M12",
+   "sub": "12.2",
+   "caption": "Step 4: check the structure on a sample CTC."
+  },
+  {
+   "key": "flows/m12-builder/05-builder-save",
+   "module": "M12",
+   "sub": "12.2",
+   "caption": "Step 5: save as a draft or send for approval."
+  },
+  {
+   "key": "flows/m12-structure-versions/01-structure-versions",
+   "module": "M12",
+   "sub": "12.2",
+   "caption": "A structure and its versions: draft, submitted, approved."
+  },
+  {
+   "key": "flows/m12-assign-salary/01-assign-salary",
+   "module": "M12",
+   "sub": "12.3",
+   "caption": "Assign salary: the structure, CTC and fixed amounts, with a preview."
+  },
+  {
+   "key": "flows/m12-salary-upload/01-upload-salaries",
+   "module": "M12",
+   "sub": "12.3",
+   "caption": "Upload salaries in bulk from a CSV file."
+  },
+  {
+   "key": "flows/m13-adjustment/01-new-adjustment",
+   "module": "M13",
+   "sub": "13.2",
+   "caption": "A one-time payroll adjustment for an employee and month."
+  },
+  {
+   "key": "flows/m13-hold/01-hold-salary",
+   "module": "M13",
+   "sub": "13.2",
+   "caption": "Hold an employee's salary for a month, with a reason."
+  },
+  {
+   "key": "flows/m13-upload/01-upload-csv",
+   "module": "M13",
+   "sub": "13.2",
+   "caption": "Payroll uploads: load one-time inputs from a CSV file."
+  },
+  {
+   "key": "flows/m13-loan/01-loan",
+   "module": "M13",
+   "sub": "13.2",
+   "caption": "A loan and its instalments, recovered through payroll."
+  },
+  {
+   "key": "flows/m13-overview/01-payroll-overview",
+   "module": "M13",
+   "sub": "13.3",
+   "caption": "Payroll overview: what to check before you run the month."
+  },
+  {
+   "key": "flows/m13-run-payroll/01-pay-month",
+   "module": "M13",
+   "sub": "13.3",
+   "caption": "Run payroll, step 1: company and pay month, with the month's status."
+  },
+  {
+   "key": "flows/m13-run-payroll/02-attendance",
+   "module": "M13",
+   "sub": "13.3",
+   "caption": "Step 2: attendance comes first; the banner says what is not ready."
+  },
+  {
+   "key": "flows/m13-run-payroll/03-pre-payroll-checks",
+   "module": "M13",
+   "sub": "13.3",
+   "caption": "Step 3: pre-payroll checks; tick each group once you have looked at it."
+  },
+  {
+   "key": "flows/m13-run-payroll/04-run-payroll",
+   "module": "M13",
+   "sub": "13.3",
+   "caption": "Step 4: what blocks the run is listed with the run's totals."
+  },
+  {
+   "key": "flows/m13-run-payroll/09-month-not-started",
+   "module": "M13",
+   "sub": "13.3",
+   "caption": "A month that has not started yet: Start creates its payroll run."
+  },
+  {
+   "key": "flows/m13-run-view/02-validate-refused",
+   "module": "M13",
+   "sub": "13.3",
+   "caption": "Validate is refused while employees have blocking exceptions; nothing changes."
+  },
+  {
+   "key": "flows/m13-october-run/02-attendance",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "October, step 2: Process attendance (an administrator with attendance rights)."
+  },
+  {
+   "key": "flows/m13-october-run/03-attendance-processed",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Attendance processed for the month."
+  },
+  {
+   "key": "flows/m13-october-checks/04-pre-payroll-checks",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Step 3: each group of changes is ticked with Mark as checked; a group changed after ticking asks to be checked again."
+  },
+  {
+   "key": "flows/m13-october-start/06-calculated",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "If something is not ready, step 4 lists it: here, checks not ticked and employees without a salary."
+  },
+  {
+   "key": "flows/m13-october-calculate/06-ready-to-calculate",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Ready to calculate: Calculate, or Calculate in background for large months."
+  },
+  {
+   "key": "flows/m13-october-calculate/07-calculate-confirm",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Calculate asks to confirm: existing results are replaced."
+  },
+  {
+   "key": "flows/m13-october-calculate/09-review-and-approve",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Step 5: the totals of the calculated month, ready to validate."
+  },
+  {
+   "key": "flows/m13-october-validate/10-validate",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Validate checks for blocking exceptions."
+  },
+  {
+   "key": "flows/m13-october-approve/12-approve-ready",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Approve is offered to someone other than the person who ran the payroll."
+  },
+  {
+   "key": "flows/m13-october-approve/13-approve-dialog",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Approve with a note."
+  },
+  {
+   "key": "flows/m13-october-approve/14-approved",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Approved and ready to close."
+  },
+  {
+   "key": "flows/m13-breakdown/01-employee-breakdown",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Before approving, open employees' breakdowns: each line with its basis."
+  },
+  {
+   "key": "flows/m13-auditor/01-payroll-auditor",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "The Payroll Auditor lists findings to look at before approval."
+  },
+  {
+   "key": "flows/m13-run-view/01-recalculate-dialog",
+   "module": "M13",
+   "sub": "13.4",
+   "caption": "Recalculate re-reads the inputs after a correction."
+  },
+  {
+   "key": "flows/m13-october-approve/15-close-ready",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "Step 6: Close payroll."
+  },
+  {
+   "key": "flows/m13-october-approve/16-close-dialog",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "Closing locks the month's attendance and inputs and prepares the payslips; it can be reopened until it is marked paid or a return is filed."
+  },
+  {
+   "key": "flows/m13-october-approve/18-publish-ready",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "Step 7: Publish payslips."
+  },
+  {
+   "key": "flows/m13-october-approve/19-publish-dialog",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "Publishing shows each employee their payslip on the web and the app."
+  },
+  {
+   "key": "flows/m13-october-payslips/22-payslips",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "Payslips of the closed month."
+  },
+  {
+   "key": "flows/m13-october-payslips/23-payslip",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "A payslip."
+  },
+  {
+   "key": "flows/m13-october-pay/26-pay-step",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "Step 8: download the bank file and the journal voucher, then Mark as paid once the bank has paid."
+  },
+  {
+   "key": "flows/m13-october-pay/27-mark-as-paid-dialog",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "Mark as paid: after this the month can no longer be reopened."
+  },
+  {
+   "key": "flows/m13-october-closed-run/24-closed-run",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "The closed run in Payroll runs."
+  },
+  {
+   "key": "flows/m13-october-closed-run/25-closed-run-more",
+   "module": "M13",
+   "sub": "13.5",
+   "caption": "The closed run's More menu."
+  }
+ ],
+ "warnings_first": [
+  {
+   "module": "M13",
+   "sub": "13.4",
+   "title": "The pictures that follow: a month taken to the end",
+   "level": "important",
+   "headline": "Approve, close, publish and pay open only once PeopleOS has verified the statutory rules your run uses.",
+   "body": "In the example organisation those rules are not yet verified, so its runs stop at Validate. To show the rest of the month, the next pictures come from a copy of the example organisation where that check was switched off.",
+   "points": [
+    "Everything else on these screens is exactly what you will see.",
+    "In your organisation, ask PeopleOS support if a run stops on unverified statutory rules."
+   ],
+   "todo": "Treat any 'not verified' warning in these pictures as a blocker in your own runs."
+  }
+ ]
+}

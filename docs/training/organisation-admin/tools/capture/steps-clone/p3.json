@@ -1,0 +1,12 @@
+[
+ { "flow": "m13-october-calculate", "module": "M13", "as": "arjun.bose@demo.local", "steps": [
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=calculate" }, { "wait": 7000 },
+   { "snap": { "id": "06-ready-to-calculate", "screen": "Run payroll: 4 Run payroll (ready to calculate)", "path": "People › Pay › Run payroll", "full": true, "labels": ["Calculate", "Calculate in background", "Set payment date"] } },
+   { "click": "Calculate", "within": "main", "after": 2500 },
+   { "snap": { "id": "07-calculate-confirm", "screen": "Calculate: confirmation", "path": "People › Pay › Run payroll › Calculate", "labels": ["Confirm", "Cancel"] } },
+   { "click": "Confirm", "after": 40000 },
+   { "snap": { "id": "08-calculated", "screen": "Run payroll: 4 Run payroll (calculated)", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=approve" }, { "wait": 8000 },
+   { "snap": { "id": "09-review-and-approve", "screen": "Run payroll: 5 Review and approve", "path": "People › Pay › Run payroll", "full": true } }
+ ] }
+]

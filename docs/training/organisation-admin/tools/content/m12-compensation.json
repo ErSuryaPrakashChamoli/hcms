@@ -1,0 +1,913 @@
+{
+  "M12": {
+    "intro": "Compensation decides what each employee is paid before payroll runs: the salary components, the salary structures that split a CTC into them, each employee's approved salary and every change to it. Payroll only ever reads approved, executed salaries from here.",
+    "why": "An employee with no approved salary in force cannot be paid: payroll stops with 'No salary assignment is effective in this period.' A wrong formula, or a revision approved but never executed, pays the wrong amount.",
+    "who": "Tenant Super Admin and Tenant HR Admin hold every compensation and payroll right. HR Manager can view, propose and review; Payroll Admin can view and execute; Auditor can view; Executive sees pay analytics; employees see their own approved pay. Every salary change still needs four different people.",
+    "where": "People › Pay: Salary components, Salary structures, Employee salary structures, Salary uploads, Compensation changes, Pay review cycles, Increment calculator, Pay ranges, Pay budgets, Pay analytics, Variable pay plans, Variable pay, Process bonus. Proposals also start on People › Lifecycle › Employees › (employee) › Compensation.",
+    "objectives": [
+      "Set up salary components and build a salary structure with the five-step builder, and read the formulas it writes.",
+      "Give an employee a first salary or a revision and take it through propose, review, approve and execute.",
+      "Explain an employee's monthly breakup, including a mid-month revision, from the formulas PeopleOS really runs."
+    ],
+    "depends_on": [
+      "M03 Organisation structure: companies, grades, designations and locations narrow structures and pay ranges",
+      "M05 Users, access and integrations: four different people with compensation rights are needed for every change",
+      "M07 Employees: Employee 360 holds the Compensation tab and the statutory details payroll applies",
+      "M13 Payroll: reads the approved salary in force on each day of the month and pays it",
+      "M14 Statutory compliance and tax: PF rule versions maintained by PeopleOS give the employer PF estimate; Process bonus needs a verified BONUS rule",
+      "M16 Performance: finalized ratings can prefill increments in pay review cycles"
+    ],
+    "subs": [
+      { "id": "12.1", "name": "Salary components", "desc": "The pay items, how each is calculated and how tax, PF, ESI and the payslip treat it.", "screens": ["people/salary-components", "people/salary-components--create", "people/salary-components--edit"] },
+      { "id": "12.2", "name": "Salary structures and the builder", "desc": "Structures built in five steps, saved as dated versions approved by a second person.", "screens": ["people/salary-structures", "people/salary-structures--create", "people/salary-structures--edit"] },
+      { "id": "12.3", "name": "Giving employees a salary", "desc": "Assign a first salary one by one or from a CSV file; see who has a salary in force.", "screens": ["people/employee-salary-structures", "people/salary-uploads"] },
+      { "id": "12.4", "name": "Revisions and approvals", "desc": "Individual and bulk salary changes through propose, review, approve and execute.", "screens": ["people/compensation-changes", "people/pay-review-cycles", "people/increment-calculator"] },
+      { "id": "12.5", "name": "Ranges, budgets and analytics", "desc": "Pay bands per grade, increase budgets and pay facts with small groups hidden.", "screens": ["people/pay-ranges", "people/pay-budgets", "people/pay-analytics"] },
+      { "id": "12.6", "name": "Variable pay and bonus", "desc": "Scheduled and one-off variable pay, and the annual statutory bonus run.", "screens": ["people/variable-pay-plans", "people/variable-pay", "people/process-bonus"] }
+    ],
+    "screens": {
+      "people/salary-components": {
+        "purpose": "The catalogue of pay items: earnings, deductions, employer contributions and reimbursements. Each one says how it is calculated and how tax, PF, ESI and the payslip treat it.",
+        "when": "When you set up payroll, add an allowance, or change a component's default formula or treatment.",
+        "elements": [
+          ["New salary component", "Opens the four-step wizard to add a component."],
+          ["#, Name, Code, Type, Method", "Default order, name, the code formulas use in lowercase (CONV → conv), the type and how it is calculated."],
+          ["Formula", "The component's default formula when it is formula-calculated. A structure line can override it."],
+          ["Taxable, PF, ESI, Prorate, Statutory", "Ticks for taxable, PF wages, ESI wages, reduced for unpaid days, and statutory."],
+          ["Filters: Type, Transfer allowances", "Show one type, or only components offered as transfer allowances."],
+          ["Edit", "Opens the component in the edit wizard; your reason and the before and after values are audited."]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "payroll.view or payroll.manage to see the list; payroll.manage to create and edit.",
+        "depends": null,
+        "limits": "PF, ESI, PT, LWF and TDS are not components you add or edit here: payroll works them out from the statutory rules PeopleOS maintains. In the example organisation the list holds BASIC, HRA, CONV, SPECIAL, BONUS and ADV.",
+        "source": "app/Filament/Resources/SalaryComponents/SalaryComponentResource.php; app/Domain/Payroll/Models/SalaryComponent.php; q.php salary_components"
+      },
+      "people/salary-components--create": {
+        "purpose": "A four-step wizard to add a pay item: Component, Properties, Statutory wages, display and processing, then Review before the component is created.",
+        "when": "When your pay policy has an item the catalogue lacks, for example a medical or a shift allowance.",
+        "elements": [
+          ["01 Component", "Name, code, type, classification, how it is calculated, sort order and the formula."],
+          ["02 Properties", "Taxable, PF and ESI wages, part of CTC and gross, recurring, prorated, arrear eligible and status."],
+          ["03 Statutory wages, display and processing", "PT and LWF wages, ESI ceiling, fixed or variable, payslip and register display, joining and exit month, rounding."],
+          ["04 Review", "Lists everything you filled in before you create the component."],
+          ["Formula guide", "Next to Formula: opens the salary structure guide with every variable, operator and function."],
+          ["Next / Cancel", "Moves to the next step, or leaves without saving."]
+        ],
+        "fields": [
+          { "label": "Name", "meaning": "What payslips and reports show, e.g. Medical allowance.", "rule": "Required" },
+          { "label": "Code", "meaning": "Up to 32 letters, digits, - or _. Formulas read it in lowercase. Not a statutory code (PF_EE, TDS…) or a formula word.", "rule": "Required" },
+          { "label": "Type", "meaning": "Earning, Deduction, Employer contribution, or Reimbursement (non-taxable).", "rule": "Required" },
+          { "label": "Classification", "meaning": "What it is for reports and statutory use: Basic, Dearness allowance, House rent allowance, Allowance (default), Bonus and others.", "rule": "Required" },
+          { "label": "Calculated", "meaning": "Fixed amount from the salary assignment, Formula, or Employee input used by formulas, never paid.", "rule": "Required" },
+          { "label": "Sort order", "meaning": "Default position in new structures. In a structure, a formula may use only the components above it.", "rule": "Optional" },
+          { "label": "Formula", "meaning": "Shown when Calculated is Formula: the default for every structure, e.g. ctc_monthly * 0.50. Syntax is checked on save.", "rule": "Required" },
+          { "label": "Taxable", "meaning": "Counted as taxable income. On by default.", "rule": "Optional" },
+          { "label": "PF wages", "meaning": "Counts towards PF wages and the employer PF estimate used to balance to CTC.", "rule": "Optional" },
+          { "label": "ESI wages", "meaning": "Counts towards ESI wages. On by default.", "rule": "Optional" },
+          { "label": "Part of CTC", "meaning": "Counted in the CTC a structure balances to. On by default.", "rule": "Optional" },
+          { "label": "Part of gross", "meaning": "Counted in gross pay. On by default.", "rule": "Optional" },
+          { "label": "Recurring", "meaning": "Off = paid only through adjustments; a structure cannot then use it every month.", "rule": "Optional" },
+          { "label": "Prorated for LOP", "meaning": "Reduced for unpaid days and part-months, salary period by salary period. Off = paid in full once.", "rule": "Optional" },
+          { "label": "Arrear eligible", "meaning": "Marks the component as eligible for arrears. On by default.", "rule": "Optional" },
+          { "label": "Paid on claim", "meaning": "Reimbursements only: the monthly amount builds a balance employees claim against with bills.", "rule": "Optional" },
+          { "label": "Transfer allowance", "meaning": "Earnings and reimbursements: offered on transfer requests and paid once with payroll.", "rule": "Optional" },
+          { "label": "Status", "meaning": "Active or inactive. Only active components are paid.", "rule": "Required" },
+          { "label": "Professional tax wages", "meaning": "Yes or No; left empty it follows Part of gross.", "rule": "Optional" },
+          { "label": "LWF wages", "meaning": "Yes or No; left empty it follows Part of gross.", "rule": "Optional" },
+          { "label": "Counts for the ESI ceiling", "meaning": "Yes or No; left empty it follows ESI wages.", "rule": "Optional" },
+          { "label": "Nature of payment", "meaning": "Fixed or Variable. Once any component is Variable, variable pay can use only variable components.", "rule": "Required" },
+          { "label": "Show on the payslip", "meaning": "Off hides the line on the payslip. On by default.", "rule": "Optional" },
+          { "label": "Show on the salary register", "meaning": "Off hides the line on the salary register. On by default.", "rule": "Optional" },
+          { "label": "Pay in the joining month", "meaning": "Off = not paid at all in the month the employee joins.", "rule": "Optional" },
+          { "label": "Pay in the exit month", "meaning": "Off = not paid at all in the month the employee leaves.", "rule": "Optional" },
+          { "label": "Rounding", "meaning": "Nearest rupee, Up to the rupee or Nearest ten, applied to the amount paid. Empty = no rounding.", "rule": "Optional" },
+          { "label": "Tax-free in (non-taxable components)", "meaning": "The tax regimes in which the component is tax-free. Empty = every regime.", "rule": "Optional" },
+          { "label": "Claims need bills", "meaning": "Reimbursements only: Yes, No, or the organisation setting.", "rule": "Optional" },
+          { "label": "Bills no older than (days)", "meaning": "Reimbursements only: how old a bill may be.", "rule": "Optional" },
+          { "label": "Most per claim", "meaning": "Reimbursements only: the largest amount one claim may ask.", "rule": "Optional" }
+        ],
+        "after": "The component is saved, active and audited. It appears in the builder's component list; nobody's pay changes until an approved structure version uses it.",
+        "permission": "payroll.manage.",
+        "depends": null,
+        "limits": "The code cannot be changed after saving. Statutory components cannot be created here; payroll adds statutory lines itself.",
+        "source": "app/Filament/Resources/SalaryComponents/SalaryComponentResource.php (form); config/peopleos.php payroll.component_types, calculation_methods, classifications; crawl people/salary-components--create"
+      },
+      "people/salary-components--edit": {
+        "purpose": "The same four steps for an existing component. The code is locked. You list a reason, and the change is recorded in the audit trail with before and after values.",
+        "when": "When a component's treatment, display or default formula must change.",
+        "elements": [
+          ["01 Component to 04 Review", "Open any step to change it; Review lists your changes before you save."],
+          ["Formula guide", "Opens the guide beside the Formula field."],
+          ["Reason for change", "Recorded in the audit trail alongside the before and after values."],
+          ["Status line", "Shows whether the component is active, in effect and when it last changed."]
+        ],
+        "fields": [
+          { "label": "Name", "meaning": "Display name.", "rule": "Required" },
+          { "label": "Code", "meaning": "Fixed once saved; formulas refer to it.", "rule": "Locked" },
+          { "label": "Type", "meaning": "Earning, Deduction, Employer contribution or Reimbursement.", "rule": "Required" },
+          { "label": "Classification", "meaning": "Reporting and statutory classification.", "rule": "Required" },
+          { "label": "Calculated", "meaning": "Fixed amount, Formula, or Employee input.", "rule": "Required" },
+          { "label": "Sort order", "meaning": "Default position in new structures.", "rule": "Optional" },
+          { "label": "Formula", "meaning": "The default formula, e.g. BASIC: ctc_monthly * 0.40 in the example organisation.", "rule": "Required" },
+          { "label": "Reason for change", "meaning": "Why you changed it; kept with the audit entry.", "rule": "Optional" }
+        ],
+        "after": "Saved at once and audited. A changed default formula applies immediately to every structure line that has no override, including approved versions in use.",
+        "permission": "payroll.manage.",
+        "depends": null,
+        "limits": "Default formulas are not versioned or approved. To change pay from a date, change the structure in the builder instead: that creates a new version that a second person approves.",
+        "source": "SalaryComponentResource.php; app/Filament/Support/AuditReasonField.php; docs/architecture/payroll-architecture.md §2.1; crawl people/salary-components--edit"
+      },
+      "people/salary-structures": {
+        "purpose": "Your salary structures: which components pay is built from and in what order. Each change is a dated version that a second person approves.",
+        "when": "To create a structure, change its components from a date, or approve a version waiting for you.",
+        "elements": [
+          ["New salary structure", "Opens the five-step salary structure builder."],
+          ["In use", "When the approved version now in force started, or Not yet."],
+          ["Change (column)", "Draft, Waiting for approval, or Approved, starts later; empty when nothing is being prepared."],
+          ["Versions, Employees", "How many versions the structure has and how many salary records use it."],
+          ["Change (row)", "Opens the builder on this structure to prepare the next version."],
+          ["Versions / Approve (row)", "Opens the structure page; it reads Approve when a version is waiting for approval."],
+          ["Views, Report, Upload", "Saved views; the CTC register and 'Active employees without an approved salary' reports; Salary upload."]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "compensation.view, compensation.configure or payroll.view to see; compensation.configure to build and change.",
+        "depends": "Salary components.",
+        "limits": "Pay frequency is monthly only. The example organisation has one structure, Standard structure (STANDARD), version 1 active since 1 Jan 2000.",
+        "source": "app/Filament/Resources/SalaryStructures/SalaryStructureResource.php; Pages/ListSalaryStructures.php; q.php salary_structures, salary_structure_versions"
+      },
+      "people/salary-structures--create": {
+        "purpose": "The salary structure builder: Name and company, How pay is set, Components, Check, Save. It turns plain rules or plain English into the formulas payroll runs, in the right order.",
+        "when": "When you need a new structure, for example for another company, a grade group or a location.",
+        "elements": [
+          ["Steps 1 to 5", "Name and company, How pay is set, Components, Check, Save. You can reopen any step you have reached."],
+          ["Guide / Download guide", "Opens the salary structure guide, or saves it as salary-structure-guide.html to print or save as PDF."],
+          ["Pick from a list / Write in plain English", "Step 3: a table of components, or one line per component turned into rows."],
+          ["Worked out as", "% of CTC, % of another, Fixed amount, Per employee, Rest of CTC, or Formula."],
+          ["Turn into components", "Reads the plain English and reports, line by line, what each line was read as or why not."],
+          ["Check", "Try a Yearly CTC to try (default 600,000) with Covered by PF; see the monthly and yearly breakup and warnings."],
+          ["Save as draft / Send for approval", "Step 5 reads the structure back as sentences in calculation order, then saves or submits it."]
+        ],
+        "fields": [
+          { "label": "Structure name", "meaning": "e.g. Staff – Mumbai. The code is made from the name (STAFF_MUMBAI).", "rule": "Required" },
+          { "label": "Company", "meaning": "The company it is for. Empty = All companies.", "rule": "Optional" },
+          { "label": "Only for some people? (optional)", "meaning": "Narrow it to some grades, designations, levels, departments, locations or other groups, then pick which ones.", "rule": "Optional" },
+          { "label": "Starts from", "meaning": "First day payroll uses it. Must be after finalized payroll (and, for a change, after the version in use).", "rule": "Required" },
+          { "label": "How do you fix an employee’s salary?", "meaning": "I give a yearly CTC, and this structure splits it; or I give an amount for each component, and the CTC is added up.", "rule": "Required" },
+          { "label": "Start with", "meaning": "New structures only: A ready-made structure, A copy of another structure, or An empty list.", "rule": "Required" },
+          { "label": "Structure to copy", "meaning": "When copying: the structure whose components you start from.", "rule": "Required" },
+          { "label": "Component", "meaning": "Pick from the list, or type a name and choose + Add “…” as a new component (needs payroll.manage).", "rule": "Required" },
+          { "label": "Worked out as", "meaning": "How the row is calculated; the builder orders rows itself, so there is no sort order to set.", "rule": "Required" },
+          { "label": "Value", "meaning": "The percentage, or the monthly amount. A % row can take Add a min / max (Min a month, Max a month).", "rule": "Optional" },
+          { "label": "Of", "meaning": "For % of another: the component it is a share of, e.g. of Basic.", "rule": "Optional" },
+          { "label": "Formula", "meaning": "For Formula rows, e.g. basic * 12 / 100.", "rule": "Optional" },
+          { "label": "Pay", "meaning": "Fixed or Variable.", "rule": "Optional" },
+          { "label": "Yearly CTC to try", "meaning": "Check step only: a sample CTC for the breakup. Nothing is saved.", "rule": "Optional" },
+          { "label": "Covered by PF", "meaning": "Check step only: include the employer PF estimate in the sample.", "rule": "Optional" }
+        ],
+        "after": "Send for approval: version 1 waits as Pending approval for someone else with compensation.approve. Save as draft: nothing changes for anyone until it is approved.",
+        "permission": "compensation.configure to build; payroll.manage to add new components from the builder; compensation.approve (another person) to approve.",
+        "depends": "Salary components (or payroll.manage to add them). Finalized payroll sets the earliest start date.",
+        "limits": "Plain English refuses '% of gross' or '% of net' and daily or hourly amounts; use a custom formula, e.g. Allowance = 200 * paid_days. PF, ESI, PT and TDS lines are skipped: payroll adds them.",
+        "source": "app/Filament/Pages/SalaryStructureBuilder.php; app/Domain/Compensation/Services/StructureBuilder.php; Support/StructureRules.php, PlainEnglishRules.php; resources/views/filament/pages/salary-structure-builder.blade.php; crawl people/salary-structures--create"
+      },
+      "people/salary-structures--edit": {
+        "purpose": "A structure's page: its name, description and status in two steps, the Versions tab to approve, send back, archive or preview versions, and the History tab.",
+        "when": "To approve a version someone else prepared, preview a version on a sample CTC, or rename or deactivate a structure.",
+        "elements": [
+          ["Change components", "Opens the builder: a new draft from the version in use, or the draft already open."],
+          ["Versions tab", "v, Status, From, To, Currency, Applies to, Components, Prepared by, Approved by."],
+          ["Components (row)", "Each line in order with its formula, or 'fixed amount from the employee's compensation'."],
+          ["Preview (row)", "Try the version on a sample CTC. Nothing is saved."],
+          ["Row menu", "Edit draft, Submit for approval, Approve, Return to draft (note required), Archive (reason required)."],
+          ["Formula guide", "The guide: six ways, plain English, examples, worked example and the formula reference."],
+          ["History tab", "Audit entries with When, the action, By and the changes."]
+        ],
+        "fields": [
+          { "label": "Name", "meaning": "The structure's name.", "rule": "Required" },
+          { "label": "Code", "meaning": "Fixed once created, e.g. STANDARD.", "rule": "Locked" },
+          { "label": "Description", "meaning": "A short note, e.g. 'Basic 40% of CTC, HRA 50% of basic, conveyance, special allowance balancing to CTC.'", "rule": "Optional" },
+          { "label": "Status", "meaning": "Active or inactive. New proposals need an active structure.", "rule": "Required" }
+        ],
+        "after": "Approve makes the version Active (start today or earlier) or Approved — scheduled (later start). The previous version closes the day before; a checksum is stored.",
+        "permission": "compensation.configure to edit, submit and archive; compensation.approve to approve or return, never by the person who prepared the version.",
+        "depends": "A version prepared in the builder.",
+        "limits": "An approved version never changes. A correction is a new version from a later date; it cannot start inside finalized payroll or on or before the version in use.",
+        "source": "app/Filament/Resources/SalaryStructures/RelationManagers/VersionsRelationManager.php; Pages/EditSalaryStructure.php; app/Domain/Compensation/Services/CompensationStructures.php; crawl people/salary-structures--edit"
+      },
+      "people/employee-salary-structures": {
+        "purpose": "One row per employee who can hold a salary: the structure and annual CTC in force, and the state of their latest salary request. Assign salary proposes; other people decide.",
+        "when": "To find employees without a salary, assign a first salary or a revision, and follow requests.",
+        "elements": [
+          ["State cards", "Assigned, Not assigned, Pending, Approved, Rejected with counts. Example organisation: 4 Assigned, 18 Not assigned."],
+          ["Assign salary (row)", "Wizard: Employee statutory, Salary details, Preview, Review. The final button is Propose."],
+          ["Assign salary (selected rows)", "The same proposal for several employees, e.g. revise each by a percentage."],
+          ["Columns", "Structure in force, Annual CTC in force, In force from, Latest request, Source, Request date, Tax regime."],
+          ["Views", "Presets such as 'Not assigned (no salary structure in force)', Pending requests, 'Approved, not yet in force'."],
+          ["Download CSV", "The filtered register as a CSV file; needs compensation.export and is audited."],
+          ["Employee 360 (row)", "Opens the employee's profile."]
+        ],
+        "fields": [
+          { "label": "Change type", "meaning": "Hire / first compensation for a first salary, Revision (default when one exists), Annual increment and others.", "rule": "Required" },
+          { "label": "Salary effective from", "meaning": "First day of the new salary. Defaults to the first of next month.", "rule": "Required" },
+          { "label": "Salary structure (pay group)", "meaning": "An active structure, or Keep the structure in force.", "rule": "Required" },
+          { "label": "New CTC", "meaning": "Annual CTC, Revise by %, or Keep the CTC in force.", "rule": "Required" },
+          { "label": "Annual CTC", "meaning": "The new yearly CTC when New CTC is Annual CTC.", "rule": "Optional" },
+          { "label": "Increase (%)", "meaning": "For Revise by %: shows the new CTC worked out from the CTC in force, rounded to two decimals.", "rule": "Optional" },
+          { "label": "Currency", "meaning": "Defaults to the CTC in force or your base currency.", "rule": "Optional" },
+          { "label": "Variable target (annual)", "meaning": "Yearly variable-pay target; formulas read it as variable_target_annual.", "rule": "Optional" },
+          { "label": "Fixed component amounts and inputs (monthly)", "meaning": "Code = amount for fixed or input components, e.g. CONV = 1600. Prefilled from the salary in force.", "rule": "Optional" },
+          { "label": "Reason (shown with the change)", "meaning": "Why the salary changes; reviewers and approvers read it.", "rule": "Required" },
+          { "label": "Internal notes (never shown to the employee)", "meaning": "Private notes, stored encrypted.", "rule": "Optional" },
+          { "label": "Submit for review now", "meaning": "On: goes to a reviewer. Off: saved as a draft you submit later.", "rule": "Optional" }
+        ],
+        "after": "Propose creates a compensation change (Submitted, or Draft). A reviewer, an approver and an executor then act on it under Compensation changes.",
+        "permission": "compensation.view to open; compensation.propose to assign; bulk.run for many at once; compensation.export for the CSV.",
+        "depends": "An active structure with an approved version on the effective date that applies to the employee's company and groups.",
+        "limits": "The Preview step estimates PF, ESI, PT and LWF only under verified statutory rules; otherwise it says 'No verified rule: not estimated.' Nobody can assign their own salary.",
+        "source": "app/Filament/Pages/SalaryStructureRegister.php; app/Domain/Experience/BulkOperations/AssignSalaryOperation.php; app/Domain/Compensation/Services/SalaryAssignments.php; app/Domain/Payroll/Services/SalaryProposalPreview.php"
+      },
+      "people/salary-uploads": {
+        "purpose": "Load first salaries or revisions for many employees from a CSV file. The file never changes pay itself: it prepares a draft Salary upload cycle that four people take through.",
+        "when": "At go-live, or for a batch of revisions you already hold in a spreadsheet.",
+        "elements": [
+          ["Upload salaries CSV", "Opens 'Upload a salary file': the CSV file and what the file is for."],
+          ["Download sample file", "salary-upload-template.csv with every column header and one example row from your own codes."],
+          ["File format", "Explains each column and its rules."],
+          ["Columns", "#, File, Status, Rows, Create, Update, Errors, By, Created at."],
+          ["Upload page", "Inspect file, Map columns (Company, Default effective date), Validate rows, Run import, Open compensation cycle."],
+          ["Only your files", "Each person sees only the files they uploaded or check, because the rows hold pay."]
+        ],
+        "fields": [
+          { "label": "CSV file", "meaning": "Columns: Employee code, Salary structure code, Annual CTC; optional dates, currency, variable target, change type, reason, monthly amounts.", "rule": "Required" },
+          { "label": "What is this file for?", "meaning": "Assign CTC to new employees, Revise CTC of existing employees, or Both. Rows outside the choice are skipped with the reason.", "rule": "Required" }
+        ],
+        "after": "Run import creates one draft cycle (one company) with a line per valid row. Pay changes only after that cycle is reviewed, approved and executed by other people.",
+        "permission": "compensation.cycles and compensation.propose.",
+        "depends": "Structures with an approved version on each row's date; employees in the chosen company on that date.",
+        "limits": "Each row is checked with the same rules as a proposal; a row that would fall inside finalized payroll, or start where a different salary already starts, is refused unless its change type is Correction.",
+        "source": "app/Filament/Resources/SalaryImports/*; app/Domain/Compensation/Imports/SalaryImports.php; ImportActions::forImport; docs/architecture/compensation.md §8"
+      },
+      "people/compensation-changes": {
+        "purpose": "The queue of every proposed and decided salary change in your scope. Review, approval and execution happen here, each by a different person.",
+        "when": "Daily, to act on changes waiting for your step, and before every payroll to see revisions not yet in force.",
+        "elements": [
+          ["Tabs: All, Pending, Approved, Rejected", "Request cards with counts. Approved covers approved, scheduled and effective. Example organisation: 5 approved."],
+          ["Columns", "Employee, Status, Type, Effective, From CTC, Proposed CTC, Annual increase, Proposed by, Approved by, Request date."],
+          ["Row menu", "Submit for review, Mark reviewed, Approve, Reject, Return to proposer, Execute (schedule), Cancel: only your allowed step shows."],
+          ["Print breakup", "Downloads the change's salary annexure as a printable page; audited as an export."],
+          ["Views", "Waiting for review; Reviewed, waiting for approval; Approved, to execute; Scheduled; In force (revisions); request views."],
+          ["Filters", "Status, Type, Revision (effective) month, employee groups, Request status, Source, Tax regime, request dates."],
+          ["Report, Upload", "Salary revisions reports (this year, awaiting approval, average increase by department) and Salary upload."]
+        ],
+        "fields": [],
+        "after": "Execute (schedule) writes the dated salary record: Effective when the date is today or earlier, otherwise Scheduled and made effective automatically on its date.",
+        "permission": "compensation.view sees every change in scope; reviewers (compensation.review), approvers (compensation.approve) and executors (compensation.execute) see what waits for their step. Nobody sees their own.",
+        "depends": "A proposal from Employee 360, Employee salary structures, a salary upload or a pay review cycle.",
+        "limits": "No change can be dated inside finalized payroll; the difference for earlier months is not calculated automatically (see the arrears warning).",
+        "source": "app/Filament/Resources/CompensationChanges/*; app/Filament/Support/CompensationActions.php; app/Domain/Compensation/Services/CompensationChanges.php; crawl people/compensation-changes"
+      },
+      "people/pay-review-cycles": {
+        "purpose": "Bulk salary changes for one company: annual increment, promotion or market adjustment cycles, and salary upload cycles. Each line is an ordinary change; the cycle executes all lines or none.",
+        "when": "For the annual increment round, or to finish a salary upload.",
+        "elements": [
+          ["New cycle", "Code, name, type, company, optional unit and location, effective date, default %, budget, performance cycle, % by rating."],
+          ["Increment calculator", "Opens the increment calculator's Create new wizard."],
+          ["Columns", "Code, Name, Type, Company, Effective from, Lines, Status."],
+          ["Cycle page steps", "Populate, Submit for review, Mark reviewed, Approve, Execute, Reject, Cancel."],
+          ["Lines", "Per employee: Current CTC, %, Proposed CTC, Finalized rating, Manager's proposal, Status; Adjust a line."],
+          ["Share with managers, Clone, Download error file", "Let managers propose for their team, copy the plan, or list the employees skipped."]
+        ],
+        "fields": [
+          { "label": "Code", "meaning": "Short unique code for the cycle.", "rule": "Required" },
+          { "label": "Name", "meaning": "e.g. Annual increment 2027.", "rule": "Required" },
+          { "label": "Cycle type", "meaning": "Annual increment cycle, Promotion cycle or Market adjustment cycle.", "rule": "Required" },
+          { "label": "Company", "meaning": "One cycle covers one company.", "rule": "Required" },
+          { "label": "Organisation unit (optional)", "meaning": "Limit the cycle to one unit.", "rule": "Optional" },
+          { "label": "Location (optional)", "meaning": "Limit the cycle to one location.", "rule": "Optional" },
+          { "label": "Effective from", "meaning": "The date every line takes effect.", "rule": "Required" },
+          { "label": "Default increase %", "meaning": "Used for everyone without a rating-based %. Default 0.", "rule": "Required" },
+          { "label": "Budget (optional)", "meaning": "An approved pay budget the lines are charged to on approval.", "rule": "Optional" },
+          { "label": "Finalized performance cycle (optional)", "meaning": "Only finalized outcomes are read; they only prefill proposals.", "rule": "Optional" },
+          { "label": "Increase % by finalized rating label", "meaning": "Rating label = %, e.g. Exceeds = 12.", "rule": "Optional" }
+        ],
+        "after": "Created as a draft. Populate snapshots eligible employees (probation, confirmed, active, on leave) and proposes CTC × (1 + % ÷ 100) for each.",
+        "permission": "compensation.cycles to create and populate; compensation.review, compensation.approve and compensation.execute held by three other people for the next steps.",
+        "depends": "Employees with an approved salary in force on the cycle date.",
+        "limits": "Execute is all or none: if one line cannot be written (for example it falls in finalized payroll), nothing is written and the cycle stays approved.",
+        "source": "app/Filament/Resources/CompensationCycles/*; app/Domain/Compensation/Services/CompensationCycles.php; config/peopleos.php compensation.cycle_types"
+      },
+      "people/increment-calculator": {
+        "purpose": "Plan increments for many people at once: who is in the plan, the basis, tenure proration and a CTC band × rating grid. Each plan is a pay review cycle.",
+        "when": "Before the annual appraisal round, to model increments and share them with managers.",
+        "elements": [
+          ["Create new", "Four steps: Population, Basis & proration, Grid, Review."],
+          ["Columns", "Code, Plan, Effective from, Increments, Average increment, Total increment, Total budget, Shared with, Status."],
+          ["Open", "Opens the plan's cycle page with its lines and approval steps."],
+          ["Clone, Share with managers", "Copy a plan, or let chosen managers propose for their team."],
+          ["Download error file", "The employees skipped and why."],
+          ["Filters: Status, Type", "Narrow the list of plans."]
+        ],
+        "fields": [
+          { "label": "Plan code", "meaning": "Unique code.", "rule": "Required" },
+          { "label": "Plan name", "meaning": "e.g. FY 2027 increments.", "rule": "Required" },
+          { "label": "Type", "meaning": "Annual increment, promotion or market adjustment cycle.", "rule": "Required" },
+          { "label": "Company", "meaning": "One company per plan.", "rule": "Required" },
+          { "label": "Increments effective from", "meaning": "Date the new salaries start.", "rule": "Required" },
+          { "label": "Add bulk employees (codes) / Leave out these employee codes", "meaning": "Paste codes to keep in, or to leave out, besides the group filters.", "rule": "Optional" },
+          { "label": "On what basis do you want to give the increment?", "meaning": "Percent of annual CTC; Percent of fixed pay (CTC less variable target); or Flat annual amount.", "rule": "Required" },
+          { "label": "Do you want to prorate the increment as per tenure?", "meaning": "With Count months, Up to (cut-off date) and Months for a full increment.", "rule": "Optional" },
+          { "label": "Annual CTC bands", "meaning": "CTC from, CTC to, Value for any other rating, and By rating rows (Rating from, Rating to, Value).", "rule": "Optional" },
+          { "label": "Calculate the plan now (employees and their proposed CTC)", "meaning": "On by default: proposes the lines when the plan is created.", "rule": "Optional" }
+        ],
+        "after": "The plan is saved as a draft cycle; its lines are still submitted, reviewed, approved and executed by other people.",
+        "permission": "compensation.cycles.",
+        "depends": "Approved salaries in force; a finalized performance cycle if you use ratings.",
+        "limits": "A rating or grid only prefills a proposal. With tenure proration the increase is multiplied by full months ÷ months for a full increment (at most 1).",
+        "source": "app/Filament/Pages/IncrementCalculator.php; app/Filament/Support/IncrementCalculatorWizard.php; app/Domain/Compensation/Services/IncrementCalculator.php"
+      },
+      "people/pay-ranges": {
+        "purpose": "Minimum, midpoint and maximum pay for a grade, optionally narrowed to a structure, company, job family or designation. Used to show range position and compa-ratio.",
+        "when": "When you publish salary bands, before increments or offers.",
+        "elements": [
+          ["New range", "Opens the range form; saved as a draft."],
+          ["Columns", "Grade, Applies to, v, Minimum, Midpoint, Maximum, Currency, From, To, Status."],
+          ["Filters: Grade, Status", "Narrow the list."],
+          ["Row menu", "Edit draft, Submit for approval, Approve, Return to draft, Archive."]
+        ],
+        "fields": [
+          { "label": "Grade", "meaning": "Every range belongs to a grade.", "rule": "Required" },
+          { "label": "Structure (optional)", "meaning": "Narrow to one salary structure.", "rule": "Optional" },
+          { "label": "Company (optional)", "meaning": "Narrow to one company.", "rule": "Optional" },
+          { "label": "Job family (optional)", "meaning": "Narrow to one job family.", "rule": "Optional" },
+          { "label": "Designation (optional)", "meaning": "Narrow to one designation (most specific wins).", "rule": "Optional" },
+          { "label": "Currency", "meaning": "Compensation in another currency is not compared.", "rule": "Required" },
+          { "label": "Frequency", "meaning": "Annual or Monthly; a monthly range is multiplied by 12.", "rule": "Required" },
+          { "label": "Minimum", "meaning": "Lowest pay; minimum ≤ midpoint ≤ maximum.", "rule": "Required" },
+          { "label": "Midpoint", "meaning": "Needed for compa-ratio.", "rule": "Required" },
+          { "label": "Maximum", "meaning": "Highest pay.", "rule": "Required" },
+          { "label": "Effective from", "meaning": "Start date.", "rule": "Required" },
+          { "label": "Effective to", "meaning": "Optional end date, on or after the start.", "rule": "Optional" },
+          { "label": "Notes", "meaning": "Free text.", "rule": "Optional" }
+        ],
+        "after": "Saved as a draft; Submit for approval; another person approves. A later approved range for the same definition closes the earlier one.",
+        "permission": "compensation.configure to create, edit and submit; compensation.approve to approve, never the preparer.",
+        "depends": "Grades (M03).",
+        "limits": "Ranges only describe: they never block or change a salary. The example organisation has no ranges yet.",
+        "source": "app/Filament/Resources/CompensationRanges/CompensationRangeResource.php; app/Domain/Compensation/Services/CompensationRanges.php"
+      },
+      "people/pay-budgets": {
+        "purpose": "A budget of annualised CTC increase for a company and period, with planned, approved, committed and actual amounts from the changes charged to it.",
+        "when": "Before an increment cycle, to cap and track the total increase.",
+        "elements": [
+          ["New budget", "Opens the budget form; saved as a draft."],
+          ["Columns", "Code, Name, Company, Period, Amount, Status (Draft, Approved, Closed)."],
+          ["Planned vs actual", "Budget, Planned, Approved, Committed, Actual, Variance, Charged and number of changes."],
+          ["Approve", "A second person approves a draft budget."],
+          ["Close", "Closes an approved budget, with a reason."]
+        ],
+        "fields": [
+          { "label": "Code", "meaning": "Short unique code.", "rule": "Required" },
+          { "label": "Name", "meaning": "e.g. FY 2027 increment budget.", "rule": "Required" },
+          { "label": "Company", "meaning": "The company it covers.", "rule": "Required" },
+          { "label": "Organisation unit (optional)", "meaning": "Narrow to a unit.", "rule": "Optional" },
+          { "label": "Location (optional)", "meaning": "Narrow to a location.", "rule": "Optional" },
+          { "label": "Period start", "meaning": "First day of the budget period.", "rule": "Required" },
+          { "label": "Period end", "meaning": "Last day; on or after the start.", "rule": "Required" },
+          { "label": "Currency", "meaning": "Only changes in this currency are charged.", "rule": "Required" },
+          { "label": "Amount (annualised CTC increase)", "meaning": "Total of new annual CTC − annual CTC before, across all charged changes.", "rule": "Required" },
+          { "label": "Workforce budget (reference, optional)", "meaning": "A link to a workforce budget, for reference only.", "rule": "Optional" },
+          { "label": "Notes", "meaning": "Free text.", "rule": "Optional" }
+        ],
+        "after": "Saved as a draft. Once another person approves it, it can be chosen on a pay review cycle; approving a line charges its increase.",
+        "permission": "compensation.budget to create and close; compensation.approve to approve, never the preparer.",
+        "depends": "A company; a pay review cycle to charge changes to it.",
+        "limits": "Only cycle lines are charged; single proposals from Employee 360 or Assign salary are not. Approval of a line larger than what is left is refused.",
+        "source": "app/Filament/Resources/CompensationBudgets/CompensationBudgetResource.php; app/Domain/Compensation/Services/CompensationBudgets.php"
+      },
+      "people/pay-analytics": {
+        "purpose": "Pay facts as of a date: totals per currency; breakdowns by grade, department, location and employment type; range penetration; and change counts, with small groups hidden.",
+        "when": "For pay reviews and management reporting.",
+        "elements": [
+          ["Filters", "As of date, company, department, location, grade and employment type."],
+          ["Totals", "People, Total fixed (annual), Average fixed, Total variable target per currency. Example: 5 people on 16 Nov 2026."],
+          ["By grade, department, location, employment type", "The same totals per group."],
+          ["Range penetration", "Below, within, above range and no range, with the average compa-ratio."],
+          ["Compensation changes (last 12 months)", "Counts of changes."],
+          ["Export compensation (CSV)", "The approved compensation in force on the date; audited."]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "compensation.analytics or compensation.view to open; compensation.export and compensation.view to export.",
+        "depends": "Approved salaries; pay ranges for range penetration.",
+        "limits": "Any group, or a filter, with fewer than five people shows only 'fewer than 5'. Facts only: no recommendation or pay-fairness verdict is made.",
+        "source": "app/Filament/Pages/CompensationAnalyticsPage.php; app/Domain/Compensation/Services/CompensationAnalytics.php; crawl people/pay-analytics"
+      },
+      "people/variable-pay-plans": {
+        "purpose": "Plan an employee's variable pay by month: a pay item, the months it falls due and each month's target. Each payout entered becomes a variable pay request.",
+        "when": "For incentives paid on a schedule, for example a quarterly sales incentive.",
+        "elements": [
+          ["Plan variable pay", "Employee, pay item, plan name, months and targets, note."],
+          ["Columns", "Employee, Plan, Pay item, Schedule, Payouts entered, Status."],
+          ["Status filter", "Shows Active plans by default."],
+          ["Enter payout", "Pick a due month, the amount and what it is for; it goes for approval."],
+          ["Change schedule, Close", "Edit months and targets with a reason, or close the plan."]
+        ],
+        "fields": [
+          { "label": "Employee", "meaning": "Whose variable pay this is.", "rule": "Required" },
+          { "label": "Pay item", "meaning": "An active, non-statutory earning (a Variable one once any component is marked Variable).", "rule": "Required" },
+          { "label": "Plan name", "meaning": "e.g. Quarterly sales incentive.", "rule": "Optional" },
+          { "label": "Months and targets", "meaning": "One row per due month: Month (YYYY-MM) and Target.", "rule": "Required" },
+          { "label": "Note", "meaning": "Free text.", "rule": "Optional" }
+        ],
+        "after": "On the day set in Setup → Payroll the manager is asked for each month's payout; what is entered is approved and paid like any variable pay.",
+        "permission": "payroll.manage to plan, change and close; managers see their direct reports' plans.",
+        "depends": "An earning component for the pay item.",
+        "limits": "In the example organisation the reminder day is 0 (never), so payouts are entered with Enter payout. A month that already has a payout cannot be removed from the schedule.",
+        "source": "app/Filament/Resources/VariablePayPlans/*; app/Domain/Payroll/Services/VariablePayPlans.php; tenant setting payroll.variable.task_day"
+      },
+      "people/variable-pay": {
+        "purpose": "Incentives, bonuses and other variable pay asked for an employee and a pay month. Once approved, payroll pays them in that month, or in the next run if it has passed.",
+        "when": "When a manager or HR asks for a one-off payment, and to approve requests.",
+        "elements": [
+          ["For an employee", "Raise a request for someone in your scope."],
+          ["Columns", "Employee, Pay item, Amount, Month, Reason, Status, Asked by."],
+          ["Approve, Reject, Cancel", "Decide a pending request (a reason is needed to reject or cancel)."],
+          ["Views", "Waiting for approval; Approved, to be paid; Paid; Variable pay cancellations; Rejected."],
+          ["Report, Payroll actions", "Variable pay reports, and links to other payroll actions."]
+        ],
+        "fields": [
+          { "label": "Employee", "meaning": "For an employee only: who is paid.", "rule": "Required" },
+          { "label": "Pay item", "meaning": "A non-statutory earning; its tax, PF and ESI treatment applies.", "rule": "Required" },
+          { "label": "Amount", "meaning": "At least 1.", "rule": "Required" },
+          { "label": "Pay in (YYYY-MM)", "meaning": "The payroll month; not earlier than last month.", "rule": "Required" },
+          { "label": "Reason", "meaning": "What it is for.", "rule": "Required" }
+        ],
+        "after": "Pending until someone with payroll.manage, not the employee, approves it. Approved requests are paid by that month's payroll and become Paid when it closes.",
+        "permission": "payroll.manage to raise for others and decide; payroll.request for your own requests.",
+        "depends": "An earning component.",
+        "limits": "Once any component is marked Variable, only Variable components can be chosen. The example organisation has no requests yet.",
+        "source": "app/Filament/Resources/VariablePayRequests/*; app/Domain/Payroll/Services/VariablePay.php; app/Domain/Payroll/Inputs/VariablePayInput.php"
+      },
+      "people/process-bonus": {
+        "purpose": "Statutory bonus for an accounting year from finalized payroll: eligibility, wages for bonus (Basic + DA), the bonus at your percentage and any ex gratia, approved and paid with a payroll month.",
+        "when": "Once a year after the accounting year, when PeopleOS has verified the BONUS rule for every month.",
+        "elements": [
+          ["Tabs: Non processed bonus / Processed bonus", "Lines still to decide, and lines approved for payment."],
+          ["Prepare bonus / Recalculate", "Choose Company and Accounting year; measures everyone with finalized payroll."],
+          ["Columns", "Months, Bonus days, Eligibility, Wages (Basic + DA), Pay rate, Wages for bonus, Statutory bonus, Paid with salary, Bonus to pay, Ex gratia."],
+          ["Pay rate, Ex gratia, Include / Leave out", "Override a pay rate, add ex gratia, or include or leave out a line, each with a reason."],
+          ["Process bonus, Approve bonus, Send back", "Send lines for approval with Pay with the payroll of; a second person approves."],
+          ["Awaiting verification of the BONUS rule", "Banner shown while the rule is not verified; nothing is calculated."]
+        ],
+        "fields": [
+          { "label": "Company", "meaning": "Prepare bonus: the company.", "rule": "Required" },
+          { "label": "Accounting year", "meaning": "Prepare bonus: e.g. 2025-26.", "rule": "Required" },
+          { "label": "Pay with the payroll of", "meaning": "Process bonus: the payroll month that pays the lines.", "rule": "Required" },
+          { "label": "Pay rate (a month)", "meaning": "Override of the monthly pay rate, with Why.", "rule": "Optional" },
+          { "label": "Ex gratia amount", "meaning": "Paid as its own earning, never counted as statutory bonus. 0 clears it.", "rule": "Required" }
+        ],
+        "after": "Processed lines wait for approval by another person; approved lines are paid with the chosen payroll month and can be unprocessed until paid.",
+        "permission": "payroll.view plus payroll.calculate to prepare and process, or payroll.approve to approve.",
+        "depends": "Finalized payroll for the year; a verified BONUS rule; the bonus percentage under Setup centre → Payroll (empty = the rule's minimum).",
+        "limits": "Blocked in the example organisation today: the BONUS rule (maintained by PeopleOS) is not verified, so the page shows 'Awaiting verification of the BONUS rule'. Ask PeopleOS support.",
+        "source": "app/Filament/Pages/BonusProcessing.php; app/Domain/Payroll/Services/BonusRuns.php; Support/BonusBasis.php; q.php compliance_rules BONUS"
+      }
+    },
+    "procedures": [
+      {
+        "sub": "12.1", "title": "Add a salary component",
+        "before": "You hold payroll.manage. Agree the code, type and tax, PF and ESI treatment with your payroll adviser.",
+        "steps": [
+          ["Open the wizard", "People › Pay › Salary components › New salary component."],
+          ["01 Component", "Enter Name and Code (e.g. MED). Choose Type, Classification and Calculated. For Formula write e.g. ctc_monthly * 5 / 100 (not 5%)."],
+          ["02 Properties", "Set Taxable, PF wages, ESI wages, Part of CTC, Part of gross, Recurring and Prorated for LOP. Keep Status active."],
+          ["03 Statutory wages, display and processing", "Set PT and LWF wages if they differ from gross, Nature of payment, payslip and register display, joining and exit month, Rounding."],
+          ["04 Review", "Check the summary and create the component. The creation is audited."],
+          ["Use it", "Add it to a structure in the builder. Nobody is paid it until a structure version that uses it is approved."]
+        ],
+        "result": "An active component in the catalogue, ready for structures.",
+        "screens": ["people/salary-components", "people/salary-components--create"],
+        "source": "SalaryComponentResource.php; FormulaEngine.php (percent hint)"
+      },
+      {
+        "sub": "12.2", "title": "Build a new salary structure with the builder",
+        "before": "You hold compensation.configure. Components exist (or you hold payroll.manage to add them). A second person with compensation.approve is available.",
+        "steps": [
+          ["Start", "People › Pay › Salary structures › New salary structure."],
+          ["1 Name and company", "Enter Structure name, choose Company (or leave All companies), optionally narrow by Grade or other groups, set Starts from. Next: How pay is set."],
+          ["2 How pay is set", "Choose 'I give a yearly CTC, and this structure splits it'. Start with A ready-made structure, A copy of another structure, or An empty list."],
+          ["3 Components", "Set each row: Basic % of CTC 40; HRA % of another 50 of Basic; Conveyance Per employee; Special allowance Rest of CTC; Pay Fixed or Variable."],
+          ["Or write plain English", "Write in plain English, one line each, e.g. 'Basic is 40% of CTC'. Click Turn into components and read each line's note."],
+          ["4 Check", "Enter Yearly CTC to try and keep Covered by PF on. Confirm the total equals the CTC and read every warning."],
+          ["5 Save", "Read the sentences in calculation order, then Send for approval (or Save as draft)."],
+          ["Approve (another person)", "The approver opens the structure (row action Approve) › Versions › row menu › Approve, with an optional note."]
+        ],
+        "result": "Version 1, Active from its start date (or Approved — scheduled for a later date), ready to give to employees.",
+        "screens": ["people/salary-structures", "people/salary-structures--create", "people/salary-structures--edit"],
+        "source": "SalaryStructureBuilder.php; StructureBuilder.php; VersionsRelationManager.php; CompensationStructures::approve"
+      },
+      {
+        "sub": "12.2", "title": "Change a structure from a date (new version)",
+        "before": "The structure has no version waiting for approval. Know the first payroll month the change should affect.",
+        "steps": [
+          ["Open the builder", "Salary structures › row Change, or Change components on the structure page."],
+          ["Pick the start", "Starts from must be after finalized payroll and after the version in use started. The builder suggests the first of a month."],
+          ["Change components", "Edit rows or plain English, then Check on a sample CTC."],
+          ["Send for approval", "The version note lists the changes, e.g. 'Changed: HRA is 50% of Basic → HRA is 40% of Basic'."],
+          ["Approve (another person)", "Versions › row menu › Approve. The previous version ends the day before the new one starts."],
+          ["Recalculate open runs", "If the new version starts inside a month already calculated, recalculate that run before closing it."]
+        ],
+        "result": "Everyone on the structure is paid by the new version from its date; earlier days keep the old version.",
+        "screens": ["people/salary-structures", "people/salary-structures--create", "people/salary-structures--edit"],
+        "source": "StructureBuilder::save, dateProblem, defaultStart, changeNote; CompensationStructures::approve; CompensationLedger::forPayroll"
+      },
+      {
+        "sub": "12.3", "title": "Give a new joiner a first salary",
+        "before": "An active structure with an approved version on the joining date that applies to the employee's company and groups. Statutory details checked on Employee 360.",
+        "steps": [
+          ["Find the employee", "People › Pay › Employee salary structures › card Not assigned."],
+          ["Assign salary", "Row action Assign salary on the employee."],
+          ["Employee statutory", "Check PF, ESI and PT applicable, PT state and tax regime. Change statutory details if needed, with a reason."],
+          ["Salary details", "Change type Hire / first compensation, Salary effective from = joining date, the structure, Annual CTC, fixed amounts (e.g. CONV = 1600), Reason."],
+          ["Preview", "Read the breakup, the deductions estimate and the salary checks. Print breakup if the offer needs it."],
+          ["Review and Propose", "Read the summary and click Propose. With Submit for review now on, it goes straight to a reviewer."],
+          ["Three other people decide", "A reviewer, an approver and an executor act on it under Compensation changes."]
+        ],
+        "result": "After Execute (schedule) the employee shows Assigned (or Approved until a future date) and payroll can pay them.",
+        "screens": ["people/employee-salary-structures", "people/compensation-changes"],
+        "source": "SalaryStructureRegister.php (assignSteps); AssignSalaryOperation::fields; SalaryAssignments"
+      },
+      {
+        "sub": "12.4", "title": "Revise a salary through propose, review, approve and execute",
+        "before": "Four different people with compensation.propose, .review, .approve and .execute; none of them is the employee. Finish or cancel any open change first (Assign salary refuses a second one).",
+        "steps": [
+          ["Propose", "Employee 360 › Compensation › Propose compensation change, or Employee salary structures › Assign salary with New CTC Revise by %."],
+          ["Enter the change", "Change type (e.g. Annual increment), Effective from, Structure, Annual CTC, fixed amounts (on Employee 360 type CONV = 1600 again), Reason."],
+          ["Review", "Reviewer: Compensation changes › Views › Waiting for review › row menu › Mark reviewed."],
+          ["Approve", "Approver: view 'Reviewed, waiting for approval' › Approve, or Reject / Return to proposer with a reason."],
+          ["Execute", "Executor: view 'Approved, to execute' › Execute (schedule)."],
+          ["Check the month's payroll", "If that month's run was already calculated, recalculate it: closing refuses runs whose compensation changed."]
+        ],
+        "result": "A dated salary record: Effective at once, or Scheduled and made effective automatically on its date. Payroll uses it for days from that date.",
+        "screens": ["people/compensation-changes", "people/employee-salary-structures"],
+        "source": "CompensationRelationManager.php (propose form); CompensationActions::changeSteps; CompensationChanges; PayrollRuns::finalize"
+      },
+      {
+        "sub": "12.3", "title": "Upload salaries for many employees",
+        "before": "compensation.cycles and compensation.propose. Structure codes and employee codes ready. Three other people for review, approval and execution.",
+        "steps": [
+          ["Get the template", "People › Pay › Salary uploads › Download sample file. Fill Employee code, Salary structure code, Annual CTC and any optional columns."],
+          ["Upload", "Upload salaries CSV › CSV file › What is this file for? (new, existing or Both) › Upload and continue."],
+          ["Map", "On the upload page: Map columns, choose Company and Default effective date for rows without one."],
+          ["Validate", "Validate rows. Read the errors (another open change, finalized payroll, a different salary already starting that day) and fix the file if needed."],
+          ["Run", "Run import: valid rows become lines of a draft Salary upload cycle. Click Open compensation cycle."],
+          ["Finish the cycle", "Submit for review; others Mark reviewed, Approve and Execute on the cycle page."]
+        ],
+        "result": "Every valid row in force after execution; refused rows are reported with their reason and change nothing.",
+        "screens": ["people/salary-uploads", "people/pay-review-cycles"],
+        "source": "ListSalaryImports.php; SalaryImports.php; ImportActions::forImport; CompensationCycles::fromUpload"
+      },
+      {
+        "sub": "12.4", "title": "Run an annual increment cycle",
+        "before": "compensation.cycles. Optional: an approved pay budget and a finalized performance cycle. Three other people to review, approve and execute.",
+        "steps": [
+          ["Create", "Pay review cycles › New cycle (or Increment calculator › Create new): code, name, Annual increment cycle, company, effective date, default %."],
+          ["Populate", "On the cycle page click Populate: eligible employees and their CTC in force are captured and lines proposed."],
+          ["Adjust", "Use Adjust on a line, or accept or decline a manager's proposal."],
+          ["Submit", "Submit for review. A second person clicks Mark reviewed; a third clicks Approve."],
+          ["Execute", "A fourth person clicks Execute: all lines are written under one operation, or none."]
+        ],
+        "result": "Every increment dated from the cycle's effective date, each visible as an effective or scheduled compensation change.",
+        "screens": ["people/pay-review-cycles", "people/increment-calculator", "people/pay-budgets"],
+        "source": "CompensationCycleResource.php; CompensationCycles.php; IncrementCalculatorWizard.php"
+      },
+      {
+        "sub": "12.5", "title": "Publish a pay range for a grade",
+        "before": "Grades exist. A second person with compensation.approve.",
+        "steps": [
+          ["New range", "People › Pay › Pay ranges › New range."],
+          ["Fill it in", "Grade, optional narrowing, Currency, Frequency, Minimum, Midpoint, Maximum, Effective from."],
+          ["Submit", "Row menu › Submit for approval."],
+          ["Approve (another person)", "Row menu › Approve, or Return to draft with a note."]
+        ],
+        "result": "An approved range; Employee 360 and Pay analytics show range position and compa-ratio against it.",
+        "screens": ["people/pay-ranges", "people/pay-analytics"],
+        "source": "CompensationRangeResource.php; CompensationRanges.php"
+      },
+      {
+        "sub": "12.5", "title": "Set and track a pay budget",
+        "before": "compensation.budget. A second person with compensation.approve.",
+        "steps": [
+          ["New budget", "People › Pay › Pay budgets › New budget: code, name, company, period, currency, Amount (annualised CTC increase)."],
+          ["Approve (another person)", "Row action Approve."],
+          ["Link a cycle", "Choose the budget on the pay review cycle (Budget (optional))."],
+          ["Track", "Row action Planned vs actual: Planned, Approved, Committed, Actual and Variance."]
+        ],
+        "result": "Cycle approvals are charged to the budget and refused once it would be exceeded.",
+        "screens": ["people/pay-budgets", "people/pay-review-cycles"],
+        "source": "CompensationBudgetResource.php; CompensationBudgets::measures"
+      },
+      {
+        "sub": "12.6", "title": "Plan, request and approve variable pay",
+        "before": "payroll.manage. A non-statutory earning to pay it under.",
+        "steps": [
+          ["Plan (optional)", "People › Pay › Variable pay plans › Plan variable pay: employee, Pay item, months and targets."],
+          ["Enter a payout", "On the plan row: Enter payout, pick the month, the amount and what it is for."],
+          ["Or request directly", "People › Pay › Variable pay › For an employee: Pay item, Amount, Pay in (YYYY-MM), Reason."],
+          ["Approve", "Another person with payroll.manage: row action Approve (or Reject with a reason)."],
+          ["Pay", "The approved amount is added to that month's payroll; the request turns Paid when payroll closes."]
+        ],
+        "result": "The payout appears as its own earning line on the payslip, with the pay item's tax, PF and ESI treatment.",
+        "screens": ["people/variable-pay-plans", "people/variable-pay"],
+        "source": "VariablePayPlans.php; VariablePay.php; VariablePayInput.php"
+      },
+      {
+        "sub": "12.6", "title": "Process the statutory bonus for a year",
+        "before": "Payroll finalized for the accounting year; PeopleOS has verified the BONUS rule for every month; bonus percentage set under Setup centre → Payroll.",
+        "steps": [
+          ["Prepare", "People › Pay › Process bonus › Prepare bonus: Company and Accounting year."],
+          ["Review the lines", "Non processed bonus tab: check eligibility, wages for bonus and bonus to pay; use Pay rate, Ex gratia or Leave out with a reason."],
+          ["Process", "Process bonus (or Process selected): choose Pay with the payroll of."],
+          ["Approve (another person)", "Approve bonus, or Send back with a reason."],
+          ["Pay", "The approved lines are paid with the chosen payroll month; until paid they can be unprocessed."]
+        ],
+        "result": "Processed bonus lines paid through payroll, separate from ex gratia.",
+        "screens": ["people/process-bonus"],
+        "source": "BonusProcessing.php; BonusRuns.php"
+      }
+    ],
+    "calculations": [
+      {
+        "sub": "12.2",
+        "title": "Rahul Sharma's monthly CTC split into components (November 2026)",
+        "intro": "Real figures from the example organisation: Rahul Sharma (EMP00003), annual CTC 600,000, Standard structure, fixed CONV 1,600 on his salary, a full 30-day month with no unpaid days.",
+        "lines": [
+          ["", "Basic = ctc_monthly * 0.40 = 50,000 × 0.40", "20,000.00"],
+          ["+", "House rent allowance = basic * 0.50 = 20,000 × 0.50", "10,000.00"],
+          ["+", "Conveyance allowance (fixed amount on his salary, CONV = 1600)", "1,600.00"],
+          ["+", "Special allowance = max(0, 50,000 − 20,000 − 10,000 − 1,600 − 2,400)", "16,000.00"],
+          ["=", "Gross earnings", "47,600.00"],
+          ["+", "Employer PF estimate inside the CTC (pf_employer)", "2,400.00"]
+        ],
+        "total": ["Monthly CTC = 600,000 ÷ 12", "50,000.00"],
+        "explain": [
+          ["Order", "Rows run top to bottom (sort orders 10, 20, 30, 40); each formula uses only the rows above it."],
+          ["ctc_monthly", "Annual CTC ÷ 12, rounded to two decimals: 600,000 ÷ 12 = 50,000.00."],
+          ["pf_employer", "Employer PF on the PF wages above (Basic 20,000) under the PF rule PeopleOS maintains; in the example data 12% = 2,400. Not legal advice."],
+          ["Outside the CTC", "PF admin and EDLI charges of 175 are added by payroll, so employer cost is 50,175.00."],
+          ["After the breakup", "Payroll then deducts statutory amounts: in the example run PF 2,400, PT 200 and TDS 6,520, so net pay is 38,480.00."],
+          ["Where you see it", "People › Pay › Payroll runs › November 2026 › Rahul's entry; or Versions › Preview with a sample CTC of 600,000."]
+        ],
+        "source": "PayrollCalculator::calculate; StatutoryEngine::estimateEmployerPf; q.php employee_salary_assignments, salary_components, payroll_entries, payroll_entry_lines (EMP00003)"
+      },
+      {
+        "sub": "12.4",
+        "title": "A revision effective in the middle of the month",
+        "intro": "Illustrative: Rahul's CTC revised from 600,000 to 720,000 from 16 Nov 2026, executed before November payroll closes. November has 30 days; the example organisation prorates on calendar days; no unpaid days.",
+        "lines": [
+          ["", "Basic: 20,000 × 15/30 (1–15 Nov) + 24,000 × 15/30 (16–30 Nov)", "22,000.00"],
+          ["+", "House rent allowance: 10,000 × 15/30 + 12,000 × 15/30", "11,000.00"],
+          ["+", "Conveyance allowance: 1,600 × 15/30 + 1,600 × 15/30", "1,600.00"],
+          ["+", "Special allowance: 16,000 × 15/30 + 19,520 × 15/30", "17,760.00"]
+        ],
+        "total": ["Gross earnings for November", "52,360.00"],
+        "explain": [
+          ["What the code does", "Each salary record in force in the month is a separate period. Full-month amounts are worked out for each and paid × its days ÷ 30."],
+          ["New full month", "At 720,000: monthly 60,000; Basic 24,000; HRA 12,000; CONV 1,600; employer PF 2,880; Special 60,000 − 24,000 − 12,000 − 1,600 − 2,880 = 19,520."],
+          ["Non-prorated items", "A component with Prorated for LOP off is paid once, at the full amount of the newest salary in the month."],
+          ["Unpaid days", "Unpaid days are taken from the period they fall in; loss of pay entered manually comes off the last period."],
+          ["Conveyance", "CONV stays 1,600 only if the change carries CONV = 1600; without it CONV is 0 from 16 Nov and Special allowance absorbs it."],
+          ["No arrears", "If November were already closed, the change would be refused; PeopleOS does not calculate arrears for back-dated revisions."]
+        ],
+        "source": "PayrollCalculator::calculate (segments, proration, divisor); CompensationLedger::forPayroll; tenant setting payroll.proration_basis = calendar_days"
+      },
+      {
+        "sub": "12.4",
+        "title": "Revise by % and the budget it uses",
+        "intro": "Illustrative: Assign salary with New CTC Revise by % at 10% on Rahul's CTC in force.",
+        "lines": [
+          ["", "Annual CTC in force", "600,000.00"],
+          ["+", "Increase: 600,000 × 10 ÷ 100", "60,000.00"]
+        ],
+        "total": ["New annual CTC (rounded to two decimals)", "660,000.00"],
+        "explain": [
+          ["Formula", "New CTC = CTC in force × (1 + % ÷ 100), worked out from the CTC in force on the effective date."],
+          ["New monthly CTC", "660,000 ÷ 12 = 55,000.00; the structure then splits it as in the first example."],
+          ["Budget measure", "A cycle line like this counts 60,000 (new annual CTC − annual CTC before) against its pay budget."],
+          ["Compensation changes", "The row shows From CTC 600,000.00, Proposed CTC 660,000.00 and Annual increase 60,000.00."]
+        ],
+        "source": "SalaryAssignments::revise; CompensationBudgets::measures; CompensationChangeResource columns"
+      },
+      {
+        "sub": "12.2",
+        "title": "The builder's ready-made structure on the Check step",
+        "intro": "Illustrative: a new structure from 'A ready-made structure' (Basic 50% of CTC, HRA 40% of Basic, Special allowance the rest), Yearly CTC to try 600,000, Covered by PF on.",
+        "lines": [
+          ["", "Basic = ctc_monthly * 50 / 100", "25,000.00"],
+          ["+", "HRA = basic * 40 / 100", "10,000.00"],
+          ["+", "Special allowance = max(0, ctc_monthly - basic - hra - pf_employer)", "12,000.00"],
+          ["=", "Gross pay a month", "47,000.00"],
+          ["+", "Employer PF a month (estimate on Basic 25,000 in the example data)", "3,000.00"]
+        ],
+        "total": ["CTC a month", "50,000.00"],
+        "explain": [
+          ["Formulas written", "The builder writes '% of CTC' as ctc_monthly * P / 100 and 'Rest of CTC' as max(0, ctc_monthly − every other CTC line − pf_employer)."],
+          ["Order", "The builder sorts rows by what they use and puts the balancing component last; you never set sort orders."],
+          ["Employer PF", "The estimate follows the PF rule version PeopleOS maintains for the start date; check it on screen. Not legal advice."],
+          ["Code on Wages check", "Advisory only: Basic is 53.2% of gross here. The example Standard structure gives 42% (20,000 of 47,600) and shows a warning."]
+        ],
+        "source": "StructureBuilder::TEMPLATES, compile, preview; StructureRules::formula; StructureFormulas::balancingFormula, preview; config peopleos.payroll.guardrails"
+      },
+      {
+        "sub": "12.1",
+        "title": "A text condition in a formula: HRA by city",
+        "intro": "Illustrative formula from the guide, worked for Rahul (work location New Delhi): basic * if(in(work_city, \"Mumbai\", \"Delhi\", \"Kolkata\", \"Chennai\"), 0.50, 0.40).",
+        "lines": [
+          ["", "basic (the row above)", "20,000.00"],
+          ["×", "if(in(work_city, …), 0.50, 0.40): \"New Delhi\" is not \"Delhi\", so 0.40", "0.40"]
+        ],
+        "total": ["HRA", "8,000.00"],
+        "explain": [
+          ["Text", "Text compares whole values, ignoring capitals and outer spaces. List the city exactly as on the location: add \"New Delhi\"."],
+          ["in()", "in(x, a, b, …) gives 1 when x equals any value, else 0."],
+          ["if()", "if(condition, then, otherwise) picks one value; a division by zero in the branch not taken does no harm."],
+          ["Example organisation", "Its HRA is simply basic * 0.50 = 10,000.00; this formula is shown only to explain the engine."]
+        ],
+        "source": "FormulaEngine (equals, in, if); FormulaVariables::EMPLOYEE work_city, RECIPES; q.php employee_positions, locations (EMP00003)"
+      },
+      {
+        "sub": "12.5",
+        "title": "Range position and compa-ratio",
+        "intro": "Illustrative (the example organisation has no ranges): grade range minimum 480,000, midpoint 600,000, maximum 720,000; annual CTC 660,000.",
+        "lines": [
+          ["", "CTC − minimum = 660,000 − 480,000", "180,000.00"],
+          ["÷", "maximum − minimum = 720,000 − 480,000", "240,000.00"]
+        ],
+        "total": ["Range position", "0.75"],
+        "explain": [
+          ["Compa-ratio", "CTC ÷ midpoint = 660,000 ÷ 600,000 = 1.1 (rounded to four decimals)."],
+          ["Band", "Below (under the minimum), within, or above (over the maximum): here within."],
+          ["Undefined", "No range position when minimum equals maximum; no compa-ratio without a midpoint; other currencies are not compared."],
+          ["Where you see it", "Employee 360 › Compensation › Range position, and Pay analytics › Range penetration."]
+        ],
+        "source": "CompensationRanges::position"
+      }
+    ],
+    "warnings": [
+      {
+        "sub": "12.4", "title": "Four different people for every salary change", "level": "important",
+        "headline": "Even with every permission you can take only one step of any one change.",
+        "body": "PeopleOS refuses the same person proposing, reviewing, approving and executing a change, and refuses anyone acting on their own salary. Plan who does each step before go-live.",
+        "points": [
+          "Proposer: compensation.propose. Reviewer: compensation.review. Approver: compensation.approve. Executor: compensation.execute.",
+          "Messages: 'No one proposes, reviews, approves or executes their own compensation.' and 'The proposer of a compensation change cannot approve it.'",
+          "Pay review cycles and salary uploads follow the same four steps for the whole cycle.",
+          "Structure versions, pay ranges and pay budgets need a second person to approve them."
+        ],
+        "todo": "Give HR Manager (propose, review), Payroll Admin (execute) and an approver role to different people under Users and roles."
+      },
+      {
+        "sub": "12.1", "title": "A component's default formula is not versioned", "level": "warning",
+        "headline": "Editing a formula on Salary components changes pay at once for every structure that uses it without an override.",
+        "body": "The example Standard structure has no overrides, so changing BASIC's formula changes everyone's next calculation, including approved versions. Nothing asks for approval.",
+        "points": [
+          "To change pay from a date, change the structure in the builder: it writes overrides into a new version that someone else approves.",
+          "Every edit is audited with your Reason for change."
+        ],
+        "todo": "Change formulas through the salary structure builder, not the component, unless the change must apply everywhere at once."
+      },
+      {
+        "sub": "12.4", "title": "Back-dated revisions and arrears", "level": "warning",
+        "headline": "A salary cannot be dated inside a month whose payroll is finalized, and arrears are not calculated for you.",
+        "body": "Execution is refused: 'Payroll is finalized through …; a salary effective on … would rewrite a closed payroll period. Use an effective date after it and pay the difference as an arrear.'",
+        "points": [
+          "Date the revision on or after the first open day, e.g. the first of the next open month.",
+          "Work out the difference for the closed months yourself.",
+          "Pay it as an Arrear on People › Pay › Adjustments, or with the Salary arrear upload under People › Pay › Payroll uploads (M13).",
+          "A revision dated in an open month (not closed) is simply split by day in that month's payroll."
+        ],
+        "todo": "Keep a note of back-dated revisions and add their arrears before the next payroll is calculated."
+      },
+      {
+        "sub": "12.4", "title": "Fixed amounts are not carried over from Employee 360", "level": "warning",
+        "headline": "Propose compensation change on Employee 360 starts with no fixed component amounts.",
+        "body": "If you leave Fixed component amounts and inputs (monthly) empty, components such as CONV are paid as 0 from the new date and Special allowance absorbs the difference.",
+        "points": [
+          "Type each fixed amount again, e.g. CONV = 1600.",
+          "Assign salary on Employee salary structures prefills the amounts from the salary in force."
+        ],
+        "todo": "Prefer Assign salary for revisions, or re-enter fixed amounts on Employee 360."
+      },
+      {
+        "sub": "12.4", "title": "Execute before payroll, then recalculate", "level": "important",
+        "headline": "An approved change is not paid until it is executed, and a calculated run must be recalculated.",
+        "body": "Payroll reads only executed salaries. If a change is executed after the month's run was calculated, closing is refused: 'Compensation changed for N employee(s) since the run was calculated; recalculate before finalizing.'",
+        "points": [
+          "Check Compensation changes › view 'Approved, to execute' before each payroll.",
+          "The pre-payroll checklist lists salary revisions not in force and employees missing a salary structure."
+        ],
+        "todo": "Execute every approved change dated in the month, then recalculate the run."
+      },
+      {
+        "sub": "12.2", "title": "Structure versions apply to everyone on the structure", "level": "important",
+        "headline": "A new version changes pay for every employee on that structure from its start date.",
+        "body": "The start date must be after finalized payroll and after the version in use started. While a version waits for approval the builder opens read-only.",
+        "points": [
+          "For a change that affects only some people, create a separate structure or narrow it to their grade or group.",
+          "An approved version never changes; a correction is another new version from a later date."
+        ],
+        "todo": "Agree the start date with payroll before you send a version for approval."
+      },
+      {
+        "sub": "12.2", "title": "Code on Wages advisory in the preview", "level": "important",
+        "headline": "The Check step and Preview warn when Basic (with DA) is under 50% of gross pay.",
+        "body": "The example Standard structure gives Basic 20,000 of gross 47,600 (42%), so the warning appears. It is advisory: PeopleOS does not add the excess back for PF, gratuity or bonus.",
+        "points": ["This is not legal advice.", "Confirm your structure with your compliance adviser."],
+        "todo": "Review the split with your adviser before approving a structure."
+      },
+      {
+        "sub": "12.6", "title": "Process bonus is waiting for the BONUS rule", "level": "blocked",
+        "headline": "Nothing is calculated, processed or approved until a verified BONUS rule applies to every month of the year.",
+        "body": "The BONUS rule is maintained by PeopleOS. In the example organisation it is not yet verified, so the page shows 'Awaiting verification of the BONUS rule'.",
+        "points": ["You can view the rule; you cannot verify it yourself.", "Ex gratia is paid with the bonus run and is never counted as statutory bonus."],
+        "todo": "Ask PeopleOS support when the BONUS rule for your year will be verified."
+      },
+      {
+        "sub": "12.2", "title": "Monthly pay only", "level": "warning",
+        "headline": "Structures and salaries support the monthly pay frequency only.",
+        "body": "Other pay frequencies are refused until payroll supports them. Every structure line is calculated each month; one-off or annual payments go through variable pay or payroll adjustments.",
+        "points": [],
+        "todo": "Pay annual or one-off items as variable pay or payroll adjustments."
+      }
+    ],
+    "troubleshooting": [
+      ["'Structure X has no approved version in force on <date>.'", "The version is still a draft, waiting for approval, or starts after the effective date.", "Get the version approved, or use an effective date on or after its start.", ""],
+      ["'Structure X v1 does not apply to this employee's grade.' (or department, location…)", "The version is narrowed to some groups and the employee's position on that date is not in them.", "Pick a structure for that group, or widen the version in the builder.", ""],
+      ["'The salary structure is not active.'", "The structure's Status is inactive.", "Set Status to Active on the structure page, or choose another structure.", ""],
+      ["Assign salary: 'A compensation change is already pending for this employee (…); finish or cancel it first.'", "A draft, submitted or under-review change exists for the employee.", "Finish it on Compensation changes, or Cancel it with a reason.", ""],
+      ["'An employee who is alumni cannot receive current compensation.'", "Exited and alumni employees receive nothing new; a pre-employee can only get a future-dated salary.", "Check the lifecycle state and the effective date.", ""],
+      ["Assign salary or Propose compensation change is missing", "You lack compensation.propose, or the employee is you.", "Ask another person with the right to propose.", ""],
+      ["'The proposer of a compensation change cannot approve it.'", "The same person tried two steps of one change.", "Let a different person take this step.", ""],
+      ["'An assignment already starts on <date>. Use a later effective date or a correction.'", "A salary record already begins that day.", "Use a later date, or change type Correction for a record already in force.", ""],
+      ["'Payroll is finalized through <date>; a salary effective on … would rewrite a closed payroll period.'", "The date is inside closed payroll.", "Use a later date and pay the difference as an arrear (M13).", ""],
+      ["'The compensation in force on <date> has changed since this change was approved; return it for a new decision.'", "Another change took effect on that date after this one was decided.", "Return it to the proposer and decide it again.", ""],
+      ["Revision approved but payslip shows the old salary", "The change is Approved, not executed; or the run was calculated before execution.", "Execute (schedule) it, then recalculate the payroll run.", ""],
+      ["Employee salary structures shows Approved, not Assigned", "The change is scheduled for a future date.", "Nothing to do: it becomes effective on its date.", ""],
+      ["Conveyance disappeared after a revision", "The change was proposed without fixed component amounts.", "Propose a Correction with CONV = 1600, or re-enter amounts next time.", ""],
+      ["Payroll entry exception 'No salary assignment is effective in this period.'", "No executed salary covers any day of the month.", "Assign a salary and have it executed, then recalculate.", ""],
+      ["Payroll exception 'formula_error' naming a component", "A formula failed, e.g. an unknown name or a lookup() with no entry and no final value.", "Fix the formula in the builder (or component) and recalculate; the line was paid as 0.", ""],
+      ["Builder: 'The version in use started on …; changes must start after that date.'", "A new version must start after the approved version in use.", "Pick a later Starts from.", ""],
+      ["Builder opens read-only", "The structure has a version waiting for approval.", "Approve it or Return to draft on the Versions tab first.", ""],
+      ["Formula refused: ''%' is the remainder operator, not percent'", "basic * 40% is not percent.", "Write basic * 40 / 100 or basic * 0.40.", ""],
+      ["Code refused: 'This code is a formula variable or function name; choose another.'", "Codes such as GRADE, MIN or CTC_MONTHLY are reserved.", "Choose another code.", ""],
+      ["Variable pay: 'X is a fixed component; choose a variable one.'", "At least one component is marked Variable.", "Choose a Variable pay item, or mark this one Variable.", ""]
+    ],
+    "checklist": [
+      ["Components reviewed", "Codes, types and tax, PF, ESI and proration flags agreed with your payroll adviser."],
+      ["Structures built and approved", "Every structure has an approved version starting on or before the first payroll month."],
+      ["Preview checked", "Each structure tried on a sample CTC: total equals CTC; warnings read."],
+      ["Four people named", "Proposer, reviewer, approver and executor are different users with the right permissions."],
+      ["Every employee has a salary", "Employee salary structures › Not assigned shows 0 for people you will pay."],
+      ["Fixed amounts present", "Fixed components (e.g. CONV) carry amounts on each salary."],
+      ["Nothing left unexecuted", "Compensation changes › 'Approved, to execute' is empty before payroll."],
+      ["Runs recalculated", "Any run calculated before a change was executed has been recalculated."],
+      ["Back-dated changes handled", "Arrears for closed months added as adjustments."],
+      ["Ranges and budgets approved", "Before an increment cycle, if you use them."]
+    ],
+    "summary": [
+      "Payroll pays only salaries that are approved and executed; drafts and approved-but-unexecuted changes are never paid.",
+      "Build structures in the five-step builder; each change is a dated version approved by another person.",
+      "Every salary change needs four different people: propose, review, approve, execute.",
+      "A mid-month revision is split by day: each salary is paid for its own days; no arrears are calculated for closed months.",
+      "Editing a component's default formula changes pay everywhere at once; change structures instead.",
+      "Check Employee salary structures for Not assigned and Compensation changes for unexecuted approvals before payroll."
+    ],
+    "captures_needed": [
+      { "title": "Builder step 2: How pay is set", "url": "/admin/salary-structure-builder", "how": "New salary structure; fill Structure name and Starts from; click Next: How pay is set." },
+      { "title": "Builder step 3: Pick from a list", "url": "/admin/salary-structure-builder", "how": "Continue with A ready-made structure; show the rows Basic, HRA, Special allowance." },
+      { "title": "Builder step 3: plain English report", "url": "/admin/salary-structure-builder", "how": "Switch to Write in plain English, type 'Conveyance is a fixed 1,600 a month' on a new line, click Turn into components." },
+      { "title": "Builder step 4: Check", "url": "/admin/salary-structure-builder", "how": "Click Next to Check with Yearly CTC to try 600000 and Covered by PF on." },
+      { "title": "Builder step 5: Save", "url": "/admin/salary-structure-builder", "how": "Click Next: Save; show the sentences and Save as draft / Send for approval." },
+      { "title": "Version Preview on a sample CTC", "url": "/admin/salary-structures/1/edit", "how": "Versions tab › row v1 › Preview; enter CTC 600000 and CONV 1600." },
+      { "title": "Assign salary wizard: Salary details and Preview", "url": "/admin/employee-salary-structures", "how": "Row action Assign salary on EMP00003; open steps Salary details and Preview." },
+      { "title": "Employee 360 propose form", "url": "/admin/employees", "how": "Open Rahul Sharma › Compensation tab › Propose compensation change (as a user who is not Rahul)." },
+      { "title": "Compensation change row menu", "url": "/admin/compensation-changes", "how": "With a submitted change, open the row menu as a reviewer to show Mark reviewed, Reject, Return to proposer." },
+      { "title": "Salary component wizard step 02 Properties", "url": "/admin/salary-components/create", "how": "Fill step 01 and click Next." },
+      { "title": "Formula guide slide-over", "url": "/admin/salary-structures/1/edit", "how": "Versions tab › Formula guide." },
+      { "title": "Upload a salary file modal", "url": "/admin/salary-uploads", "how": "Click Upload salaries CSV." }
+    ],
+    "gaps": [
+      "PeopleOS does not calculate arrears for back-dated revisions: dates inside finalized payroll are refused and the difference must be entered as an arrear adjustment.",
+      "Process bonus is blocked in the example organisation: the BONUS rule (maintained by PeopleOS) is not verified, so no bonus lines can be shown.",
+      "Statutory rules in the example data are not verified: the Assign salary preview shows 'No verified rule: not estimated', and the PF figures used in the calculations come from rule versions under review.",
+      "The example organisation has one structure, salaries for only four current employees, and no cycles, ranges, budgets, uploads or variable pay, so those screens were captured empty.",
+      "Only step 01 of the component, builder and structure-edit wizards was captured; later steps, the Versions table rows, Preview, the Assign salary wizard and the Employee 360 propose form are described from source.",
+      "Component default formulas are not versioned: an edit applies at once to every structure line without an override.",
+      "Only the monthly pay frequency is supported.",
+      "The exact field labels on the upload page's Map columns step and the cycle page (populate and line adjust forms) were taken from source, not from a capture."
+    ]
+  }
+}

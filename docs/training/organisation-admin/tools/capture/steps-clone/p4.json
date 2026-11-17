@@ -1,0 +1,13 @@
+[
+ { "flow": "m13-october-validate", "module": "M13", "as": "arjun.bose@demo.local", "steps": [
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=approve" }, { "wait": 8000 },
+   { "click": "Validate", "within": "main", "after": 2500 },
+   { "snap": { "id": "10-validate", "screen": "Validate the run", "path": "People › Pay › Run payroll › Validate", "labels": ["Confirm"] } },
+   { "click": "Confirm", "after": 15000 },
+   { "snap": { "id": "11-validated", "screen": "Run payroll: validated, waiting for approval", "path": "People › Pay › Run payroll", "full": true } } ] },
+ { "flow": "m13-october-approve", "module": "M13", "as": "admin@demo.local", "steps": [
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=approve" }, { "wait": 8000 },
+   { "snap": { "id": "12-approve-ready", "screen": "Run payroll: 5 Review and approve (another person approves)", "path": "People › Pay › Run payroll", "full": true, "labels": ["Approve"] } },
+   { "click": "Approve", "within": "main", "after": 2500 },
+   { "snap": { "id": "13-approve-dialog", "screen": "Approve the run", "path": "People › Pay › Run payroll › Approve" } } ] }
+]

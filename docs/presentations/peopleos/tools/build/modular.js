@@ -124,7 +124,7 @@ class ModularDeck extends Deck {
         const btnLine = onColour ? { color: 'FFFFFF', transparency: 45, width: 0.75 } : { color: BRAND.inkLine, width: 0.75 };
         s.addText([{ text: 'People', options: { color: 'FFFFFF' } }, { text: 'OS', options: { color: BRAND.goldText } }], { x: 0.7, y, w: 1.05, h, fontSize: 13, bold: true, fontFace: FONTS.head, valign: 'middle', margin: 0, isTextBox: true, objectName: 'Nav · Wordmark' });
         // Home / Contents
-        const isHome = p.key === 'toc';
+        const isHome = p.kind === 'toc';
         const hb = { x: 1.95, y, w: 1.3, h };
         s.addShape(sh.ROUNDED_RECTANGLE, { ...hb, rectRadius: 0.08, fill: isHome ? { color: BRAND.iris } : btnFill, line: isHome ? { color: BRAND.iris, width: 0.75 } : btnLine, objectName: 'Nav · Home button' });
         s.addImage({ data: A.home, x: hb.x + 0.12, y: y + 0.065, w: 0.19, h: 0.19, altText: 'Home', objectName: 'Nav · Home icon' });
@@ -133,7 +133,7 @@ class ModularDeck extends Deck {
         let x = hb.x + hb.w + 0.15;
         if (!onColour) {
             // Current module, highlighted in its colour (links to the module's first slide)
-            const label = m ? `${nn(m.num)}  ${m.name}` : (p.key === 'toc' ? 'All modules' : p.section);
+            const label = m ? `${nn(m.num)}  ${m.name}` : (p.kind === 'toc' ? 'All modules' : p.section);
             const cw = Math.min(3.3, tw(label, 10.5, true) + 0.36);
             const cb = { x, y, w: cw, h };
             s.addText(label, { ...cb, shape: sh.ROUNDED_RECTANGLE, rectRadius: 0.08, fill: { color: t.hex }, line: { color: t.onInk, width: 1 }, color: 'FFFFFF', fontSize: 10.5, bold: true, align: 'center', valign: 'middle', margin: 0, isTextBox: true, objectName: 'Nav · Module' });
@@ -224,15 +224,17 @@ class ModularDeck extends Deck {
     }
 
     /** Main table of contents: one row per learning group, one clickable card per module. */
-    toc({ title = 'Contents', intro } = {}) {
+    toc({ title = 'Contents', intro, groups: only, key = 'toc', more, back } = {}) {
         this.ctx = { module: null, sub: null, section: 'Contents' };
-        this.next = { key: 'toc', kind: 'toc' };
+        this.next = { key, kind: 'toc' };
         this.queue.push(async () => {
             const s = this.slide('content', `SAY: This is home. Every slide has a Contents button top left that brings you back here.\nSAY: The course has ${this.course.modules.length} modules in ${this.course.groups.length} learning groups, in the order an organisation administrator usually needs them. Click a card to open a module.\n${this.course.modules.map((m) => `${m.code} ${m.name}: ${m.desc}`).join('\n')}`);
             this.head(s, title, `${this.meta.title}`);
             await this.button(s, { x: W - MX - 4.75, y: 0.9, w: 2.65, h: 0.42 }, 'How to use this course', 'howto', 'How the navigation works', { line: BRAND.border, color: BRAND.text, icon: 'cursor-arrow-rays', iconColor: BRAND.iris, size: 11.5 });
             if (this.has('review')) await this.button(s, { x: W - MX - 1.95, y: 0.9, w: 1.95, h: 0.42 }, 'Course review', 'review', 'Practice and course summary', { line: BRAND.border, color: BRAND.text, icon: 'flag', iconColor: BRAND.iris, size: 11.5 });
-            const groups = this.course.groups, top = 1.52, bottom = 6.96, gap = 0.09;
+            if (more) await this.button(s, { x: W - MX - 4.75 - 2.2, y: 0.9, w: 2.05, h: 0.42 }, more.label, more.key, more.label, { fill: BRAND.iris, icon: 'arrow-right-circle', iconColor: 'FFFFFF', size: 11.5, name: 'More modules' });
+            if (back) await this.button(s, { x: W - MX - 4.75 - 2.2, y: 0.9, w: 2.05, h: 0.42 }, back.label, back.key, back.label, { line: BRAND.border, color: BRAND.text, icon: 'arrow-left-circle', iconColor: BRAND.iris, size: 11.5, name: 'Previous contents' });
+            const groups = only ? this.course.groups.filter((g) => only.includes(g.id)) : this.course.groups, top = 1.52, bottom = 6.96, gap = 0.09;
             const rh = (bottom - top - (groups.length - 1) * gap) / groups.length;
             const gw = 1.66, cw = 2.5, cg = 0.12;
             for (const [gi, g] of groups.entries()) {
@@ -245,9 +247,10 @@ class ModularDeck extends Deck {
                     const x = MX + gw + 0.14 + mi * (cw + cg), b = { x, y, w: cw, h: rh };
                     s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { ...b, rectRadius: 0.08, fill: { color: 'FFFFFF' }, line: { color: m.color.line, width: 1 }, objectName: `Card ${m.code}` });
                     s.addText(nn(m.num), { x: x + 0.12, y: y + 0.1, w: 0.48, h: 0.48, shape: this.pres.shapes.ROUNDED_RECTANGLE, rectRadius: 0.08, fill: { color: m.color.hex }, line: { color: m.color.hex, width: 0 }, color: 'FFFFFF', fontSize: 15, bold: true, fontFace: FONTS.head, align: 'center', valign: 'middle', margin: 0, isTextBox: true, objectName: `Card ${m.code} number` });
-                    s.addText(m.name, { x: x + 0.7, y: y + 0.06, w: cw - 0.82, h: 0.5, fontSize: 12, bold: true, color: BRAND.text, valign: 'middle', margin: 0, isTextBox: true, objectName: `Card ${m.code} name` });
+                    const nfs = m.name.length > 30 ? 10.5 : m.name.length > 24 ? 11.5 : 12;
+                    s.addText(m.name, { x: x + 0.7, y: y + 0.06, w: cw - 0.82, h: 0.5, fontSize: nfs, bold: true, color: BRAND.text, valign: 'middle', margin: 0, isTextBox: true, objectName: `Card ${m.code} name` });
                     s.addText(m.desc, { x: x + 0.12, y: y + 0.58, w: cw - 0.24, h: rh - 0.6, fontSize: 10, color: BRAND.textSecondary, valign: 'top', margin: 0, isTextBox: true, objectName: `Card ${m.code} description` });
-                    checkFit(`${this.meta.num}#${this.n} ${m.code}`, m.name, cw - 0.82, 0.5, 12);
+                    checkFit(`${this.meta.num}#${this.n} ${m.code}`, m.name, cw - 0.82, 0.5, nfs);
                     checkFit(`${this.meta.num}#${this.n} ${m.code}`, m.desc, cw - 0.24, rh - 0.6, 10);
                     this.hot(s, b, m.code, `Module ${m.num}: ${m.name}`, `Module ${m.code}`);
                 }
@@ -267,18 +270,20 @@ class ModularDeck extends Deck {
             s.addText(`MODULE ${nn(m.num)}   ·   GROUP ${g.id}: ${g.name.toUpperCase()}`, { x: MX, y: 1.1, w: 7.9, h: 0.3, fontSize: 12, bold: true, color: 'FFFFFF', charSpacing: 1.5, margin: 0, isTextBox: true });
             s.addText(nn(m.num), { x: MX, y: 1.42, w: 2.4, h: 1.15, fontSize: 72, bold: true, color: 'FFFFFF', fontFace: FONTS.head, margin: 0, valign: 'middle', isTextBox: true, objectName: 'Module number' });
             s.addText(m.name, { x: MX, y: 2.6, w: 7.9, h: 0.95, fontSize: 38, bold: true, color: 'FFFFFF', fontFace: FONTS.head, margin: 0, valign: 'middle', isTextBox: true, objectName: 'Module title' });
-            this.text(s, m.intro, { x: MX, y: 3.62, w: 7.6, h: 0.95, fontSize: 16, color: 'FFFFFF' });
+            this.text(s, m.intro, { x: MX, y: 3.62, w: 7.6, h: 0.98, fontSize: m.intro.length > 240 ? 12.5 : m.intro.length > 190 ? 13.5 : m.intro.length > 140 ? 14.5 : 16, color: 'FFFFFF' });
             s.addText('YOU WILL BE ABLE TO', { x: MX, y: 4.68, w: 5, h: 0.28, fontSize: 11, bold: true, color: 'FFFFFF', charSpacing: 1.5, margin: 0, isTextBox: true });
-            s.addText(m.objectives.map((o, i) => ({ text: o, options: { bullet: { indent: 16 }, breakLine: i < m.objectives.length - 1, paraSpaceAfter: 5 } })), { x: MX, y: 5.02, w: 7.6, h: 1.85, fontSize: 14.5, color: 'FFFFFF', valign: 'top', margin: 0, isTextBox: true });
-            checkFit(`${this.meta.num}#${this.n}`, m.objectives.join('\n'), 7.3, 1.85, 14.5, 1.35);
+            const of = m.objectives.join('').length > 240 ? 12.5 : m.objectives.join('').length > 180 ? 13.5 : 14.5;
+            s.addText(m.objectives.map((o, i) => ({ text: o, options: { bullet: { indent: 16 }, breakLine: i < m.objectives.length - 1, paraSpaceAfter: 5 } })), { x: MX, y: 5.02, w: 7.6, h: 1.85, fontSize: of, color: 'FFFFFF', valign: 'top', margin: 0, isTextBox: true });
+            checkFit(`${this.meta.num}#${this.n}`, m.objectives.join('\n'), 7.3, 1.85, of, 1.35);
             // Right panel: icon, who, where, buttons
             const px = 8.75, pw = W - MX - px, py = 1.1, ph = 5.75;
             s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { x: px, y: py, w: pw, h: ph, rectRadius: 0.12, fill: { color: 'FFFFFF', transparency: 88 }, line: { color: 'FFFFFF', transparency: 60, width: 0.75 }, objectName: 'Module panel' });
             s.addImage({ data: await this.ico(m.icon, 'FFFFFF'), x: px + 0.3, y: py + 0.3, w: 0.8, h: 0.8, altText: `${m.name} icon`, objectName: 'Module icon' });
-            s.addText([{ text: 'WHO USES IT', options: { fontSize: 10, bold: true, charSpacing: 1.5, breakLine: true } }, { text: m.who, options: { fontSize: 12.5 } }], { x: px + 0.3, y: py + 1.3, w: pw - 0.6, h: 1.25, color: 'FFFFFF', valign: 'top', margin: 0, isTextBox: true });
-            s.addText([{ text: 'WHERE IN PEOPLEOS', options: { fontSize: 10, bold: true, charSpacing: 1.5, breakLine: true } }, { text: m.where, options: { fontSize: 12.5 } }], { x: px + 0.3, y: py + 2.65, w: pw - 0.6, h: 1.25, color: 'FFFFFF', valign: 'top', margin: 0, isTextBox: true });
-            checkFit(`${this.meta.num}#${this.n} who`, 'WHO\n' + m.who, pw - 0.6, 1.25, 12.5);
-            checkFit(`${this.meta.num}#${this.n} where`, 'WHERE\n' + m.where, pw - 0.6, 1.25, 12.5);
+            const wf = (t) => (t.length > 180 ? 10.5 : t.length > 130 ? 11 : t.length > 100 ? 11.5 : 12.5);
+            s.addText([{ text: 'WHO USES IT', options: { fontSize: 10, bold: true, charSpacing: 1.5, breakLine: true } }, { text: m.who, options: { fontSize: wf(m.who) } }], { x: px + 0.3, y: py + 1.3, w: pw - 0.6, h: 1.3, color: 'FFFFFF', valign: 'top', margin: 0, isTextBox: true });
+            s.addText([{ text: 'WHERE IN PEOPLEOS', options: { fontSize: 10, bold: true, charSpacing: 1.5, breakLine: true } }, { text: m.where, options: { fontSize: wf(m.where) } }], { x: px + 0.3, y: py + 2.7, w: pw - 0.6, h: 1.3, color: 'FFFFFF', valign: 'top', margin: 0, isTextBox: true });
+            checkFit(`${this.meta.num}#${this.n} who`, 'WHO\n' + m.who, pw - 0.6, 1.3, wf(m.who));
+            checkFit(`${this.meta.num}#${this.n} where`, 'WHERE\n' + m.where, pw - 0.6, 1.3, wf(m.where));
             await this.button(s, { x: px + 0.3, y: py + ph - 1.22, w: pw - 0.6, h: 0.46 }, 'Module contents', `${code}.contents`, `Module ${m.num} contents`, { fill: 'FFFFFF', color: m.color.hex, icon: 'list-bullet', iconColor: m.color.hex, name: `${code} contents` });
             await this.button(s, { x: px + 0.3, y: py + ph - 0.66, w: pw - 0.6, h: 0.42 }, 'Skip to the summary', `${code}.summary`, `Module ${m.num} summary`, { fill: m.color.deep, line: 'FFFFFF', icon: 'check-circle', iconColor: 'FFFFFF', size: 11.5, name: `${code} summary` });
         });
@@ -290,9 +295,9 @@ class ModularDeck extends Deck {
             if (this.has(`${code}.checklist`)) rows.push({ key: `${code}.checklist`, icon: 'clipboard-document-check', name: 'Administrator checklist', desc: 'What to have done, and checked, before you move on.', count: 1 });
             rows.push({ key: `${code}.summary`, icon: 'check-circle', name: 'Module summary', desc: 'Key points, the next module and related modules.', count: 1 });
             const top = 1.55, bottom = 6.92, gap = 0.1;
-            const cols = rows.length > 7 ? 2 : 1;
+            const cols = rows.length > 6 ? 2 : 1;
             const per = Math.ceil(rows.length / cols);
-            const rh = Math.min(0.74, (bottom - top - (per - 1) * gap) / per);
+            const rh = Math.min(0.86, (bottom - top - (per - 1) * gap) / per);
             const cw = (W - 2 * MX - (cols - 1) * 0.25) / cols;
             for (const [i, r] of rows.entries()) {
                 const col = Math.floor(i / per), row = i % per;
@@ -302,11 +307,13 @@ class ModularDeck extends Deck {
                 const tb = { x: x + 0.12, y: y + 0.1, w: 0.72, h: rh - 0.2 };
                 if (isSub) s.addText(r.tile, { ...tb, shape: this.pres.shapes.ROUNDED_RECTANGLE, rectRadius: 0.06, fill: { color: m.color.hex }, line: { color: m.color.hex, width: 0 }, color: 'FFFFFF', fontSize: 14, bold: true, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
                 else s.addImage({ data: await this.ico(r.icon, m.color.hex), x: tb.x + (tb.w - 0.34) / 2, y: tb.y + (tb.h - 0.34) / 2, w: 0.34, h: 0.34, altText: '', objectName: `Row icon ${r.key}` });
-                const nx = x + 1.0, nw = cw - 1.0 - 1.55;
-                s.addText([{ text: r.name, options: { fontSize: 15, bold: true, color: BRAND.text, breakLine: true } }, { text: r.desc, options: { fontSize: 12, color: BRAND.textSecondary } }], { x: nx, y: y + 0.04, w: nw, h: rh - 0.08, valign: 'middle', margin: 0, isTextBox: true });
-                checkFit(`${this.meta.num}#${this.n} ${r.key}`, `${r.name}\n${r.desc}`, nw, rh - 0.08, 12.5);
+                const compact = cols > 1 || rh < 0.7;
+                const nx = x + 1.0, nw = cw - 1.0 - (compact ? 1.25 : 1.55);
+                const [nf, df] = compact ? [13, 10.5] : [15, 12];
+                s.addText([{ text: r.name, options: { fontSize: nf, bold: true, color: BRAND.text, breakLine: true } }, { text: r.desc, options: { fontSize: df, color: BRAND.textSecondary } }], { x: nx, y: y + 0.04, w: nw, h: rh - 0.08, valign: 'middle', margin: 0, isTextBox: true });
+                checkFit(`${this.meta.num}#${this.n} ${r.key}`, `${r.name}\n${r.desc}`, nw, rh - 0.08, df);
                 const n = this.go(r.key);
-                s.addText([{ text: `Slide ${n}`, options: { fontSize: 12, bold: true, color: m.color.hex, breakLine: true } }, { text: r.count === 1 ? '1 slide' : `${r.count} slides`, options: { fontSize: 10.5, color: BRAND.textMuted } }], { x: x + cw - 1.5, y, w: 1.0, h: rh, align: 'right', valign: 'middle', margin: 0, isTextBox: true });
+                s.addText([{ text: `Slide ${n}`, options: { fontSize: compact ? 11 : 12, bold: true, color: m.color.hex, breakLine: true } }, { text: r.count === 1 ? '1 slide' : `${r.count} slides`, options: { fontSize: compact ? 9.5 : 10.5, color: BRAND.textMuted } }], { x: x + cw - (compact ? 1.2 : 1.5), y, w: compact ? 0.75 : 1.0, h: rh, align: 'right', valign: 'middle', margin: 0, isTextBox: true });
                 s.addImage({ data: await this.ico('chevron-right', m.color.hex), x: x + cw - 0.4, y: y + (rh - 0.24) / 2, w: 0.24, h: 0.24, altText: '', objectName: `Row chevron ${r.key}` });
                 this.hot(s, b, r.key, `${r.name} (slide ${n})`, r.key);
             }
@@ -496,13 +503,19 @@ class ModularDeck extends Deck {
             let y = 1.6;
             if (intro) { this.text(s, intro, { x: MX, y: 1.5, w: lw, h: 0.5, fontSize: 14, color: BRAND.textSecondary }); y = 2.1; }
             const avail = 6.92 - y, n = steps.length;
-            const rh = Math.min(1.0, (avail - (n - 1) * 0.08) / n);
-            s.addShape(sh.LINE, { x: MX + 0.21, y: y + 0.2, w: 0, h: (n - 1) * (rh + 0.08), line: { color: t.line, width: 2 }, objectName: 'Procedure path' });
+            // Each step is as tall as its text; spare room is shared out evenly, and the type shrinks if it must.
+            const need = (head, body, hf, bf) => Math.max(0.46, (estLines(head, lw - 0.7, hf) * hf * 1.2 + (body ? estLines(body, lw - 0.7, bf) * bf * 1.22 : 0)) / 72 + 0.12);
+            let hf = 15, bf = 12.5, hs = steps.map(([h, b]) => need(h, b, hf, bf));
+            while (hs.reduce((a, b) => a + b, 0) + (n - 1) * 0.08 > avail && bf > 10.5) { bf -= 0.5; hf = Math.max(13, hf - 0.5); hs = steps.map(([h, b]) => need(h, b, hf, bf)); }
+            const spare = Math.max(0, avail - hs.reduce((a, b) => a + b, 0) - (n - 1) * 0.08);
+            hs = hs.map((h) => Math.min(h + spare / n, Math.max(h, 1.0)));
+            if (hs.reduce((a, b) => a + b, 0) + (n - 1) * 0.08 > avail + 0.02) WARN.push(`${this.meta.num}#${this.n}: procedure steps overflow (${title})`);
+            const tops = hs.map((_, i) => y + hs.slice(0, i).reduce((a, b) => a + b, 0) + i * 0.08);
+            s.addShape(sh.LINE, { x: MX + 0.21, y: y + 0.2, w: 0, h: Math.max(0, tops[n - 1] - y), line: { color: t.line, width: 2 }, objectName: 'Procedure path' });
             steps.forEach(([head, body], i) => {
-                const yy = y + i * (rh + 0.08);
+                const yy = tops[i];
                 this.badge(s, i + 1, MX, yy, 0.42, t.hex);
-                s.addText([{ text: head, options: { bold: true, fontSize: 15, color: BRAND.text, breakLine: !!body } }, ...(body ? [{ text: body, options: { fontSize: 12.5, color: BRAND.textSecondary } }] : [])], { x: MX + 0.65, y: yy - 0.03, w: lw - 0.65, h: rh, valign: 'top', margin: 0, isTextBox: true });
-                checkFit(`${this.meta.num}#${this.n}`, `${head}\n${body ?? ''}`, lw - 0.65, rh, 12.5);
+                s.addText([{ text: head, options: { bold: true, fontSize: hf, color: BRAND.text, breakLine: !!body } }, ...(body ? [{ text: body, options: { fontSize: bf, color: BRAND.textSecondary } }] : [])], { x: MX + 0.65, y: yy - 0.03, w: lw - 0.65, h: hs[i], valign: 'top', margin: 0, isTextBox: true });
             });
             if (side) this.sideCard(s, side, { x: MX + lw + 0.4, y: 1.6, w: W - MX - (MX + lw + 0.4), h: 5.32 });
         });
@@ -511,10 +524,14 @@ class ModularDeck extends Deck {
     sideCard(s, side, b) {
         const t = this.tones;
         s.addShape(this.pres.shapes.ROUNDED_RECTANGLE, { ...b, rectRadius: 0.1, fill: { color: t.softer }, line: { color: t.line, width: 0.75 }, objectName: 'Side card' });
+        const hOf = (body, f) => (estLines(body, b.w - 0.5, f) * f * 1.22) / 72 + 0.34;
+        let f = 12.5;
+        while (f > 9.5 && side.reduce((a, [, body]) => a + hOf(body, f) + 0.14, 0.22) > b.h) f -= 0.5;
         let y = b.y + 0.22;
         for (const [head, body] of side) {
-            const h = (estLines(body, b.w - 0.5, 12.5) * 12.5 * 1.22) / 72 + 0.36;
-            s.addText([{ text: head.toUpperCase(), options: { bold: true, fontSize: 10, color: t.hex, charSpacing: 1.2, breakLine: true } }, { text: body, options: { fontSize: 12.5, color: BRAND.text } }], { x: b.x + 0.25, y, w: b.w - 0.5, h, valign: 'top', margin: 0, isTextBox: true });
+            const h = hOf(body, f);
+            if (y + h > b.y + b.h + 0.05) { WARN.push(`${this.meta.num}#${this.n}: side card item dropped (${head})`); break; }
+            s.addText([{ text: head.toUpperCase(), options: { bold: true, fontSize: 10, color: t.hex, charSpacing: 1.2, breakLine: true } }, { text: body, options: { fontSize: f, color: BRAND.text } }], { x: b.x + 0.25, y, w: b.w - 0.5, h, valign: 'top', margin: 0, isTextBox: true });
             y += h + 0.14;
         }
         if (y > b.y + b.h + 0.05) WARN.push(`${this.meta.num}#${this.n}: side card overflows`);
@@ -587,7 +604,7 @@ class ModularDeck extends Deck {
             const t = this.tones, sh = this.pres.shapes;
             const cw = 6.9, cx = MX;
             let y = 1.55;
-            if (intro) { this.text(s, intro, { x: cx, y, w: cw, h: 0.55, fontSize: 13.5, color: BRAND.textSecondary }); y += 0.62; }
+            if (intro) { const ih = Math.max(0.5, (estLines(intro, cw - 0.1, 13) * 13 * 1.2) / 72 + 0.1); this.text(s, intro, { x: cx, y, w: cw, h: ih, fontSize: 13, color: BRAND.textSecondary }); y += ih + 0.08; }
             const rh = Math.min(0.58, (6.95 - y - 1.35) / lines.length);
             s.addShape(sh.ROUNDED_RECTANGLE, { x: cx, y, w: cw, h: lines.length * rh + 1.3, rectRadius: 0.1, fill: { color: t.softer }, line: { color: t.line, width: 0.75 }, objectName: 'Calculation card' });
             const sym = { '+': '+', '-': '−', '−': '−', '×': '×', '=': '=', '': '' };
@@ -605,7 +622,7 @@ class ModularDeck extends Deck {
             const ex = cx + cw + 0.4, ew = W - MX - ex;
             s.addImage({ data: await this.ico('calculator', t.hex), x: ex, y: 1.58, w: 0.42, h: 0.42, altText: '', objectName: 'Calculator icon' });
             this.sideCard(s, explain, { x: ex, y: 2.15, w: ew, h: 4.25 });
-            this.text(s, `Source: ${source}`, { x: ex, y: 6.5, w: ew, h: 0.46, fontSize: 9, color: HEX.faint });
+            this.text(s, `Source: ${source}`, { x: ex, y: 6.44, w: ew, h: 0.52, fontSize: 8.5, color: HEX.faint });
         });
     }
 
@@ -661,6 +678,10 @@ class ModularDeck extends Deck {
                 x += w;
             }
             const top = 1.98, rh = Math.min(1.2, (6.95 - top - (page.length - 1) * 0.1) / page.length);
+            // One font size per slide, as large as lets every cell fit its row.
+            let tf = 12.5;
+            const fits = (f) => page.every((r) => cols.every(([, w], ci) => (estLines(r[ci], w - 0.3 - (ci === 0 && r[3] ? 0.62 : 0), f) * f * 1.2) / 72 + 0.08 <= rh - 0.16));
+            while (tf > 10.5 && !fits(tf)) tf -= 0.5;
             page.forEach((r, i) => {
                 const y = top + i * (rh + 0.1);
                 s.addShape(sh.ROUNDED_RECTANGLE, { x: MX, y, w: W - 2 * MX, h: rh, rectRadius: 0.08, fill: { color: i % 2 ? 'FFFFFF' : t.softer }, line: { color: BRAND.border, width: 0.75 }, objectName: `Problem ${i + 1}` });
@@ -668,8 +689,8 @@ class ModularDeck extends Deck {
                 cols.forEach(([, w], ci) => {
                     const txt = r[ci];
                     const tagW = ci === 0 && r[3] ? 0.62 : 0;
-                    s.addText(txt, { x: cx + 0.15, y: y + 0.08, w: w - 0.3 - tagW, h: rh - 0.16, fontSize: 12.5, bold: ci === 0, color: BRAND.text, valign: 'top', margin: 0, isTextBox: true });
-                    checkFit(`${this.meta.num}#${this.n} r${i + 1}c${ci + 1}`, txt, w - 0.3 - tagW, rh - 0.16, 12.5);
+                    s.addText(txt, { x: cx + 0.15, y: y + 0.08, w: w - 0.3 - tagW, h: rh - 0.16, fontSize: tf, bold: ci === 0, color: BRAND.text, valign: 'top', margin: 0, isTextBox: true });
+                    checkFit(`${this.meta.num}#${this.n} r${i + 1}c${ci + 1}`, txt, w - 0.3 - tagW, rh - 0.16, tf);
                     if (tagW) s.addText(r[3], { x: cx + w - 0.72, y: y + 0.1, w: 0.58, h: 0.26, shape: sh.ROUNDED_RECTANGLE, rectRadius: 0.13, fill: { color: BRAND.surfaceMuted }, line: { color: BRAND.border, width: 0.5 }, color: BRAND.textSecondary, fontSize: 9.5, bold: true, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
                     cx += w;
                 });
@@ -732,6 +753,7 @@ class ModularDeck extends Deck {
         return {
             deck: this.meta.num, file: this.meta.file, title: this.meta.title, slides: this.plan.length,
             toc: this.go('toc'),
+            tocPages: this.plan.map((p, i) => (p.kind === 'toc' ? i + 1 : null)).filter(Boolean),
             keys: Object.fromEntries(this.plan.flatMap((p, i) => [[p.key, i + 1], [p.alias, i + 1]]).filter(([k]) => k)),
             plan: this.plan.map((p, i) => ({ n: i + 1, key: p.key, alias: p.alias, kind: p.kind, module: p.module, sub: p.sub, section: p.section })),
             modules: [...this.mods.values()].map((m) => ({
@@ -753,7 +775,7 @@ class ModularDeck extends Deck {
         this.validatePlan();
         const r = await super.save();
         if (this.n !== this.plan.length) throw new Error(`Slide count ${this.n} differs from the plan (${this.plan.length}): a builder created more than one slide per queued item`);
-        const dir = path.join(__dirname, '../nav-maps');
+        const dir = this.meta.navMapDir ?? path.join(__dirname, '../nav-maps');
         fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(path.join(dir, `${String(this.meta.num).padStart(2, '0')}.json`), JSON.stringify(this.navMap(), null, 2));
         return r;

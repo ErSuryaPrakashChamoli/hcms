@@ -1,0 +1,22 @@
+[
+ { "flow": "m10-run-attendance", "module": "M10", "steps": [ { "goto": "/admin/run-attendance?company=1&month=2026-10" }, { "wait": 1500 },
+   { "snap": { "id": "01-run-attendance-oct", "screen": "Run attendance: October 2026", "path": "People › Time & leave › Run attendance", "full": true } } ] },
+ { "flow": "m10-paid-days", "module": "M10", "steps": [ { "goto": "/admin/paid-days?company=1&month=2026-10&detail=22" }, { "wait": 1500 },
+   { "snap": { "id": "01-paid-days-breakdown", "screen": "Paid days: one employee's breakdown", "path": "People › Time & leave › Paid days", "full": true } } ] },
+ { "flow": "m10-calendar", "module": "M10", "steps": [ { "goto": "/admin/attendance-calendar?employee=22&month=2026-10" }, { "wait": 1200 },
+   { "snap": { "id": "01-attendance-calendar", "screen": "Attendance calendar: one employee's month", "path": "People › Time & leave › Attendance calendar", "full": true } } ] },
+ { "flow": "m10-process-dates", "module": "M10", "steps": [ { "goto": "/admin/attendance-records" }, { "click": "Process dates", "after": 1200 },
+   { "snap": { "id": "01-process-dates", "screen": "Process dates", "path": "People › Time & leave › Attendance records › Process dates" } } ] },
+ { "flow": "m10-regularise", "module": "M10", "steps": [ { "goto": "/admin/attendance-records" }, { "clickRow": { "row": "Incomplete", "action": "Regularise" } },
+   { "snap": { "id": "01-regularise", "screen": "Regularise an attendance day", "path": "People › Time & leave › Attendance records › Regularise" } } ] },
+ { "flow": "m10-holidays-tab", "module": "M10", "steps": [ { "goto": "/admin/holiday-calendars/1/edit" }, { "scrollTo": "Holidays" },
+   { "snap": { "id": "01-holiday-calendar-holidays", "screen": "Holiday calendar: its holidays", "path": "People › Time & leave › Holiday Calendars › Edit" } } ] },
+ { "flow": "m11-apply-on-behalf", "module": "M11", "steps": [ { "goto": "/admin/leave-requests" }, { "click": "Apply on behalf", "after": 1500 },
+   { "snap": { "id": "01-apply-on-behalf", "screen": "Apply on behalf of an employee", "path": "People › Time & leave › Leave requests › Apply on behalf" } } ] },
+ { "flow": "m11-adjust", "module": "M11", "steps": [ { "goto": "/admin/leave-balances" }, { "clickRow": { "row": "Sick", "action": "Adjust" } },
+   { "snap": { "id": "01-adjust-balance", "screen": "Adjust a leave balance", "path": "People › Time & leave › Balances › Adjust" } } ] },
+ { "flow": "m11-encash", "module": "M11", "steps": [ { "goto": "/admin/leave-encashments" }, { "click": "Encash for an employee", "after": 1500 },
+   { "snap": { "id": "01-encash-for-employee", "screen": "Encash leave for an employee", "path": "People › Time & leave › Encashments › Encash for an employee" } } ] },
+ { "flow": "m11-leave-type", "module": "M11", "steps": [ { "goto": "/admin/leave-types" }, { "clickRow": { "row": "Earned", "action": "Edit" } },
+   { "snap": { "id": "01-leave-type-earned", "screen": "A leave type: Earned leave", "path": "People › Time & leave › Leave types › Edit", "full": true } } ] }
+]

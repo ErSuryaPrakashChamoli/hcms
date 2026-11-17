@@ -1,0 +1,4339 @@
+{
+  "M07": {
+    "intro": "This module is the record of every person in your organisation. You hire people with a guided wizard, find them in the Directory and the Employees register, and see and change everything about one person on their Employee 360.",
+    "why": "Attendance, leave, payroll, letters and exit all read the employee record. A wrong position, manager or date here flows into approvals, pay and statutory returns.",
+    "who": "Tenant Super Admin and Tenant HR Admin hold every employee permission. HR Manager hires, transfers and changes lifecycle states but does not see bank or statutory numbers. HR Executive hires and updates records. Payroll Admin sees and updates bank and statutory details. Managers and Auditors only view.",
+    "where": "People › Lifecycle › Employees (and the Lifecycle desk, Workforce uploads, Bank details uploads, Bulk runs, Business partners); People › Directory; People › My team › Team calendar.",
+    "objectives": [
+      "Hire a new employee end to end with the hire wizard, including the duplicate check and the employee code series.",
+      "Read and act on an Employee 360: its views, record tabs, Action and More menus, and masked sensitive data.",
+      "Tell an edit of the current record from an effective-dated change, and use uploads and bulk runs safely."
+    ],
+    "depends_on": [
+      "M03 Organisation structure: companies, locations, departments, designations, grades and the employee code series must exist before you hire.",
+      "M05 Users, access and integrations: roles give the employee.* permissions; sign-ins are managed under Users.",
+      "M06 Workflows and policies: the confirmation and exit policies and notification rules act on the people you hire.",
+      "M12 Compensation and salary structures: a hire has no salary until you assign one."
+    ],
+    "subs": [
+      {
+        "id": "7.1",
+        "name": "Find people",
+        "desc": "The Directory and the Team calendar: who is who, and what happens this month.",
+        "screens": [
+          "people/directory",
+          "people/team-calendar"
+        ]
+      },
+      {
+        "id": "7.2",
+        "name": "The employee register",
+        "desc": "The Employees register and the Lifecycle desk that leads to every lifecycle register.",
+        "screens": [
+          "people/employees",
+          "people/lifecycle-desk"
+        ]
+      },
+      {
+        "id": "7.3",
+        "name": "Hire an employee",
+        "desc": "The twelve-step hire wizard, the duplicate check and the employee code series.",
+        "screens": [
+          "people/employees--create"
+        ]
+      },
+      {
+        "id": "7.4",
+        "name": "The Employee 360",
+        "desc": "One person's profile: views, record tabs, actions, sensitive data, and editing versus effective-dated changes.",
+        "screens": [
+          "people/employees--view",
+          "people/employees--edit"
+        ]
+      },
+      {
+        "id": "7.5",
+        "name": "Uploads and bulk runs",
+        "desc": "Change many records from a CSV file, and check the result of every bulk action.",
+        "screens": [
+          "people/workforce-uploads",
+          "people/bank-details-uploads",
+          "people/bulk-runs"
+        ]
+      },
+      {
+        "id": "7.6",
+        "name": "Business partners",
+        "desc": "People outside your workforce who may sign in: customers, verification agents, vendors' staff, consultants.",
+        "screens": [
+          "people/business-partners"
+        ]
+      }
+    ],
+    "screens": {
+      "people/directory": {
+        "purpose": "A people finder: cards or a table of everyone you may see, with a quick preview drawer. The full register with bulk actions and exports stays in Employees.",
+        "when": "When you need to find a person, their manager or their work contact details quickly.",
+        "elements": [
+          [
+            "Search",
+            "Name, employee ID or work email. Each word must match the start of a name, the employee code or the work e-mail."
+          ],
+          [
+            "Department, Location, Status, Group by",
+            "Narrow the list or group it by department, location or manager. Shown when you can see more than 8 people."
+          ],
+          [
+            "Cards / Table / Recently changed",
+            "Switch the view. Recently changed lists joiners, moves, reporting changes and exits of the last 30 days."
+          ],
+          [
+            "Employee register",
+            "Opens the Employees register with its filters, views and bulk actions."
+          ],
+          [
+            "EMPLOYEE ID … STATUS",
+            "Table columns: employee ID, name, role (designation), department, location, manager and lifecycle status."
+          ],
+          [
+            "Person drawer",
+            "Select a name: Open profile, Message, Org map, Pin, plus manager, work e-mail, work phone, With us for and Employee ID."
+          ],
+          [
+            "Start a change for …",
+            "In the drawer: Transfer or promote, Change manager, Change lifecycle state, Start onboarding or Start a workflow."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "employee.view shows everyone in your access scope. Without it a person sees only their manager, their direct reports and themselves.",
+        "depends": "Employees with a current position (department, location).",
+        "limits": "Alumni and people marked Not Joined are left out unless you pick that status. The list shows 24 at a time (Show more, up to 500). In the example organisation 22 of 23 people show; the alumnus is hidden.",
+        "source": "app/Filament/Pages/People.php; resources/views/filament/pages/experience/people.blade.php; app/Domain/Experience/Services/PeopleVisibility.php"
+      },
+      "people/team-calendar": {
+        "purpose": "One month of people events for the people you look after: birthdays, anniversaries, joiners, probation ends, leave, last working days and more. Read only.",
+        "when": "When you plan the month: who is away, who joins or leaves, whose probation ends.",
+        "elements": [
+          [
+            "Events",
+            "Chips for 16 event kinds (Birthdays, Work anniversaries, New joiners, Last working day, Leave …). None pressed shows all."
+          ],
+          [
+            "Whose events",
+            "My team or Organisation. Shown only when you have both audiences."
+          ],
+          [
+            "← / →",
+            "Previous month and next month."
+          ],
+          [
+            "Month heading",
+            "The month and the number of events in it, for example November 2026 with 16 events."
+          ],
+          [
+            "Event rows",
+            "Date, person, and the event with its detail, such as the leave type and dates or \"Probation ends\"."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "Organisation view: employee.update, servicedesk.agent or onboarding.manage. My team: your own employee record has direct reports.",
+        "depends": "Which event kinds each audience sees is set in Setup → Access rights → Calendar access.",
+        "limits": "Holidays are not shown on this calendar, although the subheading mentions them. Private leave shows only as \"Away\". At most 500 records per event kind per month.",
+        "source": "app/Filament/Pages/TeamCalendar.php; app/Domain/Experience/Services/TeamCalendar.php; resources/views/filament/pages/access/team-calendar.blade.php"
+      },
+      "people/employees": {
+        "purpose": "The employee register: search, filter and save views, run reports and act on many employees at once. Every row opens that person's Employee 360.",
+        "when": "Daily, to find records, check groups (new hires, probation, notice) and start bulk actions.",
+        "elements": [
+          [
+            "Views",
+            "Ready views: New hires (not joined yet), On probation, Serving notice, Without a background check, Exited and alumni; save your own."
+          ],
+          [
+            "Report",
+            "Ready-made reports such as the employee master, headcount by department, new joiners, probation due and employees without a manager."
+          ],
+          [
+            "Act on all matching",
+            "Runs a bulk action on every employee matching the filters. You must filter or search first."
+          ],
+          [
+            "Bulk changes",
+            "Step wizards: Change manager, Invite to sign in, Send password reset links."
+          ],
+          [
+            "Cards",
+            "Shows the employees as cards with the fields you choose."
+          ],
+          [
+            "Hire employee",
+            "Opens the hire wizard."
+          ],
+          [
+            "ID, NAME, DESIGNATION … JOINING DATE",
+            "Columns; more (Type, Work email, Background check, Added on) can be switched on."
+          ],
+          [
+            "View, Edit, Not eligible for rehire",
+            "Row actions. Not eligible for rehire appears on exited or alumni rows for exit.manage holders."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "employee.view to see; employee.create for Hire employee; employee.update for Edit; bulk.run plus each action's own permission for bulk actions.",
+        "depends": null,
+        "limits": "Ticked-row bulk actions are Initiate exit, Start onboarding, Initiate background check, Send e-mail, Generate letters, Start clearance, Complete exit, Change manager, Invite to sign in, Send password reset links. Export appears only when employee upload and export is switched on for your organisation (ask PeopleOS support).",
+        "source": "app/Filament/Resources/Employees/Pages/ListEmployees.php; app/Filament/Resources/Employees/Tables/EmployeesTable.php"
+      },
+      "people/employees--create": {
+        "purpose": "The hire wizard: Person, Identity numbers, Employment, Position, Manager, then optional Address, Family, Bank, Previous employment, Other details, Sign-in and Review. It creates the employee in one go.",
+        "when": "Each time someone new joins (or will join). Use Rehire / reactivate on the Employee 360 for someone who worked here before.",
+        "elements": [
+          [
+            "01 Person … 12 Review",
+            "Steps in a rail; optional steps say Optional. Steps you have no right for (Identity numbers, Bank, Sign-in) are hidden."
+          ],
+          [
+            "Duplicate check",
+            "After Person: a definite match (same personal e-mail, personal phone or work e-mail) stops you; same name and date of birth warns you."
+          ],
+          [
+            "Returning employee",
+            "Appears only when an earlier employee matches. If they are not eligible for rehire you must confirm and give a reason."
+          ],
+          [
+            "Employee code",
+            "Auto-generate takes the next code of the company's series (shown as Next code in the series); Enter manually only if the series allows it."
+          ],
+          [
+            "Review",
+            "Lists everything you filled in, with the Reason for change, before Create."
+          ],
+          [
+            "Employee hired panel",
+            "After saving: what was created, what was left for later, and Next steps (Open the Employee 360, Start onboarding, Documents …)."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Existing person (re-use instead of creating a new one)",
+            "meaning": "Person step. Pick a person already on record who has no employee record; leave blank to create a new person.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Salutation",
+            "meaning": "Title used on letters and lists. Blank: worked out from the gender (Mr / Ms / Mx).",
+            "rule": "Optional"
+          },
+          {
+            "label": "First name",
+            "meaning": "The person's first name as on official papers.",
+            "rule": "Required"
+          },
+          {
+            "label": "Middle name",
+            "meaning": "Middle name, if any.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Last name",
+            "meaning": "Surname. With first name and date of birth it feeds the possible-duplicate check.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Preferred name",
+            "meaning": "The name colleagues use; shown in the Directory and greetings.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Date of birth",
+            "meaning": "Official date of birth; must be at least 14 years ago.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Celebrated in",
+            "meaning": "Birthday fieldset: only when the real birthday differs from the date of birth on papers.",
+            "rule": "Optional"
+          },
+          {
+            "label": "On day",
+            "meaning": "Day of the celebrated birthday; required once a month is chosen.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Show to colleagues",
+            "meaning": "Birthday: day and month only, never the year (on by default). Wedding anniversary: off by default.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Gender",
+            "meaning": "Male, Female, Non-binary or Prefer not to say.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Marital status",
+            "meaning": "Single, Married, Divorced, Widowed or Prefer not to say.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Month",
+            "meaning": "Wedding anniversary fieldset: month of the anniversary, day and month only.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Day",
+            "meaning": "Wedding anniversary day; required once a month is chosen.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Nationality",
+            "meaning": "Defaults to Indian.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Blood group",
+            "meaning": "A+, A-, B+, B-, AB+, AB-, O+ or O-.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Personal email",
+            "meaning": "Private e-mail. An exact match with another person stops the hire as a duplicate.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Personal phone: country code",
+            "meaning": "Dialling code; with it the number is checked and stored in international form. Blank keeps it as typed.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Personal phone",
+            "meaning": "Private phone. An exact match with another person stops the hire as a duplicate.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Fresher (no earlier employment)",
+            "meaning": "Tick for someone with no earlier employer; the Previous employment step then records nothing.",
+            "rule": "Optional"
+          },
+          {
+            "label": "PAN",
+            "meaning": "Identity numbers step: format ABCDE1234F. Encrypted, masked in the audit trail, compared with earlier employees.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Aadhaar reference",
+            "meaning": "A reference or last digits, not the full number unless your policy allows. 12+ characters are compared with earlier employees.",
+            "rule": "Optional"
+          },
+          {
+            "label": "I have checked the earlier record and still want to hire this person",
+            "meaning": "Returning employee step: shown only when the match is not eligible for rehire; must be ticked to continue.",
+            "rule": "Required"
+          },
+          {
+            "label": "Reason for hiring despite the earlier record",
+            "meaning": "Required with the tick above; recorded in the audit trail with your name and time.",
+            "rule": "Required"
+          },
+          {
+            "label": "Company",
+            "meaning": "Employment step: the employing company; its series makes the employee code. Pre-filled when there is only one.",
+            "rule": "Required"
+          },
+          {
+            "label": "Joining date",
+            "meaning": "First working day. A future date keeps the hire in pre-boarding until then.",
+            "rule": "Required"
+          },
+          {
+            "label": "Probation end date",
+            "meaning": "Blank: the confirmation policy's months, else the organisation default (6 months in the example organisation).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Starting state",
+            "meaning": "Only for loading past joiners: Already confirmed, or Active without probation. Blank = pre-boarding, then joined and on probation.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Confirmed on",
+            "meaning": "Shown with Already confirmed: the confirmation date, on or after joining and not in the future.",
+            "rule": "Required"
+          },
+          {
+            "label": "Employee code",
+            "meaning": "Auto-generate or Enter manually. Enter manually is offered only when the company's series allows it.",
+            "rule": "Required"
+          },
+          {
+            "label": "Next code in the series",
+            "meaning": "Preview of the code Auto-generate will take, e.g. DT-0002. Taken on create; if someone hires first, the next free code is used.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Code to use",
+            "meaning": "Manual mode only: letters, digits, - and _, up to 32. Checked against every employee of every company.",
+            "rule": "Required"
+          },
+          {
+            "label": "Work email",
+            "meaning": "Company e-mail. Needed for a sign-in; an exact match with another person is a duplicate.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Work phone: country code",
+            "meaning": "Dialling code for the work phone.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Work phone",
+            "meaning": "Office or company mobile number.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Biometric / device user id",
+            "meaning": "The id the attendance device knows the employee by; unique. Blank: punches match the employee code.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Location",
+            "meaning": "Position step: work location. All Position fields are optional and form the first effective-dated position.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Business unit, Division, Department, Team",
+            "meaning": "Where the person sits in the organisation tree.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Designation, Level, Grade",
+            "meaning": "Job title and band. Grade and level drive policies and pay ranges.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Employment type, Employee category, Work mode, Cost centre",
+            "meaning": "Full-time, contract…; category; office, hybrid, remote, field; cost centre. An employment type may have its own code series.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Position (seat)",
+            "meaning": "An open seat of the workforce plan. Its organisation fills blank fields; capacity is checked on hire.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Line manager",
+            "meaning": "Manager step: the direct manager from the joining date. Only employed people in your access are offered.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Functional manager",
+            "meaning": "A second reporting line from the joining date.",
+            "rule": "Optional"
+          },
+          {
+            "label": "HR business partner",
+            "meaning": "The HR person who looks after this employee; used by approvals and the org map.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "Why you hire or change; recorded in the audit trail with the before and after values.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Addresses",
+            "meaning": "Address step: Add an address. Type, Country code (IN) and Address line 1 are required in each row.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Family members",
+            "meaning": "Family step: Name and Relation required; Dependent, Nominee (with share %), In school, In a hostel.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Add a bank account now",
+            "meaning": "Bank step: then Account holder name, Bank name and Account number (required), Branch, IFSC, type, Primary (salary) account.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Previous employment",
+            "meaning": "Add an earlier employer: Employer and From date required; designation, dates, location, reason, Verified.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Fill in the other details now",
+            "meaning": "Other details step: your organisation's custom fields (in the example organisation: Laptop asset tag).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Create a sign-in and send the invitation",
+            "meaning": "Sign-in step, off by default: a sign-in on the work e-mail; the person sets a password from the one-time link.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Roles for the new sign-in",
+            "meaning": "Shown when you may assign roles; defaults to the Employee role.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "One transaction creates the person, employee, first position (Hire), reporting lines, lifecycle steps and every optional section. If any part is refused nothing is saved. The Employee hired panel then lists Created, Left for later and Next steps.",
+        "permission": "employee.create. Identity numbers and Bank steps need employee.sensitive.update; Starting state needs employee.lifecycle; Position (seat) needs workforce.view; Sign-in needs user.create.",
+        "depends": "Companies, organisation values and the company's employee code series (People Setup → Employee code series). An onboarding template, if onboarding should start by itself.",
+        "limits": "The wizard assigns no salary and no work schedule: add them on the Employee 360 afterwards. In the example organisation the code series do not allow manual codes, so only Auto-generate is offered.",
+        "source": "app/Filament/Resources/Employees/Pages/CreateEmployee.php; app/Filament/Support/HireWizardSections.php; app/Domain/Employment/Actions/HireEmployeeAction.php; HireWithDetailsAction.php; app/Domain/People/Services/PersonMatcher.php"
+      },
+      "people/employees--view": {
+        "purpose": "The Employee 360: one person's whole working life. A header with identity and actions, seven views (Now to Records), and every governed record below, each shown only as far as your permissions allow.",
+        "when": "Whenever you look after one person: check details, make a change, start a process or read their history.",
+        "elements": [
+          [
+            "Header",
+            "Name, employee code, designation · department · location, lifecycle badge, One lifetime record (joined, tenure) and Reports to."
+          ],
+          [
+            "Summarise",
+            "Asks the HR assistant for a summary of this person (only if your organisation's AI policy allows it)."
+          ],
+          [
+            "Message",
+            "Opens an e-mail to the work e-mail."
+          ],
+          [
+            "Request",
+            "Raise an HR request, Generate a letter, Send e-mail."
+          ],
+          [
+            "Action",
+            "Transfer / promote, Change manager, Change lifecycle state, onboarding, background check, schedule, workflow, exit, rehire."
+          ],
+          [
+            "Sign-in",
+            "Invite to sign in, E-mail a temporary password or Send a new invitation, Generate a temporary password, Roles and access."
+          ],
+          [
+            "More",
+            "Edit profile, All changes, Statutory details, Edit statutory details, Print profile."
+          ],
+          [
+            "Now · Journey · Work · Growth · Rewards · Documents · Records",
+            "Switch the view. Records holds All details, Applicable policies and the record tabs."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Now",
+            "meaning": "Lifecycle state and probation countdown, What's next (probation, leave, onboarding steps, last day), Recently, People snapshot.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "People operations",
+            "meaning": "For HR: lifecycle, documents to verify, open HR requests and background check, with a link to Records.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Journey",
+            "meaning": "Stages of the working life and What changed: recent events with the same visibility as the timeline.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Work",
+            "meaning": "Position (designation, department, location, grade, employment type, work mode) and all reporting relationships in effect.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Growth / Rewards / Documents",
+            "meaning": "360 overview cards per area (performance, pay, documents, letters, exit, alumni). Amounts stay in their audited tabs.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "All details",
+            "meaning": "Records view: every recorded field, including probation end, confirmation date, birthday, source and device user id.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Applicable policies",
+            "meaning": "Records view: the policy version of each type that applies today, from your assignment rules.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Timeline",
+            "meaning": "Record tab: dated events (hire, transfer, letters, exit) by kind and category.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Employment",
+            "meaning": "Tab group: Employment (position history From/To), Organisation (reporting lines), Onboarding, Exit, Workflows.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Time",
+            "meaning": "Tab group: Attendance and Leave.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Growth",
+            "meaning": "Tab group: Performance, Goals, Learning, Skills, Career, Talent, Succession, Certifications, Development.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Rewards",
+            "meaning": "Tab group: Compensation (audited on opening), Compensation changes, Payslips.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Operations",
+            "meaning": "Tab group: Documents (Upload, Verify, Reject), Letters, Requests, Assets, Verification, Communications.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "Bank & personal",
+            "meaning": "Addresses, Emergency contacts, Family & nominees, Education, Previous employment, Bank, Nominations, Passport & licence, Health insurance.",
+            "rule": "Automatic"
+          },
+          {
+            "label": "History / Activity",
+            "meaning": "The audit trail of this record, and everything about the person across modules (audit.view).",
+            "rule": "Automatic"
+          }
+        ],
+        "after": "Each action saves through its own service, with its own checks, and is audited. Effective-dated actions add a new row and close the old one the day before; nothing in the history is overwritten.",
+        "permission": "employee.view (non-sensitive tabs); employee.sensitive.view for Bank, Passport & licence, Health insurance and Statutory details; employee.sensitive.update to edit them; audit.view for History and Activity.",
+        "depends": null,
+        "limits": "A tab or view you have no right for is simply absent. Your organisation's profile-section matrix (Profile access) can hide sections from employees, managers and others, but never from people who maintain employee records.",
+        "source": "app/Filament/Resources/Employees/Pages/ViewEmployee.php; EmployeeResource.php; Schemas/EmployeeInfolist.php; resources/views/filament/employees/{header,workspace}.blade.php; app/Domain/Experience/Services/{Employee360,PersonWorkspace,ProfileSectionVisibility}.php"
+      },
+      "people/employees--edit": {
+        "purpose": "Edit profile: correct the person's own details and contact fields in a four-step wizard (Person, Employment, Additional information, Review). Placement, manager and lifecycle are not here.",
+        "when": "When personal or contact data is wrong or missing, for example a new personal phone or a corrected name.",
+        "elements": [
+          [
+            "01 Person … 04 Review",
+            "Wizard steps. Your changes are listed for review before you save."
+          ],
+          [
+            "View",
+            "Back to the Employee 360 without saving."
+          ],
+          [
+            "Timeline … Activity",
+            "The record tabs of the 360 are shown below the form."
+          ],
+          [
+            "Reason for change",
+            "On Review; saved in the audit trail with the before and after values."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Salutation, First name, Middle name, Last name, Preferred name",
+            "meaning": "Person step: the same person fields as in the hire wizard. First name is required.",
+            "rule": "Required"
+          },
+          {
+            "label": "Date of birth",
+            "meaning": "Official date of birth; at least 14 years ago.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Celebrated in / On day / Show to colleagues",
+            "meaning": "Celebrated birthday when it differs from the date of birth, and whether colleagues see it.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Gender, Marital status, Month, Day",
+            "meaning": "Gender, marital status and the wedding anniversary (day and month).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Nationality, Blood group",
+            "meaning": "Personal facts printed on letters and emergency records.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Personal email, Personal phone: country code, Personal phone",
+            "meaning": "Private contact details.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Fresher (no earlier employment)",
+            "meaning": "Locked when previous employment is recorded: such a person is not a fresher.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Employee code",
+            "meaning": "Employment step: unique in your organisation; letters, digits, - and _.",
+            "rule": "Required"
+          },
+          {
+            "label": "Biometric / device user id",
+            "meaning": "Id on the attendance device; unique.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Work email, Work phone: country code, Work phone",
+            "meaning": "Company contact details.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Joining date",
+            "meaning": "Shown but locked: \"Set at hire; change via lifecycle actions.\"",
+            "rule": "Locked"
+          },
+          {
+            "label": "Probation end date",
+            "meaning": "The day probation ends; the confirmation review opens before it.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Login user",
+            "meaning": "Links the employee to a sign-in (never a business partner's sign-in).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Additional information",
+            "meaning": "Your organisation's custom fields, for example Laptop asset tag.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "Review step: why you change it; audited.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The current record is updated at once and the change is audited with before and after values. No dated history row is created, so use it for corrections, not for job changes.",
+        "permission": "employee.update.",
+        "depends": null,
+        "limits": "Position, manager, joining date and lifecycle cannot be changed here: use Transfer / promote, Change manager, Change joining date or Change lifecycle state on the Employee 360.",
+        "source": "app/Filament/Resources/Employees/Pages/EditEmployee.php; Schemas/EmployeeForm.php; app/Filament/Support/FormWizard.php"
+      },
+      "people/workforce-uploads": {
+        "purpose": "Staged CSV uploads where one row is one change to existing employees: family, education, experience, nominees, skills, other details, position changes, codes, settings, contracts, vendors, insurance, previous employment.",
+        "when": "When many employees need the same kind of change and typing each one on the Employee 360 would take too long.",
+        "elements": [
+          [
+            "Download sample file",
+            "Choose the upload type and download its CSV template with the right headings."
+          ],
+          [
+            "Upload CSV",
+            "Choose Upload (type), the CSV file and What is this file for? (insert, update or both)."
+          ],
+          [
+            "#, FILE, STATUS, ROWS, CREATE, UPDATE, ERRORS, BY, CREATED AT",
+            "One row per upload with its counts and status."
+          ],
+          [
+            "Upload page",
+            "Inspect file → Map columns → Validate rows → Approve import → Run import; Download results; Discard."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Upload",
+            "meaning": "The upload type, e.g. Employee (advance) upload (position and manager changes) or Family members upload.",
+            "rule": "Required"
+          },
+          {
+            "label": "CSV file",
+            "meaning": "CSV with a header row, up to 10 MB. Start from Download sample file.",
+            "rule": "Required"
+          },
+          {
+            "label": "What is this file for?",
+            "meaning": "Insert new records, Update existing records, or Insert and update (default). Not shown for types without a choice.",
+            "rule": "Required"
+          }
+        ],
+        "after": "Nothing changes until the file is mapped, validated, approved and run. Each row then goes through the same action as on the Employee 360, with audit and timeline.",
+        "permission": "employee.import plus the type's own permission (e.g. employee.update, employee.position for Employee (advance), employee.sensitive.update for health insurance).",
+        "depends": "Employees already on file. This screen does not create employees.",
+        "limits": "Employee (advance) rows open a new position from the effective date; the date must be after the current position's start and no later position may exist. Dates as YYYY-MM-DD, DD-MM-YYYY or DD/MM/YYYY.",
+        "source": "app/Filament/Resources/WorkforceUploads/*; app/Domain/Employment/Imports/RowImportTypes.php; RowImports.php; app/Filament/Support/ImportActions.php"
+      },
+      "people/bank-details-uploads": {
+        "purpose": "Add or update many employees' salary bank accounts from one CSV, through a staged pipeline: inspect, map, validate, approve, run.",
+        "when": "At go-live, after a bank change for many employees, or when collecting accounts of a joining batch.",
+        "elements": [
+          [
+            "File format",
+            "The columns, which are required, what to enter and an example. Save from Excel as CSV UTF-8."
+          ],
+          [
+            "Download sample file",
+            "Downloads bank-details-template.csv with the headings."
+          ],
+          [
+            "Upload bank details CSV",
+            "Upload the file and choose what it is for."
+          ],
+          [
+            "#, FILE, STATUS, ROWS, CREATE, UPDATE, ERRORS, BY, CREATED AT",
+            "Your uploads only, with counts and status."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "CSV file",
+            "meaning": "Employee code, Account holder name, Bank name, Account number (required); IFSC, Branch name, Account type (optional). Up to 10 MB.",
+            "rule": "Required"
+          },
+          {
+            "label": "What is this file for?",
+            "meaning": "Add bank details for new employees, Update existing bank details, or Both. No default: choose one.",
+            "rule": "Required"
+          }
+        ],
+        "after": "Rows are checked like on the Employee 360 (scope, duplicate account, IFSC format). Approve import (with a reason) and Run import; each change is audited and on the timeline. The file is deleted after run or discard.",
+        "permission": "employee.import and employee.sensitive.update. Only the uploader (and a checker, if your organisation uses one) sees an upload.",
+        "depends": "Employees on file. Bank account number rules, if your organisation set any.",
+        "limits": "CSV only, up to 5,000 rows. Format the Account number column as Text: Excel turns long numbers into 5.01E+13 and such rows are refused. An added account becomes the salary (primary) account.",
+        "source": "app/Filament/Resources/BankAccountImports/*; app/Domain/Employment/Imports/BankAccountImports.php; app/Filament/Support/ImportActions.php"
+      },
+      "people/bulk-runs": {
+        "purpose": "A read-only log of every bulk action started from a register, with each record's outcome: done, refused with the reason, or failed.",
+        "when": "After you start a bulk action, to see which records were changed and why others were refused.",
+        "elements": [
+          [
+            "STARTED, ACTION, REGISTER, RECORDS",
+            "When, which action, on which register, and how many records."
+          ],
+          [
+            "DONE, REFUSED, FAILED",
+            "Outcome counts; refused and failed are highlighted when above zero."
+          ],
+          [
+            "STATUS, STARTED BY",
+            "Queued, Running, Completed or Failed, and who started it."
+          ],
+          [
+            "Filters: Status, Register",
+            "Narrow the log."
+          ],
+          [
+            "Open",
+            "The run page with a Records tab (Outcome and Message per record) and, for invitations, a Delivery list."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "bulk.run to see your own runs; bulk.view_all to see everyone's.",
+        "depends": "A bulk action started from a register (Bulk actions on ticked rows, or Act on all matching).",
+        "limits": "Nothing is started here. A run takes at most 5,000 records; above 25 records you must type the number to confirm. Each record still needs the action's own permission and your access scope.",
+        "source": "app/Filament/Resources/BulkRuns/*; app/Domain/Experience/Services/BulkRuns.php; app/Filament/Support/BulkRecordActions.php"
+      },
+      "people/business-partners": {
+        "purpose": "The register of people outside your workforce who may sign in: customers, background verification agents, vendors' staff and system consultants. They have no employee record.",
+        "when": "When an outsider needs limited access to PeopleOS, for example a verification agent.",
+        "elements": [
+          [
+            "Views",
+            "Active partners, Not invited yet, Signing in, Login disabled, Inactive partners; save your own."
+          ],
+          [
+            "Report",
+            "Run a ready-made report, optionally with the filters applied."
+          ],
+          [
+            "Cards",
+            "Show partners as cards."
+          ],
+          [
+            "Add business partner",
+            "Opens the partner form."
+          ],
+          [
+            "NAME, E-MAIL, MOBILE, TYPE, VENDOR, SIGN-IN, STATUS",
+            "Columns; SIGN-IN shows Not invited, Invited, Signs in or Login disabled."
+          ],
+          [
+            "Row menu",
+            "Edit, Invite to sign in / Send a new invitation, Disable login, Enable login, Open sign-in."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Salutation, First name, Middle name, Last name",
+            "meaning": "The partner's name. First name is required.",
+            "rule": "Required"
+          },
+          {
+            "label": "Business partner code",
+            "meaning": "Letters, digits and _ only. Blank on create: the next number of the series (e.g. BP00001).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Date of birth, Gender, Nationality",
+            "meaning": "Personal details, all optional.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Partner type",
+            "meaning": "Customer, Background verification, Vendor, System consultant or Other.",
+            "rule": "Required"
+          },
+          {
+            "label": "Vendor",
+            "meaning": "The vendor they work for, from Workforce → Vendors.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Status",
+            "meaning": "Active or Inactive. Making a partner inactive disables their login.",
+            "rule": "Required"
+          },
+          {
+            "label": "ISD code, Mobile, Personal e-mail, Official e-mail",
+            "meaning": "Contact details. The invitation goes to the official e-mail, else the personal one.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Invite to sign in e-mails a temporary password; the partner chooses their own on first sign-in and sees only what the roles you give allow.",
+        "permission": "partner.view to see; partner.manage to add and edit; with user.create to invite, user.update to disable or enable login, user.assign_roles to give roles.",
+        "depends": "Vendors (optional), roles for partners (M05).",
+        "limits": "Partners are never deleted: make them inactive instead. This is not the HR business partner of an employee, which is a reporting line set at hire or with Change manager.",
+        "source": "app/Filament/Resources/BusinessPartners/*; app/Domain/Partners/Services/BusinessPartners.php"
+      },
+      "people/lifecycle-desk": {
+        "purpose": "The front page of the Lifecycle area: every lifecycle register in the order of the employee journey, with counts of what is waiting.",
+        "when": "At the start of the day, to see joiners, confirmations, transfers, resignations, clearances and letters that need you.",
+        "elements": [
+          [
+            "Needs a look",
+            "Registers with something waiting and their counts; 20 in the example organisation (18 onboarding plans, 1 joiner, 1 resignation)."
+          ],
+          [
+            "People",
+            "Employees, Directory, Employee changes, Change manager, Invite to sign in, Send password reset links."
+          ],
+          [
+            "Onboarding / Confirmations / Transfer",
+            "New hires, Upcoming joiners, Background verifications, onboarding, inductions; Confirmation reviews; Transfer requests."
+          ],
+          [
+            "Separation",
+            "Resignations, withdrawals, Clearances, Final clearances, Clearance stages, Ready to complete, Withdrawal requests waiting."
+          ],
+          [
+            "Workforce letters",
+            "Letters by kind, Letters ready to issue, Letter schedules, Share documents, Shared and Published documents."
+          ],
+          [
+            "Business partners / Reports and uploads",
+            "Partners and vendors; Report library, My reports, Bank details upload, Recent uploads, Bulk runs."
+          ],
+          [
+            "Your recent bulk runs",
+            "Your last five lifecycle bulk runs with their outcome."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "employee.view plus at least one lifecycle right (employee.lifecycle, employee.create, onboarding.manage, bgv.view, exit.view, exit.manage, letter.view, letter.issue, partner.view, partner.manage or document.share).",
+        "depends": null,
+        "limits": "An entry appears only if you may open its register. Employee upload is listed only when employee upload and export is switched on for your organisation (ask PeopleOS support).",
+        "source": "app/Filament/Pages/WorkforceDesk.php; app/Filament/Support/Pages/OperationsDeskPage.php"
+      }
+    },
+    "procedures": [
+      {
+        "sub": "7.3",
+        "title": "Hire a new employee with the hire wizard (worked example)",
+        "before": "Company, organisation values and the company's code series exist. You hold employee.create. Example (illustrative): Riya Sen joins Demo Technologies on 1 Dec 2026.",
+        "steps": [
+          [
+            "Open the wizard",
+            "People › Lifecycle › Employees › Hire employee. The page Hire employee opens at 01 Person."
+          ],
+          [
+            "01 Person",
+            "Leave Existing person blank. Enter First name Riya, Last name Sen, Date of birth, Gender, Personal email and Personal phone. Click Next."
+          ],
+          [
+            "Duplicate check",
+            "PeopleOS compares personal e-mail and phone (definite) and name plus date of birth (possible). A red message stops you; amber asks you to review."
+          ],
+          [
+            "02 Identity numbers",
+            "Enter PAN (ABCDE1234F format) and Aadhaar reference if you have them, or leave blank and add later. Click Next."
+          ],
+          [
+            "Returning employee",
+            "Appears only if the person worked here before. To bring them back on the same record, cancel and use Rehire / reactivate."
+          ],
+          [
+            "03 Employment",
+            "Company: Demo Technologies. Joining date: 1 Dec 2026. Leave Probation end date blank. Employee code: Auto-generate shows DT-0002. Add Work email."
+          ],
+          [
+            "04 Position",
+            "Location Bangalore, Department Engineering, Team Platform, Designation Software Engineer, Grade, Level, Employment type Full-time, Work mode Hybrid."
+          ],
+          [
+            "05 Manager",
+            "Line manager: Amit Verma (EMP00002). Optionally HR business partner: Neha Kapoor. Add a Reason for change, e.g. New hire, offer of 10 Oct."
+          ],
+          [
+            "06–10 Optional steps",
+            "Add an address, family members, a bank account, earlier employers and Other details (Laptop asset tag), or skip them for later."
+          ],
+          [
+            "11 Sign-in",
+            "Switch on Create a sign-in and send the invitation if Riya should have access from day one. It needs the Work email."
+          ],
+          [
+            "12 Review",
+            "Check every value and the reason, then click Create. If any part is refused, a Not hired message names it and nothing is saved."
+          ],
+          [
+            "Employee hired",
+            "The panel lists Created (Employee DT-0002, Line manager, …), Left for later and Next steps. Open the Employee 360."
+          ]
+        ],
+        "result": "Riya Sen exists as DT-0002 in Preboarding (future joining date), with a Hire position from 1 Dec 2026, a line manager from that date, probation to 1 Jun 2027, an onboarding plan if a template matches, an invitation if chosen, and every step audited.",
+        "screens": [
+          "people/employees--create",
+          "people/employees--view"
+        ],
+        "source": "app/Filament/Resources/Employees/Pages/CreateEmployee.php; app/Domain/Employment/Actions/HireEmployeeAction.php; HireWithDetailsAction.php; app/Domain/Onboarding/Listeners/AutoStartOnboarding.php"
+      },
+      {
+        "sub": "7.4",
+        "title": "Tour the Action and More menus of the Employee 360",
+        "before": "Open an employee from the Employees register. Each item shows only if you hold its permission and the person's state allows it.",
+        "steps": [
+          [
+            "Transfer / promote",
+            "employee.position. Three steps: Context (Change type, Effective from), Change (only what differs, seat, FTE), Review (Before → After, reason required)."
+          ],
+          [
+            "Change manager",
+            "employee.position. Relationship (line, functional, dotted line, HR business partner, mentor, buddy, project, secondary), Manager, Effective from."
+          ],
+          [
+            "Change manager of the team",
+            "Moves this person's team (reporting or functional) to a new manager in bulk, from an effective date."
+          ],
+          [
+            "Change lifecycle state",
+            "employee.lifecycle. New state (only the allowed next states), effective date and a required reason."
+          ],
+          [
+            "Mark as joined / joiner actions",
+            "Pre-joiners only: Mark as joined (Joined then Probation), Change joining date, Mark as not joining, Download all documents."
+          ],
+          [
+            "Start onboarding / Initiate background check",
+            "onboarding.manage: a template or Best match by rules. bgv.manage: provider, checks and written consent."
+          ],
+          [
+            "Assign work schedule / Start workflow",
+            "attendance.manage: schedule and effective from. workflow.run: an active manual workflow for employees."
+          ],
+          [
+            "Initiate exit / Rehire / reactivate",
+            "exit.manage: opens an exit case. Exited or alumni: return as the same employee from a rejoining date."
+          ],
+          [
+            "More menu",
+            "Edit profile, All changes (audit.view), Statutory details (view, audited), Edit statutory details, Print profile (sensitive parts masked)."
+          ]
+        ],
+        "result": "You know where every life event starts and which permission it needs.",
+        "screens": [
+          "people/employees--view"
+        ],
+        "source": "app/Filament/Resources/Employees/Pages/ViewEmployee.php; app/Filament/Support/UpcomingJoinerActions.php; SignInActions.php"
+      },
+      {
+        "sub": "7.4",
+        "title": "Transfer or promote an employee (effective-dated change)",
+        "before": "You hold employee.position. Know the effective date: it must be after the start of the current position.",
+        "steps": [
+          [
+            "Open the action",
+            "Employee 360 › Action › Transfer / promote. The modal Transfer or promote opens."
+          ],
+          [
+            "Context",
+            "See today's designation, department, location, grade and In role since. Choose Change type (Transfer, Promotion, Demotion, Reassignment, Data correction) and Effective from."
+          ],
+          [
+            "Change",
+            "Change only what is different, e.g. Designation to Senior Software Engineer. Blank fields carry forward. Optionally a Position (seat) and FTE."
+          ],
+          [
+            "Review",
+            "Check the Before → After and enter the Reason for change (required). Click Confirm change."
+          ],
+          [
+            "Result",
+            "Position assigned. A new position row starts on the date; the old one ends the day before. The Employment tab shows both."
+          ]
+        ],
+        "result": "A dated history of the move; reports, policies and approvals use the new position from its effective date. Pay does not change: propose that under Compensation.",
+        "screens": [
+          "people/employees--view"
+        ],
+        "source": "app/Filament/Resources/Employees/Pages/ViewEmployee.php (assignPositionAction); app/Domain/Employment/Actions/AssignPositionAction.php"
+      },
+      {
+        "sub": "7.4",
+        "title": "Change an employee's manager",
+        "before": "You hold employee.position. The new manager must be employed and in your access scope.",
+        "steps": [
+          [
+            "Open the action",
+            "Employee 360 › Action › Change manager."
+          ],
+          [
+            "Context",
+            "See Reports to today. Choose the Relationship, usually Line manager."
+          ],
+          [
+            "Change",
+            "Pick the Manager and Effective from. The person themselves is never offered."
+          ],
+          [
+            "Review",
+            "Check Before → After, add a reason and click Confirm reporting change."
+          ],
+          [
+            "Result",
+            "Reporting line updated. The old line ends the day before; the Organisation tab keeps both rows."
+          ]
+        ],
+        "result": "Approvals, team views and calendars follow the new manager from the effective date.",
+        "screens": [
+          "people/employees--view"
+        ],
+        "source": "app/Domain/Employment/Actions/ChangeManagerAction.php; ViewEmployee.php (changeManagerAction)"
+      },
+      {
+        "sub": "7.4",
+        "title": "See and correct statutory and bank details",
+        "before": "employee.sensitive.view to see, employee.sensitive.update to change. Every view is audited.",
+        "steps": [
+          [
+            "View statutory details",
+            "More › Statutory details. The modal title says this view is audited: PAN, Aadhaar reference, UAN, PF number, ESIC number, regime, PF/ESIC/PT applicable, PT state."
+          ],
+          [
+            "Edit statutory details",
+            "More › Edit statutory details. Change PAN, UAN, PF and ESIC numbers, Tax regime, PT state and the applicable toggles; Reason for change is required."
+          ],
+          [
+            "Open the Bank tab",
+            "Records › Bank & personal › Bank. Opening the tab is audited; account numbers show as •••• and the last 4 digits."
+          ],
+          [
+            "Reveal an account",
+            "Row action Reveal: type the purpose (required). The full number shows once and the reveal is audited."
+          ],
+          [
+            "Add or edit an account",
+            "New / Edit: holder, bank, branch, IFSC (ABCD0123456), account number, type, Primary (salary) account."
+          ]
+        ],
+        "result": "Correct identifiers for payroll and returns, with a full audit of who looked and why.",
+        "screens": [
+          "people/employees--view"
+        ],
+        "source": "ViewEmployee.php (viewStatutoryAction, editStatutoryAction); RelationManagers/BankAccountsRelationManager.php; IdentityDocumentsRelationManager.php"
+      },
+      {
+        "sub": "7.4",
+        "title": "Correct personal details with Edit profile",
+        "before": "You hold employee.update. Use this for corrections of the current record, not for job changes.",
+        "steps": [
+          [
+            "Open",
+            "Employee 360 › More › Edit profile (or Edit in the register)."
+          ],
+          [
+            "Person",
+            "Correct names, dates, personal contact details."
+          ],
+          [
+            "Employment",
+            "Correct Employee code, Work email, Work phone, Biometric / device user id, Probation end date or Login user."
+          ],
+          [
+            "Additional information",
+            "Fill your organisation's custom fields."
+          ],
+          [
+            "Review",
+            "Check the changes, add the Reason for change and save."
+          ]
+        ],
+        "result": "The current record is corrected and audited with before and after values.",
+        "screens": [
+          "people/employees--edit"
+        ],
+        "source": "app/Filament/Resources/Employees/Pages/EditEmployee.php; Schemas/EmployeeForm.php"
+      },
+      {
+        "sub": "7.5",
+        "title": "Upload bank details for many employees",
+        "before": "You hold employee.import and employee.sensitive.update. Account numbers formatted as Text in the spreadsheet.",
+        "steps": [
+          [
+            "Get the template",
+            "People › Lifecycle › Bank details uploads › Download sample file; read File format."
+          ],
+          [
+            "Upload",
+            "Upload bank details CSV: choose the file and What is this file for? (add, update or both). Click Upload and continue."
+          ],
+          [
+            "Inspect and map",
+            "Inspect file reads the rows; Map columns if a heading was not matched automatically."
+          ],
+          [
+            "Validate",
+            "Validate rows shows valid, with errors and to review. Download results to see each row's message."
+          ],
+          [
+            "Approve and run",
+            "Approve import with a reason, then Run import. The message shows added, updated, skipped and failed."
+          ]
+        ],
+        "result": "Salary accounts are on file, each change audited and on the employee's timeline.",
+        "screens": [
+          "people/bank-details-uploads"
+        ],
+        "source": "app/Domain/Employment/Imports/BankAccountImports.php; app/Filament/Support/ImportActions.php"
+      },
+      {
+        "sub": "7.5",
+        "title": "Act on many employees and check the outcome",
+        "before": "You hold bulk.run and the action's own permission.",
+        "steps": [
+          [
+            "Choose the records",
+            "In Employees, tick rows and open Bulk actions, or filter and use Act on all matching."
+          ],
+          [
+            "Fill the action",
+            "E.g. Change manager: new manager and effective date. Above 25 records, type the number to confirm. Click Start."
+          ],
+          [
+            "Wait for the notice",
+            "A message says the action is queued; you are notified when it finishes."
+          ],
+          [
+            "Check the run",
+            "People › Lifecycle › Bulk runs › Open: the Records tab shows Done, Refused or Failed with the reason."
+          ]
+        ],
+        "result": "Every record either changed or refused with a reason you can act on.",
+        "screens": [
+          "people/bulk-runs",
+          "people/employees"
+        ],
+        "source": "app/Domain/Experience/Services/BulkRuns.php; app/Filament/Support/BulkRecordActions.php"
+      },
+      {
+        "sub": "7.6",
+        "title": "Add a business partner and invite them to sign in",
+        "before": "partner.manage, plus user.create to invite.",
+        "steps": [
+          [
+            "Add",
+            "People › Lifecycle › Business partners › Add business partner."
+          ],
+          [
+            "Fill the steps",
+            "Name, Personal details, Type and vendor (Partner type required), Contact (official e-mail), then Review."
+          ],
+          [
+            "Invite",
+            "Row menu › Invite to sign in. Choose Roles only if needed. Click Send invitation."
+          ],
+          [
+            "Disable later",
+            "Row menu › Disable login ends their sessions at once; their roles stay."
+          ]
+        ],
+        "result": "An outsider with a sign-in limited to the roles you gave, and no employee record.",
+        "screens": [
+          "people/business-partners"
+        ],
+        "source": "app/Domain/Partners/Services/BusinessPartners.php; app/Filament/Resources/BusinessPartners/*"
+      }
+    ],
+    "calculations": [
+      {
+        "sub": "7.3",
+        "title": "Which employee code the hire wizard gives",
+        "intro": "Auto-generate takes the next number of the company's series. Numbers are from the example organisation.",
+        "lines": [
+          [
+            "",
+            "Series of Demo Technologies: prefix",
+            "DT-"
+          ],
+          [
+            "+",
+            "Next number, padded to 4 digits",
+            "0002"
+          ],
+          [
+            "",
+            "Series of Demo Services: prefix + next number",
+            "DS-0001"
+          ]
+        ],
+        "total": [
+          "Next code in the series (Demo Technologies)",
+          "DT-0002"
+        ],
+        "explain": [
+          [
+            "Rule",
+            "Code = prefix + next number padded to the series' digits + suffix. The number is taken only when you create the employee."
+          ],
+          [
+            "Manual codes",
+            "Enter manually is offered only when the series allows it; both series in the example organisation do not."
+          ],
+          [
+            "No series",
+            "Without a series the organisation default pattern is used (People Setup → Employee code series)."
+          ],
+          [
+            "Where you see it",
+            "Hire wizard › 03 Employment › Next code in the series."
+          ]
+        ],
+        "source": "app/Filament/Resources/Employees/Pages/CreateEmployee.php (seriesNote, codeModes); app/Domain/Employment/Services/EmployeeCodeGenerator.php; q.php SELECT * FROM employee_code_series WHERE tenant_id=1"
+      }
+    ],
+    "warnings": [
+      {
+        "sub": "7.4",
+        "title": "Edit or effective-dated change?",
+        "level": "important",
+        "headline": "Edit profile overwrites the current record; life events add dated history.",
+        "body": "Edit profile corrects personal and contact fields at once. Position, manager and lifecycle are changed only with dated actions, which start a new row and close the old one the day before.",
+        "points": [
+          "Transfer / promote: new position row (Employment tab).",
+          "Change manager: new reporting line (Organisation tab).",
+          "Change lifecycle state: a dated lifecycle step.",
+          "History is never edited: a wrong date is fixed with a later, correct row."
+        ],
+        "todo": "Use Change type Data correction on Transfer / promote when a placement value was simply wrong."
+      },
+      {
+        "sub": "7.3",
+        "title": "A hire has no salary and no schedule yet",
+        "level": "warning",
+        "headline": "The hire wizard does not assign pay or a work schedule.",
+        "body": "Payroll and attendance need both. After the hire, open the Employee 360.",
+        "points": [
+          "Rewards › Compensation › Propose compensation change (M12).",
+          "Action › Assign work schedule (M10).",
+          "Operations › Documents › Upload joining documents."
+        ],
+        "todo": "Add these to your new-joiner checklist."
+      },
+      {
+        "sub": "7.4",
+        "title": "Sensitive data is masked and every look is audited",
+        "level": "important",
+        "headline": "Bank, statutory and identity numbers need employee.sensitive.view and leave a trace.",
+        "body": "Opening the Bank, Compensation or statutory views is recorded; revealing a full number needs a stated purpose and is recorded again.",
+        "points": [
+          "Bank and Passport & licence numbers show as •••• plus the last 4 digits.",
+          "Statutory details modal: \"this view is audited\".",
+          "Print profile includes sensitive sections only with the right, masked.",
+          "HR Manager does not hold employee.sensitive.view by default."
+        ],
+        "todo": "Give employee.sensitive.* only to the people who need it (M05)."
+      }
+    ],
+    "troubleshooting": [
+      [
+        "Red message \"This person already exists\" after the Person step",
+        "Another person has the same personal e-mail, personal phone or work e-mail.",
+        "Select that person in Existing person, or correct the details. Someone who worked here before returns with Rehire / reactivate.",
+        ""
+      ],
+      [
+        "Amber message \"Possible duplicate person\"",
+        "Same first name, last name and date of birth as someone on file.",
+        "Check the named record; continue only if it is a different person.",
+        ""
+      ],
+      [
+        "\"Employee code already in use\"",
+        "The code typed by hand is taken by any employee of any company.",
+        "Go back to Employment and choose another code or Auto-generate.",
+        ""
+      ],
+      [
+        "\"Codes cannot be typed by hand for this company\"",
+        "The company's code series allows only generated codes.",
+        "Choose Auto-generate, or change the series in People Setup → Employee code series.",
+        ""
+      ],
+      [
+        "\"Not hired\" with a reason",
+        "One part (seat, starting state, bank, returning check…) was refused; the hire is one transaction.",
+        "Nothing was saved. Fix the step named in the message and create again.",
+        ""
+      ],
+      [
+        "\"Your organisation needs the employee's … on file before this is entered\"",
+        "A document type is linked as required with PAN, Aadhaar or bank.",
+        "Leave the field blank, hire, upload the document on the 360, then add the value.",
+        ""
+      ],
+      [
+        "\"A sign-in needs the work e-mail (Employment step).\"",
+        "The Sign-in step was switched on without a valid work e-mail, or the e-mail is used by another user.",
+        "Enter a unique Work email, or invite later from People › Employees.",
+        ""
+      ],
+      [
+        "The manager I want is not in the list",
+        "Only employed people in your access scope are offered: not pre-joiners, exited, alumni or not joined, and never the person themselves.",
+        "Mark the manager as joined first, or ask for a wider access scope.",
+        ""
+      ],
+      [
+        "\"The new position must start after the current one (date).\"",
+        "Transfer / promote on or before the current position's start date, e.g. the same day as the hire or an earlier move.",
+        "Use an effective date after that start date.",
+        ""
+      ],
+      [
+        "\"A position already starts on …; positions cannot overlap.\"",
+        "A future-dated position is already on file.",
+        "Use a date after it, or correct that position first.",
+        ""
+      ],
+      [
+        "\"… already reports to this employee; that would create a loop.\"",
+        "The chosen manager is in the employee's own reporting chain.",
+        "Pick another manager or change the other line first.",
+        ""
+      ],
+      [
+        "\"An employee cannot move from X to Y.\"",
+        "That lifecycle step is not allowed (e.g. Joined to Confirmed).",
+        "Go through the allowed step first (Joined → Probation → Confirmed).",
+        ""
+      ],
+      [
+        "No Bank tab or Statutory details on the 360",
+        "You lack employee.sensitive.view, or Profile access hides the section from your audience.",
+        "Ask an administrator for the permission (M05).",
+        ""
+      ],
+      [
+        "\"Apply a filter or a search first\" on Act on all matching",
+        "A bulk action on all records needs the register narrowed.",
+        "Filter or search, then start again.",
+        ""
+      ],
+      [
+        "Bank upload row: \"The account number was turned into a number like 5.01E+13\"",
+        "The spreadsheet changed the number format.",
+        "Format the column as Text, re-enter the numbers and upload again.",
+        ""
+      ]
+    ],
+    "checklist": [
+      [
+        "Organisation ready",
+        "Company, location, department, designation, grade and the code series exist (M03)."
+      ],
+      [
+        "Duplicate check passed",
+        "No red duplicate message; earlier employees come back with Rehire / reactivate."
+      ],
+      [
+        "Right code and dates",
+        "Employee code from the series; joining date and probation end correct."
+      ],
+      [
+        "Position and manager",
+        "Department, designation, location and line manager set at hire."
+      ],
+      [
+        "Statutory and bank",
+        "PAN, UAN and the salary account on file (Payroll Admin or HR Admin)."
+      ],
+      [
+        "Pay and schedule",
+        "Compensation proposed and approved; work schedule assigned."
+      ],
+      [
+        "Access",
+        "Sign-in invited with the Employee role when they need it."
+      ],
+      [
+        "Documents",
+        "Joining documents uploaded and verified by someone other than the uploader."
+      ]
+    ],
+    "summary": [
+      "The hire wizard creates person, employee, position, manager and lifecycle in one audited transaction.",
+      "The duplicate check stops definite matches and warns about same name and date of birth.",
+      "Auto-generate takes the next code of the company's series (DT-0002 in the example organisation).",
+      "The Employee 360 groups actions into Message, Request, Action, Sign-in and More.",
+      "Position, manager and lifecycle changes are effective-dated; Edit profile only corrects the current record.",
+      "Sensitive numbers are masked; viewing and revealing them is audited."
+    ],
+    "captures_needed": [
+      {
+        "title": "Hire wizard step 1: Person",
+        "url": "/admin/employees/create",
+        "how": "Fill First name Riya, Last name Sen, Date of birth 1998-03-12, Gender Female, Personal email riya.sen@example.test."
+      },
+      {
+        "title": "Hire wizard: possible duplicate warning",
+        "url": "/admin/employees/create",
+        "how": "Enter First name Priya, Last name Nair, Date of birth 1996-05-28 and click Next; photograph the amber notice."
+      },
+      {
+        "title": "Hire wizard: definite duplicate",
+        "url": "/admin/employees/create",
+        "how": "Enter First name Test and Personal email rahul.sharma@example.test, click Next; photograph the red This person already exists notice."
+      },
+      {
+        "title": "Hire wizard step 2: Identity numbers",
+        "url": "/admin/employees/create",
+        "how": "After step 1, Next; show PAN and Aadhaar reference with the note."
+      },
+      {
+        "title": "Hire wizard step 3: Employment with code preview",
+        "url": "/admin/employees/create",
+        "how": "Choose Company Demo Technologies, Joining date 2026-12-01; show Employee code Auto-generate and Next code in the series DT-0002."
+      },
+      {
+        "title": "Hire wizard step 4: Position",
+        "url": "/admin/employees/create",
+        "how": "Location Bangalore, Department Engineering, Team Platform, Designation Software Engineer, Employment type Full-time, Work mode Hybrid."
+      },
+      {
+        "title": "Hire wizard step 5: Manager",
+        "url": "/admin/employees/create",
+        "how": "Line manager Amit Verma, HR business partner Neha Kapoor, Reason for change 'New hire'."
+      },
+      {
+        "title": "Hire wizard steps 6–8: Address, Family, Bank",
+        "url": "/admin/employees/create",
+        "how": "Click Add an address; Add a family member; switch on Add a bank account now (do not create)."
+      },
+      {
+        "title": "Hire wizard step 11: Sign-in",
+        "url": "/admin/employees/create",
+        "how": "Switch on Create a sign-in and send the invitation to show Roles for the new sign-in."
+      },
+      {
+        "title": "Hire wizard step 12: Review",
+        "url": "/admin/employees/create",
+        "how": "Open Review with the example filled in; photograph before Create."
+      },
+      {
+        "title": "Employee hired panel",
+        "url": "/admin/employees/create?hired=<id>",
+        "how": "Only in a disposable copy: create the example hire and photograph Created / Next steps / Left for later."
+      },
+      {
+        "title": "Employee 360: Action menu open",
+        "url": "/admin/employees/4",
+        "how": "Open Priya Nair (probation) and open the Action menu."
+      },
+      {
+        "title": "Employee 360: More menu and Statutory details",
+        "url": "/admin/employees/3",
+        "how": "Open More, then Statutory details (audited view) for Rahul Sharma."
+      },
+      {
+        "title": "Transfer or promote: Review step",
+        "url": "/admin/employees/3",
+        "how": "Action › Transfer / promote; Change type Promotion, Designation Senior Software Engineer; Next to Review (do not confirm)."
+      },
+      {
+        "title": "Employee 360: Records view with Bank tab",
+        "url": "/admin/employees/3#records",
+        "how": "Open Records › Bank & personal › Bank to show •••• masking and the Reveal action."
+      },
+      {
+        "title": "Employee 360: Work view",
+        "url": "/admin/employees/2#work",
+        "how": "Open Amit Verma and select Work to show position and relationships."
+      }
+    ],
+    "gaps": [
+      "Exact labels of the Employees register Report list were taken from report keys, not the screen.",
+      "Employee upload (creating employees from CSV) and the register Export are switched off in the example organisation, so they were not captured.",
+      "The Employee hired completion panel and the duplicate notices were described from code; they need captures.",
+      "The PeopleOS Intelligence block on the 360 was seen in the crawl but its content depends on the AI policy and was not documented.",
+      "Health insurance, Nominations and Passport & licence tabs are described only at tab level (their own forms not detailed)."
+    ]
+  },
+  "M08": {
+    "intro": "This module covers everything between the hire and the exit: the days before joining, onboarding plans and their templates, background checks, probation and confirmation, transfers and promotions, contracts, and the letters and documents you send to employees.",
+    "why": "Missed onboarding steps, unconfirmed probations and undocumented transfers create compliance gaps, wrong approvals and unhappy joiners. Letters issued without control can commit the organisation.",
+    "who": "Tenant Super Admin, Tenant HR Admin and HR Manager run every process here (onboarding.manage, bgv.manage, employee.position, employee.lifecycle, letter.*, document.share). HR Executives view onboarding and checks and complete their own tasks. Managers and employees complete the onboarding tasks assigned to them. Auditors view.",
+    "where": "People › Lifecycle › Upcoming joiners, Onboarding, Onboarding templates, Background checks, Confirmation reviews, Transfer requests, Contracts, Letters, Letter templates, Letter schedules, Signing authorities, Shared documents, Published documents.",
+    "objectives": [
+      "Prepare upcoming joiners and run onboarding plans built from templates, including document collection and background checks.",
+      "Decide confirmation reviews and handle transfers, promotions and manager changes with the right dates and approvals.",
+      "Set up letter templates and signing authorities, then generate, approve, issue and schedule letters and share documents."
+    ],
+    "depends_on": [
+      "M07 Employees and the employee profile: every process here starts from an employee record and its Employee 360.",
+      "M06 Workflows and policies: confirmation, transfer and exit policies set probation months, notice, allowed changes and letter hooks; notification rules decide who is told.",
+      "M04 Masters and configuration: document types, option lists and workforce reasons.",
+      "M12 Compensation: salary letters and the salary annexure read the approved compensation."
+    ],
+    "subs": [
+      {
+        "id": "8.1",
+        "name": "Pre-joining and onboarding",
+        "desc": "Upcoming joiners, onboarding plans and the templates that generate them.",
+        "screens": [
+          "people/upcoming-joiners",
+          "people/onboarding",
+          "people/onboarding-templates",
+          "people/onboarding-templates--create",
+          "people/onboarding-templates--edit"
+        ]
+      },
+      {
+        "id": "8.2",
+        "name": "Background checks",
+        "desc": "Verification cases with consent, checks and results.",
+        "screens": [
+          "people/background-checks"
+        ]
+      },
+      {
+        "id": "8.3",
+        "name": "Probation and confirmation",
+        "desc": "Confirmation reviews opened before probation ends: confirm, extend or terminate.",
+        "screens": [
+          "people/confirmation-reviews"
+        ]
+      },
+      {
+        "id": "8.4",
+        "name": "Transfers, promotions and manager changes",
+        "desc": "Two-person transfer requests, and direct dated changes on the Employee 360.",
+        "screens": [
+          "people/transfer-requests"
+        ]
+      },
+      {
+        "id": "8.5",
+        "name": "Contracts",
+        "desc": "Contract records of contract staff, with agency and dates.",
+        "screens": [
+          "people/contracts",
+          "people/contracts--create"
+        ]
+      },
+      {
+        "id": "8.6",
+        "name": "Letters",
+        "desc": "Templates, signing authorities, generating, approving and issuing letters, and schedules.",
+        "screens": [
+          "people/letter-templates",
+          "people/signing-authorities",
+          "people/letters",
+          "people/letters--view",
+          "people/letter-schedules",
+          "people/letter-schedules--create"
+        ]
+      },
+      {
+        "id": "8.7",
+        "name": "Shared and published documents",
+        "desc": "Ready-made files shared with many employees at once, and what each received.",
+        "screens": [
+          "people/shared-documents",
+          "people/published-documents"
+        ]
+      }
+    ],
+    "screens": {
+      "people/upcoming-joiners": {
+        "purpose": "People hired before their first day (Pre Employee or Preboarding), with their onboarding, background check and missing documents, plus those marked as not joining.",
+        "when": "Every week before joining days, to make sure each joiner is ready for day one.",
+        "elements": [
+          [
+            "Views",
+            "Joining in the next 7 days, Joining this month, Joining date passed, not marked as joined, Not joining."
+          ],
+          [
+            "Report / Export",
+            "Upcoming joiners (next 30 days) report; Export downloads the filtered rows as CSV (audited)."
+          ],
+          [
+            "Hire employee",
+            "Opens the hire wizard."
+          ],
+          [
+            "EXPECTED JOINING, DAYS TO JOIN",
+            "Planned first day and Today, Tomorrow, In N days or overdue (red); amber within 7 days."
+          ],
+          [
+            "ONBOARDING, BACKGROUND CHECK, DOCUMENTS PENDING",
+            "Plan progress, check status and result, and N missing · N to verify."
+          ],
+          [
+            "Actions",
+            "Change joining date, Mark as not joining, Download all documents, Send profile-completion mail (when switched on)."
+          ],
+          [
+            "Open",
+            "The Employee 360, where Mark as joined lives."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "employee.view plus employee.lifecycle, employee.create, onboarding.view or onboarding.manage. Changing dates or not joining needs employee.lifecycle.",
+        "depends": "Hires with a future joining date (they start in Preboarding).",
+        "limits": "Joiners have no sign-in before you invite them. The profile-completion mail is off in the example organisation. In the example organisation one joiner shows: Sneha Joshi (DT-0001), joining 26 Nov 2026, 7 documents missing.",
+        "source": "app/Filament/Pages/UpcomingJoiners.php; app/Filament/Support/UpcomingJoinerActions.php; app/Domain/Employment/Services/UpcomingJoiners.php"
+      },
+      "people/onboarding": {
+        "purpose": "Every onboarding plan, induction and \"issued to current employees\" plan, with progress, open and overdue tasks. Read only: tasks are worked on the Employee 360 and in My tasks.",
+        "when": "Weekly, to chase overdue tasks and see who is still onboarding.",
+        "elements": [
+          [
+            "Views",
+            "Onboarding in progress, Inductions in progress, Completed."
+          ],
+          [
+            "Report",
+            "Onboarding in progress, Overdue onboarding tasks, Joining documents not yet collected."
+          ],
+          [
+            "ID, EMPLOYEE, TEMPLATE, KIND",
+            "Who, which template made the plan, and Onboarding, Induction or Issued to current employees."
+          ],
+          [
+            "JOINING, PROGRESS, OPEN TASKS, OVERDUE",
+            "Anchor date, % done (done + skipped), pending tasks, and tasks past their due date (red)."
+          ],
+          [
+            "STATUS",
+            "In progress, Completed or Cancelled."
+          ],
+          [
+            "Open",
+            "Goes to the Employee 360 › Onboarding tab."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "onboarding.view to see; onboarding.manage to start plans and complete or skip any task.",
+        "depends": "An active onboarding template that matches the employee.",
+        "limits": "No create, cancel or delete here. A plan completes only when every task is done or skipped, and is not closed when the employee is confirmed or exits. In the example organisation 18 plans are in progress.",
+        "source": "app/Filament/Resources/OnboardingPlans/*; app/Domain/Onboarding/Services/Onboarding.php"
+      },
+      "people/onboarding-templates": {
+        "purpose": "The checklists (or induction programmes) generated for joiners: who they apply to, when they start and their items.",
+        "when": "When you set up onboarding, or change what joiners must do.",
+        "elements": [
+          [
+            "New onboarding template",
+            "Opens the three-step template wizard."
+          ],
+          [
+            "NAME, KEY, KIND",
+            "Template name, its fixed key and Onboarding checklist or Induction programme."
+          ],
+          [
+            "STARTS",
+            "N day(s) before joining, or On preboarding when blank."
+          ],
+          [
+            "PRIORITY, ITEMS, APPLIES TO, PLANS",
+            "Lower priority wins when several match; item count; Everyone or the conditions; plans made."
+          ],
+          [
+            "Filter: Kind",
+            "Show checklists or inductions."
+          ],
+          [
+            "Edit / Issue to current employees",
+            "Change the template and its items, or issue items to people already employed."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "onboarding.view to see; onboarding.manage to create, edit and issue.",
+        "depends": "Document types, forms, feedback templates and roles used by items.",
+        "limits": "In the example organisation one template exists: Standard onboarding, for everyone, 12 items.",
+        "source": "app/Filament/Resources/OnboardingTemplates/OnboardingTemplateResource.php"
+      },
+      "people/onboarding-templates--create": {
+        "purpose": "Create an onboarding template in three steps: Template, Applies to, Review. Items are added afterwards on the edit page.",
+        "when": "When a group of joiners needs its own checklist, for example interns or a location.",
+        "elements": [
+          [
+            "01 Template",
+            "Name, key, priority, status, kind and start."
+          ],
+          [
+            "02 Applies to",
+            "Conditions; leave empty for everyone."
+          ],
+          [
+            "03 Review",
+            "Check before creating; the page then opens Edit to add items."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Name",
+            "meaning": "Template name; on create it fills Key automatically.",
+            "rule": "Required"
+          },
+          {
+            "label": "Key",
+            "meaning": "Short fixed id: lower-case letters, digits and _, starting with a letter. Locked after create.",
+            "rule": "Required"
+          },
+          {
+            "label": "Description",
+            "meaning": "What this template is for.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Priority",
+            "meaning": "Default 100. Lower wins when several templates match an employee.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Status",
+            "meaning": "Active or Inactive. Only active templates start plans.",
+            "rule": "Required"
+          },
+          {
+            "label": "Kind",
+            "meaning": "Onboarding checklist or Induction programme; an induction starts as its own plan.",
+            "rule": "Required"
+          },
+          {
+            "label": "Start this many days before joining",
+            "meaning": "0–365. Blank: starts when the person enters preboarding, preboarding items due 3 days before joining.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Conditions",
+            "meaning": "Applies to step: field, operator (is, is not, is any of, greater than, is empty …) and value.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The template is saved and the edit page opens on Checklist items. Edits apply at once to new plans; existing plans keep their tasks.",
+        "permission": "onboarding.manage.",
+        "depends": null,
+        "limits": null,
+        "source": "app/Filament/Resources/OnboardingTemplates/OnboardingTemplateResource.php; Pages/*"
+      },
+      "people/onboarding-templates--edit": {
+        "purpose": "Change a template and its checklist items: phase, type, owner, due days, mandatory and declaration.",
+        "when": "When you add, reorder or reassign onboarding tasks.",
+        "elements": [
+          [
+            "01 Template … 03 Review",
+            "The same steps as on create; Key is locked."
+          ],
+          [
+            "Checklist items",
+            "Tab: Phase, #, Title, Type, Owner, Due +days, Mandatory; add, edit or delete items."
+          ],
+          [
+            "History",
+            "Tab: the audit trail of the template."
+          ],
+          [
+            "More",
+            "Header menu, including Delete (existing plans keep their tasks)."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Name, Description, Priority, Status, Kind, Start this many days before joining",
+            "meaning": "As on create.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Key",
+            "meaning": "Locked after create.",
+            "rule": "Locked"
+          },
+          {
+            "label": "Phase",
+            "meaning": "Item: Preboarding, Day 1, First week, 30 days, 60 days or 90 days.",
+            "rule": "Required"
+          },
+          {
+            "label": "Type",
+            "meaning": "Checklist item, Collect a document, Fill a form, Policy acknowledgement, Complete a profile section, Give feedback.",
+            "rule": "Required"
+          },
+          {
+            "label": "Title",
+            "meaning": "What the owner sees in My tasks.",
+            "rule": "Required"
+          },
+          {
+            "label": "Due (days from joining)",
+            "meaning": "Blank uses the phase default (−3, 0, +5, +30, +60, +90).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Owner type",
+            "meaning": "The employee, Line manager, Buddy, HR business partner, A role or A specific user (then Role or User is required).",
+            "rule": "Required"
+          },
+          {
+            "label": "Document type / Form / Profile section / Feedback template",
+            "meaning": "Shown for the matching item type; profile section and feedback template are required there.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Mandatory",
+            "meaning": "On by default.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Declaration statement",
+            "meaning": "Optional text the owner confirms (\"I confirm …\"); time and address are recorded.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "Recorded in the audit trail.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Saved at once; new plans use the new items. Issue to current employees can push chosen items to people already employed.",
+        "permission": "onboarding.manage.",
+        "depends": null,
+        "limits": "The task owner is worked out once, when the task is created. A Line manager task for a joiner whose reporting line starts on the joining date stays Unassigned.",
+        "source": "app/Filament/Resources/OnboardingTemplates/RelationManagers/ItemsRelationManager.php; app/Domain/Onboarding/Services/Onboarding.php"
+      },
+      "people/background-checks": {
+        "purpose": "Background verification cases: which checks were run for whom, by which provider, and with what result.",
+        "when": "Before or just after joining, and when a check result comes in.",
+        "elements": [
+          [
+            "Views",
+            "Open checks, Discrepancies."
+          ],
+          [
+            "Report",
+            "Background verification in progress; Background verification discrepancies."
+          ],
+          [
+            "#, EMPLOYEE, PROVIDER, STATUS, RESULT",
+            "Case number, person, provider, Initiated / In progress / Completed / Closed, overall result."
+          ],
+          [
+            "INITIATED AT, COMPLETED AT",
+            "When the case started and finished."
+          ],
+          [
+            "Filters",
+            "Status, Overall result, employee codes, organisation, Initiated from/until, leave out leavers."
+          ],
+          [
+            "View",
+            "Case details, Checks tab with Record result, and Close case."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "bgv.view to see; bgv.manage to initiate, record results and close.",
+        "depends": "The employee's written consent (a toggle, and optionally a consent document).",
+        "limits": "Only the Manual (in-house) provider exists. Close case leaves the overall result Pending. The example organisation has no cases yet.",
+        "source": "app/Filament/Resources/BgvCases/*; app/Domain/Bgv/Services/Bgv.php"
+      },
+      "people/confirmation-reviews": {
+        "purpose": "One review per probation end: confirm the employee, extend the probation or terminate. Reviews open automatically ahead of the probation end date.",
+        "when": "As probation ends approach; reviews open 14 days ahead in the example organisation.",
+        "elements": [
+          [
+            "Open due reviews now",
+            "Opens every review that is due today (it also runs daily)."
+          ],
+          [
+            "Views / Report",
+            "Waiting for a decision, Probation ending this month, Confirmed; reports on probation ending and confirmations."
+          ],
+          [
+            "Act on all matching",
+            "Bulk Confirm (refuses your own, decided or feedback-pending reviews)."
+          ],
+          [
+            "EMPLOYEE, PROBATION ENDS, EXTENSIONS SO FAR",
+            "Who, when probation ends, how often it was extended."
+          ],
+          [
+            "STATUS, FEEDBACK, EXTENDED TO, NOTE, DECIDED BY",
+            "Pending, Confirmed, Probation extended, Terminated or Cancelled, with the decision details."
+          ],
+          [
+            "Confirm / Extend probation / Terminate",
+            "Row actions while Pending."
+          ]
+        ],
+        "fields": [],
+        "after": "Confirm moves the employee to Confirmed on the probation end date. Extend sets a new probation end (a new review opens later). Terminate starts an exit case of type Termination.",
+        "permission": "employee.lifecycle (within your access scope). Nobody decides their own confirmation.",
+        "depends": "Employees in Joined or Probation with a probation end date; the confirmation policy (optional) for extensions, feedback and letters.",
+        "limits": "Nothing stops you confirming before the probation end date once the review is open. The example organisation has no reviews yet; Priya Nair's probation ends 28 Nov 2026.",
+        "source": "app/Filament/Resources/ConfirmationReviews/*; app/Domain/Lifecycle/Services/ConfirmationReviews.php"
+      },
+      "people/transfer-requests": {
+        "purpose": "Two-person transfers: one person requests a change of position or manager from a date, and a different person approves it, which applies it.",
+        "when": "For planned moves that need a second pair of eyes, such as a relocation with a transfer allowance.",
+        "elements": [
+          [
+            "Request a transfer",
+            "Employee, From date, the values that change, new reporting manager, reason, allowances, note."
+          ],
+          [
+            "Views / Report",
+            "Waiting for a decision, Approved; transfers, promotions and manager changes this financial year."
+          ],
+          [
+            "EMPLOYEE, FROM, CHANGES",
+            "Who, effective date, and e.g. Location → Bangalore, Manager → name."
+          ],
+          [
+            "REASON, ALLOWANCES, REQUESTED BY, STATUS",
+            "Reason, one-off allowances and when paid, requester, Pending / Approved / Rejected / Cancelled."
+          ],
+          [
+            "Approve / Reject / Cancel",
+            "Row actions while Pending; the requester cannot approve or reject."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Employee",
+            "meaning": "An employed person in your access scope.",
+            "rule": "Required"
+          },
+          {
+            "label": "From",
+            "meaning": "Effective date; defaults to the first day of next month.",
+            "rule": "Required"
+          },
+          {
+            "label": "Company … Dimension",
+            "meaning": "Fourteen selects (Location, Department, Designation, Grade …), each Unchanged by default. Choose at least one change.",
+            "rule": "Optional"
+          },
+          {
+            "label": "New reporting manager",
+            "meaning": "Line manager from the same date; Unchanged by default.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason",
+            "meaning": "A transfer reason from your workforce reasons; a transfer policy may require it.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Transfer allowances",
+            "meaning": "Shown only when a pay component is marked as a transfer allowance: Allowance and Amount, paid once.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Note",
+            "meaning": "Up to 1,000 characters.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Approve writes a new effective-dated position (and line manager) through Transfer / promote, adds a Transfer timeline entry, may draft transfer letters, and pays allowances in the payroll covering the date.",
+        "permission": "employee.position to request and to decide; the approver must be someone other than the requester and the employee.",
+        "depends": "A transfer policy (optional) for notice days, backdating and allowed changes. Without a policy the date must be today or later.",
+        "limits": "Date and overlap checks run only at approval: a date on or before the current position's start is refused then. The example organisation has no requests yet.",
+        "source": "app/Filament/Resources/TransferRequests/*; app/Domain/Employment/Services/TransferRequests.php; TransferEmployeeAction.php"
+      },
+      "people/contracts": {
+        "purpose": "The contracts of contract staff: agency (vendor), contract number and dates, with a worked-out status.",
+        "when": "When you engage, renew or end contract staff.",
+        "elements": [
+          [
+            "New contract",
+            "Opens the contract wizard."
+          ],
+          [
+            "CODE, EMPLOYEE, AGENCY",
+            "Employee code, name, and the vendor (or Direct)."
+          ],
+          [
+            "CONTRACT, STARTS, ENDS",
+            "Contract number and dates; Ends shows Open when blank."
+          ],
+          [
+            "STATUS",
+            "Current, Upcoming or Ended, worked out from the dates."
+          ],
+          [
+            "Filters: Agency, Current",
+            "Narrow by vendor or current contracts."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "employee.view to see; employee.update to create and edit.",
+        "depends": "Vendors (Workforce → Vendors) for the agency.",
+        "limits": "Contracts are records, not letters; nothing is deleted. Contracts can also be loaded with the Contract upload. The example organisation has none.",
+        "source": "app/Filament/Resources/EmployeeContracts/*; app/Domain/Employment/Services/EmployeeContracts.php"
+      },
+      "people/contracts--create": {
+        "purpose": "Record a contract in three steps: Employee and agency, Contract, Review.",
+        "when": "When a contract starts or is renewed under a new number.",
+        "elements": [
+          [
+            "01 Employee and agency",
+            "Who and through which vendor."
+          ],
+          [
+            "02 Contract",
+            "Number, dates and notes."
+          ],
+          [
+            "03 Review",
+            "Check and create; audited."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Employee",
+            "meaning": "Any employee; locked after create.",
+            "rule": "Required"
+          },
+          {
+            "label": "Agency (vendor)",
+            "meaning": "An active vendor, or None (contracted directly).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Contract number",
+            "meaning": "Up to 64 characters, unique per employee.",
+            "rule": "Required"
+          },
+          {
+            "label": "Starts on",
+            "meaning": "First day of the contract.",
+            "rule": "Required"
+          },
+          {
+            "label": "Ends on",
+            "meaning": "On or after the start; blank while open-ended.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Notes",
+            "meaning": "Up to 1,000 characters.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The contract is saved and \"Contract recorded\" is added to the employee's timeline.",
+        "permission": "employee.update within your organisation scope.",
+        "depends": null,
+        "limits": null,
+        "source": "app/Filament/Resources/EmployeeContracts/Schemas/EmployeeContractForm.php"
+      },
+      "people/letter-templates": {
+        "purpose": "Reusable letter templates, written in the editor or uploaded as your own Word file, with {{ variables }} filled from each employee's record.",
+        "when": "When you set up letters, or change their wording, signatory or approval rule.",
+        "elements": [
+          [
+            "Variables",
+            "The variables guide: every variable by group, with Download guide, Download list (CSV) and Sample Word template."
+          ],
+          [
+            "New letter template",
+            "Opens the template form."
+          ],
+          [
+            "NAME, CODE, TYPE",
+            "Template name, its code (upper case) and letter type (Offer … Custom)."
+          ],
+          [
+            "MADE AS, APPROVAL, VERSION, STATUS",
+            "Written here or Word file; needs approval; version (rises with each content change); Active."
+          ],
+          [
+            "Preview",
+            "Fills the template with one employee's details; nothing is generated or sent."
+          ],
+          [
+            "Edit / Word file",
+            "Change the template; download the uploaded .docx."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Name",
+            "meaning": "Template name.",
+            "rule": "Required"
+          },
+          {
+            "label": "Code",
+            "meaning": "Up to 32, letters, digits, - and _; saved in upper case; locked on edit.",
+            "rule": "Required"
+          },
+          {
+            "label": "Type",
+            "meaning": "Offer, Appointment, Confirmation, Promotion, Transfer, Relieving, Experience, Salary certificate … Custom.",
+            "rule": "Required"
+          },
+          {
+            "label": "Status",
+            "meaning": "Active or Inactive; only active templates can be used.",
+            "rule": "Required"
+          },
+          {
+            "label": "How is the letter made?",
+            "meaning": "Write it here, or Upload our own Word file.",
+            "rule": "Required"
+          },
+          {
+            "label": "Subject",
+            "meaning": "Variables work here too, e.g. Experience certificate – {{ employee.name }}.",
+            "rule": "Required"
+          },
+          {
+            "label": "Letter",
+            "meaning": "The body in the editor; { } inserts a variable. {{ salary.annexure }} on its own line prints the salary table.",
+            "rule": "Required"
+          },
+          {
+            "label": "Word file (.docx)",
+            "meaning": "Word template only: your letterhead and layout with variables typed in; .docx up to 5 MB, no macros.",
+            "rule": "Required"
+          },
+          {
+            "label": "Signing authority",
+            "meaning": "Who signs; blank = the default signatory.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Needs approval before issue",
+            "meaning": "On: each letter waits for approval by someone other than the requester.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Second signatory, Third signatory, Fourth signatory",
+            "meaning": "Further signers, printed by {{ signatory_2.name }} etc.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "On edit; recorded in the audit trail.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "A warning \"Check these variables\" lists variables that are not in the catalogue; they print only when typed in when the letter is generated.",
+        "permission": "letter.manage to create and edit; letter.manage or letter.issue to see; letter.issue to Preview.",
+        "depends": "Signing authorities; approved compensation for salary variables.",
+        "limits": "Written letters download as an HTML page (print to PDF from the browser); Word templates give a filled .docx. There is no e-signature and no delete button.",
+        "source": "app/Filament/Resources/LetterTemplates/LetterTemplateResource.php; app/Domain/Letters/Support/LetterVariables.php; app/Domain/Letters/Support/DocxLetter.php"
+      },
+      "people/signing-authorities": {
+        "purpose": "The people who sign letters: name, designation, company and a signature image printed into letters.",
+        "when": "Before issuing letters, and when a signatory changes.",
+        "elements": [
+          [
+            "New signing authority",
+            "Opens the form."
+          ],
+          [
+            "NAME, DESIGNATION, COMPANY",
+            "Who signs, their title, and the company (or Any)."
+          ],
+          [
+            "SIGNATURE, DEFAULT, STATUS",
+            "Whether an image is on file, the default signatory, Active or Inactive."
+          ],
+          [
+            "Edit",
+            "Change details or replace the signature."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Name",
+            "meaning": "The signatory's name.",
+            "rule": "Required"
+          },
+          {
+            "label": "Designation",
+            "meaning": "E.g. Head of HR.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Company",
+            "meaning": "Any company, or one.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Default signatory",
+            "meaning": "Signs every template that names no signatory. Only one default; on for the first one.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Status",
+            "meaning": "Active or Inactive.",
+            "rule": "Required"
+          },
+          {
+            "label": "Signature",
+            "meaning": "PNG or JPEG up to 1 MB, cropped close; a transparent PNG prints best. Kept privately.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Letters print the signatory chosen on the letter, else the template's, else the default; with none they print \"Authorised Signatory\" and no image.",
+        "permission": "letter.manage to create and edit; letter.manage or letter.issue to see.",
+        "depends": null,
+        "limits": "The signature is a printed image, not a digital signature. The example organisation has no signatories yet.",
+        "source": "app/Filament/Resources/LetterSignatories/LetterSignatoryResource.php; app/Domain/Letters/Models/LetterSignatory.php"
+      },
+      "people/letters": {
+        "purpose": "The register of generated letters: generate, approve, issue, download, revoke and regenerate, with filters by type, process, signatory and organisation.",
+        "when": "Whenever a letter is requested, waits for approval or must be issued.",
+        "elements": [
+          [
+            "Generate letter",
+            "Employee, Template, signatories and extra variables; the letter is ready to issue or sent for approval."
+          ],
+          [
+            "Views",
+            "By type, Waiting for approval, Ready to issue, Revoked letters and process views; save your own."
+          ],
+          [
+            "Download letters",
+            "Zip of issued letters matching the filters (up to 500; link valid 24 hours)."
+          ],
+          [
+            "Letter schedules",
+            "Opens the schedules register."
+          ],
+          [
+            "NUMBER, EMPLOYEE, TYPE, SUBJECT, STATUS",
+            "LTR-YYYY-NNNNN, person, type, subject and Pending approval, Approved, Issued, Rejected or Revoked."
+          ],
+          [
+            "Bulk actions",
+            "Generate & publish (issue approved letters), Download as zip."
+          ],
+          [
+            "Open",
+            "The letter page with its actions."
+          ]
+        ],
+        "fields": [],
+        "after": "Issuing stores the letter in the employee's documents and notifies them; they find it in My letters.",
+        "permission": "letter.view to see; letter.issue to generate, approve, issue and revoke.",
+        "depends": "Active letter templates.",
+        "limits": "Letters are never deleted: revoke or generate again. In the example organisation one letter is issued: LTR-2026-00001, Vikram Singh's experience certificate.",
+        "source": "app/Filament/Resources/Letters/*; app/Domain/Letters/Services/Letters.php"
+      },
+      "people/letters--view": {
+        "purpose": "One letter: its details, the body as it will print, its process and its audit history, with the actions its status allows.",
+        "when": "To approve, issue, download, e-mail, revoke or regenerate a letter.",
+        "elements": [
+          [
+            "Download",
+            "Issued letters: the HTML page or the filled Word file."
+          ],
+          [
+            "Generate again",
+            "A new linked letter (same or another template) with a required Why; nothing is overwritten."
+          ],
+          [
+            "More",
+            "Further actions allowed by the status, such as Revoke for an issued letter."
+          ],
+          [
+            "Approve / Reject",
+            "Pending approval: approve (not by the requester) or reject with a note."
+          ],
+          [
+            "Issue",
+            "Approved: stores the letter in the employee's documents and notifies them."
+          ],
+          [
+            "Details",
+            "Employee, Type, Status, Template, Requested by, Approved by, Issued at, Made as, Signed by, Process."
+          ]
+        ],
+        "fields": [],
+        "after": "Revoke hides the letter's document from the employee and keeps the letter and file.",
+        "permission": "letter.view to read; letter.issue for every action. An employee sees only their own issued letters.",
+        "depends": null,
+        "limits": "E-mail the letter appears only when letter e-mailing is switched on in Setup → Workforce (off in the example organisation).",
+        "source": "app/Filament/Resources/Letters/Pages/ViewLetter.php; LetterResource.php (lifecycleActions)"
+      },
+      "people/letter-schedules": {
+        "purpose": "Generate a template for a group of employees once (now or later), or around an employee date such as joining, birthday or work anniversary.",
+        "when": "For recurring or batch letters, such as anniversary letters or appointment letters for a joining batch.",
+        "elements": [
+          [
+            "Schedule letters",
+            "Opens the schedule wizard."
+          ],
+          [
+            "TITLE, TEMPLATE NAME",
+            "Schedule title and the template used."
+          ],
+          [
+            "EVENT FREQUENCY, OCCURRENCE",
+            "One time · publish now/later, or event ± days; Once, Every year or Once per employee."
+          ],
+          [
+            "SCHEDULED DATE, STATUS, LETTERS",
+            "When, Saved for later use / Active / Paused / Completed / Cancelled, letters made."
+          ],
+          [
+            "Row actions",
+            "Open, Edit, Start, Pause, Use again, Cancel (with a reason)."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "letter.issue.",
+        "depends": "Active templates; a schedule runs as the person who set it up, within their access.",
+        "limits": "Runs daily at 06:50; at most 2,000 employees per run. A schedule pauses itself if its owner can no longer issue letters or the template is inactive. The example organisation has none.",
+        "source": "app/Filament/Resources/LetterSchedules/*; app/Domain/Letters/Services/LetterSchedules.php"
+      },
+      "people/letter-schedules--create": {
+        "purpose": "Set up a letter schedule in five steps: Letter, When, Who, Publishing, Review.",
+        "when": "When you want letters generated without doing it person by person.",
+        "elements": [
+          [
+            "01 Letter",
+            "Title, template, signatories, extra variables."
+          ],
+          [
+            "02 When",
+            "One time (now or later) or Event based with days before or after."
+          ],
+          [
+            "03 Who",
+            "Specific employees, Employees organisation-wise, or Upcoming joiners."
+          ],
+          [
+            "04 Publishing",
+            "Issue at once when no approval is needed; e-mail; save for later."
+          ],
+          [
+            "05 Review",
+            "Check and create."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Title",
+            "meaning": "Name of the schedule.",
+            "rule": "Required"
+          },
+          {
+            "label": "Template",
+            "meaning": "An active letter template.",
+            "rule": "Required"
+          },
+          {
+            "label": "Signatories (up to four, in signing order)",
+            "meaning": "Blank: as on the template.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Extra variables",
+            "meaning": "Variable / Value pairs for template variables that are not employee details.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Select event frequency",
+            "meaning": "One time or Event based.",
+            "rule": "Required"
+          },
+          {
+            "label": "Publish / Publish date and time",
+            "meaning": "One time: Publish now or Publish later at a date and time (today or later).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Event",
+            "meaning": "Date of joining, birth, confirmation, resignation, leaving, retirement, Work anniversary, Absconding.",
+            "rule": "Required"
+          },
+          {
+            "label": "Before or after the event / Number of days (0 = on the day)",
+            "meaning": "Offset 0–365 days, default After, 0.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Applicability",
+            "meaning": "Specific employees, Employees organisation-wise (companies, locations, departments …) or Upcoming joiners.",
+            "rule": "Required"
+          },
+          {
+            "label": "Issue each letter at once when the template needs no approval",
+            "meaning": "On by default; letters needing approval still wait.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Save for later use (does not run until started)",
+            "meaning": "Saves as Saved for later use; start it from the list.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Publish now is queued at once; other schedules run in the daily letter run. Each employee gets at most one letter per occurrence.",
+        "permission": "letter.issue.",
+        "depends": null,
+        "limits": "Also e-mail the issued letter to is shown only when letter e-mailing is switched on.",
+        "source": "app/Filament/Resources/LetterSchedules/LetterScheduleResource.php"
+      },
+      "people/shared-documents": {
+        "purpose": "Share ready-made files made outside PeopleOS (Form 16, insurance cards, circulars) with many employees at once: a zip with a sheet, or one common file.",
+        "when": "When the same kind of document goes to many employees, such as yearly tax certificates.",
+        "elements": [
+          [
+            "Share documents",
+            "Five-step wizard: Document, Files, Who, Notify, Review."
+          ],
+          [
+            "Share letters",
+            "Opens Letters at Ready to issue (letters are published from Letters)."
+          ],
+          [
+            "Sheet template",
+            "CSV with Employee code and File name."
+          ],
+          [
+            "Published documents",
+            "Per-employee list of what was shared."
+          ],
+          [
+            "#, DOCUMENT TYPE, TITLE, FILES … STATUS",
+            "Each share with Shared, Failed and Unpublished counts and status."
+          ],
+          [
+            "Open",
+            "Share page: Download errors, Unpublish, Employees tab."
+          ]
+        ],
+        "fields": [],
+        "after": "Each file becomes a verified document in the employee's My HR → Documents; failed rows keep their reason.",
+        "permission": "document.share and employee.view.",
+        "depends": "Active document types that employees may view (Setup → Document types).",
+        "limits": "Up to 2,000 rows, zip up to 12 MB, files up to 10 MB each. There is no acknowledgement tracking. Unpublished shares cannot be re-published: share again.",
+        "source": "app/Filament/Resources/DocumentShareBatches/*; app/Filament/Support/DocumentShareActions.php; app/Domain/Documents/Services/DocumentShares.php"
+      },
+      "people/published-documents": {
+        "purpose": "One row per employee per document shared in bulk. Unpublishing hides a document from the employee; it is kept with its file.",
+        "when": "To check what one employee received, or to withdraw a wrong file.",
+        "elements": [
+          [
+            "Share documents",
+            "Opens the share wizard."
+          ],
+          [
+            "EMPLOYEE CODE, EMPLOYEE NAME",
+            "Who received it."
+          ],
+          [
+            "DOCUMENT TYPE, TITLE, FILE",
+            "What was shared."
+          ],
+          [
+            "PUBLISHED ON, PUBLISHED BY, STATUS, SHARE",
+            "When, by whom, Shared or Unpublished, and the share it came from."
+          ],
+          [
+            "View / Unpublish / Open share",
+            "Open the file, withdraw it with a reason, or go to the share."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "document.share and employee.view.",
+        "depends": null,
+        "limits": "Issued letters stay in Letters, not here. The example organisation has none yet.",
+        "source": "app/Filament/Resources/PublishedDocuments/PublishedDocumentResource.php"
+      }
+    },
+    "procedures": [
+      {
+        "sub": "8.1",
+        "title": "Get an upcoming joiner ready for day one",
+        "before": "The joiner was hired with a future joining date (Preboarding). You hold employee.lifecycle.",
+        "steps": [
+          [
+            "Check the joiner",
+            "People › Lifecycle › Upcoming joiners. Look at Days to join, Onboarding, Background check and Documents pending."
+          ],
+          [
+            "Move the date if needed",
+            "Actions › Change joining date: New joining date (today or later) and Reason. Open onboarding items and the probation end move with it."
+          ],
+          [
+            "Collect documents",
+            "Open › Records › Documents › Upload, or let the joiner upload; then Verify (not by the uploader)."
+          ],
+          [
+            "On the first day",
+            "Employee 360 › Action › Mark as joined: Joining date and reason. The employee becomes Joined, then Probation."
+          ],
+          [
+            "If they do not join",
+            "Actions › Mark as not joining: Why are they not joining? (Other needs a note). Onboarding is cancelled and any sign-in turned off."
+          ]
+        ],
+        "result": "The joiner is on probation from their real first day, or recorded as Not Joined with a reason and kept for rehire checks.",
+        "screens": [
+          "people/upcoming-joiners",
+          "people/employees--view"
+        ],
+        "source": "app/Filament/Support/UpcomingJoinerActions.php; app/Domain/Employment/Services/UpcomingJoiners.php; ViewEmployee.php (markJoinedAction)"
+      },
+      {
+        "sub": "8.1",
+        "title": "Build an onboarding template with its items",
+        "before": "onboarding.manage. Document types, roles and feedback templates the items will use.",
+        "steps": [
+          [
+            "Create",
+            "People › Lifecycle › Onboarding templates › New onboarding template."
+          ],
+          [
+            "01 Template",
+            "Name (fills Key), Priority 100, Status Active, Kind Onboarding checklist. Leave Start this many days before joining blank to start on preboarding."
+          ],
+          [
+            "02 Applies to",
+            "Add conditions (e.g. Employment type is Intern) or leave empty for everyone. Review and create."
+          ],
+          [
+            "Add items",
+            "On Checklist items add each task: Phase, Type, Title, Owner type, Due days (blank = phase default), Mandatory."
+          ],
+          [
+            "Issue to current employees (optional)",
+            "Row action: New employees only (as they join), or All current employees matching with chosen items."
+          ]
+        ],
+        "result": "New joiners who match get a plan automatically when they enter Preboarding or Joined.",
+        "screens": [
+          "people/onboarding-templates",
+          "people/onboarding-templates--create",
+          "people/onboarding-templates--edit"
+        ],
+        "source": "app/Filament/Resources/OnboardingTemplates/*; app/Domain/Onboarding/Listeners/AutoStartOnboarding.php"
+      },
+      {
+        "sub": "8.1",
+        "title": "Work an onboarding plan",
+        "before": "A plan exists (automatic, or Employee 360 › Action › Start onboarding).",
+        "steps": [
+          [
+            "Find the plan",
+            "People › Lifecycle › Onboarding › Open, or the Employee 360 › Employment › Onboarding tab."
+          ],
+          [
+            "Owners act",
+            "Each owner sees their tasks in My tasks › Onboarding tasks and uses Done."
+          ],
+          [
+            "Document items",
+            "Done asks to Attach uploaded document: upload it on the Documents tab first."
+          ],
+          [
+            "Skip what does not apply",
+            "Skip (onboarding.manage) with a required note."
+          ],
+          [
+            "Completion",
+            "When no task is pending, the plan is Completed and \"Onboarding completed\" is added to the timeline."
+          ]
+        ],
+        "result": "A completed plan with every task done or skipped and who did it.",
+        "screens": [
+          "people/onboarding"
+        ],
+        "source": "app/Filament/Support/OnboardingTaskActions.php; app/Domain/Onboarding/Services/Onboarding.php"
+      },
+      {
+        "sub": "8.2",
+        "title": "Run a background check",
+        "before": "bgv.manage. The employee's written consent (upload the consent as a document if you have it).",
+        "steps": [
+          [
+            "Initiate",
+            "Employee 360 › Action › Initiate background check: Provider (Manual (in-house)), Checks, consent toggle, Consent document, Notes."
+          ],
+          [
+            "Track",
+            "People › Lifecycle › Background checks › View the case."
+          ],
+          [
+            "Record each result",
+            "Checks tab › Record result: Status (Clear, Discrepancy, Failed, Skipped …), Notes, Evidence document."
+          ],
+          [
+            "Finish",
+            "When every check is closed the case is Completed with the worst result; or Close case with a reason."
+          ]
+        ],
+        "result": "A verification case with each check's result and evidence; the result is on the timeline.",
+        "screens": [
+          "people/background-checks",
+          "people/employees--view"
+        ],
+        "source": "app/Domain/Bgv/Services/Bgv.php; app/Filament/Resources/BgvCases/*"
+      },
+      {
+        "sub": "8.3",
+        "title": "Decide a confirmation review",
+        "before": "employee.lifecycle. The review is open (daily, or Open due reviews now).",
+        "steps": [
+          [
+            "Open the list",
+            "People › Lifecycle › Confirmation reviews, view Waiting for a decision."
+          ],
+          [
+            "Check feedback",
+            "The Feedback column shows the manager's feedback if the policy asks for it; decisions wait for it."
+          ],
+          [
+            "Confirm",
+            "Confirm with an optional Note: the employee is Confirmed on the probation end date."
+          ],
+          [
+            "Or extend",
+            "Extend probation: Months (1–24, default 3) and Why. A new review opens before the new date."
+          ],
+          [
+            "Or terminate",
+            "Terminate with a Reason: an exit case of type Termination starts and the employee goes into notice."
+          ]
+        ],
+        "result": "The lifecycle and confirmation date are updated, and a confirmation letter may be drafted by the policy.",
+        "screens": [
+          "people/confirmation-reviews"
+        ],
+        "source": "app/Domain/Lifecycle/Services/ConfirmationReviews.php"
+      },
+      {
+        "sub": "8.4",
+        "title": "Request and approve a transfer",
+        "before": "Two people with employee.position. The From date is after the employee's current position start.",
+        "steps": [
+          [
+            "Request",
+            "People › Lifecycle › Transfer requests › Request a transfer: Employee, From, the values that change, New reporting manager, Reason, Note."
+          ],
+          [
+            "Requested",
+            "The message says someone else with position rights approves it."
+          ],
+          [
+            "Approve",
+            "The second person opens Waiting for a decision and clicks Approve (optional note)."
+          ],
+          [
+            "Or reject / cancel",
+            "Reject needs a note; the requester can Cancel with a reason while it is pending."
+          ],
+          [
+            "Check the result",
+            "Employee 360 › Employment tab: a Transfer row from the date; Organisation tab: the new line manager."
+          ]
+        ],
+        "result": "An approved, effective-dated move with a timeline entry, any transfer letters and allowances.",
+        "screens": [
+          "people/transfer-requests"
+        ],
+        "source": "app/Domain/Employment/Services/TransferRequests.php; TransferEmployeeAction.php"
+      },
+      {
+        "sub": "8.5",
+        "title": "Record a contract",
+        "before": "employee.update; the vendor exists if an agency is involved.",
+        "steps": [
+          [
+            "Open",
+            "People › Lifecycle › Contracts › New contract."
+          ],
+          [
+            "01 Employee and agency",
+            "Employee and Agency (vendor), or none."
+          ],
+          [
+            "02 Contract",
+            "Contract number, Starts on, Ends on (blank if open-ended), Notes."
+          ],
+          [
+            "03 Review",
+            "Check and create."
+          ]
+        ],
+        "result": "The contract shows as Current, Upcoming or Ended and on the employee's timeline.",
+        "screens": [
+          "people/contracts",
+          "people/contracts--create"
+        ],
+        "source": "app/Domain/Employment/Services/EmployeeContracts.php"
+      },
+      {
+        "sub": "8.6",
+        "title": "Set up a letter template and its signatory",
+        "before": "letter.manage. A scan of the signature (PNG or JPEG).",
+        "steps": [
+          [
+            "Add the signatory",
+            "Signing authorities › New signing authority: Name, Designation, Default signatory on, Status Active, Signature image."
+          ],
+          [
+            "Create the template",
+            "Letter templates › New letter template: Name, Code, Type, Status, How is the letter made?"
+          ],
+          [
+            "Write the content",
+            "Subject and Letter with variables from { } or Variables, e.g. {{ employee.name }}, {{ employee.joining_date }}, {{ signatory.signature }}."
+          ],
+          [
+            "Signing and approval",
+            "Pick the Signing authority and switch on Needs approval before issue for letters that commit the organisation."
+          ],
+          [
+            "Preview",
+            "Row action Preview with one employee; fix any variables listed under Check these variables."
+          ]
+        ],
+        "result": "An active template that fills itself from each employee's record.",
+        "screens": [
+          "people/signing-authorities",
+          "people/letter-templates"
+        ],
+        "source": "app/Filament/Resources/LetterTemplates/LetterTemplateResource.php; LetterSignatoryResource.php; app/Domain/Letters/Support/LetterVariables.php"
+      },
+      {
+        "sub": "8.6",
+        "title": "Generate, approve and issue a letter",
+        "before": "letter.issue for both people. An active template.",
+        "steps": [
+          [
+            "Generate",
+            "Letters › Generate letter (or Employee 360 › Request › Generate a letter): Employee, Template, Extra variables."
+          ],
+          [
+            "Pending approval",
+            "If the template needs approval, other letter.issue holders are told \"Letter to approve\"."
+          ],
+          [
+            "Approve",
+            "A second person opens the letter and clicks Approve. The requester cannot approve their own letter."
+          ],
+          [
+            "Issue",
+            "Issue stores the letter in the employee's documents and notifies the employee."
+          ],
+          [
+            "Correct later",
+            "Generate again (with Why) makes a linked new letter; Revoke withdraws an issued one."
+          ]
+        ],
+        "result": "An issued letter the employee finds in My letters and My HR › Documents, with a full audit trail.",
+        "screens": [
+          "people/letters",
+          "people/letters--view"
+        ],
+        "source": "app/Domain/Letters/Services/Letters.php; app/Filament/Resources/Letters/*"
+      },
+      {
+        "sub": "8.6",
+        "title": "Schedule work anniversary letters",
+        "before": "letter.issue; an active anniversary template.",
+        "steps": [
+          [
+            "Open",
+            "Letter schedules › Schedule letters."
+          ],
+          [
+            "01 Letter",
+            "Title, Template, Signatories."
+          ],
+          [
+            "02 When",
+            "Event based; Event Work anniversary; After; Number of days 0."
+          ],
+          [
+            "03 Who",
+            "Employees organisation-wise; choose companies or departments."
+          ],
+          [
+            "04 Publishing and 05 Review",
+            "Keep Issue each letter at once on; create. The status is Active."
+          ]
+        ],
+        "result": "Every year each matching employee gets one letter on their anniversary.",
+        "screens": [
+          "people/letter-schedules",
+          "people/letter-schedules--create"
+        ],
+        "source": "app/Domain/Letters/Services/LetterSchedules.php"
+      },
+      {
+        "sub": "8.7",
+        "title": "Share Form 16 files with all employees",
+        "before": "document.share. A zip of files and a sheet with Employee code and File name.",
+        "steps": [
+          [
+            "Start",
+            "Shared documents › Share documents."
+          ],
+          [
+            "Document",
+            "Document type, Title (e.g. Form 16 for 2025-26), optional message."
+          ],
+          [
+            "Files",
+            "A zip of files with a sheet: upload the sheet (CSV) and the zip."
+          ],
+          [
+            "Notify and Review",
+            "Keep Tell each employee in PeopleOS on; review and Share."
+          ],
+          [
+            "Check",
+            "Open the share: Shared and Failed counts; Download errors for failed rows."
+          ]
+        ],
+        "result": "Each employee finds their file in My HR › Documents and is notified.",
+        "screens": [
+          "people/shared-documents",
+          "people/published-documents"
+        ],
+        "source": "app/Domain/Documents/Services/DocumentShares.php; app/Filament/Support/DocumentShareActions.php"
+      }
+    ],
+    "calculations": [
+      {
+        "sub": "8.1",
+        "title": "Onboarding due dates and probation end for a joiner",
+        "intro": "Real dates from the example organisation: Sneha Joshi (DT-0001) joins on 26 Nov 2026 with the Standard onboarding template, whose items use the phase defaults.",
+        "lines": [
+          [
+            "",
+            "Joining date (anchor)",
+            "26 Nov 2026"
+          ],
+          [
+            "−3",
+            "Preboarding items (Upload PAN card, Prepare laptop …)",
+            "23 Nov 2026"
+          ],
+          [
+            "+0",
+            "Day 1 items (HR induction and ID card …)",
+            "26 Nov 2026"
+          ],
+          [
+            "+5",
+            "First week (Set 30-day goals)",
+            "1 Dec 2026"
+          ],
+          [
+            "+30",
+            "30-day check-in",
+            "26 Dec 2026"
+          ],
+          [
+            "+60",
+            "60-day check-in",
+            "25 Jan 2027"
+          ],
+          [
+            "+90",
+            "90-day review and confirmation recommendation",
+            "24 Feb 2027"
+          ]
+        ],
+        "total": [
+          "Probation end (joining + 6 months, organisation default)",
+          "26 May 2027"
+        ],
+        "explain": [
+          [
+            "Formula",
+            "Due date = joining date + the item's Due (days from joining), or the phase default when blank."
+          ],
+          [
+            "Probation",
+            "Blank at hire: the confirmation policy's months, else the organisation default (6 months here)."
+          ],
+          [
+            "Moving the date",
+            "Change joining date moves pending items and the probation end by the same amount."
+          ],
+          [
+            "Where you see it",
+            "Employee 360 › Employment › Onboarding tab (Due on); All details › Probation end date."
+          ]
+        ],
+        "source": "app/Domain/Onboarding/Services/Onboarding.php; HireEmployeeAction.php; q.php onboarding_tasks / employees for DT-0001"
+      },
+      {
+        "sub": "8.3",
+        "title": "When a confirmation review opens",
+        "intro": "Reviews open a set number of days before probation ends: the policy's value, else the organisation setting (14 days in the example organisation). Dates are real.",
+        "lines": [
+          [
+            "",
+            "Priya Nair: probation ends",
+            "28 Nov 2026"
+          ],
+          [
+            "−14",
+            "Review opens from",
+            "14 Nov 2026"
+          ],
+          [
+            "",
+            "Rohan Pillai: probation ends",
+            "6 Dec 2026"
+          ],
+          [
+            "−14",
+            "Review opens from",
+            "22 Nov 2026"
+          ]
+        ],
+        "total": [
+          "Due today (16 Nov 2026)",
+          "Priya Nair"
+        ],
+        "explain": [
+          [
+            "Formula",
+            "Opens when today ≥ probation end − lead days, for employees in Joined or Probation."
+          ],
+          [
+            "How",
+            "Daily at 06:15, or Open due reviews now."
+          ],
+          [
+            "Confirmation date",
+            "Confirm sets the confirmation date to the probation end date."
+          ]
+        ],
+        "source": "app/Domain/Lifecycle/Services/ConfirmationReviews.php (openDue); q.php employees.probation_end_date"
+      }
+    ],
+    "warnings": [
+      {
+        "sub": "8.1",
+        "title": "Onboarding tasks can end up Unassigned",
+        "level": "warning",
+        "headline": "A task's owner is decided once, when the plan is created.",
+        "body": "For a joiner without a sign-in, employee tasks have no owner; a Line manager task has none if the reporting line starts only on the joining date. Unassigned tasks appear in nobody's My tasks.",
+        "points": [
+          "Use A role owners (e.g. HR Executive) for HR tasks.",
+          "HR with onboarding.manage can complete or skip any task.",
+          "Plans are not closed automatically at confirmation or exit."
+        ],
+        "todo": "Review Overdue onboarding tasks weekly and complete or skip what is left."
+      },
+      {
+        "sub": "8.6",
+        "title": "Letters: output, signatures and approval",
+        "level": "important",
+        "headline": "Letters are HTML or Word files; there is no PDF output and no e-signature.",
+        "body": "Written letters download as a web page you print to PDF from the browser; Word templates give a filled .docx. The signature is an image of the signing authority.",
+        "points": [
+          "The requester cannot approve their own letter, but may issue an approved one.",
+          "Templates without approval are approved at once.",
+          "Aadhaar and bank numbers print masked; PAN, UAN, PF and ESIC numbers print in full.",
+          "No letter or shared document has an acknowledgement step."
+        ],
+        "todo": "Switch on Needs approval before issue for offer, appointment, relieving and salary letters."
+      },
+      {
+        "sub": "8.6",
+        "title": "Check variable names in the starter templates",
+        "level": "warning",
+        "headline": "A variable that is not in the catalogue prints blank.",
+        "body": "The starter Confirmation letter uses {{ confirmation_date }}, which is not a catalogue variable; it prints blank unless typed in as an extra.",
+        "points": [
+          "Catalogue name: {{ employee.confirmation_date }}.",
+          "Edit the template and save; the warning Check these variables lists unknown names."
+        ],
+        "todo": "Preview each starter template with a real employee before first use."
+      },
+      {
+        "sub": "8.4",
+        "title": "Transfers and dates",
+        "level": "important",
+        "headline": "A move must start after the current position's start date.",
+        "body": "Dated changes never overlap. A transfer dated on or before the current position's start, or before a future-dated position, is refused. For requests this is checked only when approving.",
+        "points": [
+          "Without a transfer policy, the From date must be today or later.",
+          "Promotion does not change pay: propose it under Compensation.",
+          "The approver must differ from the requester and the employee."
+        ],
+        "todo": "Check the employee's Employment tab for the In role since date before requesting."
+      }
+    ],
+    "troubleshooting": [
+      [
+        "\"No onboarding template matches this employee.\"",
+        "No active template's conditions match the person.",
+        "Add or widen a template, or pick a Template in Start onboarding.",
+        ""
+      ],
+      [
+        "\"This employee already has an onboarding plan in progress.\"",
+        "One plan of each kind at a time.",
+        "Finish or skip the open plan's tasks first.",
+        ""
+      ],
+      [
+        "Task shows Unassigned",
+        "Its owner could not be found when the plan started.",
+        "Complete or skip it as HR, or use role owners in the template.",
+        ""
+      ],
+      [
+        "\"The person who uploaded a document cannot verify it.\"",
+        "Uploader and verifier must be different people.",
+        "Ask a colleague with document.verify.",
+        ""
+      ],
+      [
+        "\"Background verification needs the employee's consent first.\"",
+        "The consent toggle was off.",
+        "Get written consent and switch the toggle on.",
+        ""
+      ],
+      [
+        "\"A verification case is already open for this employee.\"",
+        "One open case per employee.",
+        "Finish or close the open case.",
+        ""
+      ],
+      [
+        "\"The manager's confirmation feedback is still pending.\"",
+        "The confirmation policy asks for manager feedback first.",
+        "Ask the manager to answer it in My tasks.",
+        ""
+      ],
+      [
+        "\"An employee cannot move from Joined to Confirmed.\"",
+        "Confirmation needs the Probation state.",
+        "Change lifecycle state to Probation first.",
+        ""
+      ],
+      [
+        "\"A transfer cannot be backdated.\" / \"Transfers need N day(s) notice.\"",
+        "Transfer policy (or no policy: today or later).",
+        "Choose a later From date.",
+        ""
+      ],
+      [
+        "\"Someone other than the requester and the employee decides a transfer.\"",
+        "Two-person rule on transfer requests.",
+        "Ask another holder of employee.position to approve.",
+        ""
+      ],
+      [
+        "\"The person who requested a letter cannot approve it.\"",
+        "Maker and checker must differ.",
+        "Another holder of letter.issue approves.",
+        ""
+      ],
+      [
+        "Letter shows \"Authorised Signatory\" with no signature",
+        "No signatory on the letter or template and no default.",
+        "Add a Signing authority with an image and make it the default.",
+        ""
+      ],
+      [
+        "Word template refused on upload",
+        "Not .docx, has macros, too large, or a {{ variable }} broken by formatting.",
+        "Save as .docx without macros and retype each variable in one go.",
+        ""
+      ],
+      [
+        "E-mail the letter is missing",
+        "Letter e-mailing is off.",
+        "Switch it on in Setup → Workforce if your organisation wants it.",
+        ""
+      ],
+      [
+        "Share row failed: \"No employee with this code in your access.\"",
+        "Wrong code in the sheet, or outside your scope.",
+        "Correct the sheet and share those files again.",
+        ""
+      ],
+      [
+        "\"The employee already has contract X.\"",
+        "Contract numbers are unique per employee.",
+        "Use the new contract's own number.",
+        ""
+      ]
+    ],
+    "checklist": [
+      [
+        "Before joining",
+        "Joiner in Upcoming joiners with the right date, position and line manager."
+      ],
+      [
+        "Onboarding plan",
+        "Plan started with the right template; owners resolved (no Unassigned tasks)."
+      ],
+      [
+        "Documents",
+        "Mandatory joining documents uploaded and verified by a second person."
+      ],
+      [
+        "Background check",
+        "Consent on file; case initiated and results recorded."
+      ],
+      [
+        "Pay and time",
+        "Compensation approved, work schedule assigned, bank and PAN on file."
+      ],
+      [
+        "Sign-in",
+        "Invitation sent on or before day one."
+      ],
+      [
+        "Day one",
+        "Mark as joined: the employee is in Probation."
+      ],
+      [
+        "Appointment letter",
+        "Generated, approved by a second person and issued."
+      ],
+      [
+        "Probation",
+        "Confirmation review decided on time; confirmation letter issued."
+      ]
+    ],
+    "summary": [
+      "Upcoming joiners shows who joins when, and what is still missing.",
+      "Onboarding plans come from the best-matching template and complete when every task is done or skipped.",
+      "Confirmation reviews open before probation ends: confirm, extend or terminate.",
+      "Transfers are effective-dated; requests need a second person to approve.",
+      "Letters fill variables from the record; approval needs someone other than the requester.",
+      "Shared documents put files from outside PeopleOS into many employees' documents at once."
+    ],
+    "captures_needed": [
+      {
+        "title": "Upcoming joiners: Actions menu",
+        "url": "/admin/upcoming-joiners",
+        "how": "Open the Actions menu on Sneha Joshi's row."
+      },
+      {
+        "title": "Change joining date modal",
+        "url": "/admin/upcoming-joiners",
+        "how": "Actions › Change joining date on Sneha Joshi (do not save)."
+      },
+      {
+        "title": "Onboarding tab on the Employee 360",
+        "url": "/admin/employees/23#records",
+        "how": "Records › Employment › Onboarding for Sneha Joshi."
+      },
+      {
+        "title": "Checklist item form",
+        "url": "/admin/onboarding-templates/1/edit",
+        "how": "Checklist items tab › edit the item Upload PAN card."
+      },
+      {
+        "title": "Initiate background check modal",
+        "url": "/admin/employees/23",
+        "how": "Action › Initiate background check (do not save)."
+      },
+      {
+        "title": "Request a transfer form",
+        "url": "/admin/transfer-requests",
+        "how": "Click Request a transfer; choose Tenzin Norbu and Location (do not save)."
+      },
+      {
+        "title": "Letter template edit",
+        "url": "/admin/letter-templates",
+        "how": "Edit Experience letter to show the editor and Signing and approval."
+      },
+      {
+        "title": "Letter variables guide",
+        "url": "/admin/letter-templates",
+        "how": "Click Variables."
+      },
+      {
+        "title": "Generate letter modal",
+        "url": "/admin/letters",
+        "how": "Click Generate letter; choose Priya Nair and Employment certificate (do not save)."
+      },
+      {
+        "title": "Letter schedule step 2: When",
+        "url": "/admin/letter-schedules/create",
+        "how": "Fill step 1, Next; choose Event based and Work anniversary."
+      },
+      {
+        "title": "Share documents wizard: Files",
+        "url": "/admin/document-shares",
+        "how": "Share documents; choose a Document type and Title; Next to Files."
+      }
+    ],
+    "gaps": [
+      "No background checks, confirmation reviews, transfer requests, contracts, schedules or shares exist in the example organisation, so those row actions were described from code.",
+      "The More menu on a letter page was not expanded in the crawl; its exact items (e.g. Revoke) are from code.",
+      "Approving a transfer request whose date overlaps the current position may show an error page rather than a message; not confirmed on screen.",
+      "Close case on a background check may also affect In progress checks of other cases (seen in code, not confirmed on screen); verify before teaching Close case.",
+      "The create-button label of the Checklist items tab was not captured."
+    ]
+  },
+  "M09": {
+    "intro": "This module takes a leaver from resignation or an initiated exit through notice, clearance and the full and final settlement to completion, and keeps them in touch afterwards as alumni with their own portal.",
+    "why": "An exit touches pay, assets, access and legal documents. A missed clearance, a wrong last working day or an unapproved settlement means money or company property lost and a login left open.",
+    "who": "Tenant Super Admin, Tenant HR Admin and HR Manager hold every exit and alumni permission (exit.manage, exit.settle, exit.clear, exit.interview, alumni.manage). Managers clear the stages they own (exit.clear). Employees resign (exit.resign). Auditors view. Alumni use the alumni portal.",
+    "where": "People › Lifecycle › Exit cases, Clearances, Clearance checklists, Exit insights, Alumni. Employees resign from My Day.",
+    "objectives": [
+      "Start an exit (resignation or initiated), set the notice and last working day, and handle acceptance, relaxation and withdrawal.",
+      "Run clearance with its five stages and checklists, including the asset return rule, then calculate, approve and pay the full and final settlement.",
+      "Complete the exit, create the alumni profile and serve alumni requests, and read the exit insights."
+    ],
+    "depends_on": [
+      "M07 Employees and the employee profile: the exit starts from an employed person; Initiate exit is also on the Employee 360.",
+      "M06 Workflows and policies: the exit (separation) policy sets the notice period, notice recovery, checklists, interviews and letters.",
+      "M08 Joining, changes and letters: relieving and experience letters are letter templates.",
+      "M11 Leave and M13 Payroll: leave balances are encashed and the final month's salary is calculated in the settlement.",
+      "M18 Assets: assets still held block the Asset clearance stage unless a recovery is recorded."
+    ],
+    "subs": [
+      {
+        "id": "9.1",
+        "name": "Exit cases and resignations",
+        "desc": "The separation register: start an exit, or receive an employee's resignation.",
+        "screens": [
+          "people/exit-cases"
+        ]
+      },
+      {
+        "id": "9.2",
+        "name": "Clearance",
+        "desc": "Five clearance stages per leaver, their owners and the checklists behind them.",
+        "screens": [
+          "people/clearances",
+          "people/clearance-checklists"
+        ]
+      },
+      {
+        "id": "9.3",
+        "name": "The exit case: notice, settlement and completion",
+        "desc": "One leaver's case: last working day, interview, letters, full and final, completion.",
+        "screens": [
+          "people/exit-cases--view"
+        ]
+      },
+      {
+        "id": "9.4",
+        "name": "Alumni",
+        "desc": "Alumni profiles, their requests and the alumni portal.",
+        "screens": [
+          "people/alumni",
+          "people/alumni--view"
+        ]
+      },
+      {
+        "id": "9.5",
+        "name": "Exit insights",
+        "desc": "Why people leave: reasons, ratings and exits by type.",
+        "screens": [
+          "people/exit-insights"
+        ]
+      }
+    ],
+    "screens": {
+      "people/exit-cases": {
+        "purpose": "The separation register: one case per exit (EXIT-YYYY-NNNNN), from resignation or initiation through notice, clearance and settlement to completion.",
+        "when": "Daily while people are leaving: new resignations, notice periods, clearances and settlements.",
+        "elements": [
+          [
+            "Initiate exit",
+            "HR starts an exit: Employee, Type, Resignation / decision date, Notice days, Last working day, Knowledge transfer to, rehire, Reason."
+          ],
+          [
+            "Views",
+            "Resignations, Serving notice, In clearance, Final clearance, Withdrawn resignations, Full and final settlement, Settled, Ready to complete …"
+          ],
+          [
+            "Report",
+            "Resignations this month, Notice period tracker, Exit clearances pending, Full and final settlement pending, Reasons for leaving …"
+          ],
+          [
+            "Act on all matching",
+            "Bulk Start clearance or Complete exit (with Complete without an approved settlement)."
+          ],
+          [
+            "NUMBER, EMPLOYEE, TYPE, LAST WORKING DAY",
+            "Case number, leaver, exit type; the last day turns red within 7 days."
+          ],
+          [
+            "STATUS, CLEARANCE, F&F, MANAGER",
+            "Serving notice, Clearance, Settlement, Completed; stages cleared / total; settlement status; manager."
+          ],
+          [
+            "Open",
+            "The exit case page."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Employee",
+            "meaning": "Initiate exit: an employed person not already serving notice.",
+            "rule": "Required"
+          },
+          {
+            "label": "Type",
+            "meaning": "Resignation (default), Termination, Retirement, Contract expiry, Absconding, Death, Mutual separation, Other.",
+            "rule": "Required"
+          },
+          {
+            "label": "Resignation / decision date",
+            "meaning": "Default today. HR backdating may be limited by the exit policy.",
+            "rule": "Required"
+          },
+          {
+            "label": "Notice days",
+            "meaning": "Pre-filled from the organisation setting (30). Hidden for Termination, Absconding and Death (notice 0).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Last working day",
+            "meaning": "Blank: resignation date + notice days. Not before the resignation date.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Knowledge transfer to",
+            "meaning": "The employee who takes over the work.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Eligible for rehire",
+            "meaning": "On by default; when off, a reason is required if blacklist reasons exist.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason",
+            "meaning": "Free text, up to 2,000 characters.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The case opens in Serving notice; the employee moves to Notice Period with the exit date set; five clearance stages are built; return requests are raised for assets held (when your organisation uses them); the manager is told.",
+        "permission": "exit.view to see all cases; exit.manage to initiate and complete; exit.resign lets an employee resign. Others see only their own case and cases they manage or clear.",
+        "depends": "An employed person; the exit policy (optional) for the notice period.",
+        "limits": "Completed cases are hidden by the default Status filter. In the example organisation: EXIT-2026-00001 Vikram Singh (completed) and EXIT-2026-00002 Omar Farooq (serving notice, last day 16 Dec 2026).",
+        "source": "app/Filament/Resources/ExitCases/ExitCaseResource.php; Pages/ListExitCases.php; app/Filament/Support/ExitActions.php; app/Domain/Exit/Services/Exits.php"
+      },
+      "people/exit-cases--view": {
+        "purpose": "One leaver's exit: dates, notice, rehire, clearance, settlement and interview at a glance, the relieving review, and every action from acceptance to completion and alumni.",
+        "when": "Throughout the exit, from the resignation to the alumni profile.",
+        "elements": [
+          [
+            "Case details",
+            "Type, Status, Resignation / decision, Last working day, Notice days, Manager, Rehire, Clearance, Settlement, Net F&F, Exit interview."
+          ],
+          [
+            "Relieving review",
+            "Last payroll processed, salary on hold, notice served and shortfall with the recovery rule, settlement month, hand-over warnings."
+          ],
+          [
+            "Clearance tab",
+            "The five stages with checklist, status, recovery, remarks and their actions."
+          ],
+          [
+            "Full & final tab",
+            "Start settlement, Breakdown, Calculate, Add line, Approve, Mark paid."
+          ],
+          [
+            "Letters / History",
+            "All of the employee's letters; the audit trail of the case."
+          ],
+          [
+            "Notice and dates actions",
+            "Accept / reject resignation, Change last working day, Notice relaxation, Settlement month, Withdraw resignation."
+          ],
+          [
+            "Other actions",
+            "Start clearance, Record exit interview, Generate letter, Approver's reason, Rehire eligibility."
+          ],
+          [
+            "Complete exit / Create alumni profile",
+            "Close the exit (login disabled), then create the alumni profile."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "New last working day",
+            "meaning": "Change last working day: with a required Reason; refused once the settlement is approved.",
+            "rule": "Required"
+          },
+          {
+            "label": "Relaxation (days)",
+            "meaning": "Notice relaxation (resignations only): days of shortfall not recovered, 0 to the notice days, with a Reason.",
+            "rule": "Required"
+          },
+          {
+            "label": "Pay the settlement in (YYYY-MM)",
+            "meaning": "Settlement month; not before the month of the last working day.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason for leaving",
+            "meaning": "Record exit interview: Better opportunity, Compensation, Career growth … Other.",
+            "rule": "Required"
+          },
+          {
+            "label": "How would you rate…",
+            "meaning": "1–5 for manager, compensation, culture, workload, commute, career, environment; recommend and rejoin toggles.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Template",
+            "meaning": "Generate letter: relieving, experience, salary, employment certificate or NOC templates.",
+            "rule": "Required"
+          },
+          {
+            "label": "Complete without an approved settlement (e.g. death, no dues)",
+            "meaning": "Complete exit: tick only when there is no settlement to approve.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Enable alumni portal login / Consented to be contacted",
+            "meaning": "Create alumni profile: with Personal email and Phone; both on by default.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Complete exit makes the employee Exited on the last working day and suspends their login. Create alumni profile moves them to Alumni and, with the portal on, gives the login back with only the Alumni role.",
+        "permission": "exit.view to read; exit.manage for case actions; exit.settle for the settlement; exit.interview for interviews; letter.issue for letters; audit.view for History.",
+        "depends": "An open exit case.",
+        "limits": "Accept / reject resignation appears only when your organisation requires acceptance (off in the example organisation). Knowledge transfer cannot be changed after the exit starts.",
+        "source": "app/Filament/Resources/ExitCases/Pages/ViewExitCase.php; RelationManagers/*; app/Filament/Support/ExitActions.php; SeparationActions.php; app/Domain/Exit/Services/{Exits,SeparationDesk,FinalSettlements}.php"
+      },
+      "people/clearances": {
+        "purpose": "One row per clearance stage of every leaver: who must clear it, by when, its status and any amount to recover.",
+        "when": "From a few days before each last working day until every stage is cleared.",
+        "elements": [
+          [
+            "Views",
+            "Open stages, Overdue stages, Blocked stages, Not started (serving notice), Mine to clear, Cleared and not applicable."
+          ],
+          [
+            "Act on all matching",
+            "Bulk Start clearance, or Cancel stages with one reason."
+          ],
+          [
+            "EXIT, LEAVER, LAST WORKING DAY, STAGE, OWNER",
+            "Case, person, last day, stage name and owner (user, role or Unassigned)."
+          ],
+          [
+            "STATUS, DUE, ASSIGNED, EXPECTED, COMPLETED",
+            "Pending, Cleared, Blocked or Not applicable, and the dates (Assigned = clearance started)."
+          ],
+          [
+            "RECOVER, EXIT STATUS",
+            "Amount to recover in the settlement, and the case status."
+          ],
+          [
+            "Clear / Block / Reopen",
+            "Once clearance has started: tick the checklist, amount to recover and remarks; or block with remarks."
+          ],
+          [
+            "Not applicable, Expected date, Attach evidence, Cancel stage",
+            "Close a stage that does not apply, plan it, attach proof, or cancel with a reason."
+          ],
+          [
+            "Roles held, Change manager of the team",
+            "HR stage: hand over the leaver's roles and move their team to a new manager."
+          ]
+        ],
+        "fields": [],
+        "after": "When every stage is cleared or not applicable, the case moves to Settlement and a draft full and final settlement is created.",
+        "permission": "exit.view, exit.manage, exit.settle or exit.clear to open; exit.manage, or exit.clear for a stage you own, to clear or block.",
+        "depends": "Clearance started (Start clearance, or automatically 7 days before the last working day).",
+        "limits": "Mandatory checklist items are not enforced when clearing. In the example organisation the Asset Admin and Payroll Admin roles own stages but lack exit.clear, so HR clears them unless you grant it.",
+        "source": "app/Filament/Resources/ExitClearances/*; app/Domain/Exit/Services/Exits.php (clearStage, blockStage)"
+      },
+      "people/clearance-checklists": {
+        "purpose": "Named sets of checklist items per clearance stage. An exit policy maps one checklist; its items then replace the standard items of each stage it covers.",
+        "when": "When your clearance items differ from the standard ones, for example per company or role.",
+        "elements": [
+          [
+            "New clearance checklist",
+            "Opens the checklist form."
+          ],
+          [
+            "NAME, ITEMS, STATUS",
+            "Checklist name, number of items and active or inactive."
+          ],
+          [
+            "Edit",
+            "Change the items; a reason is recorded."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Name",
+            "meaning": "Checklist name.",
+            "rule": "Required"
+          },
+          {
+            "label": "Status",
+            "meaning": "Active or Inactive. Checklists are never deleted.",
+            "rule": "Required"
+          },
+          {
+            "label": "Description",
+            "meaning": "Up to 500 characters.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Items",
+            "meaning": "At least one: Stage (Manager, IT, Finance, Asset, HR clearance), Item, Due (days before the last day), Mandatory.",
+            "rule": "Required"
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "On edit; recorded in the audit trail.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The checklist is used by exits started after it is mapped in the exit policy (Map clearance checklist); existing cases keep their items.",
+        "permission": "exit.manage.",
+        "depends": "An exit (separation) policy that maps it (M06).",
+        "limits": "Without a checklist the standard items apply. A stage's due date is the last working day minus its largest Due value. The example organisation has none.",
+        "source": "app/Filament/Resources/ClearanceChecklists/*; app/Domain/Exit/Services/Exits.php (buildClearances)"
+      },
+      "people/alumni": {
+        "purpose": "Former employees with an alumni profile, and their open document or reference requests.",
+        "when": "When alumni ask for letters or references, or to find a former employee for rehire.",
+        "elements": [
+          [
+            "CODE, NAME, LAST DESIGNATION",
+            "Former employee code, name, last job title."
+          ],
+          [
+            "EXITED ON, EXIT TYPE",
+            "Exit date (newest first) and type."
+          ],
+          [
+            "REHIRE, PORTAL, OPEN REQUESTS",
+            "Eligible for rehire, portal login enabled, requests waiting (amber)."
+          ],
+          [
+            "Filter: Exit type",
+            "Narrow by exit type."
+          ],
+          [
+            "View / Edit",
+            "Open the profile and its requests; edit contact and flags."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "alumni.view to see; alumni.manage to edit and handle requests.",
+        "depends": "A completed exit with Create alumni profile.",
+        "limits": "Profiles are created only from a completed exit. In the example organisation: Vikram Singh, Finance Analyst, exited 1 Oct 2026.",
+        "source": "app/Filament/Resources/AlumniProfiles/AlumniProfileResource.php"
+      },
+      "people/alumni--view": {
+        "purpose": "One alumnus: profile details, rehire and portal flags, and the Requests tab where you verify, approve and deliver what they asked for.",
+        "when": "When an alumni request comes in, or contact details change.",
+        "elements": [
+          [
+            "Profile",
+            "Code, Last designation, Last department, Exit type, Joined on, Exited on, Personal email, Phone, Rehire, Portal, Contact, Notes."
+          ],
+          [
+            "Edit",
+            "Personal email, Phone, Eligible for rehire, Portal enabled, Consented to contact, Notes."
+          ],
+          [
+            "Requests tab",
+            "ALR numbers with type, details, status, handled by and response."
+          ],
+          [
+            "Verify identity / Approve & generate / Mark delivered / Reject",
+            "Request actions; letters for experience, relieving, employment verification and salary certificate are generated and issued."
+          ],
+          [
+            "History",
+            "The audit trail of the profile."
+          ]
+        ],
+        "fields": [],
+        "after": "Approve & generate issues the letter automatically for letter types; for payslip copies, Form 16, references and other requests you deliver and use Mark delivered with a response.",
+        "permission": "alumni.view to read; alumni.manage for Edit and request actions.",
+        "depends": "Active letter templates of the requested types.",
+        "limits": "Changing Portal enabled here does not change the person's login or roles. The portal needs a sign-in: Vikram Singh has none in the example organisation.",
+        "source": "app/Filament/Resources/AlumniProfiles/*; RelationManagers/RequestsRelationManager.php; app/Domain/Alumni/Services/Alumni.php"
+      },
+      "people/exit-insights": {
+        "purpose": "Exit interview analytics: how many interviews, would recommend and would rejoin, exits by type, reasons for leaving and average ratings.",
+        "when": "Quarterly or before retention reviews.",
+        "elements": [
+          [
+            "Exit interviews",
+            "Submitted interviews, and how many were answered by employees."
+          ],
+          [
+            "Would recommend / Would rejoin",
+            "Percentages from employee answers only."
+          ],
+          [
+            "Exits by type",
+            "Open and completed exits; withdrawn ones are left out."
+          ],
+          [
+            "REASONS FOR LEAVING",
+            "Reason, Employee answers and HR inferred, shown apart."
+          ],
+          [
+            "AVERAGE RATINGS (EMPLOYEE ANSWERS, 1–5)",
+            "One line per rating dimension; — when there is no data."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "exit.interview or exit.view.",
+        "depends": "Exit interviews recorded on exit cases.",
+        "limits": "No date filter or trend chart. In the example organisation the only interview was recorded by HR (Relocation), so recommend, rejoin and ratings show —.",
+        "source": "app/Filament/Pages/ExitInsights.php; resources/views/filament/pages/exit-insights.blade.php"
+      }
+    },
+    "procedures": [
+      {
+        "sub": "9.1",
+        "title": "Initiate an exit (HR)",
+        "before": "exit.manage. The employee is employed and not already serving notice.",
+        "steps": [
+          [
+            "Open",
+            "People › Lifecycle › Exit cases › Initiate exit (or Employee 360 › Action › Initiate exit)."
+          ],
+          [
+            "Who and type",
+            "Employee and Type. For Termination, Absconding or Death the notice is 0 and the last day is today."
+          ],
+          [
+            "Dates",
+            "Resignation / decision date. Check Notice days: it is pre-filled with 30 and replaces the policy's notice unless you change it."
+          ],
+          [
+            "Hand-over",
+            "Knowledge transfer to, Eligible for rehire, Reason."
+          ],
+          [
+            "Save",
+            "The message gives the case number and last working day."
+          ]
+        ],
+        "result": "An exit case in Serving notice, the employee in Notice Period, five clearance stages ready and the manager told.",
+        "screens": [
+          "people/exit-cases"
+        ],
+        "source": "app/Filament/Support/ExitActions.php; app/Domain/Exit/Services/Exits.php (initiate)"
+      },
+      {
+        "sub": "9.1",
+        "title": "Handle an employee's resignation",
+        "before": "The employee resigned from My Day (Resign: Reason for leaving, optional Requested last working day).",
+        "steps": [
+          [
+            "Find it",
+            "Exit cases › Views › Resignations, then Open."
+          ],
+          [
+            "Notice",
+            "Notice days come from the exit policy (60 in the example organisation). A requested last day counts only if earlier than the notice end."
+          ],
+          [
+            "Accept (if used)",
+            "Accept / reject resignation appears only when acceptance is required; otherwise the notice runs at once."
+          ],
+          [
+            "Adjust",
+            "Change last working day (reason required) or Notice relaxation (days not recovered, reason required)."
+          ],
+          [
+            "Withdrawal",
+            "Withdraw resignation with a reason: the case is Withdrawn, open stages become not applicable and the employee is Active."
+          ]
+        ],
+        "result": "A resignation with the right last day and notice shortfall, or a withdrawn case.",
+        "screens": [
+          "people/exit-cases",
+          "people/exit-cases--view"
+        ],
+        "source": "app/Domain/Exit/Services/{Exits,SeparationDesk,ExitWithdrawals}.php; app/Filament/Support/SeparationActions.php"
+      },
+      {
+        "sub": "9.2",
+        "title": "Run clearance",
+        "before": "The case is Serving notice. Stage owners hold exit.clear (or HR clears with exit.manage).",
+        "steps": [
+          [
+            "Start",
+            "Exit case › Start clearance (or wait: it starts 7 days before the last working day). Owners are notified."
+          ],
+          [
+            "Clear a stage",
+            "Clearances › Mine to clear › Clear: tick the checklist, Amount to recover in F&F, Remarks."
+          ],
+          [
+            "Assets",
+            "Asset clearance is refused while assets are held unless an amount to recover is entered."
+          ],
+          [
+            "Block when needed",
+            "Block with remarks tells HR; Reopen when solved."
+          ],
+          [
+            "Not applicable",
+            "HR closes a stage that does not apply, with remarks."
+          ]
+        ],
+        "result": "All five stages cleared or not applicable; the case moves to Settlement with a draft settlement.",
+        "screens": [
+          "people/clearances",
+          "people/exit-cases--view"
+        ],
+        "source": "app/Domain/Exit/Services/Exits.php (startClearance, clearStage); app/Filament/Support/ExitActions.php"
+      },
+      {
+        "sub": "9.2",
+        "title": "Set up your own clearance checklist",
+        "before": "exit.manage; an exit policy you can edit (M06).",
+        "steps": [
+          [
+            "Create",
+            "Clearance checklists › New clearance checklist: Name, Status Active, Description."
+          ],
+          [
+            "Items",
+            "Add an item per task: Stage, Item, Due (days before the last day), Mandatory."
+          ],
+          [
+            "Map it",
+            "In the exit (separation) policy choose it under Map clearance checklist and publish."
+          ]
+        ],
+        "result": "New exits get your items for each stage the checklist covers.",
+        "screens": [
+          "people/clearance-checklists"
+        ],
+        "source": "app/Filament/Resources/ClearanceChecklists/*; Exits::buildClearances"
+      },
+      {
+        "sub": "9.3",
+        "title": "Calculate, approve and pay the full and final settlement",
+        "before": "exit.settle. Leave balances and the final month's attendance are up to date.",
+        "steps": [
+          [
+            "Start",
+            "Exit case › Full & final › Start settlement (or the draft made after clearance) and Calculate."
+          ],
+          [
+            "Read the Breakdown",
+            "Salary to the last day, leave encashment, gratuity, recoveries (notice, assets, loans, advances) and expense reimbursements."
+          ],
+          [
+            "Add lines",
+            "Add line: Earning or Deduction, Name (e.g. notice buy-out, bonus), Amount, Note."
+          ],
+          [
+            "Approve",
+            "Approve freezes the lines and posts the encashed days to the leave ledger."
+          ],
+          [
+            "Pay",
+            "After paying, Mark paid with the Payment reference; loans and advances are closed."
+          ]
+        ],
+        "result": "An approved (then paid) settlement whose net the employee is told about.",
+        "screens": [
+          "people/exit-cases--view"
+        ],
+        "source": "app/Domain/Exit/Services/FinalSettlements.php"
+      },
+      {
+        "sub": "9.3",
+        "title": "Complete the exit and create the alumni profile",
+        "before": "All stages cleared; settlement approved (or no dues). exit.manage.",
+        "steps": [
+          [
+            "Complete",
+            "Exit case › Complete exit; read any hand-over warning; tick Complete without an approved settlement only if there are no dues."
+          ],
+          [
+            "Result",
+            "Exit completed: the employee is Exited on the last working day and their login is suspended."
+          ],
+          [
+            "Letters",
+            "Generate letter: relieving and experience letters; approve and issue them in Letters."
+          ],
+          [
+            "Alumni",
+            "Create alumni profile: Personal email, Phone, Enable alumni portal login, Consented to be contacted."
+          ]
+        ],
+        "result": "A closed exit, issued relieving letters and an alumni profile with portal access if chosen.",
+        "screens": [
+          "people/exit-cases--view",
+          "people/alumni"
+        ],
+        "source": "app/Domain/Exit/Services/Exits.php (complete, createAlumni)"
+      },
+      {
+        "sub": "9.4",
+        "title": "Serve an alumni request",
+        "before": "alumni.manage. The request arrived from the alumni portal (Request a document or reference).",
+        "steps": [
+          [
+            "Open",
+            "Alumni › View the person › Requests tab."
+          ],
+          [
+            "Verify identity",
+            "Optional note."
+          ],
+          [
+            "Approve & generate",
+            "Letter types are generated and issued at once."
+          ],
+          [
+            "Deliver others",
+            "For payslip copies, Form 16, references: send them, then Mark delivered with a response."
+          ]
+        ],
+        "result": "The alumnus sees the status and response under My requests in the portal.",
+        "screens": [
+          "people/alumni--view"
+        ],
+        "source": "app/Domain/Alumni/Services/Alumni.php; RelationManagers/RequestsRelationManager.php"
+      },
+      {
+        "sub": "9.5",
+        "title": "Record an exit interview and read the insights",
+        "before": "exit.interview.",
+        "steps": [
+          [
+            "Record",
+            "Exit case › Record exit interview: Reason for leaving, ratings 1–5, recommend and rejoin, likes and suggestions."
+          ],
+          [
+            "Employee version",
+            "The leaver can fill My exit interview on their own case; one record per exit, the later save replaces the earlier."
+          ],
+          [
+            "Read",
+            "People › Lifecycle › Exit insights: reasons, would recommend, would rejoin, ratings."
+          ]
+        ],
+        "result": "Reasons for leaving split into employee answers and HR inferred.",
+        "screens": [
+          "people/exit-insights",
+          "people/exit-cases--view"
+        ],
+        "source": "app/Domain/Exit/Services/ExitInterviews.php; app/Filament/Pages/ExitInsights.php"
+      }
+    ],
+    "calculations": [
+      {
+        "sub": "9.3",
+        "title": "Full and final settlement of Vikram Singh (real, example organisation)",
+        "intro": "EXIT-2026-00001: resignation 1 Sep 2026, last working day 1 Oct 2026, annual CTC 4,80,000 (40,000 a month). All figures are from the example organisation; the settlement is Approved, not yet paid.",
+        "lines": [
+          [
+            "",
+            "Basic (Oct 2026): 16,000.00 × 1 ÷ 31",
+            "516.13"
+          ],
+          [
+            "+",
+            "House rent allowance (Oct 2026): 8,000.00 × 1 ÷ 31",
+            "258.06"
+          ],
+          [
+            "+",
+            "Conveyance allowance (Oct 2026): 1,600.00 × 1 ÷ 31",
+            "51.61"
+          ],
+          [
+            "+",
+            "Special allowance (Oct 2026): 12,480.00 × 1 ÷ 31",
+            "402.58"
+          ],
+          [
+            "+",
+            "Earned leave encashment: 19.25 days × 533.33",
+            "10,266.60"
+          ],
+          [
+            "=",
+            "Total earnings",
+            "11,494.98"
+          ],
+          [
+            "−",
+            "Provident fund (employee) (Oct 2026): 12% of 516.13, rounded",
+            "62.00"
+          ],
+          [
+            "=",
+            "Total deductions",
+            "62.00"
+          ]
+        ],
+        "total": [
+          "Net amount",
+          "11,432.98"
+        ],
+        "explain": [
+          [
+            "Salary to the last day",
+            "October was not paid in payroll, so it is paid here: 1 paid day of 31 calendar days, each full monthly amount × 1 ÷ 31."
+          ],
+          [
+            "Monthly amounts",
+            "Basic = 40% of monthly CTC; HRA = 50% of basic; conveyance 1,600 fixed; special = CTC − basic − HRA − conveyance − employer PF (1,920)."
+          ],
+          [
+            "Leave encashment",
+            "Encashable paid leave only (Earned leave): 19.25 days available × (basic 16,000 ÷ 30 = 533.33). Basis set by your organisation (basic)."
+          ],
+          [
+            "Gratuity",
+            "No line: the gratuity rule maintained by PeopleOS found the establishment not covered (at most 5 employees, below the threshold of 10)."
+          ],
+          [
+            "Notice",
+            "Notice 30 days, served 30 (1 Sep to 1 Oct): no shortfall, so no recovery line."
+          ],
+          [
+            "Other recoveries",
+            "No assets to recover, loans or expense advances; lines of 0.00 are never added."
+          ],
+          [
+            "Where you see it",
+            "Exit case › Full & final › Breakdown. Approval reduced the Earned leave balance by 19.25 days."
+          ]
+        ],
+        "source": "app/Domain/Exit/Services/FinalSettlements.php (calculate, approve); q.php SELECT … FROM final_settlements / final_settlement_lines JOIN exit_cases WHERE number='EXIT-2026-00001'; leave_balances; employee_salary_assignments"
+      },
+      {
+        "sub": "9.3",
+        "title": "Notice shortfall recovery",
+        "intro": "Days are real: Omar Farooq (EXIT-2026-00002) resigned on 16 Nov 2026 with 60 days' notice (exit policy) and a last working day of 16 Dec 2026. The pay figure is illustrative.",
+        "lines": [
+          [
+            "",
+            "Notice period (exit policy)",
+            "60 days"
+          ],
+          [
+            "−",
+            "Days served (16 Nov → 16 Dec 2026)",
+            "30 days"
+          ],
+          [
+            "−",
+            "Notice relaxation granted",
+            "0 days"
+          ],
+          [
+            "=",
+            "Shortfall",
+            "30 days"
+          ],
+          [
+            "×",
+            "Per-day gross: 38,080.00 ÷ 30 (illustrative gross)",
+            "1,269.33"
+          ]
+        ],
+        "total": [
+          "Deduction \"Notice shortfall (30 days)\" (illustrative)",
+          "38,079.90"
+        ],
+        "explain": [
+          [
+            "Formula",
+            "Shortfall = notice − days served − relaxation, never below 0; recovery = shortfall × (monthly gross ÷ 30, rounded to paise)."
+          ],
+          [
+            "When",
+            "Resignations only, when your organisation recovers notice and the exit policy sets no other rule."
+          ],
+          [
+            "Reduce it",
+            "Notice relaxation, or an earlier last working day agreed with the employee, changes the shortfall."
+          ],
+          [
+            "Important",
+            "With no salary on file (as for Omar in the example organisation) no recovery line is added."
+          ]
+        ],
+        "source": "app/Domain/Exit/Support/NoticeShortfall.php; FinalSettlements.php; q.php exit_cases"
+      }
+    ],
+    "warnings": [
+      {
+        "sub": "9.1",
+        "title": "Check Notice days when you initiate an exit",
+        "level": "warning",
+        "headline": "Initiate exit pre-fills 30 days from the organisation setting, not the exit policy.",
+        "body": "The value you leave in Notice days is used. In the example organisation the policy says 60 days. The Resign window also tells employees 30 days, while their notice comes from the policy.",
+        "points": [
+          "Clear or correct Notice days before saving.",
+          "Employees cannot set a later last day than the end of notice.",
+          "Notice buy-out in the policy has no automatic effect: add it with Add line."
+        ],
+        "todo": "Agree the notice with the leaver and correct the last working day on the case."
+      },
+      {
+        "sub": "9.2",
+        "title": "Who can clear each stage",
+        "level": "important",
+        "headline": "A stage owner needs exit.clear; otherwise HR clears it.",
+        "body": "IT and Asset stages go to the Asset Admin role, Finance to Payroll Admin, HR to Tenant HR Admin, and Manager to the leaver's manager. In the example organisation Asset Admin and Payroll Admin do not hold exit.clear.",
+        "points": [
+          "Grant exit.clear to the owner roles (M05), or clear the stages as HR.",
+          "Mandatory checklist items are not enforced: check them yourself.",
+          "Assets still held block the Asset clearance stage unless you record an amount to recover."
+        ],
+        "todo": "Review the owner roles before the first exit."
+      },
+      {
+        "sub": "9.3",
+        "title": "The order of settlement and completion",
+        "level": "warning",
+        "headline": "Approve the settlement before completing; nothing stops completion before the last day.",
+        "body": "A settlement can be calculated and approved before clearance finishes. Complete exit needs every stage cleared and an approved settlement, but it can run before the last working day and suspends the login at once.",
+        "points": [
+          "Complete the exit on or after the last working day.",
+          "Once the settlement is approved, the last working day and relaxation cannot change.",
+          "Recalculate if the final month's payroll was closed after calculating."
+        ],
+        "todo": "Follow the exit checklist below."
+      },
+      {
+        "sub": "9.4",
+        "title": "Alumni are not created automatically",
+        "level": "important",
+        "headline": "After Complete exit, use Create alumni profile.",
+        "body": "The profile, the Alumni state and the portal login come only from Create alumni profile. The portal needs the person to have a sign-in.",
+        "points": [
+          "Portal enabled on the profile does not switch the login on or off later.",
+          "Withdrawing a resignation returns the employee to Active, not to Probation: correct it with Change lifecycle state."
+        ],
+        "todo": "Create the alumni profile the day you complete the exit."
+      }
+    ],
+    "troubleshooting": [
+      [
+        "\"An exit is already in progress for this employee.\"",
+        "An open case exists.",
+        "Open that case from Exit cases.",
+        ""
+      ],
+      [
+        "\"Only current employees can be exited.\"",
+        "The person is a pre-joiner, exited or alumni.",
+        "For a pre-joiner use Mark as not joining.",
+        ""
+      ],
+      [
+        "Initiate exit is missing on the Employee 360",
+        "The person is in Notice Period, has an open case or is not employed.",
+        "Open the existing case.",
+        ""
+      ],
+      [
+        "\"Clearance has not started for this exit.\"",
+        "The case is still Serving notice.",
+        "Click Start clearance, or wait until 7 days before the last day.",
+        ""
+      ],
+      [
+        "Clear and Block are not shown",
+        "Clearance has not started, or you lack exit.clear or do not own the stage.",
+        "Start clearance, or ask HR to clear it.",
+        ""
+      ],
+      [
+        "\"Assets still in custody: … Take them back, or record a recoverable amount.\"",
+        "Assets are still assigned to the leaver.",
+        "Return them in Assets, or enter Amount to recover in F&F.",
+        ""
+      ],
+      [
+        "\"All clearance stages must be cleared first.\"",
+        "A stage is pending or blocked.",
+        "Clear it or mark it Not applicable.",
+        ""
+      ],
+      [
+        "\"The full & final settlement must be approved first.\"",
+        "Completion needs an approved settlement.",
+        "Approve it, or tick Complete without an approved settlement when there are no dues.",
+        ""
+      ],
+      [
+        "\"An approved settlement cannot be recalculated.\"",
+        "Lines are frozen after approval.",
+        "Settle differences outside, or before approving next time.",
+        ""
+      ],
+      [
+        "\"Payroll for … was closed after this settlement was calculated …\"",
+        "The final month was paid in payroll after you calculated.",
+        "Recalculate, then approve.",
+        ""
+      ],
+      [
+        "\"The full & final settlement is already approved.\" when changing the last day",
+        "Dates are frozen with the settlement.",
+        "Change dates before approving.",
+        ""
+      ],
+      [
+        "\"Only a resignation that is still open can be withdrawn.\"",
+        "Not a resignation, or already in settlement or completed.",
+        "Withdrawal is possible only in notice or clearance.",
+        ""
+      ],
+      [
+        "\"Complete the exit before creating the alumni profile.\"",
+        "The case is still open.",
+        "Complete the exit first.",
+        ""
+      ],
+      [
+        "Alumni request: \"No active letter template of that type.\"",
+        "No active template for that letter type; the request stays Approved.",
+        "Activate a template, generate the letter in Letters, then Mark delivered.",
+        ""
+      ],
+      [
+        "An alumnus cannot open the portal",
+        "No sign-in, portal not enabled, or no Alumni role.",
+        "Invite them from Users and check the profile's Portal.",
+        ""
+      ]
+    ],
+    "checklist": [
+      [
+        "Case started",
+        "Right type, resignation date, notice days and last working day."
+      ],
+      [
+        "Notice",
+        "Shortfall checked; relaxation or an earlier last day agreed and recorded."
+      ],
+      [
+        "Hand-over",
+        "Knowledge transfer named; team moved to a new manager; roles handed over."
+      ],
+      [
+        "Clearance",
+        "All five stages cleared or not applicable; assets returned or recovery recorded."
+      ],
+      [
+        "Exit interview",
+        "Recorded by the leaver or HR."
+      ],
+      [
+        "Settlement",
+        "Calculated after the last attendance and leave; manual lines added; approved; paid with a reference."
+      ],
+      [
+        "Letters",
+        "Relieving and experience letters approved and issued."
+      ],
+      [
+        "Completion",
+        "Complete exit on or after the last working day (login suspended)."
+      ],
+      [
+        "Alumni",
+        "Alumni profile created with portal access if wanted."
+      ]
+    ],
+    "summary": [
+      "Every exit is a case: Serving notice → Clearance → Settlement → Completed.",
+      "Notice comes from the exit policy; check Notice days when HR initiates an exit.",
+      "Five clearance stages; unreturned assets block the Asset stage unless a recovery is recorded.",
+      "Full and final adds salary to the last day, encashment, gratuity, recoveries and reimbursements.",
+      "Complete exit needs all stages cleared and an approved settlement, and suspends the login.",
+      "Create the alumni profile yourself; alumni request letters through the portal."
+    ],
+    "captures_needed": [
+      {
+        "title": "Initiate exit modal",
+        "url": "/admin/exit-cases",
+        "how": "Click Initiate exit; choose Karan Mehta and Type Resignation (do not save)."
+      },
+      {
+        "title": "Exit case in notice with shortfall",
+        "url": "/admin/exit-cases/2",
+        "how": "Open Omar Farooq's case; show Notice shortfall and the Relieving review."
+      },
+      {
+        "title": "Change last working day modal",
+        "url": "/admin/exit-cases/2",
+        "how": "Header action Change last working day (do not save)."
+      },
+      {
+        "title": "Full & final Breakdown",
+        "url": "/admin/exit-cases/1",
+        "how": "Full & final tab › Breakdown on Vikram Singh's settlement."
+      },
+      {
+        "title": "Clear stage modal",
+        "url": "/admin/exit-clearances",
+        "how": "Needs a case in Clearance: in a disposable copy start clearance on Omar's case and open Clear on Asset clearance."
+      },
+      {
+        "title": "Complete exit confirmation",
+        "url": "/admin/exit-cases/2",
+        "how": "Only in a disposable copy after clearance and approval: open Complete exit."
+      },
+      {
+        "title": "Alumni portal",
+        "url": "/admin/alumni-portal",
+        "how": "Sign in as an alumnus with portal access (none exists in the example organisation)."
+      }
+    ],
+    "gaps": [
+      "Vikram Singh has no sign-in, so the alumni portal could not be shown with real data.",
+      "The Accept / reject resignation and withdrawal approval steps are switched off in the example organisation and were described from code.",
+      "Clear, Block and Complete exit modals were not captured: no case is in Clearance in the example organisation.",
+      "Gratuity amounts were not shown: the only settlement is not covered by the gratuity rule.",
+      "The F&F column and Exit interview field show raw status words (e.g. approved, submitted) rather than labels."
+    ]
+  }
+}

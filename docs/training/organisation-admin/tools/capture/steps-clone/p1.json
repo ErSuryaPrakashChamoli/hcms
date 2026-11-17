@@ -1,0 +1,9 @@
+[
+ { "flow": "m13-october-run", "module": "M13", "as": "admin@demo.local", "steps": [
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=attendance" }, { "wait": 6000 }, { "snap": { "id": "02-attendance", "screen": "Run payroll: 2 Attendance", "path": "People › Pay › Run payroll", "full": true, "labels": ["Process attendance"] } },
+   { "click": "Process attendance", "within": "main", "after": 12000 }, { "snap": { "id": "03-attendance-processed", "screen": "Run payroll: attendance processed", "path": "People › Pay › Run payroll › Process attendance", "full": true } } ] },
+ { "flow": "m13-october-start", "module": "M13", "as": "arjun.bose@demo.local", "steps": [
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=checks" }, { "wait": 7000 }, { "snap": { "id": "04-pre-payroll-checks", "screen": "Run payroll: 3 Pre-payroll checks", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-10&step=calculate" }, { "wait": 6000 }, { "snap": { "id": "05-start-month", "screen": "Run payroll: 4 Run payroll (month not started)", "path": "People › Pay › Run payroll", "full": true, "labels": ["Start Oct 2026"] } },
+   { "click": "Start Oct 2026", "within": "main", "after": 20000 }, { "snap": { "id": "06-calculated", "screen": "Run payroll: 4 Run payroll (calculated)", "path": "People › Pay › Run payroll › Start", "full": true } } ] }
+]

@@ -202,12 +202,24 @@ final class Website
         }, 'pages', "Page /{$slug} removed");
     }
 
-    /** Publish the draft: it becomes the live site and the previous live copy becomes history. */
+    /**
+     * Whether Publish has something to do: a draft, or (on a fresh server where nothing was ever published) the default
+     * site, so the first publish does not need a throw-away edit first.
+     */
+    public function canPublish(): bool
+    {
+        return $this->draftRevision() !== null || $this->live() === null;
+    }
+
+    /** Publish the draft (or the default site, on the first publish): it becomes the live site and the previous live copy becomes history. */
     public function publish(User $actor, ?string $note = null): WebsiteRevision
     {
         $revision = $this->locked(function () use ($actor, $note) {
             return DB::transaction(function () use ($actor, $note) {
                 $draft = WebsiteRevision::query()->where('status', RevisionStatus::Draft->value)->oldest('id')->lockForUpdate()->first();
+                if ($draft === null && WebsiteRevision::query()->where('status', RevisionStatus::Published->value)->doesntExist()) {
+                    $draft = WebsiteRevision::query()->create(['status' => RevisionStatus::Draft, 'content' => SiteContent::normalise(SiteDefaults::content()), 'created_by' => $actor->id, 'updated_by' => $actor->id]);
+                }
                 if ($draft === null) {
                     throw new InvalidArgumentException('There are no unpublished changes.');
                 }

@@ -1,0 +1,24 @@
+[
+ { "flow": "m13-run-payroll", "module": "M13", "steps": [
+   { "goto": "/admin/run-payroll?company=1&month=2026-11&step=month" }, { "snap": { "id": "01-pay-month", "screen": "Run payroll: 1 Pay month", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-11&step=attendance" }, { "snap": { "id": "02-attendance", "screen": "Run payroll: 2 Attendance", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-11&step=checks" }, { "wait": 2500 }, { "snap": { "id": "03-pre-payroll-checks", "screen": "Run payroll: 3 Pre-payroll checks", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-11&step=calculate" }, { "snap": { "id": "04-run-payroll", "screen": "Run payroll: 4 Run payroll", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-11&step=approve" }, { "snap": { "id": "05-review-approve", "screen": "Run payroll: 5 Review and approve", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-11&step=close" }, { "snap": { "id": "06-close", "screen": "Run payroll: 6 Close payroll", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-11&step=publish" }, { "snap": { "id": "07-publish", "screen": "Run payroll: 7 Publish payslips", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=1&month=2026-11&step=pay" }, { "snap": { "id": "08-pay", "screen": "Run payroll: 8 Pay", "path": "People › Pay › Run payroll", "full": true } },
+   { "goto": "/admin/run-payroll?company=2&month=2026-10&step=calculate" }, { "snap": { "id": "09-month-not-started", "screen": "Run payroll: a month not started yet", "path": "People › Pay › Run payroll", "full": true } } ] },
+ { "flow": "m13-run-view", "module": "M13", "steps": [ { "goto": "/admin/payroll-runs/1" },
+   { "click": "Recalculate", "within": "main", "after": 1200 }, { "snap": { "id": "01-recalculate-dialog", "screen": "Recalculate: confirmation", "path": "People › Pay › Payroll runs › a run › Recalculate" } },
+   { "press": "Escape", "after": 800 }, { "click": "Validate", "within": "main", "after": 2000 },
+   { "snap": { "id": "02-validate-refused", "screen": "Validate: refused while exceptions block", "path": "People › Pay › Payroll runs › a run › Validate" } } ] },
+ { "flow": "m13-breakdown", "module": "M13", "steps": [ { "goto": "/admin/payroll-runs/1" }, { "scrollTo": "Employees" }, { "clickRow": { "row": "EMP00003", "action": "Breakdown" } },
+   { "snap": { "id": "01-employee-breakdown", "screen": "One employee's payroll breakdown", "path": "People › Pay › Payroll runs › a run › Employees › Breakdown" } } ] },
+ { "flow": "m13-overview", "module": "M13", "steps": [ { "goto": "/admin/payroll-control-room" }, { "wait": 2500 }, { "snap": { "id": "01-payroll-overview", "screen": "Payroll overview: before you run payroll", "path": "People › Pay › Payroll overview", "full": true } } ] },
+ { "flow": "m13-auditor", "module": "M13", "steps": [ { "goto": "/admin/payroll-auditor" }, { "wait": 2000 }, { "snap": { "id": "01-payroll-auditor", "screen": "Payroll Auditor findings", "path": "People › Pay › Payroll Auditor", "full": true } } ] },
+ { "flow": "m13-loan", "module": "M13", "steps": [ { "goto": "/admin/loans/2" }, { "snap": { "id": "01-loan", "screen": "A loan and its instalments", "path": "People › Pay › Loans & advances › a loan", "full": true } } ] },
+ { "flow": "m13-hold", "module": "M13", "steps": [ { "goto": "/admin/salary-holds" }, { "click": "Hold salary", "after": 1500 }, { "snap": { "id": "01-hold-salary", "screen": "Hold an employee's salary", "path": "People › Pay › Salary holds › Hold salary" } } ] },
+ { "flow": "m13-adjustment", "module": "M13", "steps": [ { "goto": "/admin/payroll-adjustments" }, { "click": "New payroll adjustment", "after": 1500 }, { "snap": { "id": "01-new-adjustment", "screen": "New payroll adjustment", "path": "People › Pay › Adjustments › New", "full": true } } ] },
+ { "flow": "m13-upload", "module": "M13", "steps": [ { "goto": "/admin/payroll-uploads" }, { "click": "Upload CSV", "after": 1500 }, { "snap": { "id": "01-upload-csv", "screen": "Payroll uploads: upload a CSV", "path": "People › Pay › Payroll uploads › Upload CSV" } } ] }
+]

@@ -1,0 +1,3656 @@
+{
+  "M10": {
+    "intro": "Attendance and time office turns punches, shifts, weekly offs, holidays, leave and HR corrections into one processed record per employee per day. Those days give the paid days and loss of pay that payroll uses.",
+    "why": "Payroll reads only processed attendance days. A missing punch, a missing shift or an unprocessed day silently changes what people are paid, so the month must be checked and processed before payroll.",
+    "who": "Tenant Super Admin and Tenant HR Admin hold every attendance right. Attendance Admin runs the time office. HR Manager and Manager view and approve. Payroll Admin and Auditor only view. Employees raise their own requests.",
+    "where": "People › Time & leave (Time office desk, Attendance records, Run attendance, Paid days and the other screens). Settings: Admin › Setup › Time office. Attendance policy: Workflows › Policies.",
+    "objectives": [
+      "Set up shifts, work schedules, rosters and holiday calendars so every employee has a shift and the right days off.",
+      "Explain how a day's status, late minutes, overtime and the month's paid days are worked out, and correct a day the right way.",
+      "Close an attendance month for payroll: decide requests, clear missed punches, process the month and check paid days."
+    ],
+    "depends_on": [
+      "M07 Employees: an employee needs a joining date, a company and an employee code that matches the device",
+      "M06 Workflows and policies: the attendance, overtime, time-office and check-in policies set grace, regularisation windows and approvals",
+      "M11 Leave: approved leave decides the day before punches do",
+      "M13 Payroll: payroll takes loss of pay from processed attendance and, when set to, waits for the month to be processed"
+    ],
+    "subs": [
+      {
+        "id": "10.1",
+        "name": "Shifts, schedules and holidays",
+        "desc": "The working pattern every day is measured against.",
+        "screens": [
+          "people/shifts",
+          "people/shifts--create",
+          "people/shifts--edit",
+          "people/work-schedules",
+          "people/work-schedules--create",
+          "people/work-schedules--edit",
+          "people/holiday-calendars",
+          "people/holiday-calendars--create",
+          "people/holiday-calendars--edit",
+          "people/holiday-changes"
+        ]
+      },
+      {
+        "id": "10.2",
+        "name": "Rosters",
+        "desc": "Day-by-day shifts and weekly offs that override the schedule.",
+        "screens": [
+          "people/roster-board",
+          "people/shift-roster"
+        ]
+      },
+      {
+        "id": "10.3",
+        "name": "Capturing attendance",
+        "desc": "Devices, web and mobile check-ins, geo locations and uploads that bring punches in.",
+        "screens": [
+          "people/devices",
+          "people/check-in-devices",
+          "people/geo-work-locations",
+          "people/location-requests",
+          "people/geo-dashboard",
+          "people/punches",
+          "people/punch-imports",
+          "people/monthly-attendance-uploads",
+          "people/time-office-uploads"
+        ]
+      },
+      {
+        "id": "10.4",
+        "name": "Daily review and corrections",
+        "desc": "Find days that need attention and correct them through requests or overrides.",
+        "screens": [
+          "people/time-office-desk",
+          "people/attendance-records",
+          "people/exception-centre",
+          "people/attendance-calendar",
+          "people/regularisations",
+          "people/regularisations--view",
+          "people/time-office-requests",
+          "people/day-overrides",
+          "people/change-attendance-status"
+        ]
+      },
+      {
+        "id": "10.5",
+        "name": "Month end for payroll",
+        "desc": "Process the month, check paid days, penalties and arrears.",
+        "screens": [
+          "people/run-attendance",
+          "people/paid-days",
+          "people/late-mark-penalties",
+          "people/attendance-arrears"
+        ]
+      }
+    ],
+    "screens": {
+      "people/time-office-desk": {
+        "purpose": "Your starting point for the time office: every attendance and leave register grouped in the order HR works through them, with counts of what is waiting.",
+        "when": "At the start of each working day, to see what is waiting and open the right register.",
+        "elements": [
+          [
+            "Needs a look",
+            "Total of requests and items waiting across the registers you can open (336 in the example organisation)."
+          ],
+          [
+            "Shift",
+            "Shift rosters, the Roster board and shift or week-off change requests."
+          ],
+          [
+            "Checkins",
+            "Punches, regularisation, on-duty and location requests, geo work locations and check-in devices."
+          ],
+          [
+            "Overtime & comp off",
+            "Overtime claims, overtime waiting for approval on attendance days, comp-off claims."
+          ],
+          [
+            "Attendance",
+            "Attendance, calendar, Run attendance, Paid days, Exception centre, overrides, penalties and arrears."
+          ],
+          [
+            "Leave",
+            "Leave requests and cancellations, balances, transactions, encashments, short leave, donations, carry forward."
+          ],
+          [
+            "Holiday",
+            "Holiday calendars, holiday changes and restricted holiday requests."
+          ],
+          [
+            "Reports and uploads / Time office setup",
+            "Report library, uploads and bulk runs; shifts, work schedules, leave types, policies and devices."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view or leave.view, plus any time-office right (for example attendance.manage, attendance.process, leave.manage). Each entry shows only if you can open it.",
+        "depends": null,
+        "limits": null,
+        "source": "app/Filament/Pages/TimeOfficeDesk.php"
+      },
+      "people/shifts": {
+        "purpose": "Lists your shifts: the timings, grace and minute thresholds that decide whether a day is present, late, a half day or overtime.",
+        "when": "When you set up the time office, or when a new working timing is needed.",
+        "elements": [
+          [
+            "New shift",
+            "Opens the shift wizard."
+          ],
+          [
+            "Timing",
+            "Start and end time of a fixed shift, or the hours of a flexible one."
+          ],
+          [
+            "Full day",
+            "Worked time that makes a full day, shown in hours (8 h in the example organisation)."
+          ],
+          [
+            "Grace",
+            "Minutes after the start before a check-in is marked late."
+          ],
+          [
+            "OT",
+            "Whether time beyond the full day can become overtime."
+          ],
+          [
+            "Edit",
+            "Opens the shift in the same steps to change it."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view to see; attendance.manage to create, change or delete.",
+        "depends": null,
+        "limits": "A changed shift also changes any old day you reprocess with it. For a new timing from a date, create a new shift and move the schedule or roster to it.",
+        "source": "app/Filament/Resources/Shifts/ShiftResource.php; app/Domain/Attendance/Services/AttendanceProcessor.php"
+      },
+      "people/shifts--create": {
+        "purpose": "A step wizard that defines a shift: its timing, the minutes for a full and a half day, grace, absence criteria, breaks and overtime.",
+        "when": "Once for each working timing your organisation uses (the example organisation has General, Night and Flexible).",
+        "elements": [
+          [
+            "Shift",
+            "Name, code, colour, type and timing."
+          ],
+          [
+            "Hours and thresholds",
+            "Full day, half day, break and grace minutes; when a check-in starts to count."
+          ],
+          [
+            "Absence criteria",
+            "Optional: a very late check-in or early check-out makes a half or the whole day absent."
+          ],
+          [
+            "Advanced",
+            "Time not counted before the start or after a cut-off, and which requests this shift allows."
+          ],
+          [
+            "Breaks",
+            "Named breaks; unpaid ones are taken off worked time."
+          ],
+          [
+            "Overtime",
+            "Whether the shift earns overtime and the minimum minutes."
+          ],
+          [
+            "Effective dates",
+            "When the shift is in use."
+          ],
+          [
+            "Review",
+            "Check the details before you create the shift."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Name",
+            "meaning": "Name people see, for example General (09:00–18:00).",
+            "rule": "Required"
+          },
+          {
+            "label": "Code",
+            "meaning": "Short unique code shown on the calendar and roster, for example GEN.",
+            "rule": "Required"
+          },
+          {
+            "label": "Shift colour",
+            "meaning": "Colour of the shift on the roster board and calendar.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Type",
+            "meaning": "Fixed timing (start and end) or Flexible (hours only: no late or early marks).",
+            "rule": "Required"
+          },
+          {
+            "label": "Start time",
+            "meaning": "When the shift starts. Shown for Fixed timing.",
+            "rule": "Required"
+          },
+          {
+            "label": "End time",
+            "meaning": "When the shift ends. Shown for Fixed timing.",
+            "rule": "Required"
+          },
+          {
+            "label": "Ends next day",
+            "meaning": "Turn on for a shift that ends after midnight, such as 22:00–07:00.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Timezone",
+            "meaning": "Used only when the employee's work location has no timezone.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Status",
+            "meaning": "Active shifts can be used in schedules and rosters.",
+            "rule": "Required"
+          },
+          {
+            "label": "Full day (minutes)",
+            "meaning": "Worked minutes needed for Present (480 by default).",
+            "rule": "Required"
+          },
+          {
+            "label": "Half day (minutes)",
+            "meaning": "Half-day threshold (240 by default).",
+            "rule": "Required"
+          },
+          {
+            "label": "Break (minutes)",
+            "meaning": "Unpaid break taken off worked time when no named breaks are set (60 by default).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Grace in (minutes)",
+            "meaning": "Lateness allowed before a check-in is late. An attendance policy's Grace (minutes) takes priority.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Grace out (minutes)",
+            "meaning": "Early leaving allowed before it is marked (0 by default).",
+            "rule": "Optional"
+          },
+          {
+            "label": "First half lasts (minutes)",
+            "meaning": "Length of the first half; blank means half of the shift.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Check-in counts from (minutes before the start)",
+            "meaning": "Earliest punch that counts for the day; blank uses the organisation's punch window (4 hours).",
+            "rule": "Optional"
+          },
+          {
+            "label": "No check-in within N minutes of the start: first half absent",
+            "meaning": "A later first check-in makes the first half absent.",
+            "rule": "Optional"
+          },
+          {
+            "label": "No check-in within N minutes of the start: absent",
+            "meaning": "A later first check-in makes the whole day absent.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Check-out N minutes or more before the end: second half absent",
+            "meaning": "An earlier last check-out makes the second half absent.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Do not count time before the shift starts",
+            "meaning": "Early arrival does not add worked time.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Do not count time after",
+            "meaning": "Cut-off time; work after it is not counted.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Employees can request this shift",
+            "meaning": "Offered in shift change requests.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Short leave allowed on this shift",
+            "meaning": "Off: short leave requests on this shift are refused.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Regularisation allowed on this shift",
+            "meaning": "Off: regularisation requests on this shift are refused.",
+            "rule": "Optional"
+          },
+          {
+            "label": "On duty allowed on this shift",
+            "meaning": "Off: on-duty requests on this shift are refused.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Leave allowed on this shift",
+            "meaning": "Off: leave requests on days of this shift are refused.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Days on this shift earn the shift allowance",
+            "meaning": "Counts days for the shift allowance set in the attendance policy.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Breaks (Name, Starts, Minutes, Paid)",
+            "meaning": "Named breaks; unpaid ones are deducted from worked time, paid ones are not.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Overtime eligible",
+            "meaning": "Time beyond the full day can become overtime.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Minimum overtime (minutes)",
+            "meaning": "Less extra time than this is not overtime (30 by default).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Effective from / Effective to",
+            "meaning": "Dates the shift is in use.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The shift is saved and recorded in the audit trail. It is used once a work schedule or a roster puts employees on it.",
+        "permission": "attendance.manage",
+        "depends": null,
+        "limits": "One start and one end per shift: split shifts are not available.",
+        "source": "app/Filament/Resources/Shifts/ShiftResource.php; app/Domain/Attendance/Services/AttendanceProcessor.php"
+      },
+      "people/shifts--edit": {
+        "purpose": "Change an existing shift in the same steps as the wizard; every change is listed for review and recorded in the audit trail.",
+        "when": "When a threshold, break or overtime rule of a shift must change.",
+        "elements": [
+          [
+            "Steps 01–08",
+            "Shift, Hours and thresholds, Absence criteria, Advanced, Breaks, Overtime, Effective dates, Review."
+          ],
+          [
+            "More",
+            "Further actions for the shift, such as deleting it."
+          ],
+          [
+            "Review",
+            "Lists your changes before you save; add a Reason for change."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "All fields of the New shift wizard",
+            "meaning": "Same fields and rules as when the shift was created.",
+            "rule": null
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "Why you change the shift; kept in the audit trail with the before and after values.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Saved. Days already processed keep their values until they are processed again; then the new values apply.",
+        "permission": "attendance.manage",
+        "depends": null,
+        "limits": "Reprocessing an earlier day uses the shift as it is now, not as it was. Prefer a new shift for a change that starts on a date.",
+        "source": "app/Filament/Resources/Shifts/Pages/EditShift.php; docs/architecture/attendance-architecture.md §4"
+      },
+      "people/work-schedules": {
+        "purpose": "Weekly or rotating patterns that say which shift each employee works on each weekday and which days are weekly offs.",
+        "when": "When you set up the time office, and whenever a group of employees gets a different week.",
+        "elements": [
+          [
+            "New work schedule",
+            "Opens the schedule wizard."
+          ],
+          [
+            "Type",
+            "Weekly, or an N-week rotation."
+          ],
+          [
+            "Days/week",
+            "Working days in the first week of the pattern."
+          ],
+          [
+            "Assigned",
+            "Employees given this schedule individually."
+          ],
+          [
+            "Rules",
+            "Applies to rules that give the schedule to groups of employees."
+          ],
+          [
+            "Edit",
+            "Change the pattern or its Applies to rules."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view to see; attendance.manage to change.",
+        "depends": "Shifts.",
+        "limits": "Someone with no schedule (individual or by rule) and no rostered day has no shift: working days are processed as Absent with 'No shift assigned'.",
+        "source": "app/Filament/Resources/WorkSchedules/WorkScheduleResource.php; app/Domain/Attendance/Services/ShiftResolver.php"
+      },
+      "people/work-schedules--create": {
+        "purpose": "A step wizard that builds a weekly pattern of shifts and weekly offs; several weeks make a rotation.",
+        "when": "When a group of employees works a different week, for example six days or alternate Saturdays.",
+        "elements": [
+          [
+            "Schedule",
+            "Name, code, status and the effective dates."
+          ],
+          [
+            "Weekly pattern",
+            "One row per week, a shift for each day; an empty day is a weekly off."
+          ],
+          [
+            "Automatic shift correction",
+            "Optional: each day takes the listed shift whose start is nearest the first punch."
+          ],
+          [
+            "Review",
+            "Check the schedule before creating it."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Name",
+            "meaning": "Name of the schedule, for example Monday to Friday.",
+            "rule": "Required"
+          },
+          {
+            "label": "Code",
+            "meaning": "Short unique code, for example MON_FRI.",
+            "rule": "Required"
+          },
+          {
+            "label": "Status",
+            "meaning": "Only active schedules are used.",
+            "rule": "Required"
+          },
+          {
+            "label": "Effective from",
+            "meaning": "When it starts; also where a rotation is counted from when no individual assignment exists.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Effective to",
+            "meaning": "When it ends.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Weeks (Mon … Sun)",
+            "meaning": "Pick a shift for each day; leave a day as Off for a weekly off. Add weeks to rotate.",
+            "rule": "Required"
+          },
+          {
+            "label": "Shifts to choose from",
+            "meaning": "Shifts the day may switch to by the first punch (automatic shift correction).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Also on weekly offs and holidays",
+            "meaning": "Apply the automatic correction on off days too.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Saved. It applies only once you add an Applies to rule on its edit screen or assign it to employees.",
+        "permission": "attendance.manage",
+        "depends": "At least one active shift.",
+        "limits": null,
+        "source": "app/Filament/Resources/WorkSchedules/WorkScheduleResource.php"
+      },
+      "people/work-schedules--edit": {
+        "purpose": "Change a schedule's pattern and decide who follows it through its Applies to rules.",
+        "when": "After creating a schedule, and when the groups that follow it change.",
+        "elements": [
+          [
+            "Steps 01–04",
+            "Schedule, Weekly pattern, Automatic shift correction, Review."
+          ],
+          [
+            "Applies to",
+            "Rules (conditions on company, location, department and more) that give this schedule to employees."
+          ],
+          [
+            "New work schedule rule",
+            "Name, Priority, Status, Effective from / to and the IF conditions."
+          ],
+          [
+            "Priority",
+            "The lowest number wins when several rules match (the example's Everyone rule is 100)."
+          ],
+          [
+            "History",
+            "Audit history of the schedule."
+          ],
+          [
+            "More",
+            "Further actions, such as deleting."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "All fields of the New work schedule wizard",
+            "meaning": "Same fields and rules as at creation.",
+            "rule": null
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "Kept in the audit trail.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Saved. Days are worked out with the new pattern when they are next processed.",
+        "permission": "attendance.manage",
+        "depends": null,
+        "limits": null,
+        "source": "app/Filament/Resources/WorkSchedules/RelationManagers/RulesRelationManager.php; app/Domain/Attendance/Services/ShiftResolver.php"
+      },
+      "people/holiday-calendars": {
+        "purpose": "Your holiday calendars. Each holds the year's holidays and Applies to rules that decide who follows it.",
+        "when": "Before each year starts, and when you open a site that follows other holidays.",
+        "elements": [
+          [
+            "New holiday calendar",
+            "Opens the calendar wizard."
+          ],
+          [
+            "Year",
+            "The year the calendar is for (blank = any)."
+          ],
+          [
+            "Holidays",
+            "Number of holidays in the calendar."
+          ],
+          [
+            "Rules",
+            "Number of Applies to rules."
+          ],
+          [
+            "Status",
+            "Only active calendars are used."
+          ],
+          [
+            "Edit",
+            "Add holidays and rules."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view to see; attendance.manage to change.",
+        "depends": null,
+        "limits": "Create from holiday library appears only when PeopleOS has published holiday lists; the example organisation has none, so add holidays by hand.",
+        "source": "app/Filament/Resources/HolidayCalendars/HolidayCalendarResource.php; app/Filament/Resources/HolidayCalendars/Pages/ListHolidayCalendars.php"
+      },
+      "people/holiday-calendars--create": {
+        "purpose": "A step wizard to create a holiday calendar and decide how optional (restricted) holidays work in it.",
+        "when": "Once a year per holiday list, for example National holidays 2026.",
+        "elements": [
+          [
+            "Calendar",
+            "Name, code, year, status and a note for employees."
+          ],
+          [
+            "Restricted holidays",
+            "Whether optional holidays must be chosen by each employee, and the yearly quota."
+          ],
+          [
+            "Review",
+            "Check before creating; you then add holidays on the edit screen."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Name",
+            "meaning": "Calendar name, for example National holidays 2026.",
+            "rule": "Required"
+          },
+          {
+            "label": "Code",
+            "meaning": "Short unique code, for example NAT_2026.",
+            "rule": "Required"
+          },
+          {
+            "label": "Year",
+            "meaning": "The calendar's year; blank means any year.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Status",
+            "meaning": "Active calendars are used.",
+            "rule": "Required"
+          },
+          {
+            "label": "Note for employees",
+            "meaning": "Shown under the holiday list employees see on My holidays.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Optional holidays must be chosen by each employee",
+            "meaning": "On: an optional holiday is a holiday only for people with an approved restricted holiday request.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Optional holidays an employee may choose per year",
+            "meaning": "Restricted holiday quota; blank = no limit.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Quota for employees joining in the year",
+            "meaning": "From month, To month and Quota rows for joiners.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Cannot cancel a restricted holiday once attendance is processed",
+            "meaning": "Tick Employee, Manager or HR.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Allow restricted holidays on days without a shift",
+            "meaning": "On by default.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The calendar is created and the edit screen opens, where you add holidays (Holidays tab) and say who it applies to (Applies to tab).",
+        "permission": "attendance.manage",
+        "depends": null,
+        "limits": null,
+        "source": "app/Filament/Resources/HolidayCalendars/HolidayCalendarResource.php; app/Filament/Resources/HolidayCalendars/Pages/CreateHolidayCalendar.php"
+      },
+      "people/holiday-calendars--edit": {
+        "purpose": "Maintain a calendar: its details, its holidays and the Applies to rules that decide whose days off they are.",
+        "when": "After creating a calendar, and whenever a holiday is added, moved or removed.",
+        "elements": [
+          [
+            "Holidays",
+            "The holidays: Date, Name, Type, Half day, Source. Add, edit or delete them here."
+          ],
+          [
+            "New holiday",
+            "Date, Name, Type (Public holiday, Optional / restricted holiday, Company holiday) and Half day."
+          ],
+          [
+            "Applies to",
+            "Rules (Name, Priority, Status, IF conditions). The example's Everyone rule covers all employees."
+          ],
+          [
+            "History",
+            "Audit history of the calendar."
+          ],
+          [
+            "Steps 01–03",
+            "Calendar, Restricted holidays, Review (the calendar's own settings)."
+          ],
+          [
+            "More",
+            "Further actions, such as deleting the calendar."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Calendar fields",
+            "meaning": "Same as in the New holiday calendar wizard.",
+            "rule": null
+          },
+          {
+            "label": "Date (holiday)",
+            "meaning": "The holiday's date.",
+            "rule": "Required"
+          },
+          {
+            "label": "Name (holiday)",
+            "meaning": "For example Gandhi Jayanti.",
+            "rule": "Required"
+          },
+          {
+            "label": "Type (holiday)",
+            "meaning": "Public, optional / restricted or company holiday.",
+            "rule": "Required"
+          },
+          {
+            "label": "Half day (holiday)",
+            "meaning": "Marks the holiday as a half day in lists.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "Kept in the audit trail.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Holidays apply to people the rules match. Past days change only when reprocessed; future days pick it up when processed.",
+        "permission": "attendance.manage",
+        "depends": "The calendar must be Active and have at least one matching Applies to rule.",
+        "limits": "The Half day tick is shown in lists, but attendance treats the day as a full holiday. With several matching rules, only the lowest priority number counts.",
+        "source": "app/Filament/Resources/HolidayCalendars/RelationManagers/HolidaysRelationManager.php; app/Domain/Attendance/Services/HolidayResolver.php"
+      },
+      "people/holiday-changes": {
+        "purpose": "Give, take away or swap a holiday for chosen employees only, on top of their holiday calendar. Every change is listed and can be undone.",
+        "when": "When a team works on a holiday and gets another day, or a local holiday applies to a few people.",
+        "elements": [
+          [
+            "Change holiday",
+            "Wizard: Preference (assign, remove or replace), Employees, Holiday, Review with a reason."
+          ],
+          [
+            "Holiday",
+            "Typed, or picked from a holiday calendar (or the holiday library when available)."
+          ],
+          [
+            "Change",
+            "Whether the row adds or removes a holiday for the employee."
+          ],
+          [
+            "Status",
+            "Active changes decide the day; undone ones do not."
+          ],
+          [
+            "Undo",
+            "Reverses one change, with a reason; the day is worked out again."
+          ],
+          [
+            "Holiday calendars",
+            "Opens the calendars."
+          ]
+        ],
+        "fields": [],
+        "after": "The employee's day follows the change instead of the calendar and is recalculated.",
+        "permission": "attendance.view and attendance.holiday_change (attendance.manage includes it).",
+        "depends": "A holiday calendar for the people concerned.",
+        "limits": "Changes reach back only to the first day of the month 2 months before the current one; raise the limit in Admin › Setup › Time office (up to 24).",
+        "source": "app/Filament/Pages/HolidayChanges.php; app/Domain/Attendance/Services/EmployeeHolidayChanges.php; config/peopleos_setup.php"
+      },
+      "people/roster-board": {
+        "purpose": "A week or month grid of employees and days showing each day's shift (the rostered day first, then the work schedule), weekly offs, holidays and leave.",
+        "when": "When planning shifts, or checking why someone has no shift on a day.",
+        "elements": [
+          [
+            "Previous / Today / Next",
+            "Move between weeks (the example shows Week of 16 Nov 2026)."
+          ],
+          [
+            "Day cells",
+            "Shift code (GEN), WO for a weekly off, and leave marks; click a day to edit it."
+          ],
+          [
+            "Edit day",
+            "Set a shift, a weekly off or back to the schedule for one day, with a reason."
+          ],
+          [
+            "Assign shift",
+            "For the selected employees: a shift for a date range, weekly-off weekdays and automatic shift correction."
+          ],
+          [
+            "Remove rostered days",
+            "Return the selected employees' days in a range to their schedule."
+          ],
+          [
+            "Rostered days list",
+            "Opens the Shift roster list."
+          ],
+          [
+            "Upload",
+            "Upload a shift roster file."
+          ],
+          [
+            "Calendar",
+            "Opens the employee's attendance calendar."
+          ]
+        ],
+        "fields": [],
+        "after": "Rostered days are saved and the affected days are recalculated.",
+        "permission": "attendance.view to see; attendance.roster to change (attendance.manage includes it).",
+        "depends": "Shifts; work schedules for the normal pattern.",
+        "limits": "Days locked by a finalised payroll or in a closed attendance month cannot be rostered.",
+        "source": "app/Filament/Pages/RosterBoard.php; app/Domain/Attendance/Services/ShiftRoster.php"
+      },
+      "people/shift-roster": {
+        "purpose": "The list of rostered days: days HR put an employee on a different shift or a weekly off, and approved shift change requests.",
+        "when": "To check or remove rostered days, or to roster several people for a range of dates.",
+        "elements": [
+          [
+            "Roster employees",
+            "Employees, From, To, Shift (empty = weekly off) and a reason."
+          ],
+          [
+            "Roster board",
+            "Opens the grid view."
+          ],
+          [
+            "Upload",
+            "Shift roster upload."
+          ],
+          [
+            "Source",
+            "Roster, Shift change request or Import."
+          ],
+          [
+            "Remove",
+            "Deletes a rostered day; the schedule applies again."
+          ],
+          [
+            "Views / Report",
+            "Saved filters and reports on the list."
+          ]
+        ],
+        "fields": [],
+        "after": "The days are recalculated with the rostered shift.",
+        "permission": "attendance.view to see; attendance.roster to roster or remove.",
+        "depends": "Shifts.",
+        "limits": null,
+        "source": "app/Filament/Resources/ShiftOverrides/Pages/ListShiftOverrides.php; app/Domain/Attendance/Services/ShiftResolver.php"
+      },
+      "people/devices": {
+        "purpose": "Biometric devices that send punches to PeopleOS. Each has a code used in its push address and an adapter for the device's format.",
+        "when": "When you install a new attendance device or check whether a device is still sending punches.",
+        "elements": [
+          [
+            "New attendance device",
+            "Name, Code, Adapter, Location, how punches arrive and alerts."
+          ],
+          [
+            "Adapter",
+            "Generic JSON or eSSL (push)."
+          ],
+          [
+            "Last seen at",
+            "When the device last sent punches (Never for the example's Delhi main gate)."
+          ],
+          [
+            "Alert after (hours without punches; blank = never)",
+            "Sends an alert to the listed addresses when a device goes silent."
+          ],
+          [
+            "Status",
+            "Active devices are accepted."
+          ],
+          [
+            "Edit",
+            "Change the device."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view to see; attendance.manage to change.",
+        "depends": "An API key with the attendance.write scope for the device to push with (M05).",
+        "limits": null,
+        "source": "app/Filament/Resources/AttendanceDevices/AttendanceDeviceResource.php; docs/architecture/phase-7-attendance.md"
+      },
+      "people/check-in-devices": {
+        "purpose": "The phones and browsers employees check in from, when a check-in policy allows only approved devices.",
+        "when": "When an employee changes phone or a new device waits for approval.",
+        "elements": [
+          [
+            "Device / Platform",
+            "The device and its platform."
+          ],
+          [
+            "Status",
+            "Waiting, approved or blocked."
+          ],
+          [
+            "Approve",
+            "Lets the employee check in from this device."
+          ],
+          [
+            "Block",
+            "Stops check-ins from this device."
+          ],
+          [
+            "First seen at / Last seen at",
+            "When the device was first and last used."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.manage to see, approve or block.",
+        "depends": "A check-in policy with 'Only approved devices of the employee' on.",
+        "limits": null,
+        "source": "app/Filament/Resources/EmployeeDevices/EmployeeDeviceResource.php; app/Domain/Attendance/Services/CheckInGuard.php"
+      },
+      "people/geo-work-locations": {
+        "purpose": "Places where web and mobile check-ins are accepted: a circle or a polygon, for a work location, one employee, or everyone.",
+        "when": "When a check-in policy requires check-ins inside a geo location.",
+        "elements": [
+          [
+            "New geo work location",
+            "Name, Tracking (circle or polygon), Radius, Valid from / until, For a work location, For one employee."
+          ],
+          [
+            "Applies to",
+            "The employee, the work location, or Everyone."
+          ],
+          [
+            "Area",
+            "Radius in metres or the number of polygon points."
+          ],
+          [
+            "Valid",
+            "Always, or the period it is valid for."
+          ],
+          [
+            "Source",
+            "Entered by HR, or from an approved location request."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view to see; attendance.manage to change.",
+        "depends": "A check-in policy that uses geo locations (Workflows › Policies).",
+        "limits": null,
+        "source": "app/Filament/Resources/GeoFences/GeoFenceResource.php"
+      },
+      "people/location-requests": {
+        "purpose": "Employees ask to check in from a place (Place, radius, Needed from / until). Approval adds it as their geo work location.",
+        "when": "When an employee works from a client site or another temporary place.",
+        "elements": [
+          [
+            "Place / Coordinates",
+            "Where the employee wants to check in."
+          ],
+          [
+            "Needed",
+            "The period asked for, or Ongoing."
+          ],
+          [
+            "Approve / Reject",
+            "Decide the request."
+          ],
+          [
+            "Upload",
+            "Upload geo locations from a file."
+          ],
+          [
+            "Views",
+            "Saved filters, such as waiting requests."
+          ]
+        ],
+        "fields": [],
+        "after": "Approved: the place becomes the employee's geo work location for the period.",
+        "permission": "attendance.view to see; attendance.approve to decide (never your own).",
+        "depends": "Geo-based check-in policy.",
+        "limits": null,
+        "source": "app/Filament/Resources/LocationRequests/LocationRequestResource.php"
+      },
+      "people/geo-dashboard": {
+        "purpose": "Today's located check-ins and the headcount by location, for the people you look after.",
+        "when": "During the day, to see where people checked in from.",
+        "elements": [
+          [
+            "Headcount by location",
+            "Number of people per location (shown to HR by default)."
+          ],
+          [
+            "Located check-ins",
+            "Today's check-ins that carry a location; hidden until the organisation turns this panel on."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "Who sees each panel is set in Admin › Setup › Access rights (Geo access). Check-ins also need attendance.view; headcount employee.view.",
+        "depends": null,
+        "limits": "The dashboard shows lists only; there is no map yet. Every opening is recorded in the audit trail.",
+        "source": "app/Filament/Pages/GeoDashboard.php; app/Domain/Experience/Services/GeoDashboard.php"
+      },
+      "people/punches": {
+        "purpose": "The raw punch register: every check-in and check-out as received, with source, device and processing state. Punches are evidence and are never edited.",
+        "when": "When a day looks wrong, or to find punches that failed.",
+        "elements": [
+          [
+            "Punched at / Direction",
+            "Time and IN, OUT or Auto."
+          ],
+          [
+            "Source / Device",
+            "Biometric device, mobile, web, API, manual or import, and the device code."
+          ],
+          [
+            "Processing / Error",
+            "Received, processed, failed or excluded, with the error (for example an unknown employee code)."
+          ],
+          [
+            "Day",
+            "Opens the day drawer: punches, status and reprocessing for that day."
+          ],
+          [
+            "Exclude / Restore",
+            "Leave a wrong punch out of the day (kept as evidence), or bring it back; a reason is required."
+          ],
+          [
+            "Retry",
+            "On a failed punch: try again after fixing the cause."
+          ],
+          [
+            "Upload",
+            "Upload a punch file."
+          ]
+        ],
+        "fields": [],
+        "after": "Excluding or restoring a punch recalculates the day.",
+        "permission": "attendance.view to see; attendance.punch to exclude, restore or retry (attendance.manage includes it).",
+        "depends": null,
+        "limits": null,
+        "source": "app/Filament/Resources/AttendancePunches/AttendancePunchResource.php; app/Domain/Attendance/Services/PunchIngestion.php"
+      },
+      "people/punch-imports": {
+        "purpose": "Upload punches from a CSV file (employee code, time, optional direction, timezone, device). Rows become punches only after mapping, validation and approval.",
+        "when": "When punches come from a system that cannot push them, or to load missed punches in bulk.",
+        "elements": [
+          [
+            "File format",
+            "Columns the file needs, with examples."
+          ],
+          [
+            "Download sample file",
+            "A ready-made file to fill in."
+          ],
+          [
+            "Upload punches CSV",
+            "Starts an upload."
+          ],
+          [
+            "Status / Rows / Errors",
+            "Progress of each upload and rows refused."
+          ]
+        ],
+        "fields": [],
+        "after": "Approved rows become punches and the days are recalculated.",
+        "permission": "attendance.punch (attendance.manage includes it).",
+        "depends": "Employee codes in the file must exist.",
+        "limits": null,
+        "source": "app/Filament/Resources/PunchImports/PunchImportResource.php; app/Domain/Attendance/Imports/PunchImports.php"
+      },
+      "people/monthly-attendance-uploads": {
+        "purpose": "For sites without devices: upload a month as one row per employee and a day code per day (P, A, HD, WO, H, WFH, OD).",
+        "when": "Each month, for people whose attendance is kept on a sheet.",
+        "elements": [
+          [
+            "File format",
+            "Day codes and columns explained."
+          ],
+          [
+            "Download sample file",
+            "Lists everyone employed in the month with a column per day."
+          ],
+          [
+            "Upload attendance CSV",
+            "Choose Fill days not uploaded yet, Correct days already uploaded, or Both."
+          ],
+          [
+            "Month / Errors",
+            "The month of each upload and rows refused."
+          ]
+        ],
+        "fields": [],
+        "after": "Nothing changes until the file is mapped, validated, approved and run; then each day takes its code and is recalculated.",
+        "permission": "attendance.override (attendance.manage includes it).",
+        "depends": null,
+        "limits": "Leave codes (CL, SL, EL, LWP and similar) are refused: leave must be applied for as leave requests. Approved full-day leave still wins over an uploaded code.",
+        "source": "app/Filament/Resources/AttendanceSheetImports/AttendanceSheetImportResource.php; app/Domain/Attendance/Imports/AttendanceSheetImports.php"
+      },
+      "people/time-office-uploads": {
+        "purpose": "Other time-office and leave uploads: leave balances and history, comp-off, shift roster, geo locations, overtime, day overrides, arrear days and paid days.",
+        "when": "At go-live (opening leave balances) and for bulk changes.",
+        "elements": [
+          [
+            "Download sample file",
+            "Pick the upload type to get its sample."
+          ],
+          [
+            "Upload CSV",
+            "Choose what the file holds and what it is for, then drop the file in."
+          ],
+          [
+            "Status / Rows / Errors",
+            "Progress and refused rows."
+          ]
+        ],
+        "fields": [],
+        "after": "Nothing changes until the file is mapped, validated, approved and run.",
+        "permission": "Each upload type has its own right, for example leave.adjust for leave balances, attendance.roster for the roster, attendance.override for day overrides.",
+        "depends": null,
+        "limits": null,
+        "source": "app/Filament/Resources/TimeOfficeImports/TimeOfficeImportResource.php; app/Domain/Employment/Imports/RowImportTypes.php"
+      },
+      "people/attendance-records": {
+        "purpose": "One row per employee per processed day: shift, status, in and out, worked, late and overtime minutes, exceptions. This is what payroll reads.",
+        "when": "Daily, to review days, and before payroll to check the month.",
+        "elements": [
+          [
+            "Status tabs",
+            "All, Present, Weekly off, Holiday, Absent, Half day, Incomplete (577 present, 12 incomplete in the example)."
+          ],
+          [
+            "Process day / Process dates",
+            "Recalculate one day for everyone, or a range (up to two months) in the background."
+          ],
+          [
+            "Manual punch",
+            "Record a punch by hand with a note; the day is recalculated."
+          ],
+          [
+            "Change attendance status",
+            "Opens the screen to set the status of a range of days."
+          ],
+          [
+            "Regularise",
+            "Correct a day's times or type; with attendance.manage it is approved at once."
+          ],
+          [
+            "Edit",
+            "Set this day's status (whole day or each half) or worked minutes, with a reason."
+          ],
+          [
+            "Reprocess",
+            "Work the day out again."
+          ],
+          [
+            "OT column",
+            "Approved / calculated overtime minutes, for example 0/58 m."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view to see. Manual punch: attendance.punch. Process: attendance.process. Edit: attendance.override. Regularise for others: attendance.manage.",
+        "depends": "Shifts and schedules; punches or uploads.",
+        "limits": "Days locked by a finalised payroll show no Regularise or Reprocess and cannot be edited unless corrections after payroll are allowed.",
+        "source": "app/Filament/Resources/AttendanceRecords/Pages/ListAttendanceRecords.php; app/Filament/Support/AttendanceActions.php"
+      },
+      "people/exception-centre": {
+        "purpose": "Days that need a decision (the last 30 days by default): missed punches, late arrivals, short hours, absences and overtime waiting for approval.",
+        "when": "Daily, after the night's processing.",
+        "elements": [
+          [
+            "Summary cards",
+            "Exceptions (30d), Missing punch, Late, Absent, OT pending, Regularisations, Failed punches."
+          ],
+          [
+            "Exception filter",
+            "Show one kind, such as Missed punch or Overtime pending approval."
+          ],
+          [
+            "Regularise / Edit",
+            "Correct the day."
+          ],
+          [
+            "Approve OT / Reject OT",
+            "Approve the minutes (you may lower them) or reject with a reason."
+          ],
+          [
+            "Day / Calendar",
+            "Open the day drawer or the employee's month."
+          ],
+          [
+            "Reprocess",
+            "Work the day out again."
+          ]
+        ],
+        "fields": [],
+        "after": "A corrected day leaves the list once its exceptions are cleared.",
+        "permission": "attendance.view to see; attendance.approve for overtime; attendance.override to edit.",
+        "depends": null,
+        "limits": "Only days not locked by payroll are listed.",
+        "source": "app/Filament/Pages/AttendanceExceptionCentre.php"
+      },
+      "people/attendance-calendar": {
+        "purpose": "One employee's month at a glance: each day's status, shift and times, paid days, leave balance and the requests for the month.",
+        "when": "When an employee or manager questions a day, or to act on someone's behalf.",
+        "elements": [
+          [
+            "Find an employee",
+            "Search by employee ID or name (in your access scope)."
+          ],
+          [
+            "Day panel",
+            "Click a day: status, times, late and early minutes, its leave and regularisations."
+          ],
+          [
+            "Regularise / Apply leave",
+            "Raise either on the employee's behalf from the day panel."
+          ],
+          [
+            "Punches & corrections",
+            "Opens the HR day drawer for punches, the status override and reprocessing."
+          ],
+          [
+            "Holidays this month",
+            "The holidays of the calendar that applies."
+          ],
+          [
+            "Print slip",
+            "Prints the month."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view for anyone in scope. Regularise on behalf: attendance.manage. Apply leave on behalf: leave.manage.",
+        "depends": null,
+        "limits": null,
+        "source": "app/Filament/Pages/AttendanceCalendar.php; docs/architecture/attendance-architecture.md §13"
+      },
+      "people/regularisations": {
+        "purpose": "Requests to correct a day (missed punch, late coming, early leaving, work from home, on duty, field duty, marked absent by mistake) and their decisions.",
+        "when": "Daily, to decide waiting requests (2 in the example organisation).",
+        "elements": [
+          [
+            "Raise on behalf",
+            "Employee, Attendance date, Request type, Check-in, Check-out, reason, then Approve now or Send for approval."
+          ],
+          [
+            "Approve",
+            "Accepts the request; the day is recalculated at once."
+          ],
+          [
+            "Reject",
+            "Refuses it with a note."
+          ],
+          [
+            "In / Out",
+            "Times asked for."
+          ],
+          [
+            "Status / Reviewed by",
+            "Pending, approved, rejected or withdrawn, and who decided."
+          ],
+          [
+            "Views / Report",
+            "Saved filters (for example waiting requests) and reports."
+          ]
+        ],
+        "fields": [],
+        "after": "Approval stores the day before and after, and payroll reads the corrected day. Punches are never changed.",
+        "permission": "attendance.view to see; attendance.approve to decide (never your own); attendance.manage to raise on behalf.",
+        "depends": "The attendance policy (regularisation allowed, window of 7 days in the example).",
+        "limits": "One waiting request per day. A request older than the policy window, on a locked day or in a closed month is refused.",
+        "source": "app/Filament/Resources/AttendanceRegularisations/Pages/ListAttendanceRegularisations.php; app/Domain/Attendance/Services/Regularisations.php"
+      },
+      "people/regularisations--view": {
+        "purpose": "The full detail of one regularisation: the request, the day now and the decision with the day before and after approval.",
+        "when": "Before deciding a request, or to explain a corrected day.",
+        "elements": [
+          [
+            "Request",
+            "Employee, Attendance date, status, Request type, Requested check-in and check-out, Remarks, files, Raised by."
+          ],
+          [
+            "The day now",
+            "How the day is processed at the moment."
+          ],
+          [
+            "Decision",
+            "Decided by, Decided on, Approver comments, Day before approval, Day after approval, Withdrawn on."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view (or the employee's own request).",
+        "depends": null,
+        "limits": "Read-only: decide on the Regularisations list or in the Approval Center.",
+        "source": "app/Filament/Resources/AttendanceRegularisations/AttendanceRegularisationResource.php"
+      },
+      "people/time-office-requests": {
+        "purpose": "Short leave, on duty, shift change, overtime claims, comp-off claims, restricted holidays and week-off changes, with their approvals and cancellations.",
+        "when": "Daily, to decide waiting requests, and when raising one for an employee.",
+        "elements": [
+          [
+            "Raise on behalf",
+            "Raise any of these requests for an employee."
+          ],
+          [
+            "Type / Detail",
+            "The request type and what was asked (part of day, shift, minutes)."
+          ],
+          [
+            "Approve / Reject",
+            "Decide the request; the affected days are recalculated."
+          ],
+          [
+            "Approve cancellation / Keep request",
+            "Decide an employee's request to cancel an approved one."
+          ],
+          [
+            "Upload",
+            "Upload requests from a file."
+          ],
+          [
+            "Views / Report",
+            "Saved views, for example On duty requests."
+          ]
+        ],
+        "fields": [],
+        "after": "Approved on duty and short leave change how the day is worked out; a shift change becomes a rostered day; a comp-off claim credits the comp-off balance.",
+        "permission": "attendance.view to see; attendance.approve to decide; requests follow the short leave and time-office policies.",
+        "depends": "Short leave policy and Time-office requests policy (Workflows › Policies).",
+        "limits": null,
+        "source": "app/Filament/Resources/TimeOfficeRequests/TimeOfficeRequestResource.php; app/Domain/Attendance/Services/TimeOfficeRequests.php"
+      },
+      "people/day-overrides": {
+        "purpose": "Days whose status or worked hours HR set by hand, with the reason and who did it. An override is an input to processing, not a rewrite of punches.",
+        "when": "To review or remove HR's changes to days.",
+        "elements": [
+          [
+            "Override a day",
+            "Employee, date, a status and/or worked minutes, and a reason."
+          ],
+          [
+            "Change attendance status",
+            "Set a range of days for several employees."
+          ],
+          [
+            "By half",
+            "Statuses given to each half of the day."
+          ],
+          [
+            "Worked",
+            "Worked time set by HR, or As calculated."
+          ],
+          [
+            "Remove",
+            "Deletes the override; the day is worked out again from punches."
+          ],
+          [
+            "Upload",
+            "Day override upload."
+          ]
+        ],
+        "fields": [],
+        "after": "The day is recalculated at once; a status override wins over punches.",
+        "permission": "attendance.override (attendance.manage includes it).",
+        "depends": null,
+        "limits": "An override cannot set leave (approved full-day leave keeps the day), cannot be used on your own days, and only on days that have started.",
+        "source": "app/Filament/Resources/AttendanceOverrides/AttendanceOverrideResource.php; app/Domain/Attendance/Services/AttendanceOverrides.php"
+      },
+      "people/change-attendance-status": {
+        "purpose": "Choose employees with filters or pasted codes, select them, then set the status of a range of days for the whole day or each half.",
+        "when": "When a group's days must change together, for example an office closure or an outdoor event.",
+        "elements": [
+          [
+            "Filters",
+            "Employee codes, company, department, location, status and more."
+          ],
+          [
+            "Change attendance status",
+            "From, To, a status for the whole day or First half / Second half, and a reason."
+          ],
+          [
+            "Day overrides list",
+            "Opens the list of overrides."
+          ],
+          [
+            "Calendar",
+            "The employee's month."
+          ],
+          [
+            "Upload",
+            "Day override upload."
+          ]
+        ],
+        "fields": [],
+        "after": "Each day is saved as an override and recalculated; the result lists every employee done and every day refused with the reason.",
+        "permission": "attendance.view and attendance.override.",
+        "depends": null,
+        "limits": "Large selections run as a bulk run where you type the count to confirm.",
+        "source": "app/Filament/Pages/AttendanceStatusChange.php"
+      },
+      "people/run-attendance": {
+        "purpose": "The month desk for one company: check absences and errors, take or hold arrears, process the month in the background and review one employee.",
+        "when": "At month end, before payroll, and whenever you need the whole month recalculated.",
+        "elements": [
+          [
+            "Company / Month",
+            "The company and its attendance month, shown with its dates."
+          ],
+          [
+            "Before you close the month",
+            "Errors to review (no policy, last month not processed, missing shift, late joiners) and requests still waiting."
+          ],
+          [
+            "1 · Attendance pre-verification (optional)",
+            "Absent and half days; select days and Mark present (an HR override with one reason)."
+          ],
+          [
+            "2 · Attendance correction arrears",
+            "Corrections to earlier months: Hold or Release them."
+          ],
+          [
+            "3 · Process attendance",
+            "Process: everyone or chosen employees, in the background; you are told when done."
+          ],
+          [
+            "Review an employee's month",
+            "Summary, waiting requests, arrears; Process this employee's month."
+          ],
+          [
+            "Upload",
+            "The uploads used before processing."
+          ]
+        ],
+        "fields": [],
+        "after": "Processing runs in the background; you get an in-app and e-mail notice when the month is done.",
+        "permission": "attendance.view with attendance.process (steps 1 and 3) or attendance.arrears (step 2).",
+        "depends": "Shifts, schedules and an attendance policy for everyone.",
+        "limits": "Close month and Reopen month appear only when 'HR closes attendance months' is on (Admin › Setup › Time office); it is off in the example organisation.",
+        "source": "app/Filament/Pages/RunAttendance.php; app/Domain/Attendance/Services/AttendanceMonthDesk.php; app/Domain/Attendance/Services/AttendanceMonthRuns.php"
+      },
+      "people/paid-days": {
+        "purpose": "Paid days of the month before payroll: present days, paid leave, holidays and weekly offs, less what is not paid, per employee.",
+        "when": "Before running payroll, and when an employee questions their paid days.",
+        "elements": [
+          [
+            "The month / The financial year up to the month",
+            "One month, or year to date."
+          ],
+          [
+            "Present / Paid leave / Holidays / Weekly offs",
+            "Days that are paid."
+          ],
+          [
+            "Unpaid leave / Absent",
+            "Days not paid (a half day counts half here)."
+          ],
+          [
+            "Penalty days",
+            "Loss-of-pay days from late-mark penalties."
+          ],
+          [
+            "Arrear days",
+            "Corrections to days already paid."
+          ],
+          [
+            "Paid days",
+            "The result, as the attendance calendar shows it."
+          ],
+          [
+            "Breakdown",
+            "Months, hours by kind of day, penalties, arrears and adjustments for one employee."
+          ],
+          [
+            "Download CSV",
+            "The register as a file (recorded in the audit trail)."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "attendance.view. Adjust paid days (when switched on): attendance.override.",
+        "depends": "Processed attendance for the month.",
+        "limits": "Adjust paid days appears only when 'HR may adjust paid days' is on (off in the example). An Incomplete day is in no column here, but payroll does not deduct it.",
+        "source": "app/Filament/Pages/PaidDays.php; app/Domain/Attendance/Services/PaidDaysRegister.php; app/Domain/Attendance/Support/PaidDayTally.php"
+      },
+      "people/late-mark-penalties": {
+        "purpose": "Penalties the attendance policy puts on every Nth late mark in a calendar month: a warning, half a day or a full day of loss of pay.",
+        "when": "At month end, to check penalties before payroll and waive any that are not fair.",
+        "elements": [
+          [
+            "Late marks",
+            "How many late marks led to the penalty, for example 3 in 2026-10."
+          ],
+          [
+            "Action",
+            "Warn, Deduct half day or Loss of pay."
+          ],
+          [
+            "Days",
+            "Loss-of-pay days (0, 0.5 or 1)."
+          ],
+          [
+            "Status",
+            "Applied or Waived."
+          ],
+          [
+            "Waive",
+            "Removes the penalty with a reason."
+          ],
+          [
+            "Month filter",
+            "Choose the month."
+          ]
+        ],
+        "fields": [],
+        "after": "Waived penalties stop counting in paid days and payroll.",
+        "permission": "attendance.view to see; attendance.manage to waive.",
+        "depends": "Attendance policy: Late marks before action and Action on threshold.",
+        "limits": "Penalties on days locked by payroll or in a closed month cannot be waived.",
+        "source": "app/Filament/Resources/AttendancePenalties/AttendancePenaltyResource.php; app/Domain/Attendance/Services/LatePenalties.php"
+      },
+      "people/attendance-arrears": {
+        "purpose": "Corrections to days already used by a finalised payroll: the paid-day difference (Paid as, Now, Paid days) the next payroll pays or recovers.",
+        "when": "When corrections after payroll are allowed and someone corrected a paid month.",
+        "elements": [
+          [
+            "Paid as / Now",
+            "The status payroll paid and the status now."
+          ],
+          [
+            "Paid days",
+            "The difference in paid days (+ to pay, − to recover)."
+          ],
+          [
+            "Status",
+            "Pending (next payroll takes it), Held, Settled or Void."
+          ],
+          [
+            "Arrear for month",
+            "Filter by the month corrected."
+          ],
+          [
+            "Act on all matching",
+            "Act on every arrear the filters show."
+          ]
+        ],
+        "fields": [],
+        "after": "Pending arrears are paid by the next payroll and become Settled when it is finalised.",
+        "permission": "attendance.view to see; attendance.arrears to hold or release.",
+        "depends": "Admin › Setup › Time office: Allow corrections after payroll is finalised (off in the example organisation).",
+        "limits": "With that setting off, finalised days refuse corrections and no arrears are created.",
+        "source": "app/Filament/Resources/AttendanceArrears/AttendanceArrearResource.php; app/Domain/Attendance/Services/AttendanceArrears.php; app/Domain/Attendance/Services/AttendanceProcessor.php"
+      }
+    },
+    "procedures": [
+      {
+        "sub": "10.1",
+        "title": "Set up a shift",
+        "before": "Know the timing, the minutes for a full and half day, the break and the grace your organisation uses.",
+        "steps": [
+          [
+            "Open Shifts",
+            "People › Time & leave › Shifts, then New shift."
+          ],
+          [
+            "Shift step",
+            "Enter Name and Code, choose Type Fixed timing, set Start time and End time. Turn on Ends next day for a night shift."
+          ],
+          [
+            "Hours and thresholds",
+            "Set Full day (minutes) and Half day (minutes), Break (minutes) and Grace in (minutes)."
+          ],
+          [
+            "Absence criteria and Advanced",
+            "Leave blank unless your rules need them; untick requests this shift must not allow."
+          ],
+          [
+            "Overtime",
+            "Tick Overtime eligible if extra time counts, and set Minimum overtime (minutes)."
+          ],
+          [
+            "Review and create",
+            "Check the summary and create the shift."
+          ]
+        ],
+        "result": "An active shift you can place in work schedules and rosters.",
+        "screens": [
+          "people/shifts",
+          "people/shifts--create"
+        ],
+        "source": "app/Filament/Resources/Shifts/ShiftResource.php"
+      },
+      {
+        "sub": "10.1",
+        "title": "Set up a work schedule and who follows it",
+        "before": "The shifts exist.",
+        "steps": [
+          [
+            "Create the schedule",
+            "Work Schedules › New work schedule; enter Name, Code and Effective from."
+          ],
+          [
+            "Build the week",
+            "In Weekly pattern choose a shift for each working day and leave weekly offs as Off. Add a week to rotate."
+          ],
+          [
+            "Create",
+            "Review and create."
+          ],
+          [
+            "Add a rule",
+            "On the edit screen open Applies to › New work schedule rule; give a Name, Priority and the IF conditions (none = everyone)."
+          ],
+          [
+            "Check",
+            "Open the Roster board: everyone covered shows a shift code instead of an empty day."
+          ]
+        ],
+        "result": "Employees get a shift and weekly offs every day; the lowest Priority number wins where rules overlap.",
+        "screens": [
+          "people/work-schedules--create",
+          "people/work-schedules--edit",
+          "people/roster-board"
+        ],
+        "source": "app/Filament/Resources/WorkSchedules/; app/Domain/Attendance/Services/ShiftResolver.php"
+      },
+      {
+        "sub": "10.1",
+        "title": "Publish a holiday calendar for the year",
+        "before": "The list of holidays your organisation observes.",
+        "steps": [
+          [
+            "Create the calendar",
+            "Holiday Calendars › New holiday calendar; Name, Code, Year, Status Active; Restricted holidays settings if you use them."
+          ],
+          [
+            "Add holidays",
+            "On the edit screen open Holidays and add each Date, Name and Type."
+          ],
+          [
+            "Say who follows it",
+            "Open Applies to and add a rule; with no conditions it covers everyone."
+          ],
+          [
+            "Check",
+            "Open an employee's Attendance calendar: Holidays this month lists the new holidays."
+          ]
+        ],
+        "result": "The holidays are days off for the people the rule matches; days are marked Holiday as they are processed.",
+        "screens": [
+          "people/holiday-calendars",
+          "people/holiday-calendars--create",
+          "people/holiday-calendars--edit"
+        ],
+        "source": "app/Filament/Resources/HolidayCalendars/; app/Domain/Attendance/Services/HolidayResolver.php"
+      },
+      {
+        "sub": "10.2",
+        "title": "Roster employees on another shift for some days",
+        "before": "The shift exists.",
+        "steps": [
+          [
+            "Open the board",
+            "People › Time & leave › Roster board; filter the employees."
+          ],
+          [
+            "Select",
+            "Tick the employees and choose Assign shift."
+          ],
+          [
+            "Choose",
+            "Give the date range, the shift, the weekly-off weekdays and a reason."
+          ],
+          [
+            "Check the result",
+            "The summary lists each employee done and any refused, with the reason."
+          ]
+        ],
+        "result": "Rostered days override the work schedule for those dates and are recalculated.",
+        "screens": [
+          "people/roster-board",
+          "people/shift-roster"
+        ],
+        "source": "app/Filament/Pages/RosterBoard.php"
+      },
+      {
+        "sub": "10.3",
+        "title": "Upload a month's attendance for a site without devices",
+        "before": "The month's sheet kept at the site.",
+        "steps": [
+          [
+            "Get the sample",
+            "Monthly attendance uploads › Download sample file: one row per employee, one column per day."
+          ],
+          [
+            "Fill in codes",
+            "P, A, HD, WO, H, WFH or OD per day; P|A splits a day. Do not enter leave: apply it as leave requests."
+          ],
+          [
+            "Upload",
+            "Upload attendance CSV and choose Fill days not uploaded yet, Correct days already uploaded, or Both."
+          ],
+          [
+            "Approve and run",
+            "Map, validate and approve the file, then run it; fix rows with errors."
+          ],
+          [
+            "Check",
+            "Open Attendance records for the month."
+          ]
+        ],
+        "result": "Each day takes its code (no punch exceptions or lateness), and paid days follow.",
+        "screens": [
+          "people/monthly-attendance-uploads",
+          "people/attendance-records"
+        ],
+        "source": "app/Domain/Attendance/Imports/AttendanceSheetImports.php"
+      },
+      {
+        "sub": "10.4",
+        "title": "Daily attendance routine",
+        "before": "Attendance is processed overnight for the previous day.",
+        "steps": [
+          [
+            "Open the desk",
+            "Time office desk: check Needs a look and the counts."
+          ],
+          [
+            "Missed punches",
+            "Exception centre (or Attendance records › Incomplete): regularise or ask the employee to."
+          ],
+          [
+            "Requests",
+            "Decide Regularisations and Time-office requests that are waiting."
+          ],
+          [
+            "Overtime",
+            "Approve OT or Reject OT on days with overtime pending."
+          ],
+          [
+            "Failed punches",
+            "Punches › Processing: Failed; fix the employee code, then Retry."
+          ]
+        ],
+        "result": "Yesterday's days are explained and correct, so month end has little left.",
+        "screens": [
+          "people/time-office-desk",
+          "people/exception-centre",
+          "people/regularisations",
+          "people/punches"
+        ],
+        "source": "app/Filament/Pages/AttendanceExceptionCentre.php"
+      },
+      {
+        "sub": "10.4",
+        "title": "Approve a regularisation",
+        "before": "A request is waiting.",
+        "steps": [
+          [
+            "Open the request",
+            "Regularisations: open the row to see the request and The day now."
+          ],
+          [
+            "Check",
+            "Compare the requested check-in and check-out with the punches (Day on the attendance record)."
+          ],
+          [
+            "Decide",
+            "Approve (optional note) or Reject (note required)."
+          ],
+          [
+            "Confirm",
+            "The Decision section shows Day before approval and Day after approval."
+          ]
+        ],
+        "result": "The day is recalculated with the requested times; the punches stay unchanged as evidence.",
+        "screens": [
+          "people/regularisations",
+          "people/regularisations--view"
+        ],
+        "source": "app/Domain/Attendance/Services/Regularisations.php"
+      },
+      {
+        "sub": "10.4",
+        "title": "Correct a day yourself",
+        "before": "You know what really happened on the day.",
+        "steps": [
+          [
+            "Missing time",
+            "Attendance records › Regularise: choose the type, In and Out, a reason. With attendance.manage it is approved at once."
+          ],
+          [
+            "Wrong status",
+            "Edit: a status for the whole day or each half, or worked minutes, with a reason."
+          ],
+          [
+            "Many people or days",
+            "Change attendance status: filter, select employees, set From, To and the status."
+          ],
+          [
+            "Leave",
+            "Never as an override: Apply on behalf in Leave requests or from the calendar's day panel."
+          ]
+        ],
+        "result": "The day is recalculated at once and the change is audited.",
+        "screens": [
+          "people/attendance-records",
+          "people/change-attendance-status",
+          "people/day-overrides"
+        ],
+        "source": "app/Filament/Support/AttendanceActions.php"
+      },
+      {
+        "sub": "10.5",
+        "title": "Process a day, a range or the month",
+        "before": "Corrections for the period are made.",
+        "steps": [
+          [
+            "One day for everyone",
+            "Attendance records › Process day; pick the date."
+          ],
+          [
+            "A range",
+            "Process dates: From, To (at most two months) and, if needed, the employees."
+          ],
+          [
+            "The month",
+            "Run attendance: pick Company and Month, then 3 · Process attendance › Process; leave choices blank for everyone."
+          ],
+          [
+            "One employee",
+            "Run attendance › Review an employee's month › Process this employee's month."
+          ],
+          [
+            "Wait for the notice",
+            "Background runs tell you in the app and by e-mail when they finish."
+          ]
+        ],
+        "result": "Every day of the period is recalculated from today's punches, schedules, leave and corrections.",
+        "screens": [
+          "people/attendance-records",
+          "people/run-attendance"
+        ],
+        "source": "app/Filament/Pages/RunAttendance.php; app/Domain/Attendance/Services/AttendanceMonthRuns.php"
+      },
+      {
+        "sub": "10.5",
+        "title": "Close the attendance month for payroll",
+        "before": "The month's last day has passed.",
+        "steps": [
+          [
+            "Open Run attendance",
+            "Pick the company and month; read Before you close the month."
+          ],
+          [
+            "Clear errors",
+            "Open each list with a count (missing shift, policy missing, last month not processed) and fix it."
+          ],
+          [
+            "Decide requests",
+            "Decide every regularisation, leave, on duty, short leave and other request still waiting."
+          ],
+          [
+            "Fix missed punches",
+            "Attendance records › Incomplete for the month: regularise each day."
+          ],
+          [
+            "Review absences",
+            "Step 1: check absent and half days; Mark present where justified."
+          ],
+          [
+            "Arrears and process",
+            "Step 2: hold or release arrears. Step 3: Process; wait until all are Fully processed."
+          ],
+          [
+            "Check paid days",
+            "Paid days for the month; waive unfair penalties; Download CSV for your records."
+          ]
+        ],
+        "result": "The month is ready: payroll's attendance check passes and the paid days are explained.",
+        "screens": [
+          "people/run-attendance",
+          "people/paid-days",
+          "people/late-mark-penalties"
+        ],
+        "source": "app/Filament/Pages/RunAttendance.php; app/Domain/Payroll/Services/PayrollRunChecklist.php"
+      }
+    ],
+    "calculations": [
+      {
+        "sub": "10.4",
+        "title": "How a day becomes Present and Late",
+        "intro": "Example organisation: Nisha Reddy (EMP00022), Wednesday 7 Oct 2026, shift General (09:00–18:00): unpaid break 60, full day 480, half day 240, grace 15.",
+        "lines": [
+          [
+            "",
+            "First IN 09:54 to last OUT 18:59",
+            "545 min"
+          ],
+          [
+            "−",
+            "Unpaid break of the shift",
+            "60 min"
+          ]
+        ],
+        "total": [
+          "Worked (485 ≥ 480 full day): Present",
+          "485 min"
+        ],
+        "explain": [
+          [
+            "Status rule",
+            "Worked ≥ full day: Present. Below it: Half day (if anything was worked). No punches on a working day: Absent."
+          ],
+          [
+            "Late",
+            "09:54 is 54 min after 09:00. Beyond the 15-minute grace, so all 54 minutes are Late."
+          ],
+          [
+            "Within grace",
+            "On 6 Oct she came at 09:14: 14 min is inside the grace, so Late is 0."
+          ],
+          [
+            "Where you see it",
+            "Attendance records: Worked 8:05, Late 54 m, Exceptions late."
+          ],
+          [
+            "Order of decision",
+            "Approved full-day leave, then an HR override, then a monthly upload code, then punches with regularisations and approved on duty or short leave."
+          ],
+          [
+            "Off days",
+            "No punches on a weekly off or holiday gives Weekly off or Holiday; punching on one gives Present with 'Worked on holiday / weekly off'."
+          ]
+        ],
+        "source": "app/Domain/Attendance/Services/AttendanceProcessor.php (calculate, status); q.php on attendance_records employee 22, 2026-10"
+      },
+      {
+        "sub": "10.4",
+        "title": "Overtime on a working day",
+        "intro": "Example organisation: Nisha Reddy, Tuesday 6 Oct 2026, General shift (overtime eligible, minimum overtime 30 min). No overtime policy applies, so approval is required.",
+        "lines": [
+          [
+            "",
+            "IN 09:14 to OUT 19:12",
+            "598 min"
+          ],
+          [
+            "−",
+            "Unpaid break (worked = 538 min)",
+            "60 min"
+          ],
+          [
+            "−",
+            "Full day of the shift",
+            "480 min"
+          ]
+        ],
+        "total": [
+          "Overtime, pending approval",
+          "58 min"
+        ],
+        "explain": [
+          [
+            "Minimum",
+            "Extra time below the minimum (30) is not overtime; 58 is above it."
+          ],
+          [
+            "Off days",
+            "On a weekly off or holiday all worked time counts towards overtime."
+          ],
+          [
+            "Policy",
+            "An overtime policy can round down, cap per day and decide if approval is needed."
+          ],
+          [
+            "Where you see it",
+            "OT column 0/58 m until approved; Approve OT in the Exception centre."
+          ]
+        ],
+        "source": "app/Domain/Attendance/Services/AttendanceProcessor.php (overtime); q.php attendance_records 2026-10-06 employee 22"
+      },
+      {
+        "sub": "10.4",
+        "title": "A half day from short hours",
+        "intro": "Example organisation: Amit Verma (EMP00002), Monday 12 Oct 2026, General shift.",
+        "lines": [
+          [
+            "",
+            "IN 09:07 to OUT 13:32",
+            "265 min"
+          ],
+          [
+            "−",
+            "Unpaid break (the full 60 is deducted)",
+            "60 min"
+          ]
+        ],
+        "total": [
+          "Worked: below 480, so Half day",
+          "205 min"
+        ],
+        "explain": [
+          [
+            "Rule",
+            "Below the full day is short hours. Any worked time below the full day gives Half day; none gives Absent."
+          ],
+          [
+            "Early leaving",
+            "Left at 13:32, shift ends 18:00, grace out 0: 268 min early."
+          ],
+          [
+            "Pay",
+            "Payroll takes 0.5 day of loss of pay for a Half day (none if half-day leave covers the other half)."
+          ],
+          [
+            "Policy rules",
+            "The attendance policy can also make a present day a half day when late or early beyond N minutes; shift absence criteria can make a half or the day absent."
+          ]
+        ],
+        "source": "app/Domain/Attendance/Services/AttendanceProcessor.php (status); app/Domain/Payroll/Services/PayrollCalculator.php (lossOfPay)"
+      },
+      {
+        "sub": "10.4",
+        "title": "Short leave and the full day",
+        "intro": "Illustrative, General shift (09:00–18:00, break 60, full day 480): an employee with 60 minutes of approved short leave works 09:00 to 17:05.",
+        "lines": [
+          [
+            "",
+            "Full day of the shift",
+            "480 min"
+          ],
+          [
+            "−",
+            "Approved short leave",
+            "60 min"
+          ]
+        ],
+        "total": [
+          "Full day needed that day",
+          "420 min"
+        ],
+        "explain": [
+          [
+            "Status",
+            "Worked 425 (485 − 60 break) ≥ 420: Present."
+          ],
+          [
+            "Excused minutes",
+            "Short leave excuses late minutes first, then early leaving: the 55 minutes early become 0."
+          ],
+          [
+            "Overtime",
+            "Overtime is still measured against the shift's 480 minutes."
+          ],
+          [
+            "Half-day leave",
+            "With approved half-day leave the break is halved and the full day becomes the shift's half day (240) for the half worked."
+          ]
+        ],
+        "source": "app/Domain/Attendance/Services/AttendanceProcessor.php (short leave, half-day leave)"
+      },
+      {
+        "sub": "10.5",
+        "title": "What payroll takes from attendance",
+        "intro": "Example organisation: loss of pay for Nisha Reddy (EMP00022), October 2026, read from her processed attendance days and approved leave.",
+        "lines": [
+          [
+            "",
+            "Absent days, 1 each (28 Oct)",
+            "1"
+          ],
+          [
+            "+",
+            "Half days, 0.5 each",
+            "0"
+          ],
+          [
+            "+",
+            "Applied late-mark penalty days",
+            "0"
+          ],
+          [
+            "+",
+            "Approved unpaid leave days (1 or 0.5)",
+            "0"
+          ],
+          [
+            "+",
+            "Approved loss-of-pay adjustments in payroll",
+            "0"
+          ]
+        ],
+        "total": [
+          "Loss-of-pay days for October",
+          "1"
+        ],
+        "explain": [
+          [
+            "Paid days",
+            "31 − 1 = 30 on the calendar-day basis."
+          ],
+          [
+            "Not deducted",
+            "Present, paid leave, holidays, weekly offs (paid or unpaid), work from home, on duty, Incomplete days and days with no record."
+          ],
+          [
+            "Source",
+            "Attendance records of the pay period as they are when payroll calculates; the month does not need to be closed."
+          ],
+          [
+            "Missing days",
+            "Payroll flags days without processed attendance; with 'Run payroll only after the month's attendance is processed' on, it waits."
+          ]
+        ],
+        "source": "app/Domain/Payroll/Services/PayrollCalculator.php (lossOfPay); app/Domain/Leave/Services/LeaveOutput.php; app/Domain/Payroll/Services/PayrollRunChecklist.php"
+      },
+      {
+        "sub": "10.5",
+        "title": "Reconcile a month: Nisha Reddy, October 2026",
+        "intro": "Example organisation: EMP00022, company month 1–31 Oct 2026, Monday-to-Friday schedule, calendar-day pay basis.",
+        "lines": [
+          [
+            "",
+            "Present days",
+            "16"
+          ],
+          [
+            "+",
+            "Paid leave: Sick leave 22–23 Oct",
+            "2"
+          ],
+          [
+            "+",
+            "Holidays: Gandhi Jayanti 2 Oct, Dussehra 20 Oct",
+            "2"
+          ],
+          [
+            "+",
+            "Weekly offs: Saturdays and Sundays",
+            "9"
+          ]
+        ],
+        "total": [
+          "Paid days on the Paid days screen",
+          "29"
+        ],
+        "explain": [
+          [
+            "Not paid",
+            "Absent 28 Oct (1) and Incomplete 29 Oct: IN 09:14, no OUT (1). 29 + 1 + 1 = 31 calendar days."
+          ],
+          [
+            "Paid days screen",
+            "Counts present, paid leave, holidays and weekly offs: 16 + 2 + 2 + 9 = 29."
+          ],
+          [
+            "Payroll",
+            "31 calendar days − 1 loss-of-pay day (28 Oct) = 30. Payroll takes no loss of pay for an Incomplete day."
+          ],
+          [
+            "Fix",
+            "Regularise 29 Oct before payroll: it becomes Present and both screens show 30."
+          ],
+          [
+            "Pay basis",
+            "Payroll paid days = days in the period − loss-of-pay days. On the Working days basis only days with a shift count (weekly offs excluded)."
+          ]
+        ],
+        "source": "app/Domain/Attendance/Services/PaidDaysRegister.php; app/Domain/Attendance/Support/PaidDayTally.php; app/Domain/Payroll/Services/PayrollCalculator.php; q.php attendance_records employee 22, 2026-10"
+      },
+      {
+        "sub": "10.5",
+        "title": "Half day and late-mark penalty: Amit Verma, October 2026",
+        "intro": "Example organisation: policy Office attendance (Late marks before action 3, Action on threshold Deduct half day). Late on 5, 13 and 16 Oct; half day on 12 Oct.",
+        "lines": [
+          [
+            "",
+            "Calendar days",
+            "31.0"
+          ],
+          [
+            "−",
+            "Half day on 12 Oct (absent half)",
+            "0.5"
+          ],
+          [
+            "−",
+            "Penalty on 16 Oct (3rd late mark)",
+            "0.5"
+          ]
+        ],
+        "total": [
+          "Paid days (Paid days screen and payroll agree)",
+          "30.0"
+        ],
+        "explain": [
+          [
+            "Paid days screen",
+            "Present 19.5, Holidays 2, Weekly offs 9, Absent 0.5, Penalty days 0.5, Paid days 30."
+          ],
+          [
+            "Penalty rule",
+            "Every 3rd late mark in a calendar month puts the action on that day: Warn 0, half day 0.5, Loss of pay 1."
+          ],
+          [
+            "Waive",
+            "Waive the penalty with a reason and paid days go back to 30.5."
+          ]
+        ],
+        "source": "app/Domain/Attendance/Services/LatePenalties.php; app/Domain/Attendance/Services/PaidDaysRegister.php; q.php attendance_penalties"
+      }
+    ],
+    "warnings": [
+      {
+        "sub": "10.5",
+        "title": "Incomplete days are paid by payroll",
+        "level": "important",
+        "headline": "Payroll takes loss of pay only for Absent, Half day and unpaid leave, plus penalty days.",
+        "body": "A day left Incomplete (a missed IN or OUT) is not loss of pay in payroll, yet the Paid days screen does not count it as paid. Resolve every Incomplete day before payroll.",
+        "points": [
+          "Attendance records › Incomplete shows them",
+          "Regularise with the real times, or Edit the status with a reason",
+          "Days with no processed record are not deducted either; payroll flags them"
+        ],
+        "todo": "Make 'Incomplete days = 0' part of your month-end check."
+      },
+      {
+        "sub": "10.5",
+        "title": "Payroll reads attendance as it is when payroll is calculated",
+        "level": "important",
+        "headline": "Process the month before payroll; corrections after finalisation are refused.",
+        "body": "Payroll uses the processed days at the moment it calculates. Finalising payroll locks those days. With 'Allow corrections after payroll is finalised' off (as in the example) later corrections are refused.",
+        "points": [
+          "Turn the setting on to turn corrections into attendance arrears for the next payroll",
+          "Run payroll only after the month's attendance is processed (on in the example) makes payroll wait"
+        ],
+        "todo": "Recalculate payroll after any late attendance correction made before finalisation."
+      },
+      {
+        "sub": "10.1",
+        "title": "Editing a shift changes reprocessed history",
+        "level": "warning",
+        "headline": "A reprocessed old day uses the shift as it is now.",
+        "body": "Each day records the values it was worked out with, but reprocessing uses the current shift. Changing times or grace and then reprocessing a past month changes those days.",
+        "points": [
+          "For a change from a date, create a new shift and move the schedule or roster",
+          "Avoid reprocessing paid months after editing a shift"
+        ],
+        "todo": null
+      },
+      {
+        "sub": "10.1",
+        "title": "Half-day holidays count as full holidays",
+        "level": "warning",
+        "headline": "The Half day tick on a holiday does not change the calculation.",
+        "body": "A holiday marked Half day is processed as a full holiday when there are no punches. If people must work half that day, set the day with Change attendance status instead.",
+        "points": [],
+        "todo": null
+      },
+      {
+        "sub": "10.5",
+        "title": "Unpaid weekly offs are not deducted by payroll",
+        "level": "warning",
+        "headline": "Only relevant if your attendance policy sets 'Is weekly off paid?' to Unpaid.",
+        "body": "The Paid days screen then shows unpaid weekly offs as not paid, but payroll takes no loss of pay for them. Check payroll figures if you use this option.",
+        "points": [],
+        "todo": null
+      },
+      {
+        "sub": "10.4",
+        "title": "Leave is never set by an override or upload",
+        "level": "important",
+        "headline": "Leave comes only from leave requests.",
+        "body": "Edit, Change attendance status and monthly uploads cannot mark leave, and approved full-day leave always wins. Use Apply on behalf so the balance and payroll follow.",
+        "points": [],
+        "todo": null
+      },
+      {
+        "sub": "10.3",
+        "title": "Geo dashboard has no map",
+        "level": "warning",
+        "headline": "Lists only; located check-ins are hidden until the organisation turns them on.",
+        "body": "The Geo dashboard shows lists of check-ins and headcount by location. Who sees each panel is set under Admin › Setup › Access rights.",
+        "points": [],
+        "todo": null
+      }
+    ],
+    "troubleshooting": [
+      [
+        "A day shows Incomplete",
+        "Only an IN or only an OUT punch fell in the shift's punch window",
+        "Regularise with the missing time, or add a Manual punch with a note",
+        ""
+      ],
+      [
+        "Working days show Absent with 'No shift assigned'",
+        "No work schedule, schedule rule or rostered day covers the employee",
+        "Add an Applies to rule or roster the days, then Reprocess",
+        ""
+      ],
+      [
+        "A punch shows Failed (unknown code)",
+        "The code on the device does not match an employee code",
+        "Correct the employee code, then Retry the punch",
+        ""
+      ],
+      [
+        "Approved leave still shows Absent",
+        "The day was processed before approval, or the leave is still pending",
+        "Check the request is Approved, then Reprocess the day",
+        ""
+      ],
+      [
+        "A holiday is missing on the calendar",
+        "The calendar is not Active, or no Applies to rule matches the employee",
+        "Activate the calendar and add or fix the rule; lowest priority wins",
+        ""
+      ],
+      [
+        "Late minutes are wrong by hours",
+        "Work location, shift or device timezone differs",
+        "Check the location's timezone and the shift's Timezone",
+        ""
+      ],
+      [
+        "'This day is locked for payroll'",
+        "A finalised payroll covers the day",
+        "Turn on corrections after payroll if needed; the change becomes an arrear",
+        ""
+      ],
+      [
+        "Regularisation refused: 'only allowed within 7 days'",
+        "The attendance policy's backdated window",
+        "Use Raise on behalf (HR window) or change the policy",
+        ""
+      ],
+      [
+        "Paid days differ from payroll",
+        "Incomplete or unprocessed days, or unpaid weekly offs",
+        "Clear Incomplete days and process the whole month, then recalculate payroll",
+        ""
+      ],
+      [
+        "Nothing changes after a punch arrives",
+        "Recalculation runs in the background and may lag",
+        "Reprocess the day; if it persists, ask PeopleOS support",
+        ""
+      ],
+      [
+        "Employee missing from the Roster board",
+        "Filters, your access scope, or not employed on those days",
+        "Reset filters; check the employee's status and joining date",
+        ""
+      ],
+      [
+        "No overtime on a long day",
+        "Shift not Overtime eligible, or extra time below the minimum",
+        "Tick Overtime eligible or check the minimum overtime",
+        ""
+      ]
+    ],
+    "checklist": [
+      [
+        "Requests decided",
+        "No regularisation, leave, on-duty, short leave or other request waiting for the month (Run attendance reminders = 0)."
+      ],
+      [
+        "No missing shifts",
+        "Employees with missing shift = 0."
+      ],
+      [
+        "Missed punches resolved",
+        "Attendance records › Incomplete for the month is empty."
+      ],
+      [
+        "Absences reviewed",
+        "Run attendance step 1: absent and half days are genuine."
+      ],
+      [
+        "Overtime decided",
+        "No overtime pending approval for the month."
+      ],
+      [
+        "Penalties checked",
+        "Late-mark penalties reviewed; unfair ones waived with a reason."
+      ],
+      [
+        "Arrears decided",
+        "Earlier months' arrears taken or held (step 2)."
+      ],
+      [
+        "Month processed",
+        "Step 3: every employee Fully processed after the last day of the month."
+      ],
+      [
+        "Paid days checked",
+        "Paid days screen reviewed and CSV kept."
+      ],
+      [
+        "Month closed",
+        "Only if month close is switched on: Close month."
+      ]
+    ],
+    "summary": [
+      "Every day's status comes from approved leave first, then HR overrides, uploads, then punches with shift, grace and breaks.",
+      "Shifts set thresholds; schedules and rosters decide which shift applies; holiday calendars apply by rules.",
+      "Correct days with regularisations or overrides; punches are never edited, and leave only comes from leave requests.",
+      "Payroll takes loss of pay for Absent, Half day, unpaid leave and penalty days from processed days.",
+      "Clear Incomplete days and process the whole month before payroll; finalised payroll locks the days."
+    ],
+    "captures_needed": [
+      {
+        "title": "Run attendance for October 2026 with absences",
+        "url": "/admin/run-attendance?company=1&month=2026-10",
+        "how": "Open the page and wait for the figures; scroll to step 1 to show the absent and half days."
+      },
+      {
+        "title": "Paid days breakdown for Nisha Reddy",
+        "url": "/admin/paid-days?company=1&month=2026-10&detail=22",
+        "how": "The Breakdown panel for EMP00022, October 2026."
+      },
+      {
+        "title": "Attendance calendar with the day panel",
+        "url": "/admin/attendance-calendar?employee=22&month=2026-10",
+        "how": "Click 29 Oct (Incomplete) to open the day panel with Regularise."
+      },
+      {
+        "title": "Regularise modal on an attendance record",
+        "url": "/admin/attendance-records",
+        "how": "Filter Status Incomplete, then click Regularise on a row."
+      },
+      {
+        "title": "Roster board Assign shift",
+        "url": "/admin/roster-board",
+        "how": "Tick two employees, open Assign shift from the bulk actions."
+      },
+      {
+        "title": "Process dates modal",
+        "url": "/admin/attendance-records",
+        "how": "Click Process dates in the toolbar."
+      },
+      {
+        "title": "Shift wizard step 2",
+        "url": "/admin/shifts/create",
+        "how": "Fill step 1 and click Next to show Hours and thresholds."
+      },
+      {
+        "title": "Holiday calendar Holidays tab",
+        "url": "/admin/holiday-calendars/1/edit",
+        "how": "Scroll to the Holidays tab with the 2026 holidays."
+      }
+    ],
+    "gaps": [
+      "Half day on a holiday is stored and shown but not used in the calculation (day treated as a full holiday).",
+      "Paid days screen and payroll differ for Incomplete days and unpaid weekly offs; a half-day leave with a worked other half may also read 0.5 on Paid days (not verified with data).",
+      "Close month / Reopen month and Adjust paid days are switched off in the example organisation, so they were not captured.",
+      "Create from holiday library is not shown: no published holiday lists in the example organisation.",
+      "Device 'A sync agent reads the attendance server' option: availability of the agent not confirmed; Geo dashboard has no map; split shifts not available."
+    ]
+  },
+  "M11": {
+    "intro": "Leave covers the kinds of leave you offer, who gets how many days (the leave policy), requests and approvals, and the balance of every employee, kept as an append-only ledger. Approved leave flows into attendance and payroll.",
+    "why": "Leave decides a day before punches do, and unpaid leave is loss of pay. A wrong policy, opening balance or year-end setting gives wrong balances that are hard to unwind later.",
+    "who": "Tenant Super Admin, Tenant HR Admin and HR Manager hold every leave right. Managers approve their team's requests. Attendance Admin, Payroll Admin and Auditor view. Employees apply for their own leave.",
+    "where": "People › Time & leave (Leave types, Leave requests, Balances, Transactions, Encashments, Leave donations, Carry forward leaves, Leave calendar). Leave policy: Workflows › Policies. Leave year: Admin › Setup › Leave.",
+    "objectives": [
+      "Set up leave types and a leave policy that grants, accrues, carries forward and encashes days correctly.",
+      "Decide, apply on behalf and cancel leave, and explain how the days counted reach attendance and payroll.",
+      "Read and correct balances with the ledger, and close the leave year with carry forward."
+    ],
+    "depends_on": [
+      "M06 Workflows and policies: the leave policy (entitlements per leave type) and its assignment rules",
+      "M10 Attendance: work schedules and holiday calendars decide which days of a span are counted as leave",
+      "M07 Employees: joining date, lifecycle state (probation) and gender drive eligibility and pro-ration",
+      "M13 Payroll: unpaid leave becomes loss of pay; approved encashments are paid in a pay run"
+    ],
+    "subs": [
+      {
+        "id": "11.1",
+        "name": "Leave types and policy",
+        "desc": "The kinds of leave and their flags; days come from the leave policy.",
+        "screens": [
+          "people/leave-types"
+        ]
+      },
+      {
+        "id": "11.2",
+        "name": "Requests and the calendar",
+        "desc": "Decide, apply on behalf, cancel, and see who is away.",
+        "screens": [
+          "people/leave-requests",
+          "people/leave-requests--view",
+          "people/leave-calendar"
+        ]
+      },
+      {
+        "id": "11.3",
+        "name": "Balances and the ledger",
+        "desc": "Balances per employee, type and year, and every movement behind them.",
+        "screens": [
+          "people/balances",
+          "people/transactions"
+        ]
+      },
+      {
+        "id": "11.4",
+        "name": "Encashment and donations",
+        "desc": "Turn leave into pay, or give leave to a colleague.",
+        "screens": [
+          "people/encashments",
+          "people/leave-donations"
+        ]
+      },
+      {
+        "id": "11.5",
+        "name": "Year end",
+        "desc": "Carry forward and lapse balances when the leave year ends.",
+        "screens": [
+          "people/carry-forward-leaves"
+        ]
+      }
+    ],
+    "screens": {
+      "people/leave-types": {
+        "purpose": "The kinds of leave your organisation offers and their flags: paid, half days, encashable, approval and cancellation. How many days each person gets is set in the leave policy.",
+        "when": "At set-up, and when you introduce a new kind of leave.",
+        "elements": [
+          [
+            "New leave type",
+            "Form with sections Leave type, Requests and approval, Validity and display."
+          ],
+          [
+            "Category",
+            "Paid leave, Unpaid leave, Compensatory off, Restricted / optional holiday, Special."
+          ],
+          [
+            "Paid / Half day / Encash",
+            "The type's flags (Earned leave in the example: paid, half days, encashable)."
+          ],
+          [
+            "Unit",
+            "days. Hours can be chosen but hourly requests are not available yet."
+          ],
+          [
+            "Approval",
+            "Yes: requests wait for a decision. No: they are approved at once."
+          ],
+          [
+            "For",
+            "Everyone, or Female / Male only (Maternity and Paternity leave in the example)."
+          ],
+          [
+            "Edit",
+            "Change the type; its code cannot change."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Name",
+            "meaning": "For example Earned leave.",
+            "rule": "Required"
+          },
+          {
+            "label": "Code",
+            "meaning": "Short code used in policies, uploads and the calendar, for example EL. Locked after creation.",
+            "rule": "Required"
+          },
+          {
+            "label": "Category",
+            "meaning": "Unpaid leave has no balance and is always loss of pay.",
+            "rule": "Required"
+          },
+          {
+            "label": "Applicable gender",
+            "meaning": "Blank = Everyone.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Paid",
+            "meaning": "Off: the leave is loss of pay in payroll.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Half days allowed",
+            "meaning": "Lets people take a first or second half; the policy can also forbid it.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Encashable",
+            "meaning": "Allows encashment, when the policy also allows it.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Description",
+            "meaning": "Shown to people choosing the type.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Unit",
+            "meaning": "days (hours is not usable for requests yet).",
+            "rule": "Required"
+          },
+          {
+            "label": "Minimum per request / Maximum per request",
+            "meaning": "Smallest and largest request in days.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Supporting document always required",
+            "meaning": "Every request needs a document.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Requires approval",
+            "meaning": "Off: requests are approved automatically.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Cancelling approved leave",
+            "meaning": "Employee may cancel / Cancellation needs approval / Only HR may cancel.",
+            "rule": "Required"
+          },
+          {
+            "label": "Effective from / Effective to",
+            "meaning": "When the type can be used.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Colour / Sort order",
+            "meaning": "How the type shows and its place in lists.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Status",
+            "meaning": "Only active types can be requested or accrued.",
+            "rule": "Required"
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "On edit; kept in the audit trail.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The type exists but nobody has days until a leave policy lists it (Workflows › Policies, Entitlements per leave type).",
+        "permission": "leave.view to see; leave.manage to create or change.",
+        "depends": null,
+        "limits": "Hourly leave cannot be requested yet; requests of a type set in hours are refused.",
+        "source": "app/Filament/Resources/LeaveTypes/LeaveTypeResource.php; app/Domain/Leave/Services/Leaves.php"
+      },
+      "people/leave-requests": {
+        "purpose": "The leave register: every request with its type, dates, days and status. Approve, reject, cancel, or apply on behalf of an employee.",
+        "when": "Daily, to decide waiting requests (4 in the example organisation), and whenever leave must be applied for someone.",
+        "elements": [
+          [
+            "Status tabs",
+            "All, Waiting for a decision, Approved."
+          ],
+          [
+            "Apply on behalf",
+            "Employee, Leave type, dates and halves, reason, document; shows days and the balance before and after."
+          ],
+          [
+            "Approve / Reject",
+            "Decide a waiting request (a note is required to reject)."
+          ],
+          [
+            "Cancel",
+            "Withdraw a pending request or reverse approved leave, with a reason."
+          ],
+          [
+            "Approve cancellation / Keep leave",
+            "Decide an employee's request to cancel approved leave."
+          ],
+          [
+            "Act on all matching",
+            "Cancel many requests at once (bulk run)."
+          ],
+          [
+            "Views / Report / Upload",
+            "Saved views (cancellations, cancelled), reports, and the leave history upload."
+          ]
+        ],
+        "fields": [],
+        "after": "Approval posts the days to the ledger and recalculates past attendance days; cancellation of approved leave posts a reversal.",
+        "permission": "leave.view to see; leave.approve to decide (never your own); leave.manage to apply on behalf and cancel any request.",
+        "depends": "A leave policy that grants the type to the employee.",
+        "limits": "Days locked by a finalised payroll or in a closed attendance month cannot get new leave or be cancelled.",
+        "source": "app/Filament/Resources/LeaveRequests/; app/Filament/Support/LeaveActions.php; app/Domain/Leave/Services/Leaves.php"
+      },
+      "people/leave-requests--view": {
+        "purpose": "One leave request in full: the request with its remaining balance and document, and the decision and any cancellation.",
+        "when": "Before deciding a request or when someone asks about one.",
+        "elements": [
+          [
+            "Request",
+            "Employee, Leave type, status, Leave dates, No. of days, Remaining balance, Reason, Supporting document, Raised, Raised by."
+          ],
+          [
+            "Remaining balance",
+            "Days available after this request for that leave year, or 'Not counted against a balance' for unpaid leave."
+          ],
+          [
+            "Decision",
+            "Decided by, Decided on, Approver comments, Cancellation requested, Cancellation reason, Cancellation decided."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "leave.view (in scope), or the employee's own request.",
+        "depends": null,
+        "limits": "Read-only: decide on the Leave requests list or in the Approval Center.",
+        "source": "app/Filament/Resources/LeaveRequests/LeaveRequestResource.php (infolist)"
+      },
+      "people/leave-calendar": {
+        "purpose": "Who is away when across the teams you can see: approved, waiting and cancellation-requested leave. Reasons are never shown here.",
+        "when": "When planning cover or checking a team before approving leave.",
+        "elements": [
+          [
+            "From / Until",
+            "The period to look at."
+          ],
+          [
+            "Status",
+            "Approved, pending or cancellation requested."
+          ],
+          [
+            "Type / Department",
+            "Filter by leave type or department."
+          ],
+          [
+            "Days",
+            "Days of each request."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "leave.view or leave.approve.",
+        "depends": null,
+        "limits": "Leave marked private shows as Away, without the type, to people who may not see it in full. A list view, not a grid.",
+        "source": "app/Filament/Pages/LeaveCalendar.php"
+      },
+      "people/balances": {
+        "purpose": "Each employee's balance per leave type and leave year: opening, accrued, adjusted, used, pending, encashed, lapsed, closing and available.",
+        "when": "To answer balance questions, correct a balance, or check accruals.",
+        "elements": [
+          [
+            "Opening",
+            "Opening balance plus days carried forward from last year."
+          ],
+          [
+            "Accrued",
+            "Credits from the leave policy, plus comp-off credits."
+          ],
+          [
+            "Used / Pending",
+            "Approved leave taken; days in requests still waiting."
+          ],
+          [
+            "Closing / Available",
+            "Closing = Opening + Accrued + Adjusted − Used − Encashed − Lapsed. Available = Closing − Pending."
+          ],
+          [
+            "Adjust",
+            "Add (positive) or remove (negative) days with a note."
+          ],
+          [
+            "Encash",
+            "Record an encashment for the employee; approved at once by HR."
+          ],
+          [
+            "Run accrual now",
+            "Posts every accrual due up to today for all employed people. Safe to repeat."
+          ],
+          [
+            "Upload",
+            "Leave balance upload (opening balances or adjustments)."
+          ]
+        ],
+        "fields": [],
+        "after": "Every change is a new ledger entry; the balance is recalculated from the ledger.",
+        "permission": "leave.view to see; leave.adjust to adjust (leave.manage includes it); leave.manage to encash and run accrual.",
+        "depends": "Leave policy entitlements; the leave year (January in the example organisation).",
+        "limits": "Run accrual now does not close the year; the nightly leave run does that on its first run after the year ends.",
+        "source": "app/Filament/Resources/LeaveBalances/; app/Domain/Leave/Services/LeaveBalances.php; app/Domain/Leave/Services/LeaveAccrual.php"
+      },
+      "people/transactions": {
+        "purpose": "The leave ledger, read-only: every movement of every balance with its date, type, days and note. Balances are always the sum of these entries.",
+        "when": "When a balance looks wrong and you need to see why.",
+        "elements": [
+          [
+            "Movement",
+            "Opening, Accrual, Comp off credit, Adjustment, Usage, Reversal, Carry forward, Lapse, Expiry, Encashment."
+          ],
+          [
+            "Period",
+            "The leave year the entry belongs to."
+          ],
+          [
+            "Days",
+            "Signed: credits positive, debits negative."
+          ],
+          [
+            "Note",
+            "Why the entry was made (accrual, request reason, adjustment note)."
+          ],
+          [
+            "Filters",
+            "Movement, Type and Period."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "leave.view (employees see their own).",
+        "depends": null,
+        "limits": "Entries cannot be edited or deleted; correct a mistake with an adjustment on Balances.",
+        "source": "app/Filament/Resources/LeaveTransactions/LeaveTransactionResource.php; app/Domain/Leave/Models/LeaveLedgerEntry.php"
+      },
+      "people/encashments": {
+        "purpose": "Requests to turn leave days into pay: approve, reject or cancel them, encash for one employee, or open the batch screen for many.",
+        "when": "When encashment requests arrive, and before a pay run.",
+        "elements": [
+          [
+            "Encash for an employee",
+            "Wizard: Employee, Encashment (Leave type, days, Pay month, Comments, file), Review."
+          ],
+          [
+            "Encash leaves",
+            "Opens the batch screen to encash one leave type for many employees."
+          ],
+          [
+            "Approve",
+            "Approve, optionally choosing the Pay month (blank = the next pay run)."
+          ],
+          [
+            "Reject / Cancel",
+            "Reject a waiting one, or cancel a pending or approved unpaid one (days go back)."
+          ],
+          [
+            "Status",
+            "Pending, approved, paid, rejected or cancelled."
+          ],
+          [
+            "Views",
+            "Waiting for a decision, Approved not yet paid out, Encashment cancellations."
+          ]
+        ],
+        "fields": [],
+        "after": "Approval takes the days off the balance; the pay run of the chosen month pays them and marks them paid when finalised.",
+        "permission": "leave.view to see; leave.manage to approve, reject, cancel or encash.",
+        "depends": "The leave type is Encashable and the policy has Encashment allowed.",
+        "limits": "A paid encashment cannot be cancelled.",
+        "source": "app/Filament/Resources/LeaveEncashments/; app/Domain/Leave/Services/LeaveAdjustments.php; app/Domain/Payroll/Inputs/LeaveEncashmentInput.php"
+      },
+      "people/leave-donations": {
+        "purpose": "Leave one employee gives to a colleague. Approval moves the days from the donor's balance to the recipient's.",
+        "when": "When donations wait for a decision.",
+        "elements": [
+          [
+            "From / To",
+            "Donor and recipient."
+          ],
+          [
+            "Leave / Days",
+            "The leave type (only allowed types) and whole or half days."
+          ],
+          [
+            "Approve / Reject",
+            "Decide; the donor's balance is checked again at approval."
+          ],
+          [
+            "Status filter",
+            "Pending, approved, rejected or cancelled."
+          ]
+        ],
+        "fields": [],
+        "after": "Approval posts two adjustments: minus for the donor, plus for the recipient.",
+        "permission": "leave.view to see; leave.approve to decide (not a donation you give or receive).",
+        "depends": "Admin › Setup › Leave: types that may be donated (EL) and the yearly limit per donor (5 days) in the example.",
+        "limits": "Employees start a donation themselves with Donate leave; HR cannot raise one here.",
+        "source": "app/Filament/Resources/LeaveDonations/; app/Domain/Leave/Services/LeaveDonations.php"
+      },
+      "people/carry-forward-leaves": {
+        "purpose": "The leave year end: per employee and leave type, the closing balance, the days carried into next year and the days that lapse, by the leave policy.",
+        "when": "Before the leave year ends (to check) and after it ends (to post).",
+        "elements": [
+          [
+            "Leave year",
+            "For example Leave year 2026 · 1 Jan 2026 – 31 Dec 2026."
+          ],
+          [
+            "No. of total leave",
+            "Closing balance of the year."
+          ],
+          [
+            "No. of leaves to be lapsed / carried forward",
+            "What the policy limit lapses and carries."
+          ],
+          [
+            "Status",
+            "To carry forward, Carried forward, or Not in the leave policy."
+          ],
+          [
+            "Carry forward",
+            "Select rows and post the year end for them."
+          ],
+          [
+            "Show / Leave policy",
+            "Filter: still to carry forward or carried forward; by policy."
+          ],
+          [
+            "Download / Leave balances",
+            "The preview as CSV; open Balances."
+          ]
+        ],
+        "fields": [],
+        "after": "Carry forward entries go into the new year and lapse entries close the old one; posting twice writes nothing new.",
+        "permission": "leave.view with leave.carry_forward (leave.manage includes it).",
+        "depends": "The leave year has ended; policy carry-forward limits are right.",
+        "limits": "Posting is allowed only after the year ends. The nightly leave run also closes the ended year on its first run, so check limits before year end.",
+        "source": "app/Filament/Pages/LeaveCarryForward.php; app/Domain/Leave/Services/LeaveYearEnd.php; app/Domain/Leave/Services/LeaveAccrual.php; app/Console/Commands/AccrueLeave.php"
+      }
+    },
+    "procedures": [
+      {
+        "sub": "11.1",
+        "title": "Create a leave type and grant it",
+        "before": "Decide its category, whether it is paid, and how many days each group gets.",
+        "steps": [
+          [
+            "Create the type",
+            "Leave types › New leave type: Name, Code, Category, flags, Requires approval and Cancelling approved leave."
+          ],
+          [
+            "Open the leave policy",
+            "Workflows › Policies, the leave policy (Standard leave in the example)."
+          ],
+          [
+            "Add an entitlement",
+            "Under Entitlements per leave type add the type: Days per year, Accrual, carry-forward, encashment and request rules."
+          ],
+          [
+            "Publish",
+            "Publish a new policy version effective from the right date; earlier ledger entries are not changed."
+          ],
+          [
+            "Accrue",
+            "Balances › Run accrual now, then check the new balances."
+          ]
+        ],
+        "result": "Employees the policy covers can see and request the new type.",
+        "screens": [
+          "people/leave-types",
+          "people/balances"
+        ],
+        "source": "app/Filament/Resources/LeaveTypes/; app/Domain/Leave/Services/LeaveEntitlements.php"
+      },
+      {
+        "sub": "11.2",
+        "title": "Approve or reject a leave request",
+        "before": "A request is waiting.",
+        "steps": [
+          [
+            "Find it",
+            "Leave requests › Waiting for a decision (approvers also see it in the Approval Center)."
+          ],
+          [
+            "Check",
+            "Open it: Leave dates, No. of days, Remaining balance and any document. Use the Leave calendar for team cover."
+          ],
+          [
+            "Decide",
+            "Approve (optional note) or Reject (note required)."
+          ]
+        ],
+        "result": "Approved: the days are used from the balance and past attendance days become Leave. Rejected: the pending days are released.",
+        "screens": [
+          "people/leave-requests",
+          "people/leave-requests--view",
+          "people/leave-calendar"
+        ],
+        "source": "app/Domain/Leave/Services/Leaves.php"
+      },
+      {
+        "sub": "11.2",
+        "title": "Apply leave on behalf of an employee",
+        "before": "The employee is covered by the leave policy.",
+        "steps": [
+          [
+            "Open the form",
+            "Leave requests › Apply on behalf, or the day panel on the Attendance calendar."
+          ],
+          [
+            "Fill it in",
+            "Employee, Leave type, From and To, Start / End half if needed, Reason, optional document."
+          ],
+          [
+            "Check the preview",
+            "The days counted and the balance before and after appear before you submit."
+          ],
+          [
+            "Submit",
+            "The request goes to the employee's approver (or is approved at once if the type needs no approval)."
+          ]
+        ],
+        "result": "A request in the employee's name, recorded as raised by you.",
+        "screens": [
+          "people/leave-requests"
+        ],
+        "source": "app/Filament/Support/LeaveActions.php"
+      },
+      {
+        "sub": "11.2",
+        "title": "Cancel approved leave",
+        "before": "The days are not locked by payroll.",
+        "steps": [
+          [
+            "Find the request",
+            "Leave requests: filter or search the employee."
+          ],
+          [
+            "Cancel",
+            "Click Cancel, confirm and give a reason. As HR you reverse it at once, whatever the type's cancellation rule."
+          ],
+          [
+            "Check",
+            "Transactions shows a Reversal entry; the attendance days are recalculated."
+          ]
+        ],
+        "result": "The days return to the balance and attendance follows.",
+        "screens": [
+          "people/leave-requests",
+          "people/transactions"
+        ],
+        "source": "app/Domain/Leave/Services/Leaves.php (cancel, reverse)"
+      },
+      {
+        "sub": "11.3",
+        "title": "Adjust a balance",
+        "before": "You know the correct figure and the reason.",
+        "steps": [
+          [
+            "Find the balance",
+            "Balances: filter Type and Year, search the employee."
+          ],
+          [
+            "Adjust",
+            "Click Adjust; enter Days (positive to add, negative to remove, halves allowed) and a note."
+          ],
+          [
+            "Check",
+            "Adjusted and Closing change; Transactions shows the Adjustment entry with your note."
+          ]
+        ],
+        "result": "A corrected balance with a permanent, audited reason.",
+        "screens": [
+          "people/balances",
+          "people/transactions"
+        ],
+        "source": "app/Domain/Leave/Services/LeaveAdjustments.php"
+      },
+      {
+        "sub": "11.3",
+        "title": "Load opening balances at go-live",
+        "before": "Each employee's balance per leave type on the go-live date.",
+        "steps": [
+          [
+            "Get the file",
+            "Balances › Upload (or Time office uploads) › Download sample file for the Leave balance upload."
+          ],
+          [
+            "Fill it",
+            "Employee code, Leave code, Days, Kind opening, Leave year, Note."
+          ],
+          [
+            "Upload and approve",
+            "Upload CSV, map, validate, approve and run."
+          ],
+          [
+            "Check",
+            "Balances: Opening shows the figure; rows already on file are skipped."
+          ]
+        ],
+        "result": "One opening entry per employee, leave type and year; uploading again never doubles it.",
+        "screens": [
+          "people/balances",
+          "people/transactions"
+        ],
+        "source": "app/Domain/Leave/Imports/LeaveBalanceImports.php"
+      },
+      {
+        "sub": "11.4",
+        "title": "Encash leave for an employee",
+        "before": "The type is encashable and the policy allows encashment.",
+        "steps": [
+          [
+            "Start",
+            "Encashments › Encash for an employee; pick the Employee."
+          ],
+          [
+            "Encashment step",
+            "Leave type, Specify leaves (days), Pay month (blank = next pay run), Comments, file if required."
+          ],
+          [
+            "Review and submit",
+            "It goes to the approvers like the employee's own request."
+          ],
+          [
+            "Approve",
+            "An approver clicks Approve; the days leave the balance."
+          ]
+        ],
+        "result": "Payroll pays the encashment in the chosen pay month and marks it paid when finalised.",
+        "screens": [
+          "people/encashments"
+        ],
+        "source": "app/Domain/Leave/Services/LeaveAdjustments.php; app/Domain/Payroll/Inputs/LeaveEncashmentInput.php"
+      },
+      {
+        "sub": "11.5",
+        "title": "Run carry forward at the year end",
+        "before": "The leave year has ended; policy limits are correct.",
+        "steps": [
+          [
+            "Open the screen",
+            "Carry forward leaves; it opens on the year that ended if people are still to carry forward."
+          ],
+          [
+            "Narrow",
+            "Choose the leave type, Leave policy and Show: Still to carry forward."
+          ],
+          [
+            "Check",
+            "Compare No. of total leave, lapsed and carried forward; Download keeps a copy."
+          ],
+          [
+            "Post",
+            "Select the rows and click Carry forward; type the count if asked."
+          ],
+          [
+            "Confirm",
+            "Status becomes Carried forward; Balances for the new year show the Opening."
+          ]
+        ],
+        "result": "Carried days open the new year; the rest lapse in the old one.",
+        "screens": [
+          "people/carry-forward-leaves",
+          "people/balances"
+        ],
+        "source": "app/Domain/Leave/Services/LeaveYearEnd.php"
+      }
+    ],
+    "calculations": [
+      {
+        "sub": "11.3",
+        "title": "The balance formula: Sick leave",
+        "intro": "Example organisation: Nisha Reddy (EMP00022), Sick leave, leave year 2026.",
+        "lines": [
+          [
+            "",
+            "Opening (opening balance + carried forward)",
+            "0.00"
+          ],
+          [
+            "+",
+            "Accrued: annual credit on 1 Jan 2026",
+            "10.00"
+          ],
+          [
+            "+",
+            "Adjusted",
+            "0.00"
+          ],
+          [
+            "−",
+            "Used: 22–23 Oct 2026",
+            "2.00"
+          ],
+          [
+            "−",
+            "Encashed",
+            "0.00"
+          ],
+          [
+            "−",
+            "Lapsed (lapse + expiry)",
+            "0.00"
+          ]
+        ],
+        "total": [
+          "Closing",
+          "8.00"
+        ],
+        "explain": [
+          [
+            "Available",
+            "Closing − Pending = 8.00 − 0.00 = 8.00."
+          ],
+          [
+            "Source",
+            "Every figure is a sum of ledger entries by movement (Transactions)."
+          ],
+          [
+            "Where you see it",
+            "Balances, Year 2026, Type Sick leave."
+          ]
+        ],
+        "source": "app/Domain/Leave/Services/LeaveBalances.php (figures); q.php leave_balances and leave_ledger_entries employee 22"
+      },
+      {
+        "sub": "11.3",
+        "title": "Pending requests reserve the balance",
+        "intro": "Example organisation: EMP00004, Casual leave 2026, with a 2-day request (30 Nov – 1 Dec) waiting.",
+        "lines": [
+          [
+            "",
+            "Closing (7 credited on 1 Jan, none used)",
+            "7.00"
+          ],
+          [
+            "−",
+            "Pending",
+            "2.00"
+          ]
+        ],
+        "total": [
+          "Available for new requests",
+          "5.00"
+        ],
+        "explain": [
+          [
+            "New requests",
+            "Checked against Available, so two waiting requests cannot use the same days."
+          ],
+          [
+            "Approval",
+            "Checked against the Closing balance, so an earlier request is not blocked by later pending ones."
+          ],
+          [
+            "Negative balance",
+            "Allowed only up to the policy's Negative balance allowed up to (days)."
+          ]
+        ],
+        "source": "app/Domain/Leave/Services/Leaves.php (assertBalance); q.php leave_balances employee 4"
+      },
+      {
+        "sub": "11.3",
+        "title": "Monthly accrual of Earned leave",
+        "intro": "Example organisation: Standard leave grants EL 21 days a year, Accrual Monthly. Each month's share is credited on its first day.",
+        "lines": [
+          [
+            "",
+            "Credit per month: 21 days ÷ 12",
+            "1.75"
+          ],
+          [
+            "×",
+            "Monthly credits posted, 1 Jan to 1 Nov 2026",
+            "11"
+          ]
+        ],
+        "total": [
+          "Accrued EL for Nisha Reddy on 16 Nov 2026",
+          "19.25"
+        ],
+        "explain": [
+          [
+            "Next credit",
+            "1 Dec 2026 adds 1.75, giving 21.00 for the year."
+          ],
+          [
+            "Annual types",
+            "CL (7) and SL (10) are credited in full on 1 Jan."
+          ],
+          [
+            "Repeats",
+            "Accrual runs nightly and is safe to repeat: each credit is posted once."
+          ]
+        ],
+        "source": "app/Domain/Leave/Services/LeaveAccrual.php (periodic); q.php leave_ledger_entries employee 22"
+      },
+      {
+        "sub": "11.2",
+        "title": "Days counted in a leave span",
+        "intro": "Illustrative, using the example organisation's calendar: Earned leave from Thursday 24 Dec to Monday 28 Dec 2026. The leave policy does not count weekly offs or holidays.",
+        "lines": [
+          [
+            "",
+            "Calendar days 24–28 Dec",
+            "5"
+          ],
+          [
+            "−",
+            "Christmas, 25 Dec (holiday)",
+            "1"
+          ],
+          [
+            "−",
+            "Saturday 26 and Sunday 27 Dec (weekly offs)",
+            "2"
+          ]
+        ],
+        "total": [
+          "Leave days requested",
+          "2"
+        ],
+        "explain": [
+          [
+            "Policy switches",
+            "Count weekly offs inside a leave span and Count holidays inside a leave span; with both on it would be 5."
+          ],
+          [
+            "Half days",
+            "A first or second half counts 0.5."
+          ],
+          [
+            "No working day",
+            "A span of only off days is refused."
+          ]
+        ],
+        "source": "app/Domain/Leave/Services/LeaveDayCounter.php; policy Standard leave (count_weekly_offs and count_holidays off)"
+      },
+      {
+        "sub": "11.1",
+        "title": "Credits for someone joining mid-year",
+        "intro": "Illustrative: an employee joins on 10 Jul 2026 under Standard leave (Pro-rate in the joining year on; pro-ration by remaining months; full credit for the joining month).",
+        "lines": [
+          [
+            "",
+            "CL: 7 × 6 remaining months ÷ 12",
+            "3.50"
+          ],
+          [
+            "+",
+            "SL: 10 × 6 ÷ 12",
+            "5.00"
+          ],
+          [
+            "+",
+            "EL: 1.75 for each month from July to December",
+            "10.50"
+          ]
+        ],
+        "total": [
+          "Credits in 2026",
+          "19.00"
+        ],
+        "explain": [
+          [
+            "Remaining months",
+            "July to December, counting the joining month: 6."
+          ],
+          [
+            "EL in probation",
+            "EL accrues, but Available during probation is off: it can be requested only after probation."
+          ],
+          [
+            "Other options",
+            "Pro-ration by remaining days, rule of 15, or no credit for the joining month."
+          ]
+        ],
+        "source": "app/Domain/Leave/Services/LeaveAccrual.php (annual, periodic, joinerShare); app/Domain/Leave/Services/LeaveEligibility.php"
+      },
+      {
+        "sub": "11.5",
+        "title": "Year end for Nisha Reddy, leave year 2026",
+        "intro": "Projection, example organisation: Standard leave carries EL up to 30 days and no CL or SL. Assumes no more leave is taken in 2026.",
+        "lines": [
+          [
+            "",
+            "EL closing on 31 Dec (12 × 1.75)",
+            "21.00"
+          ],
+          [
+            "−",
+            "EL lapsed (21.00 is within the 30-day limit)",
+            "0.00"
+          ]
+        ],
+        "total": [
+          "EL carried into 2027 (its Opening)",
+          "21.00"
+        ],
+        "explain": [
+          [
+            "SL and CL",
+            "Limit 0: SL closing 8.00 and CL closing 7.00 lapse in full."
+          ],
+          [
+            "Rule",
+            "Carry = the smaller of closing and the limit (or all / none, by Carry forward to next year); the rest lapses."
+          ],
+          [
+            "Expiry",
+            "Carried days can also expire after N months if the policy says so."
+          ]
+        ],
+        "source": "app/Domain/Leave/Services/LeaveAccrual.php (yearEnd, closeYear, expireCarryForward)"
+      },
+      {
+        "sub": "11.2",
+        "title": "Unpaid leave to payroll",
+        "intro": "Illustrative: 2 days of Leave without pay (LWP) on Thursday and Friday of a 31-day month, calendar-day pay basis as in the example organisation.",
+        "lines": [
+          [
+            "",
+            "Calendar days",
+            "31"
+          ],
+          [
+            "−",
+            "Loss of pay: 2 LWP days (a half day would be 0.5)",
+            "2"
+          ]
+        ],
+        "total": [
+          "Paid days in payroll",
+          "29"
+        ],
+        "explain": [
+          [
+            "Balance",
+            "LWP has no balance: it is never refused for lack of days and never appears as Used."
+          ],
+          [
+            "Attendance",
+            "The days show as Leave without pay."
+          ],
+          [
+            "Payroll",
+            "Loss of pay comes from the approved unpaid leave days."
+          ]
+        ],
+        "source": "app/Domain/Leave/Services/LeaveOutput.php (unpaidDays); app/Domain/Payroll/Services/PayrollCalculator.php"
+      },
+      {
+        "sub": "11.4",
+        "title": "What an encashment pays",
+        "intro": "Illustrative: 5 days of EL encashed for someone with a monthly Basic of 30,000.00. The example organisation values a day at Basic ÷ 30 (payroll settings).",
+        "lines": [
+          [
+            "",
+            "Day rate: monthly Basic 30,000.00 ÷ 30",
+            "1,000.00"
+          ],
+          [
+            "×",
+            "Days encashed",
+            "5"
+          ]
+        ],
+        "total": [
+          "Leave encashment (taxable earning)",
+          "5,000.00"
+        ],
+        "explain": [
+          [
+            "When",
+            "In the pay run of the Pay month chosen, or the next pay run."
+          ],
+          [
+            "Limits",
+            "Max encashable days per year (10 for EL in the example), most per request and balance to keep."
+          ]
+        ],
+        "source": "app/Domain/Payroll/Inputs/LeaveEncashmentInput.php; app/Domain/Payroll/Inputs/PayrollInputs.php; tenant settings payroll.encashment_basis, payroll.encashment_divisor"
+      }
+    ],
+    "warnings": [
+      {
+        "sub": "11.5",
+        "title": "The leave year closes itself",
+        "level": "important",
+        "headline": "The nightly leave run carries forward and lapses the ended year on its first run after year end.",
+        "body": "You cannot hold the year open. Check carry-forward limits in the leave policy and use the Carry forward leaves preview before the year ends.",
+        "points": [
+          "Posting twice writes nothing new",
+          "Run accrual now only credits accruals; it does not close the year"
+        ],
+        "todo": "Set a reminder: Admin › Setup › Leave › 'Remind HR to carry forward leaves … days before the leave year ends'."
+      },
+      {
+        "sub": "11.3",
+        "title": "The ledger cannot be edited",
+        "level": "important",
+        "headline": "Every balance change is a permanent entry.",
+        "body": "Ledger entries are never changed or deleted. Correct a mistake with an adjustment that has a clear note; opening balances post only once per employee, leave type and year.",
+        "points": [],
+        "todo": null
+      },
+      {
+        "sub": "11.2",
+        "title": "No hourly leave and no prefix or suffix sandwich",
+        "level": "warning",
+        "headline": "Leave is requested in whole or half days.",
+        "body": "Types set in hours cannot be requested yet. Leave counting only counts or skips weekly offs and holidays inside the span; there is no rule that adds off days before or after it.",
+        "points": [
+          "Attendance has its own sandwich setting (Admin › Setup › Time office), off in the example organisation"
+        ],
+        "todo": null
+      },
+      {
+        "sub": "11.1",
+        "title": "Policy changes do not rewrite history",
+        "level": "warning",
+        "headline": "A new policy version applies from its effective date.",
+        "body": "Credits already posted stay as they are. If an entitlement was wrong, publish the corrected version and adjust balances already credited.",
+        "points": [],
+        "todo": null
+      },
+      {
+        "sub": "11.2",
+        "title": "Locked and closed days",
+        "level": "warning",
+        "headline": "Leave cannot be applied or cancelled on days a finalised payroll locked.",
+        "body": "Unless corrections after payroll are allowed, such requests are refused. Decide leave for the month before payroll is finalised.",
+        "points": [],
+        "todo": null
+      }
+    ],
+    "troubleshooting": [
+      [
+        "'No leave policy grants … to this employee'",
+        "No leave policy rule matches the employee, or the type is not in its entitlements",
+        "Check the policy's assignment rules and Entitlements per leave type",
+        ""
+      ],
+      [
+        "'… is not available during probation'",
+        "Available during probation is off for the type (EL in the example)",
+        "Wait for confirmation or change the entitlement",
+        ""
+      ],
+      [
+        "A type is missing from the Apply form",
+        "The employee's policy does not list it (unpaid types always show)",
+        "Add the type to the policy's entitlements",
+        ""
+      ],
+      [
+        "Balance looks wrong",
+        "Pending requests reserve days, or an entry is missing",
+        "Read Transactions for the employee, type and period; adjust with a note",
+        ""
+      ],
+      [
+        "'Insufficient … balance' at approval",
+        "Another approval or adjustment used the days meanwhile",
+        "Check Balances; adjust or ask for another type",
+        ""
+      ],
+      [
+        "'The selected span contains no working days'",
+        "Every day is a weekly off or holiday",
+        "Check the dates and the employee's schedule",
+        ""
+      ],
+      [
+        "Approved leave still shows Absent",
+        "The day was processed before approval",
+        "Reprocess the day in Attendance records",
+        ""
+      ],
+      [
+        "Opening balance row skipped",
+        "An opening balance for that year is already on file",
+        "Use Kind adjustment for the difference",
+        ""
+      ],
+      [
+        "Encash button missing on a balance",
+        "Type not Encashable, or nothing available",
+        "Check the leave type and the policy's Encashment allowed",
+        ""
+      ],
+      [
+        "Carry forward refused",
+        "The leave year has not ended yet",
+        "Preview now; post after the last day of the year",
+        ""
+      ]
+    ],
+    "checklist": [
+      [
+        "Month end: requests decided",
+        "No leave requests or cancellations waiting for the month."
+      ],
+      [
+        "Month end: unpaid leave checked",
+        "LWP for the month is approved, so payroll takes it as loss of pay."
+      ],
+      [
+        "Month end: encashments",
+        "Encashments for the pay month approved, with the right Pay month."
+      ],
+      [
+        "Year end: limits checked",
+        "Carry-forward limits and expiry in the leave policy are right before the year ends."
+      ],
+      [
+        "Year end: preview",
+        "Carry forward leaves preview downloaded and reviewed."
+      ],
+      [
+        "Year end: posted",
+        "No employee still to carry forward; new-year Opening shows on Balances."
+      ],
+      [
+        "Go-live: opening balances",
+        "Leave balance upload with Kind opening for every employee and type."
+      ]
+    ],
+    "summary": [
+      "Leave types hold flags; the leave policy decides days, accrual, carry forward, encashment and request rules.",
+      "Closing = Opening + Accrued + Adjusted − Used − Encashed − Lapsed; Available = Closing − Pending.",
+      "The ledger is append-only: correct balances with adjustments, never by editing.",
+      "Approved leave decides the attendance day first; unpaid leave becomes loss of pay in payroll.",
+      "The ended leave year carries forward and lapses automatically; check the preview before year end."
+    ],
+    "captures_needed": [
+      {
+        "title": "Apply on behalf with the balance preview",
+        "url": "/admin/leave-requests",
+        "how": "Click Apply on behalf, choose EMP00022, Earned leave, 24–28 Dec 2026 to show 2 days and the balance before and after."
+      },
+      {
+        "title": "Adjust balance modal",
+        "url": "/admin/leave-balances",
+        "how": "Click Adjust on a Sick leave 2026 row."
+      },
+      {
+        "title": "Transactions for one employee",
+        "url": "/admin/leave-transactions",
+        "how": "Search Nisha Reddy to show the monthly EL accruals and the SL usage."
+      },
+      {
+        "title": "Encash for an employee wizard",
+        "url": "/admin/leave-encashments",
+        "how": "Click Encash for an employee and fill step 1."
+      },
+      {
+        "title": "Leave type form",
+        "url": "/admin/leave-types",
+        "how": "Click Edit on Earned leave to show the three sections."
+      }
+    ],
+    "gaps": [
+      "Hourly leave requests are not available (types in hours are refused).",
+      "Leave counting has no prefix/suffix sandwich rule; only count or skip weekly offs and holidays per leave policy.",
+      "No encashments, donations or unpaid leave exist in the example organisation, so those examples are illustrative.",
+      "Leave policy screens (Workflows › Policies) belong to M06 and were not described here.",
+      "Leave calendar is a list, not a grid."
+    ]
+  }
+}

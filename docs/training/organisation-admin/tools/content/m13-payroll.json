@@ -1,0 +1,2436 @@
+{
+  "M13": {
+    "intro": "Payroll turns each month's attendance, leave, approved salaries and one-time inputs into net pay, payslips and a bank file for every company in your organisation. You run one pay month at a time in Run payroll, from attendance through to payment.",
+    "why": "Payroll is the step employees feel most. A missed input, an unapproved revision or an unchecked exception shows up as wrong pay, wrong tax or a failed transfer, and closed payroll is kept as issued.",
+    "who": "Tenant Super Admin holds every right. The Payroll Admin role runs, approves, closes and publishes payroll and manages payroll set-up. Auditors can view payroll read-only. Employees and alumni see only their own published payslips; employees and managers can request loans, claims and variable pay for themselves.",
+    "where": "People › Pay › Run payroll (the guided run); People › Pay › Payroll desk, Payroll overview, Payroll runs, Payslips; set-up screens under People › Pay; payroll settings in Admin › Setup › Payroll.",
+    "objectives": [
+      "Set up the pay cycle, paying bank accounts, bank file layouts and payment modes for your companies.",
+      "Prepare a pay month: inputs, attendance, pre-payroll checks, then calculate, review, approve and close it.",
+      "Publish payslips, download the bank file and journal voucher, mark the month paid and correct mistakes the right way."
+    ],
+    "depends_on": [
+      "M10 Attendance and time office: processed attendance gives absent and half days (loss of pay) and closes the month",
+      "M11 Leave: approved unpaid leave adds loss of pay; approved encashments are paid by payroll",
+      "M12 Compensation and salary structures: components, formulas and each employee's approved salary in force",
+      "M14 Statutory compliance and tax: PF, ESI, PT, LWF and TDS rule versions, statutory profiles and tax declarations",
+      "M07 Employees: joining and exit dates, primary bank account, PAN and other statutory details",
+      "M09 Exit and alumni: full and final settlements that already pay a leaver's last month",
+      "M15 Expense and travel: approved claims, expense reports and advances paid or recovered through payroll"
+    ],
+    "subs": [
+      {
+        "id": "13.1",
+        "name": "Payroll set-up",
+        "desc": "Pay cycle, paying bank accounts, payment modes, bank file and statutory export layouts.",
+        "screens": [
+          "people/pay-cycle",
+          "people/payment-banks",
+          "people/payment-modes",
+          "people/bank-file-layouts",
+          "people/bank-account-number-rules",
+          "people/export-layouts"
+        ]
+      },
+      {
+        "id": "13.2",
+        "name": "Monthly inputs",
+        "desc": "One-time adjustments, uploads, loans and advances, leave encashment and salary holds.",
+        "screens": [
+          "people/adjustments",
+          "people/payroll-uploads",
+          "people/loans-and-advances",
+          "people/loans-and-advances--view",
+          "people/encash-leaves",
+          "people/salary-holds"
+        ]
+      },
+      {
+        "id": "13.3",
+        "name": "Readiness and the guided run",
+        "desc": "The payroll desk, the overview of every company's month and the Run payroll wizard.",
+        "screens": [
+          "people/payroll-desk",
+          "people/payroll-overview",
+          "people/run-payroll"
+        ]
+      },
+      {
+        "id": "13.4",
+        "name": "Calculate, review and approve",
+        "desc": "The run and its cockpit, each employee's breakdown, exceptions and the Payroll Auditor.",
+        "screens": [
+          "people/payroll-runs",
+          "people/payroll-runs--view",
+          "people/payroll-auditor"
+        ]
+      },
+      {
+        "id": "13.5",
+        "name": "Close, payslips, payment and corrections",
+        "desc": "Closing the month, publishing payslips, bank file, reconciliation and correcting closed months.",
+        "screens": [
+          "people/payslips",
+          "people/parallel-payroll"
+        ]
+      }
+    ],
+    "screens": {
+      "people/pay-cycle": {
+        "purpose": "Decide which days each payroll month covers for every company: calendar months, or a cycle such as the 25th to the 24th. Attendance, loss of pay, leave and proration are read for those days.",
+        "when": "Once at set-up, and again only if your organisation changes its cycle.",
+        "elements": [
+          [
+            "Summary figures",
+            "Pay cycle in force, the payroll month holding today and the next scheduled change."
+          ],
+          [
+            "Set the pay cycle (step 1)",
+            "Pick the first day of the new cycle and the last payroll month it applies to."
+          ],
+          [
+            "Review (step 2)",
+            "Shows what changes before anything is saved."
+          ],
+          [
+            "The coming months",
+            "Month cards per company with the dates each month will cover, so you can check the changeover."
+          ],
+          [
+            "Save pay cycle",
+            "Saves the change; the reason is kept in the audit trail."
+          ],
+          [
+            "Cancel scheduled change",
+            "Removes a change that has not started yet. Shown only when one is scheduled."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "From: the cycle starts on",
+            "meaning": "First day of the first month on the cycle. 25 Dec 2026 makes January run 25 Dec to 24 Jan. The 1st means calendar months.",
+            "rule": "Required"
+          },
+          {
+            "label": "To payroll month",
+            "meaning": "Last month on this cycle, or Until changed (no end). Pick the first month again for one month only.",
+            "rule": "Required"
+          },
+          {
+            "label": "Reason for change",
+            "meaning": "Why the cycle changes; recorded in the audit trail with the before and after values.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Open months without a payroll run are re-dated at once. Months that already have a run keep their dates.",
+        "permission": "payroll.manage",
+        "depends": null,
+        "limits": "Days 29 to 31 cannot start a cycle, and a change must start after the last month that has a payroll run. In the example organisation November 2026 has a run, so the earliest start is 1 Dec 2026. Every company shares one cycle.",
+        "source": "app/Filament/Pages/PayCyclePage.php; app/Domain/Payroll/Services/PayCycle.php; docs/architecture/payroll-architecture.md §1.1"
+      },
+      "people/payment-banks": {
+        "purpose": "Record the company bank accounts salaries are paid from. The bank file groups transfers by paying account and writes each account's file in its bank's layout.",
+        "when": "At set-up, and when a company opens or closes a salary account.",
+        "elements": [
+          [
+            "Add a paying account",
+            "Opens the form for a new company account."
+          ],
+          [
+            "Account / Bank / IFSC",
+            "Which account, at which bank and branch."
+          ],
+          [
+            "File layout",
+            "The bank file layout used for this account; Plain file when none is chosen."
+          ],
+          [
+            "Default",
+            "The account that pays everyone not paid from another account."
+          ],
+          [
+            "Company filter",
+            "Shows the accounts of one company."
+          ],
+          [
+            "Edit",
+            "Change an account; you can give a reason that is kept in the audit trail."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Company",
+            "meaning": "The company (legal entity) that pays from this account.",
+            "rule": "Required"
+          },
+          {
+            "label": "Name for this account",
+            "meaning": "A short name people recognise, e.g. HDFC salary account.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Bank",
+            "meaning": "Bank name.",
+            "rule": "Required"
+          },
+          {
+            "label": "Salary bank code",
+            "meaning": "The code your bank gives the company for salary uploads, if any.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Branch",
+            "meaning": "Branch name.",
+            "rule": "Optional"
+          },
+          {
+            "label": "IFSC",
+            "meaning": "Employees whose IFSC is at the same bank are paid from this account.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Debit account number",
+            "meaning": "The account debited. Stored securely; on edit leave blank to keep it.",
+            "rule": "Required"
+          },
+          {
+            "label": "Bank file layout",
+            "meaning": "Layout code from Bank file layouts; blank gives the plain salary file.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Default account of the company",
+            "meaning": "Pays everyone not paid from another account.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Status",
+            "meaning": "Only active accounts are used by the bank file.",
+            "rule": "Required"
+          },
+          {
+            "label": "Notes",
+            "meaning": "Anything useful for the payroll team.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The next bank file download offers one file per active paying account.",
+        "permission": "payroll.manage",
+        "depends": "The company exists (M03). A bank file layout exists if your bank needs its own format.",
+        "limits": "In the example organisation no paying account is recorded yet, so the bank file is one plain file for all transfers.",
+        "source": "app/Filament/Resources/CompanyBankAccounts/CompanyBankAccountResource.php; app/Domain/Payroll/Services/BankFile.php"
+      },
+      "people/payment-modes": {
+        "purpose": "Record how an employee is paid from a date: bank transfer, cash or cheque, and which company account pays them. Employees without a payment mode are paid by bank transfer.",
+        "when": "When someone must be paid by cash or cheque, or from a specific company account.",
+        "elements": [
+          [
+            "Set payment mode",
+            "Records a mode for one employee from a date."
+          ],
+          [
+            "Employee / From",
+            "Whose mode and the date it applies from, until a later change."
+          ],
+          [
+            "Salary",
+            "Mode for salary, with the paying account under it."
+          ],
+          [
+            "Reimbursements",
+            "Mode for reimbursements; As the salary when not set separately."
+          ],
+          [
+            "Salary paid by filter",
+            "Lists employees by salary mode."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Employee",
+            "meaning": "The employee whose payment mode you set.",
+            "rule": "Required"
+          },
+          {
+            "label": "From",
+            "meaning": "Date the mode applies from.",
+            "rule": "Required"
+          },
+          {
+            "label": "Salary paid by",
+            "meaning": "Bank transfer, cash or cheque (only the modes switched on in Setup › Payroll).",
+            "rule": "Required"
+          },
+          {
+            "label": "Paid from",
+            "meaning": "Company account for transfers; blank uses the account at the employee's bank, else the default.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reimbursements paid by",
+            "meaning": "A different mode for reimbursements; blank means as the salary.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reimbursements paid from",
+            "meaning": "Company account for reimbursement transfers.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason",
+            "meaning": "Why the mode is set; kept on the record.",
+            "rule": "Required"
+          }
+        ],
+        "after": "Bank transfers go in the bank file; cash and cheque payments stay out of it. Net pay is not changed.",
+        "permission": "payroll.manage",
+        "depends": "Pay modes in use (Admin › Setup › Payroll). By default only Bank transfer is switched on.",
+        "limits": null,
+        "source": "app/Filament/Resources/EmployeePaymentModes/EmployeePaymentModeResource.php; Pages/ListEmployeePaymentModes.php; config/peopleos_setup.php"
+      },
+      "people/bank-file-layouts": {
+        "purpose": "Define a bank's own salary file format as a versioned layout: delimited or fixed width, columns in order, header and footer lines. Paying accounts name a layout by its code.",
+        "when": "When your bank asks for a specific upload format instead of the plain CSV.",
+        "elements": [
+          [
+            "New layout",
+            "Creates a draft layout."
+          ],
+          [
+            "Code / v / Status",
+            "Layout code, version and Draft, Active or retired."
+          ],
+          [
+            "Preview",
+            "Shows two made-up transfers in the layout, to check it before use."
+          ],
+          [
+            "Edit draft",
+            "Changes a draft. An active layout never changes."
+          ],
+          [
+            "Activate",
+            "Makes the draft the version in use; the previous active version is retired."
+          ],
+          [
+            "New version",
+            "Copies an active layout into a new draft to change it."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Code",
+            "meaning": "Short code paying accounts use, e.g. HDFC_SALARY (2–32 letters, digits, _ or -).",
+            "rule": "Required"
+          },
+          {
+            "label": "Name",
+            "meaning": "Descriptive name of the layout.",
+            "rule": "Required"
+          },
+          {
+            "label": "Format",
+            "meaning": "Delimited (CSV and similar) or Fixed width.",
+            "rule": "Required"
+          },
+          {
+            "label": "Delimiter",
+            "meaning": "Comma, semicolon, pipe or tab (delimited files only).",
+            "rule": "Optional"
+          },
+          {
+            "label": "Quotes around text",
+            "meaning": "When a value needs them (CSV), or never.",
+            "rule": "Optional"
+          },
+          {
+            "label": "First line holds the column headings",
+            "meaning": "Whether the file starts with a heading line.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Columns, in order",
+            "meaning": "What each column prints, its heading, width, alignment, padding, capitals and format.",
+            "rule": "Required"
+          },
+          {
+            "label": "Header lines (one per line)",
+            "meaning": "Lines before the transfers; placeholders such as {count}, {total} and {payment_date:d/m/Y}.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Footer lines (one per line)",
+            "meaning": "Lines after the transfers, with the same placeholders.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Line ending",
+            "meaning": "LF (most banks) or CRLF (Windows).",
+            "rule": "Optional"
+          },
+          {
+            "label": "File type",
+            "meaning": ".csv or .txt.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Notes",
+            "meaning": "Anything about the bank's specification.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The layout is saved as a draft. Activate it, then choose it on the paying account.",
+        "permission": "payroll.manage",
+        "depends": "Your bank's file specification.",
+        "limits": "In the example organisation no layout exists yet.",
+        "source": "app/Filament/Resources/BankFileLayouts/BankFileLayoutResource.php; Pages/ManageBankFileLayouts.php"
+      },
+      "people/bank-account-number-rules": {
+        "purpose": "Set, per bank, the length and characters an employee's account number may have, so wrong numbers are refused before they reach a bank file.",
+        "when": "At set-up, for the banks your employees use most.",
+        "elements": [
+          [
+            "Add a rule",
+            "Creates a rule for one bank."
+          ],
+          [
+            "Bank / IFSC bank code",
+            "Which bank the rule applies to, by name or the first four letters of its IFSC."
+          ],
+          [
+            "Length",
+            "Shortest to longest account number allowed."
+          ],
+          [
+            "Digits / Letters / Special",
+            "Which characters are allowed."
+          ],
+          [
+            "Status",
+            "Only active rules are applied."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Bank",
+            "meaning": "Bank name; used when an account has no IFSC or the rule gives no IFSC code.",
+            "rule": "Required"
+          },
+          {
+            "label": "IFSC bank code",
+            "meaning": "First four letters of the bank's IFSC, e.g. HDFC. Bank is optional when this is given.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Shortest account number",
+            "meaning": "Fewest characters allowed.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Longest account number",
+            "meaning": "Most characters allowed; cannot be shorter than the shortest.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Digits allowed",
+            "meaning": "Whether digits may appear.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Letters allowed",
+            "meaning": "Whether letters may appear.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Special characters allowed",
+            "meaning": "Whether characters other than letters and digits may appear.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Status",
+            "meaning": "Active or inactive.",
+            "rule": "Required"
+          },
+          {
+            "label": "Notes",
+            "meaning": "Source of the rule or other notes.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "The employee profile, bank change requests and bank detail uploads refuse a number that does not fit its bank's rule.",
+        "permission": "payroll.manage",
+        "depends": null,
+        "limits": "In the example organisation no rule exists yet.",
+        "source": "app/Filament/Resources/BankAccountRules/BankAccountRuleResource.php"
+      },
+      "people/export-layouts": {
+        "purpose": "See the statutory file layouts PeopleOS uses for returns such as the EPF ECR, ESI contributions, PT, LWF and TDS working schedules, with their version and verification status.",
+        "when": "When you want to know which layout a statutory file follows and whether it is verified.",
+        "elements": [
+          [
+            "Code / Version / Name",
+            "The layout, e.g. EPF_ECR v1, and what it produces."
+          ],
+          [
+            "Authority",
+            "The authority whose format it follows, e.g. EPFO or ESIC."
+          ],
+          [
+            "Status",
+            "Draft, review or verified."
+          ],
+          [
+            "Specification",
+            "Opens the layout's structure and fields, in order, with required fields marked."
+          ],
+          [
+            "Status filter",
+            "Lists layouts by status."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "payroll.view or compliance.view. Layouts are maintained and verified by PeopleOS; you can view them.",
+        "depends": null,
+        "limits": "In the example organisation all five layouts are Draft (not yet verified by PeopleOS). Two are working schedules, not the official form or utility file. Ask PeopleOS support about verification.",
+        "source": "app/Filament/Resources/ExportLayouts/ExportLayoutResource.php; q.php statutory_export_layouts"
+      },
+      "people/adjustments": {
+        "purpose": "Record one-time inputs for an open pay month: an additional earning or deduction, a reimbursement, an arrear or recovery for an earlier month, a correction, or loss of pay days.",
+        "when": "Before you calculate, whenever an employee's month needs something the salary structure does not pay.",
+        "elements": [
+          [
+            "New payroll adjustment",
+            "Opens the form for one adjustment."
+          ],
+          [
+            "Period / Code / Employee",
+            "The pay month and the employee."
+          ],
+          [
+            "Status",
+            "Approved adjustments enter the calculation; pending ones wait."
+          ],
+          [
+            "Type / Name / Amount",
+            "What kind of adjustment, its payslip name and amount (days for loss of pay)."
+          ],
+          [
+            "Approve",
+            "Shown on a pending adjustment to someone other than its creator."
+          ],
+          [
+            "Edit / Delete",
+            "Only while the pay month is open."
+          ],
+          [
+            "Filters, Views and Report",
+            "Filter by type and employee details, save views and report on them."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Employee",
+            "meaning": "An employed person.",
+            "rule": "Required"
+          },
+          {
+            "label": "Period",
+            "meaning": "Pay month that pays it. Only open months around today's month are listed.",
+            "rule": "Required"
+          },
+          {
+            "label": "Type",
+            "meaning": "Additional earning, Additional deduction, Loss of pay (days), Reimbursement, Arrear, Recovery or Correction.",
+            "rule": "Required"
+          },
+          {
+            "label": "Component",
+            "meaning": "Pay item whose tax, PF and ESI treatment applies; Ad hoc when none. Hidden for loss of pay.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Name",
+            "meaning": "Line name shown on the payslip.",
+            "rule": "Required"
+          },
+          {
+            "label": "Amount",
+            "meaning": "Amount, or Days for loss of pay. Never negative: choose a deduction type to take money off.",
+            "rule": "Required"
+          },
+          {
+            "label": "Taxable",
+            "meaning": "For an ad hoc additional earning: whether it is taxed.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Note",
+            "meaning": "Why it is given; kept in the audit trail.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Saved as approved, or pending when Setup › Payroll requires approval. Recalculate the run to include it.",
+        "permission": "payroll.manage to create, edit, delete; payroll.approve to approve (not your own); payroll.view to see.",
+        "depends": "An open pay month for the company.",
+        "limits": "The form does not record which earlier month an arrear or recovery is for: write it in Name or Note, or use the Salary arrear upload, which records it. Nothing stops the same adjustment being entered twice.",
+        "source": "app/Filament/Resources/PayrollAdjustments/PayrollAdjustmentResource.php; app/Domain/Payroll/Models/PayrollAdjustment.php; PayrollCalculator::adjustments()"
+      },
+      "people/payroll-uploads": {
+        "purpose": "Load payroll inputs from a file: salary arrears, variable pay, loans, reimbursement claims and balances, investment and HRA declarations, previous salary, perquisites, statutory details and overrides, and more.",
+        "when": "When inputs for many employees come from a spreadsheet.",
+        "elements": [
+          [
+            "Download sample file",
+            "Choose an upload type and download its sample CSV."
+          ],
+          [
+            "Upload CSV",
+            "Choose the upload type, drop the file in and say what it is for."
+          ],
+          [
+            "# / File / Status",
+            "Each upload and where it stands."
+          ],
+          [
+            "Rows / Create / Update / Errors",
+            "How many rows, what they will create or change, and rows in error."
+          ],
+          [
+            "By / Created at",
+            "Who uploaded and when."
+          ]
+        ],
+        "fields": [],
+        "after": "Nothing changes until the file is mapped, validated, approved and run. Uploads not yet imported appear in the pre-payroll checks.",
+        "permission": "payroll.manage for most types; payroll.override for statutory overrides; employee.sensitive.update for employee statutory details.",
+        "depends": "Employee codes and pay item codes must already exist.",
+        "limits": "In the example organisation no payroll upload has been made yet.",
+        "source": "app/Filament/Resources/PayrollUploads/PayrollUploadResource.php; app/Domain/Employment/Imports/RowImportTypes.php; app/Domain/Payroll/Imports/SalaryArrearImports.php"
+      },
+      "people/loans-and-advances": {
+        "purpose": "Manage loans and salary advances: requests, approval, payout through payroll or the bank, the instalment schedule and recovery from salary.",
+        "when": "When a loan request arrives, when one is approved and must be paid out, and when an employee prepays.",
+        "elements": [
+          [
+            "Views",
+            "Requests waiting for approval, Approved to disburse, Being recovered, Closed, Rejected or cancelled."
+          ],
+          [
+            "Raise on behalf",
+            "Records a loan request for an employee."
+          ],
+          [
+            "Number / Type / Principal",
+            "The loan, its type and amount."
+          ],
+          [
+            "Monthly / Instalments / Outstanding",
+            "Instalment amount, count and what is still owed."
+          ],
+          [
+            "Approve / Reject",
+            "Decide a pending request; the loan policy may let you change the terms."
+          ],
+          [
+            "Mark paid out",
+            "Records a payout made outside payroll; the loan starts recovering."
+          ],
+          [
+            "Prepay / Cancel",
+            "Record instalments paid early, or cancel a pending or approved loan."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Employee",
+            "meaning": "Whose loan (Raise on behalf only).",
+            "rule": "Required"
+          },
+          {
+            "label": "Type",
+            "meaning": "Salary advance, Personal, Emergency, Vehicle, Housing or Education loan.",
+            "rule": "Required"
+          },
+          {
+            "label": "Amount",
+            "meaning": "Principal asked for.",
+            "rule": "Required"
+          },
+          {
+            "label": "Repay in (months)",
+            "meaning": "Number of monthly instalments (1–120).",
+            "rule": "Required"
+          },
+          {
+            "label": "Recovery from (YYYY-MM)",
+            "meaning": "Pay month of the first instalment.",
+            "rule": "Required"
+          },
+          {
+            "label": "Guarantors",
+            "meaning": "Colleagues who guarantee the loan, if the policy asks.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Reason",
+            "meaning": "Why the loan is needed.",
+            "rule": "Required"
+          }
+        ],
+        "after": "The request goes to its approvers. An approved loan paid through payroll is paid by the next run; closing that run makes it active and instalments are recovered monthly.",
+        "permission": "payroll.manage to see everyone's loans, raise on behalf, approve, pay out and prepay; never for your own loan.",
+        "depends": "A loan policy (Setup › Payroll policies) if you want limits or approver edits.",
+        "limits": "In the example organisation Priya Nair's personal loan was approved after November was calculated, so the run does not pay it yet: it would be paid on recalculation.",
+        "source": "app/Filament/Resources/Loans/LoanResource.php; Pages/ListLoans.php; app/Domain/Payroll/Inputs/LoanDisbursementInput.php; LoanRecoveryInput.php"
+      },
+      "people/loans-and-advances--view": {
+        "purpose": "See one loan in full: terms, status, payout, outstanding balance, policy exceptions and guarantors, with its instalment schedule.",
+        "when": "When checking a loan before approval, or tracing what payroll has recovered.",
+        "elements": [
+          [
+            "Loan section",
+            "Number, employee, type, principal, interest, instalments, monthly recovery and Recovery from."
+          ],
+          [
+            "Outstanding / Paid out by / Disbursed on",
+            "Balance owed and how and when the loan was paid out."
+          ],
+          [
+            "Beyond the loan policy",
+            "Limits the request goes beyond, when any."
+          ],
+          [
+            "Instalments",
+            "Table of each month's principal, interest, amount and status (Due, Recovered, Prepaid, Deferred, Waived)."
+          ],
+          [
+            "Defer",
+            "Moves a due instalment to the end of the schedule, with a note."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "payroll.manage to view any loan and defer instalments.",
+        "depends": null,
+        "limits": "A pending request has no instalments yet; the schedule is built on approval. In the example, loan LN-2026-00002 shows 12 instalments of 10,000.00 from 2026-12.",
+        "source": "app/Filament/Resources/Loans/LoanResource.php (infolist); RelationManagers/ScheduleRelationManager.php"
+      },
+      "people/encash-leaves": {
+        "purpose": "Encash a leave type for many employees at once, as their encashment rule allows or a set number of days. Encashments are paid in the chosen pay month, or by the next payroll run.",
+        "when": "At year end or whenever your policy pays out leave balances.",
+        "elements": [
+          [
+            "Encash leaves",
+            "Three-step wizard: leave type and pay month, who is included, review and process."
+          ],
+          [
+            "Batch / Leave type / Leave encash",
+            "The batch, the leave type and As per policy or Specify days."
+          ],
+          [
+            "Pay month / No of employees / Days encashed",
+            "When it is paid, how many people and days."
+          ],
+          [
+            "Status / Decided by",
+            "Pending, processed, rejected and who decided."
+          ],
+          [
+            "Approve / Reject",
+            "A second person decides a pending batch (not its maker)."
+          ],
+          [
+            "Filters",
+            "Status, leave type, encashment date, encashed by and pay month."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Leave type",
+            "meaning": "The leave type to encash.",
+            "rule": "Required"
+          },
+          {
+            "label": "Pay month",
+            "meaning": "Pay month that pays it; blank means the next pay run.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Leave encash",
+            "meaning": "As per policy, or Specify days.",
+            "rule": "Required"
+          },
+          {
+            "label": "Specify value (days)",
+            "meaning": "Days per employee, when you specify days.",
+            "rule": "Optional"
+          },
+          {
+            "label": "Comments",
+            "meaning": "Note kept on the batch.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "With batch approval on (as in the example organisation) the batch waits for another person; on approval the encashments are created and days leave the balances.",
+        "permission": "leave.manage to make, approve and unprocess batches.",
+        "depends": "Leave types with encashment allowed in the leave policy (M11).",
+        "limits": "Encashment at exit is paid in the full and final settlement, not here.",
+        "source": "app/Filament/Resources/LeaveEncashmentBatches/LeaveEncashmentBatchResource.php; app/Filament/Support/LeaveEncashmentWizards.php; app/Domain/Payroll/Inputs/LeaveEncashmentInput.php"
+      },
+      "people/salary-holds": {
+        "purpose": "Keep an employee's pay for a month out of that month's bank file, and release it later. The calculation and payslip are not changed.",
+        "when": "When pay must wait, for example missing documents or an absconding case under review.",
+        "elements": [
+          [
+            "Hold salary",
+            "Holds one employee's pay for a payroll month, with a reason."
+          ],
+          [
+            "Views",
+            "Held and Released."
+          ],
+          [
+            "Employee / Month / Reason",
+            "Who, which payroll month and why."
+          ],
+          [
+            "Status / Held by / Released at",
+            "Where the hold stands and who acted."
+          ],
+          [
+            "Paid with",
+            "Bank file, or the reference of a payment made outside it."
+          ],
+          [
+            "Release",
+            "Puts the employee back in the bank file, or records an outside payment."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Employee",
+            "meaning": "Whose salary is held.",
+            "rule": "Required"
+          },
+          {
+            "label": "Payroll month (YYYY-MM)",
+            "meaning": "The pay month held, e.g. 2026-11.",
+            "rule": "Required"
+          },
+          {
+            "label": "Reason",
+            "meaning": "Why it is held; kept in the audit trail.",
+            "rule": "Required"
+          }
+        ],
+        "after": "The employee stays out of that month's bank file until released. Release asks for a Note and an optional Payment reference.",
+        "permission": "payroll.manage",
+        "depends": null,
+        "limits": "A month already marked paid for the employee cannot be held. The list opens filtered to Held; in the example nothing is held.",
+        "source": "app/Filament/Resources/SalaryHolds/SalaryHoldResource.php; Pages/ListSalaryHolds.php; app/Domain/Payroll/Services/SalaryHolds.php"
+      },
+      "people/payroll-desk": {
+        "purpose": "Every payroll register in one place, in the order a pay month moves through them, with counts of what waits.",
+        "when": "As your starting point each payroll day.",
+        "elements": [
+          [
+            "Needs a look",
+            "Registers with something waiting, with counts."
+          ],
+          [
+            "Salary structure",
+            "Employee salary structures, people without one, requests, revisions, uploads, increment calculator."
+          ],
+          [
+            "Tax & benefit / Variable pay / Loan",
+            "Claims, declarations and proofs, variable pay requests, loan requests and payouts."
+          ],
+          [
+            "Payroll processing",
+            "Run payroll, Payroll overview, runs, adjustments, arrears, encashment, holds, payslips, challans."
+          ],
+          [
+            "Full and final settlement / Payroll letters / Reports",
+            "Settlements, appointment and revision letters, report library."
+          ],
+          [
+            "Payroll setup",
+            "Setup centre: payroll, components, payment banks and modes, layouts, statutory profiles, uploads."
+          ],
+          [
+            "Payroll actions",
+            "Quick actions such as Run payroll, Hold salary, Loan request and Encash leaves."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "payroll.view plus one of payroll.manage, payroll.calculate, payroll.approve, payroll.finalize or payroll.override.",
+        "depends": null,
+        "limits": "It only opens registers; nothing is changed from the desk itself.",
+        "source": "app/Filament/Pages/PayrollDesk.php"
+      },
+      "people/payroll-overview": {
+        "purpose": "A read-only view of every company's current pay month, its run and pre-run readiness checks. It also warns when statutory rules are not verified.",
+        "when": "Before and during a pay month, to see where each company stands.",
+        "elements": [
+          [
+            "Subheading",
+            "Names the statutory rules not yet verified; payroll using them cannot be finalised."
+          ],
+          [
+            "Readiness tiles",
+            "Employees without a salary, without a primary bank account, without PAN; statutory rules in force."
+          ],
+          [
+            "Company cards",
+            "Pay month dates, run status, headcount, without salary, statutory profile, net pay, exceptions, Open run."
+          ],
+          [
+            "Before you run payroll",
+            "Read-only checks per company; open one to see who, or download it as CSV."
+          ],
+          [
+            "Active employees only",
+            "Limits the checks to people still employed."
+          ],
+          [
+            "Runs table",
+            "Period, company, status, employees, net pay, exceptions; Open."
+          ],
+          [
+            "Run payroll / Pay cycle / Compliance control room",
+            "Header buttons to the guided run and related screens."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "payroll.view",
+        "depends": null,
+        "limits": "The readiness checks inform and never stop a run. Threshold checks (minimum wage, wage share, ESI ceiling) run only with a verified rule; otherwise they say so.",
+        "source": "app/Filament/Pages/PayrollControlRoom.php; resources/views/filament/pages/payroll-control-room.blade.php; app/Domain/Payroll/Services/PayrollReadiness.php"
+      },
+      "people/run-payroll": {
+        "purpose": "The one guided way through a company's pay month: Pay month, Attendance, Pre-payroll checks, Run payroll, Review and approve, Close payroll, Publish payslips and Pay.",
+        "when": "Every month, from the day attendance is complete until the salaries are paid.",
+        "elements": [
+          [
+            "Company / Pay month",
+            "Choose the company and month. It opens on the first company by name, so check both."
+          ],
+          [
+            "Step rail",
+            "Eight steps marked done, needs a look (!), open or to do; click any step."
+          ],
+          [
+            "Start <month>",
+            "On Pay month: creates the month's run. Nothing is calculated yet."
+          ],
+          [
+            "Attendance",
+            "People in the month, fully processed, days without attendance, pending requests; Process attendance."
+          ],
+          [
+            "Pre-payroll checks",
+            "Twenty checks: Blocked, To tick, Clear or Not applicable; Mark as checked and links to fix."
+          ],
+          [
+            "Run payroll",
+            "What still stops the run, then Calculate or Calculate in background and the totals."
+          ],
+          [
+            "Review and approve",
+            "Validate, review totals and changes from last month, Approve."
+          ],
+          [
+            "Close / Publish / Pay",
+            "Close payroll, Publish payslips, Bank file, Journal voucher (JV), Mark as paid."
+          ]
+        ],
+        "fields": [],
+        "after": "Each button runs the same action as the run page, with the same rules and messages.",
+        "permission": "payroll.view with payroll.calculate, payroll.approve or payroll.finalize to open; payroll.calculate to start, tick and calculate; attendance.process for attendance buttons.",
+        "depends": "Approved salaries (M12), processed attendance (M10), statutory profiles (M14).",
+        "limits": "In the example organisation Demo Technologies' November 2026 run cannot be recalculated today: November has not ended, and attendance comes first.",
+        "source": "app/Filament/Pages/RunPayroll.php; resources/views/filament/pages/run-payroll/*.blade.php; app/Domain/Payroll/Services/PayrollRunChecklist.php"
+      },
+      "people/payroll-runs": {
+        "purpose": "The register of payroll runs, one per company and pay month, with status, employees, net pay and exceptions.",
+        "when": "To find a run and open it, or report on runs.",
+        "elements": [
+          [
+            "Run payroll",
+            "Opens the guided run, the only place a new month is started."
+          ],
+          [
+            "Period / Company / Status",
+            "Pay month, company and Draft, Calculated, Validated, Approved, Finalized or Paid."
+          ],
+          [
+            "Employees / Net pay / Exceptions",
+            "Totals of the last calculation and employees with exceptions."
+          ],
+          [
+            "Prepared by / Finalized at",
+            "Who started the run and when it was closed."
+          ],
+          [
+            "Status filter, Views, Report",
+            "Filter, save views and run payroll reports."
+          ],
+          [
+            "Payroll actions",
+            "Quick payroll actions menu."
+          ],
+          [
+            "View",
+            "Opens the run page."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "payroll.view",
+        "depends": null,
+        "limits": "Runs cannot be created here. In the example organisation there is one run: Nov 2026, Demo Technologies, Calculated, 5 employees, 5 with exceptions.",
+        "source": "app/Filament/Resources/PayrollRuns/PayrollRunResource.php; Pages/ListPayrollRuns.php"
+      },
+      "people/payroll-runs--view": {
+        "purpose": "One pay month's run: the run cockpit with its steps and counters, run details and totals, each employee's result and breakdown, and every action on the run.",
+        "when": "To review a calculated month employee by employee and act on it.",
+        "elements": [
+          [
+            "Header actions",
+            "Recalculate, Recalculate in background, Validate, then Approve, Close payroll and so on as status allows; More holds the rest."
+          ],
+          [
+            "Run cockpit",
+            "Inputs, Calculate, Verify (optional), Approve, Finalize and publish, Pay: Done, Now or Next, with counters."
+          ],
+          [
+            "Step tables",
+            "Attendance arrears, Overtime, Payroll inputs in this run, Salary holds, Salaries: Open or CSV."
+          ],
+          [
+            "Reminders / Run activity",
+            "What still waits on payroll, and who did what on this run."
+          ],
+          [
+            "Run and Totals",
+            "Period, covers, status, prepared by, approved by; gross, deductions, net, employer cost, PF, ESI, PT, TDS, LOP."
+          ],
+          [
+            "Employees tab",
+            "Paid days, LOP, gross, deductions, net, status, Issues, pay mode, hold, checked; Breakdown per employee."
+          ],
+          [
+            "Mark as checked",
+            "Optional reviewer tick per employee; it never blocks approval."
+          ],
+          [
+            "History tab",
+            "The run's audit trail."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "payroll.view to see; payroll.calculate to calculate, validate and set the payment date; payroll.approve to approve; payroll.finalize to close, download files, mark paid; payroll.publish; payroll.reopen_closed.",
+        "depends": "A run started in Run payroll.",
+        "limits": "Some issue types show as technical codes in the Issues column (e.g. unverified_statutory_rule); open Breakdown for the full message.",
+        "source": "app/Filament/Resources/PayrollRuns/Pages/ViewPayrollRun.php; Widgets/RunCockpit.php; RelationManagers/EntriesRelationManager.php; app/Filament/Support/PayrollActions.php; app/Domain/Payroll/Services/PayrollRunCockpit.php"
+      },
+      "people/payroll-auditor": {
+        "purpose": "System-generated findings on a calculated run for a reviewer: blocking exceptions, missing bank or PAN, large net or TDS changes, high loss of pay, big revisions, shared bank accounts and leavers still in the run.",
+        "when": "After calculating and before approving, as a second pair of eyes.",
+        "elements": [
+          [
+            "Choose run",
+            "Pick any calculated or later run."
+          ],
+          [
+            "Run summary",
+            "Month, company, employees, net and status."
+          ],
+          [
+            "High / Medium / Low",
+            "Findings counted by severity."
+          ],
+          [
+            "Thresholds",
+            "Net change 30%, deductions 60% of gross, LOP 10 days, TDS jump 100%, revision 50%."
+          ],
+          [
+            "Findings",
+            "Each finding with the employee, message and evidence."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "ai.payroll_auditor, with the Payroll Auditor feature switched on for your organisation.",
+        "depends": "A calculated run. Changes from last month need an earlier closed run.",
+        "limits": "Findings are indicators only; nothing is changed. In the example, 12 findings for Nov 2026, including Vikram Singh, who left on 1 Oct 2026 but is still in the run.",
+        "source": "app/Filament/Pages/PayrollAuditor.php; app/Domain/Ai/Services/PayrollAnomalyDetector.php"
+      },
+      "people/payslips": {
+        "purpose": "The register of payslips issued when payroll closes. Each payslip is a fixed snapshot of the employee's month: days, earnings, deductions, net pay, employer contributions and tax computation.",
+        "when": "After a month is closed, to check or look up a payslip.",
+        "elements": [
+          [
+            "Number / Period",
+            "Payslip number (e.g. PS-202611-EMP00003) and pay month."
+          ],
+          [
+            "Code / Employee",
+            "Whose payslip."
+          ],
+          [
+            "Gross / Net pay",
+            "Totals printed on the payslip."
+          ],
+          [
+            "Generated at",
+            "When it was issued."
+          ],
+          [
+            "Filters, Views and Report",
+            "Employee and organisation filters; reports such as payslips not viewed."
+          ],
+          [
+            "View",
+            "Opens the payslip; every view is audited."
+          ]
+        ],
+        "fields": [],
+        "after": null,
+        "permission": "payroll.view to see everyone's payslips; employees see their own (payroll.payslip) once published.",
+        "depends": "A closed (finalized) run.",
+        "limits": "No payslip PDF download yet: payslips are viewed on screen. In the example organisation there are no payslips because no month has closed.",
+        "source": "app/Filament/Resources/Payslips/PayslipResource.php; Pages/ViewPayslip.php; app/Domain/Payroll/Services/Payslips.php; app/Filament/Pages/MyPayslips.php"
+      },
+      "people/parallel-payroll": {
+        "purpose": "Compare a closed PeopleOS run with the figures from your previous payroll system or a portal, line by line, explain every difference and sign off the reconciliation.",
+        "when": "During go-live, while you run your old payroll and PeopleOS side by side.",
+        "elements": [
+          [
+            "Import reference values",
+            "Upload the reference CSV for a finalized run."
+          ],
+          [
+            "Period / Reference source / Status",
+            "Which run, where the figures came from, and imported, compared, reconciled or abandoned."
+          ],
+          [
+            "Open differences / Resolved",
+            "Lines still to explain and lines explained."
+          ],
+          [
+            "Compare",
+            "Lays PeopleOS values beside the reference values."
+          ],
+          [
+            "Compared values",
+            "Each line with PeopleOS, Reference, Difference, Status; Review records why and the resolution."
+          ],
+          [
+            "Reconcile",
+            "Sign-off once every difference is explained."
+          ]
+        ],
+        "fields": [
+          {
+            "label": "Finalized payroll run",
+            "meaning": "The closed run to compare.",
+            "rule": "Required"
+          },
+          {
+            "label": "Reference source (payroll system / portal)",
+            "meaning": "Where the reference figures come from.",
+            "rule": "Required"
+          },
+          {
+            "label": "Reference CSV (level,employee_code,scope,component,amount)",
+            "meaning": "Reference amounts per employee and component; reconciling also needs a statutory return total line.",
+            "rule": "Required"
+          },
+          {
+            "label": "Description",
+            "meaning": "Any notes on the reference file.",
+            "rule": "Optional"
+          }
+        ],
+        "after": "Compare, review each difference (by someone other than the importer), then Reconcile.",
+        "permission": "compliance.parallel.manage (Tenant Super Admin has it; the Payroll Admin role does not).",
+        "depends": "A finalized run.",
+        "limits": "Not usable in the example organisation yet: no run is finalized. Matching totals alone never count as reconciled.",
+        "source": "app/Filament/Resources/ParallelRuns/ParallelRunResource.php; Pages/ListParallelRuns.php; app/Domain/Compliance/Services/ParallelPayroll.php"
+      }
+    },
+    "procedures": [
+      {
+        "sub": "13.1",
+        "title": "Move to a 25th-to-24th pay cycle",
+        "before": "Agree the change with finance. Know the last month that already has a payroll run.",
+        "steps": [
+          [
+            "Open Pay cycle",
+            "Go to People › Pay › Pay cycle. Read the three figures: cycle in force, month holding today, next change."
+          ],
+          [
+            "Pick the start",
+            "In From: the cycle starts on, pick the 25th of the month before the first new month, e.g. 25 Dec 2026 for January."
+          ],
+          [
+            "Pick the end",
+            "In To payroll month, keep Until changed (no end), or pick a last month."
+          ],
+          [
+            "Check the months",
+            "Read The coming months cards: the changeover month is shorter or longer, and no day is paid twice."
+          ],
+          [
+            "Review and save",
+            "Click Next, read the Review step, add a Reason for change, then Save pay cycle."
+          ]
+        ],
+        "result": "From that month, every company's pay months run from the 25th to the 24th. Attendance and loss of pay follow the new dates.",
+        "screens": [
+          "people/pay-cycle"
+        ],
+        "source": "app/Filament/Pages/PayCyclePage.php; app/Domain/Payroll/Services/PayCycle.php"
+      },
+      {
+        "sub": "13.1",
+        "title": "Set up paying accounts and the bank file",
+        "before": "Your bank's upload specification, if it needs its own format.",
+        "steps": [
+          [
+            "Create the layout",
+            "In Bank file layouts click New layout. Enter Code, Name, Format and the Columns, in order. Save."
+          ],
+          [
+            "Check and activate",
+            "Click Preview to see two sample transfers. When right, click Activate."
+          ],
+          [
+            "Add the account",
+            "In Payment banks click Add a paying account. Fill Company, Bank, IFSC, Debit account number and Bank file layout."
+          ],
+          [
+            "Choose the default",
+            "Switch on Default account of the company for the account that pays everyone else."
+          ],
+          [
+            "Add account number rules",
+            "In Bank account number rules click Add a rule for the main banks your employees use."
+          ],
+          [
+            "Set exceptions",
+            "In Payment modes use Set payment mode for anyone paid by cash, cheque or a specific account."
+          ]
+        ],
+        "result": "The bank file of each closed month offers one file per paying account, in that bank's layout.",
+        "screens": [
+          "people/bank-file-layouts",
+          "people/payment-banks",
+          "people/bank-account-number-rules",
+          "people/payment-modes"
+        ],
+        "source": "BankFileLayoutResource.php; CompanyBankAccountResource.php; BankAccountRuleResource.php; ListEmployeePaymentModes.php"
+      },
+      {
+        "sub": "13.2",
+        "title": "Add a one-time adjustment or an arrear",
+        "before": "The pay month is still open. Know the amount and which pay item treatment applies.",
+        "steps": [
+          [
+            "Open Adjustments",
+            "Go to People › Pay › Adjustments and click New payroll adjustment."
+          ],
+          [
+            "Employee and period",
+            "Choose the Employee and the Period that will pay it."
+          ],
+          [
+            "Type and component",
+            "Choose the Type, e.g. Arrear. Choose a Component for its tax, PF and ESI treatment, or leave Ad hoc."
+          ],
+          [
+            "Name and amount",
+            "Enter Name (shown on the payslip) and Amount. For an arrear, name the earlier month in Name or Note."
+          ],
+          [
+            "Save and approve",
+            "Save. If approval is required, ask a colleague with approval rights to Approve it."
+          ],
+          [
+            "Recalculate",
+            "Recalculate the run. The adjustment appears as its own line in the Breakdown."
+          ]
+        ],
+        "result": "An approved adjustment line in that month's pay, with its source kept on the line.",
+        "screens": [
+          "people/adjustments",
+          "people/payroll-runs--view"
+        ],
+        "source": "PayrollAdjustmentResource.php; PayrollAdjustment.php; PayrollCalculator::adjustments()"
+      },
+      {
+        "sub": "13.2",
+        "title": "Hold and release a salary",
+        "before": "A clear reason. The month must not be marked paid for that employee.",
+        "steps": [
+          [
+            "Hold",
+            "Go to People › Pay › Salary holds and click Hold salary."
+          ],
+          [
+            "Fill the hold",
+            "Choose Employee, enter Payroll month (YYYY-MM) and Reason. Confirm."
+          ],
+          [
+            "Run as usual",
+            "Calculate and close the month. The payslip is issued, but the employee is left out of the bank file."
+          ],
+          [
+            "Release",
+            "When pay can go, find the hold (Held view) and click Release. Enter a Note."
+          ],
+          [
+            "Paid outside the file",
+            "If you paid by another route, enter the Payment reference when releasing."
+          ]
+        ],
+        "result": "The employee's pay goes out with the bank file after release, or the outside payment is recorded.",
+        "screens": [
+          "people/salary-holds"
+        ],
+        "source": "ListSalaryHolds.php; SalaryHoldResource.php; SalaryHolds.php; BankFile.php"
+      },
+      {
+        "sub": "13.2",
+        "title": "Approve a loan and recover it through payroll",
+        "before": "The loan request exists (raised by the employee or on their behalf).",
+        "steps": [
+          [
+            "Find the request",
+            "Open People › Pay › Loans & advances, view Loan requests waiting for approval."
+          ],
+          [
+            "Check it",
+            "Open the loan: terms, Beyond the loan policy and guarantors."
+          ],
+          [
+            "Approve",
+            "Click Approve. Change the terms if your policy allows, add a note, confirm."
+          ],
+          [
+            "Pay it out",
+            "Paid through payroll: the next calculation adds a non-taxable payout line. Paid by bank: click Mark paid out."
+          ],
+          [
+            "Recover",
+            "From Recovery from, each run deducts the instalments due as one line per loan."
+          ],
+          [
+            "Watch the schedule",
+            "On the loan, the Instalments tab shows Recovered once each month closes. Defer one if needed."
+          ]
+        ],
+        "result": "The loan is paid out, recovered monthly and closed when paid up.",
+        "screens": [
+          "people/loans-and-advances",
+          "people/loans-and-advances--view"
+        ],
+        "source": "LoanResource.php; LoanDisbursementInput.php; LoanRecoveryInput.php"
+      },
+      {
+        "sub": "13.3",
+        "title": "Prepare the month: attendance and pre-payroll checks",
+        "before": "The pay month has ended. Salary revisions, joiners and exits are entered.",
+        "steps": [
+          [
+            "Open Run payroll",
+            "Go to People › Pay › Run payroll. Choose the Company and Pay month (it may open on another company)."
+          ],
+          [
+            "Start the month",
+            "On Pay month, click Start <month> if the month has no run yet."
+          ],
+          [
+            "Attendance",
+            "Open Attendance. Use Process attendance, then Close attendance month if month close is in use."
+          ],
+          [
+            "Clear blocked checks",
+            "Open Pre-payroll checks. Fix every Blocked item, e.g. Salary structure missing, using its link."
+          ],
+          [
+            "Tick the rest",
+            "Expand each item To tick, read who and why, fix what is wrong, then click Mark as checked."
+          ],
+          [
+            "Recount",
+            "Click As of to count again. A tick lapses if what it counted changes: check it again."
+          ]
+        ],
+        "result": "Attendance is done and every check is clear or ticked, so Calculate is allowed.",
+        "screens": [
+          "people/run-payroll",
+          "people/payroll-overview",
+          "people/payroll-desk"
+        ],
+        "source": "RunPayroll.php; run-payroll/attendance.blade.php, checks.blade.php; PayrollRunChecklist.php"
+      },
+      {
+        "sub": "13.4",
+        "title": "Calculate, review and validate",
+        "before": "Attendance and pre-payroll checks are done.",
+        "steps": [
+          [
+            "Calculate",
+            "In Run payroll › Run payroll, click Calculate (or Calculate in background for large months) and confirm."
+          ],
+          [
+            "Read the totals",
+            "Check Employees, Gross, Deductions, Net pay, Employer cost and With exceptions."
+          ],
+          [
+            "Review employees",
+            "Open the run. In Employees, filter Status = Exception, then Warning. Open Breakdown for each."
+          ],
+          [
+            "Look for outliers",
+            "Use Review and approve figures (changes from last month) and the Payroll Auditor."
+          ],
+          [
+            "Fix and recalculate",
+            "Fix inputs at the source (salary, attendance, bank, PAN), then Recalculate. Old results are replaced."
+          ],
+          [
+            "Validate",
+            "When no employee has a blocking exception, click Validate."
+          ]
+        ],
+        "result": "A validated run, ready for an independent approver.",
+        "screens": [
+          "people/run-payroll",
+          "people/payroll-runs--view",
+          "people/payroll-auditor"
+        ],
+        "source": "PayrollActions.php; PayrollRuns::calculate(), validate(); PayrollRunReview.php"
+      },
+      {
+        "sub": "13.4",
+        "title": "Approve the month (second person)",
+        "before": "The run is Validated. You are not the person who started the run.",
+        "steps": [
+          [
+            "Open the step",
+            "In Run payroll open Review and approve, or open the run."
+          ],
+          [
+            "Review",
+            "Read totals, statutory totals, joiners and leavers, and Unusual net pay changes."
+          ],
+          [
+            "Approve",
+            "Click Approve, add a note if useful, confirm."
+          ],
+          [
+            "If something is wrong",
+            "Use Reopen with a reason: the run returns to draft and needs recalculating and approving again."
+          ]
+        ],
+        "result": "An approved run, ready to close.",
+        "screens": [
+          "people/run-payroll",
+          "people/payroll-runs--view"
+        ],
+        "source": "PayrollRuns::approve(), reopen(); run-payroll/approve.blade.php"
+      },
+      {
+        "sub": "13.5",
+        "title": "Close payroll and publish payslips",
+        "before": "The run is Approved. Statutory rules used are verified by PeopleOS.",
+        "steps": [
+          [
+            "Close",
+            "In Close payroll click Close payroll and read the dialog: attendance locks, inputs settle, payslips are prepared."
+          ],
+          [
+            "Check",
+            "Look over the closed month; it can still be reopened before payment or filing."
+          ],
+          [
+            "Publish",
+            "In Publish payslips click Publish payslips and confirm. Employees are told their payslip is ready."
+          ]
+        ],
+        "result": "The month is closed, payslips are issued and visible to employees.",
+        "screens": [
+          "people/run-payroll",
+          "people/payroll-runs--view",
+          "people/payslips"
+        ],
+        "source": "PayrollRuns::finalize(); PayslipPublishing.php; Payslips.php"
+      },
+      {
+        "sub": "13.5",
+        "title": "Pay: bank file, journal voucher, mark as paid",
+        "before": "The month is closed.",
+        "steps": [
+          [
+            "Bank file",
+            "In Pay click Bank file. With paying accounts, choose the Paying account. Download the file."
+          ],
+          [
+            "Upload at the bank",
+            "Upload the file in your bank's portal and authorise it there. PeopleOS does not send money."
+          ],
+          [
+            "Journal voucher",
+            "Click Journal voucher (JV), choose the Accounting system if asked, and download it for your books."
+          ],
+          [
+            "Mark as paid",
+            "After the transfers have gone out, click Mark as paid and enter the date."
+          ]
+        ],
+        "result": "The month is Paid and done. Files can still be downloaded later.",
+        "screens": [
+          "people/run-payroll",
+          "people/payroll-runs--view"
+        ],
+        "source": "PayrollActions.php (bankFile, journalVoucher, markPaid); BankFile.php"
+      },
+      {
+        "sub": "13.5",
+        "title": "Correct a mistake after closing",
+        "before": "Know what was wrong and for whom.",
+        "steps": [
+          [
+            "Not yet paid or filed",
+            "If it is the latest closed month, not marked paid and no return or challan was filed, use Reopen month."
+          ],
+          [
+            "Give the reason",
+            "Enter Why it is reopened. Payslips are withdrawn (kept on record) and settled inputs are due again."
+          ],
+          [
+            "Redo the month",
+            "Fix, recalculate, validate, approve, close and publish again. Payslips get a revision number (-R1)."
+          ],
+          [
+            "Paid or filed",
+            "Otherwise never edit the month: add an Arrear or Recovery adjustment in the next open month."
+          ]
+        ],
+        "result": "The error is corrected with a full audit trail; issued figures are never silently changed.",
+        "screens": [
+          "people/payroll-runs--view",
+          "people/adjustments"
+        ],
+        "source": "PayrollMonthReopen.php; PayrollActions.php (reopenMonth); PayrollAdjustment.php"
+      }
+    ],
+    "calculations": [
+      {
+        "sub": "13.4",
+        "title": "Rahul Sharma, November 2026 (real run)",
+        "intro": "From the November 2026 run of Demo Technologies in the example organisation: annual CTC 600,000.00 on the STANDARD structure, 30 of 30 days paid, no loss of pay.",
+        "lines": [
+          [
+            "",
+            "Basic (ctc_monthly × 0.40)",
+            "20,000.00"
+          ],
+          [
+            "+",
+            "House rent allowance (basic × 0.50)",
+            "10,000.00"
+          ],
+          [
+            "+",
+            "Conveyance allowance (fixed amount)",
+            "1,600.00"
+          ],
+          [
+            "+",
+            "Special allowance (CTC − basic − HRA − conv − employer PF)",
+            "16,000.00"
+          ],
+          [
+            "=",
+            "Gross earnings",
+            "47,600.00"
+          ],
+          [
+            "−",
+            "Provident fund (employee): 12% of 20,000.00",
+            "2,400.00"
+          ],
+          [
+            "−",
+            "Professional tax (Karnataka)",
+            "200.00"
+          ],
+          [
+            "−",
+            "Income tax (TDS)",
+            "6,520.00"
+          ]
+        ],
+        "total": [
+          "Net pay",
+          "38,480.00"
+        ],
+        "explain": [
+          [
+            "Special allowance",
+            "50,000.00 − 20,000.00 − 10,000.00 − 1,600.00 − 2,400.00 = 16,000.00, so gross plus employer PF equals monthly CTC."
+          ],
+          [
+            "Employer cost",
+            "47,600.00 + PF employer 2,400.00 + PF admin & EDLI 175.00 = 50,175.00."
+          ],
+          [
+            "Where you see it",
+            "Run › Employees › EMP00003 › Breakdown; each line shows its formula and rule."
+          ],
+          [
+            "Note",
+            "Example figures. Rule rates come from rule versions maintained by PeopleOS; not legal advice."
+          ]
+        ],
+        "source": "PayrollCalculator.php; StatutoryEngine.php; q.php payroll_entry_lines for payroll_entry_id 3"
+      },
+      {
+        "sub": "13.4",
+        "title": "Priya Nair, November 2026 (real run, PF wage ceiling)",
+        "intro": "Same run: annual CTC 900,000.00 (75,000.00 a month), 30 of 30 days paid. Her basic is above the 25,000.00 PF wage ceiling in the EPF rule version, so PF is worked on 25,000.00.",
+        "lines": [
+          [
+            "",
+            "Basic (75,000.00 × 0.40)",
+            "30,000.00"
+          ],
+          [
+            "+",
+            "House rent allowance (basic × 0.50)",
+            "15,000.00"
+          ],
+          [
+            "+",
+            "Conveyance allowance (fixed amount)",
+            "1,600.00"
+          ],
+          [
+            "+",
+            "Special allowance (balancing)",
+            "25,400.00"
+          ],
+          [
+            "=",
+            "Gross earnings",
+            "72,000.00"
+          ],
+          [
+            "−",
+            "Provident fund (employee): 12% of 25,000.00 (ceiling)",
+            "3,000.00"
+          ],
+          [
+            "−",
+            "Professional tax (Karnataka)",
+            "200.00"
+          ],
+          [
+            "−",
+            "Income tax (TDS)",
+            "11,400.00"
+          ]
+        ],
+        "total": [
+          "Net pay",
+          "57,400.00"
+        ],
+        "explain": [
+          [
+            "Special allowance",
+            "75,000.00 − 30,000.00 − 15,000.00 − 1,600.00 − 3,000.00 (employer PF on the ceiling) = 25,400.00."
+          ],
+          [
+            "Employer cost",
+            "72,000.00 + PF employer 3,000.00 + PF admin & EDLI 200.00 = 75,200.00."
+          ],
+          [
+            "PF on the ceiling",
+            "The establishment limits PF to the ceiling, so 12% × 25,000.00 = 3,000.00 whatever the basic."
+          ],
+          [
+            "Source",
+            "Example organisation, November 2026 run, entry EMP00004."
+          ]
+        ],
+        "source": "q.php payroll_entries / payroll_entry_lines id 4; compliance_rules EPF v2 parameters; StatutoryEngine.php"
+      },
+      {
+        "sub": "13.4",
+        "title": "Amit Verma, November 2026 (real run)",
+        "intro": "Same run: annual CTC 2,400,000.00 (200,000.00 a month), 30 of 30 days paid, PF on the 25,000.00 ceiling.",
+        "lines": [
+          [
+            "",
+            "Basic (200,000.00 × 0.40)",
+            "80,000.00"
+          ],
+          [
+            "+",
+            "House rent allowance (basic × 0.50)",
+            "40,000.00"
+          ],
+          [
+            "+",
+            "Conveyance allowance (fixed amount)",
+            "1,600.00"
+          ],
+          [
+            "+",
+            "Special allowance (balancing)",
+            "75,400.00"
+          ],
+          [
+            "=",
+            "Gross earnings",
+            "197,000.00"
+          ],
+          [
+            "−",
+            "Provident fund (employee): 12% of 25,000.00",
+            "3,000.00"
+          ],
+          [
+            "−",
+            "Professional tax (Karnataka)",
+            "200.00"
+          ],
+          [
+            "−",
+            "Income tax (TDS): no PAN, 20% of 910,000.00 over 5 months",
+            "36,400.00"
+          ]
+        ],
+        "total": [
+          "Net pay",
+          "157,400.00"
+        ],
+        "explain": [
+          [
+            "Special allowance",
+            "200,000.00 − 80,000.00 − 40,000.00 − 1,600.00 − 3,000.00 = 75,400.00."
+          ],
+          [
+            "Employer cost",
+            "197,000.00 + PF employer 3,000.00 + PF admin & EDLI 200.00 = 200,200.00."
+          ],
+          [
+            "TDS",
+            "Slab tax 31,000.00 is fully rebated, but with no PAN the annual tax is 182,000.00 (20%), so 36,400.00 a month."
+          ],
+          [
+            "Source",
+            "Example organisation, November 2026 run, entry EMP00002."
+          ]
+        ],
+        "source": "q.php payroll_entries / payroll_entry_lines id 2 (inputs.tax); TaxComputer.php"
+      },
+      {
+        "sub": "13.4",
+        "title": "Run totals reconcile (real run)",
+        "intro": "The run's totals are the sum of its five entries; PeopleOS checks this on every calculation and again before closing.",
+        "lines": [
+          [
+            "",
+            "Anita Rao (EMP00001)",
+            "317,400.00"
+          ],
+          [
+            "+",
+            "Amit Verma (EMP00002)",
+            "157,400.00"
+          ],
+          [
+            "+",
+            "Rahul Sharma (EMP00003)",
+            "38,480.00"
+          ],
+          [
+            "+",
+            "Priya Nair (EMP00004)",
+            "57,400.00"
+          ],
+          [
+            "+",
+            "Vikram Singh (EMP00005)",
+            "31,344.00"
+          ]
+        ],
+        "total": [
+          "Net pay of the run",
+          "602,024.00"
+        ],
+        "explain": [
+          [
+            "Gross and deductions",
+            "Gross 751,680.00 − deductions 149,656.00 = net 602,024.00."
+          ],
+          [
+            "Employer cost",
+            "765,930.00 = earnings 751,680.00 + PF employer and admin 14,250.00."
+          ],
+          [
+            "Statutory totals",
+            "PF employees 13,320.00; PT 1,000.00; TDS 135,336.00; ESI 0.00 (all above the ESI ceiling)."
+          ],
+          [
+            "Reconciliation",
+            "Stored as balanced. An unbalanced run cannot be closed until it is recalculated."
+          ]
+        ],
+        "source": "PayrollRuns::calculate(); PayrollReconciliation.php; q.php payroll_runs id 1 totals and reconciliation"
+      },
+      {
+        "sub": "13.4",
+        "title": "Why Rahul's TDS is 6,520.00 (no PAN on file)",
+        "intro": "TDS projects the year's salary, applies the TDS rule version, then spreads what is due over the months left. No PAN is on file, so the engine applies at least 20% of taxable income.",
+        "lines": [
+          [
+            "",
+            "Taxable earnings this month",
+            "47,600.00"
+          ],
+          [
+            "×",
+            "Months left in the tax year, November included",
+            "5"
+          ],
+          [
+            "=",
+            "Projected salary (no earlier closed payroll this year)",
+            "238,000.00"
+          ],
+          [
+            "−",
+            "Standard deduction (new regime)",
+            "75,000.00"
+          ],
+          [
+            "=",
+            "Taxable income",
+            "163,000.00"
+          ],
+          [
+            "",
+            "Annual tax: at least 20% of 163,000.00 (no PAN)",
+            "32,600.00"
+          ],
+          [
+            "÷",
+            "Spread over the 5 months left",
+            "5"
+          ]
+        ],
+        "total": [
+          "TDS this month",
+          "6,520.00"
+        ],
+        "explain": [
+          [
+            "With a PAN",
+            "Tax at the new-regime slabs on 163,000.00 is 0.00, so TDS would be 0.00. Add the PAN, then recalculate."
+          ],
+          [
+            "Regime",
+            "New regime, because Rahul has no tax declaration for 2026-27."
+          ],
+          [
+            "Where you see it",
+            "Breakdown › TDS line basis; on the payslip under Tax computation."
+          ],
+          [
+            "Not legal advice",
+            "The TDS rule version is maintained by PeopleOS; in the example it is not yet verified."
+          ]
+        ],
+        "source": "app/Domain/Compliance/Services/TaxComputer.php monthlyTds(); q.php payroll_entries id 3 inputs.tax"
+      },
+      {
+        "sub": "13.4",
+        "title": "Illustrative: two days of loss of pay",
+        "intro": "Illustrative, not in the example data: Rahul's November with 2 days absent in processed attendance. Calendar-day proration: 28 paid days of 30. PAN assumed on file.",
+        "lines": [
+          [
+            "",
+            "Basic 20,000.00 × 28/30",
+            "18,666.67"
+          ],
+          [
+            "+",
+            "House rent allowance 10,000.00 × 28/30",
+            "9,333.33"
+          ],
+          [
+            "+",
+            "Conveyance allowance 1,600.00 × 28/30",
+            "1,493.33"
+          ],
+          [
+            "+",
+            "Special allowance 16,000.00 × 28/30",
+            "14,933.33"
+          ],
+          [
+            "=",
+            "Gross earnings",
+            "44,426.66"
+          ],
+          [
+            "−",
+            "Provident fund (employee): 12% of 18,666.67, rounded",
+            "2,240.00"
+          ],
+          [
+            "−",
+            "Professional tax (Karnataka)",
+            "200.00"
+          ],
+          [
+            "−",
+            "Income tax (TDS)",
+            "0.00"
+          ]
+        ],
+        "total": [
+          "Net pay",
+          "41,986.66"
+        ],
+        "explain": [
+          [
+            "Loss of pay",
+            "Absent day = 1, half day = 0.5, approved unpaid leave = its days; at most 1 per day."
+          ],
+          [
+            "Rounding",
+            "Each component is prorated and rounded to paise, so gross is 44,426.66, not 44,426.67."
+          ],
+          [
+            "Divisor",
+            "Setup › Payroll › Prorate pay on: Calendar days (the example), Working days or a fixed number of days."
+          ]
+        ],
+        "source": "PayrollCalculator::lossOfPay(), divisor(), calculate() step 5; tenant setting payroll.proration_basis"
+      },
+      {
+        "sub": "13.4",
+        "title": "Illustrative: a joiner on 16 November",
+        "intro": "Illustrative, not in the example data: a new employee on Rahul's salary (CTC 600,000.00) joins on 16 Nov 2026. Pay runs from the joining date: 15 of 30 days. PAN on file.",
+        "lines": [
+          [
+            "",
+            "Basic 20,000.00 × 15/30",
+            "10,000.00"
+          ],
+          [
+            "+",
+            "House rent allowance 10,000.00 × 15/30",
+            "5,000.00"
+          ],
+          [
+            "+",
+            "Conveyance allowance 1,600.00 × 15/30",
+            "800.00"
+          ],
+          [
+            "+",
+            "Special allowance 16,000.00 × 15/30",
+            "8,000.00"
+          ],
+          [
+            "=",
+            "Gross earnings",
+            "23,800.00"
+          ],
+          [
+            "−",
+            "Provident fund (employee): 12% of 10,000.00",
+            "1,200.00"
+          ],
+          [
+            "−",
+            "Professional tax: gross not above 24,999 in the Karnataka rule",
+            "0.00"
+          ],
+          [
+            "−",
+            "Income tax (TDS)",
+            "0.00"
+          ]
+        ],
+        "total": [
+          "Net pay",
+          "22,600.00"
+        ],
+        "explain": [
+          [
+            "Employer cost",
+            "23,800.00 + PF employer 1,200.00 + PF admin & EDLI 100.00 = 25,100.00."
+          ],
+          [
+            "Exits",
+            "A leaver is paid to the exit date the same way. Components can be set not to pay in joining or exit months (M12)."
+          ],
+          [
+            "TDS in the first month",
+            "TDS projects this part-month across the months left, so it can be low at first and catches up later."
+          ]
+        ],
+        "source": "PayrollCalculator::calculate() eligibility window and proration; StatutoryEngine EPF and PT; TaxComputer.php"
+      },
+      {
+        "sub": "13.2",
+        "title": "Leave encashment: one day's pay",
+        "intro": "Illustrative: Rahul encashes 5 days. The example organisation pays encashment on basic over 30 days (Setup › Payroll).",
+        "lines": [
+          [
+            "",
+            "Basic, full month",
+            "20,000.00"
+          ],
+          [
+            "÷",
+            "Days in a month for a day of encashment",
+            "30"
+          ],
+          [
+            "=",
+            "One day's pay",
+            "666.67"
+          ],
+          [
+            "×",
+            "Days encashed",
+            "5"
+          ]
+        ],
+        "total": [
+          "Leave encashment line (taxable earning)",
+          "3,333.35"
+        ],
+        "explain": [
+          [
+            "When it is paid",
+            "In the chosen pay month, or by the first run after approval when no month is chosen."
+          ],
+          [
+            "Settled",
+            "Closing the run marks the encashment paid, so a later run never pays it again."
+          ]
+        ],
+        "source": "app/Domain/Payroll/Inputs/LeaveEncashmentInput.php; PayrollInputs::dailyRate(); settings payroll.encashment_basis, payroll.encashment_divisor"
+      },
+      {
+        "sub": "13.2",
+        "title": "Loan paid through payroll (projection from example data)",
+        "intro": "Priya Nair's personal loan LN-2026-00002 (120,000.00, 12 instalments) was approved after November was calculated. This is what recalculation would add, if nothing else changed.",
+        "lines": [
+          [
+            "",
+            "Net pay as calculated",
+            "57,400.00"
+          ],
+          [
+            "+",
+            "Personal loan LN-2026-00002 paid out (non-taxable, outside gross)",
+            "120,000.00"
+          ]
+        ],
+        "total": [
+          "Net pay after recalculation",
+          "177,400.00"
+        ],
+        "explain": [
+          [
+            "Gross and tax",
+            "Unchanged at 72,000.00 and 11,400.00: the payout is a reimbursement-type line, not taxable."
+          ],
+          [
+            "Recovery",
+            "Once November closes the loan is active; from Dec 2026 each run deducts 10,000.00 until it is repaid."
+          ]
+        ],
+        "source": "LoanDisbursementInput.php; LoanRecoveryInput.php; PayrollComputation.php; q.php loans id 2, loan_installments"
+      },
+      {
+        "sub": "13.1",
+        "title": "Pay cycle changeover: no day paid twice",
+        "intro": "Illustrative: the example organisation uses calendar months. If you set From: the cycle starts on 25 Dec 2026, the months around the change would be:",
+        "lines": [
+          [
+            "",
+            "Dec 2026 (changeover month): 1 Dec – 24 Dec",
+            "24 days"
+          ],
+          [
+            "+",
+            "Jan 2027: 25 Dec – 24 Jan",
+            "31 days"
+          ]
+        ],
+        "total": [
+          "1 Dec 2026 – 24 Jan 2027",
+          "55 days"
+        ],
+        "explain": [
+          [
+            "Naming",
+            "A month is named after the month it ends in."
+          ],
+          [
+            "Proration",
+            "With calendar days, December's divisor is 24 and January's 31."
+          ]
+        ],
+        "source": "app/Domain/Payroll/Services/PayCycle.php; docs/architecture/payroll-architecture.md §1.1"
+      }
+    ],
+    "warnings": [
+      {
+        "sub": "13.4",
+        "title": "Statutory rules not yet verified",
+        "level": "blocked",
+        "headline": "In the example organisation, every employee in the November run has blocking exceptions you cannot clear yourself.",
+        "body": "PeopleOS maintains the statutory rule versions (EPF, ESI, PT, LWF, TDS) and verifies each against its official source. Until a rule is verified, or while a regulatory change is open, pay using it is blocked.",
+        "points": [
+          "The run can be calculated and reviewed, but not validated, approved or closed.",
+          "Messages read '… is review, not verified against an official source' or '… is affected by a regulatory change'.",
+          "You can view the rules in People › Pay › Compliance rules (Parameters, Verification history).",
+          "A statutory override changes an amount but does not clear this block."
+        ],
+        "todo": "Ask PeopleOS support when the rules your establishments use will be verified. Meanwhile review the figures and keep inputs ready."
+      },
+      {
+        "sub": "13.4",
+        "title": "Recalculate after every change",
+        "level": "important",
+        "headline": "A run shows the inputs as they were when it was calculated.",
+        "body": "In the example organisation the November run holds 5 employees but 14 more are not calculated yet, bank accounts and a tax declaration were added since, and Vikram Singh, who left on 1 Oct 2026, is still in it.",
+        "points": [
+          "Watch Not calculated yet in the Calculate step of the run cockpit.",
+          "Close payroll refuses a run whose approved salaries changed since it was calculated.",
+          "Recalculating replaces every result of the run; ticks on employees start again."
+        ],
+        "todo": "Recalculate after any change to salaries, attendance, inputs, bank or statutory details, before validating."
+      },
+      {
+        "sub": "13.4",
+        "title": "Two people for every month",
+        "level": "important",
+        "headline": "The person who started the run cannot approve it.",
+        "body": "PeopleOS separates preparing and approving payroll. If you started the month yourself, a colleague with payroll.approve must approve it.",
+        "points": [
+          "Set up a second user with the Payroll Admin role before your first live month.",
+          "Adjustments and encashment batches can also need a second person."
+        ],
+        "todo": "Agree who prepares and who approves payroll each month."
+      },
+      {
+        "sub": "13.5",
+        "title": "PeopleOS does not transfer money",
+        "level": "warning",
+        "headline": "PeopleOS produces the bank file; your bank moves the money.",
+        "body": "Download the bank file, upload it in your bank's portal and authorise the payment there. Then mark the month paid in PeopleOS.",
+        "points": [
+          "Left out of the file: held salaries, cash and cheque payees, employees with net pay of zero or less.",
+          "Each download is audited with the number of transfers and the total."
+        ],
+        "todo": "Check the file's count and total against the run before uploading it."
+      },
+      {
+        "sub": "13.5",
+        "title": "Closed payroll stays as issued",
+        "level": "important",
+        "headline": "Entries, lines and payslips of a closed month are never edited.",
+        "body": "Only the latest closed month can be reopened, and only until it is marked paid or a statutory return or challan is filed from it. After that, correct with an arrear or recovery in an open month.",
+        "points": [
+          "Reopening withdraws payslips (kept on record) and gives settled inputs back.",
+          "Later calculated months return to draft too."
+        ],
+        "todo": "Check carefully before Mark as paid and before filing returns."
+      },
+      {
+        "sub": "13.5",
+        "title": "Payslips are on screen only",
+        "level": "warning",
+        "headline": "There is no payslip PDF download yet.",
+        "body": "Employees see published payslips in My payslips and payroll staff in People › Pay › Payslips, on screen.",
+        "points": [
+          "Employees see nothing until you publish, unless Setup › Payroll publishes at close."
+        ],
+        "todo": "Tell employees where to find their payslip in PeopleOS."
+      }
+    ],
+    "troubleshooting": [
+      [
+        "Not allowed: Finish the steps before the run in Run payroll first …",
+        "Attendance is not done (e.g. the month has not ended) or a pre-payroll check is blocked or not ticked.",
+        "Open Run payroll, finish Attendance and Pre-payroll checks, then calculate.",
+        ""
+      ],
+      [
+        "N employee(s) have blocking exceptions. Fix the inputs and recalculate.",
+        "Validate found employees with Status Exception.",
+        "Filter Employees by Exception, open Breakdown, fix the cause, recalculate.",
+        ""
+      ],
+      [
+        "Issues show unverified_statutory_rule or statutory_change_pending",
+        "A statutory rule version is not verified by PeopleOS, or a regulatory change is open.",
+        "Nothing to fix in your data. Ask PeopleOS support; review figures meanwhile.",
+        ""
+      ],
+      [
+        "The person who prepared the run cannot approve it.",
+        "You started the run.",
+        "Ask a colleague with approval rights to approve.",
+        ""
+      ],
+      [
+        "Statutory rules are not verified for production finalization …",
+        "Close payroll checks every rule version the run used.",
+        "Ask PeopleOS support about verification.",
+        ""
+      ],
+      [
+        "Compensation changed for N employee(s) since the run was calculated …",
+        "A salary was approved or changed after calculation.",
+        "Recalculate, validate and approve again.",
+        ""
+      ],
+      [
+        "Run totals do not reconcile with its entries …",
+        "Totals no longer match the entries.",
+        "Recalculate the run.",
+        ""
+      ],
+      [
+        "No primary bank account although one was added",
+        "The run was calculated before the account was added.",
+        "Recalculate the run.",
+        ""
+      ],
+      [
+        "Salary structure missing: N to clear",
+        "People in the month have no approved salary in force.",
+        "Assign salary structures (M12), then count again.",
+        ""
+      ],
+      [
+        "A check says changed since it was checked",
+        "What it counted changed after your tick.",
+        "Expand it, review the new rows, click Check again.",
+        ""
+      ],
+      [
+        "An employee cannot see their payslip",
+        "Payslips are not published yet.",
+        "Run payroll › Publish payslips › Publish payslips.",
+        ""
+      ],
+      [
+        "The payroll period is closed; record an arrear or recovery in an open period instead.",
+        "You tried to add or change an adjustment in a closed month.",
+        "Add the adjustment to the next open month.",
+        ""
+      ],
+      [
+        "Only the latest closed month can be reopened / is marked as paid",
+        "A later month is closed, the month is paid, or a return or challan was filed.",
+        "Correct with an arrear or recovery in an open month.",
+        ""
+      ],
+      [
+        "Run payroll shows the wrong company or month",
+        "It opens on the first company by name and its suggested month.",
+        "Change Company and Pay month at the top of the step rail.",
+        ""
+      ],
+      [
+        "Setting the payment date sent the run back to draft",
+        "TDS follows the payment date, so the run must be calculated again.",
+        "Recalculate, validate and approve.",
+        ""
+      ]
+    ],
+    "checklist": [
+      [
+        "Pay cycle set",
+        "Calendar months or your cycle, before the first run."
+      ],
+      [
+        "Paying accounts and layouts",
+        "Payment banks, bank file layouts and payment modes recorded."
+      ],
+      [
+        "Second approver",
+        "A colleague with payroll.approve, separate from the preparer."
+      ],
+      [
+        "Salaries in force",
+        "No one in Salary structure missing; revisions approved."
+      ],
+      [
+        "Inputs entered",
+        "Adjustments, uploads, loans, claims, variable pay and encashments approved."
+      ],
+      [
+        "Attendance closed",
+        "Every day processed; attendance month closed if in use."
+      ],
+      [
+        "Checks ticked",
+        "All pre-payroll checks clear or ticked."
+      ],
+      [
+        "Calculated and reviewed",
+        "Exceptions cleared, warnings understood, Payroll Auditor read."
+      ],
+      [
+        "Approved and closed",
+        "Approved by a second person, then Close payroll."
+      ],
+      [
+        "Published and paid",
+        "Payslips published, bank file uploaded at the bank, JV to finance, Mark as paid."
+      ]
+    ],
+    "summary": [
+      "Run every month through People › Pay › Run payroll: attendance, checks, calculate, approve, close, publish, pay.",
+      "Payroll reads approved salaries, processed attendance, leave and approved inputs; fix inputs at their source, then recalculate.",
+      "Blocking exceptions stop validation; statutory rule verification is maintained by PeopleOS.",
+      "Preparer and approver must be different people.",
+      "PeopleOS produces the bank file and JV; your bank moves the money.",
+      "Closed payroll is never edited: reopen the latest month before payment, or use an arrear or recovery."
+    ],
+    "captures_needed": [
+      {
+        "title": "Run payroll: Pay month step, Demo Technologies Nov 2026",
+        "url": "/admin/run-payroll?company=1&month=2026-11&step=month",
+        "how": "Open the URL (or choose Company Demo Technologies and Pay month Nov 2026). Shows status Calculated and Up next."
+      },
+      {
+        "title": "Run payroll: Attendance step (needs a look)",
+        "url": "/admin/run-payroll?company=1&month=2026-11&step=attendance",
+        "how": "Open the URL. The banner lists why attendance is not ready (November has not ended). Do not click Process or Close."
+      },
+      {
+        "title": "Run payroll: Pre-payroll checks with one item expanded",
+        "url": "/admin/run-payroll?company=1&month=2026-11&step=checks",
+        "how": "Open the URL, wait for the checks to load, click the chevron of one Needs a look item to show its rows. Do not tick."
+      },
+      {
+        "title": "Run payroll: Run payroll step (blockers and totals)",
+        "url": "/admin/run-payroll?company=1&month=2026-11&step=calculate",
+        "how": "Open the URL. Shows the 'things before the run can start' banner and the tiles Employees 5, Gross 751,680.00, Net pay 602,024.00."
+      },
+      {
+        "title": "Recalculate dialog",
+        "url": "/admin/payroll-runs/1",
+        "how": "Click Recalculate in the header; capture the confirmation dialog, then Cancel. Confirming is refused with 'Finish the steps before the run…' and changes nothing."
+      },
+      {
+        "title": "Validate result (refused)",
+        "url": "/admin/payroll-runs/1",
+        "how": "Click Validate. Capture the red notification 'Not allowed: 5 employee(s) have blocking exceptions…'. Nothing changes."
+      },
+      {
+        "title": "Employee breakdown, Rahul Sharma",
+        "url": "/admin/payroll-runs/1",
+        "how": "Employees tab, row EMP00003 Rahul Sharma, click Breakdown. Capture the summary, lines with basis and the Exceptions section."
+      },
+      {
+        "title": "Run cockpit step table: Salaries",
+        "url": "/admin/payroll-runs/1",
+        "how": "Scroll to Step tables, click Open on Salaries. Capture the table and the Run activity panel."
+      },
+      {
+        "title": "Run payroll: Review and approve step",
+        "url": "/admin/run-payroll?company=1&month=2026-11&step=approve",
+        "how": "Open the URL. Shows 'Validate the result' with the review totals. The Approve button is not shown in this state."
+      },
+      {
+        "title": "Run payroll: Close, Publish and Pay steps (waiting)",
+        "url": "/admin/run-payroll?company=1&month=2026-11&step=close",
+        "how": "Capture step=close ('Approve the month first'), then step=publish and step=pay ('Close payroll first')."
+      },
+      {
+        "title": "Approve dialog, Close payroll dialog, Publish payslips dialog, Bank file download, a payslip",
+        "url": "/admin/payroll-runs/1",
+        "how": "Not reachable on the training database: the run cannot be validated while the statutory rules are unverified. Needs a database with a verified, approved or closed month."
+      },
+      {
+        "title": "Run payroll: month not started (Start button)",
+        "url": "/admin/run-payroll?company=2&month=2026-10&step=calculate",
+        "how": "Demo Services Oct 2026 has no run. Capture the 'has not started' panel with Start Oct 2026. Do not click Start."
+      },
+      {
+        "title": "Pay cycle: Review step",
+        "url": "/admin/pay-cycle",
+        "how": "Pick From: the cycle starts on 25 Dec 2026, keep Until changed, click Next. Capture Review and the month cards. Do not save."
+      },
+      {
+        "title": "Payroll overview: Before you run payroll, one check open",
+        "url": "/admin/payroll-control-room",
+        "how": "Wait for the panel to load, choose Company Demo Technologies, open 'Statutory rules for the month'."
+      },
+      {
+        "title": "Payroll Auditor findings",
+        "url": "/admin/payroll-auditor",
+        "how": "Opens on Nov 2026 · Demo Technologies with 12 findings. Capture severity counts and the first findings."
+      },
+      {
+        "title": "Loan view with instalments",
+        "url": "/admin/loans/2",
+        "how": "Priya Nair's approved personal loan LN-2026-00002; capture the Loan section and the Instalments tab (12 rows)."
+      },
+      {
+        "title": "Hold salary dialog",
+        "url": "/admin/salary-holds",
+        "how": "Click Hold salary, choose EMP00003, month 2026-11, type a reason; capture; Cancel."
+      },
+      {
+        "title": "New payroll adjustment form",
+        "url": "/admin/payroll-adjustments",
+        "how": "Click New payroll adjustment, choose Type Arrear; capture the form; Cancel."
+      },
+      {
+        "title": "Payroll uploads: Upload CSV dialog",
+        "url": "/admin/payroll-uploads",
+        "how": "Click Upload CSV, choose Upload = Salary arrear upload so the format guide shows; capture; Cancel."
+      },
+      {
+        "title": "Add a paying account, New layout, Set payment mode, Encash leaves wizard",
+        "url": "/admin/payment-banks",
+        "how": "Open each form (also /admin/bank-file-layouts, /admin/payment-modes, /admin/leave-encashment-batches), capture empty forms, Cancel."
+      }
+    ],
+    "gaps": [
+      "Close payroll, payslip publishing, bank file, journal voucher, Mark as paid and payslip view cannot be shown with the example data: the run cannot be validated while statutory rules are unverified.",
+      "Payslip PDF download is not built yet; payslips are viewed on screen only (My payslips and People › Pay › Payslips).",
+      "Approval is refused only to the person who started (opened) the run; the code does not also check who calculated it.",
+      "The Adjustments form cannot record the earlier month an arrear or recovery is for (only the Salary arrear upload records it), and does not stop duplicate entries.",
+      "Arrears from back-dated salary revisions are not worked out automatically; a revision inside a paid month is refused and the difference is paid as an arrear.",
+      "The captured loan view (/admin/loans/1) is a pending request with no instalments yet; the Instalments table is described from source. /admin/loans/2 (approved, 12 instalments) is a better capture.",
+      "Whether a joiner's days before joining raise an 'attendance incomplete' warning depends on how attendance records those days; not confirmed.",
+      "The Issues column shows some exception types as raw codes (unverified_statutory_rule, statutory_change_pending) because they have no display label."
+    ]
+  }
+}
