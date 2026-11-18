@@ -460,7 +460,7 @@ final class SiteCatalogue
                 'note' => 'An estimate using the commonly applied formula: 15 days\' wages for each year of service (wages ÷ 26) for organisations covered by the Payment of Gratuity Act, and wages ÷ 30 for those that are not. Service of more than six months in the final year counts as a full year under the Act. Eligibility usually needs five years of continuous service (except on death or disablement). Check the current ceiling and your own policy before paying.'],
             'ctc-calculator' => ['kind' => 'ctc', 'title' => 'CTC to in-hand salary calculator', 'menu' => 'See the monthly take-home', 'icon' => 'currency-rupee',
                 'intro' => 'Split an annual CTC into a monthly breakup and see the take-home before income tax.',
-                'note' => 'An illustration only. Employer and employee PF are 12% of basic (optionally on a basic capped at ₹15,000 a month); gratuity, when included in CTC, is taken as 4.81% of basic. Professional tax varies by state. Income tax is not deducted here: it depends on the employee\'s regime and declarations.'],
+                'note' => self::ctcNote()],
             'leave-encashment-calculator' => ['kind' => 'leave_encashment', 'title' => 'Leave encashment calculator', 'menu' => 'Value unused leave', 'icon' => 'calendar-days',
                 'intro' => 'Work out the value of encashed leave from the monthly salary used for encashment and the days encashed.',
                 'note' => 'An estimate: per-day pay is the monthly salary used for encashment (often basic plus dearness allowance) divided by the days your policy uses (30 or 26). Taxability depends on whether the employee is in service or retiring.'],
@@ -468,6 +468,46 @@ final class SiteCatalogue
                 'intro' => 'Find the last working day from the resignation date and notice period, and the recovery for any days not served.',
                 'note' => 'An estimate: notice is counted in calendar days from the day after resignation. Recovery for days not served is worked out on monthly basic ÷ 30 unless your policy says otherwise.'],
         ];
+    }
+
+    /**
+     * Calculator notes an earlier release seeded and that statutory changes have since made wrong (the CTC note said
+     * PF was capped at ₹15,000). A published page still carrying one word for word shows the current note instead;
+     * a note an operator rewrote is left alone.
+     */
+    private const SUPERSEDED_NOTES = [
+        'ctc' => [
+            'An illustration only. Employer and employee PF are 12% of basic (optionally on a basic capped at ₹15,000 a month); gratuity, when included in CTC, is taken as 4.81% of basic. Professional tax varies by state. Income tax is not deducted here: it depends on the employee\'s regime and declarations.',
+        ],
+    ];
+
+    /** The assumptions to show under a calculator's result: the stored note, or the current one if it is outdated. */
+    public static function calculatorNote(string $kind, ?string $note): ?string
+    {
+        if (! in_array(trim((string) $note), self::SUPERSEDED_NOTES[$kind] ?? [], true)) {
+            return $note;
+        }
+        foreach (self::calculators() as $calculator) {
+            if ($calculator['kind'] === $kind) {
+                return $calculator['note'];
+            }
+        }
+
+        return $note;
+    }
+
+    private static function ctcNote(): string
+    {
+        $pf = CalculatorRules::inr(CalculatorRules::PF_WAGE_CEILING);
+
+        return 'An illustration only. PF is 12% from the employee and 12% from the employer on PF wages (basic + DA; the basic here). '
+            ."PF is compulsory when PF wages are {$pf} a month or less, the EPFO wage ceiling from ".CalculatorRules::PF_CEILING_FROM.', and contributions may be restricted to that ceiling. '
+            ."An employee can opt out only if their PF wages are above {$pf} when they join and they have never been a PF member. "
+            .'ESI covers gross pay of '.CalculatorRules::inr(CalculatorRules::ESI_WAGE_CEILING).' a month or less ('.CalculatorRules::inr(CalculatorRules::ESI_WAGE_CEILING_DISABILITY).' for a person with a disability): '
+            .'0.75% from the employee (nil at a daily average wage of ₹'.CalculatorRules::ESI_EXEMPT_DAILY_WAGE.' or less) and 3.25% from the employer. '
+            .'Once covered, an employee stays in ESI until the end of the contribution period (April–September or October–March). '
+            .'PF administration and EDLI charges are left out. Gratuity, when included in CTC, is taken as 4.81% of basic. '
+            .'Professional tax varies by state. Income tax is not deducted here: it depends on the employee\'s regime and declarations.';
     }
 
     /** @return list<array{0: string, 1: string}> HR glossary terms and plain definitions */

@@ -12,8 +12,10 @@
         'leave_encashment' => [$num('salary', 'Monthly salary for encashment (₹)', '40000', 'Often basic + DA'), $num('days', 'Leave days to encash', '15', '', '0.5')],
         'notice' => [$num('notice_days', 'Notice period (days)', '60'), $num('waived', 'Days waived by the employer', '0'), $num('salary', 'Monthly basic for recovery (₹)', '40000')],
     };
+    $rules = \App\Domain\Website\Support\CalculatorRules::class;
+    $note = \App\Domain\Website\Support\SiteCatalogue::calculatorNote($kind, $d['note'] ?? null);
 @endphp
-<section class="ps-section ps-tool" data-ps-calc="{{ $kind }}" data-ceiling="{{ (int) ($d['ceiling'] ?? 0) }}">
+<section class="ps-section ps-tool" data-ps-calc="{{ $kind }}" data-ceiling="{{ (int) ($d['ceiling'] ?? 0) }}" @if ($kind === 'ctc') data-rules="{{ json_encode($rules::ctc()) }}" @endif>
     <div class="ps-wrap">
         <div class="ps-section-head">
             @if (filled($d['eyebrow'] ?? null))<p class="ps-eyebrow">{{ $d['eyebrow'] }}</p>@endif
@@ -46,8 +48,19 @@
                     </div>
                 @endforeach
                 @if ($kind === 'ctc')
-                    <div class="ps-field is-wide ps-checkline">
-                        <label><input type="checkbox" data-field="pf_cap" checked> Work out PF on basic capped at ₹15,000 a month</label>
+                    <div class="ps-field is-wide ps-checkline" role="group" aria-labelledby="{{ $uid }}-pf">
+                        <span class="ps-checkline-title" id="{{ $uid }}-pf">Provident fund</span>
+                        <label><input type="checkbox" data-field="pf_cap" checked> Restrict PF to the {{ $rules::inr($rules::PF_WAGE_CEILING) }} wage ceiling</label>
+                        <label><input type="checkbox" data-field="pf_opt_out" aria-describedby="{{ $uid }}-pf-opt-out"> Employee has opted out of PF</label>
+                        <span class="ps-field-hint" id="{{ $uid }}-pf-opt-out" data-ps-hint="pf_opt_out">Only when PF wages (basic + DA) are above {{ $rules::inr($rules::PF_WAGE_CEILING) }} at joining and the employee has never been a PF member.</span>
+                    </div>
+                    <div class="ps-field is-wide ps-checkline" role="group" aria-labelledby="{{ $uid }}-esi">
+                        <span class="ps-checkline-title" id="{{ $uid }}-esi">ESI</span>
+                        <label><input type="checkbox" data-field="esi_on" checked> The establishment is covered by ESI</label>
+                        <label><input type="checkbox" data-field="esi_disability"> Employee has a disability (ESI limit {{ $rules::inr($rules::ESI_WAGE_CEILING_DISABILITY) }})</label>
+                    </div>
+                    <div class="ps-field is-wide ps-checkline" role="group" aria-labelledby="{{ $uid }}-gratuity">
+                        <span class="ps-checkline-title" id="{{ $uid }}-gratuity">Gratuity</span>
                         <label><input type="checkbox" data-field="gratuity_in_ctc" checked> Gratuity is part of CTC (4.81% of basic)</label>
                     </div>
                 @endif
@@ -62,7 +75,7 @@
                 <p class="ps-result-label" data-ps-result-label>Estimate</p>
                 <p class="ps-result-value" data-ps-result-value>—</p>
                 <dl class="ps-result-rows" data-ps-result-rows></dl>
-                @if (filled($d['note'] ?? null))<p class="ps-result-note">{{ $d['note'] }}</p>@endif
+                @if (filled($note))<p class="ps-result-note">{{ $note }}</p>@endif
             </div>
         </div>
     </div>

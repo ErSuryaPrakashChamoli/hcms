@@ -233,6 +233,13 @@ document.querySelectorAll('[data-ps-letter]').forEach((box) => {
 document.querySelectorAll('[data-ps-calc]').forEach((box) => {
     const kind = box.dataset.psCalc;
     const ceiling = Number(box.dataset.ceiling || 0);
+    const rules = (() => {
+        try {
+            return JSON.parse(box.dataset.rules || '{}');
+        } catch {
+            return {};
+        }
+    })();
     const field = (name) => box.querySelector(`[data-field="${name}"]`);
     const num = (name) => Math.max(0, Number(field(name)?.value || 0));
     const valueEl = box.querySelector('[data-ps-result-value]');
@@ -274,27 +281,63 @@ document.querySelectorAll('[data-ps-calc]').forEach((box) => {
             ]);
         },
         ctc() {
-            const ctc = num('ctc');
-            const basic = (ctc * num('basic_pct')) / 100 / 12;
+            // Statutory figures come from App\Domain\Website\Support\CalculatorRules (data-rules); these are fallbacks.
+            const r = { pf_rate: 0.12, pf_ceiling: 25000, esi_employee: 0.0075, esi_employer: 0.0325, esi_ceiling: 21000, esi_ceiling_disability: 25000, esi_exempt_daily: 176, gratuity: 0.0481, ...rules };
+            const pct = (rate) => `${+(rate * 100).toFixed(2)}%`;
+            const monthly = num('ctc') / 12;
+            const basic = (monthly * num('basic_pct')) / 100;
             const hra = (basic * num('hra_pct')) / 100;
-            const pfBase = field('pf_cap')?.checked ? Math.min(basic, 15000) : basic;
-            const pf = pfBase * 0.12;
-            const gratuity = field('gratuity_in_ctc')?.checked ? basic * 0.0481 : 0;
-            const gross = Math.max(0, ctc / 12 - pf - gratuity);
+
+            // PF is compulsory up to the wage ceiling; only an employee whose PF wages are above it at joining (an
+            // "excluded employee") may stay out. The basic stands in for PF wages (basic + DA).
+            const optOutBox = field('pf_opt_out');
+            const canOptOut = basic > r.pf_ceiling;
+            if (optOutBox) {
+                optOutBox.disabled = !canOptOut;
+                if (!canOptOut) optOutBox.checked = false;
+            }
+            const hint = box.querySelector('[data-ps-hint="pf_opt_out"]');
+            if (hint) {
+                hint.dataset.text ??= hint.textContent;
+                hint.textContent = canOptOut ? hint.dataset.text : `Not available: PF wages of ${inr(basic)} are within the ${inr(r.pf_ceiling)} ceiling, so PF is compulsory.`;
+            }
+            const optedOut = canOptOut && Boolean(optOutBox?.checked);
+            const capBox = field('pf_cap');
+            if (capBox) capBox.disabled = optedOut;
+            const pfWage = optedOut ? 0 : capBox?.checked ? Math.min(basic, r.pf_ceiling) : basic;
+            const pf = Math.round(pfWage * r.pf_rate);
+            const gratuity = field('gratuity_in_ctc')?.checked ? basic * r.gratuity : 0;
+
+            // ESI is on gross pay and the employer's share comes out of CTC, so a covered gross is what is left ÷ 1.0325.
+            // Coverage needs gross within the limit; the employee share is nil at a daily average wage within the floor.
+            const beforeEsi = Math.max(0, monthly - pf - gratuity);
+            const esiOn = Boolean(field('esi_on')?.checked);
+            const esiLimit = field('esi_disability')?.checked ? r.esi_ceiling_disability : r.esi_ceiling;
+            const covered = esiOn && beforeEsi > 0 && beforeEsi / (1 + r.esi_employer) <= esiLimit;
+            const esiEmployer = covered ? Math.ceil((beforeEsi / (1 + r.esi_employer)) * r.esi_employer) : 0;
+            const gross = beforeEsi - esiEmployer;
+            const esiExempt = covered && gross / 30 <= r.esi_exempt_daily;
+            const esiEmployee = covered && !esiExempt ? Math.ceil(gross * r.esi_employee) : 0;
+
             const special = Math.max(0, gross - basic - hra);
             const pt = num('pt');
-            const inHand = Math.max(0, gross - pf - pt);
-            show('Monthly take-home before income tax', inr(inHand), [
+            const inHand = Math.max(0, gross - pf - esiEmployee - pt);
+            const rows = [
                 ['Basic', inr(basic)],
                 ['HRA', inr(hra)],
                 ['Special allowance', inr(special)],
                 ['Gross pay', inr(gross), true],
-                ['Employee PF (12%)', '− ' + inr(pf)],
-                ['Professional tax', '− ' + inr(pt)],
-                ['Employer PF in CTC', inr(pf)],
-                ...(gratuity ? [['Gratuity in CTC', inr(gratuity)]] : []),
-                ['Monthly CTC', inr(ctc / 12), true],
-            ]);
+                optedOut ? ['PF', 'Opted out (not a member)'] : [`Employee PF (${pct(r.pf_rate)} of ${inr(pfWage)})`, '− ' + inr(pf)],
+            ];
+            if (!covered) rows.push(['ESI', esiOn ? `Not covered: gross above ${inr(esiLimit)}` : 'Establishment not covered']);
+            else if (esiExempt) rows.push([`Employee ESI (nil up to ₹${r.esi_exempt_daily} a day)`, inr(0)]);
+            else rows.push([`Employee ESI (${pct(r.esi_employee)})`, '− ' + inr(esiEmployee)]);
+            rows.push(['Professional tax', '− ' + inr(pt)]);
+            if (!optedOut) rows.push([`Employer PF in CTC (${pct(r.pf_rate)})`, inr(pf)]);
+            if (covered) rows.push([`Employer ESI in CTC (${pct(r.esi_employer)})`, inr(esiEmployer)]);
+            if (gratuity) rows.push(['Gratuity in CTC', inr(gratuity)]);
+            rows.push(['Monthly CTC', inr(monthly), true]);
+            show('Monthly take-home before income tax', inr(inHand), rows);
         },
         leave_encashment() {
             const divisor = Number(field('divisor')?.value || 30);

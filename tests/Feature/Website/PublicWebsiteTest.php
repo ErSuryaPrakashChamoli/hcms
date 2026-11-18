@@ -6,6 +6,8 @@ use App\Domain\Website\Enums\RevisionStatus;
 use App\Domain\Website\Models\WebsiteEnquiry;
 use App\Domain\Website\Models\WebsiteRevision;
 use App\Domain\Website\Services\Website;
+use App\Domain\Website\Support\CalculatorRules;
+use App\Domain\Website\Support\SiteCatalogue;
 use App\Domain\Website\Support\SiteContent;
 use App\Domain\Website\Support\SiteDefaults;
 use App\Domain\Website\Support\SiteLink;
@@ -305,6 +307,39 @@ it('offers free letter generators and calculators that work in the browser', fun
     $this->get('/ai')->assertOk()->assertSee('Secrets never leave');
     $this->get('/resources/glossary')->assertOk()->assertSee('Cost to company (CTC)');
     $this->get('/')->assertOk()->assertSee('href="/admin/login"', false)->assertSee('Log in');
+});
+
+it('works out the CTC calculator on the ₹25,000 PF ceiling, with ESI and a PF opt-out', function () {
+    publishWebsite();
+
+    $html = $this->get('/tools/ctc-calculator')->assertOk()
+        ->assertSee('Restrict PF to the ₹25,000 wage ceiling')
+        ->assertSee('data-field="pf_opt_out"', false)->assertSee('Employee has opted out of PF')
+        ->assertSee('data-field="esi_on"', false)->assertSee('data-field="esi_disability"', false)
+        ->assertSee('the EPFO wage ceiling from 17 September 2026')
+        ->assertSee('ESI covers gross pay of ₹21,000 a month or less (₹25,000 for a person with a disability)')
+        ->assertDontSee('₹15,000')
+        ->getContent();
+    expect($html)->toContain('data-rules="'.e(json_encode(CalculatorRules::ctc())).'"')
+        ->and(CalculatorRules::ctc())->toMatchArray(['pf_rate' => 0.12, 'pf_ceiling' => 25000, 'esi_employee' => 0.0075, 'esi_employer' => 0.0325, 'esi_ceiling' => 21000, 'esi_ceiling_disability' => 25000, 'esi_exempt_daily' => 176]);
+});
+
+it('replaces the outdated ₹15,000 CTC note on a published page but keeps an operator\'s own note', function () {
+    $outdated = 'An illustration only. Employer and employee PF are 12% of basic (optionally on a basic capped at ₹15,000 a month); gratuity, when included in CTC, is taken as 4.81% of basic. Professional tax varies by state. Income tax is not deducted here: it depends on the employee\'s regime and declarations.';
+    $withNote = function (string $note): array {
+        $page = (new SiteContent(SiteDefaults::content()))->page('tools/ctc-calculator', true);
+        $page['blocks'][0]['data']['note'] = $note;
+
+        return $page;
+    };
+
+    publishWebsite(fn (Website $website, $operator) => $website->savePage('tools/ctc-calculator', $withNote($outdated), $operator));
+    $this->get('/tools/ctc-calculator')->assertOk()->assertDontSee('₹15,000')->assertSee('PF is compulsory when PF wages are ₹25,000 a month or less');
+
+    publishWebsite(fn (Website $website, $operator) => $website->savePage('tools/ctc-calculator', $withNote('Our payroll team can explain these figures.'), $operator));
+    $this->get('/tools/ctc-calculator')->assertOk()->assertSee('Our payroll team can explain these figures.')->assertDontSee('PF is compulsory when');
+
+    expect(SiteCatalogue::calculatorNote('gratuity', $outdated))->toBe($outdated);
 });
 
 it('gives the sign-in page the published copy, notice and help link', function () {

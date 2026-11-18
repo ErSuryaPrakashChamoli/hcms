@@ -616,6 +616,9 @@ a.ps-card:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px var(--ps-li
 .ps-checkline { gap: 10px; }
 .ps-checkline label { display: flex; align-items: center; gap: 10px; font-weight: 500; }
 .ps-checkline input { width: 18px; height: 18px; min-height: 0; accent-color: var(--ps-iris); }
+.ps-checkline-title { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ps-muted); }
+.ps-checkline label:has(input:disabled) { color: var(--ps-muted); cursor: not-allowed; }
+.ps-checkline .ps-field-hint { margin: -4px 0 0 28px; }
 .ps-paper-wrap { display: grid; gap: 12px; }
 .ps-tool-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .ps-paper {
