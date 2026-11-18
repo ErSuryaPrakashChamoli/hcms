@@ -1,6 +1,6 @@
 # PeopleOS Organisation Administrator: module coverage and gap register
 
-**Generated:** 2026-11-17 by `tools/build/registers.js`.
+**Generated:** 2026-11-18 by `tools/build/registers.js`.
 **For:** the people who maintain and review the PeopleOS Organisation Administrator training. How much of each module the training covers, and what could not be covered or confirmed.
 
 | Module | Screens in the application | Screens with a screenshot | Screens explained | Callouts placed | Procedures | Calculations | Warnings | Troubleshooting rows | Status |

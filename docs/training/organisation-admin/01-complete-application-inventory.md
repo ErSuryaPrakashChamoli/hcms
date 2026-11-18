@@ -1,6 +1,6 @@
 # PeopleOS Organisation Administrator: complete application inventory
 
-**Generated:** 2026-11-17 by `tools/build/registers.js`.
+**Generated:** 2026-11-18 by `tools/build/registers.js`.
 **For:** the people who maintain and review the PeopleOS Organisation Administrator training. Every screen the organisation administrator (role Tenant Super Admin of the example organisation) can open, as the application itself grants it and as it renders.
 
 Source of truth: the application's own navigation and access checks for the signed-in administrator (`tools/discover.php`) and the rendered interface of every screen (`tools/capture/10-crawl.mjs`). Screens that exist only for the service provider's platform operators are not shown to this role and are not listed.

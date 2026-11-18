@@ -49,6 +49,10 @@
     @endif
 
     <div class="pos-signin-form">
+        @if ($brand === null)
+            {{-- A faint vertical PeopleOS wordmark along the form panel's outer edge (organisation sign-ins keep their own brand). --}}
+            <span class="pos-signin-watermark" aria-hidden="true">People<b>OS</b></span>
+        @endif
         @if ($brand !== null)
             <div class="pos-signin-org">
                 @if ($brand['logo'])

@@ -1,6 +1,6 @@
 # PeopleOS Organisation Administrator: screenshot register
 
-**Generated:** 2026-11-17 by `tools/build/registers.js`.
+**Generated:** 2026-11-18 by `tools/build/registers.js`.
 **For:** the people who maintain and review the PeopleOS Organisation Administrator training. Every screenshot in the package: what it shows, where it was taken, and its callouts.
 
 All screenshots are genuine captures of PeopleOS, signed in as the organisation administrator of the fictional example organisation (Demo Group) on a disposable training database. Personal identifiers (PAN, Aadhaar/UAN, bank account numbers, mobile numbers, personal e-mail addresses) are masked in the page before capture. No screen is edited or generated.
@@ -79,7 +79,7 @@ All screenshots are genuine captures of PeopleOS, signed in as the organisation 
 | `screenshots/admin/workforce-reasons.png` | M04 | Workforce reasons | Admin › Setup › Workforce reasons | index | 2160 × 1350 | 4 | 2026-11-16 |
 | `screenshots/communication/announcements.png` | M21 | Announcements | Communication › Messaging › Announcements | index | 2160 × 1350 | 7 | 2026-11-16 |
 | `screenshots/communication/announcements--create.png` | M21 | New announcement | Communication › Messaging › Announcements | create | 2160 × 1722 | 13 | 2026-11-16 |
-| `screenshots/communication/announcements--edit.png` | M21 | This page is not available to you | Communication › Messaging › Announcements | edit | 2160 × 1350 | 0 | 2026-11-17 |
+| `screenshots/communication/announcements--edit.png` | M21 | This page is not available to you | Communication › Messaging › Announcements | edit | 2160 × 1350 | 0 | 2026-11-18 |
 | `screenshots/communication/audiences.png` | M21 | Audiences | Communication › Engagement › Audiences | index | 2160 × 1350 | 4 | 2026-11-16 |
 | `screenshots/communication/audiences--create.png` | M21 | New audience | Communication › Engagement › Audiences | create | 2160 × 1350 | 6 | 2026-11-16 |
 | `screenshots/communication/badges.png` | M21 | Badges | Communication › Engagement › Badges | index | 2160 × 1350 | 7 | 2026-11-16 |
@@ -411,7 +411,7 @@ All screenshots are genuine captures of PeopleOS, signed in as the organisation 
 | `screenshots/people/workforce-uploads.png` | M07 | Workforce uploads | People › Lifecycle › Workforce uploads | index | 2160 × 1350 | 3 | 2026-11-16 |
 | `screenshots/services/articles.png` | M20 | Articles | Services › Knowledge › Articles | index | 2160 × 1350 | 7 | 2026-11-16 |
 | `screenshots/services/articles--create.png` | M20 | New article | Services › Knowledge › Articles | create | 2160 × 1656 | 8 | 2026-11-16 |
-| `screenshots/services/articles--edit.png` | M20 | This page is not available to you | Services › Knowledge › Articles | edit | 2160 × 1350 | 0 | 2026-11-17 |
+| `screenshots/services/articles--edit.png` | M20 | This page is not available to you | Services › Knowledge › Articles | edit | 2160 × 1350 | 0 | 2026-11-18 |
 | `screenshots/services/articles--view.png` | M20 | Leave policy | Services › Knowledge › Articles | view | 2160 × 1350 | 0 | 2026-11-16 |
 | `screenshots/services/cases.png` | M20 | Cases | Services › Grievances › Cases | index | 2160 × 1350 | 6 | 2026-11-16 |
 | `screenshots/services/cases--view.png` | M20 | GRV-2026-00001 | Services › Grievances › Cases | view | 2160 × 1350 | 6 | 2026-11-16 |

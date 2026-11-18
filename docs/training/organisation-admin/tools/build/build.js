@@ -54,6 +54,15 @@ lib.useScreens(SHOTS, entries, path.join(WORK, 'derived'), { maxW: 1600, quality
 
 const clean = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const short = (s, n) => { s = clean(s); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; };
+/** A title that fits: drop a trailing bracketed remark or ': …' clause before ever cutting words. */
+const fitTitle = (t, n) => {
+    t = clean(t);
+    if (t.length <= n) return t;
+    const noParen = t.replace(/\s*\([^)]*\)\s*$/, '');
+    const noClause = t.replace(/\s*[:—]\s+[^:—]*$/, '');
+    for (const c of [noParen, noClause, noClause.replace(/\s*\([^)]*\)\s*$/, '')]) if (c.length >= 18 && c.length <= n) return c;
+    return short(t, n);
+};
 
 // ---------------------------------------------------------------- course model (content + fallbacks from the crawl)
 function moduleModel(m) {
@@ -183,7 +192,7 @@ async function screenSlides(d, mod, id) {
     const c = crawl[id];
     const info = mod.c.screens?.[id] ?? {};
     const ui = c?.ui ?? {};
-    const title = short(clean(info.title ?? ui.h1 ?? sc.label) || sc.label, 60);
+    const title = fitTitle(clean(info.title ?? ui.h1 ?? sc.label) || sc.label, 70);
     const kindLabel = { create: 'New record', edit: 'Edit a record', view: 'A record' }[sc.kind];
     const crumbs = sc.path + (kindLabel ? ` › ${kindLabel}` : '');
     const box = notes[id]?.boxes ?? [];
@@ -265,7 +274,7 @@ async function screenSlides(d, mod, id) {
                 const steps = (p.steps ?? []).map(([h, b]) => [short(h, 70), short(b, 190)]);
                 const per = steps.length <= 7 ? 7 : 6;
                 for (let i = 0; i < steps.length; i += per) {
-                    d.procedure({ title: short(p.title, steps.length > per ? 50 : 60) + (steps.length > per ? ` (${i / per + 1} of ${Math.ceil(steps.length / per)})` : ''), steps: steps.slice(i, i + per),
+                    d.procedure({ title: fitTitle(p.title, steps.length > per ? 66 : 76) + (steps.length > per ? ` (${i / per + 1} of ${Math.ceil(steps.length / per)})` : ''), steps: steps.slice(i, i + per),
                         side: i === 0 ? [['Before you start', short(p.before ?? 'Nothing else is needed.', 170)], ['Result', short(p.result ?? '', 190)]].filter((x) => x[1]) : null });
                     did.slides++;
                 }
@@ -282,15 +291,15 @@ async function screenSlides(d, mod, id) {
                     rows: c.report_catalogue.map((r) => [short(r[0], 26), short(r[1], 48), short(r[2], 150), short(r[3], 50)]), rowsPerSlide: 7, fontSize: 10 });
                 did.slides++;
             }
-            for (const w of placement.warnings_first.filter((x) => x.module === m.code && x.sub === sub.id)) { d.warning({ title: short(w.title, 58), level: w.level ?? 'important', headline: short(w.headline, 150), body: w.body ? short(w.body, 300) : null, points: (w.points ?? []).map((p) => short(p, 200)).slice(0, 4), todo: w.todo ? short(w.todo, 220) : null }); did.slides++; }
+            for (const w of placement.warnings_first.filter((x) => x.module === m.code && x.sub === sub.id)) { d.warning({ title: fitTitle(w.title, 76), level: w.level ?? 'important', headline: short(w.headline, 150), body: w.body ? short(w.body, 300) : null, points: (w.points ?? []).map((p) => short(p, 200)).slice(0, 4), todo: w.todo ? short(w.todo, 220) : null }); did.slides++; }
             if (!only || only.includes(m.code)) for (const f of placement.flows.filter((x) => x.module === m.code && x.sub === sub.id && entries[x.key])) {
                 const fl = flows[f.key];
                 const items = (fl.boxes ?? []).map((b, i) => ({ name: clean(b.label).replace(/[*✱]$/, ''), text: '', n: b.n, badge: i + 1 }));
-                d.screen({ id: f.key, title: short(fl.screen, 62), crumbs: fl.path ?? m.name, info: { purpose: short(f.caption, 230) }, items, maxAspect: 0.62, figure: d.figure(m.code) });
+                d.screen({ id: f.key, title: fitTitle(fl.screen, 70), crumbs: fl.path ?? m.name, info: { purpose: short(f.caption, 230) }, items, maxAspect: 0.62, figure: d.figure(m.code) });
                 did.slides++;
             }
-            for (const k of (c.calculations ?? []).filter((x) => x.sub === sub.id)) { d.calculation({ title: short(k.title, 58), intro: short(k.intro, 160), lines: k.lines, total: k.total, explain: (k.explain ?? []).slice(0, 4).map(([h, b]) => [h, short(b, 190)]), source: short(k.source, 160) }); did.slides++; }
-            for (const w of (c.warnings ?? []).filter((x) => x.sub === sub.id)) { d.warning({ title: short(w.title, 58), level: w.level ?? 'warning', headline: short(w.headline, 150), body: w.body ? short(w.body, 260) : null, points: (w.points ?? []).map((p) => short(p, 200)).slice(0, 4), todo: w.todo ? short(w.todo, 220) : null }); did.slides++; }
+            for (const k of (c.calculations ?? []).filter((x) => x.sub === sub.id)) { d.calculation({ title: fitTitle(k.title, 76), intro: short(k.intro, 250), lines: k.lines, total: k.total, explain: (k.explain ?? []).slice(0, 4).map(([h, b]) => [h, short(b, 190)]), source: short(k.source, 160) }); did.slides++; }
+            for (const w of (c.warnings ?? []).filter((x) => x.sub === sub.id)) { d.warning({ title: fitTitle(w.title, 76), level: w.level ?? 'warning', headline: short(w.headline, 150), body: w.body ? short(w.body, 260) : null, points: (w.points ?? []).map((p) => short(p, 200)).slice(0, 4), todo: w.todo ? short(w.todo, 220) : null }); did.slides++; }
             if (c.troubleshoot_by_sub?.[sub.id]) { d.troubleshoot({ title: sub.name, rows: c.troubleshoot_by_sub[sub.id].map((r) => [short(r[0], 150), short(r[1], 160), short(r[2], 200), r[3] ?? '']) }); did.slides++; }
             if (sub.troubleshooting) { d.troubleshoot({ title: 'Problems and fixes', rows: c.troubleshooting.map((r) => [short(r[0], 150), short(r[1], 160), short(r[2], 200), r[3] ?? '']) }); did.slides++; }
             if (!did.slides) d.cards({ title: sub.name, cards: [{ head: sub.name, body: short(sub.desc, 200), tone: 'info' }] });

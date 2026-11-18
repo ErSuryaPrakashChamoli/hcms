@@ -1,6 +1,6 @@
 # PeopleOS Organisation Administrator: navigation and permission matrix
 
-**Generated:** 2026-11-17 by `tools/build/registers.js`.
+**Generated:** 2026-11-18 by `tools/build/registers.js`.
 **For:** the people who maintain and review the PeopleOS Organisation Administrator training. The navigation the organisation administrator sees, and which other roles of the example organisation can open the same modules.
 
 ## 1. Navigation map (organisation administrator)

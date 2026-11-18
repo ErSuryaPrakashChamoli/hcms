@@ -10,7 +10,7 @@ organisation. Functions run by the service provider (Markedge) for all customers
 | File | What it is |
 |---|---|
 | `PeopleOS-Organisation-Administrator-Complete-Training.pptx` | The course: 26 modules in 9 learning groups, built from real screens. Navigable: Contents (Home) on every slide, the current module highlighted in its colour, clickable contents, module and summary slides, Previous / Next. |
-| `PeopleOS-Organisation-Administrator-Complete-Training.pdf` | The same course as a PDF (links work in PDF readers that support them). |
+| `PeopleOS-Organisation-Administrator-Complete-Training.pdf` | The same course as a PDF, one page per slide. Contents, Previous / Next, module cards and every other internal link work as PDF links. |
 | `01-complete-application-inventory.md` | Every screen the administrator can open: path, tabs, sections, fields, actions, filters, columns, permissions, dependencies, status. |
 | `02-navigation-and-permission-matrix.md` | The administrator's navigation, and which other roles of the example organisation can open each module. |
 | `03-module-coverage-and-gap-register.md` | Coverage per module, and everything that could not be shown or confirmed. |
@@ -41,7 +41,7 @@ organisation. Functions run by the service provider (Markedge) for all customers
    organisation, because PeopleOS refuses those steps while the statutory rule versions a run uses are unverified.
    Those pictures come from a copy of the training database (`tools/env-payroll.sh`) where that check was switched
    off; the course says so on the slide before them. Everything else on those screens is unchanged.
-7. **Build and checks** (`tools/build/build.js`): the deck uses the navigable design system in
+7. **Build and checks** (`tools/build/build.js`, PDF by `tools/build/pdf.py`): the deck uses the navigable design system in
    `docs/presentations/peopleos/tools/build/` (`design.js`, `modular.js`, `lib.js`). Every internal link is re-read
    from the written file and checked (`check-nav.js`, report in `tools/nav-map/nav-check-OA.json`).
 
@@ -65,6 +65,9 @@ php discover.php && node assign.js
 node capture/10-crawl.mjs && node capture/20-annotate.mjs && node capture/30-flows.mjs && node capture/40-steps.mjs
 # 4. Build, check and write the registers
 node build/build.js && node build/registers.js
+# 5. The PDF: rendered in chunks of 120 slides (the whole deck at once needs more memory than a workstation has),
+#    joined, and given back every internal link of the deck
+node build/pdf-links.js && ../../../presentations/peopleos/tools/.work/venv/bin/python build/pdf.py
 ```
 
 `tools/q.php` runs read-only SELECT queries against the training database only (used while researching).

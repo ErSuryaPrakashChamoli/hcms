@@ -4508,6 +4508,56 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
     padding: var(--pos-space-12) var(--pos-space-6);
 }
 .pos-signin-form > :is(.fi-simple-page, .pos-signin-org, .pos-signin-foot) { width: 100%; max-width: 400px; }
+
+/* The PeopleOS sign-in's watermark: the wordmark in the display serif, set vertically (reading upwards) along the form
+   panel's outer edge and bleeding off it, a whisper of iris that fades towards the top. Behind the form, never clickable;
+   hidden on phones, where the form fills the width. */
+.pos-signin.is-peopleos .pos-signin-form { position: relative; isolation: isolate; overflow: hidden; }
+.pos-signin-watermark { display: none; }
+@media (min-width: 768px) {
+    .pos-signin-watermark {
+        position: absolute;
+        z-index: -1;
+        top: 50%;
+        right: -0.2em; /* physical on purpose: in vertical text the logical inline end is the bottom */
+        display: block;
+        writing-mode: vertical-rl;
+        translate: 0 -50%;
+        rotate: 180deg;
+        font-family: var(--font-display);
+        font-size: clamp(150px, 27vh, 290px);
+        font-weight: var(--pos-fw-regular);
+        line-height: 0.82;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+        color: transparent;
+        background: linear-gradient(to top,
+            color-mix(in oklab, var(--primary-600) 8%, transparent),
+            color-mix(in oklab, var(--primary-600) 3%, transparent));
+        -webkit-background-clip: text;
+        background-clip: text;
+        pointer-events: none;
+        user-select: none;
+    }
+    .pos-signin-watermark b {
+        font-weight: inherit;
+        background: linear-gradient(to top,
+            color-mix(in oklab, var(--pos-rail-gold) 13%, transparent),
+            color-mix(in oklab, var(--pos-rail-gold) 6%, transparent));
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+    .dark .pos-signin-watermark {
+        background-image: linear-gradient(to top,
+            color-mix(in oklab, var(--primary-300) 5.5%, transparent),
+            color-mix(in oklab, var(--primary-300) 1.5%, transparent));
+    }
+    .dark .pos-signin-watermark b {
+        background-image: linear-gradient(to top,
+            color-mix(in oklab, var(--pos-rail-gold) 6%, transparent),
+            color-mix(in oklab, var(--pos-rail-gold) 2%, transparent));
+    }
+}
 .pos-signin .fi-simple-header { align-items: flex-start; }
 .pos-signin .fi-simple-header .fi-logo { margin-bottom: var(--pos-space-8); }
 .pos-signin .fi-simple-header-heading {
@@ -4645,7 +4695,7 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 .pos-signin-stage-monogram { width: 168px; height: 168px; border-radius: 40px; font-size: 64px; }
 
 @media (prefers-reduced-motion: no-preference) {
-    .pos-signin-form > * { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) backwards; }
+    .pos-signin-form > :not(.pos-signin-watermark) { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) backwards; }
     .pos-signin-art-copy { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) 80ms backwards; }
 }
 @media (max-width: 767px) {

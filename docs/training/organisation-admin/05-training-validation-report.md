@@ -1,13 +1,14 @@
 # PeopleOS Organisation Administrator: training validation report
 
-**Generated:** 2026-11-17 by `tools/build/registers.js`.
+**Generated:** 2026-11-18 by `tools/build/registers.js`.
 **For:** the people who maintain and review the PeopleOS Organisation Administrator training. What was checked, how, and what remains open.
 
 ## Deliverable
 
 - `PeopleOS-Organisation-Administrator-Complete-Training.pptx`: 1650 slides, 26 modules in 9 learning groups.
 - Internal links: 8677 checked, 0 failures (`tools/nav-map/nav-check-OA.json`).
-- Build warnings (text fit, layout): 3.
+- `PeopleOS-Organisation-Administrator-Complete-Training.pdf`: one page per slide, rendered in chunks by tools/build/pdf.py, every internal link of the deck re-added as a PDF link and checked against the deck's link map.
+- Build warnings (text fit, layout): 3; each warned slide was rendered and checked by eye.
 
 ## Coverage
 
@@ -53,7 +54,7 @@
 2. Capture: every screen opened as the administrator on a disposable training database with the fictional Demo Group; sensitive values masked; interface structure recorded.
 3. Research: each module's purpose, fields, actions, rules and calculations taken from the source code and the training data, never invented (see `tools/AGENT-BRIEF.md`).
 4. Callouts: element boxes measured on the live screen and drawn as editable PowerPoint shapes.
-5. Build and checks: every internal link re-read from the written file; slides rendered and reviewed.
+5. Build and checks: every internal link re-read from the written file. Slides rendered and reviewed by eye: a sample of every layout, every tenth slide, every warned slide, every title longer than 66 characters and the densest calculations. Titles are never cut mid-word (a trailing bracketed remark or clause is dropped first; long titles use smaller type), and calculation rows are sized to their text.
 
 ## Known limitations
 

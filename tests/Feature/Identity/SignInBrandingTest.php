@@ -50,7 +50,8 @@ it('remembers the organisation on a sign-in of its people, and never for platfor
 });
 
 it('shows the PeopleOS sign-in page to a browser that remembers no organisation, or a cookie it did not issue', function () {
-    $this->get('/admin/login')->assertOk()->assertSee('Sign in to PeopleOS')->assertSee('One operating system.')->assertDontSee('Northwind');
+    $this->get('/admin/login')->assertOk()->assertSee('Sign in to PeopleOS')->assertSee('One operating system.')->assertDontSee('Northwind')
+        ->assertSee('<span class="pos-signin-watermark" aria-hidden="true">People<b>OS</b></span>', false);
 
     // A cookie written by hand (not encrypted by PeopleOS) is ignored, so nobody can pick another organisation's page.
     $this->withUnencryptedCookie(RememberedWorkspace::COOKIE, $this->cookie)->get('/admin/login')->assertOk()->assertDontSee('Northwind');
@@ -66,7 +67,7 @@ it('shows the remembered organisation by name, with its logo, picture and colour
     $this->withCookie(RememberedWorkspace::COOKIE, $this->cookie)->get('/admin/login')->assertOk()
         ->assertSee('Sign in to Northwind Advisory')->assertSee('Not Northwind Advisory? Use another organisation')
         ->assertSee('/sign-in/brand/logo?v=', false)->assertSee('/sign-in/brand/picture?v=', false)
-        ->assertDontSee('One operating system.');
+        ->assertDontSee('One operating system.')->assertDontSee('pos-signin-watermark', false);
     $this->get(route('sign-in.brand', ['asset' => 'logo']))->assertOk()->assertHeader('Content-Type', 'image/png')->assertHeader('Vary', 'Cookie');
     $this->get(route('sign-in.brand', ['asset' => 'picture']))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
 

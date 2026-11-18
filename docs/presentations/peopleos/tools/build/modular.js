@@ -182,8 +182,10 @@ class ModularDeck extends Deck {
         const sub = this.subOf(this.modOf(p.module), p.sub);
         const label = sub ? `${sub.id}  ·  ${sub.name}` : (eyebrow ?? (p.module ? '' : p.section));
         s.addText(label.toUpperCase(), { x: MX, y: K.eyebrowY, w: 8.6, h: K.eyebrowH, fontSize: 11, bold: true, color: this.accent, charSpacing: 1.5, margin: 0, valign: 'middle', isTextBox: true, objectName: 'Eyebrow' });
-        s.addText(title, { placeholder: 'title' });
-        if (title.length > 62) WARN.push(`${this.meta.num}#${this.n}: long title (${title.length} chars): ${title}`);
+        // Long titles stay on one line in smaller type instead of being cut.
+        const tf = title.length > 66 ? 21 : title.length > 58 ? 23.5 : null;
+        s.addText(tf ? [{ text: title, options: { fontSize: tf } }] : title, { placeholder: 'title' });
+        if (title.length > 78) WARN.push(`${this.meta.num}#${this.n}: long title (${title.length} chars): ${title}`);
     }
 
     topPill(s, label) {
@@ -605,19 +607,36 @@ class ModularDeck extends Deck {
             const cw = 6.9, cx = MX;
             let y = 1.55;
             if (intro) { const ih = Math.max(0.5, (estLines(intro, cw - 0.1, 13) * 13 * 1.2) / 72 + 0.1); this.text(s, intro, { x: cx, y, w: cw, h: ih, fontSize: 13, color: BRAND.textSecondary }); y += ih + 0.08; }
-            const rh = Math.min(0.58, (6.95 - y - 1.35) / lines.length);
-            s.addShape(sh.ROUNDED_RECTANGLE, { x: cx, y, w: cw, h: lines.length * rh + 1.3, rectRadius: 0.1, fill: { color: t.softer }, line: { color: t.line, width: 0.75 }, objectName: 'Calculation card' });
+            // Each row is as tall as its wrapped label; labels get the width the values do not need, and the type steps
+            // down only when the rows would not fit above the total.
+            const vw = Math.min(2.15, Math.max(1.4, Math.max(...lines.map((l) => String(l[2]).length)) * 16 * 0.6 / 72 + 0.15));
+            // An operator longer than one sign (a day offset such as '+30') is drawn as a pill wide enough for it.
+            const ow = Math.max(0.34, ...lines.map((l) => (l[0] && String(l[0]).length > 1 ? String(l[0]).length * 0.105 + 0.16 : 0.34)));
+            const lx = cx + 0.36 + ow, lw = cx + cw - vw - 0.35 - lx, avail = 6.95 - y - 1.35;
+            let lf = 14.5, hs = [];
+            for (lf of [14.5, 13.5, 12.5, 11.5, 10.5]) {
+                const need = lines.map(([, l]) => (estLines(l, lw - 0.15, lf) * lf * 1.18) / 72 + 0.12);
+                const sum = need.reduce((a, b) => a + b, 0);
+                const pad = Math.max(0, Math.min((avail - sum) / lines.length, 0.58 - Math.min(...need)));
+                hs = need.map((h) => h + pad);
+                if (sum <= avail) break;
+            }
+            const rows = hs.reduce((a, b) => a + b, 0);
+            if (rows > avail + 0.02) WARN.push(`${this.meta.num}#${this.n}: calculation rows overflow (${rows.toFixed(2)}in for ${avail.toFixed(2)}in)`);
+            s.addShape(sh.ROUNDED_RECTANGLE, { x: cx, y, w: cw, h: rows + 1.3, rectRadius: 0.1, fill: { color: t.softer }, line: { color: t.line, width: 0.75 }, objectName: 'Calculation card' });
             const sym = { '+': '+', '-': '−', '−': '−', '×': '×', '=': '=', '': '' };
             let yy = y + 0.15;
-            for (const [op, label, value] of lines) {
-                if (op) s.addText(sym[op] ?? op, { x: cx + 0.2, y: yy + (rh - 0.34) / 2, w: 0.34, h: 0.34, shape: sh.OVAL, fill: { color: 'FFFFFF' }, line: { color: t.hex, width: 1.25 }, color: t.hex, fontSize: 14, bold: true, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
-                s.addText(label, { x: cx + 0.7, y: yy, w: cw - 3.0, h: rh, fontSize: 14.5, color: BRAND.text, valign: 'middle', margin: 0, isTextBox: true });
-                s.addText(value, { x: cx + cw - 2.35, y: yy, w: 2.15, h: rh, fontSize: 16, color: BRAND.text, fontFace: FONTS.head, align: 'right', valign: 'middle', margin: 0, isTextBox: true });
+            lines.forEach(([op, label, value], i) => {
+                const rh = hs[i];
+                const long = op && String(op).length > 1;
+                if (op) s.addText(sym[op] ?? op, { x: cx + 0.2, y: yy + (rh - 0.34) / 2, w: long ? ow : 0.34, h: 0.34, shape: long ? sh.ROUNDED_RECTANGLE : sh.OVAL, rectRadius: long ? 0.17 : undefined, fill: { color: 'FFFFFF' }, line: { color: t.hex, width: 1.25 }, color: t.hex, fontSize: long ? 10.5 : 14, bold: true, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
+                s.addText(label, { x: lx, y: yy, w: lw, h: rh, fontSize: lf, color: BRAND.text, valign: 'middle', margin: 0, isTextBox: true });
+                s.addText(value, { x: cx + cw - vw - 0.2, y: yy, w: vw, h: rh, fontSize: Math.min(16, lf + 1.5), color: BRAND.text, fontFace: FONTS.head, align: 'right', valign: 'middle', margin: 0, isTextBox: true });
                 yy += rh;
-            }
+            });
             s.addShape(sh.LINE, { x: cx + 0.2, y: yy + 0.08, w: cw - 0.4, h: 0, line: { color: t.hex, width: 1.5 }, objectName: 'Total rule' });
             s.addText('=', { x: cx + 0.2, y: yy + 0.33, w: 0.34, h: 0.34, shape: sh.OVAL, fill: { color: t.hex }, line: { color: t.hex, width: 0 }, color: 'FFFFFF', fontSize: 14, bold: true, align: 'center', valign: 'middle', margin: 0, isTextBox: true });
-            s.addText(total[0], { x: cx + 0.7, y: yy + 0.2, w: cw - 3.5, h: 0.6, fontSize: 16, bold: true, color: BRAND.text, valign: 'middle', margin: 0, isTextBox: true });
+            s.addText(total[0], { x: lx, y: yy + 0.15, w: cx + cw - 2.8 - lx, h: 0.7, fontSize: estLines(total[0], cx + cw - 2.9 - lx, 16) > 2 ? 13 : estLines(total[0], cx + cw - 2.9 - lx, 16) > 1 ? 14.5 : 16, bold: true, color: BRAND.text, valign: 'middle', margin: 0, isTextBox: true });
             s.addText(total[1], { x: cx + cw - 2.9, y: yy + 0.15, w: 2.7, h: 0.7, fontSize: 28, bold: true, color: t.hex, fontFace: FONTS.head, align: 'right', valign: 'middle', margin: 0, isTextBox: true, objectName: 'Result' });
             const ex = cx + cw + 0.4, ew = W - MX - ex;
             s.addImage({ data: await this.ico('calculator', t.hex), x: ex, y: 1.58, w: 0.42, h: 0.42, altText: '', objectName: 'Calculator icon' });
