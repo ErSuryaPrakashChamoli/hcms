@@ -347,15 +347,24 @@ components.posPanZoom = () => ({
 
 /*
  * Form review (UX.15 closure): the Review step of Context → Information → Change → Review → Confirm on record
- * forms. It reads only what is already in this form (labels and the values the person sees), lists each changed
- * field as Before → After (create: what has been filled in), and masks anything that looks like a secret. It sends
- * nothing anywhere and decides nothing: saving is still the page's own action.
- * In a form followed as a wizard (FormWizard) it is the last step: it reads every step (each step is its own form),
- * groups the fields by step and leaves out its own step (the reason for change).
+ * forms. It reads only what is already in this form (labels and the values the person sees) and masks anything that
+ * looks like a secret. It sends nothing anywhere and decides nothing: saving is still the page's own action.
+ *
+ * Two scopes:
+ * - 'all' (a wizard's Review step, FormWizard): every detail the person went through, step by step and section by
+ *   section, including what was left empty ("Not filled in"), so the whole record can be checked before it is saved
+ *   (owner, 2026-11-19: "the review must show every detail"). Editing marks what changed as Before → After and can
+ *   narrow the list to the changes.
+ * - 'changes' (the short panel under a one-screen drawer form): only what was filled in (create) or changed (edit).
+ *
+ * In a wizard it reads every step (each step is its own form) and leaves out its own step (the reason for change, a
+ * confirmation), which the person sees right there.
  */
-components.posFormReview = (mode = 'edit') => ({
+components.posFormReview = (mode = 'edit', scope = 'changes') => ({
     mode,
+    scope,
     items: [],
+    onlyChanges: false,
     baseline: null,
     form: null,
     ownStep: null,
@@ -382,7 +391,94 @@ components.posFormReview = (mode = 'edit') => ({
         const name = [...w.querySelectorAll('input,textarea,select')].map((i) => `${i.type} ${i.getAttribute('wire:model') ?? ''} ${i.id}`).join(' ');
         return /password|secret|token|api[_-]?key|client[_-]?secret/i.test(name);
     },
+    text(el) {
+        return (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
+    },
+    // A choice's own name (a radio's or checkbox's label without its description; a toggle button's label).
+    choice(input) {
+        const own = input.closest('label') ?? (input.id ? this.form.querySelector(`label[for="${CSS.escape(input.id)}"]`) : null);
+        const name = own?.querySelector('.fi-fo-radio-label-text > p:not(.fi-fo-radio-label-description), .fi-fo-checkbox-list-option-label') ?? own;
+        return this.text(name) || input.value;
+    },
+    // The label a field shows ("Code"), else what it is named for screen readers.
+    labelOf(w) {
+        const shown = this.text(w.querySelector('.fi-fo-field-label-content')).replace(/\s*\*$/, '');
+        if (shown) return shown;
+        const control = w.querySelector('input:not([type=hidden]),textarea,select,[contenteditable=true]');
+        return (control?.getAttribute('aria-label') ?? '').trim();
+    },
+    // A text field's value with what it shows before and after it (₹, %, days); never the field's own buttons.
+    affixed(w, value) {
+        if (!value) return value;
+        const prefix = this.text(w.querySelector('.fi-input-wrp-prefix .fi-input-wrp-label'));
+        const suffix = this.text(w.querySelector('.fi-input-wrp-suffix .fi-input-wrp-label'));
+        return [prefix, value, suffix].filter(Boolean).join(' ');
+    },
+    // Repeaters and builders: one line per item, "Label: value · Label: value" (a table repeater names its columns).
+    listValue(w) {
+        const table = w.querySelector('.fi-fo-table-repeater table');
+        if (table) {
+            const heads = [...table.querySelectorAll(':scope > thead th')].map((th) => this.text(th).replace(/\*$/, ''));
+            return [...table.querySelectorAll(':scope > tbody > tr')].map((tr, n) => {
+                const cells = [...tr.children].map((td, i) => {
+                    const field = td.querySelector('.fi-fo-field');
+                    const value = field ? this.fieldValue(field) : '';
+                    return value && heads[i] ? `${heads[i]}: ${value}` : value;
+                }).filter(Boolean);
+                return cells.length ? `${n + 1}. ${cells.join(' · ')}` : '';
+            }).filter(Boolean).join('\n');
+        }
+        const items = [...w.querySelectorAll('.fi-fo-repeater-item, .fi-fo-simple-repeater-item, .fi-fo-builder-item')]
+            .filter((item) => item.parentElement?.closest('.fi-fo-field') === w);
+        return items.map((item, n) => {
+            const title = this.text(item.querySelector(':scope > .fi-fo-repeater-item-header .fi-fo-repeater-item-header-label, :scope > .fi-fo-builder-item-header .fi-fo-builder-item-header-label'));
+            const parts = [...item.querySelectorAll('.fi-fo-field')]
+                .filter((f) => f.parentElement?.closest('.fi-fo-field') === w)
+                .map((f) => {
+                    const value = this.secret(f) ? '••••' : this.fieldValue(f);
+                    const label = this.labelOf(f);
+                    return value ? (label ? `${label}: ${value}` : value) : '';
+                })
+                .filter(Boolean);
+            const line = [title, parts.join(' · ')].filter(Boolean).join(' — ');
+            return line ? `${n + 1}. ${line}` : '';
+        }).filter(Boolean).join('\n');
+    },
     fieldValue(w) {
+        if (w.querySelector('.fi-fo-repeater, .fi-fo-simple-repeater, .fi-fo-table-repeater, .fi-fo-builder')) return this.listValue(w);
+        // Rich text and Markdown: the text as written.
+        const rich = w.querySelector('.fi-fo-rich-editor [contenteditable]');
+        if (rich) return (rich.innerText ?? rich.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim();
+        const markdown = w.querySelector('.fi-fo-markdown-editor .CodeMirror-code');
+        if (markdown) return [...markdown.querySelectorAll('.CodeMirror-line')].map((l) => l.textContent).join('\n').trim();
+        // Files: their names (the person picked them; the file itself is not read).
+        const upload = w.querySelector('.fi-fo-file-upload');
+        if (upload) {
+            const files = [...upload.querySelectorAll('.filepond--file-info-main')].map((f) => this.text(f)).filter(Boolean);
+            return files.length ? files.join(', ') : '';
+        }
+        // Tags: each tag.
+        const tags = w.querySelector('.fi-fo-tags-input');
+        if (tags) return [...tags.querySelectorAll('.fi-fo-tags-input-tags-ctn .fi-badge-label')].map((t) => this.text(t)).filter(Boolean).join(', ');
+        // Key-value: "key: value" pairs.
+        const pairs = w.querySelector('.fi-fo-key-value');
+        if (pairs) {
+            return [...pairs.querySelectorAll('tbody tr')].map((tr) => [...tr.querySelectorAll('input')].map((i) => i.value.trim()))
+                .filter(([k, v]) => k || v).map(([k, v]) => `${k}: ${v ?? ''}`).join('\n');
+        }
+        // A grouped checkbox list (GroupedCheckboxList): one line per section, "Leave: Apply, Approve".
+        const grouped = w.querySelector('[data-pos-grouped]');
+        if (grouped) {
+            const lines = new Map();
+            grouped.querySelectorAll('input[type=checkbox]:checked').forEach((i) => {
+                const group = i.dataset.posReviewGroup ?? '';
+                lines.set(group, [...(lines.get(group) ?? []), this.choice(i)]);
+            });
+            return [...lines].map(([group, names]) => (group ? `${group}: ` : '') + names.filter(Boolean).join(', ')).join('\n');
+        }
+        // Toggle buttons, radios and checkbox lists: the chosen options by name.
+        const options = w.querySelector('.fi-fo-toggle-buttons, .fi-fo-toggle-buttons-wrp, .fi-fo-radio, .fi-fo-checkbox-list');
+        if (options) return [...options.querySelectorAll('input:checked')].map((i) => this.choice(i)).filter(Boolean).join(', ');
         // Date pickers: only the date shown to the person (the month and year controls are the calendar's own).
         const shown = w.querySelector('.fi-fo-date-time-picker-display-text-input');
         if (shown) return shown.value.trim();
@@ -394,15 +490,19 @@ components.posFormReview = (mode = 'edit') => ({
         if (custom) {
             // A placeholder ("Any", "Location timezone, then application default", …) is no value.
             if (custom.querySelector('.fi-select-input-placeholder')) return '';
-            const shown = custom.querySelector('.fi-select-input-value-label, .fi-select-input-value-ctn, .fi-select-input-btn');
-            return (shown?.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/^Select an option$/i, '');
+            const badges = [...custom.querySelectorAll('.fi-select-input-value-badges-ctn .fi-badge-label')];
+            if (badges.length) return badges.map((b) => this.text(b)).filter(Boolean).join(', ');
+            const value = custom.querySelector('.fi-select-input-value-label, .fi-select-input-value-ctn, .fi-select-input-btn');
+            return this.text(value).replace(/^Select an option$/i, '');
         }
+        const color = w.querySelector('.fi-fo-color-picker input');
+        if (color) return color.value.trim();
         const boxes = [...w.querySelectorAll('input[type=checkbox]')];
         if (boxes.length === 1) return boxes[0].checked ? 'Yes' : 'No';
-        if (boxes.length > 1) return boxes.filter((b) => b.checked).map((b) => b.closest('label')?.textContent.trim() ?? b.value).join(', ');
+        if (boxes.length > 1) return boxes.filter((b) => b.checked).map((b) => this.choice(b)).join(', ');
         const radio = w.querySelector('input[type=radio]:checked');
-        if (radio) return radio.closest('label')?.textContent.trim() ?? radio.value;
-        return [...w.querySelectorAll('input:not([type=hidden]):not([type=file]),textarea')].map((i) => i.value.trim()).filter(Boolean).join(' – ');
+        if (radio) return this.choice(radio);
+        return this.affixed(w, [...w.querySelectorAll('input:not([type=hidden]):not([type=file]),textarea')].map((i) => i.value.trim()).filter(Boolean).join(' – '));
     },
     // The wizard step a field sits in, named as in the step list.
     stepLabel(w) {
@@ -412,14 +512,31 @@ components.posFormReview = (mode = 'edit') => ({
         const labels = this.form.querySelectorAll(':scope > .fi-sc-wizard-header .fi-sc-wizard-header-step-label');
         return (labels[steps.indexOf(step)]?.textContent ?? '').trim();
     },
+    // The titled section (or fieldset) a field sits in inside its step, when it is not the step itself ("Bank account").
+    sectionLabel(w, group) {
+        const section = w.closest('.fi-section, .fi-fieldset');
+        if (!section || !this.form.contains(section) || (this.ownStep && section.contains(this.ownStep))) return '';
+        const label = this.text(section.matches('.fi-fieldset')
+            ? section.querySelector(':scope > legend')
+            : section.querySelector('.fi-section-header-heading')).replace(/\s*\*$/, '');
+        // The step's own section is named like the step ("More details" in the step "More details (2)").
+        return label === group || label === group.replace(/\s\(\d+\)$/, '') ? '' : label;
+    },
     read() {
         const out = new Map();
         this.form.querySelectorAll('.fi-fo-field').forEach((w, i) => {
             if (w.closest('[x-cloak]') || w.parentElement?.closest('.fi-fo-field')) return;
+            // Fields hidden in the browser (client-side visibility) are not part of what is saved.
+            if (w.closest('fieldset.fi-sc-visibility-fieldset[disabled]')) return;
             if (this.ownStep && w.closest('.fi-sc-wizard-step') === this.ownStep) return;
-            const label = (w.querySelector('.fi-fo-field-label-content')?.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/\s*\*$/, '');
+            // Another wizard's review inside this form (a drawer opened from it) is not this form's.
+            if (w.closest('.fi-sc-wizard') && w.closest('.fi-sc-wizard') !== this.form && this.form.matches('.fi-sc-wizard')) return;
+            const label = this.labelOf(w);
             if (!label) return;
-            out.set(`${i}:${label}`, { label, value: String(this.fieldValue(w) ?? ""), secret: this.secret(w), group: this.stepLabel(w) });
+            const group = this.stepLabel(w);
+            // Keyed by the field itself, so fields that appear or go as the form changes do not shift the others.
+            const id = w.querySelector('label[for]')?.getAttribute('for') ?? w.querySelector('[id]')?.id ?? i;
+            out.set(`${id}:${label}`, { label, value: String(this.fieldValue(w) ?? ''), secret: this.secret(w), group, section: this.sectionLabel(w, group) });
         });
         return out;
     },
@@ -428,27 +545,48 @@ components.posFormReview = (mode = 'edit') => ({
         const now = this.read();
         if (!this.touched) this.baseline = now;
         const items = [];
-        // Create: everything filled in (defaults included) is reviewed, but only once the person has started.
+        // Create: what is filled in (defaults included), once the person has started; every detail in the 'all' scope.
         const started = [...now].some(([key, f]) => f.value !== (this.baseline.get(key)?.value ?? ''));
         now.forEach((f, key) => {
             const before = this.baseline.get(key)?.value ?? '';
-            if (this.mode === 'create' ? started && f.value !== '' : f.value !== before) {
-                items.push({ key, label: f.label, group: f.group, before: f.secret ? (before ? '••••' : '') : before, after: f.secret ? '••••' : f.value });
+            const changed = this.mode !== 'create' && f.value !== before;
+            const listed = this.scope === 'all' || (this.mode === 'create' ? started && f.value !== '' : changed);
+            if (listed) {
+                items.push({
+                    key, label: f.label, group: f.group, section: f.section, changed,
+                    before: f.secret ? (before ? '••••' : '') : before, after: f.secret ? (f.value ? '••••' : '') : f.value,
+                });
             }
         });
         // Only a real change re-renders: the review sits inside the form it watches.
         const signature = JSON.stringify(items);
         if (signature !== this.signature) { this.signature = signature; this.items = items; }
+        if (!this.changes) this.onlyChanges = false;
     },
-    // The items by wizard step, in form order.
+    get changes() { return this.items.filter((i) => i.changed).length; },
+    get blanks() { return this.items.filter((i) => !i.after).length; },
+    // The items by wizard step, then by section inside the step, in form order.
     get groups() {
         const groups = [];
-        this.items.forEach((item) => {
-            const last = groups[groups.length - 1];
-            if (last && last.label === item.group) last.items.push(item);
-            else groups.push({ label: item.group, items: [item] });
+        this.items.filter((item) => !this.onlyChanges || item.changed).forEach((item) => {
+            let group = groups[groups.length - 1];
+            if (!group || group.label !== item.group) groups.push(group = { label: item.group, parts: [], items: [] });
+            let part = group.parts[group.parts.length - 1];
+            if (!part || part.label !== item.section) group.parts.push(part = { key: `${group.label}:${group.parts.length}`, label: item.section, items: [] });
+            part.items.push(item);
+            group.items.push(item);
         });
         return groups;
+    },
+    // The line under the banner's title: how much there is to check.
+    get summary() {
+        if (!this.items.length) return 'Nothing is saved until you confirm below.';
+        const steps = new Set(this.items.map((i) => i.group)).size;
+        const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+        const parts = [`${plural(this.items.length, 'detail', 'details')}${steps > 1 ? ` in ${plural(steps, 'step', 'steps')}` : ''}`];
+        if (this.mode !== 'create') parts.push(this.changes ? `${plural(this.changes, 'change', 'changes')}` : 'no changes yet');
+        if (this.scope === 'all' && this.blanks) parts.push(`${this.blanks} not filled in`);
+        return `${parts.join(' · ')}. Nothing is saved until you confirm below.`;
     },
     submit() { this.form?.requestSubmit(); },
     // The wizard's own step button for a step (named as in the step list); Review's Edit presses it to go back there.
@@ -516,6 +654,64 @@ const pos360 = {
     },
     fromHash(scroll = false) { this.set(location.hash.replace('#', ''), scroll); },
 };
+
+/*
+ * A checkbox list in groups (App\Filament\Support\Forms\GroupedCheckboxList): areas open and close, a live count per
+ * area and a summary of the areas with something ticked, one search across every option, and "Tick all / Clear" for
+ * the whole list, an area or a section. Ticking goes through each checkbox's own wire:model (a change event), exactly
+ * as Filament's own "Select all" does, so the field's state, rules and saving are the checkbox list's.
+ */
+components.posGroupedChecks = (config = {}) => ({
+    search: '',
+    tick: 0,
+    open: {},
+    groups: config.groups ?? [],
+    init() {
+        this.groups.forEach((g) => { this.open[g.key] = !config.collapsed; });
+        this.$root.addEventListener('change', () => this.tick++);
+        // wire:model ticks the saved boxes as each one starts, after this component: count once they have (editing a role).
+        this.$nextTick(() => this.tick++);
+        setTimeout(() => this.tick++, 250);
+        // A round trip (a wizard step, a validation message) can redraw the boxes: count again once it lands.
+        window.Livewire?.hook?.('commit', ({ component, succeed }) => {
+            if (component?.el?.contains?.(this.$root)) succeed(() => this.$nextTick(() => this.tick++));
+        });
+    },
+    query() { return this.search.trim().toLowerCase(); },
+    matches(option) { const q = this.query(); return !q || (option.dataset.search ?? '').includes(q); },
+    anyMatch(el) { return !this.query() || [...el.querySelectorAll('[data-pos-gcl-option]')].some((o) => this.matches(o)); },
+    noMatches() { return !!this.query() && !this.anyMatch(this.$root); },
+    groupEl(key) { return this.$root.querySelector(`[data-pos-gcl-group="${CSS.escape(key)}"]`); },
+    count(key) { this.tick; return this.groupEl(key)?.querySelectorAll('input[type=checkbox]:checked').length ?? 0; },
+    size(key) { return this.groupEl(key)?.querySelectorAll('input[type=checkbox]').length ?? 0; },
+    state(key) { const n = this.count(key); return n === 0 ? 'none' : (n === this.size(key) ? 'all' : 'some'); },
+    countText(key) {
+        const n = this.count(key), of = this.size(key), word = config.word ?? 'ticked';
+        if (n === 0) return `None ${word}`;
+        return n === of ? `All ${of} ${word}` : `${n} of ${of} ${word}`;
+    },
+    get total() { this.tick; return this.$root.querySelectorAll('[data-pos-gcl-option] input[type=checkbox]:checked').length; },
+    get tickedGroups() { return this.groups.map((g) => ({ ...g, count: this.count(g.key) })).filter((g) => g.count > 0); },
+    isOpen(key) { return !!this.query() || !!this.open[key]; },
+    toggle(key) { this.open[key] = !this.open[key]; },
+    openAll(value) { this.groups.forEach((g) => { this.open[g.key] = value; }); },
+    reveal(key) {
+        this.search = '';
+        this.open[key] = true;
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.$nextTick(() => this.groupEl(key)?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }));
+    },
+    // Tick or clear every box in a scope that the search shows (a hidden match stays as it is).
+    tickIn(scope, value) {
+        scope?.querySelectorAll('[data-pos-gcl-option]').forEach((option) => {
+            const box = option.querySelector('input[type=checkbox]');
+            if (!box || box.disabled || box.checked === value || !this.matches(option)) return;
+            box.checked = value;
+            box.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        this.tick++;
+    },
+});
 
 Object.assign(window, components);
 const registerAll = () => {

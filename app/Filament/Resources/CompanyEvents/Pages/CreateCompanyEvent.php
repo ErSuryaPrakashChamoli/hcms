@@ -53,9 +53,4 @@ class CreateCompanyEvent extends PeopleCreateRecord
     {
         return ($this->data['publish_now'] ?? false) ? 'Event added' : 'Event saved as a draft';
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return CompanyEventResource::getUrl('view', ['record' => $this->getRecord()]);
-    }
 }

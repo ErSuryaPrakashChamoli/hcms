@@ -3064,6 +3064,23 @@ a.pos-home-tile:focus-visible { outline: 2px solid var(--pos-focus); outline-off
 .pos-wizard-review-row .pos-change-before { font-weight: var(--pos-fw-regular); color: var(--pos-text-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--pos-text-muted) 60%, transparent); }
 .pos-wizard-review-empty { margin: 0; padding: var(--pos-space-6) var(--pos-space-4); border-radius: var(--pos-radius-lg); text-align: center; font-size: var(--pos-fs-meta); color: var(--pos-text-muted);
     background: var(--pos-surface-sunken); outline: 1px dashed var(--pos-border-strong); outline-offset: -1px; }
+/* Every detail is listed (2026-11-19): sections inside a step get a sub-heading, what was left empty is muted, what
+   changed is marked and tinted, list values (repeaters, key-value) keep their lines; editing can show only the changes */
+.pos-wizard-review-part { display: grid; }
+.pos-wizard-review-part + .pos-wizard-review-part { margin-top: var(--pos-space-2); }
+.pos-wizard-review-subheading { margin: 0; padding: var(--pos-space-2) 0 2px; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-wizard-review-row dd .pos-change-after { white-space: pre-line; }
+.pos-wizard-review-row dt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--pos-space-2); }
+.pos-wizard-review-blank { font-weight: var(--pos-fw-regular); font-style: italic; color: var(--pos-text-muted); }
+.pos-wizard-review-row[data-changed] { margin-inline: calc(var(--pos-space-2) * -1); padding-inline: var(--pos-space-2); border-radius: var(--pos-radius-sm, 6px); background: var(--pos-primary-soft); }
+.pos-wizard-review-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: var(--pos-radius-pill); font-size: 11px; font-weight: var(--pos-fw-semibold); letter-spacing: 0.02em; color: var(--pos-primary-strong); background: var(--pos-surface); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 35%, transparent); }
+.pos-wizard-review-tools { display: flex; justify-content: flex-end; }
+.pos-wizard-review-filter { display: inline-flex; align-items: center; gap: var(--pos-space-2); padding: 4px 6px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-medium); color: var(--pos-text-secondary); background: transparent; cursor: pointer; }
+.pos-wizard-review-filter:focus-visible { outline: 2px solid var(--pos-primary); outline-offset: 2px; }
+.pos-wizard-review-filter-track { position: relative; flex: none; width: 30px; height: 18px; border-radius: 999px; background: var(--pos-border-strong); transition: background var(--pos-dur-1) var(--pos-ease); }
+.pos-wizard-review-filter-track > span { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--pos-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.2); transition: transform var(--pos-dur-1) var(--pos-ease); }
+.pos-wizard-review-filter[aria-checked="true"] .pos-wizard-review-filter-track { background: var(--pos-primary); }
+.pos-wizard-review-filter[aria-checked="true"] .pos-wizard-review-filter-track > span { transform: translateX(12px); }
 .pos-wizard-review-foot { display: flex; align-items: center; gap: var(--pos-space-2); margin: 0; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
 .pos-wizard-review-foot svg { flex: none; width: 16px; height: 16px; }
 @media (max-width: 559px) { .pos-wizard-review-row { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
@@ -4805,3 +4822,53 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 .pos-site-signin-notice { margin: 0; padding: 6px 10px; border-radius: 8px; font-size: 12px; background: var(--pos-info-soft); }
 .pos-site-signin-notice[data-tone='warning'] { background: var(--pos-warning-soft); }
 @media (max-width: 640px) { .pos-site-signin { grid-template-columns: minmax(0, 1fr); } }
+
+/* ------------------------------------------------------------------ T. Grouped checkbox lists (role permissions, My space pages)
+   App\Filament\Support\Forms\GroupedCheckboxList (owner 2026-11-19): a how-it-works note, a live summary of what is
+   ticked, one search, then each area as a card that opens to its modules, each with a plain line and its options. */
+.pos-gcl { display: grid; gap: var(--pos-space-3); }
+.pos-gcl-explain { display: flex; gap: var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4); border-radius: var(--pos-radius-lg); background: var(--pos-info-soft); color: var(--pos-text); }
+.pos-gcl-explain-icon { flex: none; width: 20px; height: 20px; margin-top: 1px; color: var(--pos-info); }
+.pos-gcl-explain-title { margin: 0 0 2px; font-weight: var(--pos-fw-semibold); }
+.pos-gcl-explain-list { display: grid; gap: 3px; margin: 0; padding-left: 1.1em; list-style: disc; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-gcl-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--pos-space-2); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); }
+.pos-gcl-summary-lead { font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-gcl-summary-empty { color: var(--pos-text-muted); }
+.pos-gcl-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 4px 2px 10px; border-radius: var(--pos-radius-pill); background: var(--pos-primary-soft); color: var(--pos-primary-strong);
+    font-weight: var(--pos-fw-medium); transition: background var(--pos-dur-1) var(--pos-ease); }
+.pos-gcl-chip:hover { background: color-mix(in srgb, var(--pos-primary) 18%, transparent); }
+.pos-gcl-chip:focus-visible, .pos-gcl-toggle:focus-visible, .pos-gcl-link:focus-visible { outline: 2px solid var(--pos-focus); outline-offset: 2px; }
+.pos-gcl-chip-count { min-width: 20px; padding: 0 6px; border-radius: var(--pos-radius-pill); background: var(--pos-surface); font-size: var(--pos-fs-caption); line-height: 20px; text-align: center; }
+.pos-gcl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2) var(--pos-space-4); }
+.pos-gcl-search { flex: 1 1 18rem; }
+.pos-gcl-tool-links, .pos-gcl-body-tools, .pos-gcl-section-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--pos-space-3); }
+.pos-gcl-sep { width: 1px; height: 16px; background: var(--pos-border); }
+.pos-gcl-link { min-height: 24px; padding: 0; font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-medium); color: var(--pos-primary); background: none; border: 0; cursor: pointer; white-space: nowrap; }
+.pos-gcl-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pos-gcl-groups { display: grid; gap: var(--pos-space-2); }
+.pos-gcl-group { border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-gcl-group[data-state='some'], .pos-gcl-group[data-state='all'] { box-shadow: inset 3px 0 0 var(--pos-primary), inset 0 0 0 1px var(--pos-border); }
+.pos-gcl-head { display: grid; gap: 2px; padding: var(--pos-space-3) var(--pos-space-4); }
+.pos-gcl-toggle { display: flex; align-items: center; gap: var(--pos-space-2); width: 100%; min-height: 28px; padding: 0; text-align: left; background: none; border: 0; cursor: pointer; color: var(--pos-text); }
+.pos-gcl-chevron { flex: none; width: 16px; height: 16px; color: var(--pos-text-muted); transition: transform var(--pos-dur-2) var(--pos-ease); }
+.pos-gcl-group[data-open] .pos-gcl-chevron { transform: rotate(90deg); }
+.pos-gcl-title { flex: 1 1 auto; font-weight: var(--pos-fw-semibold); }
+.pos-gcl-count { flex: none; padding: 1px 10px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-medium);
+    background: var(--pos-surface-sunken); color: var(--pos-text-muted); }
+.pos-gcl-group[data-state='some'] .pos-gcl-count { background: var(--pos-primary-soft); color: var(--pos-primary-strong); }
+.pos-gcl-group[data-state='all'] .pos-gcl-count { background: var(--pos-success-soft); color: var(--pos-success); }
+.pos-gcl-hint { margin: 0; padding-left: 24px; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-gcl-body { display: grid; gap: var(--pos-space-3); padding: var(--pos-space-3) var(--pos-space-4) var(--pos-space-4); border-top: 1px solid var(--pos-border); }
+.pos-gcl-body-tools { justify-content: flex-end; }
+.pos-gcl-section { display: grid; gap: var(--pos-space-2); }
+.pos-gcl-section + .pos-gcl-section { padding-top: var(--pos-space-3); border-top: 1px dashed var(--pos-border); }
+.pos-gcl-section-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 4px var(--pos-space-4); }
+.pos-gcl-section-title { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-gcl-section-hint { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
+.pos-gcl-option-name { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.pos-gcl-code { padding: 0 6px; border-radius: var(--pos-radius-sm); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 18px; color: var(--pos-text-muted); background: var(--pos-surface-sunken); }
+.pos-gcl-none { margin: 0; padding: var(--pos-space-4); border-radius: var(--pos-radius-lg); text-align: center; font-size: var(--pos-fs-meta); color: var(--pos-text-muted); background: var(--pos-surface-sunken); }
+@media (max-width: 640px) {
+    .pos-gcl-head, .pos-gcl-body { padding-inline: var(--pos-space-3); }
+    .pos-gcl-hint { padding-left: 0; }
+}

@@ -25,9 +25,4 @@ class CreateLetterSchedule extends PeopleCreateRecord
             throw new Halt;
         }
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
-    }
 }

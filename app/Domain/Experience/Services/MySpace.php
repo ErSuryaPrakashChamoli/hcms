@@ -30,6 +30,16 @@ final class MySpace
         'requests' => 'Requests',
     ];
 
+    /** What each group holds, in plain words (the role's "Pages in My space" step). */
+    public const GROUP_HINTS = [
+        'profile' => 'The person\'s own record and papers: profile, letters, assets, handbook, exit and alumni pages.',
+        'time' => 'Their day and month: punching in, attendance, holidays, leave and time-office requests.',
+        'pay' => 'Their money: payslips, salary, tax declarations and proofs, loans, expenses and travel.',
+        'performance' => 'Their growth: goals, check-ins, appraisals, feedback, learning and career.',
+        'engage' => 'Company life: announcements, surveys, recognition, birthdays, the social wall and the assistant.',
+        'requests' => 'Asking for things: new requests, helpdesk tickets, asset requests, grievances and out of office.',
+    ];
+
     /** The Setup centre setting listing items left out of My space (registry keys; default none). */
     public const HIDDEN_SETTING = 'myspace.hidden_items';
 
@@ -181,6 +191,34 @@ final class MySpace
         asort($options);
 
         return $options;
+    }
+
+    /**
+     * Every registered item in its group, for GroupedCheckboxList: labels without the group (the group is the heading),
+     * items in label order, groups in display order (an unknown group last, as "Other").
+     *
+     * @return array{options: array<string, string>, descriptions: array<string, string>, groups: list<array{key: string, label: string, hint: string, sections: list<array{label: null, hint: null, options: list<string>}>}>}
+     */
+    public function grouped(): array
+    {
+        $options = $descriptions = $byGroup = [];
+        foreach ($this->all() as $key => $item) {
+            $options[$key] = $item->label();
+            $descriptions[$key] = $item->description();
+            $byGroup[isset(self::GROUPS[$item->group()]) ? $item->group() : 'other'][] = $key;
+        }
+        $groups = [];
+        foreach ([...array_keys(self::GROUPS), 'other'] as $group) {
+            if (! isset($byGroup[$group])) {
+                continue;
+            }
+            $keys = $byGroup[$group];
+            usort($keys, fn (string $a, string $b) => strnatcasecmp($options[$a], $options[$b]));
+            $groups[] = ['key' => $group, 'label' => self::GROUPS[$group] ?? 'Other', 'hint' => self::GROUP_HINTS[$group] ?? '',
+                'sections' => [['label' => null, 'hint' => null, 'options' => $keys]]];
+        }
+
+        return ['options' => $options, 'descriptions' => $descriptions, 'groups' => $groups];
     }
 
     /** Forget the per-request answers (after the person's permissions, favourites or the setting changed). */

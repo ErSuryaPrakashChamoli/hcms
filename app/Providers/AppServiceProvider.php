@@ -534,6 +534,10 @@ class AppServiceProvider extends ServiceProvider
         // in that form, or the one its record already holds, may reach the code that copies, serves or deletes it —
         // Filament's own check is off by default. A form filled from elsewhere allows its own folder (SetupCentre).
         FileUpload::configureUsing(fn (FileUpload $upload) => $upload->preventFilePathTampering());
+        // 2026-11-19: unique codes are checked as they are typed (the field says taken or available), and a duplicate
+        // that still reaches the database becomes a message on the form instead of the server-error page.
+        \App\Filament\Support\UniqueCode::register();
+        \App\Filament\Support\DuplicateEntryGuard::register();
 
         // Phase 11: the salary models moved from Payroll to Compensation. Polymorphic references stored
         // before the move (timeline sources, configuration changes) keep resolving; new rows use the

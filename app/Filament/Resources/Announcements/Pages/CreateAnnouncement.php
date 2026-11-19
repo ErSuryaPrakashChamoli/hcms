@@ -44,9 +44,4 @@ class CreateAnnouncement extends PeopleCreateRecord
             throw new Halt;
         }
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('index');
-    }
 }

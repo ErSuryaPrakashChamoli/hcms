@@ -89,6 +89,8 @@ it('creates a company from the admin form, stamped with the tenant and audited',
             'code' => 'BETA',
             'status' => 'active',
             'country_code' => 'IN',
+            'state_code' => 'KA',
+            'city' => 'Bengaluru',
         ])
         ->call('create')
         ->assertHasNoFormErrors();

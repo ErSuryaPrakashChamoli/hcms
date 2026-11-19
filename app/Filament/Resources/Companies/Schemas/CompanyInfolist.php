@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\Companies\Schemas;
 
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Support\AddressRules;
 use App\Http\Controllers\ParityFileController;
+use App\Support\Geography\Countries;
+use App\Support\Geography\Currencies;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -22,9 +25,13 @@ class CompanyInfolist
                         TextEntry::make('code'),
                         TextEntry::make('status')->badge(),
                         TextEntry::make('legal_name')->placeholder('—')->columnSpanFull(),
-                        TextEntry::make('country_code'),
+                        TextEntry::make('country_code')->label('Country')->formatStateUsing(fn (?string $state) => Countries::name($state)),
+                        TextEntry::make('state_code')->label(fn (Company $record) => AddressRules::stateLabel($record->country_code))->placeholder('—')
+                            ->formatStateUsing(fn (?string $state, Company $record) => ($name = AddressRules::states($record->country_code)[$state] ?? null) !== null ? "{$name} ({$state})" : $state),
+                        TextEntry::make('city')->placeholder('—'),
                         TextEntry::make('timezone')->placeholder('—'),
-                        TextEntry::make('currency')->placeholder('—'),
+                        TextEntry::make('currency')->placeholder('—')
+                            ->formatStateUsing(fn (?string $state) => ($name = Currencies::all()[$state] ?? null) !== null ? "{$state} · {$name}" : $state),
                         TextEntry::make('effective_from')->date()->placeholder('Open'),
                         TextEntry::make('effective_to')->date()->placeholder('Open'),
                         TextEntry::make('updated_at')->dateTime()->label('Last updated'),

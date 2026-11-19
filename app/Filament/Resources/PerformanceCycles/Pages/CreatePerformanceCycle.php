@@ -11,11 +11,6 @@ class CreatePerformanceCycle extends PeopleCreateRecord
 {
     protected static string $resource = PerformanceCycleResource::class;
 
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('edit', ['record' => $this->getRecord()]);
-    }
-
     /** Phase 7: a chosen template version drives the cycle configuration (stages, scale, competencies, weights). */
     protected function applyTemplate(): void
     {

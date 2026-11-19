@@ -11,6 +11,9 @@ use App\Domain\Compliance\Services\TaxEstimator;
 use App\Domain\Compliance\Services\TaxSettings;
 use App\Domain\Compliance\Support\InvestmentCatalogue;
 use App\Domain\Employment\Models\Employee;
+use App\Filament\Resources\MyInvestmentProofs\MyInvestmentProofResource;
+use App\Filament\Resources\TaxDeclarations\TaxDeclarationResource;
+use App\Filament\Support\FormWizard;
 use App\Filament\Support\OnBehalfPicker;
 use App\Filament\Support\RequestChrome;
 use App\Support\Tenancy\TenantContext;
@@ -36,6 +39,7 @@ use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
+use Filament\Support\Facades\FilamentView;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -290,6 +294,8 @@ class DeclareInvestments extends Page implements HasSchemas
     private function reviewStep(): Step
     {
         return Step::make('Review')->icon(Heroicon::OutlinedClipboardDocumentCheck)->description('Check and submit')->schema([
+            // Every item and amount as filled in, step by step (a declaration already sent shows what changed), then what payroll counts.
+            FormWizard::summary($this->declaration() !== null ? FormWizard::EDIT : FormWizard::CREATE),
             Html::make(fn (Get $get) => view('filament.pages.declare-investments.review', $this->review($get))->render()),
             Checkbox::make('confirm')->label('I declare that these amounts are true, and I will give payroll the proofs when asked.')
                 ->visible(fn () => $this->editable()),
@@ -446,6 +452,20 @@ class DeclareInvestments extends Page implements HasSchemas
             ->title($submit ? 'Declaration submitted to payroll' : 'Draft saved')
             ->body($submit ? 'Payroll will use it for the tax on your coming salaries. You can still change it until payroll verifies it.' : 'Come back any time to finish it.')
             ->send();
+        // Submitted: back to the list of declarations (owner, 2026-11-19); a draft stays open to go on with.
+        if ($submit && ($list = self::listingUrl()) !== null) {
+            $this->redirect($list, navigate: FilamentView::hasSpaMode($list));
+        }
+    }
+
+    /** The declarations list this person can open: Payroll → Tax declarations (their own, for an employee), else My investment proofs. */
+    private static function listingUrl(): ?string
+    {
+        return match (true) {
+            TaxDeclarationResource::canAccess() => TaxDeclarationResource::getUrl('index'),
+            MyInvestmentProofResource::canAccess() => MyInvestmentProofResource::getUrl('index'),
+            default => null,
+        };
     }
 
     /**

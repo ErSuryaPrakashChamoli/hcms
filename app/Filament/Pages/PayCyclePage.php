@@ -6,6 +6,7 @@ use App\Domain\Organisation\Models\Company;
 use App\Domain\Payroll\Services\PayCycle;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\FormWizard;
+use App\Filament\Support\Pages\Concerns\StartsOverAfterSave;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
@@ -35,6 +36,7 @@ use UnitEnum;
 class PayCyclePage extends Page implements HasSchemas
 {
     use InteractsWithSchemas;
+    use StartsOverAfterSave;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;
 
@@ -194,7 +196,7 @@ class PayCyclePage extends Page implements HasSchemas
         Notification::make()->success()->title('Pay cycle saved')
             ->body('From '.$from->format('j M Y').', payroll months run '.($from->day === 1 ? 'as calendar months' : 'from the '.PayCycle::describe($from->day))
                 .($until !== null ? ' to '.self::monthName($until).', then go back to the cycle they had' : '').'.')->send();
-        $this->form->fill(['until' => 'open']);
+        $this->startOver();
     }
 
     /** The day after the last month with a payroll run: a new cycle cannot move a month that already has one. */

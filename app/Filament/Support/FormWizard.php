@@ -187,6 +187,80 @@ final class FormWizard
     }
 
     /**
+     * Every detail the person went through, step by step (read in the browser from the wizard it sits in): the body of
+     * Review, and what a wizard's own review step shows above its own content (endInReview()).
+     */
+    public static function summary(string $mode = self::CREATE): View
+    {
+        return View::make('filament.shell.wizard-review')->viewData(['mode' => $mode === self::EDIT ? self::EDIT : self::CREATE])->columnSpanFull();
+    }
+
+    /**
+     * A wizard that builds its own steps ends in the full review too (owner, 2026-11-19: "the review must show every
+     * detail the user went through"): its own last step, when that is already its review ("Review", "Confirm",
+     * "Preview", "Submit", …), lists every detail above what it shows (who approves it, what happens next, a
+     * confirmation); otherwise a Review step is added after it. The steps and their save are otherwise unchanged.
+     *
+     * @param  array<mixed>  $steps
+     * @return list<mixed>
+     */
+    public static function endInReview(array $steps, string $mode): array
+    {
+        $steps = array_values($steps);
+        $last = end($steps);
+        if (! $last instanceof Step) {
+            return $steps;
+        }
+        if (self::isReviewStep($last)) {
+            self::prependSummary($last, $mode);
+
+            return $steps;
+        }
+
+        return [...$steps, self::review($mode)];
+    }
+
+    /** Whether a step is a review already: named for checking or confirming, or holding the full list. */
+    public static function isReviewStep(Step $step): bool
+    {
+        $label = $step->getLabel();
+        $label = trim(strip_tags($label instanceof Htmlable ? $label->toHtml() : (string) $label));
+
+        return (bool) preg_match('/^(review|confirm|check|summary|preview|submit)\b/i', $label) || isset(self::summarised()[$step]);
+    }
+
+    /**
+     * Steps given the full list already: an action's steps given as an array are the same objects each time its form
+     * is built, and keep one list.
+     *
+     * @return \WeakMap<Step, true>
+     */
+    private static function summarised(): \WeakMap
+    {
+        static $steps = null;
+
+        return $steps ??= new \WeakMap;
+    }
+
+    private static function prependSummary(Step $step, string $mode): void
+    {
+        $summarised = self::summarised();
+        if (isset($summarised[$step])) {
+            return;
+        }
+        $summarised[$step] = true;
+        // The step's own content as it was given (a closure may need the form's state), shown after the list.
+        $own = (fn (): mixed => $this->childComponents['default'] ?? [])->call($step);
+        $step->schema(is_array($own)
+            ? [self::summary($mode), ...$own]
+            : function (Step $component) use ($own, $mode): array|Schema {
+                $content = $component->evaluate($own);
+
+                return is_array($content) ? [self::summary($mode), ...$content] : $content;
+            });
+    }
+
+    /**
      * @param  list<Component>  $reason
      * @param  list<Component>  $hidden
      */
@@ -195,12 +269,12 @@ final class FormWizard
         return Step::make($label)->columns(1)->schema([
             Section::make($label)
                 ->description(match ($mode) {
-                    self::CREATE => 'What you filled in, step by step. Go back to any step to change it, then create.',
-                    self::ACTION => 'What you filled in, step by step. Go back to any step to change it, then confirm.',
-                    default => 'What you changed, before → after. Open any step to change more, then save.',
+                    self::CREATE => 'Every detail you went through, step by step. Go back to any step to change it, then create.',
+                    self::ACTION => 'Every detail you went through, step by step. Go back to any step to change it, then confirm.',
+                    default => 'Every detail of the record, with your changes marked before → after. Open any step to change more, then save.',
                 })
                 // The review lists what was filled in for creating and for actions, and what changed for editing.
-                ->schema([View::make('filament.shell.wizard-review')->viewData(['mode' => $mode === self::EDIT ? self::EDIT : self::CREATE]), ...$reason]),
+                ->schema([self::summary($mode), ...$reason]),
             ...$hidden,
         ]);
     }

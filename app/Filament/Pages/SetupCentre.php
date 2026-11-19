@@ -8,6 +8,7 @@ use App\Domain\Identity\Services\RememberedWorkspace;
 use App\Domain\Performance\Support\PerformanceLabels;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\FormWizard;
+use App\Filament\Support\Pages\Concerns\StartsOverAfterSave;
 use App\Support\Tenancy\TenantContext;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -38,6 +39,7 @@ use UnitEnum;
 class SetupCentre extends Page implements HasSchemas
 {
     use InteractsWithSchemas;
+    use StartsOverAfterSave;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog8Tooth;
 
@@ -233,7 +235,7 @@ class SetupCentre extends Page implements HasSchemas
         try {
             $changed = app(SetupCatalogue::class)->save($this->module, $state, AuditReasonField::extract($state) ?? '', auth()->user());
             Notification::make()->success()->title($changed === [] ? 'Nothing changed' : count($changed).' setting(s) saved')->send();
-            $this->fillForm();
+            $this->startOver(['module' => $this->module]);
         } catch (RuntimeException $e) {
             Notification::make()->danger()->title('Not saved')->body($e->getMessage())->send();
         }

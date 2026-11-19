@@ -6,6 +6,7 @@ use App\Domain\Expense\Exceptions\ExpenseRuleViolation;
 use App\Domain\Expense\Services\ExpenseForms;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\FormWizard;
+use App\Filament\Support\Pages\Concerns\StartsOverAfterSave;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
@@ -33,6 +34,7 @@ use UnitEnum;
 class ExpenseFormSetup extends Page implements HasSchemas
 {
     use InteractsWithSchemas;
+    use StartsOverAfterSave;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTableCells;
 
@@ -131,7 +133,7 @@ class ExpenseFormSetup extends Page implements HasSchemas
             return;
         }
         Notification::make()->success()->title('Expense and travel forms saved')->send();
-        $this->fillForm();
+        $this->startOver();
     }
 
     private function fillForm(): void

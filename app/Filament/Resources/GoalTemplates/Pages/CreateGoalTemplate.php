@@ -13,9 +13,4 @@ class CreateGoalTemplate extends PeopleCreateRecord
     {
         return $data + ['created_by' => auth()->id()];
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('edit', ['record' => $this->getRecord()]);
-    }
 }

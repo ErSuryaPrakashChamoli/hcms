@@ -110,11 +110,13 @@ class DemoTenantSeeder extends Seeder
 
             Company::query()->firstOrCreate(
                 ['code' => 'DEMO-TECH'],
-                ['name' => 'Demo Technologies', 'legal_name' => 'Demo Technologies Pvt Ltd', 'effective_from' => '2025-04-01'],
+                ['name' => 'Demo Technologies', 'legal_name' => 'Demo Technologies Pvt Ltd', 'effective_from' => '2025-04-01',
+                    'country_code' => 'IN', 'state_code' => 'DL', 'city' => 'New Delhi', 'timezone' => 'Asia/Kolkata', 'currency' => 'INR'],
             );
             Company::query()->firstOrCreate(
                 ['code' => 'DEMO-SVC'],
-                ['name' => 'Demo Services', 'legal_name' => 'Demo Services Pvt Ltd', 'effective_from' => '2025-04-01'],
+                ['name' => 'Demo Services', 'legal_name' => 'Demo Services Pvt Ltd', 'effective_from' => '2025-04-01',
+                    'country_code' => 'IN', 'state_code' => 'KA', 'city' => 'Bengaluru', 'timezone' => 'Asia/Kolkata', 'currency' => 'INR'],
             );
 
             $tree = app(OrganisationTree::class);

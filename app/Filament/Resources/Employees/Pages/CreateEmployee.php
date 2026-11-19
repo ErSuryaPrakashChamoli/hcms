@@ -233,6 +233,7 @@ class CreateEmployee extends PeopleCreateRecord
                         ->fontFamily(FontFamily::Mono)->weight(FontWeight::Bold)->size(TextSize::Large)
                         ->helperText(fn (Get $get) => self::seriesNote(self::companyId($get), self::employmentTypeId($get))),
                     TextInput::make('employee_code')->label('Code to use')->columnSpan(2)->maxLength(32)->alphaDash()
+                        ->uniqueCode(enabled: false) // checked below against every employee, ignoring case
                         ->visible(fn (Get $get) => $get('employee_code_mode') === 'manual')
                         ->required(fn (Get $get) => $get('employee_code_mode') === 'manual')
                         ->live(onBlur: true)
@@ -547,6 +548,10 @@ class CreateEmployee extends PeopleCreateRecord
         }
         $view = fn (array $query = []) => EmployeeResource::getUrl('view', ['record' => $employee]).($query === [] ? '' : '?'.http_build_query($query));
         $links = [['label' => 'Open the Employee 360', 'description' => 'Everything about '.$this->completion['name'].' in one place', 'url' => $view()]];
+        // Every other form goes back to its section's list once saved (2026-11-19); the hire shows this summary first.
+        if (EmployeeResource::canAccess()) {
+            $links[] = ['label' => 'Go to the employee list', 'description' => $this->completion['name'].' is in it now', 'url' => EmployeeResource::getUrl('index')];
+        }
         $links[] = ['label' => 'Add another employee', 'description' => 'Start the hire wizard again', 'url' => static::getUrl()];
         if (self::allows('onboarding.manage') && $employee->onboardingPlan()->where('status', 'in_progress')->doesntExist()) {
             $links[] = ['label' => 'Start onboarding', 'description' => 'Pick a template or the best match by rules', 'url' => $view(['action' => 'startOnboarding'])];

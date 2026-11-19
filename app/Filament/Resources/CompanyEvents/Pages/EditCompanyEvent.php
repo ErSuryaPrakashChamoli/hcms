@@ -36,9 +36,4 @@ class EditCompanyEvent extends PeopleEditRecord
             throw new Halt;
         }
     }
-
-    protected function getRedirectUrl(): ?string
-    {
-        return CompanyEventResource::getUrl('view', ['record' => $this->getRecord()]);
-    }
 }

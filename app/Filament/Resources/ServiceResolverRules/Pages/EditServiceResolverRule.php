@@ -28,9 +28,4 @@ class EditServiceResolverRule extends PeopleEditRecord
 
         return $record;
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
-    }
 }

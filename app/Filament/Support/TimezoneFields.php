@@ -2,6 +2,7 @@
 
 namespace App\Filament\Support;
 
+use App\Domain\Enterprise\Services\CountryPacks;
 use App\Support\Geography\Countries;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
@@ -29,11 +30,24 @@ final class TimezoneFields
                 ->placeholder('Choose a country')
                 ->afterStateHydrated(fn (Select $component, Get $get) => $component->state(self::countryOf($get($field)) ?? $component->getState() ?? self::tenantCountry()))
                 ->afterStateUpdated(fn (Set $set, ?string $state) => $set($field, self::onlyZone($state))),
-            Select::make($field)->label('Time zone')->searchable()->rule('timezone')
-                ->options(fn (Get $get, ?Model $record) => self::options($get($country), $record?->getAttribute($field)))
-                ->default(fn () => self::onlyZone(self::tenantCountry()))
-                ->placeholder(fn (Get $get) => blank($get($country)) ? 'Choose a country first' : 'Choose a time zone'),
+            self::zoneSelect($field, $country)->default(fn () => self::onlyZone(self::tenantCountry())),
         ];
+    }
+
+    /** The zone select alone, narrowed by a country field the form already saves (e.g. a company's country_code). */
+    public static function zoneSelect(string $field, string $countryField): Select
+    {
+        return Select::make($field)->label('Time zone')->searchable()->rule('timezone')
+            ->options(fn (Get $get, ?Model $record) => self::options($get($countryField), $record?->getAttribute($field)))
+            ->placeholder(fn (Get $get) => blank($get($countryField)) ? 'Choose a country first' : 'Choose a time zone');
+    }
+
+    /** The zone to fill in for a country: its only zone, else its country pack's zone (e.g. America/New_York); else none. */
+    public static function defaultZone(?string $country): ?string
+    {
+        $pack = app(CountryPacks::class)->get($country)['timezone'] ?? null;
+
+        return self::onlyZone($country) ?? (in_array($pack, self::zones($country), true) ? $pack : null);
     }
 
     /** @return list<string> the country's zones; none when no country is chosen */

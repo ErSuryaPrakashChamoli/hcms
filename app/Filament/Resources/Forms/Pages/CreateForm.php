@@ -14,9 +14,4 @@ class CreateForm extends PeopleCreateRecord
     {
         app(Forms::class)->draft($this->getRecord());
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return FormResource::getUrl('edit', ['record' => $this->getRecord()]);
-    }
 }

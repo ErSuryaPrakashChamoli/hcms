@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Domain\Enterprise\Services\SecurityPolicy;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Support\FormWizard;
+use App\Filament\Support\Pages\Concerns\StartsOverAfterSave;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -28,6 +29,7 @@ use UnitEnum;
 class SecurityPolicyPage extends Page implements HasSchemas
 {
     use InteractsWithSchemas;
+    use StartsOverAfterSave;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
 
@@ -133,5 +135,6 @@ class SecurityPolicyPage extends Page implements HasSchemas
             }, 'Security policy update');
         }
         Notification::make()->success()->title('Security policy saved')->send();
+        $this->startOver();
     }
 }

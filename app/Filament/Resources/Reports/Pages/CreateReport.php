@@ -13,9 +13,4 @@ class CreateReport extends PeopleCreateRecord
     {
         return $data + ['owner_id' => auth()->id()];
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('view', ['record' => $this->getRecord()]);
-    }
 }

@@ -10,6 +10,7 @@ use App\Filament\Resources\AttendanceDevices\Pages\ManageAttendanceDevices;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\ExchangeRates\Pages\ManageExchangeRates;
 use App\Filament\Resources\MoodReasons\Pages\ManageMoodReasons;
+use App\Filament\Resources\NumberSeries\Pages\ManageNumberSeries;
 use App\Filament\Resources\Shifts\Pages\CreateShift;
 use App\Filament\Resources\Shifts\Pages\EditShift;
 use App\Filament\Resources\Shifts\ShiftResource;
@@ -25,7 +26,10 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Text;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
@@ -81,7 +85,7 @@ it('turns a record page into a wizard, one section per step, ending in Review', 
 
     $this->get(ShiftResource::getUrl('create'))->assertOk()
         ->assertSee('pos-wizard pos-wizard-page', false)
-        ->assertSee("posFormReview('create')", false)
+        ->assertSee("posFormReview('create', 'all')", false)
         ->assertSee('Create shift')
         ->assertSee('Go step by step');
 });
@@ -198,7 +202,9 @@ it('follows the security policy as a wizard, saved from Review', function () {
     expect(stepLabels(formWizard($page)))->toBe(['Access', 'Passwords', 'Disable login', 'Retention', 'Data warehouse feed', 'Review'])
         ->and(formWizard($page)->isSkippable())->toBeTrue();
 
-    $page->fillForm(['security__session_idle_minutes' => 40])->call('save')->assertNotified('Security policy saved');
+    // A settings page has no list: once saved it opens again from its start (the wizard closes).
+    $page->fillForm(['security__session_idle_minutes' => 40])->call('save')->assertNotified('Security policy saved')
+        ->assertRedirect(SecurityPolicyPage::getUrl());
 });
 
 it('keeps long drawer forms in sections, so they open as wizards', function () {
@@ -217,4 +223,78 @@ it('keeps long drawer forms in sections, so they open as wizards', function () {
     }
 
     expect($offenders)->toBe([]);
+});
+
+/** Whether a step lists every detail (the review summary) before its own content. */
+function listsEveryDetail(Step $step): bool
+{
+    $first = collect($step->getDefaultChildComponents())->first();
+    if ($first instanceof Component && ! $first instanceof View) { // Review made by FormWizard: the summary sits in its section
+        $first = collect($first->getDefaultChildComponents())->first();
+    }
+
+    return $first instanceof View && $first->getView() === 'filament.shell.wizard-review';
+}
+
+it('goes back to the section\'s list once a record page creates or saves, with the record one click away on the notice', function () {
+    Livewire::test(CreateShift::class)
+        ->fillForm(['name' => 'Night', 'code' => 'NIGHT', 'type' => 'fixed', 'start_time' => '22:00', 'end_time' => '06:00', 'crosses_midnight' => true])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertRedirect(ShiftResource::getUrl('index'));
+    $shift = Shift::query()->where('code', 'NIGHT')->firstOrFail();
+    $notice = collect(session('filament.notifications'))->last();
+    expect($notice['title'])->toBe('Created')
+        ->and(collect($notice['actions'])->pluck('url')->all())->toBe([ShiftResource::getUrl('edit', ['record' => $shift])]);
+
+    Livewire::test(EditShift::class, ['record' => $shift->getKey()])
+        ->fillForm(['name' => 'Night (late)', 'audit_reason' => 'Renamed'])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertRedirect(ShiftResource::getUrl('index'));
+    expect($shift->refresh()->name)->toBe('Night (late)');
+});
+
+it('lets no record page send the person back into the record after saving', function () {
+    // Every create and edit page goes to its list (ReturnsToListing). The hire wizard first shows what the hire
+    // created and what is left, with the employee list one click away.
+    $overrides = collect(glob(app_path('Filament/Resources/*/Pages/*.php')))
+        ->filter(fn (string $file) => str_contains((string) file_get_contents($file), 'function getRedirectUrl'))
+        ->map(fn (string $file) => basename($file, '.php'))->values()->all();
+
+    expect($overrides)->toBe(['CreateEmployee']);
+});
+
+it('ends every Review in the list of every detail, on record pages and drawers alike', function () {
+    $page = Livewire::test(CreateShift::class);
+    expect(listsEveryDetail(collect(formWizard($page)->getChildSchema()->getComponents())->last()))->toBeTrue();
+
+    $drawer = Livewire::test(ManageAttendanceDevices::class)->mountAction('create');
+    expect(listsEveryDetail(collect(formWizard($drawer, drawer: true)->getChildSchema()->getComponents())->last()))->toBeTrue();
+});
+
+it('ends an action\'s own steps in the full review: on its own review step, or in a Review step added after them', function () {
+    // Its own review step ("who approves it") lists every detail first, once however often the form is built.
+    $review = Step::make('Review')->schema([Text::make('Goes to the employee\'s approvers.')]);
+    $steps = [Step::make('Who')->schema([TextInput::make('employee')]), $review];
+    expect(FormWizard::endInReview($steps, FormWizard::ACTION))->toBe($steps)
+        ->and(FormWizard::endInReview($steps, FormWizard::ACTION))->toBe($steps)
+        ->and(listsEveryDetail($review))->toBeTrue()
+        ->and($review->getDefaultChildComponents())->toHaveCount(2);
+
+    // A step given as a closure keeps it, after the list.
+    $confirm = Step::make('Confirm')->schema(fn () => [Text::make('Nothing is sent until you confirm.')]);
+    FormWizard::endInReview([$confirm], FormWizard::ACTION);
+    expect(listsEveryDetail($confirm))->toBeTrue()->and($confirm->getDefaultChildComponents())->toHaveCount(2);
+
+    // Steps that end in a question of their own get a Review step after them.
+    $ended = FormWizard::endInReview([Step::make('Decision'), Step::make('Last working day')], FormWizard::ACTION);
+    expect(array_map(fn (Step $step) => $step->getLabel(), $ended))->toBe(['Decision', 'Last working day', 'Review'])
+        ->and(listsEveryDetail($ended[2]))->toBeTrue();
+
+    // In a real drawer that builds its own steps (the number series' Code type → Configure → Review).
+    $series = Livewire::test(ManageNumberSeries::class)->mountAction('create');
+    $wizard = formWizard($series, drawer: true);
+    expect(stepLabels($wizard))->toBe(['Code type', 'Configure', 'Review'])
+        ->and(listsEveryDetail(collect($wizard->getChildSchema()->getComponents())->last()))->toBeTrue();
 });

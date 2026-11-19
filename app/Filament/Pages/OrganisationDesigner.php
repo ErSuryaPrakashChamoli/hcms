@@ -173,6 +173,7 @@ class OrganisationDesigner extends Page
                         ->live(onBlur: true)
                         ->afterStateUpdated(fn ($state, callable $set) => $set('code', Str::upper(Str::slug(Str::limit($state, 24, ''), '_')))),
                     TextInput::make('code')->required()->maxLength(32)->alphaDash()
+                        ->uniqueCode(fn (Get $get) => filled($get('type')) ? $this->tree()->modelForType($get('type')) : null)
                         ->visible(fn (Get $get) => $get('mode') === 'new'),
                     Select::make('unit_id')
                         ->label('Unit')

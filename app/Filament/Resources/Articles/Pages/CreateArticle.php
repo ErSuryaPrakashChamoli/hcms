@@ -13,9 +13,4 @@ class CreateArticle extends PeopleCreateRecord
     {
         return $data + ['author_id' => auth()->id()];
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('index');
-    }
 }

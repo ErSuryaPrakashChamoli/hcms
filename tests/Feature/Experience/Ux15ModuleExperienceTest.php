@@ -105,10 +105,10 @@ it('turns record forms into a flow: context, review, and a button that names the
 
     $this->get(DepartmentResource::getUrl('create'))->assertOk()
         ->assertSee('New department')->assertSee('Create department')
-        ->assertSee("posFormReview('create')", false)->assertSee('You review the details before creating');
+        ->assertSee("posFormReview('create', 'all')", false)->assertSee('You review the details before creating');
 
     $edit = $this->get(DepartmentResource::getUrl('edit', ['record' => $department]))->assertOk()
-        ->assertSee("posFormReview('edit')", false)
+        ->assertSee("posFormReview('edit', 'all')", false)
         ->assertSee('Active · in effect since 1 Apr 2024')->assertSee('Your changes are listed for review before you save');
     expect(Livewire::test(EditDepartment::class, ['record' => $department->id])->instance()->getBreadcrumbs())
         ->toBe([DepartmentResource::getUrl('index') => 'Departments', 'Engineering']);

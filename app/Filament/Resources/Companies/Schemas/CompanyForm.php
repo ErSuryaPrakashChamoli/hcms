@@ -8,6 +8,7 @@ use App\Domain\Platform\Services\SettingsRepository;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\CustomFieldsSchema;
+use App\Filament\Support\LocaleFields;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -54,13 +55,10 @@ class CompanyForm
                             ->disk(fn () => config('peopleos.documents.disk'))->directory(fn () => Company::logoDirectory())->visibility('private')
                             ->helperText('PNG or JPEG up to 5 MB. Kept privately; shown on the company card.')->columnSpanFull(),
                     ]),
+                // Country, then its state and city where the country asks for them (AddressRules), time zone and currency.
                 Section::make('Locale')
                     ->columns(3)
-                    ->schema([
-                        TextInput::make('country_code')->required()->default('IN')->length(2),
-                        TextInput::make('timezone')->placeholder('Asia/Kolkata')->maxLength(64),
-                        TextInput::make('currency')->placeholder('INR')->length(3),
-                    ]),
+                    ->schema(LocaleFields::make()),
                 Section::make('Effective dates')
                     ->description('Leave blank for open-ended. Historical records are never overwritten.')
                     ->columns(2)

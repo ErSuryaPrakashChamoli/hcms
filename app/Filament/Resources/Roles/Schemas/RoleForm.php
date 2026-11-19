@@ -7,11 +7,12 @@ use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\Permission;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Services\PermissionAreas;
 use App\Domain\Identity\Services\RoleGrants;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\Forms\GroupedCheckboxList;
 use Closure;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -48,11 +49,26 @@ class RoleForm
                             ->options(fn () => User::forCurrentTenant()->where('status', UserStatus::Active->value)->where('is_platform_admin', false)->orderBy('name')->pluck('name', 'id')->all())
                             ->helperText('Takes the role\'s new workflow approvals while nobody active holds it (or the role is inactive).'),
                     ]),
+                // Owner 2026-11-19: permissions by area and module, each explained, with a live "what this role can do".
                 Section::make('Permissions')
-                    ->description('resource.action keys from the platform catalogue. Tenants cannot invent new keys.')
+                    ->description('What people with this role may see and do, grouped by area of PeopleOS and then by module. Open an area, read what it covers and tick what the job needs.')
                     ->schema([
-                        CheckboxList::make('permissions')
+                        GroupedCheckboxList::make('permissions')
+                            ->label('What this role allows')
                             ->relationship('permissions', 'key')
+                            ->getOptionLabelFromRecordUsing(fn (Permission $permission) => PermissionAreas::actionLabel($permission->key))
+                            ->optionCodes(fn () => Permission::query()->pluck('key', 'id')->all())
+                            ->groups(fn () => PermissionAreas::groups(Permission::query()->pluck('key', 'id')->all()))
+                            ->groupsCollapsed()
+                            ->countWord('allowed')
+                            ->summary('This role can work in:', 'Nothing ticked yet: on its own, this role lets people do nothing.')
+                            ->explainer('How permissions work', [
+                                'Ticked means people with this role may do it. Unticked means this role does not give it (another of their roles still might).',
+                                'Roles add up: someone with several roles can do everything any one of them allows.',
+                                'Rights over one\'s own things (apply for leave, own payslips, own goals) suit every employee; team rights suit managers; set-up, approve and run rights suit HR, payroll and admins.',
+                                'You can only give permissions you hold yourself.',
+                            ])
+                            ->searchPrompt('Find a permission, e.g. payslip, approve leave or export')
                             // SaaS.10 (E1): a permission added to a role must be one the editor holds (RoleGrants).
                             ->rule(fn (?Role $record) => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
                                 $added = array_diff(array_map('intval', (array) $value), $record?->permissions()->pluck('permissions.id')->map(fn ($id) => (int) $id)->all() ?? []);
@@ -62,18 +78,29 @@ class RoleForm
                                 }
                             })
                             ->descriptions(fn () => Permission::query()->pluck('description', 'id')->all())
-                            ->searchable()
                             ->bulkToggleable()
                             ->columns(3)
                             ->gridDirection('row'),
                     ]),
-                // HROne parity CA-9 (Page access per My space item): the self pages left out of My space for this role's holders.
+                // HROne parity CA-9 (Page access per My space item): the self pages left out of My space for this role's holders,
+                // by My space group (owner 2026-11-19), with what hiding does and does not do.
                 Section::make('Pages in My space')
-                    ->description('Page access for self-service: tick the pages holders of this role should not find in My space (and its favourites and search). Someone with several roles still finds a page any of their roles leaves in. The pages themselves keep following the permissions above; nothing here grants anything.')
+                    ->description('Choose the self-service pages people with this role should not see in My space. Nothing is hidden unless you tick it.')
                     ->schema([
-                        CheckboxList::make('myspace_hidden_items')->label('Leave out of My space')
-                            ->options(fn () => app(MySpace::class)->options())
-                            ->searchable()->bulkToggleable()->columns(3)->gridDirection('row'),
+                        GroupedCheckboxList::make('myspace_hidden_items')->label('Hide from My space')
+                            ->options(fn () => app(MySpace::class)->grouped()['options'])
+                            ->descriptions(fn () => app(MySpace::class)->grouped()['descriptions'])
+                            ->groups(fn () => app(MySpace::class)->grouped()['groups'])
+                            ->countWord('hidden')
+                            ->summary('Hidden for this role:', 'Nothing hidden: people with this role see every My space page their permissions allow.')
+                            ->explainer('What “Hide from My space” means', [
+                                'My space is each person\'s self-service corner: their payslips, leave, profile, goals and requests.',
+                                'Tick a page to keep it out of My space, its favourites and its search for people with this role, e.g. Loans and advances for interns, or Alumni portal for current staff.',
+                                'Hiding only tidies the menu. It never gives or takes away access: what people can open is still decided by the permissions on the previous step.',
+                                'Someone with several roles still sees a page if any one of their roles keeps it.',
+                            ])
+                            ->searchPrompt('Find a page, e.g. payslip or leave')
+                            ->bulkToggleable()->columns(3)->gridDirection('row'),
                     ]),
                 AuditReasonField::make()->visibleOn('edit'),
             ]);

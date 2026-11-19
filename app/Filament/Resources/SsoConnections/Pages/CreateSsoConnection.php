@@ -8,9 +8,4 @@ use App\Filament\Support\Pages\PeopleCreateRecord;
 class CreateSsoConnection extends PeopleCreateRecord
 {
     protected static string $resource = SsoConnectionResource::class;
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('index');
-    }
 }

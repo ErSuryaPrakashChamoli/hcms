@@ -14,9 +14,4 @@ class CreateWorkflow extends PeopleCreateRecord
     {
         app(Workflows::class)->draft($this->getRecord());
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return WorkflowResource::getUrl('edit', ['record' => $this->getRecord()]);
-    }
 }

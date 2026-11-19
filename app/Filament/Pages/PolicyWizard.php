@@ -308,7 +308,8 @@ class PolicyWizard extends Page implements HasSchemas
                 ->disabled(! $new)->dehydrated()->columnSpanFull(),
             TextInput::make('name')->label('Policy name')->required()->maxLength(255)->live(onBlur: true)
                 ->afterStateUpdated(fn (?string $state, Set $set, Get $get) => $new && blank($get('code')) ? $set('code', Str::upper(Str::slug(Str::limit((string) $state, 30, ''), '_'))) : null),
-            TextInput::make('code')->required()->maxLength(64)->alphaDash()->helperText('A short unique reference, e.g. ATT_GENERAL.'),
+            TextInput::make('code')->required()->maxLength(64)->alphaDash()->helperText('A short unique reference, e.g. ATT_GENERAL.')
+                ->uniqueCode(Policy::class, ignore: fn () => $this->policyId),
             Select::make('status')->options(ActiveStatus::class)->required()->native(false)->helperText('An inactive policy applies to nobody.'),
             Textarea::make('description')->rows(2)->maxLength(1000)->columnSpanFull(),
         ];

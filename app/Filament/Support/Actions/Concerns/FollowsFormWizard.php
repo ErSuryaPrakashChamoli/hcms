@@ -34,11 +34,16 @@ trait FollowsFormWizard
     public function getSchema(Schema $schema): ?Schema
     {
         if (parent::isWizard()) {
-            // The action's own steps, in the wizard style every other form has.
+            // The action's own steps, in the wizard style every other form has, ending in the full review: its own
+            // review step lists every detail too, or a Review step is added (FormWizard::endInReview()).
             $built = parent::getSchema($schema);
             foreach ($built?->getComponents(withHidden: true) ?? [] as $component) {
                 if ($component instanceof Wizard) {
                     $component->extraAttributes(['class' => 'pos-wizard pos-wizard-drawer'], merge: true);
+                    $steps = $component->getDefaultChildComponents();
+                    if (is_array($steps) && ! $this->isSchemaDisabled()) {
+                        $component->steps(FormWizard::endInReview($steps, $this->wizardMode()));
+                    }
                 }
             }
 
@@ -49,11 +54,7 @@ trait FollowsFormWizard
         if (! $this->formWizard) {
             return $schema;
         }
-        $mode = match (true) {
-            $this instanceof CreateAction => FormWizard::CREATE,
-            $this instanceof EditAction => FormWizard::EDIT,
-            default => FormWizard::ACTION,
-        };
+        $mode = $this->wizardMode();
 
         return $schema->columns(null)->components([
             FormWizard::wizard(FormWizard::steps($schema, $mode, $this->wizardSubject()), $mode, 'drawer')
@@ -76,6 +77,16 @@ trait FollowsFormWizard
         }
 
         return FormWizard::fieldCount($schema) >= 2 && FormWizard::wants($schema);
+    }
+
+    /** Creating (a create drawer), editing (an edit drawer: changes before → after) or another action's form. */
+    private function wizardMode(): string
+    {
+        return match (true) {
+            $this instanceof CreateAction => FormWizard::CREATE,
+            $this instanceof EditAction => FormWizard::EDIT,
+            default => FormWizard::ACTION,
+        };
     }
 
     /** What the first step is named after: the record for drawers; "Details" in other modals (their heading names the action already). */

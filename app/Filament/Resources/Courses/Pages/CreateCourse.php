@@ -8,9 +8,4 @@ use App\Filament\Support\Pages\PeopleCreateRecord;
 class CreateCourse extends PeopleCreateRecord
 {
     protected static string $resource = CourseResource::class;
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('edit', ['record' => $this->getRecord()]);
-    }
 }

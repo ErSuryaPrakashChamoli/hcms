@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Storage;
  * organisation tree; locations, departments etc. hang off this in Phase 2.
  */
 #[UseFactory(CompanyFactory::class)]
-#[Fillable(['tenant_id', 'name', 'code', 'legal_name', 'industry', 'phone', 'fax', 'contact_employee_id', 'social_links', 'logo_path', 'status', 'country_code', 'timezone', 'currency', 'effective_from', 'effective_to', 'metadata'])]
+#[Fillable(['tenant_id', 'name', 'code', 'legal_name', 'industry', 'phone', 'fax', 'contact_employee_id', 'social_links', 'logo_path', 'status', 'country_code', 'state_code', 'city', 'timezone', 'currency', 'effective_from', 'effective_to', 'metadata'])]
 class Company extends Model
 {
     /** @use HasFactory<CompanyFactory> */

@@ -22,9 +22,4 @@ class CreatePolicy extends PeopleCreateRecord
     {
         app(Policies::class)->draft($this->getRecord(), []);
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return PolicyResource::getUrl('edit', ['record' => $this->getRecord()]);
-    }
 }

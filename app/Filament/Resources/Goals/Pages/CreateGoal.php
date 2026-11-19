@@ -34,9 +34,4 @@ class CreateGoal extends PeopleCreateRecord
     {
         return [PerformanceActions::useGoalTemplate()->after(fn () => $this->redirect(static::getResource()::getUrl('index')))];
     }
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('index');
-    }
 }

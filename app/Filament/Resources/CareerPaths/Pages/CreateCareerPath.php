@@ -8,9 +8,4 @@ use App\Filament\Support\Pages\PeopleCreateRecord;
 class CreateCareerPath extends PeopleCreateRecord
 {
     protected static string $resource = CareerPathResource::class;
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('edit', ['record' => $this->getRecord()]);
-    }
 }

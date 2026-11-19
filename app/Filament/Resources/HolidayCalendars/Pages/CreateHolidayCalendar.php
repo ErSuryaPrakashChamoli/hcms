@@ -8,9 +8,4 @@ use App\Filament\Support\Pages\PeopleCreateRecord;
 class CreateHolidayCalendar extends PeopleCreateRecord
 {
     protected static string $resource = HolidayCalendarResource::class;
-
-    protected function getRedirectUrl(): string
-    {
-        return HolidayCalendarResource::getUrl('edit', ['record' => $this->getRecord()]);
-    }
 }
