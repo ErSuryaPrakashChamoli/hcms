@@ -111,6 +111,16 @@ it('links perspectives and units to goals: the unit fills the measure, target an
     expect($rows['Collections FY26']['perspective'])->toBe('Financial')->and($rows['Collections FY26']['unit'])->toBe('Amount (INR)')->and($rows['Plain']['unit'])->toBe('tickets');
 });
 
+it('lists units added by employees with who added them, without loading each creator on its own', function () {
+    // 2026-11-20: the server runs strict, so a creator read row by row would fail the list.
+    foreach (['KM' => $this->employee, 'CALLS' => $this->manager] as $code => $by) {
+        PerformanceUnit::query()->create(['code' => $code, 'name' => $code, 'is_admin' => false, 'created_by' => $by->user->id]);
+    }
+
+    $this->get(PerformanceUnitResource::getUrl('index'))->assertOk()
+        ->assertSee('Employee: '.$this->employee->user->name)->assertSee('Employee: '.$this->manager->user->name);
+});
+
 it('lets employees add their own units only when allowed, visible to them and HR', function () {
     $masters = app(PerformanceMasters::class);
     expect(fn () => $masters->addUnitForUser('Calls', 'numeric', $this->employee->user))->toThrow(RuntimeException::class, 'set up by HR');

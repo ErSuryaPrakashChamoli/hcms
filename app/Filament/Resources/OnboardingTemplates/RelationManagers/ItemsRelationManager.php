@@ -21,6 +21,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -59,6 +60,8 @@ class ItemsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            // The owner column names the role or user of each item: loaded with the rows, not one query per row.
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['ownerRole', 'ownerUser']))
             ->columns([
                 TextColumn::make('phase')->badge()->color('gray')->formatStateUsing(fn (string $state) => config("peopleos.onboarding.phases.{$state}.label", $state)),
                 TextColumn::make('sort_order')->label('#'),

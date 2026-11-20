@@ -51,7 +51,7 @@ class VersionsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with(['preparer', 'approver', 'slaPolicy']))
+            ->modifyQueryUsing(fn ($query) => $query->with(['preparer', 'approver', 'slaPolicy', 'formVersion.form']))
             ->columns([
                 TextColumn::make('version')->label('v')->sortable(),
                 TextColumn::make('status')->badge()->formatStateUsing(fn (string $state) => ServiceDefinitionVersion::STATUSES[$state] ?? $state)

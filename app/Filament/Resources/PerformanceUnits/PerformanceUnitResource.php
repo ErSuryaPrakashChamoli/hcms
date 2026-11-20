@@ -23,6 +23,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 /**
@@ -75,6 +76,8 @@ class PerformanceUnitResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            // "Added by" names the employee who added a unit: loaded with the rows, not one query per row.
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('creator'))
             ->columns([
                 TextColumn::make('name')->label('Label')->searchable()->sortable(),
                 TextColumn::make('code'),

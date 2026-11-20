@@ -186,6 +186,7 @@ use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Grievance\Models\GrievanceCategory;
 use App\Domain\Grievance\Policies\GrievanceConfigPolicy;
 use App\Domain\Grievance\Policies\GrievancePolicy;
+use App\Domain\Identity\Listeners\RememberSignInWorkspace;
 use App\Domain\Identity\Listeners\SecureNewSession;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
@@ -400,6 +401,9 @@ use App\Domain\Workforce\Policies\PositionPolicy;
 use App\Domain\Workforce\Policies\WorkforceBudgetPolicy;
 use App\Domain\Workforce\Policies\WorkforcePlanningPolicy;
 use App\Domain\Workforce\Services\PositionSeats;
+use App\Filament\Support\DuplicateEntryGuard;
+use App\Filament\Support\Forms\PeopleFileUpload;
+use App\Filament\Support\UniqueCode;
 use App\Support\Http\DnsHostResolver;
 use App\Support\Http\HostResolver;
 use App\Support\Observability\SuppressUndeliverableMail;
@@ -534,10 +538,12 @@ class AppServiceProvider extends ServiceProvider
         // in that form, or the one its record already holds, may reach the code that copies, serves or deletes it —
         // Filament's own check is off by default. A form filled from elsewhere allows its own folder (SetupCentre).
         FileUpload::configureUsing(fn (FileUpload $upload) => $upload->preventFilePathTampering());
+        // 2026-11-20: the same upload, safe on a record without a column of the field's name (an action on a table row).
+        $this->app->bind(FileUpload::class, PeopleFileUpload::class);
         // 2026-11-19: unique codes are checked as they are typed (the field says taken or available), and a duplicate
         // that still reaches the database becomes a message on the form instead of the server-error page.
-        \App\Filament\Support\UniqueCode::register();
-        \App\Filament\Support\DuplicateEntryGuard::register();
+        UniqueCode::register();
+        DuplicateEntryGuard::register();
 
         // Phase 11: the salary models moved from Payroll to Compensation. Polymorphic references stored
         // before the move (timeline sources, configuration changes) keep resolving; new rows use the
@@ -560,7 +566,7 @@ class AppServiceProvider extends ServiceProvider
         // SaaS.2: every login is stamped and starts without MFA proof; signing out ends operator tenant access.
         Event::listen(Login::class, SecureNewSession::class);
         // Branded sign-in: the browser remembers the organisation, so its sign-in page shows the organisation's look.
-        Event::listen(Login::class, \App\Domain\Identity\Listeners\RememberSignInWorkspace::class);
+        Event::listen(Login::class, RememberSignInWorkspace::class);
         Event::listen(Logout::class, EndPlatformAccessOnLogout::class);
         Event::listen(EmployeeLifecycleChanged::class, AutoStartOnboarding::class);
         Event::listen(WorkflowCompleted::class, LeaveWorkflowBridge::class);

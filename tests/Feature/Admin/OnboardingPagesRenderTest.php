@@ -2,6 +2,7 @@
 
 use App\Domain\Bgv\Services\Bgv;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Identity\Models\Role;
 use App\Domain\Integration\Models\ApiKey;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Onboarding\Models\OnboardingTemplate;
@@ -15,6 +16,8 @@ use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\Pages\ViewEmployee;
 use App\Filament\Resources\OnboardingPlans\OnboardingPlanResource;
 use App\Filament\Resources\OnboardingTemplates\OnboardingTemplateResource;
+use App\Filament\Resources\OnboardingTemplates\Pages\EditOnboardingTemplate;
+use App\Filament\Resources\OnboardingTemplates\RelationManagers\ItemsRelationManager;
 use App\Filament\Widgets\PeopleControlCentre;
 use Livewire\Livewire;
 
@@ -45,6 +48,17 @@ it('renders onboarding, BGV, document type, API key and 360 pages', function () 
     $this->get('/admin')->assertOk();
     Livewire::test(PeopleControlCentre::class)->assertSee('Open verifications')->assertSee('Onboarding overdue');
     $this->get(EmployeeResource::getUrl('view', ['record' => $this->employee]))->assertOk()->assertSee('Onboarding')->assertSee('Documents')->assertSee('Verification');
+});
+
+it('lists checklist items owned by a role or a person without loading each owner on its own', function () {
+    // Production 2026-11-20: a template with role- and user-owned items failed (lazy load of ownerRole on each row).
+    actAsTenant($this->tenant);
+    $role = Role::query()->create(['name' => 'IT desk', 'slug' => 'it-desk-'.uniqid()]);
+    $this->template->items()->create(['phase' => 'day_one', 'type' => 'task', 'title' => 'Laptop', 'owner_type' => 'role', 'owner_role_id' => $role->id]);
+    $this->template->items()->create(['phase' => 'day_one', 'type' => 'task', 'title' => 'Buddy lunch', 'owner_type' => 'user', 'owner_user_id' => $this->manager->user->id]);
+
+    Livewire::test(ItemsRelationManager::class, ['ownerRecord' => $this->template, 'pageClass' => EditOnboardingTemplate::class])
+        ->assertOk()->assertSee('Role: IT desk')->assertSee($this->manager->user->name)->assertSee('Say hello');
 });
 
 it('lets the manager complete an onboarding task from the inbox', function () {

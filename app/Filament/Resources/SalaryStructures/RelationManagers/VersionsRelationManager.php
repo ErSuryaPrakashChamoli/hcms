@@ -36,7 +36,7 @@ class VersionsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->withCount('components')->with(['preparer', 'approver', 'company']))
+            ->modifyQueryUsing(fn ($query) => $query->withCount('components')->with(['preparer', 'approver', 'company', 'balancingComponent']))
             ->columns([
                 TextColumn::make('version')->label('v')->sortable(),
                 TextColumn::make('status')->badge()->formatStateUsing(fn (string $state) => SalaryStructureVersion::STATUSES[$state] ?? $state)
