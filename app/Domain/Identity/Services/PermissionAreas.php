@@ -120,7 +120,7 @@ final class PermissionAreas
         'settings' => ['Organisation settings', 'Organisation-wide settings in Setup.'],
         'features' => ['Features', 'Turning product features on or off.'],
         'custom_field' => ['Custom fields', 'Extra fields added to records.'],
-        'configuration' => ['Change Centre', 'Proposing, approving, publishing and rolling back configuration changes.'],
+        'configuration' => ['Change Centre & cloning', 'Proposing, approving, publishing and rolling back configuration changes, and cloning configuration as inactive copies inside a company or into other companies.'],
         'blueprint' => ['Blueprints', 'Exporting and importing ready-made configuration packs.'],
         'currency' => ['Currencies', 'Exchange rates and the base currency.'],
         'product' => ['Product ideas', 'Suggesting improvements to PeopleOS and following them.'],

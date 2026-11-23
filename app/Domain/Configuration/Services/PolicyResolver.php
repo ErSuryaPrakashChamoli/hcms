@@ -40,7 +40,27 @@ final class PolicyResolver
     /** @param  array<string, mixed>  $context */
     public function matchingRule(string $type, array $context, CarbonInterface|string|null $on = null): ?PolicyAssignmentRule
     {
-        foreach ($this->candidateRules($type, $on) as $rule) {
+        return $this->firstMatching($this->candidateRules($type, $on), $context);
+    }
+
+    /**
+     * The rules of a type that may apply on a date, best first (what matchingRule() walks), for callers that resolve
+     * many employees at once (configuration cloning's impact count).
+     *
+     * @return Collection<int, PolicyAssignmentRule>
+     */
+    public function candidates(string $type, CarbonInterface|string|null $on = null): Collection
+    {
+        return $this->candidateRules($type, $on);
+    }
+
+    /**
+     * @param  iterable<PolicyAssignmentRule>  $candidates  best first
+     * @param  array<string, mixed>  $context
+     */
+    public function firstMatching(iterable $candidates, array $context): ?PolicyAssignmentRule
+    {
+        foreach ($candidates as $rule) {
             if ($this->rules->matches($rule->conditions ?? [], $context, $rule->match)) {
                 return $rule;
             }

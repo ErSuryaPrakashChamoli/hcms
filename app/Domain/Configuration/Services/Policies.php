@@ -6,14 +6,14 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Configuration\Enums\VersionStatus;
 use App\Domain\Configuration\Exceptions\ConfigurationException;
+use App\Domain\Configuration\Models\ConfigurationLineage;
 use App\Domain\Configuration\Models\Policy;
+use App\Domain\Configuration\Models\PolicyAssignmentRule;
 use App\Domain\Configuration\Models\PolicyVersion;
-use App\Domain\Identity\Models\User;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /** Policy versioning: draft -> publish (effective-dated, immutable) -> retire; restore = new draft. */
 final class Policies
@@ -47,8 +47,9 @@ final class Policies
         $draft = $policy->draft()->first() ?? throw new ConfigurationException('Nothing to publish: create a draft first.');
         $from = Carbon::parse($effectiveFrom ?? now())->startOfDay();
         self::validateSettings($policy->type, (array) ($draft->settings ?? []));
+        $activate = $this->awaitsCloneActivation($policy);
 
-        return DB::transaction(function () use ($policy, $draft, $from, $reason) {
+        return DB::transaction(function () use ($policy, $draft, $from, $reason, $activate) {
             // The previous published version ends the day before the new one starts (§69).
             $policy->versions()
                 ->where('status', VersionStatus::Published)
@@ -79,6 +80,12 @@ final class Policies
 
             $this->audit->record(AuditAction::PolicyPublished, 'configuration', $draft, reason: $reason, effectiveDate: $from, metadata: ['policy' => $policy->code, 'version' => $draft->version]);
 
+            // Configuration cloning: a copy's rules wait, inactive, for its first publish, and come into force with it.
+            if ($activate) {
+                $policy->assignmentRules()->where('status', ActiveStatus::Inactive->value)->get()
+                    ->each(fn (PolicyAssignmentRule $rule) => $rule->withAuditReason($reason ?? 'Activated with the first publish of a cloned policy')->update(['status' => ActiveStatus::Active]));
+            }
+
             return $draft;
         });
     }
@@ -99,35 +106,15 @@ final class Policies
     }
 
     /**
-     * HROne setup parity (Clone on a policy card): a new policy of the same type with a copy of the source's draft (else
-     * its latest version) as its draft. It has no assignment rules, so it applies to nobody until someone chooses.
+     * A policy made by cloning (configuration cloning) that has never been published: its applicability rules were
+     * created inactive, so the copy applies to nobody while it is a draft, and its first publish turns them on (rules
+     * the wizard adds meanwhile wait the same way). Policy "Duplicate" became the Clone action (decision OD-10).
      */
-    public function duplicate(Policy $source, string $name, ?string $code, string $reason, User $actor): Policy
+    public function awaitsCloneActivation(Policy $policy): bool
     {
-        if (! $actor->can('policy.create')) {
-            throw new ConfigurationException('You cannot create policies.');
-        }
-        if (trim($reason) === '') {
-            throw new ConfigurationException('Give the reason for the change.');
-        }
-        $name = trim($name);
-        $code = trim((string) $code) ?: Str::upper(Str::slug(Str::limit($name, 30, ''), '_'));
-        if ($name === '' || ! preg_match('/^[A-Za-z0-9_-]{1,64}$/', $code)) {
-            throw new ConfigurationException('Name the copy and give it a code of letters, numbers, dashes and underscores.');
-        }
-        if (Policy::query()->where('code', $code)->exists()) {
-            throw new ConfigurationException("Another policy already uses the code {$code}.");
-        }
-
-        return DB::transaction(function () use ($source, $name, $code, $reason) {
-            $settings = ($source->draft()->first() ?? $source->versions()->first())?->settings ?? [];
-            $copy = new Policy(['type' => $source->type, 'name' => $name, 'code' => $code, 'description' => $source->description, 'status' => ActiveStatus::Active]);
-            $copy->withAuditReason($reason)->save();
-            $this->draft($copy, $settings, 'Copied from '.$source->name);
-            $this->audit->record(AuditAction::Create, 'configuration', $copy, [], $reason, metadata: ['duplicated_from' => $source->code]);
-
-            return $copy->refresh();
-        });
+        return $policy->exists
+            && $policy->versions()->whereNotNull('published_at')->doesntExist()
+            && ConfigurationLineage::query()->where('adapter', 'policy')->where('role', ConfigurationLineage::ROOT)->where('target_id', $policy->id)->exists();
     }
 
     /** Rollback (§75): copy an earlier version into a fresh draft; history stays intact. */

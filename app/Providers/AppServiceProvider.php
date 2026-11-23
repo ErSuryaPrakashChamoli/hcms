@@ -113,6 +113,7 @@ use App\Domain\ComplianceReports\Models\ComplianceReportPack;
 use App\Domain\ComplianceReports\Policies\ComplianceReportPackPolicy;
 use App\Domain\ComplianceReports\Support\ReportCatalogue;
 use App\Domain\Configuration\Models\ConfigurationChange;
+use App\Domain\Configuration\Models\ConfigurationCloneOperation;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\CustomFieldValue;
 use App\Domain\Configuration\Models\Form;
@@ -122,6 +123,7 @@ use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Models\PolicyAssignmentRule;
 use App\Domain\Configuration\Models\PolicyVersion;
 use App\Domain\Configuration\Policies\ConfigurationChangePolicy;
+use App\Domain\Configuration\Policies\ConfigurationCloneOperationPolicy;
 use App\Domain\Configuration\Policies\CustomFieldPolicy;
 use App\Domain\Configuration\Policies\FormPolicy;
 use App\Domain\Configuration\Policies\PolicyPolicy;
@@ -772,6 +774,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(CustomField::class, CustomFieldPolicy::class);
         Gate::policy(CustomFieldValue::class, CustomFieldPolicy::class);
         Gate::policy(ConfigurationChange::class, ConfigurationChangePolicy::class);
+        Gate::policy(ConfigurationCloneOperation::class, ConfigurationCloneOperationPolicy::class);
 
         foreach ([Form::class, FormVersion::class, FormSubmission::class] as $model) {
             Gate::policy($model, FormPolicy::class);

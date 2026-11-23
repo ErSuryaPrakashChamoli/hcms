@@ -198,6 +198,9 @@ it('audits every domain model except the documented append-only or derived table
         // HROne setup parity HP-8h: 360 feedback answers are the content side of the same anonymity boundary (random key,
         // no timestamps, no link to an anonymous reviewer); the nomination's status change is audited instead.
         'Performance\Models\FeedbackResponse',
+        // Configuration cloning: the clone record and its lineage are themselves the append-only record of a clone (one CLONE
+        // event and the operation's summary carry the same manifest; every copy's own CREATE event names the operation).
+        'Configuration\Models\ConfigurationCloneOperation', 'Configuration\Models\ConfigurationLineage',
         // Phase 14: inbound integration events are an event log whose every state change is audited
         // explicitly (INTEGRATION_EVENT_*); automatic auditing would copy the payload into the trail.
         'Integration\Models\InboundEvent',

@@ -1,5 +1,9 @@
 <?php
 
+use App\Domain\Configuration\Cloning\CloneRefusedException;
+use App\Domain\Configuration\Cloning\CloneRequest;
+use App\Domain\Configuration\Cloning\ConfigurationCloner;
+use App\Domain\Configuration\Cloning\Destination;
 use App\Domain\Configuration\Exceptions\ConfigurationException;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Models\PolicyAssignmentRule;
@@ -8,6 +12,8 @@ use App\Domain\Configuration\Services\PolicySetup;
 use App\Domain\Configuration\Services\SetupCatalogue;
 use App\Domain\Experience\Services\ApprovalCenter;
 use App\Domain\Experience\Services\ApprovalDecisions;
+use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Domain\Organisation\Models\Company;
 use App\Domain\Performance\Models\Competency;
 use App\Domain\Performance\Models\Goal;
 use App\Domain\Performance\Models\GoalPlan;
@@ -231,15 +237,20 @@ it('checks a goal sheet policy before it is saved or published, and offers its m
     Livewire::withQueryParams(['type' => 'goal_sheet'])->test(PolicyWizard::class)->assertOk();
 });
 
-it('duplicates a policy with its settings as a new draft that applies to nobody', function () {
+it('clones a policy with its settings as an inactive draft copy (Duplicate became Clone, configuration cloning OD-10)', function () {
     $source = gspPolicy(['goal_weight_mode' => 'equal', 'max_goals' => 6]);
-    $copy = app(Policies::class)->duplicate($source, 'Sales goal sheet', 'SALES_GS', 'Same rules for sales', $this->hr);
+    $company = Company::query()->orderBy('id')->first();
+    $clone = fn (string $code, $actor) => app(ConfigurationCloner::class)->execute(new CloneRequest('policy', $source->id, [new Destination($company->id, 'Sales goal sheet', $code)],
+        reason: 'Same rules for sales', acknowledged: true), $actor);
+    $copy = $clone('SALES_GS', $this->hr)->copies[0];
 
-    expect($copy->type)->toBe('goal_sheet')->and($copy->assignmentRules()->count())->toBe(0)
+    expect($copy->type)->toBe('goal_sheet')
+        ->and($copy->assignmentRules()->sole()->status)->toBe(ActiveStatus::Inactive)
         ->and($copy->draft()->sole()->settings)->toBe(['goal_weight_mode' => 'equal', 'max_goals' => 6])
-        ->and(fn () => app(Policies::class)->duplicate($source, 'Again', 'SALES_GS', 'x', $this->hr))->toThrow(ConfigurationException::class, 'already uses the code SALES_GS')
-        ->and(fn () => app(Policies::class)->duplicate($source, 'Mine', 'MINE', 'x', tenantUser($this->tenant, ['policy.view'])))->toThrow(ConfigurationException::class, 'cannot create policies');
+        ->and(fn () => $clone('SALES_GS', $this->hr))->toThrow(CloneRefusedException::class, 'already in use')
+        ->and(fn () => $clone('MINE', tenantUser($this->tenant, ['policy.view'])))->toThrow(CloneRefusedException::class, 'do not let you clone policies');
 
-    Livewire::test(ListPolicies::class)->callTableAction('duplicate', $source, ['name' => 'Ops goal sheet', 'code' => 'OPS_GS', 'audit_reason' => 'Ops copy'])->assertHasNoTableActionErrors();
+    Livewire::test(ListPolicies::class)->callTableAction('clone', $source, ['destinations' => [['company_id' => $company->id, 'name' => 'Ops goal sheet', 'code' => 'OPS_GS']],
+        'acknowledge' => true, 'audit_reason' => 'Ops copy'])->assertHasNoTableActionErrors();
     expect(Policy::query()->where('code', 'OPS_GS')->sole()->draft()->sole()->settings)->toBe(['goal_weight_mode' => 'equal', 'max_goals' => 6]);
 });

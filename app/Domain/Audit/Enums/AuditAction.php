@@ -50,6 +50,8 @@ enum AuditAction: string
     case PolicyUpdated = 'POLICY_UPDATED';
     case PolicyPublished = 'POLICY_PUBLISHED';
     case PolicyRetired = 'POLICY_RETIRED';
+    // Configuration cloning (docs/architecture/configuration-cloning.md): one CLONE event per clone attempt, with its manifest.
+    case Clone = 'CLONE';
     case WorkflowChanged = 'WORKFLOW_CHANGED';
     case ShiftChanged = 'SHIFT_CHANGED';
 

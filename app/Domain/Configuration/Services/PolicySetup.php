@@ -76,10 +76,12 @@ final class PolicySetup
     private function plainRules(Policy $policy): ?array
     {
         $found = ['applicability' => null, 'employees' => null];
+        // A clone not yet published keeps its rules inactive until its first publish (Policies::awaitsCloneActivation()).
+        $waiting = $this->policies->awaitsCloneActivation($policy);
         foreach ($policy->assignmentRules()->get() as $rule) {
             $conditions = (array) $rule->conditions;
             $fields = array_column($conditions, 'field');
-            if ($rule->status !== ActiveStatus::Active || ($rule->match ?? 'all') !== 'all' || count($fields) !== count(array_unique($fields))
+            if ($rule->status !== ($waiting ? ActiveStatus::Inactive : ActiveStatus::Active) || ($rule->match ?? 'all') !== 'all' || count($fields) !== count(array_unique($fields))
                 || collect($conditions)->contains(fn (array $c) => ! in_array($c['operator'] ?? '', ['in', 'equals'], true))) {
                 return null;
             }
@@ -178,19 +180,21 @@ final class PolicySetup
             throw new ConfigurationException('Choose at least one group the policy applies to, or apply it to everyone.');
         }
 
+        $status = $this->policies->awaitsCloneActivation($policy) ? ActiveStatus::Inactive : ActiveStatus::Active;
         $appliesTo === 'employees'
             ? $found['applicability']?->withAuditReason($reason)->delete()
-            : $this->rule($policy, $found['applicability'], self::APPLICABILITY, $appliesTo === 'everyone' ? 1000 : 100, $appliesTo === 'everyone' ? [] : $conditions, $until, $reason);
+            : $this->rule($policy, $found['applicability'], self::APPLICABILITY, $appliesTo === 'everyone' ? 1000 : 100, $appliesTo === 'everyone' ? [] : $conditions, $until, $reason, $status);
         $employees === []
             ? $found['employees']?->withAuditReason($reason)->delete()
-            : $this->rule($policy, $found['employees'], self::EMPLOYEES, 50, [['field' => 'employee_id', 'operator' => 'in', 'value' => $employees]], $until, $reason);
+            : $this->rule($policy, $found['employees'], self::EMPLOYEES, 50, [['field' => 'employee_id', 'operator' => 'in', 'value' => $employees]], $until, $reason, $status);
     }
 
     /** @param  list<array<string, mixed>>  $conditions */
-    private function rule(Policy $policy, ?PolicyAssignmentRule $rule, string $name, int $priority, array $conditions, ?string $until, string $reason): void
+    private function rule(Policy $policy, ?PolicyAssignmentRule $rule, string $name, int $priority, array $conditions, ?string $until, string $reason, ActiveStatus $status): void
     {
-        // A rule the wizard adopts keeps its name and priority, so saving never reorders how policies resolve.
-        $rule ??= new PolicyAssignmentRule(['policy_id' => $policy->id, 'policy_type' => $policy->type, 'name' => $name, 'priority' => $priority, 'status' => ActiveStatus::Active]);
+        // A rule the wizard adopts keeps its name and priority, so saving never reorders how policies resolve. A new rule
+        // of a clone waiting for its first publish waits with the others (inactive).
+        $rule ??= new PolicyAssignmentRule(['policy_id' => $policy->id, 'policy_type' => $policy->type, 'name' => $name, 'priority' => $priority, 'status' => $status]);
         $rule->fill(['match' => 'all', 'conditions' => $conditions, 'effective_to' => $until]);
         if ($rule->isDirty() || ! $rule->exists) {
             $rule->withAuditReason($reason)->save();

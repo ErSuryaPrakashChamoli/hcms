@@ -683,6 +683,7 @@ return [
                 ['label' => 'Notification templates', 'target' => 'App\\Filament\\Resources\\NotificationTemplates\\NotificationTemplateResource'],
                 ['label' => 'All policies', 'target' => 'App\\Filament\\Resources\\Policies\\PolicyResource'],
                 ['label' => 'Configuration changes', 'target' => 'App\\Filament\\Resources\\ConfigurationChanges\\ConfigurationChangeResource'],
+                ['label' => 'Clone history (configuration copied within or across companies)', 'target' => 'App\\Filament\\Resources\\ConfigurationCloneOperations\\ConfigurationCloneOperationResource'],
                 ['label' => 'Approvals (Approval Center)', 'target' => 'App\\Filament\\Pages\\Approvals'],
                 ['label' => 'Task inbox (incl. requests sent back to you)', 'target' => 'App\\Filament\\Pages\\TaskInbox'],
                 ['label' => 'Out of office (delegations)', 'target' => 'App\\Filament\\Pages\\OutOfOffice'],

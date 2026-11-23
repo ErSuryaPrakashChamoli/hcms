@@ -59,6 +59,7 @@ use App\Domain\ComplianceReports\Builders\ReturnWorkingSheet;
 use App\Domain\ComplianceReports\Builders\SalaryVariance;
 use App\Domain\ComplianceReports\Builders\TdsStatement;
 use App\Domain\ComplianceReports\Builders\WageRegister;
+use App\Domain\Configuration\Cloning\Adapters\PolicyCloneAdapter;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
 use App\Domain\Configuration\Models\Form;
@@ -263,6 +264,10 @@ return [
             'configuration.publish' => 'Publish approved or scheduled changes now',
             'configuration.rollback' => 'Roll back a published change',
             'configuration.delete' => 'Discard draft changes',
+            // Configuration cloning (docs/architecture/configuration-cloning.md): a copy is always created inactive, and
+            // the type's own create permission is needed too, for every company the copy is made for.
+            'configuration.clone' => 'Clone configuration as a variation inside a company it already applies to',
+            'configuration.clone.cross_company' => 'Clone configuration to other companies, or to several at once',
         ],
         'blueprint' => [
             'blueprint.export' => 'Export configuration blueprints',
@@ -687,7 +692,7 @@ return [
         'tenant-hr-admin' => [
             'name' => 'Tenant HR Admin',
             'description' => 'Configures the HRMS for the tenant.',
-            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'partner.*', 'bulk.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'integration.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'project.*', 'expense.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view', 'celebration.*', 'recognition.*', 'wall.*', 'feedback.*', 'product.feedback'],
+            'permissions' => ['company.*', 'organisation.*', 'people_setup.*', 'employee.*', 'partner.*', 'bulk.*', 'custom_field.*', 'form.*', 'policy.*', 'configuration.view', 'configuration.update', 'configuration.publish', 'configuration.rollback', 'configuration.delete', 'configuration.clone', 'blueprint.*', 'workflow.*', 'task.*', 'notification.*', 'onboarding.*', 'document.*', 'bgv.*', 'api_key.*', 'integration.*', 'attendance.*', 'leave.*', 'payroll.*', 'compliance.*', 'performance.*', 'learning.*', 'skills.*', 'development.*', 'career.*', 'talent.view', 'talent.manage', 'talent.assess', 'talent.review', 'talent.confidential', 'talent.analytics', 'succession.view', 'succession.manage', 'succession.assess', 'succession.team', 'workforce.*', 'compensation.*', 'asset.*', 'project.*', 'expense.*', 'servicedesk.*', 'grievance.*', 'kb.*', 'communication.*', 'engagement.*', 'exit.*', 'letter.*', 'alumni.*', 'analytics.*', 'ai.*', 'sso.*', 'webhook.*', 'security.*', 'currency.*', 'warehouse.*', 'user.*', 'role.view', 'settings.*', 'features.view', 'audit.view', 'celebration.*', 'recognition.*', 'wall.*', 'feedback.*', 'product.feedback'],
         ],
         'hr-manager' => [
             'name' => 'HR Manager',
@@ -723,7 +728,7 @@ return [
         'expense-admin' => [
             'name' => 'Expense Admin',
             'description' => 'Configures expense categories, limits and policies; decides and pays expenses.',
-            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'policy.view', 'policy.create', 'policy.update', 'policy.publish', 'currency.manage', 'expense.*', 'task.view', 'task.act', 'task.delegate'],
+            'permissions' => ['company.view', 'organisation.view', 'people_setup.view', 'employee.view', 'policy.view', 'policy.create', 'policy.update', 'policy.publish', 'configuration.clone', 'currency.manage', 'expense.*', 'task.view', 'task.act', 'task.delegate'],
         ],
         'manager' => [
             'name' => 'Manager',
@@ -769,6 +774,7 @@ return [
         'organisation.designer' => ['enabled' => false, 'description' => 'Visual organisation designer'],
         'audit.sensitive_access' => ['enabled' => true, 'description' => 'Audit views of sensitive fields'],
         'configuration.approval' => ['enabled' => false, 'description' => 'Route medium/high-risk configuration changes through the Change Centre for approval'],
+        'configuration.cloning' => ['enabled' => true, 'description' => 'Clone policies (and, later, other configuration) as inactive copies within or across companies'],
         'ai.assistants' => ['enabled' => true, 'description' => 'Employee, Policy, Manager and HR assistants (grounded, permission-aware)'],
         'ai.payroll_auditor' => ['enabled' => true, 'description' => 'Anomaly detection on payroll runs'],
         'ai.workforce_intelligence' => ['enabled' => true, 'description' => 'Attrition-risk inference and workforce narrative'],
@@ -2622,6 +2628,21 @@ return [
             ],
         ],
         'packs_path' => resource_path('packs'),
+    ],
+
+    /*
+    | Configuration cloning (docs/architecture/configuration-cloning.md): the cloneable types (adapter key => class;
+    | registering an adapter is all a type needs) and the limits of a synchronous clone.
+    */
+    'cloning' => [
+        'adapters' => [
+            'policy' => PolicyCloneAdapter::class,
+        ],
+        'limits' => [
+            'destinations' => 10,
+            // People counted per destination company for "who the copy reaches today".
+            'impact_employees' => 2000,
+        ],
     ],
 
     /*

@@ -2,9 +2,7 @@
 
 namespace App\Filament\Resources\Policies;
 
-use App\Domain\Configuration\Exceptions\ConfigurationException;
 use App\Domain\Configuration\Models\Policy;
-use App\Domain\Configuration\Services\Policies;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Filament\Pages\PolicyWizard;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
@@ -14,13 +12,13 @@ use App\Filament\Resources\Policies\Pages\ListPolicies;
 use App\Filament\Resources\Policies\RelationManagers\RulesRelationManager;
 use App\Filament\Resources\Policies\RelationManagers\VersionsRelationManager;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\Cloning\CloneAction;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -94,34 +92,8 @@ class PolicyResource extends Resource
                     ->visible(fn () => auth()->user()->can('policy.update'))
                     ->url(fn (Policy $record) => PolicyWizard::getUrl(['policy' => $record->id])),
                 EditAction::make()->label('Versions & rules')->icon(Heroicon::OutlinedClock),
-                self::duplicateAction(),
+                CloneAction::make('policy'),
             ]);
-    }
-
-    /**
-     * HROne setup parity (Clone on a policy card): a copy of the policy's settings as a new draft policy, which applies to
-     * nobody until its applicability is chosen; it opens in the wizard.
-     */
-    public static function duplicateAction(): Action
-    {
-        return Action::make('duplicate')->label('Duplicate')->icon(Heroicon::OutlinedDocumentDuplicate)->color('gray')
-            ->visible(fn () => auth()->user()->can('policy.create'))
-            ->modalDescription('The copy keeps the settings as a draft and applies to nobody until you choose who it applies to.')
-            ->fillForm(fn (Policy $record) => ['name' => mb_strimwidth('Copy of '.$record->name, 0, 255), 'code' => mb_substr($record->code.'_COPY', 0, 64)])
-            ->schema([
-                TextInput::make('name')->required()->maxLength(255),
-                TextInput::make('code')->required()->maxLength(64)->alphaDash(),
-                AuditReasonField::make(),
-            ])
-            ->action(function (Policy $record, array $data, Action $action) {
-                try {
-                    $copy = app(Policies::class)->duplicate($record, $data['name'], $data['code'], (string) AuditReasonField::extract($data), auth()->user());
-                    Notification::make()->success()->title("Copied as {$copy->name}")->send();
-                    $action->redirect(PolicyWizard::getUrl(['policy' => $copy->id]));
-                } catch (ConfigurationException $e) {
-                    Notification::make()->danger()->title('Not copied')->body($e->getMessage())->send();
-                }
-            });
     }
 
     public static function getRelations(): array

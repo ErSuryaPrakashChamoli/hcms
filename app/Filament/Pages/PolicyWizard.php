@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domain\Configuration\Exceptions\ConfigurationException;
 use App\Domain\Configuration\Models\Policy;
+use App\Domain\Configuration\Services\Policies;
 use App\Domain\Configuration\Services\PolicySetup;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Filament\Resources\Policies\PolicyResource;
@@ -117,7 +118,9 @@ class PolicyWizard extends Page implements HasSchemas
         $versions = app(PolicySetup::class)->versions($policy);
 
         return $policy->typeLabel().' · '.($versions['current'] ? "in force: {$versions['current']}" : 'not published yet')
-            .($versions['draft'] ? " · editing draft v{$versions['draft']}" : ' · saving starts a new draft');
+            .($versions['draft'] ? " · editing draft v{$versions['draft']}" : ' · saving starts a new draft')
+            // Configuration cloning: a copy applies to nobody until its first publish, which turns its rules on.
+            .(app(Policies::class)->awaitsCloneActivation($policy) ? ' · a copy: its applicability rules come into force when you publish it' : '');
     }
 
     /** @return list<array{key: string, label: string, help: ?string}> the steps, for the step list */
