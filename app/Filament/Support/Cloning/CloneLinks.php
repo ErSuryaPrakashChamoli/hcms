@@ -9,6 +9,7 @@ use App\Filament\Pages\PolicyWizard;
 use App\Filament\Resources\Policies\PolicyResource;
 use App\Filament\Support\PolicySettingsSchema;
 use App\Filament\Support\RuleConditionsSchema;
+use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -24,7 +25,7 @@ final class CloneLinks
     {
         return rescue(fn () => match ($adapter) {
             'policy' => PolicyWizard::getUrl(['policy' => $id]),
-            default => null,
+            default => self::resourceUrl($adapter, $id),
         }, null, false);
     }
 
@@ -33,8 +34,19 @@ final class CloneLinks
     {
         return rescue(fn () => match ($adapter) {
             'policy' => PolicyResource::getUrl('edit', ['record' => $id]),
-            default => null,
+            default => self::resourceUrl($adapter, $id),
         }, null, false);
+    }
+
+    /** Any other registered type: its resource's edit page when it has one, else its list. */
+    private static function resourceUrl(string $adapter, int $id): ?string
+    {
+        $resource = Filament::getModelResource(app(CloneRegistry::class)->for($adapter)->model());
+        if ($resource === null) {
+            return null;
+        }
+
+        return $resource::hasPage('edit') ? $resource::getUrl('edit', ['record' => $id]) : $resource::getUrl('index');
     }
 
     /**

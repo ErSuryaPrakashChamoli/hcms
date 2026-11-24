@@ -13,4 +13,10 @@ enum ApplicabilityKind: string
     case CompanyColumn = 'company_column';
     case CompanyIdList = 'company_id_list';
     case None = 'none';
+
+    /**
+     * The record's entity applicability (configuration applicability framework): the snapshot holds the companies it
+     * applies to (`companies`, null = every company); a copy applies to its destination company only.
+     */
+    case EntityApplicability = 'entity_applicability';
 }

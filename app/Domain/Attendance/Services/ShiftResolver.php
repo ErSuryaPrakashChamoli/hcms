@@ -7,6 +7,8 @@ use App\Domain\Attendance\Models\ShiftOverride;
 use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Attendance\Models\WorkScheduleAssignment;
 use App\Domain\Attendance\Models\WorkScheduleRule;
+use App\Domain\Configuration\Applicability\EntityApplicability;
+use App\Domain\Configuration\Overrides\ConfigurationOverrides;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
@@ -40,7 +42,7 @@ final class ShiftResolver
         if ($override !== null) {
             $shift = $override->shift_id ? Shift::query()->find($override->shift_id) : null;
 
-            return ['schedule' => $schedule, 'shift' => $shift, 'weekly_off' => $shift === null, 'anchor' => $anchor, 'override' => $override]
+            return ['schedule' => $schedule, 'shift' => $this->forCompany($shift, $employee, $date), 'weekly_off' => $shift === null, 'anchor' => $anchor, 'override' => $override]
                 + ($override->allowsAutoShift() ? ['auto_shift' => true] : []);
         }
 
@@ -51,7 +53,22 @@ final class ShiftResolver
         $shiftId = $schedule->shiftIdFor($date, $anchor);
         $shift = $shiftId ? Shift::query()->find($shiftId) : null;
 
-        return ['schedule' => $schedule, 'shift' => $shift, 'weekly_off' => $shiftId === null, 'anchor' => $anchor];
+        return ['schedule' => $schedule, 'shift' => $this->forCompany($shift, $employee, $date), 'weekly_off' => $shiftId === null, 'anchor' => $anchor];
+    }
+
+    /**
+     * Configuration applicability: the shift as the employee's company uses it that day (its own grace periods, when it
+     * overrides them), as a read-only copy; the shared shift when the company has no overrides.
+     */
+    private function forCompany(?Shift $shift, Employee $employee, CarbonInterface|string $day, ?EmployeePosition $position = null): ?Shift
+    {
+        if ($shift === null || ! app(ConfigurationOverrides::class)->hasAny('shift', (int) $shift->id)) {
+            return $shift;
+        }
+        $company = $position !== null ? $position->company_id
+            : EmployeePosition::query()->where('employee_id', $employee->id)->effectiveOn($day)->orderByDesc('effective_from')->value('company_id');
+
+        return $shift->forCompany($company === null ? null : (int) $company, $day);
     }
 
     /** @return array{0: ?WorkSchedule, 1: ?Carbon} */
@@ -76,7 +93,9 @@ final class ShiftResolver
             ->effectiveOn($date)
             ->orderBy('priority')->orderBy('id')
             ->get()
-            ->first(fn (WorkScheduleRule $r) => $this->rules->matches($r->conditions ?? [], $context, 'all'));
+            // Configuration applicability: a schedule limited to some companies is never resolved for another company.
+            ->first(fn (WorkScheduleRule $r) => ($r->schedule === null || app(EntityApplicability::class)->allowsContext($r->schedule, $context, $date))
+                && $this->rules->matches($r->conditions ?? [], $context, 'all'));
 
         return $rule?->schedule ? [$rule->schedule, $rule->schedule->effective_from ?? $rule->effective_from] : [null, null];
     }
@@ -132,20 +151,21 @@ final class ShiftResolver
                         $contexts[$key] = $this->context->build($employee, $day->copy());
                     }
                     $rule = $rules->filter(fn (WorkScheduleRule $r) => $r->isEffectiveOn($day))
-                        ->first(fn (WorkScheduleRule $r) => $this->rules->matches($r->conditions ?? [], $contexts[$key], 'all'));
+                        ->first(fn (WorkScheduleRule $r) => ($r->schedule === null || app(EntityApplicability::class)->allowsContext($r->schedule, $contexts[$key], $day))
+                            && $this->rules->matches($r->conditions ?? [], $contexts[$key], 'all'));
                     [$schedule, $anchor] = $rule?->schedule ? [$rule->schedule, $rule->schedule->effective_from ?? $rule->effective_from] : [null, null];
                 }
 
                 $override = $overrides[$id][$date] ?? null;
                 if ($override !== null) {
-                    $shift = $override->shift_id ? ($shifts[(int) $override->shift_id] ?? null) : null;
+                    $shift = $this->forCompany($override->shift_id ? ($shifts[(int) $override->shift_id] ?? null) : null, $employee, $day->copy());
                     $out[$id][$date] = ['schedule' => $schedule, 'shift' => $shift, 'weekly_off' => $shift === null, 'anchor' => $anchor, 'override' => $override]
                         + ($override->allowsAutoShift() ? ['auto_shift' => true] : []);
                 } elseif ($schedule === null) {
                     $out[$id][$date] = ['schedule' => null, 'shift' => null, 'weekly_off' => false, 'anchor' => null];
                 } else {
                     $shiftId = $schedule->shiftIdFor($day->copy(), $anchor);
-                    $out[$id][$date] = ['schedule' => $schedule, 'shift' => $shiftId ? ($shifts[$shiftId] ?? null) : null, 'weekly_off' => $shiftId === null, 'anchor' => $anchor];
+                    $out[$id][$date] = ['schedule' => $schedule, 'shift' => $this->forCompany($shiftId ? ($shifts[$shiftId] ?? null) : null, $employee, $day->copy()), 'weekly_off' => $shiftId === null, 'anchor' => $anchor];
                 }
             }
         }

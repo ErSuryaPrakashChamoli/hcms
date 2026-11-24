@@ -11,6 +11,7 @@ use App\Domain\Assets\Models\AssetRequest;
 use App\Domain\Assets\Models\AssetSubtype;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Experience\Services\SelfServiceLock;
@@ -99,6 +100,7 @@ final class AssetRequests
         ];
         if ($kind !== 'return') {
             $this->assertTaxonomy($category, $subtypeId, $modelId);
+            $this->assertUsedByCompany($employee, $category, $subtypeId);
             if ($audience !== 'hr' && ($refusal = $this->entitlements->requestRefusal($employee, (int) $category->id, $subtypeId, $modelId)) !== null) {
                 throw new RuntimeException($refusal);
             }
@@ -492,5 +494,19 @@ final class AssetRequests
     private static function short(?string $note): ?string
     {
         return $note === null ? null : mb_substr(trim($note), 0, 500);
+    }
+
+    /** Configuration applicability: an asset type (or subtype) limited to some companies is not requested in another company. */
+    private function assertUsedByCompany(Employee $employee, AssetCategory $category, ?int $subtypeId): void
+    {
+        $company = NumberSeries::companyOf($employee);
+        if ($company === null) {
+            return;
+        }
+        $applicability = app(EntityApplicability::class);
+        $subtype = $subtypeId === null ? null : AssetSubtype::query()->find($subtypeId);
+        if (! $applicability->appliesTo($category, $company) || ($subtype !== null && ! $applicability->appliesTo($subtype, $company))) {
+            throw new RuntimeException('That asset type is not used by this employee\'s company.');
+        }
     }
 }

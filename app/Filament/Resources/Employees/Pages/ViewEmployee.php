@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Employees\Pages;
 use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Attendance\Services\ScheduleAssignments;
 use App\Domain\Bgv\Services\Bgv;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Employment\Actions\AssignPositionAction;
 use App\Domain\Employment\Actions\ChangeManagerAction;
 use App\Domain\Employment\Actions\ChangeStatutoryApplicabilityAction;
@@ -43,6 +44,7 @@ use App\Filament\Support\SignInActions;
 use App\Filament\Support\UpcomingJoinerActions;
 use App\Filament\Support\WorkforceBulkWizards;
 use App\Http\Controllers\EmployeeProfilePrintController;
+use App\Support\Numbering\NumberSeries;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -263,7 +265,9 @@ class ViewEmployee extends PeopleViewRecord
             ->visible(fn () => auth()->user()->can('letter.issue'))
             ->schema([
                 Select::make('template_id')->label('Template')->required()
-                    ->options(fn () => LetterTemplate::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all()),
+                    ->options(fn () => LetterTemplate::query()->where('status', 'active')
+                        ->when(NumberSeries::companyOf($this->getRecord()), fn ($q, $company) => app(EntityApplicability::class)->constrain($q, $company))
+                        ->orderBy('name')->pluck('name', 'id')->all()),
             ])
             ->action(fn (array $data) => ServiceDeskActions::run(fn () => app(Letters::class)->generate(LetterTemplate::query()->findOrFail($data['template_id']), $this->getRecord(), [], auth()->user()),
                 fn ($l) => "Letter {$l->number} ".($l->status === 'approved' ? 'ready to issue' : 'sent for approval')));

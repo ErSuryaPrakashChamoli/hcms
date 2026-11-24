@@ -2,6 +2,7 @@
 
 namespace App\Domain\Recognition\Services;
 
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
@@ -18,6 +19,7 @@ use App\Domain\Platform\Services\SettingsRepository;
 use App\Domain\Recognition\Events\RecognitionEvent;
 use App\Domain\Recognition\Models\Badge;
 use App\Domain\Recognition\Models\Recognition;
+use App\Support\Numbering\NumberSeries;
 use App\Support\Tenancy\TenantContext;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -130,6 +132,10 @@ final class Recognitions
     {
         if (! in_array($receiver->lifecycle_state, Birthdays::STATES, true)) {
             return 'Badges go to colleagues who work here now.';
+        }
+        // Configuration applicability: a badge limited to some companies is not given in another company.
+        if (($company = NumberSeries::companyOf($receiver)) !== null && ! app(EntityApplicability::class)->appliesTo($badge, $company)) {
+            return 'The badge '.$badge->name.' is not used by '.$receiver->person?->display_name.'\'s company.';
         }
         if ((array) $badge->receivers !== [] && ! $this->rules->matches((array) $badge->receivers, $this->context->build($receiver))) {
             return 'The badge '.$badge->name.' cannot be given to '.$receiver->person?->display_name.'.';

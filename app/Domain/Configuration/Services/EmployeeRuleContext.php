@@ -21,7 +21,8 @@ final class EmployeeRuleContext
         $context = [
             'employee_id' => $employee->id,
             'lifecycle_state' => $employee->lifecycle_state->value,
-            'gender' => $employee->person?->gender,
+            // Read without lazy loading: callers walk employees in chunks, where strict mode refuses a lazy load.
+            'gender' => $employee->relationLoaded('person') ? $employee->person?->gender : $employee->person()->value('gender'),
             'tenure_months' => $employee->joining_date ? (int) $employee->joining_date->diffInMonths($date) : null,
         ];
 

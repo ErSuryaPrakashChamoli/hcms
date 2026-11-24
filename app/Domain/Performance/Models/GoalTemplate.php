@@ -3,6 +3,7 @@
 namespace App\Domain\Performance\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
@@ -89,10 +90,12 @@ class GoalTemplate extends Model
     /** Whether the template's "Map template" conditions match the employee (no conditions = everyone). */
     public function appliesTo(Employee $employee): bool
     {
-        if (empty($this->applicability)) {
-            return true;
+        $context = app(EmployeeRuleContext::class)->build($employee, today());
+        // Configuration applicability: a template limited to some companies is not offered to another company's people.
+        if (! app(EntityApplicability::class)->allowsContext($this, $context)) {
+            return false;
         }
 
-        return app(RuleEngine::class)->matches($this->applicability, app(EmployeeRuleContext::class)->build($employee, today()));
+        return empty($this->applicability) || app(RuleEngine::class)->matches($this->applicability, $context);
     }
 }

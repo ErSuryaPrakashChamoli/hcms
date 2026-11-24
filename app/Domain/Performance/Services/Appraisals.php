@@ -4,6 +4,7 @@ namespace App\Domain\Performance\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
@@ -71,7 +72,17 @@ final class Appraisals
     /** The cycle's eligibility rules and (HP-8i) the performance policy's eligibility criteria (joined too long after the cycle started). */
     private function meetsEligibility(Employee $employee, PerformanceCycle $cycle): bool
     {
-        return (empty($cycle->eligibility) || $this->rules->matches($cycle->eligibility, $this->context->build($employee, $cycle->period_end)))
+        $context = $this->context->build($employee, $cycle->period_end);
+        // Configuration applicability: a cycle on an appraisal template or rating scale limited to some companies appraises
+        // only their people.
+        $applicability = app(EntityApplicability::class);
+        $template = $cycle->templateVersion?->template;
+        if (($template !== null && ! $applicability->allowsContext($template, $context))
+            || ($cycle->rating_scale_id !== null && ($scale = RatingScale::query()->find($cycle->rating_scale_id)) !== null && ! $applicability->allowsContext($scale, $context))) {
+            return false;
+        }
+
+        return (empty($cycle->eligibility) || $this->rules->matches($cycle->eligibility, $context))
             && app(PerformancePolicyRules::class)->eligible($employee, $cycle);
     }
 

@@ -4,6 +4,7 @@ namespace App\Domain\Grievance\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Grievance\Models\Grievance;
 use App\Domain\Grievance\Models\GrievanceCategory;
@@ -14,6 +15,7 @@ use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\AccessScopes;
 use App\Domain\ServiceDesk\Events\ServiceDeskEvent;
 use App\Support\Numbering\NumberSequences;
+use App\Support\Numbering\NumberSeries;
 use App\Support\Storage\FileSafety;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -44,6 +46,10 @@ final class Grievances
         }
         if (! $anonymous && $employee === null) {
             throw new RuntimeException('A named grievance needs the employee.');
+        }
+        // Configuration applicability: a category limited to some companies is not used by another company's people.
+        if ($employee !== null && ($company = NumberSeries::companyOf($employee)) !== null && ! app(EntityApplicability::class)->appliesTo($category, $company)) {
+            throw new RuntimeException("The category {$category->name} is not used by this employee's company.");
         }
         app(NumberSequences::class)->ensure('GRV', NumberSequences::highest(Grievance::class));
 

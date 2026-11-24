@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\RelationManagers;
 
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Services\OptionLists;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
@@ -9,6 +10,7 @@ use App\Domain\Documents\Services\Documents;
 use App\Domain\Experience\Services\ProfileSectionVisibility;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\DocumentUploadHint;
+use App\Support\Numbering\NumberSeries;
 use App\Support\Storage\StagedUpload;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -64,7 +66,10 @@ class DocumentsRelationManager extends RelationManager
                     ->icon('heroicon-m-arrow-up-tray')
                     ->authorize(fn () => auth()->user()->can('document.upload'))
                     ->schema([
-                        Select::make('document_type_id')->label('Document type')->options(fn () => DocumentType::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id')->all())->searchable()->live(),
+                        Select::make('document_type_id')->label('Document type')->options(fn () => DocumentType::query()->where('status', 'active')
+                            // Configuration applicability: the document types the employee's company uses.
+                            ->when(NumberSeries::companyOf($this->getOwnerRecord()), fn ($q, $company) => app(EntityApplicability::class)->constrain($q, $company))
+                            ->orderBy('name')->pluck('name', 'id')->all())->searchable()->live(),
                         DocumentUploadHint::make(),
                         TextInput::make('title')->maxLength(255)->helperText('Defaults to the document type name.'),
                         FileUpload::make('file')->required()->disk(StagedUpload::disk())->directory('tmp-uploads')->maxSize(config('peopleos.documents.max_kb'))

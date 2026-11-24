@@ -10,6 +10,7 @@ use App\Domain\Compensation\Models\CompensationBudget;
 use App\Domain\Compensation\Models\CompensationChange;
 use App\Domain\Compensation\Models\EmployeeSalaryAssignment;
 use App\Domain\Compensation\Models\SalaryStructure;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Enterprise\Services\CurrencyRates;
@@ -369,6 +370,10 @@ final class CompensationChanges
         $held = EmployeePosition::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->id)->effectiveOn($from)->orderByDesc('effective_from')->first(array_keys(EmployeePosition::DIMENSIONS));
         if ($held && ($dimension = $version->mismatch($held->only(array_keys(EmployeePosition::DIMENSIONS)))) !== null) {
             throw new CompensationRuleViolation("Structure {$structure->code} v{$version->version} does not apply to this employee's {$dimension}.");
+        }
+        // Configuration applicability: a structure limited to some companies is never assigned in another company.
+        if ($held && filled($held->company_id) && ! app(EntityApplicability::class)->appliesTo($structure, (int) $held->company_id, max($from->toDateString(), today()->toDateString()))) {
+            throw new CompensationRuleViolation("Structure {$structure->code} does not apply to this employee's company.");
         }
 
         // HROne setup parity BP-2: a structure built from component amounts has its CTC worked out from them (below).

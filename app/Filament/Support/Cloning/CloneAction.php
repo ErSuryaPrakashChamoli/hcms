@@ -2,6 +2,7 @@
 
 namespace App\Filament\Support\Cloning;
 
+use App\Domain\Configuration\Cloning\Adapters\DescribesColumns;
 use App\Domain\Configuration\Cloning\ApplicabilityKind;
 use App\Domain\Configuration\Cloning\ApplicabilityRewriter;
 use App\Domain\Configuration\Cloning\CloneAdapter;
@@ -55,7 +56,7 @@ final class CloneAction
             ->icon(Heroicon::OutlinedDocumentDuplicate)
             ->color('gray')
             ->visible(fn () => ($user = auth()->user()) instanceof User && app(CloneScope::class)->mayClone($user, self::adapter($adapter)))
-            ->modalHeading(fn (Model $record) => 'Clone '.(string) ($record->getAttribute('name') ?? self::adapter($adapter)->label()))
+            ->modalHeading(fn (Model $record) => 'Clone '.(string) ($record->getAttribute(self::nameColumn(self::adapter($adapter))) ?? self::adapter($adapter)->label()))
             ->modalDescription('The copy is created inactive under its own code, for the companies you choose. You activate it afterwards, the way you publish anything new. The original does not change, and later changes to either never reach the other.')
             ->modalSubmitActionLabel('Create inactive copy')
             ->modalWidth(Width::FiveExtraLarge)
@@ -73,10 +74,10 @@ final class CloneAction
                 $copies = $result->copies;
                 $todo = collect((array) ($result->operation->result['notes'] ?? []))->flatten()->filter()->unique()->values();
                 Notification::make()->success()
-                    ->title(count($copies) === 1 ? 'Created '.$copies[0]->getAttribute('name').' (inactive)' : 'Created '.count($copies).' inactive copies')
+                    ->title(count($copies) === 1 ? 'Created '.$copies[0]->getAttribute(self::nameColumn(self::adapter($adapter))).' (inactive)' : 'Created '.count($copies).' inactive copies')
                     ->body($result->repeated ? 'This clone had already been made; nothing was copied twice.'
                         : 'Open each copy to finish it and publish it when it is ready.'.($todo->isEmpty() ? '' : ' Still to do: '.$todo->implode(' ')))
-                    ->actions(collect($copies)->take(5)->map(fn (Model $copy) => Action::make('open'.$copy->getKey())->label('Open '.$copy->getAttribute('code'))
+                    ->actions(collect($copies)->take(5)->map(fn (Model $copy) => Action::make('open'.$copy->getKey())->label('Open '.$copy->getAttribute(self::codeColumn(self::adapter($adapter))))
                         ->url(CloneLinks::open($adapter, (int) $copy->getKey())))->all())
                     ->persistent()
                     ->send();
@@ -115,7 +116,7 @@ final class CloneAction
                             }),
                         TextInput::make('name')->label('Name of the copy')->required()->maxLength(255),
                         TextInput::make('code')->label('Code of the copy')->required()->maxLength(64)->alphaDash()
-                            ->uniqueCode($adapter->model(), ignore: fn () => 0),
+                            ->uniqueCode($adapter->model(), self::codeColumn($adapter), ignore: fn () => 0),
                         TextInput::make('priority')->label('Priority')->integer()->minValue(0)->maxValue(100000)->placeholder('As the original')
                             ->helperText('Lower numbers win when several apply.')->visible($ruleBased),
                     ])
@@ -334,8 +335,8 @@ final class CloneAction
     private static function proposal(CloneAdapter $adapter, Model $record, ?int $companyId): array
     {
         $company = $companyId === null ? null : Company::query()->withoutGlobalScope(AccessScope::class)->find($companyId);
-        $name = (string) $record->getAttribute('name');
-        $code = (string) $record->getAttribute('code');
+        $name = (string) $record->getAttribute(self::nameColumn($adapter));
+        $code = (string) $record->getAttribute(self::codeColumn($adapter));
         $reach = app(ConfigurationCloner::class)->sourceCompanies($adapter, $record);
         $variation = $company === null || $reach === null || in_array((int) $company->id, $reach, true);
         $suffix = Str::upper(Str::slug((string) ($company?->code ?: 'COPY'), '_')) ?: 'COPY';
@@ -352,6 +353,18 @@ final class CloneAction
     private static function companyNames(array $ids): array
     {
         return Company::query()->withoutGlobalScope(AccessScope::class)->whereKey($ids)->pluck('name', 'id')->mapWithKeys(fn ($name, $id) => [(int) $id => (string) $name])->all();
+    }
+
+    /** The column naming the type's records (configuration types may use another column than name). */
+    private static function nameColumn(CloneAdapter $adapter): string
+    {
+        return $adapter instanceof DescribesColumns ? $adapter->nameColumn() : 'name';
+    }
+
+    /** The column holding the type's unique code (onboarding templates and workflows use key). */
+    private static function codeColumn(CloneAdapter $adapter): string
+    {
+        return $adapter instanceof DescribesColumns ? $adapter->codeColumn() : 'code';
     }
 
     private static function adapter(string $key): CloneAdapter

@@ -4,6 +4,7 @@ namespace App\Domain\ServiceDesk\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Enums\VersionStatus;
 use App\Domain\Configuration\Models\FormVersion;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
@@ -18,6 +19,7 @@ use App\Domain\ServiceDesk\Models\ServiceDefinitionVersion;
 use App\Domain\ServiceDesk\Models\ServiceSlaPolicy;
 use App\Domain\ServiceDesk\Models\TicketCategory;
 use App\Domain\Workflow\Models\Workflow;
+use App\Support\Numbering\NumberSeries;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -232,6 +234,16 @@ final class ServiceCatalogue
         $states = $version->lifecycle_states ?? [];
         if ($states !== [] && ! in_array($employee->lifecycle_state?->value ?? (string) $employee->lifecycle_state, $states, true)) {
             return false;
+        }
+        // Configuration applicability: a service (or its request category) limited to some companies is not offered elsewhere.
+        $company = NumberSeries::companyOf($employee);
+        if ($company !== null) {
+            $applicability = app(EntityApplicability::class);
+            $definition = $version->relationLoaded('service') ? $version->service : $version->service()->first();
+            if (($definition !== null && ! $applicability->appliesTo($definition, $company))
+                || ($definition?->ticket_category_id !== null && ($category = TicketCategory::query()->find($definition->ticket_category_id)) !== null && ! $applicability->appliesTo($category, $company))) {
+                return false;
+            }
         }
         $scope = array_filter((array) ($version->org_scope ?? []));
         if ($scope !== []) {

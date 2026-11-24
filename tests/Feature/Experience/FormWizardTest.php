@@ -80,7 +80,7 @@ it('turns a record page into a wizard, one section per step, ending in Review', 
 
     expect($page->instance()->isFormWizard())->toBeTrue()
         ->and(formWizard($page))->toBeInstanceOf(PeopleWizard::class)
-        ->and(stepLabels(formWizard($page)))->toBe(['Shift', 'Hours and thresholds', 'Absence criteria', 'Advanced', 'Breaks', 'Overtime', 'Effective dates', 'Review'])
+        ->and(stepLabels(formWizard($page)))->toBe(['Shift', 'Hours and thresholds', 'Absence criteria', 'Advanced', 'Breaks', 'Overtime', 'Effective dates', 'Applies to', 'Review'])
         ->and(formWizard($page)->isSkippable())->toBeFalse(); // creating goes in order
 
     $this->get(ShiftResource::getUrl('create'))->assertOk()

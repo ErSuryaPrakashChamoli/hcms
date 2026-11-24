@@ -4,6 +4,8 @@ namespace App\Domain\Learning\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Applicability\ConfigurationTypes;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
@@ -248,6 +250,11 @@ final class Learning
         $this->targets($assignment)->chunkById((int) config('peopleos.learning.assignment_chunk', 500), function ($employees) use ($assignment, $actor, $dueOn, $status, $created) {
             foreach ($employees as $employee) {
                 if (! empty($assignment->conditions) && ! $this->rules->matches($assignment->conditions, $this->context->build($employee))) {
+                    continue;
+                }
+                // Configuration applicability: a course or path limited to some companies is assigned only to their people.
+                $content = $assignment->course_id ? $assignment->course : $assignment->path;
+                if ($content !== null && app(ConfigurationTypes::class)->forModel($content) !== null && ! app(EntityApplicability::class)->allowsContext($content, $this->context->build($employee))) {
                     continue;
                 }
                 if ($this->alreadyCovered($assignment, $employee)) {

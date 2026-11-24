@@ -3,6 +3,7 @@
 namespace App\Filament\Support\Pages\Concerns;
 
 use App\Domain\Experience\Services\ModuleContext;
+use App\Filament\Support\Applicability\ApplicabilityUi;
 use App\Filament\Support\PeopleOsText;
 use Closure;
 use Filament\Tables\Table;
@@ -33,6 +34,8 @@ trait InteractsWithModuleContext
     {
         $table = parent::table($table);
         $this->applyPeopleOsTableDefaults($table);
+        // Configuration applicability: "Applies to" / "Company values" columns, entity filters and the Companies actions.
+        ApplicabilityUi::decorateTable($table, static::getResource()::getModel());
 
         return $table->modifyQueryUsing(function (Builder $query): Builder {
             if ($this->posLensSuspended || $this->posLens === null || ! app(ModuleContext::class)->hasStatus($query->getModel())) {

@@ -3,6 +3,7 @@
 namespace App\Domain\Attendance\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
+use App\Domain\Configuration\Overrides\Concerns\CarriesCompanyOverrides;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Tenancy\BelongsToTenant;
@@ -15,7 +16,7 @@ use Illuminate\Support\Carbon;
 #[Fillable(['tenant_id', 'name', 'code', 'colour', 'type', 'start_time', 'end_time', 'crosses_midnight', 'timezone', 'break_minutes', 'full_day_minutes', 'half_day_minutes', 'grace_in_minutes', 'grace_out_minutes', 'first_half_minutes', 'early_checkin_minutes', 'absent_first_half_after', 'absent_full_day_after', 'absent_second_half_before', 'ignore_before_start', 'cutoff_time', 'requestable', 'allow_short_leave', 'allow_regularisation', 'allow_on_duty', 'allow_leave', 'allowance_eligible', 'overtime_eligible', 'min_overtime_minutes', 'status', 'effective_from', 'effective_to'])]
 class Shift extends Model
 {
-    use Auditable, BelongsToTenant, HasEffectiveDates;
+    use Auditable, BelongsToTenant, CarriesCompanyOverrides, HasEffectiveDates;
 
     protected function casts(): array
     {
@@ -105,5 +106,11 @@ class Shift extends Model
         return $this->isFlexible()
             ? 'Flexible · '.round($this->full_day_minutes / 60, 1).' h'
             : substr((string) $this->start_time, 0, 5).' – '.substr((string) $this->end_time, 0, 5).($this->crosses_midnight ? ' (+1)' : '');
+    }
+
+    /** Configuration applicability: shifts are the `shift` configuration type (grace periods may be overridden per company). */
+    protected function overrideTypeKey(): string
+    {
+        return 'shift';
     }
 }

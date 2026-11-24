@@ -63,6 +63,9 @@ final class ApplicabilityRewriter
         if ($kind === ApplicabilityKind::None) {
             return null;
         }
+        if ($kind === ApplicabilityKind::EntityApplicability) {
+            return ($applicability['companies'] ?? null) === null ? null : array_values(array_map('intval', (array) $applicability['companies']));
+        }
 
         $reach = [];
         foreach ((array) ($applicability['rules'] ?? []) as $rule) {
@@ -95,6 +98,9 @@ final class ApplicabilityRewriter
         }
         if ($kind === ApplicabilityKind::None) {
             return ['after' => $applicability] + $result;
+        }
+        if ($kind === ApplicabilityKind::EntityApplicability) {
+            return ['after' => ['companies' => [$companyId]]] + $result;
         }
 
         $rules = [];
@@ -174,6 +180,7 @@ final class ApplicabilityRewriter
             ApplicabilityKind::CompanyColumn => isset($after['company_id']) && in_array((int) $after['company_id'], $destinations, true),
             ApplicabilityKind::CompanyIdList => $inside((array) ($after['company_ids'] ?? [])),
             ApplicabilityKind::None => true,
+            ApplicabilityKind::EntityApplicability => $inside((array) ($after['companies'] ?? [])),
             ApplicabilityKind::RuleConditions => collect((array) ($after['rules'] ?? []))->every(function ($rule) use ($inside) {
                 $rule = (array) $rule;
                 $company = array_values(array_filter((array) ($rule['conditions'] ?? []), fn ($c) => is_array($c) && ($c['field'] ?? null) === self::COMPANY));

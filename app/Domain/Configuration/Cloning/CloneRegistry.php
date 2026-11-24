@@ -2,10 +2,14 @@
 
 namespace App\Domain\Configuration\Cloning;
 
+use App\Domain\Configuration\Cloning\Adapters\GenericCloneAdapter;
 use App\Domain\Configuration\Exceptions\ConfigurationException;
 use Illuminate\Database\Eloquent\Model;
 
-/** The cloneable configuration types: config('peopleos.cloning.adapters'), key => adapter class. */
+/**
+ * The cloneable configuration types: config('peopleos.cloning.adapters'), key => adapter class, plus every type registered
+ * in config('peopleos.configuration_types') with a 'clone' key of its own name, served by GenericCloneAdapter.
+ */
 final class CloneRegistry
 {
     /** @var array<string, CloneAdapter> */
@@ -14,7 +18,14 @@ final class CloneRegistry
     /** @return array<string, class-string<CloneAdapter>> */
     public function keys(): array
     {
-        return (array) config('peopleos.cloning.adapters', []);
+        $keys = (array) config('peopleos.cloning.adapters', []);
+        foreach ((array) config('peopleos.configuration_types', []) as $type => $spec) {
+            if (($spec['clone'] ?? null) === $type && ! isset($keys[$type])) {
+                $keys[$type] = GenericCloneAdapter::class;
+            }
+        }
+
+        return $keys;
     }
 
     public function has(string $key): bool
@@ -25,7 +36,7 @@ final class CloneRegistry
     public function for(string $key): CloneAdapter
     {
         $class = $this->keys()[$key] ?? throw new ConfigurationException("Nothing of the kind \"{$key}\" can be cloned.");
-        $adapter = $this->resolved[$key] ??= app($class);
+        $adapter = $this->resolved[$key] ??= ($class === GenericCloneAdapter::class ? app($class, ['key' => $key]) : app($class));
         if (! $adapter instanceof CloneAdapter) {
             throw new ConfigurationException("{$class} is not a clone adapter.");
         }

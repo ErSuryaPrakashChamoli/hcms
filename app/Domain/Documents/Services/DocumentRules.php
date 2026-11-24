@@ -2,6 +2,7 @@
 
 namespace App\Domain\Documents\Services;
 
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
@@ -9,6 +10,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Identity\Services\OwnRecords;
 use App\Domain\Platform\Services\SettingsRepository;
+use App\Support\Numbering\NumberSeries;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use RuntimeException;
@@ -34,7 +36,7 @@ final class DocumentRules
      */
     public function missing(Employee $employee, string $for = 'employee'): Collection
     {
-        $types = DocumentType::query()->where('status', 'active')->where($for === 'onboarding' ? 'mandatory_for_onboarding' : 'mandatory_for_employee', true)->orderBy('name')->get();
+        $types = $this->forCompanyOf($employee, DocumentType::query()->where('status', 'active')->where($for === 'onboarding' ? 'mandatory_for_onboarding' : 'mandatory_for_employee', true)->orderBy('name')->get());
         if ($types->isEmpty()) {
             return $types;
         }
@@ -58,13 +60,26 @@ final class DocumentRules
     /** The name of a document type required with this profile field that the employee has no current document of. */
     public function missingForField(Employee $employee, string $field): ?string
     {
-        $types = DocumentType::query()->where('status', 'active')->where('linked_field', $field)->where('required_with_field', true)->orderBy('name')->get();
+        $types = $this->forCompanyOf($employee, DocumentType::query()->where('status', 'active')->where('linked_field', $field)->where('required_with_field', true)->orderBy('name')->get());
         if ($types->isEmpty()) {
             return null;
         }
         $have = $this->currentTypeIds($employee, $types->modelKeys());
 
         return $types->first(fn (DocumentType $type) => ! in_array($type->id, $have, true))?->name;
+    }
+
+    /**
+     * Configuration applicability: only the document types the employee's company uses are required of them.
+     *
+     * @param  Collection<int, DocumentType>  $types
+     * @return Collection<int, DocumentType>
+     */
+    private function forCompanyOf(Employee $employee, Collection $types): Collection
+    {
+        $company = NumberSeries::companyOf($employee);
+
+        return $company === null ? $types : $types->filter(fn (DocumentType $type) => app(EntityApplicability::class)->appliesTo($type, $company))->values();
     }
 
     /** @return Collection<int, DocumentType> the types employees may upload themselves */

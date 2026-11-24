@@ -201,6 +201,10 @@ it('audits every domain model except the documented append-only or derived table
         // Configuration cloning: the clone record and its lineage are themselves the append-only record of a clone (one CLONE
         // event and the operation's summary carry the same manifest; every copy's own CREATE event names the operation).
         'Configuration\Models\ConfigurationCloneOperation', 'Configuration\Models\ConfigurationLineage',
+        // Configuration applicability: written only by EntityApplicability / ConfigurationOverrides, which audit every change
+        // explicitly (APPLICABILITY_CHANGED with the whole plan, OVERRIDE_SET / OVERRIDE_ENDED with before and after); the
+        // company rows and overrides are append-only history themselves (only their end may change).
+        'Configuration\Models\ConfigurationApplicability', 'Configuration\Models\ConfigurationApplicabilityCompany', 'Configuration\Models\ConfigurationOverride',
         // Phase 14: inbound integration events are an event log whose every state change is audited
         // explicitly (INTEGRATION_EVENT_*); automatic auditing would copy the payload into the trail.
         'Integration\Models\InboundEvent',

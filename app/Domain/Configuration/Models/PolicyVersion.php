@@ -18,8 +18,22 @@ class PolicyVersion extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates;
 
+    /**
+     * Set on the copy PolicyResolver returns when a company's overrides were applied to the settings (configuration
+     * applicability): the company, and the overridden setting paths. Such a copy is read-only; it is never saved.
+     */
+    public ?int $overriddenForCompany = null;
+
+    /** @var list<string> */
+    public array $overriddenPaths = [];
+
     protected static function booted(): void
     {
+        static::saving(function (self $version): void {
+            if ($version->overriddenForCompany !== null) {
+                throw new ConfigurationException('This copy of the policy carries one company\'s overrides and cannot be saved; change the policy or the override instead.');
+            }
+        });
         static::updating(function (self $version): void {
             if ($version->getRawOriginal('status') !== VersionStatus::Draft->value && $version->isDirty('settings')) {
                 throw new ConfigurationException('Published policy versions are immutable; create a new version.');

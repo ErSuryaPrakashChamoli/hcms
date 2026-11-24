@@ -6,6 +6,7 @@ use App\Domain\Assets\Events\AssetEvent;
 use App\Domain\Attendance\Events\AttendanceEvent;
 use App\Domain\Bgv\Events\BgvCompleted;
 use App\Domain\Compensation\Events\CompensationEvent;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Events\ConfigurationChangeProposed;
 use App\Domain\Configuration\Events\FormSubmitted;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
@@ -210,6 +211,10 @@ final class WorkflowTrigger
             ->get()
             ->each(function (Workflow $workflow) use ($subject, $context, $trigger, $firstOnly) {
                 if (! empty($workflow->start_conditions) && ! $this->rules->matches($workflow->start_conditions, $this->contextFor($subject, $context), 'all')) {
+                    return true;
+                }
+                // Configuration applicability: a workflow limited to some companies starts only for their employees.
+                if (app(EntityApplicability::class)->isExplicit($workflow) && ! app(EntityApplicability::class)->allowsContext($workflow, $this->contextFor($subject, $context))) {
                     return true;
                 }
 

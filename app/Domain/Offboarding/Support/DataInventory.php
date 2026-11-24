@@ -220,7 +220,7 @@ final class DataInventory
             'bulk_runs', 'bulk_run_items', 'workflow_actions', 'workflow_instances', 'workflow_tasks', 'workflow_versions', 'workflows',
             // HROne parity RQ-8: decisions taken in the Approval Center with the due time shown (the approver's Insight).
             'inbox_decisions'],
-        'configuration' => ['configuration_changes', 'configuration_clone_operations', 'configuration_lineage', 'custom_field_values', 'custom_fields', 'employee_code_series', 'number_series', 'option_lists', 'exchange_rates', 'form_submissions', 'form_versions', 'forms', 'policies', 'policy_assignment_rules', 'policy_versions', 'tenant_features', 'tenant_settings', 'question_banks', 'question_bank_questions', 'feedback_templates'],
+        'configuration' => ['configuration_applicability', 'configuration_applicability_companies', 'configuration_changes', 'configuration_clone_operations', 'configuration_lineage', 'configuration_overrides', 'custom_field_values', 'custom_fields', 'employee_code_series', 'number_series', 'option_lists', 'exchange_rates', 'form_submissions', 'form_versions', 'forms', 'policies', 'policy_assignment_rules', 'policy_versions', 'tenant_features', 'tenant_settings', 'question_banks', 'question_bank_questions', 'feedback_templates'],
         // HROne parity CA-10 adds columns only (dashboards.preset, applicability, viewer_user_ids, email_user_ids, the e-mail
         // cadence, refresh_day): the shared views' organisation filter, named viewers and recipients (user ids) — same
         // category, exported and deleted with their rows, none secret.

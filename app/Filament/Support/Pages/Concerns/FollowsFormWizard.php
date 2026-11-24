@@ -2,6 +2,7 @@
 
 namespace App\Filament\Support\Pages\Concerns;
 
+use App\Filament\Support\Applicability\ApplicabilityUi;
 use App\Filament\Support\FormWizard;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Components\Component;
@@ -22,6 +23,8 @@ trait FollowsFormWizard
     public function form(Schema $schema): Schema
     {
         $schema = parent::form($schema);
+        // Configuration applicability: registered configuration types get the "Applies to" step (docs/architecture/configuration-applicability.md).
+        $schema = ApplicabilityUi::extendForm($schema, static::getResource()::getModel(), $this instanceof CreateRecord ? 'create' : 'edit');
         $mode = $this instanceof CreateRecord ? FormWizard::CREATE : FormWizard::EDIT;
         $steps = $this->usesFormWizard()
             ? FormWizard::steps($schema, $mode, Str::ucfirst((string) static::getResource()::getModelLabel()))

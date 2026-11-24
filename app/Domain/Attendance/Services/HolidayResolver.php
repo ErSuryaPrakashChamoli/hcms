@@ -7,6 +7,7 @@ use App\Domain\Attendance\Models\Holiday;
 use App\Domain\Attendance\Models\HolidayCalendar;
 use App\Domain\Attendance\Models\HolidayCalendarRule;
 use App\Domain\Attendance\Models\TimeOfficeRequest;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
@@ -29,7 +30,9 @@ final class HolidayResolver
             ->where('status', 'active')
             ->orderBy('priority')->orderBy('id')
             ->get()
-            ->first(fn (HolidayCalendarRule $r) => $this->rules->matches($r->conditions ?? [], $context, 'all'));
+            // Configuration applicability: a calendar limited to some companies is never resolved for another company.
+            ->first(fn (HolidayCalendarRule $r) => ($r->calendar === null || app(EntityApplicability::class)->allowsContext($r->calendar, $context, $on))
+                && $this->rules->matches($r->conditions ?? [], $context, 'all'));
 
         $calendar = $rule?->calendar;
 

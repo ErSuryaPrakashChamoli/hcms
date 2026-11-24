@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\Pages;
 
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Employment\Actions\HireWithDetailsAction;
 use App\Domain\Employment\Exceptions\EmployeeCodeTakenException;
 use App\Domain\Employment\Models\Employee;
@@ -336,9 +337,12 @@ class CreateEmployee extends PeopleCreateRecord
     /** @return array<int, Component> */
     public static function positionFields(bool $required = false, bool $company = true): array
     {
+        // Configuration applicability: once the company is known, only records that apply to it are offered.
         $select = fn (string $name, string $label, string $model) => Select::make($name)
             ->label($label)
-            ->options(fn () => $model::query()->orderBy('name')->pluck('name', 'id')->all())
+            ->options(fn (Get $get) => $name === 'company_id'
+                ? $model::query()->orderBy('name')->pluck('name', 'id')->all()
+                : app(EntityApplicability::class)->options($model, filled($get('company_id')) ? (int) $get('company_id') : null))
             ->searchable();
 
         return [

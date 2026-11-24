@@ -52,6 +52,11 @@ enum AuditAction: string
     case PolicyRetired = 'POLICY_RETIRED';
     // Configuration cloning (docs/architecture/configuration-cloning.md): one CLONE event per clone attempt, with its manifest.
     case Clone = 'CLONE';
+    // Configuration applicability (docs/architecture/configuration-applicability.md): the companies a configuration record
+    // applies to changed; a company's own value of a shared field was set or ended.
+    case ApplicabilityChanged = 'APPLICABILITY_CHANGED';
+    case OverrideSet = 'OVERRIDE_SET';
+    case OverrideEnded = 'OVERRIDE_ENDED';
     case WorkflowChanged = 'WORKFLOW_CHANGED';
     case ShiftChanged = 'SHIFT_CHANGED';
 

@@ -1,5 +1,7 @@
 # Configuration cloning (phase 1: engine + policies)
 
+> **2026-11-23:** the engine now also serves every type registered in `config('peopleos.configuration_types')` with a `clone` key, through `Adapters\GenericCloneAdapter` and the new `ApplicabilityKind::EntityApplicability` (a copy applies to its destination only). Shared configuration and per-company overrides sit next to it. See `docs/architecture/configuration-applicability.md`.
+
 Built 2026-11-21 from the accepted design "Configuration Cloning & Reusability Framework: Audit, PRD Addendum & Technical Design" (owner accepted it and all ten open decisions, OD-1 to OD-10, on 2026-11-21; phase 1 authorised the same day). Phases 2a–2e (other modules) and 3 (template library) are not built.
 
 **What it is:** a shared platform capability, not a module. A configuration type gets a **Clone** action in its own screens. One engine behind that action handles scope, permissions, applicability, dependencies, conflicts, the transaction, idempotency, lineage and audit. A clone is always an **independent, inactive copy** under a new code, limited to the companies chosen. Changes to the source never reach the copy, and nothing is ever merged into an existing record.

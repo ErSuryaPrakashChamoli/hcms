@@ -146,19 +146,20 @@ it('clones into several companies at once: independent inactive copies bounded t
         ->and($resolved())->toBe($resolvedBefore);
 
     // AC-F3: every rule is "all of", starts with the destination company only, keeps shared values exactly and maps units.
+    // toEqual, not toBe: MySQL keeps JSON object keys in its own order (field, value, operator); rules and order still match.
     $feRules = $fe->assignmentRules()->orderBy('priority')->get();
     expect($feRules->pluck('status')->unique()->all())->toBe([ActiveStatus::Inactive])
         ->and($feRules->pluck('name')->all())->toBe(['Delhi office', 'Full-time'])
-        ->and($feRules[0]->conditions)->toBe([
+        ->and($feRules[0]->conditions)->toEqual([
             ['field' => 'company_id', 'operator' => 'in', 'value' => [$this->fe->id]],
             ['field' => 'location_id', 'operator' => 'in', 'value' => [$this->delhiFe->id]],
         ])
-        ->and($feRules[1]->conditions)->toBe([
+        ->and($feRules[1]->conditions)->toEqual([
             ['field' => 'company_id', 'operator' => 'in', 'value' => [$this->fe->id]],
             ['field' => 'employment_type_id', 'operator' => 'in', 'value' => [$this->fullTime->id]],
         ]);
     // Third had no Delhi: the location was removed by choice (the rule then reaches all of Third) and the priority given was used.
-    expect($th->assignmentRules()->orderBy('id')->get()->map(fn ($r) => [$r->priority, $r->conditions])->all())->toBe([
+    expect($th->assignmentRules()->orderBy('id')->get()->map(fn ($r) => [$r->priority, $r->conditions])->all())->toEqual([
         [80, [['field' => 'company_id', 'operator' => 'in', 'value' => [$this->th->id]]]],
         [80, [['field' => 'company_id', 'operator' => 'in', 'value' => [$this->th->id]], ['field' => 'employment_type_id', 'operator' => 'in', 'value' => [$this->fullTime->id]]]],
     ]);

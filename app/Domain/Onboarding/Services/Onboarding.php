@@ -4,6 +4,7 @@ namespace App\Domain\Onboarding\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Models\FormSubmission;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\RuleEngine;
@@ -54,7 +55,8 @@ final class Onboarding
             ->where('kind', $kind)
             ->orderBy('priority')->orderBy('id')
             ->get()
-            ->first(fn (OnboardingTemplate $t) => $this->rules->matches($t->conditions ?? [], $context, 'all'));
+            // Configuration applicability: a template limited to some companies is never picked for another company.
+            ->first(fn (OnboardingTemplate $t) => app(EntityApplicability::class)->allowsContext($t, $context) && $this->rules->matches($t->conditions ?? [], $context, 'all'));
     }
 
     public function start(Employee $employee, ?OnboardingTemplate $template = null, ?string $reason = null): OnboardingPlan

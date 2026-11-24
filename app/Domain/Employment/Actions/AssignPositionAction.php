@@ -4,6 +4,7 @@ namespace App\Domain\Employment\Actions;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Employment\Contracts\PositionAssignmentGuard;
 use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Exceptions\OverlappingAssignmentException;
@@ -69,6 +70,8 @@ final class AssignPositionAction
             if (empty($merged['company_id'])) {
                 throw new InvalidArgumentException('A position must belong to a company.');
             }
+            // Configuration applicability: a unit, designation, grade, … limited to some companies is not used by others.
+            app(EntityApplicability::class)->assertUsableByCompany($merged, (int) $merged['company_id'], $from);
 
             $current?->withAuditReason($reason)->update(['effective_to' => $from->copy()->subDay()]);
 

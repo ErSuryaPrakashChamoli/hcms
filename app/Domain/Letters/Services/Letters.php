@@ -5,6 +5,7 @@ namespace App\Domain\Letters\Services;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Support\CompensationSegment;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Documents\Services\Documents;
@@ -69,6 +70,11 @@ final class Letters
         $template = $template instanceof LetterTemplate ? $template : LetterTemplate::query()->where('status', 'active')->where(fn ($q) => $q->where('code', strtoupper($template))->orWhere('type', $template))->orderBy('id')->first();
         if ($template === null) {
             throw new RuntimeException('No active letter template of that type.');
+        }
+        // Configuration applicability: a template limited to some companies is not used for another company's people.
+        $owner = NumberSeries::companyOf($employee);
+        if ($owner !== null && ! app(EntityApplicability::class)->appliesTo($template, $owner)) {
+            throw new RuntimeException("The letter template {$template->name} is not used by this employee's company.");
         }
         $signatory ??= $template->signatory()->where('status', ActiveStatus::Active)->first();
         $others = array_slice(array_filter($others ?? $template->additionalSignatories(), fn ($s, $position) => $s instanceof LetterSignatory && in_array($position, [2, 3, 4], true), ARRAY_FILTER_USE_BOTH), 0, 3, true);
