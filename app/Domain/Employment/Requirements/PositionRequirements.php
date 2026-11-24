@@ -17,6 +17,7 @@ use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Services\DesignationDefaults;
 use App\Domain\Workforce\Models\Position;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -36,6 +37,9 @@ final class PositionRequirements
 
     /** @var array<string, mixed> lookups of this instance (one operation, an upload check or a pre-flight) */
     private array $memo = [];
+
+    /** @var array<string, ?EmployeeSalaryAssignment> salary assignments loaded for a batch ("employee#date"); see primeSalaryAssignments() */
+    private array $assignments = [];
 
     public function __construct(
         private readonly PolicyResolver $resolver,
@@ -100,6 +104,42 @@ final class PositionRequirements
         }
 
         return $this->memo[$key];
+    }
+
+    /**
+     * Load the salary assignments in force on $on for a batch of employees in one query, for evaluate() to read instead
+     * of one query per employee (the pre-flight checks the whole organisation). Replaces the previous batch; an employee
+     * outside the batch is still looked up on its own.
+     *
+     * @param  list<int|string>  $employeeIds
+     */
+    public function primeSalaryAssignments(array $employeeIds, CarbonInterface|string|null $on = null): void
+    {
+        $date = Carbon::parse($on ?? now())->startOfDay()->toDateString();
+        $this->assignments = [];
+        foreach ($employeeIds as $id) {
+            $this->assignments["{$id}#{$date}"] = null;
+        }
+        foreach ($this->salaryAssignments($employeeIds, $date)->unique('employee_id') as $assignment) {
+            $this->assignments["{$assignment->employee_id}#{$date}"] = $assignment;
+        }
+    }
+
+    public function forgetSalaryAssignments(): void
+    {
+        $this->assignments = [];
+    }
+
+    /**
+     * Active salary assignments in force on $on, latest first (ties: the newest record).
+     *
+     * @param  list<int|string>  $employeeIds
+     * @return Collection<int, EmployeeSalaryAssignment>
+     */
+    private function salaryAssignments(array $employeeIds, CarbonInterface|string $on): Collection
+    {
+        return EmployeeSalaryAssignment::query()->withoutGlobalScope(AccessScope::class)->whereIn('employee_id', $employeeIds)
+            ->active()->effectiveOn($on)->orderByDesc('effective_from')->orderByDesc('id')->with('structure')->get();
     }
 
     /**
@@ -175,8 +215,9 @@ final class PositionRequirements
         }
 
         if ($employee !== null && ! in_array($changeType, self::HIRE_TYPES, true) && $checks['salary_structure'] !== EmploymentRequirements::OFF) {
-            $assignment = EmployeeSalaryAssignment::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->getKey())
-                ->active()->effectiveOn($on)->orderByDesc('effective_from')->with('structure')->first();
+            $primed = $employee->getKey().'#'.$on->toDateString();
+            $assignment = array_key_exists($primed, $this->assignments) ? $this->assignments[$primed]
+                : $this->salaryAssignments([$employee->getKey()], $on)->first();
             $structureVersion = $assignment?->structure === null ? null
                 : $this->remember("structure#{$assignment->structure->getKey()}#{$on->toDateString()}", fn () => $assignment->structure->versionOn($on));
             $mismatch = $structureVersion?->mismatch(array_intersect_key($position, EmployeePosition::DIMENSIONS));

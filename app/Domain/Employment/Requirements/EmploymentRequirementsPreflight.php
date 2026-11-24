@@ -85,6 +85,8 @@ final class EmploymentRequirementsPreflight
                     $contexts = $this->context->buildMany($chunk, $on);
                     $seats = EmployeePosition::query()->whereIn('employee_id', $chunk->modelKeys())->effectiveOn($on)
                         ->orderByDesc('effective_from')->get(['employee_id', 'position_id'])->unique('employee_id')->pluck('position_id', 'employee_id');
+                    // The salary structure check reads each person's salary assignment: one query per batch, not per person.
+                    $this->requirements->primeSalaryAssignments($chunk->modelKeys(), $on);
                     foreach ($chunk as $employee) {
                         $context = $contexts[$employee->id] ?? null;
                         if ($context === null || blank($context['company_id'] ?? null)
@@ -106,6 +108,7 @@ final class EmploymentRequirementsPreflight
                     }
                 });
             });
+        $this->requirements->forgetSalaryAssignments();
 
         // The companies the policy can reach even with nobody there yet: those its rules name, else every company it
         // applies to.

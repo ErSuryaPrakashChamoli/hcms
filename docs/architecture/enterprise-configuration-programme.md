@@ -103,6 +103,9 @@ Details live in the documents linked from each section; this page is the map.
   (`tests/MySql`) switch to a database named `*workbook*` or `*concurrency*` inside each test. Whole feature suites
   were run on MySQL from a scratch copy of the tree; only that copy's guard accepts a private server on
   127.0.0.1:3307 with a `*_test` database. The repository guard is unchanged.
+- **MySQL-safe assertions:** MySQL stores JSON objects with its own key order, so compare JSON objects with
+  `toEqual`, not `toBe`. Under a frozen clock several rows share a timestamp and MySQL returns ties in any order, so
+  break ties by id (`latest('occurred_at')->latest('id')`; audit event ids sort after the chain's previous event).
 
 ## Known limitations
 

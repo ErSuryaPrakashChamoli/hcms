@@ -27,6 +27,7 @@ use App\Domain\Payroll\Services\PayrollRunChecklist;
 use App\Domain\Platform\Services\FeatureFlags;
 use App\Filament\Pages\EmploymentRequirementsPage;
 use App\Filament\Resources\Employees\Pages\ViewEmployee;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -214,6 +215,36 @@ it('warns when a transfer moves someone outside their salary structure', functio
     $position = app(AssignPositionAction::class)->handle($employee, ['grade_id' => $other->id], 'promotion', '2026-12-01', 'Promoted');
 
     expect($position->requirementWarnings)->toBe(["Salary structure STANDARD does not apply to the new position's grade: review the salary (Employment data requirements: Hire rules, v1)."]);
+});
+
+it('counts salary structure mismatches in the pre-flight with one salary query per batch, not per person', function () {
+    $other = Grade::query()->create(['name' => 'T5', 'code' => 'T5']);
+    foreach (range(1, 3) as $i) {
+        $employee = erpHire($this->mk, ['grade_id' => $this->grade->id], '2026-01-05');
+        forceLifecycle($employee, 'active');
+        compensate($employee, 600000, '2026-02-01');
+    }
+    $outside = erpHire($this->mk, ['grade_id' => $other->id], '2026-01-05');
+    forceLifecycle($outside, 'active');
+    compensate($outside, 600000, '2026-02-01');
+    forceLifecycle(erpHire($this->mk, ['grade_id' => $other->id], '2026-01-05'), 'active');   // no salary: nothing to compare
+    approveStructureVersion('STANDARD', '2026-11-01', [], ['grade_ids' => [$this->grade->id]]);
+    $policy = erpPolicy([]);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $report = app(EmploymentRequirementsPreflight::class)->run($policy);
+    $salaryQueries = collect(DB::getQueryLog())->filter(fn (array $q) => preg_match('/from [`"]?employee_salary_assignments\b/i', $q['query']) === 1)->count();
+    DB::disableQueryLog();
+
+    expect($report['employees'])->toBe(5)
+        ->and($report['rules']['salary_structure']['violations'])->toBe(1)
+        ->and($report['rules']['salary_structure']['samples'])->toHaveCount(1)
+        ->and($report['rules']['salary_structure']['samples'][0])->toStartWith($outside->employee_code.' — Salary structure STANDARD does not apply')
+        ->and($salaryQueries)->toBe(1);
+
+    // The batch is forgotten afterwards: a later check of one person reads their salary afresh.
+    expect(app(EmploymentRequirementsPreflight::class)->run($policy)['rules']['salary_structure']['violations'])->toBe(1);
 });
 
 it('shows the pre-flight on its page and switches chosen rules to Block from there', function () {
