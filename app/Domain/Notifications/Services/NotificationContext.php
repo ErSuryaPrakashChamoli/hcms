@@ -36,7 +36,9 @@ final class NotificationContext
             $subject instanceof Employee => $subject,
             $subject === null => null,
             method_exists($subject, 'employee') => $subject->employee()->first(),
-            method_exists($subject, 'subject') && $subject->subject()->first() instanceof Employee => $subject->subject()->first(),
+            // getResults(), not first(): with no subject set, a morph relation's query is `where `` is null`, which MySQL
+            // refuses (SQLite read it as a string); getResults() answers null without a query.
+            method_exists($subject, 'subject') && ($related = $subject->subject()->getResults()) instanceof Employee => $related,
             default => null,
         };
     }
