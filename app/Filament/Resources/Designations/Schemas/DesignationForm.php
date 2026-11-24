@@ -26,6 +26,15 @@ class DesignationForm
                     ->schema([
                         TextInput::make('name')->required()->maxLength(255),
                         TextInput::make('code')->required()->maxLength(32)->alphaDash()->helperText('Short unique code.'),
+                        Textarea::make('description')->rows(2)->maxLength(1000)->columnSpanFull(),
+                        Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                    ]),
+                // Master relationships R4: a designation is created with its name and code alone; links are optional and can
+                // be set now or later. Each company may have its own level, grade and job family ("Company values…").
+                Section::make('Links')
+                    ->description('Optional: set them now or later. Choosing this designation for someone prefills their level and grade from here. Designations without a grade are listed in Organisation → Unmapped masters.')
+                    ->columns(2)
+                    ->schema([
                         Select::make('level_id')->relationship('level', 'name')->searchable()->preload(),
                         Select::make('grade_id')->relationship('grade', 'name')->searchable()->preload(),
                         Select::make('job_family_id')->relationship('jobFamily', 'name')->label('Job family')->searchable()->preload(),
@@ -33,8 +42,6 @@ class DesignationForm
                         Select::make('department_id')->relationship('department', 'name')->label('Usual department (information only)')
                             ->helperText('Where people with this designation usually work. It never places anyone: each person\'s department comes from their own position.')->searchable()->preload(),
                         Select::make('default_reporting_level_id')->relationship('defaultReportingLevel', 'name')->label('Default reporting level')->searchable()->preload(),
-                        Textarea::make('description')->rows(2)->maxLength(1000)->columnSpanFull(),
-                        Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
                         Select::make('employmentTypes')->relationship('employmentTypes', 'name')->multiple()->preload()->label('Employment types')->columnSpanFull(),
                     ]),
                 // HROne setup parity CA-2 (Designation): experience range, job description, hazardous work, minimum-wage class.

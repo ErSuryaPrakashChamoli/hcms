@@ -22,10 +22,15 @@ class GradeForm
                     ->schema([
                         TextInput::make('name')->required()->maxLength(255),
                         TextInput::make('code')->required()->maxLength(32)->alphaDash()->helperText('Short unique code.'),
-                        Select::make('level_id')->relationship('level', 'name')->searchable()->preload(),
                         TextInput::make('rank')->numeric()->minValue(0)->default(0)->helperText('Ordering position; lower comes first.'),
                         Textarea::make('description')->rows(2)->maxLength(1000)->columnSpanFull(),
                         Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                    ]),
+                // Master relationships R4: a grade is created without a level; link it now or later.
+                Section::make('Links')
+                    ->description('Optional: set it now or later. "Grade sits under the level" in the employment data requirements uses it.')
+                    ->schema([
+                        Select::make('level_id')->relationship('level', 'name')->searchable()->preload(),
                     ]),
                 Section::make('Effective dates')
                     ->description('Leave blank for open-ended. History is never overwritten.')

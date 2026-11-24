@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Url;
 use UnitEnum;
 
 /**
@@ -35,6 +36,8 @@ class OrganisationDesigner extends Page
 
     protected string $view = 'filament.pages.organisation-designer';
 
+    // Master relationships R4: ?search=CODE opens the structure on a unit (Links tab, Unmapped masters).
+    #[Url]
     public string $search = '';
 
     public string $mode = 'tree';

@@ -6,10 +6,12 @@ use App\Domain\Attendance\Services\CountryRegions;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Enums\LocationType;
 use App\Domain\Organisation\Exceptions\InvalidHierarchyException;
+use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Services\LocationHierarchy;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\CustomFieldsSchema;
+use App\Filament\Support\PlacementField;
 use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -49,9 +51,14 @@ class LocationForm
                         Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
                     ]),
                 // Data import DI-1: a sub branch sits inside a branch of its company; branches belong to a region and a business region.
-                Section::make('Branch and region')
+                // Master relationships R4: these are the location's optional links, with its establishment.
+                Section::make('Links')
+                    ->description('Optional: set them now or later. In a company with more than one establishment, a location without one makes people there take the head office\'s for PF, ESI, PT and LWF.')
                     ->columns(2)
                     ->schema([
+                        Select::make('establishment_id')->label('Establishment')->searchable()->placeholder('None')
+                            ->options(fn (Get $get) => filled($get('company_id')) ? Establishment::query()->where('company_id', $get('company_id'))->orderBy('name')->pluck('name', 'id')->all() : [])
+                            ->helperText('The establishment whose registrations (PF, ESI, PT, LWF) people here use.'),
                         Select::make('parent_location_id')->label('Parent branch')->placeholder('None (a branch)')->searchable()
                             ->options(fn (Get $get, ?Location $record) => Location::query()
                                 ->when($get('company_id'), fn ($q, $company) => $q->where('company_id', $company))
@@ -65,6 +72,7 @@ class LocationForm
                             }]),
                         Select::make('region_id')->relationship('region', 'name')->label('Region')->searchable()->preload(),
                         Select::make('business_region_id')->relationship('businessRegion', 'name')->label('Business region')->searchable()->preload(),
+                        PlacementField::make('location'),
                     ]),
                 Section::make('Effective dates')
                     ->description('Leave blank for open-ended. History is never overwritten.')

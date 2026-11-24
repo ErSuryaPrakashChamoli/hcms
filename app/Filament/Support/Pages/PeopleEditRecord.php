@@ -6,6 +6,7 @@ use App\Filament\Support\Pages\Concerns\ArrangesRecordActions;
 use App\Filament\Support\Pages\Concerns\FollowsFormWizard;
 use App\Filament\Support\Pages\Concerns\PresentsRecordContext;
 use App\Filament\Support\Pages\Concerns\ReturnsToListing;
+use App\Filament\Support\Pages\Concerns\ShowsMasterTabs;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
@@ -21,6 +22,7 @@ abstract class PeopleEditRecord extends EditRecord
     use FollowsFormWizard;
     use PresentsRecordContext;
     use ReturnsToListing;
+    use ShowsMasterTabs;
 
     protected function recordPageNote(): string
     {

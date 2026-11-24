@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BusinessUnits\Schemas;
 
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\PlacementField;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -26,6 +27,10 @@ class BusinessUnitForm
                         Textarea::make('description')->rows(2)->maxLength(1000)->columnSpanFull(),
                         Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
                     ]),
+                // Master relationships R4: placing a new unit in the organisation structure is optional (Organisation Designer later).
+                Section::make('Links')
+                    ->description('Optional: place it now or later in the Organisation Designer.')
+                    ->schema([PlacementField::make('business_unit')]),
                 Section::make('Effective dates')
                     ->description('Leave blank for open-ended. History is never overwritten.')
                     ->columns(2)

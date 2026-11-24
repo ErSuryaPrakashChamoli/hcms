@@ -6,6 +6,7 @@ use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Models\Department;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\CustomFieldsSchema;
+use App\Filament\Support\PlacementField;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -23,15 +24,22 @@ class DepartmentForm
                     ->columns(2)
                     ->schema([
                         Select::make('company_id')->relationship('company', 'name')->searchable()->preload(),
+                        TextInput::make('name')->required()->maxLength(255),
+                        TextInput::make('code')->required()->maxLength(32)->alphaDash()->helperText('Short unique code.'),
+                        Textarea::make('description')->rows(2)->maxLength(1000)->columnSpanFull(),
+                        Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                    ]),
+                // Master relationships R4: optional links, set now or later.
+                Section::make('Links')
+                    ->description('Optional: a department is created with its name and code alone. Set these now or later.')
+                    ->columns(2)
+                    ->schema([
                         // HROne setup parity CA-2 (Sub department): the department this one sits under.
                         Select::make('parent_department_id')->label('Parent department')->placeholder('None (a top-level department)')->searchable()
                             ->options(fn (?Department $record) => Department::query()->when($record?->exists, fn ($q) => $q->whereKeyNot($record->getKey()))->orderBy('name')->pluck('name', 'id')->all())
                             ->helperText('Makes this a sub-department. Policies and reports can use either level.'),
-                        TextInput::make('name')->required()->maxLength(255),
-                        TextInput::make('code')->required()->maxLength(32)->alphaDash()->helperText('Short unique code.'),
                         Select::make('cost_centre_id')->relationship('costCentre', 'name')->label('Cost centre')->searchable()->preload(),
-                        Textarea::make('description')->rows(2)->maxLength(1000)->columnSpanFull(),
-                        Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),
+                        PlacementField::make('department'),
                     ]),
                 Section::make('Effective dates')
                     ->description('Leave blank for open-ended. History is never overwritten.')
