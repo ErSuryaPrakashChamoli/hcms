@@ -7,6 +7,7 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Designation;
+use App\Domain\Organisation\Services\DesignationDefaults;
 use App\Domain\Workforce\Events\WorkforceEvent;
 use App\Domain\Workforce\Models\Position;
 use App\Domain\Workforce\Models\PositionChangeRequest;
@@ -314,13 +315,16 @@ final class Positions
                 $definition[$field] = $data[$field] === '' ? null : $data[$field];
             }
         }
+        $node = $this->dimensions->forNode($definition['organisation_node_id'] ? (int) $definition['organisation_node_id'] : null);
         if (array_key_exists('designation_id', $data) && $definition['designation_id']) {
             $designation = Designation::query()->find($definition['designation_id']) ?? throw new RuntimeException('Unknown designation.');
-            $definition['job_family_id'] = $data['job_family_id'] ?? $designation->job_family_id ?? $definition['job_family_id'];
-            $definition['grade_id'] = $data['grade_id'] ?? $designation->grade_id ?? $definition['grade_id'];
+            // Master relationships R3: the designation's defaults for the seat's company (its own value, else the shared one).
+            $company = $definition['company_id'] ?? $node['company_id'] ?? null;
+            $defaults = app(DesignationDefaults::class)->for($designation, $company !== null ? (int) $company : null);
+            $definition['job_family_id'] = $data['job_family_id'] ?? $defaults['job_family_id'] ?? $definition['job_family_id'];
+            $definition['grade_id'] = $data['grade_id'] ?? $defaults['grade_id'] ?? $definition['grade_id'];
             $definition['title'] = $definition['title'] ?: $designation->name;
         }
-        $node = $this->dimensions->forNode($definition['organisation_node_id'] ? (int) $definition['organisation_node_id'] : null);
         if ($definition['organisation_node_id']) {
             if ($definition['company_id'] && $node['company_id'] && (int) $node['company_id'] !== (int) $definition['company_id']) {
                 throw new RuntimeException('The organisation unit belongs to another company.');

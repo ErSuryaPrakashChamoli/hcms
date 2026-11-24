@@ -2770,6 +2770,8 @@ return [
             'references' => ['level_id' => 'level', 'grade_id' => 'grade', 'job_family_id' => 'job_family', 'department_id' => 'department', 'default_reporting_level_id' => 'level'],
             'usages' => [['table' => 'employee_positions', 'column' => 'designation_id', 'company' => 'company_id', 'current' => 'effective_to', 'label' => 'current positions']],
             'clone' => 'designation',
+            // Master relationships R3: a company's own default level, grade and job family of a shared designation.
+            'overrides' => \App\Domain\Organisation\Overrides\DesignationOverrideFields::class,
         ],
         'level' => [
             'model' => \App\Domain\Organisation\Models\Level::class,

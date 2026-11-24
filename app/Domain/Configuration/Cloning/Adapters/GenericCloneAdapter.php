@@ -19,6 +19,7 @@ use App\Domain\Configuration\Cloning\OrgUnitMapper;
 use App\Domain\Configuration\Cloning\Reference;
 use App\Domain\Configuration\Cloning\ReferenceKind;
 use App\Domain\Configuration\Cloning\Snapshot;
+use App\Domain\Configuration\Overrides\ConfigurationOverrides;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use Illuminate\Database\Eloquent\Model;
@@ -199,6 +200,15 @@ final class GenericCloneAdapter implements CloneAdapter, DescribesColumns
     {
         return SharedConfigurationGuard::suspend(function () use ($snapshot, $destination) {
             $attributes = (array) $snapshot->content['attributes'];
+            // Master relationships R3: the copy is the destination company's own record, so it takes the values that
+            // company used: its own value of a column where it had one, the shared value otherwise.
+            if ($this->type->supportsOverrides() && app(ConfigurationOverrides::class)->hasAny($this->type->key, $snapshot->sourceId)) {
+                foreach (app(ConfigurationOverrides::class)->valuesFor($this->type->key, $snapshot->sourceId, $destination->companyId) as $column => $value) {
+                    if (array_key_exists($column, $attributes)) {
+                        $attributes[$column] = $value;
+                    }
+                }
+            }
             foreach ($this->type->references as $column => $targetKey) {
                 if (array_key_exists($column, $attributes) && filled($attributes[$column])) {
                     $attributes[$column] = $this->referenceFor($targetKey, (int) $attributes[$column], $destination->companyId);

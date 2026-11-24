@@ -164,7 +164,12 @@ final class ConfigurationOverrides
             throw new ApplicabilityRefusedException("{$field->label} is not in the shared {$type->label} any more, so it cannot be overridden.");
         }
         // The shared values with every override of the company in force from that date, and this one, must be valid together.
-        $provider->validate($record, SettingsPath::set($this->applyTo($shared, $type->key, (int) $record->getKey(), $companyId, $date), $path, $value));
+        $combined = SettingsPath::set($this->applyTo($shared, $type->key, (int) $record->getKey(), $companyId, $date), $path, $value);
+        $provider->validate($record, $combined);
+        // Master relationships R3: values that must also suit the company (a company's own grade is one it may use).
+        if ($provider instanceof CompanyAwareOverrideFields) {
+            $provider->validateForCompany($record, $combined, $companyId);
+        }
         $before = $this->valuesFor($type->key, (int) $record->getKey(), $companyId, $date)[$path] ?? SettingsPath::get($shared, $path, $field->default);
 
         $override = DB::transaction(function () use ($type, $record, $companyId, $path, $value, $date, $actor, $reason, $shared, $field, $before) {

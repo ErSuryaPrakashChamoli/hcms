@@ -2,8 +2,11 @@
 
 namespace App\Domain\Configuration\Applicability;
 
+use App\Domain\Configuration\Models\ConfigurationOverride;
+use App\Domain\Configuration\Overrides\ConfigurationOverrides;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Models\Establishment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -34,6 +37,18 @@ final class ApplicabilityDependencies
         $applicability = app(EntityApplicability::class);
         $label = strtolower($type->label);
 
+        // Master relationships R3: a company with its own value of a link (a designation's grade at FynnEdge) is checked
+        // against that value, not the shared one.
+        $own = [];
+        if ($type->supportsOverrides() && $record->exists && app(ConfigurationOverrides::class)->hasAny($type->key, (int) $record->getKey())) {
+            foreach ($after as $companyId) {
+                foreach (app(ConfigurationOverrides::class)->valuesFor($type->key, (int) $record->getKey(), (int) $companyId, $from) as $column => $value) {
+                    if (isset($type->references[$column])) {
+                        $own[(int) $companyId][$column] = $value;
+                    }
+                }
+            }
+        }
         foreach ($this->references($type, $record) as $reference) {
             $target = $this->find($reference['type'], $reference['id']);
             $targetType = $this->types->for($reference['type']);
@@ -46,7 +61,8 @@ final class ApplicabilityDependencies
             if ($reach === null) {
                 continue;
             }
-            $missing = array_values(array_diff($after, $reach));
+            $checked = array_values(array_filter($after, fn ($companyId) => ! array_key_exists($reference['path'], $own[(int) $companyId] ?? [])));
+            $missing = array_values(array_diff($checked, $reach));
             if ($missing !== []) {
                 $blockers[] = "It uses the {$targetType->label} \"{$targetType->describe($target)}\", which ".self::names($missing, $names).' cannot use. Make that '.strtolower($targetType->label).' apply there first, or choose other companies.';
             }
@@ -55,10 +71,56 @@ final class ApplicabilityDependencies
             }
         }
 
+        foreach ($own as $companyId => $values) {
+            foreach ($values as $column => $value) {
+                if (blank($value) || ($target = $this->find($type->references[$column], (int) $value)) === null) {
+                    continue;
+                }
+                $targetType = $this->types->for($type->references[$column]);
+                $reach = $applicability->reach($target, $from);
+                if ($reach !== null && ! in_array((int) $companyId, $reach, true)) {
+                    $blockers[] = 'Its own '.strtolower($targetType->label).' for '.($names[$companyId] ?? 'a company').", \"{$targetType->describe($target)}\", does not apply there. Change that company's value first, or choose other companies.";
+                }
+            }
+        }
+        // A location tied to an establishment stays with that establishment's company: shared further, people in another
+        // company would be stamped with it and use its statutory registrations.
+        if ($type->key === 'location' && filled($record->getAttribute('establishment_id'))) {
+            $establishment = Establishment::query()->withoutGlobalScope(AccessScope::class)->find($record->getAttribute('establishment_id'));
+            $others = $establishment === null ? [] : array_values(array_diff($after, [(int) $establishment->company_id]));
+            if ($others !== []) {
+                $owner = $names[(int) $establishment->company_id] ?? Company::query()->withoutGlobalScope(AccessScope::class)->whereKey($establishment->company_id)->value('name') ?? 'its company';
+                $blockers[] = "Its establishment \"{$establishment->name}\" belongs to {$owner}, so ".self::names($others, $names).' cannot use this location. Remove the establishment, or keep the location to that company.';
+            }
+        }
+
         if ($removed !== []) {
+            // A company's own value of another record's link counts as a use of this one there.
+            foreach ($this->types->all() as $otherType) {
+                $columns = array_keys(array_filter($otherType->references, fn (string $key, string $column) => $key === $type->key && ! str_contains($column, '.'), ARRAY_FILTER_USE_BOTH));
+                if ($columns === [] || ! $otherType->supportsOverrides()) {
+                    continue;
+                }
+                $rows = ConfigurationOverride::query()->where('configuration_type', $otherType->key)->whereIn('field', $columns)->whereIn('company_id', $removed)
+                    ->where('status', ConfigurationOverride::ACTIVE)->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', $from))->get();
+                foreach ($rows as $row) {
+                    if ((int) $row->value === (int) $record->getKey() && ($other = $this->find($otherType->key, (int) $row->configuration_id)) !== null) {
+                        $blockers[] = "The {$otherType->label} \"{$otherType->describe($other)}\" uses this {$label} as its own value in ".($names[(int) $row->company_id] ?? 'a company').'. Change it there first.';
+                    }
+                }
+            }
             foreach ($this->referencing($type, (int) $record->getKey()) as [$otherType, $other]) {
                 $reach = $applicability->reach($other, $from) ?? $applicability->allCompanyIds();
                 $conflict = array_values(array_intersect($removed, $reach));
+                // Master relationships R3: a company that has its own value of every link pointing here does not use this
+                // record there (FynnEdge's own grade, not the shared one).
+                if ($conflict !== [] && $otherType->supportsOverrides()) {
+                    $columns = array_keys(array_filter($otherType->references, fn (string $key, string $column) => $key === $type->key && ! str_contains($column, '.')
+                        && (int) $other->getAttribute($column) === (int) $record->getKey(), ARRAY_FILTER_USE_BOTH));
+                    $overrides = app(ConfigurationOverrides::class);
+                    $conflict = array_values(array_filter($conflict, fn (int $companyId) => $columns === []
+                        || array_diff($columns, array_keys($overrides->valuesFor($otherType->key, (int) $other->getKey(), $companyId, $from))) !== []));
+                }
                 if ($conflict !== []) {
                     $blockers[] = "The {$otherType->label} \"{$otherType->describe($other)}\" uses this {$label} in ".self::names($conflict, $names).'. Change it there first.';
                 }

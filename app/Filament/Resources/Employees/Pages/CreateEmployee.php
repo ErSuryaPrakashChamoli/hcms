@@ -25,6 +25,7 @@ use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
+use App\Domain\Organisation\Services\DesignationDefaults;
 use App\Domain\Organisation\Support\DimensionLabel;
 use App\Domain\People\Models\Person;
 use App\Domain\People\Services\PersonMatcher;
@@ -354,7 +355,9 @@ class CreateEmployee extends PeopleCreateRecord
             $select('division_id', 'Division', Division::class),
             $select('department_id', 'Department', Department::class),
             $select('team_id', 'Team', Team::class),
-            $select('designation_id', 'Designation', Designation::class),
+            // Master relationships R3: choosing a designation fills a blank level and grade with its defaults for the company.
+            $select('designation_id', 'Designation', Designation::class)->live()
+                ->afterStateUpdated(fn (mixed $state, Get $get, Set $set, mixed $record = null) => self::prefillFromDesignation($state, $get, $set, $record)),
             $select('level_id', 'Level', Level::class),
             $select('grade_id', 'Grade', Grade::class),
             $select('employment_type_id', 'Employment type', EmploymentType::class),
@@ -364,6 +367,25 @@ class CreateEmployee extends PeopleCreateRecord
             // Data import DI-1 (decision D1): the organisation's own dimension, under the name it gives it.
             $select('dimension_value_id', DimensionLabel::name(), DimensionValue::class),
         ];
+    }
+
+    /**
+     * Master relationships R3: a designation's default level and grade for the company (its own value, else the shared one)
+     * fill the position's blank level and grade; what is already chosen is kept. On a change without a new company, the
+     * employee's current company decides.
+     */
+    public static function prefillFromDesignation(mixed $state, Get $get, Set $set, mixed $record = null): void
+    {
+        if (blank($state)) {
+            return;
+        }
+        $company = filled($get('company_id')) ? (int) $get('company_id')
+            : ($record instanceof Employee ? EmployeePosition::query()->where('employee_id', $record->getKey())->effectiveOn(today())->value('company_id') : null);
+        foreach (app(DesignationDefaults::class)->for((int) $state, $company !== null ? (int) $company : null) as $column => $value) {
+            if ($column !== 'job_family_id' && $value !== null && blank($get($column))) {
+                $set($column, $value);
+            }
+        }
     }
 
     /** @return array<string, string> */
