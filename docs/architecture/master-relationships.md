@@ -1,0 +1,170 @@
+# Master relationships: independent masters, optional links and placement safety
+
+Programme approved by the owner on 2026-11-23, after the audit "PeopleOS: Independent Masters, Optional Relationships & Entity Applicability" (exported outside the repo to `~/Documents/hrms/peopleos-master-relationships-audit/`). It extends the existing frameworks and does not replace them:
+
+- configuration applicability, company overrides and cloning (`configuration-applicability.md`, `configuration-cloning.md`);
+- master uploads and workbooks (`master-data-import.md`);
+- name resolution (`name-resolution.md`).
+
+**The audit's main finding.** Masters are already created on their own. 20 of 23 save with a name, a code and a status. Only three links are required, each for a legal reason: Legal entity → Company, Establishment → Legal entity, Location → Company. The structure (which unit sits under which) lives only in `organisation_nodes`.
+
+The real gap ran the other way. Placing a person checked only the company. That allowed:
+
+- absences recorded only because no shift applied;
+- a seat in another company;
+- no way to remove a link;
+- delete error pages.
+
+The programme closes those gaps in five phases.
+
+## 1. Decisions (recorded 2026-11-23)
+
+| # | Decision | Owner's choice |
+| --- | --- | --- |
+| OD-1 | Designation's department | **Option A.** Kept as optional information: "Usual department (information only)". It never places anyone; a person's department comes from their own position. |
+| OD-2 | Different structures per company | **Option A.** Use company-specific cloned units where structures differ. No per-company tree placement now (kept as a future consideration). |
+| OD-3 | Default mode of consistency checks | **Warn.** A company may move to Block after a pre-flight check. |
+| OD-4 | Required employment data | **Option A with configurability.** Sensible defaults for new tenants (Company, Location, Department, Designation, Employment type), with conditions per company's employment and statutory needs. Existing tenants keep Company-only until they configure more. |
+| OD-5 | Value that removes a link in an upload | **`(none)`.** Case-insensitive, surrounding spaces ignored. Blank still keeps what is on file. |
+| OD-6 | Order against the other sessions' work | **Option A.** R1 runs independently. The paused applicability work is finished, tested and committed before R2–R4. R5 stays with the import session. |
+
+Conditions the owner attached, held for every phase:
+
+- strict tenant isolation, company scopes respected;
+- errors and suggestions never show another tenant's records;
+- employee-position history, audit events and payroll results are never rewritten;
+- accepted and refused cases tested, including users with missing permissions and users limited to one company;
+- code-based import files keep working;
+- no generic payroll block without actionable details.
+
+## 2. Phases
+
+| Phase | Scope | State |
+| --- | --- | --- |
+| R1 | Safety fixes | Built (§3), applied to the tree 2026-11-23; see §4 for tests |
+| R2 | Business enforcement: Employment data requirements policy, `PositionRequirements` in hire / transfer / upload / API, Off / Warn / Block, readiness checks, salary-structure re-check, increment exclusions | Waits for the applicability work to be committed |
+| R3 | Per-company designation defaults (level, grade, job family) on `configuration_overrides` | Waits for R2 |
+| R4 | Relationship screens (Companies · Links · Company values · Usage · History) | Waits for R3 |
+| R5 | The 7 missing master uploads plus the Organisation structure upload, with `(none)`, names and applicability | Built (`master-data-import.md` §12) |
+
+**Ownership.** Since 2026-11-23 evening one session owns the whole programme (applicability, workbooks, name
+resolution and R1–R5); the earlier sessions named below were dissolved and their work kept as it was in the tree.
+R1 was built in a sandbox copy (`~/peopleos-r1-sandbox-new`) and applied to the tree as one patch whose 50 files match
+the R1 checksum register. The resolver treats `(none)` as blank (`ResolutionSession::CLEAR`).
+
+## 3. R1: safety fixes
+
+### 3.1 A seat belongs to one company
+
+`PositionSeats` (the `PositionAssignmentGuard` behind `AssignPositionAction`) now refuses two cases:
+
+- **A seat of another company.** A person is placed only in a seat of the company they are placed in: the company chosen on the change, or else the one they already work for. Choosing a seat never implies a move to another company. A move is accepted when the company is chosen too. A new hire has no company yet, so the seat's company is theirs.
+- **A held seat carried into another company.** Moving to another company while keeping a seat of the old one is refused. Vacate it, or choose a seat of the new company.
+
+Company names appear in the refusal only when the reader may see them; otherwise it says "another company".
+
+### 3.2 Delete guard on every master
+
+- **`App\Support\Masters\MasterUsage`** reports what uses a record:
+  - every single-column foreign key pointing at it, whatever the key does on delete (RESTRICT would give an error page, SET NULL would silently unlink, CASCADE would silently delete history such as a company's payroll runs or people's skills);
+  - its place in the organisation structure (`organisation_nodes` is polymorphic, so it has no key).
+- **Own parts.** The only exceptions are the record's own parts:
+  - `designation_employment_type.designation_id` (a designation's employment-type links);
+  - a company's legal entities and establishments (`COMPOSITE_PARTS`). Every company gets a primary legal entity and
+    establishment when it is created (`LegalEntities::ensureFor`) and the database deletes them with it, so they are
+    not uses. Whatever uses *them* is (a challan, an establishment assignment, a registration …) and is reported as
+    "… of its establishments". Without this rule no company could ever be deleted, not even one created by mistake;
+    the full regression found it (`AuditTrailTest` "records DELETE events"), fixed 2026-11-23 during integration.
+- **Discovery.** Foreign keys are read from the database once per process: one `information_schema` query on MySQL, the schema builder elsewhere. A new table pointing at a master is covered without code.
+- **Counts only.** Only counts leave the class, so a refusal never names another record.
+- **`GuardsMasterDeletion`** (a model trait) refuses an Eloquent delete of a record in use with `MasterInUseException`, which carries the counts and what to do. It is on all 20 organisation masters and on Skill. Screens, uploads, the API and code all get the same answer. Tenant offboarding deletes in SQL and is not affected.
+- **`MasterDeleteAction`** (Filament) replaces `DeleteAction` on the 18 master edit pages and the Skills list:
+  - An unused record deletes as before.
+  - For a record in use, the modal says what uses it and offers **Deactivate instead**.
+  - Deactivation is an edit: it needs edit permission and is audited with the reason "Deactivated instead of deleted: it is in use."
+  - When the organisation governs the record, the deactivation is proposed in the Configuration Change Centre instead.
+  - Someone who may delete but not edit sees the refusal only.
+- **`ActiveMasters::only()`** takes deactivated masters out of the employee pickers: hire, transfer / promote and rehire, through `CreateEmployee::positionFields`. Records and history that use them keep showing them.
+
+### 3.3 Remove a link on transfer and promotion
+
+- **`AssignPositionAction`** accepts `clear`: the position fields this change removes from its effective date.
+  - Blank still means "unchanged".
+  - The company can never be removed.
+  - A field cannot be both changed and removed.
+  - Only position fields are accepted.
+- **History.** The earlier position keeps its values. The audit diff and the timeline show the removal ("Grade: T4 → —").
+- **Screen.** The Transfer / promote form has **Remove from the effective date** (only fields the person has today), and the review step shows "Removed".
+- **Promotions** go through the same action, so they get the same behaviour.
+
+### 3.4 `(none)` in uploads
+
+`App\Support\Imports\ClearValue` (`NONE = '(none)'`, `isClear()`, `hint()`) is the one definition the import session uses. The spec handed to hcms-31:
+
+1. **Blank and `(none)`.** Blank keeps what is on file. `(none)` removes an optional link. On a new record `(none)` is the same as blank.
+2. **Order at each link cell.** First `isClear()`, then the planned-code check, then the lookup. A clear marker survives `attributes()`'s null filter and becomes null before saving, so `same()` sees the change.
+3. **Optional links only.** `(none)` is refused on required links: a location's company, a legal entity's company, an establishment's legal entity, and the parent of a sub-department or sub-branch row.
+4. **Structure stays in sync.** Clearing a parent department or parent branch goes through the same path as any parent change.
+5. **Review and format guides.** The review shows "Level: L5 → (removed)". Format guides carry `ClearValue::hint()`.
+6. **Business-unit upload.** `company_code` becomes optional.
+7. **Designation upload.** The department column reads "Usual department (information only)"; its key is unchanged.
+
+**Built by hcms-31 (2026-11-23).**
+
+- Where:
+  - `MasterImports`: a clear marker that is written as null just before save; `same()` counts it as a change; the preview shows "Level: L5 → (removed)".
+  - `ReadsMasterRows::parentId`.
+  - `BusinessUnitImports`: company optional.
+  - `DesignationImports`: the "Usual department" label.
+  - `ClearValue::hint()` on every optional link column.
+- Required columns refuse `(none)` with "<Column> is required here; (none) cannot be used." `(none)` never reaches the resolver.
+- Tests in `tests/Feature/Imports/Workbooks/IntegrationTest.php`:
+  - "removes an optional link with (none), keeps it when blank, and refuses (none) on required links";
+  - "resolves references by code exactly as before …", which checks that legacy code-only files are unchanged.
+- `CoreImportsTest` now expects a business unit without a company to be created.
+- Not applicable through uploads:
+  - designations' default reporting level, since the upload has no such column;
+  - department and location parents, since the Departments upload never sets a parent and sub-department / sub-branch parents are required.
+- Commit note: the import files use `ClearValue`, so `app/Support/Imports/ClearValue.php` must be committed with or before them.
+
+### 3.5 Agreed spots in hcms-81's files (after the applicability commit)
+
+- `AssignPositionAction`: the `clear` handling. It runs after the merge and before `assertUsableByCompany`, which stays as it is.
+- `ViewEmployee`: the Remove field on Transfer / promote.
+- `CreateEmployee::positionFields`: `ActiveMasters::only()` wraps the existing options; the `EntityApplicability::options` call inside is unchanged.
+
+### 3.6 Days with no shift block the payroll run
+
+With no work schedule, roster or shift, the attendance processor records every un-punched day absent, weekends too, since nothing says which days are off. Payroll takes loss of pay for absent days.
+
+- **`AttendanceOutput::noShiftAbsences()`** lists those days per person: the processor's `no_shift` exception on an absent day.
+  - Holidays and weekly offs that a schedule, roster or override names are never in it, because the processor records them first.
+  - Days covered by leave are not absent, so they are not in it either.
+- **`PayrollReadiness`** has the check `no_shift`. Each row has the person, the number of days, the dates as ranges ("1–16 Sep, 18–30 Sep") and what to do:
+  - "Assign a work schedule, roster or shift, then reprocess attendance", or
+  - "A schedule applies now: reprocess attendance for these dates", worked out from `ShiftResolver::resolveBetween`.
+- **`PayrollRunChecklist`** has the item **Days with no shift** (Time office, kind `block`). It blocks Calculate (screen, background and scheduled) until cleared and cannot be ticked.
+- **Where it does not apply.** Where payroll takes no loss of pay from attendance (`payroll.lop_from_attendance` off), the check does not run and the item reads Not applicable.
+- Nothing is written to attendance or payroll. Fixing the schedule and reprocessing clears the item.
+
+### 3.7 Designation's department relabelled (OD-1)
+
+The form reads "Usual department (information only)" with a one-line explanation, and the list column reads "Usual department". No behaviour changes: `Positions::definition` never read it.
+
+### 3.8 Not changed
+
+- No table and no migration. No backfill. No existing employee position, audit event or payroll result is touched.
+- R2's enforcement (required fields, Warn / Block) is not in R1.
+
+## 4. Tests
+
+`tests/Feature/MasterRelationships/`:
+
+| File | Covers (accepted and refused) |
+| --- | --- |
+| `MasterDeleteGuardTest` | Masters created on their own (acceptance criteria 1–5). A company with only its own legal entity and establishment deletes; once something uses those parts it is refused ("… of its establishments"). An unused master deletes. Refusal with counts for current or past positions and other masters (incl. "designation (default reporting level)"). Tree placement counts until detached. CASCADE history counts (person skills); own parts do not. The screen modal offers Deactivate (audited). A delete-only user gets no deactivation. A governed record is proposed for approval. Tenant isolation (another tenant's uses are never counted). |
+| `SeatCompanyTest` | Own-company seat accepted. Another company's seat refused, with or without another company chosen. Accepted when the move is stated. A held seat cannot be carried into another company; vacating allows it. A carried seat inside the company still works. |
+| `ClearLinksTest` | Clear removes from the effective date and keeps the earlier row. Blank keeps. Company never removed. Changed-and-removed refused. Promotion. The screen's Remove field. Deactivated masters leave the pickers. |
+| `NoShiftReadinessTest` | Blocks with person and date ranges. The holiday and the scheduled colleague's days are excluded. Cannot be ticked. "Reprocess" once a schedule applies, and clears after reprocessing. Not applicable without loss of pay from attendance. Passes when everyone has a shift. |
+
+The regression results are in the R1 completion report.

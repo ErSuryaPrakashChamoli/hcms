@@ -4,8 +4,8 @@ namespace App\Filament\Resources\Levels\Pages;
 
 use App\Filament\Resources\Levels\LevelResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use App\Filament\Support\Pages\PeopleEditRecord;
-use Filament\Actions\DeleteAction;
 
 class EditLevel extends PeopleEditRecord
 {
@@ -16,7 +16,7 @@ class EditLevel extends PeopleEditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            MasterDeleteAction::make(),
         ];
     }
 }

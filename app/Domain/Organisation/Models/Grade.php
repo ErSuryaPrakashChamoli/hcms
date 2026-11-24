@@ -5,6 +5,7 @@ namespace App\Domain\Organisation\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\EffectiveDating\HasEffectiveDates;
+use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
 use Database\Factories\GradeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +20,8 @@ class Grade extends Model
 {
     /** @use HasFactory<GradeFactory> */
     use Auditable, BelongsToTenant, HasEffectiveDates, HasFactory;
+
+    use GuardsMasterDeletion;
 
     protected function casts(): array
     {

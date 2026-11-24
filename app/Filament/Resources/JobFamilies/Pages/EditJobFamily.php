@@ -4,8 +4,8 @@ namespace App\Filament\Resources\JobFamilies\Pages;
 
 use App\Filament\Resources\JobFamilies\JobFamilyResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use App\Filament\Support\Pages\PeopleEditRecord;
-use Filament\Actions\DeleteAction;
 
 class EditJobFamily extends PeopleEditRecord
 {
@@ -16,7 +16,7 @@ class EditJobFamily extends PeopleEditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            MasterDeleteAction::make(),
         ];
     }
 }

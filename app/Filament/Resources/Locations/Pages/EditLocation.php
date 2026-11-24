@@ -4,8 +4,8 @@ namespace App\Filament\Resources\Locations\Pages;
 
 use App\Filament\Resources\Locations\LocationResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use App\Filament\Support\Pages\PeopleEditRecord;
-use Filament\Actions\DeleteAction;
 
 class EditLocation extends PeopleEditRecord
 {
@@ -16,7 +16,7 @@ class EditLocation extends PeopleEditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            MasterDeleteAction::make(),
         ];
     }
 }

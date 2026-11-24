@@ -4,8 +4,8 @@ namespace App\Filament\Resources\Companies\Pages;
 
 use App\Filament\Resources\Companies\CompanyResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use App\Filament\Support\Pages\PeopleEditRecord;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 
 class EditCompany extends PeopleEditRecord
@@ -18,7 +18,7 @@ class EditCompany extends PeopleEditRecord
     {
         return [
             ViewAction::make(),
-            DeleteAction::make(),
+            MasterDeleteAction::make(),
         ];
     }
 }

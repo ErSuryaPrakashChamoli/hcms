@@ -9,6 +9,7 @@ use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Enums\LocationType;
 use App\Domain\Organisation\Services\LocationHierarchy;
 use App\Support\EffectiveDating\HasEffectiveDates;
+use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
 use Database\Factories\LocationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 #[Fillable(['tenant_id', 'company_id', 'establishment_id', 'parent_location_id', 'region_id', 'business_region_id', 'name', 'code', 'type', 'address_line_1', 'address_line_2', 'city', 'state_code', 'postal_code', 'country_code', 'timezone', 'status', 'effective_from', 'effective_to', 'metadata'])]
 class Location extends Model
 {
+    use GuardsMasterDeletion;
+
     /** @use HasFactory<LocationFactory> */
     use ScopedByOrganisation;
 

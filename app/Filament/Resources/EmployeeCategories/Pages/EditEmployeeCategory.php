@@ -4,8 +4,8 @@ namespace App\Filament\Resources\EmployeeCategories\Pages;
 
 use App\Filament\Resources\EmployeeCategories\EmployeeCategoryResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use App\Filament\Support\Pages\PeopleEditRecord;
-use Filament\Actions\DeleteAction;
 
 class EditEmployeeCategory extends PeopleEditRecord
 {
@@ -16,7 +16,7 @@ class EditEmployeeCategory extends PeopleEditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            MasterDeleteAction::make(),
         ];
     }
 }

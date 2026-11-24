@@ -43,8 +43,10 @@ final class AssignPositionAction
             array_intersect_key($attributes, EmployeePosition::DIMENSIONS),
             fn ($value) => $value !== null && $value !== '',
         );
+        // Master-relationships R1: `clear` names the optional fields this change removes (the form's "Remove").
+        $clear = $this->fieldsToClear($attributes, $dimensions);
 
-        return DB::transaction(function () use ($employee, $attributes, $dimensions, $changeType, $from, $reason) {
+        return DB::transaction(function () use ($employee, $attributes, $dimensions, $clear, $changeType, $from, $reason) {
             $current = $employee->positions()->effectiveOn($from)->first();
 
             if ($current !== null && $current->effective_from->gte($from)) {
@@ -66,6 +68,10 @@ final class AssignPositionAction
             $merged = $current
                 ? array_merge(array_intersect_key($current->getAttributes(), EmployeePosition::DIMENSIONS), $seat['dimensions'], $dimensions)
                 : array_merge($seat['dimensions'], $dimensions);
+
+            foreach ($clear as $column) {
+                $merged[$column] = null;
+            }
 
             if (empty($merged['company_id'])) {
                 throw new InvalidArgumentException('A position must belong to a company.');
@@ -104,6 +110,32 @@ final class AssignPositionAction
 
             return $position;
         });
+    }
+
+    /**
+     * The fields a change removes. Never the company (a position must belong to one), never a field the same change
+     * also sets, and only position fields.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>  $dimensions
+     * @return list<string>
+     */
+    private function fieldsToClear(array $attributes, array $dimensions): array
+    {
+        $clear = array_values(array_unique(array_filter((array) ($attributes['clear'] ?? []), fn ($c) => filled($c))));
+        foreach ($clear as $column) {
+            if (! is_string($column) || ! array_key_exists($column, EmployeePosition::DIMENSIONS)) {
+                throw new InvalidArgumentException('Only position fields can be removed.');
+            }
+            if ($column === 'company_id') {
+                throw new InvalidArgumentException('The company cannot be removed: a position must belong to a company.');
+            }
+            if (array_key_exists($column, $dimensions)) {
+                throw new InvalidArgumentException(EmployeePosition::DIMENSIONS[$column][1].' cannot be both changed and removed.');
+            }
+        }
+
+        return $clear;
     }
 
     /** Reserved employment events (contract §7): one per business change plus one per changed key dimension. */

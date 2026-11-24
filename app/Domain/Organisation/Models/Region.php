@@ -4,6 +4,7 @@ namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Region extends Model
 {
     use Auditable, BelongsToTenant;
+    use GuardsMasterDeletion;
 
     protected function casts(): array
     {

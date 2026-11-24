@@ -5,6 +5,7 @@ namespace App\Domain\People\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Skills\Models\SkillScale;
+use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
 use Database\Factories\SkillFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +20,8 @@ class Skill extends Model
 {
     /** @use HasFactory<SkillFactory> */
     use Auditable, BelongsToTenant, HasFactory;
+
+    use GuardsMasterDeletion;
 
     protected function casts(): array
     {

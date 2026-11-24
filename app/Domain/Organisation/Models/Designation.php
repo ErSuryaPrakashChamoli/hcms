@@ -6,6 +6,7 @@ use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Configuration\Concerns\HasCustomFields;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\EffectiveDating\HasEffectiveDates;
+use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
 use Database\Factories\DesignationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +22,8 @@ class Designation extends Model
 {
     /** @use HasFactory<DesignationFactory> */
     use Auditable, BelongsToTenant, HasCustomFields, HasEffectiveDates, HasFactory;
+
+    use GuardsMasterDeletion;
 
     protected static function booted(): void
     {

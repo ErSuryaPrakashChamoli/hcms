@@ -7,6 +7,7 @@ use App\Domain\Identity\Concerns\ScopedByOrganisation;
 use App\Domain\Organisation\Concerns\HasRecordVerification;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Support\EffectiveDating\HasEffectiveDates;
+use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class LegalEntity extends Model
 {
     use Auditable, BelongsToTenant, HasEffectiveDates, HasRecordVerification, ScopedByOrganisation;
+    use GuardsMasterDeletion;
 
     public string $accessScopeDimension = 'legal_entity';
 

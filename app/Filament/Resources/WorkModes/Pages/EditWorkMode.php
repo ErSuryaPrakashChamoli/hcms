@@ -4,8 +4,8 @@ namespace App\Filament\Resources\WorkModes\Pages;
 
 use App\Filament\Resources\WorkModes\WorkModeResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use App\Filament\Support\Pages\PeopleEditRecord;
-use Filament\Actions\DeleteAction;
 
 class EditWorkMode extends PeopleEditRecord
 {
@@ -16,7 +16,7 @@ class EditWorkMode extends PeopleEditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            MasterDeleteAction::make(),
         ];
     }
 }

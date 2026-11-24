@@ -4,8 +4,8 @@ namespace App\Filament\Resources\ProfitCentres\Pages;
 
 use App\Filament\Resources\ProfitCentres\ProfitCentreResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use App\Filament\Support\Pages\PeopleEditRecord;
-use Filament\Actions\DeleteAction;
 
 class EditProfitCentre extends PeopleEditRecord
 {
@@ -16,7 +16,7 @@ class EditProfitCentre extends PeopleEditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            MasterDeleteAction::make(),
         ];
     }
 }

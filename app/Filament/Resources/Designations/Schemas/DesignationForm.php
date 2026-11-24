@@ -29,7 +29,9 @@ class DesignationForm
                         Select::make('level_id')->relationship('level', 'name')->searchable()->preload(),
                         Select::make('grade_id')->relationship('grade', 'name')->searchable()->preload(),
                         Select::make('job_family_id')->relationship('jobFamily', 'name')->label('Job family')->searchable()->preload(),
-                        Select::make('department_id')->relationship('department', 'name')->searchable()->preload(),
+                        // OD-1: information only. A person's department comes from their own position; this never places anyone.
+                        Select::make('department_id')->relationship('department', 'name')->label('Usual department (information only)')
+                            ->helperText('Where people with this designation usually work. It never places anyone: each person\'s department comes from their own position.')->searchable()->preload(),
                         Select::make('default_reporting_level_id')->relationship('defaultReportingLevel', 'name')->label('Default reporting level')->searchable()->preload(),
                         Textarea::make('description')->rows(2)->maxLength(1000)->columnSpanFull(),
                         Select::make('status')->options(ActiveStatus::class)->default(ActiveStatus::Active)->required(),

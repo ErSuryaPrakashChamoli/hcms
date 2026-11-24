@@ -75,6 +75,37 @@ final class AttendanceOutput
     }
 
     /**
+     * Master-relationships R1: un-punched days recorded absent only because no work schedule, roster or shift applied
+     * (the processor's `no_shift` exception). Holidays and the weekly offs a schedule, roster or override names are never
+     * in it: the processor records those first. A day covered by leave is not absent, so it is not in it either.
+     *
+     * @param  list<int>  $employeeIds
+     * @return array<int, list<string>> employee id => sorted dates (Y-m-d)
+     */
+    public function noShiftAbsences(array $employeeIds, Carbon|string $from, Carbon|string $to): array
+    {
+        $employeeIds = array_values(array_unique(array_map('intval', $employeeIds)));
+        $out = [];
+        foreach (array_chunk($employeeIds, 500) as $chunk) {
+            AttendanceRecord::query()->whereIn('employee_id', $chunk)
+                ->whereDate('date', '>=', Carbon::parse($from)->toDateString())->whereDate('date', '<=', Carbon::parse($to)->toDateString())
+                ->where('status', 'absent')->where('exceptions', 'like', '%no_shift%')
+                ->get(['id', 'employee_id', 'date', 'exceptions'])
+                ->each(function (AttendanceRecord $record) use (&$out) {
+                    if (in_array('no_shift', (array) $record->exceptions, true)) {
+                        $out[(int) $record->employee_id][] = $record->date->toDateString();
+                    }
+                });
+        }
+
+        return array_map(function (array $dates) {
+            sort($dates);
+
+            return array_values(array_unique($dates));
+        }, $out);
+    }
+
+    /**
      * HROne setup parity (TO-5): days that count for the shift allowance — days present (half days count half) on shifts that
      * earn it; days worked on weekly offs and holidays only when the attendance policy allows it and the day reached its
      * minimum minutes.

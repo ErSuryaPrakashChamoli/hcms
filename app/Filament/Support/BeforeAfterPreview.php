@@ -125,6 +125,14 @@ final class BeforeAfterPreview
                 'after' => $model::query()->whereKey($new)->value('name') ?? '—',
             ];
         }
+        // Master-relationships R1: fields removed on this change ("Remove" on the transfer / promotion form).
+        foreach ((array) ($get('clear') ?? []) as $field) {
+            if (! isset(self::POSITION[$field]) || $field === 'company_id' || blank($current?->{$field})) {
+                continue;
+            }
+            [$label, $model] = self::POSITION[$field];
+            $changes[] = ['label' => $label, 'before' => $model::query()->whereKey($current->{$field})->value('name') ?? '—', 'after' => 'Removed'];
+        }
         if ($get('vacate_position')) {
             $changes[] = ['label' => 'Position seat', 'before' => 'Occupied', 'after' => 'Vacated'];
         }

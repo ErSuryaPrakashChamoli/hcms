@@ -7,8 +7,8 @@ use App\Domain\People\Models\Skill;
 use App\Domain\Skills\Models\SkillScale;
 use App\Filament\Resources\Skills\Pages\ManageSkills;
 use App\Filament\Support\AuditReasonField;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use BackedEnum;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -70,7 +70,7 @@ class SkillResource extends Resource
 
                     return $record;
                 }),
-                DeleteAction::make(),
+                MasterDeleteAction::make(),
             ]);
     }
 

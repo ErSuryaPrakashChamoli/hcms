@@ -57,6 +57,7 @@ final class PayrollRunChecklist
         'new_joiners' => ['New joiners', 'People who joined during the month: check their salary structure, bank account and statutory details before their first payroll.', 'review', 'Workforce'],
         'exits' => ['Exits and people leaving', 'People who left or leave this month, are serving notice, have a pending exit, are suspended or on long leave.', 'review', 'Workforce'],
         'org_changes' => ['Transfers and moves', 'People whose company, department, location or designation changed during the month (pay, statutory state and cost centre may follow).', 'review', 'Workforce'],
+        'no_shift' => ['Days with no shift', 'People recorded absent only because no work schedule, roster or shift applies to them: payroll would take loss of pay for those days. Assign a schedule and reprocess attendance for the dates shown.', 'block', 'Time office'],
         'final_settlements' => ['Full and final settlements', 'Leavers of the month whose settlement is not finished, and settlements that already pay this month (they are left out of the run).', 'review', 'Exit'],
         'uploads' => ['Salary uploads', 'Payroll uploads that are not imported yet: variable pay, arrears, claims, investments, loans, statutory details …', 'review', 'Payroll'],
         'one_time_inputs' => ['One-time pay inputs', 'Adjustments for this month and variable pay waiting for approval.', 'review', 'Payroll'],
@@ -77,7 +78,7 @@ final class PayrollRunChecklist
     ];
 
     /** Readiness checks behind an item: when none of them could run (no verified rule, nothing to compare with), it does not apply. */
-    private const READINESS_KEYS = ['pay_checks' => ['unbalanced_ctc', 'minimum_wage', 'wage_share', 'esi_ceiling'], 'last_month' => ['salary_unprocessed']];
+    private const READINESS_KEYS = ['pay_checks' => ['unbalanced_ctc', 'minimum_wage', 'wage_share', 'esi_ceiling'], 'last_month' => ['salary_unprocessed'], 'no_shift' => ['no_shift']];
 
     /** Rows shown per item (the full list is in the register the item links to). */
     public const ROWS = 50;
@@ -177,6 +178,8 @@ final class PayrollRunChecklist
             ->map(fn (array $c) => isset($byId[$c['employee_id']]) ? $person($byId[$c['employee_id']], 'Revision from '.($c['effective_from'] ? CarbonImmutable::parse($c['effective_from'])->format('j M Y') : '—').' is '.str_replace('_', ' ', $c['status']), in_array($c['status'], ['submitted', 'under_review'], true)) : null)
             ->filter()->values();
         $rows['structure_missing'] = $fromReadiness(['structure_missing']);
+        // Master-relationships R1: absences recorded only because no shift applies would dock pay: blocks until cleared.
+        $rows['no_shift'] = $fromReadiness(['no_shift']);
         $rows['pay_checks'] = $fromReadiness(['unbalanced_ctc', 'minimum_wage', 'wage_share', 'esi_ceiling']);
         $rows['statutory'] = $fromReadiness(['statutory_details_missing', 'pan_missing', 'aadhaar_missing', 'uan_missing', 'esi_ip_missing', 'statutory_setup']);
         $rows['bank'] = $this->runs->populationIn($companyId, $start, $end)->whereDoesntHave('bankAccounts', fn ($q) => $q->where('is_primary', true))->with('person')->orderBy('employee_code')->get()

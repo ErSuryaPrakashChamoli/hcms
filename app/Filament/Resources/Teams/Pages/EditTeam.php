@@ -4,8 +4,8 @@ namespace App\Filament\Resources\Teams\Pages;
 
 use App\Filament\Resources\Teams\TeamResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use App\Filament\Support\Pages\PeopleEditRecord;
-use Filament\Actions\DeleteAction;
 
 class EditTeam extends PeopleEditRecord
 {
@@ -16,7 +16,7 @@ class EditTeam extends PeopleEditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            MasterDeleteAction::make(),
         ];
     }
 }

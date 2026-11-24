@@ -294,6 +294,11 @@ class ViewEmployee extends PeopleViewRecord
                 ]),
                 Step::make('Change')->description('Only what is different')->schema([
                     Grid::make(3)->schema(array_map(fn ($field) => $field->live(), CreateEmployee::positionFields())),
+                    // Master-relationships R1: remove optional fields from the effective date; fields left blank stay as they are.
+                    Select::make('clear')->label('Remove from the effective date')->multiple()->live()
+                        ->options(fn (Employee $record) => collect(EmployeePosition::DIMENSIONS)->except('company_id')
+                            ->filter(fn (array $d, string $column) => filled($record->currentPosition?->{$column}))->map(fn (array $d) => $d[1])->all())
+                        ->helperText('Fields to leave empty from the effective date. Fields left blank above stay as they are.'),
                     // Phase 10: occupy a position (seat) — validated for status and capacity — or vacate it.
                     Grid::make(3)->schema([
                         Select::make('position_id')->label('Position (seat)')->searchable()

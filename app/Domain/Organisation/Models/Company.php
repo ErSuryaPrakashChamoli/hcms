@@ -10,6 +10,7 @@ use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Services\LegalEntities;
 use App\Domain\Platform\Services\SettingsRepository;
 use App\Support\EffectiveDating\HasEffectiveDates;
+use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
 use App\Support\Tenancy\TenantContext;
 use Database\Factories\CompanyFactory;
@@ -31,6 +32,8 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable(['tenant_id', 'name', 'code', 'legal_name', 'industry', 'phone', 'fax', 'contact_employee_id', 'social_links', 'logo_path', 'status', 'country_code', 'state_code', 'city', 'timezone', 'currency', 'effective_from', 'effective_to', 'metadata'])]
 class Company extends Model
 {
+    use GuardsMasterDeletion;
+
     /** @use HasFactory<CompanyFactory> */
     use ScopedByOrganisation;
 

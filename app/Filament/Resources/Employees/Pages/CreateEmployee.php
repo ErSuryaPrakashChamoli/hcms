@@ -37,6 +37,7 @@ use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\FormWizard;
 use App\Filament\Support\HireWizardSections;
 use App\Filament\Support\Pages\PeopleCreateRecord;
+use App\Support\Masters\ActiveMasters;
 use Closure;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -340,9 +341,10 @@ class CreateEmployee extends PeopleCreateRecord
         // Configuration applicability: once the company is known, only records that apply to it are offered.
         $select = fn (string $name, string $label, string $model) => Select::make($name)
             ->label($label)
-            ->options(fn (Get $get) => $name === 'company_id'
+            // Master-relationships R1: deactivated masters leave the pickers (records that use them keep them).
+            ->options(fn (Get $get) => ActiveMasters::only($model, $name === 'company_id'
                 ? $model::query()->orderBy('name')->pluck('name', 'id')->all()
-                : app(EntityApplicability::class)->options($model, filled($get('company_id')) ? (int) $get('company_id') : null))
+                : app(EntityApplicability::class)->options($model, filled($get('company_id')) ? (int) $get('company_id') : null)))
             ->searchable();
 
         return [

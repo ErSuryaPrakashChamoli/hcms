@@ -3,6 +3,7 @@
 namespace App\Domain\Payroll\Services;
 
 use App\Domain\Attendance\Services\AttendanceOutput;
+use App\Domain\Attendance\Services\ShiftResolver;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Contracts\CompensationOutput;
@@ -59,6 +60,7 @@ final class PayrollReadiness
         'statutory_setup' => ['Statutory rules for the month', 'Statutory rules your establishments need this month that are not VERIFIED (finalize refuses them while enforcement is on).'],
         'salary_unprocessed' => ['Salary not processed last month', 'In last month\'s payroll population but without an entry in its finalized run.'],
         'attendance_unprocessed' => ['Attendance not processed', 'Days of this pay month so far (up to yesterday) without a processed attendance record.'],
+        'no_shift' => ['Days with no shift', 'Un-punched days recorded absent only because no work schedule, roster or shift applies to the person. Holidays and the weekly offs a schedule names are never counted; without a schedule nothing says which days are off, so weekends appear too. Loss of pay is taken for these days until a schedule is assigned and attendance is reprocessed.'],
         'statutory_details_missing' => ['Statutory details missing', 'No statutory details (PAN, PF, ESI, PT choices) recorded at all.'],
         'structure_missing' => ['Salary structure missing', 'No approved compensation in force at the end of the pay month (or on the last working day).'],
         'pan_missing' => ['PAN missing', 'No PAN on file (TDS applies at the higher rate).'],
@@ -155,6 +157,7 @@ final class PayrollReadiness
             }
             $period = $this->periodFor($company, $year, $month, $start, $end);
             $this->attendanceChecks($checks, $company, $employees, $start, $end, $today);
+            $this->noShiftCheck($checks, $company, $employees, $start, $end);
             $this->statutoryChecks($checks, $company, $employees, $period);
             $this->compensationChecks($checks, $company, $employees, $period, $withAmounts);
             $this->specialStates($checks, $company, $employees, $start, $end);
@@ -167,7 +170,7 @@ final class PayrollReadiness
             $state = match (true) {
                 $count > 0 => 'attention',
                 ! $check['ran'] && isset(self::RULES[$key]) => 'no_rule',
-                ! $check['ran'] && in_array($key, ['salary_unprocessed', 'attendance_unprocessed'], true) => 'not_run',
+                ! $check['ran'] && in_array($key, ['salary_unprocessed', 'attendance_unprocessed', 'no_shift'], true) => 'not_run',
                 default => 'ok',
             };
             if ($check['skipped'] > 0) {
@@ -222,6 +225,7 @@ final class PayrollReadiness
             'esi_ceiling' => ($withAmounts ? ['wages' => 'ESI wages'] : []) + ['threshold' => 'ESI ceiling'],
             'unbalanced_ctc' => $withAmounts ? ['breakup' => 'Breakup a month', 'ctc' => 'CTC a month'] : [],
             'attendance_unprocessed' => ['days' => 'Days without attendance'],
+            'no_shift' => ['days' => 'Days', 'dates' => 'Dates'],
             default => [],
         };
     }
@@ -322,6 +326,65 @@ final class PayrollReadiness
                 $checks['attendance_unprocessed']['rows'][] = self::employeeRow($employee, $company, $missing.' of '.((int) $from->diffInDays($to) + 1).' days up to '.$to->format('j M').' have no processed attendance', ['days' => $missing]);
             }
         }
+    }
+
+    /**
+     * Master-relationships R1: days recorded absent only because no work schedule, roster or shift applied. Payroll takes
+     * loss of pay for absent days, so the run's checklist blocks on them (PayrollRunChecklist `no_shift`), per person with
+     * the dates and what to do. Where payroll takes no loss of pay from attendance the check does not run.
+     */
+    private function noShiftCheck(array &$checks, Company $company, Collection $employees, CarbonInterface $start, CarbonInterface $end): void
+    {
+        if (! (bool) $this->settings->get('payroll.lop_from_attendance', true)) {
+            $checks['no_shift']['notes'][] = 'Payroll does not take loss of pay from attendance in this organisation, so days with no shift do not change pay.';
+
+            return;
+        }
+        $checks['no_shift']['ran'] = true;
+        $days = $this->attendance->noShiftAbsences($employees->pluck('id')->all(), $start, $end);
+        if ($days === []) {
+            return;
+        }
+        $affected = $employees->filter(fn (Employee $e) => isset($days[(int) $e->id]))->values();
+        // What the schedule says now: a day that has a shift or a weekly off now only needs reprocessing.
+        $now = app(ShiftResolver::class)->resolveBetween($affected, $start, $end);
+        foreach ($affected as $employee) {
+            $dates = $days[(int) $employee->id];
+            $answers = $now[(int) $employee->id] ?? [];
+            $scheduled = array_values(array_filter($dates, fn (string $d) => ($answers[$d]['shift'] ?? null) !== null || (bool) ($answers[$d]['weekly_off'] ?? false)));
+            $count = count($dates);
+            $detail = 'No shift on '.$count.' '.($count === 1 ? 'day' : 'days').', recorded absent: '.self::dateRanges($dates).'.'.match (true) {
+                count($scheduled) === $count => ' A schedule applies now: reprocess attendance for these dates.',
+                $scheduled !== [] => ' A schedule applies now on '.self::dateRanges($scheduled).': reprocess those dates. Assign a work schedule, roster or shift for the rest, then reprocess attendance.',
+                default => ' Assign a work schedule, roster or shift, then reprocess attendance for these dates.',
+            };
+            $checks['no_shift']['rows'][] = self::employeeRow($employee, $company, $detail, ['days' => $count, 'dates' => self::dateRanges($dates)]);
+        }
+    }
+
+    /**
+     * "1–16 Sep, 18–30 Sep", "30 Sep–2 Oct", "17 Sep": consecutive dates as ranges.
+     *
+     * @param  list<string>  $dates  sorted Y-m-d
+     */
+    private static function dateRanges(array $dates): string
+    {
+        $ranges = [];
+        foreach ($dates as $date) {
+            $day = CarbonImmutable::parse($date);
+            $last = array_key_last($ranges);
+            if ($last !== null && $ranges[$last][1]->addDay()->isSameDay($day)) {
+                $ranges[$last][1] = $day;
+            } else {
+                $ranges[] = [$day, $day];
+            }
+        }
+
+        return implode(', ', array_map(fn (array $r) => match (true) {
+            $r[0]->isSameDay($r[1]) => $r[0]->format('j M'),
+            $r[0]->isSameMonth($r[1]) => $r[0]->format('j').'–'.$r[1]->format('j M'),
+            default => $r[0]->format('j M').'–'.$r[1]->format('j M'),
+        }, $ranges));
     }
 
     /** Statutory details, PAN, Aadhaar, UAN (PF applies) and ESI IP number (ESI deducted): presence only, tested in SQL. */

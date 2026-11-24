@@ -4,8 +4,8 @@ namespace App\Filament\Resources\Grades\Pages;
 
 use App\Filament\Resources\Grades\GradeResource;
 use App\Filament\Support\GovernedEdit;
+use App\Filament\Support\Masters\MasterDeleteAction;
 use App\Filament\Support\Pages\PeopleEditRecord;
-use Filament\Actions\DeleteAction;
 
 class EditGrade extends PeopleEditRecord
 {
@@ -16,7 +16,7 @@ class EditGrade extends PeopleEditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            MasterDeleteAction::make(),
         ];
     }
 }

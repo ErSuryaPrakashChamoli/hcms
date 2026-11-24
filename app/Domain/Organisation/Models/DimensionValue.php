@@ -4,6 +4,7 @@ namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,7 @@ use RuntimeException;
 class DimensionValue extends Model
 {
     use Auditable, BelongsToTenant;
+    use GuardsMasterDeletion;
 
     protected static function booted(): void
     {
