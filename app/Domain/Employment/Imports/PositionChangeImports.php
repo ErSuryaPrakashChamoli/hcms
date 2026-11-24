@@ -5,12 +5,15 @@ namespace App\Domain\Employment\Imports;
 use App\Domain\Employment\Actions\AssignPositionAction;
 use App\Domain\Employment\Actions\ChangeManagerAction;
 use App\Domain\Employment\Imports\Concerns\WorkforceRows;
+use App\Domain\Employment\Imports\Workbooks\ImportReferences;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Models\ReportingRelationship;
 use App\Domain\Employment\Services\ProfileChangeGuard;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Resolution\ResolutionStatus;
 use App\Domain\Organisation\Services\OrganisationCodes;
 use Illuminate\Support\Carbon;
 use InvalidArgumentException;
@@ -216,22 +219,55 @@ final class PositionChangeImports extends RowImports
             }
         }
         $dimensions = [];
-        foreach (self::DIMENSIONS as $field => $label) {
+        $references = app(ImportReferences::class);
+        $companyId = null;
+        // The company first: once the row names one, its other dimensions must apply to it and namesakes narrow to it.
+        $fields = array_keys(self::DIMENSIONS);
+        usort($fields, fn ($a, $b) => ($b === 'company_code') <=> ($a === 'company_code'));
+        foreach ($fields as $field) {
+            $label = self::DIMENSIONS[$field];
             if (! isset($r[$field])) {
                 continue;
             }
             [$column, $model] = OrganisationCodes::DIMENSIONS[$field];
             $context['codes'][$model] ??= $model::query()->pluck('id', 'code')->mapWithKeys(fn ($id, $code) => [mb_strtolower((string) $code) => (int) $id])->all();
             $id = $context['codes'][$model][mb_strtolower(trim($r[$field]))] ?? null;
-            $id === null ? $errors[] = "{$label} '{$r[$field]}' does not exist." : $dimensions[$column] = $id;
+            $forCompany = $model === Company::class ? null : $companyId;
+            if ($id === null) {
+                // Not a code: its exact name, "Name (CODE)" or a mapping confirmed in the review (as the uploader).
+                $resolution = $references->resolve($model, $r[$field], $forCompany, null, null, $label);
+                if ($resolution === null || ! $resolution->ok() || (int) $resolution->id <= 0) {
+                    $errors[] = $resolution !== null && $resolution->status !== ResolutionStatus::Unmatched && $resolution->error() !== null
+                        ? $resolution->error() : "{$label} '{$r[$field]}' does not exist.";
+
+                    continue;
+                }
+                $id = (int) $resolution->id;
+            } elseif ($forCompany !== null && ! $references->appliesTo($model, $id, $forCompany)) {
+                $errors[] = "{$label} '{$r[$field]}' is not available to {$references->companyName($forCompany)}. Extend where it applies, or use one that applies to that company.";
+
+                continue;
+            }
+            $dimensions[$column] = $id;
+            if ($model === Company::class) {
+                $companyId = $id;
+            }
         }
         $managerId = null;
         if (isset($r['manager_code'])) {
             // As the Employee 360 offers managers: employed people within the organisation scope.
             $managerId = Employee::query()->employed()->whereRaw('lower(employee_code) = ?', [mb_strtolower(trim($r['manager_code']))])->value('id');
             if ($managerId === null) {
-                $errors[] = "Manager employee code '{$r['manager_code']}' is not an employed person within your organisation scope.";
-            } elseif (mb_strtolower(trim($r['manager_code'])) === mb_strtolower(trim((string) ($r['employee_code'] ?? '')))) {
+                // Not a code: a person on file by work e-mail or full name (never a guess between namesakes).
+                $resolution = $references->resolve(Employee::class, $r['manager_code'], $companyId, null, null, 'Manager');
+                $managerId = $resolution !== null && $resolution->ok() && (int) $resolution->id > 0
+                    && Employee::query()->employed()->whereKey($resolution->id)->exists() ? (int) $resolution->id : null;
+                if ($managerId === null) {
+                    $errors[] = $resolution !== null && ImportReferences::needsReview($resolution) && $resolution->error() !== null
+                        ? $resolution->error() : "Manager employee code '{$r['manager_code']}' is not an employed person within your organisation scope.";
+                }
+            }
+            if ($managerId !== null && mb_strtolower(trim($r['manager_code'])) === mb_strtolower(trim((string) ($r['employee_code'] ?? '')))) {
                 $errors[] = 'An employee cannot report to themselves.';
             }
         }

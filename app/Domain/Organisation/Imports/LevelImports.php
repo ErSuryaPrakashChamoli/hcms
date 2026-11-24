@@ -5,19 +5,20 @@ namespace App\Domain\Organisation\Imports;
 use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
+use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Level;
 use Illuminate\Database\Eloquent\Model;
 
 /** Data import DI-1 (Core → Levels): levels by code with their rank (1 = the most senior or the first, as you rank them). */
 final class LevelImports extends MasterImports
 {
-    use ReadsMasterRows, RequiresUpdatePermission;
+    use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
 
     public const TYPE = 'levels';
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'rank' => ['Rank', false], 'description' => ['Description', false], 'status' => ['Status', false]];
+        return ['code' => ['Code', true], 'name' => ['Name', true], 'rank' => ['Rank', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -66,6 +67,7 @@ final class LevelImports extends MasterImports
                 ['Rank', 'No', 'A whole number that orders levels (0 to 9999).', '1'],
                 ['Description', 'No', 'A short description.', 'Entry level'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
+                ...self::applicabilityColumns(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case). A new code adds a level; a code on file updates it; a row whose values are already on file is skipped.',

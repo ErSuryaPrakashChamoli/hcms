@@ -5,10 +5,14 @@ namespace App\Domain\Employment\Imports;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Configuration\Services\OptionLists;
+use App\Domain\Employment\Actions\ChangeManagerAction;
 use App\Domain\Employment\Actions\HireEmployeeAction;
 use App\Domain\Employment\Enums\ImportMode;
+use App\Domain\Employment\Imports\Workbooks\ImportReferences;
+use App\Domain\Employment\Imports\Workbooks\WorkbookImports;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
@@ -23,6 +27,7 @@ use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
+use App\Domain\Organisation\Resolution\ResolutionStatus;
 use App\Domain\Organisation\Services\OrganisationCodes;
 use App\Domain\People\Actions\UpdatePersonAction;
 use App\Domain\People\Services\PersonMatcher;
@@ -348,12 +353,34 @@ final class EmployeeImports
         $mode = ImportMode::of($import);
         $counts = ['valid' => 0, 'error' => 0, 'review' => 0, 'create' => 0, 'update' => 0, 'skip' => 0];
         $seen = ['employee_code' => [], 'work_email' => [], 'personal_email' => [], 'external_reference' => [], 'device_user_id' => []];
-        $lookups = [];
+        // A manager may be a new hire in the same file (any row): the run sets those managers once everyone is created.
+        $lookups = ['file_codes' => []];
+        foreach ($import->rows()->cursor() as $row) {
+            $code = mb_strtolower(trim((string) ($this->recordFor($row, $mapping)['employee']['employee_code'] ?? '')));
+            if ($code !== '') {
+                $lookups['file_codes'][$code] = $row->row_number;
+            }
+        }
 
+        // Names (not codes) of organisation records and managers resolve through one session (ImportReferences).
+        $references = app(ImportReferences::class);
+        $references->begin($import, checking: true);
+        try {
+            $this->validateRows($import, $mapping, $mode, $counts, $seen, $lookups);
+        } finally {
+            $references->end();
+        }
+
+        return $import->refresh();
+    }
+
+    /** @param array<string, int> $counts @param array<string, array<string, int>> $seen @param array<string, mixed> $lookups */
+    private function validateRows(EmployeeImport $import, array $mapping, ImportMode $mode, array &$counts, array &$seen, array &$lookups): void
+    {
         DB::transaction(function () use ($import, $mapping, $mode, &$counts, &$seen, &$lookups) {
             foreach ($import->rows()->cursor() as $row) {
                 $record = $this->recordFor($row, $mapping);
-                $errors = $this->validateRecord($record, $lookups, $mode);
+                $errors = $this->validateRecord($record, $lookups, $mode, (int) ($row->data[WorkbookImports::ROW_COLUMN] ?? $row->row_number + 1));
 
                 foreach ($seen as $key => $values) {
                     $value = mb_strtolower((string) ($record['employee'][$key] ?? $record['person'][$key] ?? ''));
@@ -398,8 +425,6 @@ final class EmployeeImports
 
             $import->update(['status' => 'validated', 'valid_count' => $counts['valid'], 'error_count' => $counts['error'], 'review_count' => $counts['review'], 'create_count' => $counts['create'], 'update_count' => $counts['update'], 'skip_count' => $counts['skip']]);
         });
-
-        return $import->refresh();
     }
 
     /** A human decides what to do with a row flagged for review. */
@@ -453,14 +478,47 @@ final class EmployeeImports
     /** Apply the approved rows through the authoritative actions inside one audit operation. */
     public function run(EmployeeImport $import, User $user): EmployeeImport
     {
-        $this->assertStatus($import, ['approved']);
+        // A worksheet of a master upload may be resumed after an interruption (only its rows still pending run).
+        $this->assertStatus($import, $import->isSheet() ? ['approved', 'importing'] : ['approved']);
         $this->assertEnabled();
-        $import->update(['status' => 'importing']);
+        if ($import->status !== 'importing') {
+            $import->update(['status' => 'importing']);
+        }
         $mapping = $import->mapping ?? [];
         $result = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'ids' => []];
+        $lookups = ['file_codes' => []];
+        foreach ($import->rows()->whereIn('action', ['create', 'update'])->cursor() as $row) {
+            $code = mb_strtolower(trim((string) ($this->recordFor($row, $mapping)['employee']['employee_code'] ?? '')));
+            if ($code !== '') {
+                $lookups['file_codes'][$code] = $row->row_number;
+            }
+        }
+        $references = app(ImportReferences::class);
+        $references->begin($import, checking: false);
 
-        $operationId = $this->audit->operation('employment', "Employee import #{$import->getKey()} ({$import->original_name})", function () use ($import, $mapping, &$result) {
-            foreach ($import->rows()->whereIn('action', ['create', 'update', 'skip'])->cursor() as $row) {
+        try {
+            $operationId = $this->runRows($import, $mapping, $result, $lookups);
+        } finally {
+            $references->end();
+        }
+
+        // Counted from the rows, so a resumed run reports the whole file, not only its last part.
+        $done = $import->rows()->reorder()->selectRaw('action, status, count(*) as n')->groupBy('action', 'status')->get();
+        $count = fn (string $status, ?string $action = null) => (int) $done->filter(fn ($r) => $r->status === $status && ($action === null || $r->action === $action))->sum('n');
+        $import->update([
+            'status' => 'imported', 'imported_at' => now(), 'operation_id' => $operationId,
+            'create_count' => $count('imported', 'create'), 'update_count' => $count('imported', 'update'), 'skip_count' => $count('skipped'), 'failure_count' => $count('failed'),
+        ]);
+
+        return $import->refresh();
+    }
+
+    /** @param array<string, mixed> $result @param array<string, mixed> $lookups */
+    private function runRows(EmployeeImport $import, array $mapping, array &$result, array $lookups): string
+    {
+        return $this->audit->operation('employment', "Employee import #{$import->getKey()} ({$import->original_name})", function () use ($import, $mapping, &$result, $lookups) {
+            $laterManagers = [];
+            foreach ($import->rows()->whereIn('action', ['create', 'update', 'skip'])->where('status', 'pending')->cursor() as $row) {
                 if ($row->action === 'skip') {
                     $row->update(['status' => 'skipped', 'result' => 'Skipped: '.($row->match['reason'] ?? 'existing employee '.($row->match['employee_code'] ?? ''))]);
                     $result['skipped']++;
@@ -468,29 +526,74 @@ final class EmployeeImports
                     continue;
                 }
 
-                $record = $this->recordFor($row, $mapping);
+                // Names found again (as when the file was checked) and replaced by their codes; a reference that no
+                // longer resolves fails the row with the reason.
+                [$record, $referenceErrors] = $this->withReferences($this->recordFor($row, $mapping), $lookups, (int) ($row->data[WorkbookImports::ROW_COLUMN] ?? $row->row_number + 1));
+                if ($referenceErrors !== []) {
+                    $row->update(['status' => 'failed', 'result' => Str::limit(implode(' ', $referenceErrors), 500)]);
+                    $result['failed']++;
+
+                    continue;
+                }
+                // A manager who is a new hire further down the file does not exist yet: hire without, set it afterwards.
+                $later = $row->action === 'create' && $record['manager_code'] !== null && ! Employee::query()->where('employee_code', $record['manager_code'])->exists()
+                    ? $record['manager_code'] : null;
+                if ($later !== null) {
+                    $record['manager_code'] = null;
+                }
 
                 try {
-                    $employee = DB::transaction(fn () => $row->action === 'create' ? $this->create($record, $import) : $this->updateExisting($row, $record, $import));
-                    $row->update(['status' => 'imported', 'employee_id' => $employee->getKey(), 'result' => ($row->action === 'create' ? 'Created ' : 'Updated ').$employee->employee_code]);
+                    $employee = DB::transaction(function () use ($row, $record, $import) {
+                        $employee = $row->action === 'create' ? $this->create($record, $import) : $this->updateExisting($row, $record, $import);
+                        // Written in the same transaction as the change, so a resumed run never applies the row twice.
+                        $row->update(['status' => 'imported', 'employee_id' => $employee->getKey(), 'result' => ($row->action === 'create' ? 'Created ' : 'Updated ').$employee->employee_code]);
+
+                        return $employee;
+                    });
                     $result[$row->action === 'create' ? 'created' : 'updated']++;
                     $result['ids'][] = $employee->getKey();
+                    if ($later !== null) {
+                        $laterManagers[$row->getKey()] = [$employee, $later];
+                    }
                 } catch (\Throwable $e) {
                     report($e);
-                    $row->update(['status' => 'failed', 'result' => Str::limit($e->getMessage(), 500)]);
+                    $row->refresh()->update(['status' => 'failed', 'result' => Str::limit($e->getMessage(), 500)]);
                     $result['failed']++;
                 }
             }
+            $this->setLaterManagers($laterManagers, $import);
 
             return ['succeeded' => $result['created'] + $result['updated'] + $result['skipped'], 'failed' => $result['failed'], 'ids' => $result['ids']];
         }, reason: "Import {$import->original_name}", entityType: Employee::class);
+    }
 
-        $import->update([
-            'status' => 'imported', 'imported_at' => now(), 'operation_id' => $operationId,
-            'create_count' => $result['created'], 'update_count' => $result['updated'], 'skip_count' => $result['skipped'], 'failure_count' => $result['failed'],
-        ]);
+    /** Master uploads: a run stopped part-way can carry on (only rows still pending run). */
+    public static function resumable(): bool
+    {
+        return true;
+    }
 
-        return $import->refresh();
+    /**
+     * The managers that were new hires further down the file, set once everyone is created (line manager from the
+     * employee's joining date). A manager whose own row failed is not set; the row says so.
+     *
+     * @param  array<int, array{0: Employee, 1: string}>  $later  row id => [employee, manager code]
+     */
+    private function setLaterManagers(array $later, EmployeeImport $import): void
+    {
+        foreach ($later as $rowId => [$employee, $managerCode]) {
+            $row = EmployeeImportRow::query()->find($rowId);
+            $manager = Employee::query()->where('employee_code', $managerCode)->first();
+            try {
+                if ($manager === null) {
+                    throw new RuntimeException("manager {$managerCode} was not created (see their row), so no manager is set");
+                }
+                DB::transaction(fn () => app(ChangeManagerAction::class)->handle($employee, $manager, 'line', $employee->joining_date, "Import #{$import->getKey()}"));
+                $row?->update(['result' => Str::limit($row->result."; manager {$managerCode} set", 500)]);
+            } catch (\Throwable $e) {
+                $row?->update(['result' => Str::limit($row->result.'; '.$e->getMessage(), 500), 'match' => array_merge((array) $row->match, ['warnings' => [ucfirst($e->getMessage()).'.']])]);
+            }
+        }
     }
 
     public function discard(EmployeeImport $import, ?string $reason = null): EmployeeImport
@@ -589,7 +692,7 @@ final class EmployeeImports
     }
 
     /** @return list<string> */
-    private function validateRecord(array $record, array &$lookups, ImportMode $mode): array
+    private function validateRecord(array $record, array &$lookups, ImportMode $mode, ?int $sheetRow = null): array
     {
         $errors = [];
         foreach (self::required($mode) as $field) {
@@ -623,19 +726,12 @@ final class EmployeeImports
             $errors[] = 'Gender must be one of: '.implode(', ', $genders).'.';
         }
 
-        foreach ($record['position'] as $key => $code) {
-            if (! isset(self::ORGANISATION[$key])) {
-                continue;
-            }
-            [$column, $model] = self::ORGANISATION[$key];
-            $lookups[$model] ??= $model::query()->pluck('id', 'code')->mapWithKeys(fn ($id, $c) => [mb_strtolower((string) $c) => (int) $id])->all();
-            if (! isset($lookups[$model][mb_strtolower((string) $code)])) {
-                $errors[] = self::FIELDS["position.{$key}"][0]." '{$code}' does not exist.";
-            }
-        }
-
-        if ($record['manager_code'] !== null && ! Employee::query()->where('employee_code', $record['manager_code'])->exists()) {
-            $errors[] = "Manager employee code '{$record['manager_code']}' does not exist.";
+        $own = mb_strtolower(trim((string) ($record['employee']['employee_code'] ?? '')));
+        if ($record['manager_code'] !== null && $own !== '' && mb_strtolower(trim($record['manager_code'])) === $own) {
+            $errors[] = 'An employee cannot report to themselves.';
+        } else {
+            [, $referenceErrors] = $this->withReferences($record, $lookups, $sheetRow);
+            $errors = [...$errors, ...$referenceErrors];
         }
 
         if (isset($record['employee']['employee_code']) && ! preg_match('/^[A-Za-z0-9_-]{1,32}$/', $record['employee']['employee_code'])) {
@@ -643,6 +739,66 @@ final class EmployeeImports
         }
 
         return [...$errors, ...$this->additionErrors($record)];
+    }
+
+    /**
+     * The row's organisation codes and manager, each found by its code as always or, when it is not a code, by its exact
+     * name (or "Name (CODE)", or a mapping confirmed in the review) through the name resolver, as the uploader. Names
+     * found are replaced by their codes, so hiring reads codes as before. The company comes first: once the row names
+     * one, its other references must apply to it (the applicability framework) and namesakes are narrowed to it.
+     *
+     * @return array{0: array<string, mixed>, 1: list<string>} the record with codes, and what is wrong
+     */
+    private function withReferences(array $record, array &$lookups, ?int $sheetRow = null): array
+    {
+        $errors = [];
+        $references = app(ImportReferences::class);
+        $companyId = null;
+        $keys = array_keys($record['position']);
+        usort($keys, fn ($a, $b) => ($b === 'company_code') <=> ($a === 'company_code'));
+        foreach ($keys as $key) {
+            $code = $record['position'][$key];
+            if (! isset(self::ORGANISATION[$key]) || $code === null || $code === '') {
+                continue;
+            }
+            [, $model] = self::ORGANISATION[$key];
+            $label = self::FIELDS["position.{$key}"][0];
+            $lookups[$model] ??= $model::query()->pluck('id', 'code')->mapWithKeys(fn ($id, $c) => [mb_strtolower((string) $c) => (int) $id])->all();
+            $id = $lookups[$model][mb_strtolower((string) $code)] ?? null;
+            $forCompany = $model === Company::class ? null : $companyId;
+            if ($id === null) {
+                $resolution = $references->resolve($model, (string) $code, $forCompany, null, $sheetRow, $label);
+                if ($resolution === null || ! $resolution->ok() || (int) $resolution->id <= 0) {
+                    $errors[] = $resolution !== null && $resolution->status !== ResolutionStatus::Unmatched && $resolution->error() !== null
+                        ? $resolution->error() : "{$label} '{$code}' does not exist.";
+
+                    continue;
+                }
+                $id = (int) $resolution->id;
+                $record['position'][$key] = (string) ($model::query()->withoutGlobalScope(AccessScope::class)->whereKey($id)->value('code') ?? $code);
+            } elseif ($forCompany !== null && ! $references->appliesTo($model, $id, $forCompany)) {
+                $errors[] = "{$label} '{$code}' is not available to {$references->companyName($forCompany)}. Extend where it applies, or use one that applies to that company.";
+
+                continue;
+            }
+            if ($model === Company::class) {
+                $companyId = $id;
+            }
+        }
+
+        $manager = $record['manager_code'];
+        if ($manager !== null && ! isset($lookups['file_codes'][mb_strtolower(trim($manager))]) && ! Employee::query()->where('employee_code', $manager)->exists()) {
+            // A manager on file named by work e-mail or full name; a manager hired in this file is named by code.
+            $resolution = $references->resolve(Employee::class, (string) $manager, $companyId, null, $sheetRow, 'Manager');
+            if ($resolution !== null && $resolution->ok() && (int) $resolution->id > 0) {
+                $record['manager_code'] = (string) Employee::query()->whereKey($resolution->id)->value('employee_code');
+            } else {
+                $errors[] = $resolution !== null && $resolution->status !== ResolutionStatus::Unmatched && $resolution->error() !== null
+                    ? $resolution->error() : "Manager employee code '{$manager}' does not exist (on file or in this file).";
+            }
+        }
+
+        return [$record, $errors];
     }
 
     private function create(array $record, EmployeeImport $import): Employee

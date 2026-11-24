@@ -2,8 +2,13 @@
 
 namespace App\Domain\Organisation\Imports\Concerns;
 
+use App\Domain\Employment\Imports\MasterImports;
+use App\Domain\Employment\Imports\Workbooks\ImportReferences;
+use App\Domain\Employment\Imports\Workbooks\PlannedReferences;
 use App\Domain\Identity\Scopes\AccessScope;
+use App\Domain\Organisation\Resolution\ResolutionStatus;
 use App\Support\Geography\Countries;
+use App\Support\Imports\ClearValue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -98,6 +103,10 @@ trait ReadsMasterRows
         if ($code === null || trim($code) === '') {
             return null;
         }
+        // `(none)`: no parent (a required parent column refuses it before this, in MasterImports::check).
+        if (ClearValue::isClear($code)) {
+            return MasterImports::CLEARED;
+        }
         $query = $class::query()->withoutGlobalScope(AccessScope::class)->whereRaw("lower({$column}) = ?", [mb_strtolower(trim($code))]);
         if ($constrain !== null) {
             $constrain($query);
@@ -109,7 +118,25 @@ trait ReadsMasterRows
         if ($sameList && isset($context['seen'][mb_strtolower(trim($code))])) {
             return -1;
         }
-        $errors[] = "{$what} '{$code}' does not exist (list a parent before the rows under it).";
+        // Master uploads: a parent an earlier worksheet of the workbook adds (sub branches under new branches).
+        $planned = app(PlannedReferences::class);
+        if ($planned->plannedRecord($class, $code) !== null) {
+            return MasterImports::PLANNED;
+        }
+        if (($blocked = $planned->blockedMessage($class, $code, $what)) !== null) {
+            $errors[] = $blocked;
+
+            return null;
+        }
+        // A parent named rather than coded (or "Name (CODE)"), when the list is a registered master and the parent is
+        // not narrowed further ($constrain, e.g. places of one kind, keeps codes only).
+        $resolution = $constrain === null && $column === 'code'
+            ? app(ImportReferences::class)->resolve($class, $code, null, $context['row_ref']['sheet'] ?? null, $context['row_ref']['row'] ?? null, $what) : null;
+        if ($resolution !== null && $resolution->ok()) {
+            return (int) $resolution->id;
+        }
+        $errors[] = $resolution !== null && $resolution->status !== ResolutionStatus::Unmatched && $resolution->error() !== null
+            ? $resolution->error() : "{$what} '{$code}' does not exist (list a parent before the rows under it).";
 
         return null;
     }

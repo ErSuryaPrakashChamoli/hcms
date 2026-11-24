@@ -6,11 +6,13 @@ use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
+use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\JobFamily;
 use App\Domain\Organisation\Models\Level;
+use App\Support\Imports\ClearValue;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -20,7 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class DesignationImports extends MasterImports
 {
-    use ReadsMasterRows, RequiresUpdatePermission;
+    use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
 
     public const TYPE = 'designations';
 
@@ -28,11 +30,11 @@ final class DesignationImports extends MasterImports
     {
         return [
             'code' => ['Code', true], 'name' => ['Name', true], 'level_code' => ['Level code', false], 'grade_code' => ['Grade code', false],
-            'department_code' => ['Department code', false], 'job_family_code' => ['Job family code', false],
+            'department_code' => ['Usual department (information only)', false], 'job_family_code' => ['Job family code', false],
             'min_experience_years' => ['Minimum experience (years)', false], 'max_experience_years' => ['Maximum experience (years)', false],
             'wage_skill_category' => ['Wage skill category', false], 'is_hazardous' => ['Hazardous work', false],
             'description' => ['Description', false], 'status' => ['Status', false],
-        ];
+        ] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -76,7 +78,7 @@ final class DesignationImports extends MasterImports
             'name' => $this->text($r['name'] ?? null, 255, 'Name', $errors),
             'level_id' => $this->lookup($context, Level::class, $r['level_code'] ?? null, 'Level code', $errors),
             'grade_id' => $this->lookup($context, Grade::class, $r['grade_code'] ?? null, 'Grade code', $errors),
-            'department_id' => $this->lookup($context, Department::class, $r['department_code'] ?? null, 'Department code', $errors),
+            'department_id' => $this->lookup($context, Department::class, $r['department_code'] ?? null, 'Usual department', $errors),
             'job_family_id' => $this->lookup($context, JobFamily::class, $r['job_family_code'] ?? null, 'Job family code', $errors),
             'min_experience_years' => $min,
             'max_experience_years' => $max,
@@ -93,16 +95,17 @@ final class DesignationImports extends MasterImports
             'columns' => [
                 ['Code', 'Yes', 'The designation code (up to 32 characters). A code on file updates that designation.', 'SE'],
                 ['Name', 'Yes', 'The designation name.', 'Software engineer'],
-                ['Level code', 'No', 'Code of its level (People setup → Levels).', 'L2'],
-                ['Grade code', 'No', 'Code of its grade (People setup → Grades).', 'G3'],
-                ['Department code', 'No', 'Code of its department (Organisation → Departments).', 'ENG'],
-                ['Job family code', 'No', 'Code of its job family (People setup → Job families).', 'TECH'],
+                ['Level code', 'No', 'Code of its level (People setup → Levels). '.ClearValue::hint(), 'L2'],
+                ['Grade code', 'No', 'Code of its grade (People setup → Grades). '.ClearValue::hint(), 'G3'],
+                ['Usual department (information only)', 'No', 'Information only: it never places anyone. Code of its department (Organisation → Departments). '.ClearValue::hint(), 'ENG'],
+                ['Job family code', 'No', 'Code of its job family (People setup → Job families). '.ClearValue::hint(), 'TECH'],
                 ['Minimum experience (years)', 'No', 'Years, 0 to 99 (halves allowed).', '2'],
                 ['Maximum experience (years)', 'No', 'Years, 0 to 99, not below the minimum.', '5'],
                 ['Wage skill category', 'No', 'For minimum-wage checks: '.implode(', ', array_keys((array) config('peopleos.compliance.wage_skill_categories', []))).'.', 'skilled'],
                 ['Hazardous work', 'No', 'yes or no.', 'no'],
                 ['Description', 'No', 'A short description.', 'Builds and maintains product features'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
+                ...self::applicabilityColumns(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case). A new code adds a designation; a code on file updates it; a row whose values are already on file is skipped.',

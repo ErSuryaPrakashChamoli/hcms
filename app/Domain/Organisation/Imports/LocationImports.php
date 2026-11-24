@@ -8,11 +8,13 @@ use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Enums\LocationType;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
+use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\BusinessRegion;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\Region;
 use App\Domain\Organisation\Services\LocationHierarchy;
+use App\Support\Imports\ClearValue;
 use Illuminate\Database\Eloquent\Model;
 use Throwable;
 
@@ -23,7 +25,7 @@ use Throwable;
  */
 class LocationImports extends MasterImports
 {
-    use ReadsMasterRows, RequiresUpdatePermission;
+    use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
 
     public const TYPE = 'locations';
 
@@ -35,7 +37,7 @@ class LocationImports extends MasterImports
             'state_code' => ['State code', false], 'postal_code' => ['Postal code', false], 'country_code' => ['Country code', false],
             'timezone' => ['Time zone', false], 'region_code' => ['Region code', false], 'business_region_code' => ['Business region code', false],
             'status' => ['Status', false],
-        ];
+        ] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -120,7 +122,8 @@ class LocationImports extends MasterImports
     /** The location rules (same company as the parent branch, no loops) on the row's values, before anything is saved. */
     protected function checkHierarchy(?Model $existing, array $attributes, array &$errors): void
     {
-        if ($errors !== [] || ($attributes['parent_location_id'] ?? null) === -1) {
+        // A planned (-1) or removed (-2) link has no record to check against yet.
+        if ($errors !== [] || ($attributes['parent_location_id'] ?? 0) < 0 || ($attributes['company_id'] ?? 0) < 0) {
             return;
         }
         $probe = $existing === null ? new Location : clone $existing;
@@ -147,9 +150,10 @@ class LocationImports extends MasterImports
                 ['Postal code', 'No', 'PIN or postal code (up to 16 characters).', '560001'],
                 ['Country code', 'No', 'Two-letter ISO country code. Blank for a new branch is IN.', 'IN'],
                 ['Time zone', 'No', 'A time zone name such as Asia/Kolkata.', 'Asia/Kolkata'],
-                ['Region code', 'No', 'Code of the branch\'s region (Organisation → Regions).', 'SOUTH'],
-                ['Business region code', 'No', 'Code of the branch\'s business region (Organisation → Business regions).', 'APAC'],
+                ['Region code', 'No', 'Code of the branch\'s region (Organisation → Regions). '.ClearValue::hint(), 'SOUTH'],
+                ['Business region code', 'No', 'Code of the branch\'s business region (Organisation → Business regions). '.ClearValue::hint(), 'APAC'],
                 ['Status', 'No', 'active or inactive. Blank for a new branch is active.', 'active'],
+                ...self::applicabilityColumns(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case). A new code adds a branch; a code on file updates it; a row whose values are already on file is skipped.',

@@ -11,6 +11,7 @@ use App\Domain\Employment\Imports\ImportCatalogue;
 use App\Domain\Employment\Imports\ImportDownloads;
 use App\Domain\Employment\Imports\ImportGovernance;
 use App\Domain\Employment\Imports\ImportTypes;
+use App\Domain\Employment\Imports\Workbooks\WorkbookCatalogue;
 use App\Domain\Organisation\Models\Company;
 use App\Filament\Support\ImportActions;
 use BackedEnum;
@@ -25,6 +26,7 @@ use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use League\Csv\Reader;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -173,6 +175,23 @@ class DataImport extends Page implements HasSchemas
             Textarea::make('reason')->label('Reason')->helperText('Kept in the audit trail with the upload.')->required()->maxLength(500)->rows(2)
                 ->visible(fn () => $this->step === 4 && $this->canSubmit()),
         ]);
+    }
+
+    /**
+     * Preferred imports: the master uploads (one Excel workbook for many kinds of data) this person may use, shown above
+     * the single uploads, which all stay.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function masterWorkbooks(): array
+    {
+        return array_map(fn (string $key) => MasterImport::card($key), WorkbookCatalogue::visible(auth()->user()));
+    }
+
+    /** A master upload card's Template button. */
+    public function downloadWorkbookTemplate(string $key): StreamedResponse
+    {
+        return MasterImport::templateResponse($key, false);
     }
 
     /** The header's tint for the chosen process's module (theme hues). */
@@ -370,7 +389,34 @@ class DataImport extends Page implements HasSchemas
             'can_submit' => $this->canSubmit(),
             'url' => RecentUploads::urlFor($import),
             'fields' => collect(ImportTypes::service($import->type)::fields($import))->mapWithKeys(fn ($def, $key) => [$key => $def[0].($def[1] ? ' *' : '')])->all(),
+            // Names (not codes) in the file: those matched, and those to decide (ambiguous, near misses, conflicts).
+            'references' => $import->status === 'validated' && ! $done ? ($import->options['references'] ?? null) : null,
         ];
+    }
+
+    /** Bumped after a reference is decided, so the review panel remounts with the fresh report. */
+    public int $referencesRevision = 0;
+
+    /**
+     * Name review (ReferenceReview, name resolution): a person chose what a typed name means. The file is checked again
+     * so the decision counts; only this page's own upload, and only while it is checked and not yet approved.
+     */
+    #[On('references-resolved')]
+    public function referencesResolved(string $scope, string $key = ''): void
+    {
+        if ($this->importId === null || $scope !== 'employee_imports:'.$this->importId) {
+            return;
+        }
+        $import = $this->import();
+        if ($import->status !== 'validated') {
+            return;
+        }
+        try {
+            ImportTypes::service($import->type)->validate($import);
+        } catch (RuntimeException $e) {
+            Notification::make()->danger()->title('The file could not be checked again')->body($e->getMessage())->send();
+        }
+        $this->referencesRevision++;
     }
 
     /** Whether the person can approve and run the checked file now. */

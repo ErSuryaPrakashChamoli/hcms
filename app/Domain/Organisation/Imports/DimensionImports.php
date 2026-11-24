@@ -5,7 +5,9 @@ namespace App\Domain\Organisation\Imports;
 use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
+use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\DimensionValue;
+use App\Support\Imports\ClearValue;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -14,13 +16,13 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class DimensionImports extends MasterImports
 {
-    use ReadsMasterRows, RequiresUpdatePermission;
+    use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
 
     public const TYPE = 'dimensions';
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'parent_code' => ['Parent code', false], 'description' => ['Description', false], 'status' => ['Status', false]];
+        return ['code' => ['Code', true], 'name' => ['Name', true], 'parent_code' => ['Parent code', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -75,9 +77,10 @@ final class DimensionImports extends MasterImports
             'columns' => [
                 ['Code', 'Yes', 'The value\'s code (up to 32 characters). A code on file updates that value.', 'BFSI'],
                 ['Name', 'Yes', 'The value\'s name.', 'Banking and financial services'],
-                ['Parent code', 'No', 'Code of the value it sits under (on file, or an earlier row of this file).', 'FIN-VERT'],
+                ['Parent code', 'No', 'Code of the value it sits under (on file, or an earlier row of this file). '.ClearValue::hint(), 'FIN-VERT'],
                 ['Description', 'No', 'What it covers.', 'Banks, insurers and NBFC clients'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
+                ...self::applicabilityColumns(),
             ],
             'notes' => [
                 'Your dimension is your own extra way to group the organisation (verticals, practices, programmes …). Each row is one of its values.',

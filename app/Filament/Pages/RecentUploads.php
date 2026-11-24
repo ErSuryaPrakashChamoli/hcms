@@ -12,6 +12,8 @@ use App\Domain\Employment\Imports\ImportCatalogue;
 use App\Domain\Employment\Imports\ImportGovernance;
 use App\Domain\Employment\Imports\ImportTypes;
 use App\Domain\Employment\Imports\RowImportTypes;
+use App\Domain\Employment\Imports\Workbooks\WorkbookCatalogue;
+use App\Domain\Employment\Imports\Workbooks\WorkbookImports;
 use App\Filament\Resources\AttendanceSheetImports\AttendanceSheetImportResource;
 use App\Filament\Resources\BankAccountImports\BankAccountImportResource;
 use App\Filament\Resources\DataUploads\DataUploadResource;
@@ -98,9 +100,20 @@ class RecentUploads extends Page implements HasTable
 
         return EmployeeImport::query()->with(['uploader', 'approver'])
             ->where('created_at', '>=', Carbon::now()->startOfMonth()->subMonths(11))
+            // Master uploads: a workbook is listed once; its worksheets are opened from the workbook's page.
+            ->whereNull('parent_id')
             ->where(function (Builder $query) use ($types, $user) {
                 $query->whereRaw('1 = 0');
                 foreach ($types as $type) {
+                    if (WorkbookCatalogue::isType($type)) {
+                        // A workbook can hold bank details or pay: its uploader sees it, and a checker once it may see all of it.
+                        $checked = EmployeeImport::query()->where('type', $type)->whereIn('status', ImportGovernance::checkerStates())
+                            ->where('uploaded_by', '!=', $user?->getKey() ?? 0)->whereNull('parent_id')->limit(200)->get()
+                            ->filter(fn (EmployeeImport $i) => $user !== null && WorkbookImports::maySee($user, $i))->modelKeys();
+                        $query->orWhere(fn (Builder $q) => $q->where('type', $type)->where(fn (Builder $w) => $w->where('uploaded_by', $user?->getKey() ?? 0)->orWhereIn('id', $checked)));
+
+                        continue;
+                    }
                     $query->orWhere(fn (Builder $q) => in_array($type, [BankAccountImports::TYPE, SalaryImports::TYPE], true) || RowImportTypes::uploaderOnly($type)
                         ? ImportGovernance::ownOrChecked($q->where('type', $type), $type, $user)
                         : $q->where('type', $type));
@@ -111,6 +124,9 @@ class RecentUploads extends Page implements HasTable
     /** The screen an upload is worked on. */
     public static function urlFor(EmployeeImport $import): ?string
     {
+        if ($import->isWorkbook()) {
+            return MasterImport::canAccess() ? MasterImport::getUrl(['upload' => $import->getKey()]) : null;
+        }
         $resource = match ($import->type) {
             'employees' => EmployeeImportResource::class,
             BankAccountImports::TYPE => BankAccountImportResource::class,

@@ -75,8 +75,10 @@ it('runs every Core, Project Management and Integration process from its own sam
     $second = di1Company('ACME-IN', 'Acme India');
     di1Hire($this->acme, 'EMP1');
     di1Hire($this->acme, 'EMP2', 'Ravi');
-    $order = ['core.regions', 'core.business_regions', 'core.levels', 'core.grades', 'core.branches', 'core.sub_branches', 'core.business_units', 'core.departments',
-        'core.sub_departments', 'core.designations', 'core.skills', 'core.designation_skills', 'core.states', 'core.districts', 'core.cities', 'core.dimensions',
+    // Master uploads (2026-11-23): Companies and Cost centres joined Core; their samples must run cleanly too.
+    $order = ['core.companies', 'core.cost_centres', 'core.profit_centres', 'core.regions', 'core.business_regions', 'core.levels', 'core.grades', 'core.job_families',
+        'core.employment_types', 'core.employee_categories', 'core.work_modes', 'core.branches', 'core.sub_branches', 'core.business_units', 'core.divisions', 'core.departments',
+        'core.sub_departments', 'core.teams', 'core.organisation_tree', 'core.designations', 'core.skills', 'core.designation_skills', 'core.states', 'core.districts', 'core.cities', 'core.dimensions',
         'core.customers', 'projects.projects'];
     foreach (ImportCatalogue::PROCESSES as $key => $process) {
         if ($process['head'] === 'integration') {
@@ -196,8 +198,9 @@ it('loads business units for a company and sends a change of one on file to the 
     $unit = BusinessUnit::factory()->create(['company_id' => $this->acme->id, 'code' => 'RETAIL', 'name' => 'Retail']);
     $import = di1Stage('business_units', "Code,Name,Company code,Description\nCORP,Corporate,ACME,Big clients\nRETAIL,Retail banking,ACME,\nNEW,New,,\n");
     $rows = di1Rows($import);
+    // R1 (master-relationships programme): a business unit may have no company, as its form allows.
     expect($rows[1]['action'])->toBe('create')->and($rows[2]['action'])->toBe('update')
-        ->and($rows[3]['errors'])->toBe(['Company code is required for a new record.']);
+        ->and($rows[3]['action'])->toBe('create')->and($rows[3]['errors'])->toBeNull();
 
     app(FeatureFlags::class)->set('configuration.approval', true);
     di1Run($import);

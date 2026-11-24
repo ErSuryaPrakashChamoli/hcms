@@ -24,7 +24,7 @@ final class SubBranchImports extends LocationImports
             'state_code' => ['State code', false], 'postal_code' => ['Postal code', false], 'country_code' => ['Country code', false],
             'timezone' => ['Time zone', false], 'region_code' => ['Region code', false], 'business_region_code' => ['Business region code', false],
             'status' => ['Status', false],
-        ];
+        ] + self::applicabilityFields();
     }
 
     public function label(): string

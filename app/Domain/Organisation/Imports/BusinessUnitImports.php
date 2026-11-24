@@ -6,20 +6,22 @@ use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
+use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
+use App\Support\Imports\ClearValue;
 use Illuminate\Database\Eloquent\Model;
 
 /** Data import DI-1 (Core → Business units): business units of each company, by code. */
 final class BusinessUnitImports extends MasterImports
 {
-    use ReadsMasterRows, RequiresUpdatePermission;
+    use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
 
     public const TYPE = 'business_units';
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'company_code' => ['Company code', true], 'description' => ['Description', false], 'status' => ['Status', false]];
+        return ['code' => ['Code', true], 'name' => ['Name', true], 'company_code' => ['Company code', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -63,9 +65,10 @@ final class BusinessUnitImports extends MasterImports
             'columns' => [
                 ['Code', 'Yes', 'The business unit code (up to 32 characters). A code on file updates that business unit.', 'RETAIL'],
                 ['Name', 'Yes', 'The business unit name.', 'Retail banking'],
-                ['Company code', 'Yes', 'Code of the company it belongs to (Organisation → Companies).', 'ACME'],
+                ['Company code', 'No', 'Code of the company it belongs to (Organisation → Companies). '.ClearValue::hint(), 'ACME'],
                 ['Description', 'No', 'What it does.', 'Branches and retail products'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
+                ...self::applicabilityColumns(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case). A new code adds a business unit; a code on file updates it; a row whose values are already on file is skipped.',

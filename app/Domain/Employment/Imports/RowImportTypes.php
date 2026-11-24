@@ -9,6 +9,8 @@ use App\Domain\Assets\Imports\AssetTypeImports;
 use App\Domain\Attendance\Imports\AttendanceArrearImports;
 use App\Domain\Attendance\Imports\DayOverrideImports;
 use App\Domain\Attendance\Imports\GeoLocationImports;
+use App\Domain\Attendance\Imports\HolidayCalendarImports;
+use App\Domain\Attendance\Imports\HolidayImports;
 use App\Domain\Attendance\Imports\OvertimeArrearImports;
 use App\Domain\Attendance\Imports\OvertimeImports;
 use App\Domain\Attendance\Imports\PaidDayAdjustmentImports;
@@ -39,18 +41,28 @@ use App\Domain\Leave\Imports\LeaveHistoryImports;
 use App\Domain\Loans\Imports\LoanImports;
 use App\Domain\Organisation\Imports\BusinessRegionImports;
 use App\Domain\Organisation\Imports\BusinessUnitImports;
+use App\Domain\Organisation\Imports\CompanyImports;
+use App\Domain\Organisation\Imports\CostCentreImports;
 use App\Domain\Organisation\Imports\DepartmentImports;
 use App\Domain\Organisation\Imports\DesignationImports;
 use App\Domain\Organisation\Imports\DimensionImports;
+use App\Domain\Organisation\Imports\DivisionImports;
+use App\Domain\Organisation\Imports\EmployeeCategoryImports;
+use App\Domain\Organisation\Imports\EmploymentTypeImports;
 use App\Domain\Organisation\Imports\GeoCityImports;
 use App\Domain\Organisation\Imports\GeoDistrictImports;
 use App\Domain\Organisation\Imports\GeoStateImports;
 use App\Domain\Organisation\Imports\GradeImports;
+use App\Domain\Organisation\Imports\JobFamilyImports;
 use App\Domain\Organisation\Imports\LevelImports;
 use App\Domain\Organisation\Imports\LocationImports;
+use App\Domain\Organisation\Imports\OrganisationTreeImports;
+use App\Domain\Organisation\Imports\ProfitCentreImports;
 use App\Domain\Organisation\Imports\RegionImports;
 use App\Domain\Organisation\Imports\SubBranchImports;
 use App\Domain\Organisation\Imports\SubDepartmentImports;
+use App\Domain\Organisation\Imports\TeamImports;
+use App\Domain\Organisation\Imports\WorkModeImports;
 use App\Domain\Partners\Imports\VendorImports;
 use App\Domain\Payroll\Imports\SalaryArrearImports;
 use App\Domain\Payroll\Imports\VariablePayImports;
@@ -122,6 +134,20 @@ final class RowImportTypes
         GeoDistrictImports::TYPE => [GeoDistrictImports::class, 'Districts upload', 'organisation.create', 'core'],
         GeoCityImports::TYPE => [GeoCityImports::class, 'Cities upload', 'organisation.create', 'core'],
         DimensionImports::TYPE => [DimensionImports::class, 'Dimension upload', 'organisation.create', 'core'],
+        // Master uploads: companies (legal entities, company.create as the company screen) and cost centres, so the
+        // Organisation structure workbook can start from nothing.
+        CompanyImports::TYPE => [CompanyImports::class, 'Companies upload', 'company.create', 'core'],
+        CostCentreImports::TYPE => [CostCentreImports::class, 'Cost centres upload', 'organisation.create', 'core'],
+        // Integration phase: the remaining organisation masters and where each unit sits in the tree. Company-owned units
+        // need organisation.*, people setup masters people_setup.* (as their screens), the tree the designer's right.
+        DivisionImports::TYPE => [DivisionImports::class, 'Divisions upload', 'organisation.create', 'core'],
+        TeamImports::TYPE => [TeamImports::class, 'Teams upload', 'organisation.create', 'core'],
+        ProfitCentreImports::TYPE => [ProfitCentreImports::class, 'Profit centres upload', 'organisation.create', 'core'],
+        JobFamilyImports::TYPE => [JobFamilyImports::class, 'Job families upload', 'people_setup.create', 'core'],
+        EmploymentTypeImports::TYPE => [EmploymentTypeImports::class, 'Employment types upload', 'people_setup.create', 'core'],
+        EmployeeCategoryImports::TYPE => [EmployeeCategoryImports::class, 'Employee categories upload', 'people_setup.create', 'core'],
+        WorkModeImports::TYPE => [WorkModeImports::class, 'Work modes upload', 'people_setup.create', 'core'],
+        OrganisationTreeImports::TYPE => [OrganisationTreeImports::class, 'Organisation structure upload', 'organisation.design', 'core'],
         CustomerImports::TYPE => [CustomerImports::class, 'Customers upload', 'project.manage', 'core'],
         ProjectImports::TYPE => [ProjectImports::class, 'Projects upload', 'project.manage', 'projects'],
         JvCodeImports::TYPE => [JvCodeImports::class, 'JV mapping upload', 'integration.manage', 'integration'],
@@ -144,6 +170,9 @@ final class RowImportTypes
         EmployeeContractImports::TYPE => [EmployeeContractImports::class, 'Contract upload', 'employee.update', 'workforce'],
         // Data import DI-3: Time office.
         CompOffImports::TYPE => [CompOffImports::class, 'Comp-off upload', 'leave.adjust', 'time_office'],
+        // Master uploads: holiday calendars (with where they apply) and their holidays, as Attendance → Holiday calendars.
+        HolidayCalendarImports::TYPE => [HolidayCalendarImports::class, 'Holiday calendars upload', 'attendance.manage', 'time_office'],
+        HolidayImports::TYPE => [HolidayImports::class, 'Holidays upload', HolidayImports::PERMISSION, 'time_office'],
         AttendanceArrearImports::TYPE => [AttendanceArrearImports::class, 'Arrear days upload', 'attendance.arrears', 'time_office'],
         PaidDayAdjustmentImports::TYPE => [PaidDayAdjustmentImports::class, 'Paid days upload', 'attendance.override', 'time_office'],
         OvertimeArrearImports::TYPE => [OvertimeArrearImports::class, 'Previous month overtime upload', 'attendance.manage', 'time_office'],

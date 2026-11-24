@@ -6,6 +6,8 @@ use App\Domain\Attendance\Imports\AttendanceSheetImports;
 use App\Domain\Attendance\Imports\PunchImports;
 use App\Domain\Compensation\Imports\SalaryImports;
 use App\Domain\Employment\Enums\ImportMode;
+use App\Domain\Employment\Imports\Workbooks\WorkbookCatalogue;
+use App\Domain\Employment\Imports\Workbooks\WorkbookImports;
 use App\Domain\Identity\Models\User;
 use RuntimeException;
 
@@ -42,7 +44,7 @@ final class ImportTypes
     ];
 
     /** The service that approves, runs and discards uploads of this type. */
-    public static function service(string $type): EmployeeImports|BankAccountImports|PunchImports|AttendanceSheetImports|SalaryImports|RowImports
+    public static function service(string $type): EmployeeImports|BankAccountImports|PunchImports|AttendanceSheetImports|SalaryImports|RowImports|WorkbookImports
     {
         return app(self::serviceClass($type));
     }
@@ -50,6 +52,10 @@ final class ImportTypes
     /** @return class-string the service class of this type */
     public static function serviceClass(string $type): string
     {
+        if (WorkbookCatalogue::isType($type)) {
+            return WorkbookImports::class;
+        }
+
         return self::SERVICES[$type] ?? RowImportTypes::TYPES[$type][0] ?? EmployeeImports::class;
     }
 
@@ -62,6 +68,7 @@ final class ImportTypes
     public static function modes(string $type): ?array
     {
         $class = self::serviceClass($type);
+        // Master uploads: the choice is made once for the workbook and passed to every worksheet that asks.
         if (defined("{$class}::MODES")) {
             return $class::MODES;
         }
@@ -87,7 +94,8 @@ final class ImportTypes
             SalaryImports::TYPE => app(SalaryImports::class)->register($path, $originalName, $user, mode: $mode),
             AttendanceSheetImports::TYPE => app(AttendanceSheetImports::class)->register($path, $originalName, $user, (string) ($options['month'] ?? AttendanceSheetImports::currentMonth()), $mode, (string) ($options['blank_days'] ?? 'calculate')),
             PunchImports::TYPE => app(PunchImports::class)->register($path, $originalName, $user),
-            default => app(RowImportTypes::TYPES[$type][0])->register($path, $originalName, $user, null, array_filter(['mode' => $mode->value] + $options, fn ($v) => $v !== null && $v !== [])),
+            // Master uploads: an Excel workbook of several worksheets (WorkbookImports).
+            default => WorkbookCatalogue::isType($type) ? app(WorkbookImports::class)->register((string) WorkbookCatalogue::keyOf($type), $path, $originalName, $user, null, ['mode' => $mode->value]) : app(RowImportTypes::TYPES[$type][0])->register($path, $originalName, $user, null, array_filter(['mode' => $mode->value] + $options, fn ($v) => $v !== null && $v !== [])),
         };
     }
 
@@ -99,7 +107,7 @@ final class ImportTypes
             $labels[$type] = $def[1];
         }
 
-        return $labels;
+        return $labels + WorkbookCatalogue::labels();
     }
 
     public static function label(string $type): string
@@ -110,7 +118,9 @@ final class ImportTypes
     /** The module key (workforce | time_office | payroll) an upload type belongs to. */
     public static function module(string $type): ?string
     {
-        return self::BASE[$type][1] ?? RowImportTypes::TYPES[$type][3] ?? null;
+        $workbook = WorkbookCatalogue::keyOf($type);
+
+        return self::BASE[$type][1] ?? RowImportTypes::TYPES[$type][3] ?? ($workbook === null ? null : WorkbookCatalogue::WORKBOOKS[$workbook]['head']);
     }
 
     public static function moduleLabel(string $type): ?string
@@ -133,7 +143,7 @@ final class ImportTypes
             SalaryImports::TYPE => SalaryImports::allowed($user),
             AttendanceSheetImports::TYPE => AttendanceSheetImports::allowed($user),
             PunchImports::TYPE => $user->hasPermission('attendance.punch') && $user->hasPermission('employee.import'),
-            default => RowImportTypes::allowed($user, $type),
+            default => WorkbookCatalogue::isType($type) ? WorkbookImports::allowed($user, $type) : RowImportTypes::allowed($user, $type),
         };
     }
 

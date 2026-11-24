@@ -4,6 +4,7 @@ namespace App\Domain\Employment\Imports;
 
 use App\Domain\Compensation\Imports\SalaryImports;
 use App\Domain\Employment\Events\ImportEvent;
+use App\Domain\Employment\Imports\Workbooks\WorkbookImports;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Platform\Services\SettingsRepository;
@@ -49,6 +50,28 @@ final class ImportGovernance
         return $mode;
     }
 
+    /**
+     * The approval mode of one upload. A master upload (workbook) takes the strictest mode of its own type and of every
+     * worksheet type it holds (workflow > maker-checker > self), so putting bank details or pay in a workbook never
+     * loosens their approval rule.
+     */
+    public static function modeFor(EmployeeImport $import): string
+    {
+        $mode = self::mode((string) $import->type);
+        if (! $import->isWorkbook()) {
+            return $mode;
+        }
+        $rank = ['self' => 0, 'other_person' => 1, 'workflow' => 2];
+        foreach (WorkbookImports::types($import) as $type) {
+            $sheet = self::mode($type);
+            if ($rank[$sheet] > $rank[$mode]) {
+                $mode = $sheet;
+            }
+        }
+
+        return $mode;
+    }
+
     /** Whether someone other than the uploader approves uploads of this type. */
     public static function checkedByAnother(string $type): bool
     {
@@ -70,7 +93,12 @@ final class ImportGovernance
     /** Why the user may not approve the upload now, or null when the approval rule allows it. */
     public static function refusal(EmployeeImport $import, ?User $user): ?string
     {
-        $mode = self::mode((string) $import->type);
+        // A worksheet of a master upload is approved by the workbook's run, once the workbook itself was approved.
+        if ($import->isSheet()) {
+            return EmployeeImport::query()->whereKey($import->parent_id)->value('status') === 'importing'
+                ? null : 'This worksheet is approved and run with its master upload.';
+        }
+        $mode = self::modeFor($import);
         if ($mode === 'self') {
             return null;
         }
@@ -103,7 +131,7 @@ final class ImportGovernance
      */
     public static function checkerMaySee(User $user, EmployeeImport $import): bool
     {
-        return self::checkedByAnother((string) $import->type) && ! in_array($import->status, self::MAKER_STATES, true)
+        return self::modeFor($import) !== 'self' && ! in_array($import->status, self::MAKER_STATES, true)
             && ImportTypes::allowed($user, (string) $import->type);
     }
 
@@ -139,7 +167,7 @@ final class ImportGovernance
     /** What the approval step waits for, for the upload screens; null when nothing is waiting. */
     public static function waitingFor(EmployeeImport $import, ?User $user): ?string
     {
-        if ($import->status !== 'validated' || self::mode((string) $import->type) === 'self') {
+        if ($import->status !== 'validated' || self::modeFor($import) === 'self') {
             return null;
         }
         if (($run = self::openWorkflow($import)) !== null) {
@@ -151,7 +179,7 @@ final class ImportGovernance
 
     public static function approvalLabel(EmployeeImport $import): string
     {
-        return match (self::mode((string) $import->type)) {
+        return match (self::modeFor($import)) {
             'other_person' => 'Maker-checker',
             'workflow' => 'Workflow',
             default => 'Uploader',
@@ -184,6 +212,11 @@ final class ImportGovernance
         if (! $import->isDirty('status')) {
             return;
         }
+        // A worksheet of an approved or running master upload is not dropped on its own: that would change what was approved.
+        if ($import->isSheet() && $import->status === 'discarded'
+            && in_array(EmployeeImport::query()->whereKey($import->parent_id)->value('status'), ['approved', 'importing', 'imported', 'failed'], true)) {
+            throw new RuntimeException('This worksheet belongs to a master upload that is approved or has run; it cannot be discarded on its own.');
+        }
         if ($import->status === 'approved') {
             self::assertMayApprove($import, $import->approved_by ? User::query()->find($import->approved_by) : null);
         }
@@ -195,7 +228,8 @@ final class ImportGovernance
     /** After an upload is saved: its events, and an open approval workflow cancelled when the upload changed under it. */
     public static function updated(EmployeeImport $import): void
     {
-        if (! $import->wasChanged('status')) {
+        // Worksheets of a master upload raise no events of their own: the workbook's events stand for them.
+        if (! $import->wasChanged('status') || $import->isSheet()) {
             return;
         }
         $from = (string) $import->getOriginal('status');
@@ -210,7 +244,7 @@ final class ImportGovernance
         }
 
         match ($import->status) {
-            'validated' => ImportEvent::dispatch('import.validated', $import, $context, self::checkedByAnother((string) $import->type) ? self::checkerIds($import) : [], self::mode((string) $import->type) === 'workflow' && self::openWorkflow($import) === null),
+            'validated' => ImportEvent::dispatch('import.validated', $import, $context, self::modeFor($import) !== 'self' ? self::checkerIds($import) : [], self::modeFor($import) === 'workflow' && self::openWorkflow($import) === null),
             'approved' => ImportEvent::dispatch('import.approved', $import, $context + ['by' => User::query()->find($import->approved_by)?->name], (int) $import->approved_by !== (int) $import->uploaded_by ? [(int) $import->uploaded_by] : []),
             'imported' => ImportEvent::dispatch('import.completed', $import, $context + ['failed' => (int) self::attribute($import, 'failure_count')]),
             default => null,

@@ -4,6 +4,8 @@ namespace App\Domain\Employment\Imports;
 
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Enums\ImportMode;
+use App\Domain\Employment\Imports\Workbooks\ImportReferences;
+use App\Domain\Employment\Imports\Workbooks\PlannedReferences;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Identity\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -97,7 +99,8 @@ abstract class RowImports
         $csv = Writer::fromString();
         $csv->insertOne(array_column(static::fields(), 0));
         foreach ($this->examples() as $example) {
-            $csv->insertOne($example);
+            // Optional columns an upload gained later (e.g. Applies to) are left blank in older example rows.
+            $csv->insertOne(array_pad($example, count(static::fields()), ''));
         }
 
         return $csv->toString();
@@ -201,30 +204,56 @@ abstract class RowImports
         $context = $this->prepare($import);
         $mode = ImportMode::of($import);
 
-        DB::transaction(function () use ($import, $mapping, &$counts, &$context, $mode) {
-            foreach ($import->rows()->orderBy('row_number')->cursor() as $row) {
-                $r = $this->recordFor($row, $mapping) + $this->defaults($import);
-                try {
-                    $decision = $this->check($r, $context, $row, $import);
-                } catch (Throwable $e) {
-                    $decision = ['action' => 'error', 'errors' => [$e->getMessage()]];
-                }
-                $action = ($decision['errors'] ?? []) !== [] ? 'error' : $decision['action'];
-                $match = $decision['match'] ?? null;
-                // The "new or existing" choice: rows outside it are skipped, never errors.
-                if (($action === 'create' && $mode === ImportMode::Update) || ($action === 'update' && $mode === ImportMode::New)) {
-                    $match = ['reason' => $action === 'create' ? 'Not on file; this upload only updates.' : 'Already on file; this upload only adds.'];
-                    $action = 'skip';
-                }
+        // Names (not codes) in reference cells resolve through one session for the whole check (ImportReferences).
+        $references = app(ImportReferences::class);
+        $references->begin($import, checking: true);
+        try {
+            DB::transaction(function () use ($import, $mapping, &$counts, &$context, $mode) {
+                $planned = app(PlannedReferences::class);
+                $defers = ! $this instanceof MasterImports;
+                foreach ($import->rows()->orderBy('row_number')->cursor() as $row) {
+                    $r = $this->recordFor($row, $mapping) + $this->defaults($import);
+                    $planned->takeHits();
+                    // Master uploads: a row naming a record an earlier worksheet of the workbook adds waits for it (and is
+                    // checked in full before its worksheet runs); one naming a row with errors cannot go in. Inactive otherwise.
+                    $deferral = $defers ? $planned->deferral($r) : null;
+                    if ($deferral !== null) {
+                        $missing = isset($deferral['error']) ? [$deferral['error']] : $this->missingRequired($r);
+                        $row->update(['action' => $missing === [] ? 'waiting' : 'error', 'errors' => $missing ?: null,
+                            'match' => array_filter(['reason' => $missing === [] ? $deferral['waiting'] : null, 'depends_on' => $planned->takeHits()]) ?: null,
+                            'employee_id' => null, 'status' => 'pending', 'result' => null]);
+                        $counts[$missing === [] ? 'valid' : 'error']++;
 
-                $row->update(['action' => $action, 'errors' => ($decision['errors'] ?? []) ?: null, 'match' => $match, 'employee_id' => $decision['employee_id'] ?? null, 'status' => 'pending', 'result' => null]);
-                $counts[$action === 'error' ? 'error' : 'valid']++;
-                if ($action !== 'error') {
-                    $counts[$action]++;
+                        continue;
+                    }
+                    try {
+                        $decision = $this->check($r, $context, $row, $import);
+                    } catch (Throwable $e) {
+                        $decision = ['action' => 'error', 'errors' => [$e->getMessage()]];
+                    }
+                    $action = ($decision['errors'] ?? []) !== [] ? 'error' : $decision['action'];
+                    $match = $decision['match'] ?? null;
+                    // What the row depends on in earlier worksheets (planned, or blocked by a row with errors).
+                    if (($hits = $planned->takeHits()) !== []) {
+                        $match = array_merge((array) $match, ['depends_on' => $hits]);
+                    }
+                    // The "new or existing" choice: rows outside it are skipped, never errors.
+                    if (($action === 'create' && $mode === ImportMode::Update) || ($action === 'update' && $mode === ImportMode::New)) {
+                        $match = ['reason' => $action === 'create' ? 'Not on file; this upload only updates.' : 'Already on file; this upload only adds.'];
+                        $action = 'skip';
+                    }
+
+                    $row->update(['action' => $action, 'errors' => ($decision['errors'] ?? []) ?: null, 'match' => $match, 'employee_id' => $decision['employee_id'] ?? null, 'status' => 'pending', 'result' => null]);
+                    $counts[$action === 'error' ? 'error' : 'valid']++;
+                    if ($action !== 'error') {
+                        $counts[$action]++;
+                    }
                 }
-            }
-            $import->update(['status' => 'validated', 'valid_count' => $counts['valid'], 'error_count' => $counts['error'], 'review_count' => 0, 'create_count' => $counts['create'], 'update_count' => $counts['update'], 'skip_count' => $counts['skip']]);
-        });
+                $import->update(['status' => 'validated', 'valid_count' => $counts['valid'], 'error_count' => $counts['error'], 'review_count' => 0, 'create_count' => $counts['create'], 'update_count' => $counts['update'], 'skip_count' => $counts['skip']]);
+            });
+        } finally {
+            $references->end();
+        }
 
         return $import->refresh();
     }
@@ -242,38 +271,81 @@ abstract class RowImports
 
     public function run(EmployeeImport $import, User $user): EmployeeImport
     {
-        $this->assert($import, ['approved']);
-        $import->update(['status' => 'importing']);
+        // A worksheet of a master upload may be resumed after an interruption (only its rows still pending run).
+        $this->assert($import, $import->isSheet() ? ['approved', 'importing'] : ['approved']);
+        if ($import->status !== 'importing') {
+            $import->update(['status' => 'importing']);
+        }
         $mapping = $import->mapping ?? [];
         $result = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0];
+        // Names resolve again at run time (deterministic; mappings confirmed in the review apply), as the uploader.
+        $references = app(ImportReferences::class);
+        $references->begin($import, checking: false);
 
-        $operationId = $this->audit->operation($this->module(), $this->label()." #{$import->getKey()} ({$import->original_name})", function () use ($import, $mapping, $user, &$result) {
-            foreach ($import->rows()->whereIn('action', ['create', 'update', 'skip'])->orderBy('row_number')->cursor() as $row) {
-                if ($row->action === 'skip') {
-                    $row->update(['status' => 'skipped', 'result' => 'Skipped: '.($row->match['reason'] ?? 'nothing to change')]);
-                    $result['skipped']++;
+        try {
+            $operationId = $this->audit->operation($this->module(), $this->label()." #{$import->getKey()} ({$import->original_name})", function () use ($import, $mapping, $user, &$result) {
+                foreach ($import->rows()->whereIn('action', ['create', 'update', 'skip'])->where('status', 'pending')->orderBy('row_number')->cursor() as $row) {
+                    if ($row->action === 'skip') {
+                        $row->update(['status' => 'skipped', 'result' => 'Skipped: '.($row->match['reason'] ?? 'nothing to change')]);
+                        $result['skipped']++;
 
-                    continue;
-                }
-                try {
-                    $text = DB::transaction(fn () => $this->apply($this->recordFor($row, $mapping) + $this->defaults($import), $row, $import, $user));
-                    $row->update(['status' => 'imported', 'result' => Str::limit($text, 500)]);
-                    $result[$row->action === 'update' ? 'updated' : 'created']++;
-                } catch (Throwable $e) {
-                    if (! $e instanceof RuntimeException) {
-                        report($e);
+                        continue;
                     }
-                    $row->update(['status' => 'failed', 'result' => Str::limit($e->getMessage(), 500)]);
-                    $result['failed']++;
+                    try {
+                        // The row's outcome is written in the same transaction as its change, so a run that stops part-way
+                        // never leaves a change applied but its row still pending (which a resumed run would apply again).
+                        DB::transaction(function () use ($row, $mapping, $import, $user) {
+                            $text = $this->apply($this->recordFor($row, $mapping) + $this->defaults($import), $row, $import, $user);
+                            $row->update(['status' => 'imported', 'result' => Str::limit($text, 500)]);
+                        });
+                        $result[$row->action === 'update' ? 'updated' : 'created']++;
+                    } catch (Throwable $e) {
+                        if (! $e instanceof RuntimeException) {
+                            report($e);
+                        }
+                        $row->refresh()->update(['status' => 'failed', 'result' => Str::limit($e->getMessage(), 500)]);
+                        $result['failed']++;
+                    }
                 }
-            }
 
-            return ['succeeded' => $result['created'] + $result['updated'] + $result['skipped'], 'failed' => $result['failed']];
-        }, reason: $this->label().' '.$import->original_name, entityType: $this->entityType());
+                return ['succeeded' => $result['created'] + $result['updated'] + $result['skipped'], 'failed' => $result['failed']];
+            }, reason: $this->label().' '.$import->original_name, entityType: $this->entityType());
+        } finally {
+            $references->end();
+        }
 
-        $import->update(['status' => 'imported', 'imported_at' => now(), 'operation_id' => $operationId, 'create_count' => $result['created'], 'update_count' => $result['updated'], 'skip_count' => $result['skipped'], 'failure_count' => $result['failed']]);
+        // Counted from the rows, so a resumed run reports the whole file, not only its last part.
+        $done = $import->rows()->reorder()->selectRaw('action, status, count(*) as n')->groupBy('action', 'status')->get();
+        $count = fn (string $status, ?string $action = null) => (int) $done->filter(fn ($r) => $r->status === $status && ($action === null || $r->action === $action))->sum('n');
+        $import->update(['status' => 'imported', 'imported_at' => now(), 'operation_id' => $operationId, 'create_count' => $count('imported', 'create'), 'update_count' => $count('imported', 'update'),
+            'skip_count' => $count('skipped'), 'failure_count' => $count('failed')]);
 
         return $import->refresh();
+    }
+
+    /** Master uploads: a run stopped part-way can carry on (only rows still pending run; see run()). */
+    public static function resumable(): bool
+    {
+        return true;
+    }
+
+    /**
+     * The required fields a row leaves blank (with the process's defaults taken into account): the check a row that
+     * waits for an earlier worksheet gets in the preview.
+     *
+     * @param  array<string, string>  $r
+     * @return list<string>
+     */
+    protected function missingRequired(array $r): array
+    {
+        $missing = [];
+        foreach (static::fields() as $field => [$label, $required]) {
+            if ($required && trim((string) ($r[$field] ?? '')) === '') {
+                $missing[] = "{$label} is required.";
+            }
+        }
+
+        return $missing;
     }
 
     public function discard(EmployeeImport $import, ?string $reason = null): EmployeeImport

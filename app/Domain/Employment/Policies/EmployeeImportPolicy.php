@@ -8,6 +8,8 @@ use App\Domain\Employment\Imports\BankAccountImports;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\ImportGovernance;
 use App\Domain\Employment\Imports\RowImportTypes;
+use App\Domain\Employment\Imports\Workbooks\WorkbookCatalogue;
+use App\Domain\Employment\Imports\Workbooks\WorkbookImports;
 use App\Domain\Identity\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
@@ -56,9 +58,12 @@ class EmployeeImportPolicy
             AttendanceSheetImports::TYPE => AttendanceSheetImports::allowed($user),
             // HROne parity uploads also need their module permission (leave.manage / attendance.manage).
             // Data import DI-4: uploads that prepare compensation cycles hold pay, so only their uploader (or checker) sees them.
-            default => RowImportTypes::has((string) $model->getAttribute('type'))
+            // Master uploads: the uploader (or checker), while they may make every kind of upload the workbook holds.
+            default => WorkbookCatalogue::isType((string) $model->getAttribute('type'))
+                ? $model instanceof EmployeeImport && WorkbookImports::maySee($user, $model)
+                : (RowImportTypes::has((string) $model->getAttribute('type'))
                 ? RowImportTypes::allowed($user, (string) $model->getAttribute('type')) && (! RowImportTypes::uploaderOnly((string) $model->getAttribute('type')) || $uploader)
-                : $user->hasPermission('employee.import'),
+                : $user->hasPermission('employee.import')),
         };
     }
 }

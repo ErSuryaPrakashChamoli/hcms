@@ -5,19 +5,20 @@ namespace App\Domain\Organisation\Imports;
 use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
+use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Region;
 use Illuminate\Database\Eloquent\Model;
 
 /** Data import DI-1 (Core → Regions): regions (zones) by code. Branches name their region in the Branches upload. */
 class RegionImports extends MasterImports
 {
-    use ReadsMasterRows, RequiresUpdatePermission;
+    use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
 
     public const TYPE = 'regions';
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'description' => ['Description', false], 'status' => ['Status', false]];
+        return ['code' => ['Code', true], 'name' => ['Name', true], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -69,6 +70,7 @@ class RegionImports extends MasterImports
                 ['Name', 'Yes', "The {$what} name.", $this->examples()[0][1]],
                 ['Description', 'No', 'What it covers.', $this->examples()[0][2]],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
+                ...self::applicabilityColumns(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case). A new code adds one; a code on file updates it; a row whose values are already on file is skipped.',

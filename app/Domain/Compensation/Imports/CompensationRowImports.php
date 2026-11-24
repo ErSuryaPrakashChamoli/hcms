@@ -158,6 +158,15 @@ abstract class CompensationRowImports extends RowImports
      * Prepare one draft compensation cycle per company from the approved rows (each row is resolved again: facts may have
      * moved since validation). The uploader becomes each cycle's preparer.
      */
+    /**
+     * Master uploads: not resumable. The rows become compensation cycles per company in one step, so a run that stopped
+     * part-way is left for a person to look at rather than run again.
+     */
+    public static function resumable(): bool
+    {
+        return false;
+    }
+
     public function run(EmployeeImport $import, User $user): EmployeeImport
     {
         $this->assert($import, ['approved']);

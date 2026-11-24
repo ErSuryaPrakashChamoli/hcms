@@ -22,7 +22,7 @@ final class SubDepartmentImports extends DepartmentImports
     public static function fields(): array
     {
         return ['code' => ['Code', true], 'name' => ['Name', true], 'parent_code' => ['Parent department code', true], 'cost_centre_code' => ['Cost centre code', false],
-            'description' => ['Description', false], 'status' => ['Status', false]];
+            'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -56,7 +56,7 @@ final class SubDepartmentImports extends DepartmentImports
             return $attributes;
         }
         $attributes['parent_department_id'] = $parentId;
-        if ($parentId === -1) {
+        if ($parentId < 0) {
             return $attributes;
         }
         $parent = Department::query()->withoutGlobalScope(AccessScope::class)->find($parentId);
@@ -88,6 +88,7 @@ final class SubDepartmentImports extends DepartmentImports
                 ['Cost centre code', 'No', 'Code of its cost centre (Organisation → Cost centres).', 'CC-100'],
                 ['Description', 'No', 'What it does.', 'Testing and release quality'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
+                ...self::applicabilityColumns(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case). A new code adds a sub department in its parent\'s company; a code on file moves that department under the parent (it must be in the same company).',

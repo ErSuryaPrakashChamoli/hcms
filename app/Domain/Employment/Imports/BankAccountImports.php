@@ -6,6 +6,7 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Employment\Actions\ChangeBankAccountAction;
 use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Exceptions\ProfileChangeRefused;
+use App\Domain\Employment\Imports\Workbooks\PlannedReferences;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Employment\Services\BankAccountRules;
@@ -218,8 +219,17 @@ final class BankAccountImports
         $counts = ['valid' => 0, 'error' => 0, 'create' => 0, 'update' => 0, 'skip' => 0];
         $seen = ['employee' => [], 'account' => []];
 
-        DB::transaction(function () use ($import, $actor, $mode, $employees, &$counts, &$seen) {
+        $planned = app(PlannedReferences::class);
+        DB::transaction(function () use ($import, $actor, $mode, $employees, &$counts, &$seen, $planned) {
             foreach ($import->rows()->cursor() as $row) {
+                // Master uploads: bank details of an employee an earlier worksheet adds wait until that employee exists.
+                if (($deferral = $planned->deferral($this->recordFor($row, $import->mapping ?? []))) !== null) {
+                    $row->update(['action' => isset($deferral['error']) ? 'error' : 'waiting', 'errors' => isset($deferral['error']) ? [$deferral['error']] : null,
+                        'match' => isset($deferral['waiting']) ? ['reason' => $deferral['waiting']] : null, 'employee_id' => null, 'status' => 'pending', 'result' => null]);
+                    $counts[isset($deferral['error']) ? 'error' : 'valid']++;
+
+                    continue;
+                }
                 [$employee, $data, $errors] = $this->resolve($row, $import, $employees);
                 if ($employee !== null) {
                     if (isset($seen['employee'][$employee->id])) {
@@ -266,6 +276,12 @@ final class BankAccountImports
         return $import->refresh();
     }
 
+    /** Master uploads: a run stopped part-way can carry on (each pending row is decided again before it is written). */
+    public static function resumable(): bool
+    {
+        return true;
+    }
+
     public function approve(EmployeeImport $import, User $user, ?string $reason = null): EmployeeImport
     {
         $this->assert($import, ['validated']);
@@ -281,9 +297,13 @@ final class BankAccountImports
     /** Write the approved rows through ChangeBankAccountAction, deciding each again (facts may have moved since validation). */
     public function run(EmployeeImport $import, User $user): EmployeeImport
     {
-        $this->assert($import, ['approved']);
+        // A worksheet of a master upload may be resumed after an interruption (only its rows still pending run; each row
+        // is decided again, so one whose account was already saved is skipped).
+        $this->assert($import, $import->isSheet() ? ['approved', 'importing'] : ['approved']);
         $this->assertUploader($import, $user);
-        $import->update(['status' => 'importing']);
+        if ($import->status !== 'importing') {
+            $import->update(['status' => 'importing']);
+        }
         $mode = ImportMode::of($import);
         $employees = $this->employees();
         $why = "Bank details upload #{$import->getKey()} ({$import->original_name})";
@@ -292,7 +312,7 @@ final class BankAccountImports
         try {
             $operationId = $this->audit->operation('employment', $why, function (string $operationId) use ($import, $user, $mode, $employees, $why, &$result) {
                 $origin = new ChangeOrigin('bulk_upload', "Bank details upload #{$import->getKey()}", $operationId);
-                foreach ($import->rows()->whereIn('action', ['create', 'update', 'skip'])->cursor() as $row) {
+                foreach ($import->rows()->whereIn('action', ['create', 'update', 'skip'])->where('status', 'pending')->cursor() as $row) {
                     if ($row->action === 'skip') {
                         $row->update(['status' => 'skipped', 'result' => 'Skipped: '.($row->match['reason'] ?? 'nothing to change')]);
                         $result['skipped']++;

@@ -4872,3 +4872,52 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
     .pos-gcl-head, .pos-gcl-body { padding-inline: var(--pos-space-3); }
     .pos-gcl-hint { padding-left: 0; }
 }
+
+/* ------------------------------------------------------------------ U. Master uploads (Data import → Preferred imports, MasterImport page)
+   The band above the single uploads: an eyebrow, a heading and one line, then a card per workbook in its module's hue
+   (icon tile, name, worksheet count, the first worksheets as quiet chips, Upload / Template / Previous). */
+.pos-mu-band { display: grid; gap: var(--pos-space-4); padding: var(--pos-space-5); border-radius: var(--pos-radius-xl, var(--pos-radius-lg));
+    background: linear-gradient(135deg, var(--pos-primary-soft), color-mix(in srgb, var(--pos-primary-soft) 25%, var(--pos-surface)) 70%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 14%, transparent); }
+.pos-mu-band-head { display: grid; gap: 4px; max-width: 60rem; }
+.pos-mu-band-eyebrow { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label);
+    text-transform: uppercase; color: var(--pos-primary); }
+.pos-mu-band-head h2 { margin: 0; font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-mu-band-head p { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
+.pos-mu-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: var(--pos-space-3); }
+.pos-mu-card { position: relative; display: grid; align-content: start; gap: var(--pos-space-3); min-width: 0; padding: var(--pos-space-4); overflow: hidden;
+    border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border);
+    transition: box-shadow var(--pos-dur-1) var(--pos-ease); }
+.pos-mu-card::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 3px; background: var(--tone); }
+.pos-mu-card:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 35%, var(--pos-border)), var(--pos-shadow-1); }
+.pos-mu-card-head { display: flex; align-items: center; gap: var(--pos-space-3); min-width: 0; }
+.pos-mu-card-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--pos-radius-md); color: var(--tone); background: var(--tone-soft); }
+.pos-mu-card-title { display: grid; min-width: 0; }
+.pos-mu-card-title h3 { margin: 0; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+.pos-mu-card-title span { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
+.pos-mu-card-about { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary);
+    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pos-mu-card-sheets { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.pos-mu-card-sheets li { padding: 2px 8px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-secondary);
+    background: var(--pos-surface-muted); }
+.pos-mu-card-sheets li.is-more { color: var(--tone); background: var(--tone-soft); }
+.pos-mu-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); }
+.pos-mu-card-history { margin-inline-start: auto; font-size: var(--pos-fs-meta); }
+/* The check / import steps: the worksheet table's "after …" line and failed counts */
+.pos-mu { display: grid; gap: var(--pos-space-4); }
+.pos-mu-after { display: block; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-regular); color: var(--pos-text-muted); }
+.pos-step-table td.pos-mu-bad { color: var(--pos-danger); font-weight: var(--pos-fw-semibold); }
+/* How the worksheets ended: completed, partially completed, failed, not run — once in a line, then per worksheet */
+.pos-mu-outcomes { display: flex; flex-wrap: wrap; gap: var(--pos-space-2); margin: 0; padding: 0; list-style: none; }
+.pos-mu-outcomes li, .pos-mu-outcome { --tone: var(--pos-text-muted); --tone-soft: var(--pos-surface-muted); display: inline-flex; align-items: baseline; gap: 4px;
+    padding: 2px 10px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--tone); background: var(--tone-soft); }
+.pos-mu-outcomes li[data-outcome='completed'], .pos-mu-outcome[data-outcome='completed'] { --tone: var(--pos-success); --tone-soft: var(--pos-success-soft); }
+.pos-mu-outcomes li[data-outcome='partial'], .pos-mu-outcome[data-outcome='partial'] { --tone: var(--pos-warning); --tone-soft: var(--pos-warning-soft); }
+.pos-mu-outcomes li[data-outcome='failed'], .pos-mu-outcome[data-outcome='failed'] { --tone: var(--pos-danger); --tone-soft: var(--pos-danger-soft); }
+/* A worksheet's rows to look at, opened under its line */
+.pos-step-table .pos-mu-rows { background: var(--pos-surface-muted); border-radius: var(--pos-radius-md); }
+.pos-step-table td .pos-link + .pos-link { margin-inline-start: var(--pos-space-2); }
+@media (max-width: 640px) {
+    .pos-mu-band { padding: var(--pos-space-4); }
+    .pos-mu-card-history { margin-inline-start: 0; }
+}

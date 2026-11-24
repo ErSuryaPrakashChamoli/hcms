@@ -27,6 +27,17 @@
             <input type="search" wire:model.live.debounce.300ms="search" placeholder="branches · leave balance · bank · loans · goals · assets…" autocomplete="off" autofocus />
         </label>
 
+        @if (! $searching && ($masters = $this->masterWorkbooks()) !== [])
+            <section class="pos-mu-band" aria-labelledby="di-preferred-title">
+                <div class="pos-mu-band-head">
+                    <span class="pos-mu-band-eyebrow">Preferred imports</span>
+                    <h2 id="di-preferred-title">Master uploads</h2>
+                    <p>One Excel workbook for many kinds of data: fill in the worksheets you need, and PeopleOS checks them together and imports them in the order they depend on each other. Every single upload is still below.</p>
+                </div>
+                @include('filament.imports.master-upload-cards', ['workbooks' => $masters])
+            </section>
+        @endif
+
         <x-pos.section :title="$searching ? 'Matches' : 'Select process'" :count="$this->processCount()">
             @php($groups = $this->browseGroups())
             @if ($groups === [])
@@ -234,6 +245,12 @@
                             <div class="pos-di-note"><x-filament::icon icon="heroicon-m-clock" /><span>{{ $review['waiting'] }}. The upload waits in Recent uploads until then.</span></div>
                         @elseif ($import->create_count + $import->update_count === 0)
                             <div class="pos-di-note" data-tone="warning"><x-filament::icon icon="heroicon-m-information-circle" /><span>Nothing to import: no row would add or change anything.</span></div>
+                        @endif
+
+                        @if (! empty($review['references']['entries'] ?? []))
+                            {{-- Names (not codes) in the file: decide the ambiguous ones and near misses; the file is checked again. --}}
+                            <div class="pos-di-note"><x-filament::icon icon="heroicon-m-magnifying-glass" /><span>Some cells name records instead of giving their codes. Matches are listed for a glance; choose what each unclear name means and the file is checked again. Nothing is ever picked for you.</span></div>
+                            @livewire(\App\Livewire\Resolution\ReferenceReview::class, ['report' => $review['references'], 'scope' => 'employee_imports:'.$import->id], key('refs-'.$import->id.'-'.$this->referencesRevision))
                         @endif
 
                         @if ($review['can_submit'])

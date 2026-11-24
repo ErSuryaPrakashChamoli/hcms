@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** A staged employee import: upload → inspect → map → validate → preview → approve → import → audit. */
-#[Fillable(['tenant_id', 'type', 'source', 'original_name', 'disk', 'path', 'size_bytes', 'status', 'headers', 'mapping', 'options', 'row_count', 'valid_count', 'error_count', 'review_count', 'create_count', 'update_count', 'skip_count', 'failure_count', 'operation_id', 'uploaded_by', 'approved_by', 'approved_at', 'run_started_at', 'imported_at', 'error'])]
+#[Fillable(['tenant_id', 'type', 'parent_id', 'sheet', 'stage', 'source', 'original_name', 'disk', 'path', 'size_bytes', 'status', 'headers', 'mapping', 'options', 'row_count', 'valid_count', 'error_count', 'review_count', 'create_count', 'update_count', 'skip_count', 'failure_count', 'operation_id', 'uploaded_by', 'approved_by', 'approved_at', 'run_started_at', 'imported_at', 'error'])]
 class EmployeeImport extends Model
 {
     use Auditable, BelongsToTenant;
@@ -58,6 +58,30 @@ class EmployeeImport extends Model
     public function rows(): HasMany
     {
         return $this->hasMany(EmployeeImportRow::class)->orderBy('row_number');
+    }
+
+    /** Master uploads: the workbook upload a worksheet upload belongs to. */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /** Master uploads: the worksheet uploads of a workbook upload, in run order. */
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('stage')->orderBy('id');
+    }
+
+    /** Whether this is a master upload (a workbook of several worksheets). */
+    public function isWorkbook(): bool
+    {
+        return str_starts_with((string) $this->type, Workbooks\WorkbookCatalogue::TYPE_PREFIX);
+    }
+
+    /** Whether this upload is one worksheet of a master upload. */
+    public function isSheet(): bool
+    {
+        return ($this->getAttributes()['parent_id'] ?? null) !== null;
     }
 
     public function uploader(): BelongsTo

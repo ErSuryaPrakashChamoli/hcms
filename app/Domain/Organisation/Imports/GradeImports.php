@@ -5,20 +5,22 @@ namespace App\Domain\Organisation\Imports;
 use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
+use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\Level;
+use App\Support\Imports\ClearValue;
 use Illuminate\Database\Eloquent\Model;
 
 /** Data import DI-1 (Core → Grades): grades by code with their level and rank. */
 final class GradeImports extends MasterImports
 {
-    use ReadsMasterRows, RequiresUpdatePermission;
+    use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
 
     public const TYPE = 'grades';
 
     public static function fields(): array
     {
-        return ['code' => ['Code', true], 'name' => ['Name', true], 'level_code' => ['Level code', false], 'rank' => ['Rank', false], 'description' => ['Description', false], 'status' => ['Status', false]];
+        return ['code' => ['Code', true], 'name' => ['Name', true], 'level_code' => ['Level code', false], 'rank' => ['Rank', false], 'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -65,10 +67,11 @@ final class GradeImports extends MasterImports
             'columns' => [
                 ['Code', 'Yes', 'The grade code (up to 32 characters). A code on file updates that grade.', 'G1'],
                 ['Name', 'Yes', 'The grade name.', 'Grade 1'],
-                ['Level code', 'No', 'Code of its level (People setup → Levels).', 'L1'],
+                ['Level code', 'No', 'Code of its level (People setup → Levels). '.ClearValue::hint(), 'L1'],
                 ['Rank', 'No', 'A whole number that orders grades (0 to 9999).', '1'],
                 ['Description', 'No', 'A short description.', 'Entry grade'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
+                ...self::applicabilityColumns(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case). A new code adds a grade; a code on file updates it; a row whose values are already on file is skipped.',

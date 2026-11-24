@@ -4617,6 +4617,14 @@ return [
     // Streamline S3: the generic row imports (Data import's uploads on RowImports); attendance and people imports keep theirs.
     'imports' => [
         'max_rows' => 50000,
+        // Master uploads (Admin → Data import → Preferred imports): one Excel workbook of several worksheets. The run is
+        // queued (a worker must be running); set PEOPLEOS_WORKBOOK_QUEUE=false to run it in the request on a machine
+        // without one. Limits: rows in one worksheet, and in the whole workbook.
+        'workbooks' => [
+            'queue' => (bool) env('PEOPLEOS_WORKBOOK_QUEUE', true),
+            'max_sheet_rows' => 20000,
+            'max_rows' => 50000,
+        ],
     ],
 
     'data_classification' => [

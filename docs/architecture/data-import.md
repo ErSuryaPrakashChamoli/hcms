@@ -7,6 +7,11 @@ Admin › Data import has two tabs: **Import** (`App\Filament\Pages\DataImport`,
 **Recent uploads** (`RecentUploads`, unchanged apart from the tab strip and the process name per row).
 Recruitment is not listed: it runs in the separate recruitment system (owner decision 2026-10-31).
 
+**Master uploads** (2026-11-23): the page opens with *Preferred imports*, one Excel workbook for many kinds of data
+(Organisation Master, Employee Master, Attendance & Time Office, Payroll & Compensation, Performance Goals, Asset Master,
+Accounting Codes (JV)). Each worksheet is one of the processes below, run by its own upload type in dependency order. See
+`master-data-import.md`. The Core head also gained **Companies** and **Cost centres**.
+
 ## The catalogue
 
 `App\Domain\Employment\Imports\ImportCatalogue` lists the heads (Core, Workforce, Time Office, Payroll, Performance,

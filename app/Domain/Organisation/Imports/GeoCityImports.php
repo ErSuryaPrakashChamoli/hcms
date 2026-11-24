@@ -37,7 +37,7 @@ final class GeoCityImports extends GeoPlaceImports
         $stateId = $this->stateId($r['state_code'] ?? null, $context, $errors);
         $districtId = $this->parentId(GeoPlace::class, $r['district_code'] ?? null, $context, 'District code', $errors, fn (Builder $q) => $q->where('kind', GeoPlaceKind::District->value), sameList: false);
         $state = $stateId ?? ($existing !== null ? (int) $existing->state_id : null);
-        if ($districtId !== null && $state !== null && (int) GeoPlace::query()->whereKey($districtId)->value('state_id') !== $state) {
+        if ($districtId !== null && $districtId > 0 && $state !== null && $state > 0 && (int) GeoPlace::query()->whereKey($districtId)->value('state_id') !== $state) {
             $errors[] = "District '{$r['district_code']}' is not in the city's state.";
         }
         if ($districtId === null && $stateId !== null && $existing?->district_id !== null && (int) GeoPlace::query()->whereKey($existing->district_id)->value('state_id') !== $stateId) {

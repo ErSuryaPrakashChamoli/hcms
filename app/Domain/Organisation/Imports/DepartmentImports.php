@@ -6,9 +6,11 @@ use App\Domain\Employment\Imports\MasterImports;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Imports\Concerns\ReadsMasterRows;
 use App\Domain\Organisation\Imports\Concerns\RequiresUpdatePermission;
+use App\Domain\Organisation\Imports\Concerns\SetsApplicability;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
 use App\Domain\Organisation\Models\Department;
+use App\Support\Imports\ClearValue;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -17,14 +19,14 @@ use Illuminate\Database\Eloquent\Model;
  */
 class DepartmentImports extends MasterImports
 {
-    use ReadsMasterRows, RequiresUpdatePermission;
+    use ReadsMasterRows, RequiresUpdatePermission, SetsApplicability;
 
     public const TYPE = 'departments';
 
     public static function fields(): array
     {
         return ['code' => ['Code', true], 'name' => ['Name', true], 'company_code' => ['Company code', false], 'cost_centre_code' => ['Cost centre code', false],
-            'description' => ['Description', false], 'status' => ['Status', false]];
+            'description' => ['Description', false], 'status' => ['Status', false]] + self::applicabilityFields();
     }
 
     public function label(): string
@@ -80,10 +82,11 @@ class DepartmentImports extends MasterImports
             'columns' => [
                 ['Code', 'Yes', 'The department code (up to 32 characters). A code on file updates that department.', 'ENG'],
                 ['Name', 'Yes', 'The department name.', 'Engineering'],
-                ['Company code', 'No', 'Code of the company it belongs to (Organisation → Companies).', 'ACME'],
-                ['Cost centre code', 'No', 'Code of its cost centre (Organisation → Cost centres).', 'CC-100'],
+                ['Company code', 'No', 'Code of the company it belongs to (Organisation → Companies). '.ClearValue::hint(), 'ACME'],
+                ['Cost centre code', 'No', 'Code of its cost centre (Organisation → Cost centres). '.ClearValue::hint(), 'CC-100'],
                 ['Description', 'No', 'What it does.', 'Product engineering'],
                 ['Status', 'No', 'active or inactive. Blank for a new one is active.', 'active'],
+                ...self::applicabilityColumns(),
             ],
             'notes' => [
                 'Rows are matched on Code (any case). A new code adds a department; a code on file updates it; a row whose values are already on file is skipped.',
