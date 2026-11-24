@@ -79,7 +79,7 @@ Details live in the documents linked from each section; this page is the map.
 | `configuration.share` | Change which companies a record applies to |
 | `configuration.override` | Give a company its own values (with the type's own permission and access to the company) |
 | `configuration.clone` | Clone configuration (a copy for another company also needs the rights listed in [configuration-cloning.md](configuration-cloning.md)) |
-| `policy.view` / `policy.update` / `policy.publish` | See, edit and publish policies; Switch to Block also needs publish |
+| `policy.view` / `policy.update` / `policy.publish` | See, edit and publish policies; Switch to Block also needs publish. A person limited to some companies changes only policies that reach no other company |
 | `organisation.view` / `people_setup.view` | Open the Unmapped masters report |
 | `organisation.design` | Place units in the structure (Designer, "Place under" on create) |
 | `employee.import` + each upload's own permission | Run uploads and workbooks |
@@ -110,6 +110,9 @@ Details live in the documents linked from each section; this page is the map.
   - `Ux15FoundationTest` design-rule breaches in CSS committed on 16 and 19 Nov.
   - Three shared-cache concurrency tests (Entitlements 5 and 6, Plans 6) fail the same way on the base commit.
 - **Not built:**
-  - Skills (a single "manage" page) has no master tabs.
+  - Skills, legal entities and establishments (edited in a modal on their list page) have no master tabs.
+  - Ending a company's own value of an employment data requirements policy is not pre-flighted: if the shared
+    version is on Block, that company then follows the shared Block for the rules and companies the last pre-flight
+    covered (the run-time guard still turns anything it did not cover into a warning).
   - Company values are not cross-checked as a level and grade pair, because companies set them one at a time.
   - Placement readiness items stay review items: no automatic blocking (OD-3).

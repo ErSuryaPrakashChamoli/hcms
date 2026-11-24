@@ -24,6 +24,7 @@ use App\Domain\Configuration\Services\Policies;
 use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Configuration\Services\RuleEngine;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Requirements\EmploymentRequirements;
 use App\Domain\Exit\Models\ClearanceChecklist;
 use App\Domain\Expense\Models\ExpenseCategory;
 use App\Domain\Expense\Models\ExpenseLocationGroup;
@@ -257,7 +258,12 @@ final class PolicyCloneAdapter implements CloneAdapter
         $policy = new Policy(['type' => $snapshot->identity['type'], 'name' => trim($destination->name), 'code' => $destination->code,
             'description' => $snapshot->identity['description'] ?? null, 'status' => ActiveStatus::Active]);
         $policy->withAuditReason($reason)->save();
-        $this->policies->draft($policy, (array) ($snapshot->content['settings'] ?? []), 'Copied from '.$snapshot->label.(isset($snapshot->content['version']) ? " v{$snapshot->content['version']}" : ''));
+        $settings = (array) ($snapshot->content['settings'] ?? []);
+        // Master relationships R2: an employment data requirements copy starts on Warn, without the source's pre-flight.
+        if ($policy->type === EmploymentRequirements::TYPE) {
+            $settings = EmploymentRequirements::forCopy($settings);
+        }
+        $this->policies->draft($policy, $settings, 'Copied from '.$snapshot->label.(isset($snapshot->content['version']) ? " v{$snapshot->content['version']}" : ''));
 
         $children = [];
         foreach ($plan->rulesFor($destination->companyId) as $rule) {

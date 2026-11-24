@@ -86,7 +86,7 @@ it('answers 422 through the API for a Block refusal or a master that does not ap
     $payload = fn (array $position) => ['person' => ['first_name' => 'Kiran', 'last_name' => 'Rao'], 'employee' => ['joining_date' => '2026-11-30'], 'position' => ['company_code' => 'MK'] + $position];
 
     $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/employees', $payload([]))
-        ->assertCreated()->assertJsonPath('meta.requirement_warnings.0', 'Grade is required for Markedge Technologies employees (Employment data requirements: Hire rules, v1).');
+        ->assertCreated()->assertJsonPath('meta.requirement_warnings.0', 'Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v1).');
     $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/employees', $payload(['designation_code' => 'PTR', 'grade_code' => 'T4']))
         ->assertStatus(422)->assertJsonPath('message', fn (string $m) => str_contains($m, 'Partner'));
 
@@ -96,7 +96,7 @@ it('answers 422 through the API for a Block refusal or a master that does not ap
     auth()->logout();
     actAsTenant(null);
     $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/employees', $payload([]))
-        ->assertStatus(422)->assertJsonPath('message', 'Grade is required for Markedge Technologies employees (Employment data requirements: Hire rules, v2).');
+        ->assertStatus(422)->assertJsonPath('message', 'Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v2).');
     $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/employees', $payload(['grade_code' => 'T4']))->assertCreated()->assertJsonMissingPath('meta');
 });
 
@@ -112,7 +112,7 @@ it('shows a Block refusal as a row error before approval in the job-change uploa
     $blocked = erpUpload('position_changes', $csv, $this->admin)->rows()->orderBy('row_number')->get();
     expect($blocked[0]->action)->toBe('update')
         ->and($blocked[1]->action)->toBe('error')
-        ->and($blocked[1]->errors)->toBe(['Grade is required for Markedge Technologies employees (Employment data requirements: Hire rules, v2).']);
+        ->and($blocked[1]->errors)->toBe(['Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v2).']);
 
     // Back on Warn: the row goes through with the warning as a note, and the run says so.
     app(Policies::class)->draft($policy, ['required_on_change' => ['grade_id'], 'required_mode' => 'warn']);
@@ -120,7 +120,7 @@ it('shows a Block refusal as a row error before approval in the job-change uploa
     $import = erpUpload('position_changes', $csv, $this->admin);
     $rows = $import->rows()->orderBy('row_number')->get();
     expect($rows[1]->action)->toBe('update')
-        ->and($rows[1]->match['warnings'])->toBe(['Grade is required for Markedge Technologies employees (Employment data requirements: Hire rules, v3).']);
+        ->and($rows[1]->match['warnings'])->toBe(['Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v3).']);
 
     $service = ImportTypes::service('position_changes');
     $service->approve($import->refresh(), $this->admin, 'test');
@@ -138,7 +138,7 @@ it('refuses a new hire row before approval in the employee upload when a rule is
     $rows = $import->rows()->orderBy('row_number')->get();
 
     expect($rows[0]->action)->toBe('error')
-        ->and($rows[0]->errors)->toBe(['Grade is required for Markedge Technologies employees (Employment data requirements: Hire rules, v2).'])
+        ->and($rows[0]->errors)->toBe(['Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v2).'])
         ->and($rows[1]->action)->toBe('create');
 });
 

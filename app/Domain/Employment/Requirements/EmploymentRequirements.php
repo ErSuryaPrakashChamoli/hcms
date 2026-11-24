@@ -45,6 +45,28 @@ final class EmploymentRequirements
         return collect(EmployeePosition::DIMENSIONS)->except('company_id')->map(fn (array $d) => $d[1])->all();
     }
 
+    /** Why a required field matters: what reads it (shown with every "is required" warning or refusal). */
+    public const WHY = [
+        'location_id' => 'the statutory establishment (PF, ESI, PT, LWF) and location-based policies such as holidays read it',
+        'business_unit_id' => 'policies and reports by business unit read it',
+        'division_id' => 'policies and reports by division read it',
+        'department_id' => 'policies, reports and increment filters by department read it',
+        'team_id' => 'policies and reports by team read it',
+        'designation_id' => "letters, reports and the designation's level and grade defaults read it",
+        'level_id' => 'policies by level read it',
+        'grade_id' => 'pay bands, increments and salary formulas by grade read it',
+        'employment_type_id' => 'leave, attendance and statutory policies by employment type read it',
+        'employee_category_id' => 'policies by employee category read it',
+        'work_mode_id' => 'policies by work mode read it',
+        'cost_centre_id' => 'payroll cost allocation (JV) reads it',
+        'dimension_value_id' => "policies by the organisation's own dimension read it",
+    ];
+
+    public static function why(string $column): string
+    {
+        return self::WHY[$column] ?? 'policies by this field read it';
+    }
+
     /** OD-4: what a new tenant's seeded policy requires (Company is implied). */
     public const NEW_TENANT_REQUIRED = ['location_id', 'department_id', 'designation_id', 'employment_type_id'];
 
@@ -84,6 +106,25 @@ final class EmploymentRequirements
         }
 
         return $rules;
+    }
+
+    /**
+     * The settings a copy of a policy starts from (configuration cloning): a pre-flight vouches for the policy it was
+     * run for, so the copy drops it and its Block rules start on Warn until a pre-flight of the copy.
+     *
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    public static function forCopy(array $settings): array
+    {
+        unset($settings['preflight']);
+        foreach (['required_mode', ...array_map(fn (string $c) => "check_{$c}", array_keys(self::CHECKS))] as $key) {
+            if (($settings[$key] ?? null) === self::BLOCK) {
+                $settings[$key] = self::WARN;
+            }
+        }
+
+        return $settings;
     }
 
     /** What a pre-flight vouches for: the whole rule set, so any change needs a new pre-flight before Block. */

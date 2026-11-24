@@ -62,7 +62,13 @@ class EditPolicy extends PeopleEditRecord
                 ->icon(Heroicon::OutlinedDocumentPlus)
                 ->visible(fn (Policy $record) => $record->draft()->doesntExist())
                 ->action(function (Policy $record) {
-                    $draft = app(Policies::class)->draft($record);
+                    try {
+                        $draft = app(Policies::class)->draft($record);
+                    } catch (ConfigurationException $e) {
+                        Notification::make()->danger()->title('No draft created')->body($e->getMessage())->send();
+
+                        return;
+                    }
                     Notification::make()->success()->title("Draft v{$draft->version} created")->body('Open it with Edit draft under Versions & settings.')->send();
                     $this->reloadPage($record);
                 }),

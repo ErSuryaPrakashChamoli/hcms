@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Audit\Models\AuditEvent;
 use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
 use App\Domain\Configuration\Applicability\ApplicabilitySelection;
 use App\Domain\Configuration\Applicability\EntityApplicability;
@@ -23,6 +25,7 @@ use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Services\DesignationDefaults;
 use App\Domain\Platform\Services\FeatureFlags;
 use App\Domain\Workforce\Services\Positions;
+use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\ViewEmployee;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -104,6 +107,21 @@ it('refuses a company value the company may not use', function () {
     expect(fn () => $overrides->set($this->sourcing, $this->fe->id, 'grade_id', $this->t5->id, '2026-11-24', $this->admin))
         ->toThrow(ApplicabilityRefusedException::class, 'Grade "T5" does not apply to FynnEdge Advisory');
     expect($overrides->set($this->sourcing, $this->mk->id, 'grade_id', $this->t5->id, '2026-11-24', $this->admin)->value)->toBe($this->t5->id);
+});
+
+it("prefills the hire screen with the chosen company's defaults, keeps what is already chosen, and audits each company value", function () {
+    feDefaults($this);
+
+    Livewire::test(CreateEmployee::class)->fillForm(['company_id' => $this->fe->id])->fillForm(['designation_id' => $this->sourcing->id])
+        ->assertFormSet(['level_id' => $this->l6->id, 'grade_id' => $this->t5->id]);
+    Livewire::test(CreateEmployee::class)->fillForm(['company_id' => $this->mk->id])->fillForm(['designation_id' => $this->sourcing->id])
+        ->assertFormSet(['level_id' => $this->l5->id, 'grade_id' => $this->t4->id]);
+    Livewire::test(CreateEmployee::class)->fillForm(['company_id' => $this->fe->id, 'grade_id' => $this->t4->id])->fillForm(['designation_id' => $this->sourcing->id])
+        ->assertFormSet(['level_id' => $this->l6->id, 'grade_id' => $this->t4->id]);
+
+    $events = AuditEvent::query()->with('fieldChanges')->where('action', AuditAction::OverrideSet)->where('entity_id', (string) $this->sourcing->id)->orderBy('id')->get();
+    expect($events)->toHaveCount(2)
+        ->and($events->flatMap(fn ($e) => $e->fieldChanges->map(fn ($c) => [$c->field, $c->after]))->all())->toBe([['Level · FynnEdge Advisory', 'L6'], ['Grade · FynnEdge Advisory', 'T5']]);
 });
 
 it('prefills a transfer with the company defaults and seats take them too', function () {

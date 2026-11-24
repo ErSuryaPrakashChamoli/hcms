@@ -7,19 +7,33 @@ use App\Domain\Configuration\Services\Policies;
 use App\Domain\Employment\Actions\HireEmployeeAction;
 use App\Domain\Employment\Requirements\EmploymentRequirements;
 use App\Domain\Employment\Requirements\EmploymentRequirementsPreflight;
+use App\Domain\Organisation\Models\BusinessRegion;
+use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Models\CostCentre;
 use App\Domain\Organisation\Models\Department;
 use App\Domain\Organisation\Models\Designation;
+use App\Domain\Organisation\Models\DimensionValue;
+use App\Domain\Organisation\Models\Division;
+use App\Domain\Organisation\Models\EmployeeCategory;
+use App\Domain\Organisation\Models\EmploymentType;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\Grade;
+use App\Domain\Organisation\Models\JobFamily;
+use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\OrganisationNode;
+use App\Domain\Organisation\Models\ProfitCentre;
+use App\Domain\Organisation\Models\Region;
+use App\Domain\Organisation\Models\Team;
+use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\Organisation\Services\OrganisationTree;
 use App\Filament\Pages\OrganisationDesigner;
 use App\Filament\Pages\UnmappedMastersPage;
 use App\Filament\RelationManagers\Masters\MasterCompaniesTab;
 use App\Filament\RelationManagers\Masters\MasterCompanyValuesTab;
 use App\Filament\RelationManagers\Masters\MasterLinksTab;
+use App\Filament\RelationManagers\Masters\MasterTabs;
 use App\Filament\RelationManagers\Masters\MasterUsageTab;
 use App\Filament\Resources\Departments\Pages\CreateDepartment;
 use App\Filament\Resources\Departments\Pages\EditDepartment;
@@ -27,6 +41,7 @@ use App\Filament\Resources\Designations\Pages\CreateDesignation;
 use App\Filament\Resources\Designations\Pages\EditDesignation;
 use App\Filament\Resources\Grades\Pages\EditGrade;
 use App\Filament\Resources\Locations\Pages\EditLocation;
+use Filament\Facades\Filament;
 use Livewire\Livewire;
 
 /*
@@ -146,3 +161,31 @@ it('shows a location its establishment, and says when the head office applies', 
     $pune->update(['establishment_id' => $principal->id]);
     msTab(MasterLinksTab::class, $pune->fresh(), EditLocation::class)->assertSee($principal->name);
 });
+
+// Every master with an edit page. Legal entities, establishments and skills are edited in a modal on their list page
+// (no edit page, so no tabs); a legal entity and an establishment are parts of their company.
+it('opens every master type with General, Usage and History, and the tabs that type has', function (string $class) {
+    $record = match ($class) {
+        Company::class => $this->mk,
+        Location::class => Location::query()->create(['name' => 'Pune', 'code' => 'PUN', 'company_id' => $this->mk->id]),
+        default => $class::query()->create(['name' => 'Sample master', 'code' => 'SAMPLE']),
+    };
+    $edit = Filament::getModelResource($class)::getPages()['edit']->getPage();
+
+    $page = Livewire::test($edit, ['record' => $record->getRouteKey()])->assertOk()->assertSee('General')->assertSee('Usage')->assertSee('History');
+    $tabs = array_values(array_intersect(MasterTabs::MANAGERS, $page->instance()->getRelationManagers()));
+
+    // Usage on every master; Company values only where the type has company values (designations); every tab renders.
+    expect($tabs)->toContain(MasterUsageTab::class)
+        ->and(in_array(MasterCompanyValuesTab::class, $tabs, true))->toBe($class === Designation::class);
+    foreach ($tabs as $tab) {
+        msTab($tab, $record, $edit)->assertOk();
+    }
+})->with(fn () => collect([
+    BusinessUnit::class, Division::class, Designation::class,
+    Region::class, Department::class, EmploymentType::class, Location::class,
+    JobFamily::class, EmployeeCategory::class, Team::class,
+    ProfitCentre::class, DimensionValue::class, CostCentre::class,
+    WorkMode::class, Company::class, BusinessRegion::class, Grade::class,
+    Level::class,
+])->mapWithKeys(fn ($class) => [class_basename($class) => [$class]])->all());

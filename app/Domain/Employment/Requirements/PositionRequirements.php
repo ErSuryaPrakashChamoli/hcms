@@ -34,6 +34,9 @@ final class PositionRequirements
     /** @var array<string, ?string> */
     private array $names = [];
 
+    /** @var array<string, mixed> lookups of this instance (one operation, an upload check or a pre-flight) */
+    private array $memo = [];
+
     public function __construct(
         private readonly PolicyResolver $resolver,
         private readonly EmployeeRuleContext $context,
@@ -61,7 +64,42 @@ final class PositionRequirements
             return RequirementsResult::none();
         }
 
-        return $this->evaluate($position, $changeType, (array) $version->settings, trim(($version->policy?->name ?? 'Employment data requirements').', v'.$version->version), $on, $employee);
+        $settings = (array) $version->settings;
+        $result = $this->evaluate($position, $changeType, $settings, trim(($version->policy?->name ?? 'Employment data requirements').', v'.$version->version), $on, $employee);
+
+        return $this->coveredByPreflight($result, $settings, $position['company_id'] ?? null);
+    }
+
+    /**
+     * OD-3 when the rules run: a rule blocks only where its pre-flight vouched for it, that is the rule was among the
+     * pre-flight's safe rules and the company among those it checked. Elsewhere (a company created or reached later, a
+     * copied policy, a company's own values) the finding stays a warning until a new pre-flight covers it.
+     *
+     * @param  array<string, mixed>  $settings  the version's settings, with the pre-flight record
+     */
+    private function coveredByPreflight(RequirementsResult $result, array $settings, mixed $companyId): RequirementsResult
+    {
+        if ($result->blocking() === []) {
+            return $result;
+        }
+        $preflight = (array) ($settings['preflight'] ?? []);
+        $rules = array_map('strval', (array) ($preflight['safe_rules'] ?? []));
+        $companies = array_map('intval', (array) ($preflight['companies'] ?? []));
+        $covered = filled($companyId) && in_array((int) $companyId, $companies, true);
+        $company = $this->name(Company::class, $companyId) ?? 'this company';
+
+        return new RequirementsResult(array_map(fn (RequirementProblem $p) => ! $p->blocks() || ($covered && in_array($p->rule, $rules, true)) ? $p
+            : new RequirementProblem($p->rule, $p->field, EmploymentRequirements::WARN, $p->message." It blocks once a pre-flight covers {$company}."), $result->problems), $result->policy);
+    }
+
+    /** A lookup made once per instance. */
+    private function remember(string $key, \Closure $lookup): mixed
+    {
+        if (! array_key_exists($key, $this->memo)) {
+            $this->memo[$key] = $lookup();
+        }
+
+        return $this->memo[$key];
     }
 
     /**
@@ -85,7 +123,7 @@ final class PositionRequirements
             foreach ($required as $column) {
                 if (blank($position[$column] ?? null)) {
                     $label = EmploymentRequirements::requirableFields()[$column];
-                    $problems[] = new RequirementProblem(EmploymentRequirements::REQUIRED, $column, $settings['required_mode'], "{$label} is required for {$company} employees {$source}.");
+                    $problems[] = new RequirementProblem(EmploymentRequirements::REQUIRED, $column, $settings['required_mode'], "{$label} is required for {$company} employees: ".EmploymentRequirements::why($column)." {$source}.");
                 }
             }
         }
@@ -96,7 +134,7 @@ final class PositionRequirements
         $designation = filled($position['designation_id'] ?? null) ? (int) $position['designation_id'] : null;
 
         if ($checks['grade_level'] !== EmploymentRequirements::OFF && $level !== null && $grade !== null) {
-            $gradeLevel = Grade::query()->withoutGlobalScope(AccessScope::class)->whereKey($grade)->value('level_id');
+            $gradeLevel = $this->remember("grade-level#{$grade}", fn () => Grade::query()->withoutGlobalScope(AccessScope::class)->whereKey($grade)->value('level_id'));
             if ($gradeLevel !== null && (int) $gradeLevel !== $level) {
                 $problems[] = new RequirementProblem('grade_level', 'grade_id', $checks['grade_level'],
                     sprintf('Grade %s belongs to level %s, not %s %s.', $this->name(Grade::class, $grade), $this->name(Level::class, $gradeLevel), $this->name(Level::class, $level), $source));
@@ -104,7 +142,8 @@ final class PositionRequirements
         }
 
         if ($designation !== null && $checks['designation_defaults'] !== EmploymentRequirements::OFF) {
-            $defaults = $this->defaults->for($designation, filled($position['company_id'] ?? null) ? (int) $position['company_id'] : null, $on);
+            $companyId = filled($position['company_id'] ?? null) ? (int) $position['company_id'] : null;
+            $defaults = $this->remember("defaults#{$designation}#{$companyId}#{$on->toDateString()}", fn () => $this->defaults->for($designation, $companyId, $on));
             foreach (['level_id' => Level::class, 'grade_id' => Grade::class] as $column => $class) {
                 $chosen = filled($position[$column] ?? null) ? (int) $position[$column] : null;
                 if ($defaults[$column] !== null && $chosen !== null && $chosen !== $defaults[$column]) {
@@ -116,7 +155,7 @@ final class PositionRequirements
         }
 
         if ($designation !== null && $checks['usual_department'] !== EmploymentRequirements::OFF && filled($position['department_id'] ?? null)) {
-            $usual = Designation::query()->withoutGlobalScope(AccessScope::class)->whereKey($designation)->value('department_id');
+            $usual = $this->remember("usual#{$designation}", fn () => Designation::query()->withoutGlobalScope(AccessScope::class)->whereKey($designation)->value('department_id'));
             if ($usual !== null && (int) $usual !== (int) $position['department_id']) {
                 $problems[] = new RequirementProblem('usual_department', 'department_id', $checks['usual_department'],
                     sprintf("%s's usual department is %s (information only); this position is in %s %s.", $this->name(Designation::class, $designation), $this->name(Department::class, $usual), $this->name(Department::class, $position['department_id']), $source));
@@ -124,7 +163,7 @@ final class PositionRequirements
         }
 
         if ($checks['seat_match'] !== EmploymentRequirements::OFF && filled($position['position_id'] ?? null)) {
-            $seat = Position::query()->withoutGlobalScope(AccessScope::class)->find($position['position_id'])?->versionOn($on);
+            $seat = $this->remember("seat#{$position['position_id']}#{$on->toDateString()}", fn () => Position::query()->withoutGlobalScope(AccessScope::class)->find($position['position_id'])?->versionOn($on));
             foreach (['designation_id' => Designation::class, 'grade_id' => Grade::class] as $column => $class) {
                 $chosen = filled($position[$column] ?? null) ? (int) $position[$column] : null;
                 $wanted = $seat?->getAttribute($column);
@@ -138,7 +177,8 @@ final class PositionRequirements
         if ($employee !== null && ! in_array($changeType, self::HIRE_TYPES, true) && $checks['salary_structure'] !== EmploymentRequirements::OFF) {
             $assignment = EmployeeSalaryAssignment::query()->withoutGlobalScope(AccessScope::class)->where('employee_id', $employee->getKey())
                 ->active()->effectiveOn($on)->orderByDesc('effective_from')->with('structure')->first();
-            $structureVersion = $assignment?->structure?->versionOn($on);
+            $structureVersion = $assignment?->structure === null ? null
+                : $this->remember("structure#{$assignment->structure->getKey()}#{$on->toDateString()}", fn () => $assignment->structure->versionOn($on));
             $mismatch = $structureVersion?->mismatch(array_intersect_key($position, EmployeePosition::DIMENSIONS));
             if ($mismatch !== null) {
                 $problems[] = new RequirementProblem('salary_structure', null, $checks['salary_structure'],
@@ -176,8 +216,9 @@ final class PositionRequirements
             }
             $version = $versions[$key];
             if ($version !== null) {
-                $out[$employeeId] = $this->evaluate(array_intersect_key($context, EmployeePosition::DIMENSIONS), $changeType, (array) $version->settings,
+                $result = $this->evaluate(array_intersect_key($context, EmployeePosition::DIMENSIONS), $changeType, (array) $version->settings,
                     trim(($version->policy?->name ?? 'Employment data requirements').', v'.$version->version), $on);
+                $out[$employeeId] = $this->coveredByPreflight($result, (array) $version->settings, $context['company_id']);
             }
         }
 

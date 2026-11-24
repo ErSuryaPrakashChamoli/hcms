@@ -38,6 +38,7 @@ class Location extends Model
         // Data import DI-1: a sub branch sits inside a branch of the same company, never inside itself.
         static::saving(function (Location $location): void {
             app(LocationHierarchy::class)->assertValid($location);
+            app(LocationHierarchy::class)->assertEstablishment($location);
         });
     }
 

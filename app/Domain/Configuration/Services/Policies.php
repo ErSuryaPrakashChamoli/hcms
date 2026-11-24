@@ -4,6 +4,8 @@ namespace App\Domain\Configuration\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
+use App\Domain\Configuration\Applicability\SharedConfigurationGuard;
 use App\Domain\Configuration\Enums\VersionStatus;
 use App\Domain\Configuration\Exceptions\ConfigurationException;
 use App\Domain\Configuration\Models\ConfigurationLineage;
@@ -20,9 +22,22 @@ final class Policies
 {
     public function __construct(private readonly AuditRecorder $audit) {}
 
+    /** The shared-record guard for a version (refused as a ConfigurationException, as screens expect from policies). */
+    private function assertEditable(Policy $policy, string $verb): void
+    {
+        try {
+            app(SharedConfigurationGuard::class)->assertEditable($policy, $verb);
+        } catch (ApplicabilityRefusedException $e) {
+            throw new ConfigurationException($e->getMessage(), previous: $e);
+        }
+    }
+
     /** @param  array<string, mixed>|null  $settings */
     public function draft(Policy $policy, ?array $settings = null, ?string $note = null): PolicyVersion
     {
+        // A version changes the policy for every company it reaches: a person limited to some companies may not
+        // change one shared beyond their access (the model guard sees only edits of the policy row itself).
+        $this->assertEditable($policy, 'change');
         if ($existing = $policy->draft()->first()) {
             if ($settings !== null) {
                 $existing->withAuditReason($note)->update(['settings' => $settings, 'change_note' => $note]);
@@ -44,6 +59,7 @@ final class Policies
 
     public function publish(Policy $policy, CarbonInterface|string|null $effectiveFrom = null, ?string $reason = null): PolicyVersion
     {
+        $this->assertEditable($policy, 'publish');
         $draft = $policy->draft()->first() ?? throw new ConfigurationException('Nothing to publish: create a draft first.');
         $from = Carbon::parse($effectiveFrom ?? now())->startOfDay();
         self::validateSettings($policy->type, (array) ($draft->settings ?? []));

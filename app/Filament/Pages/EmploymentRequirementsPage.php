@@ -44,8 +44,13 @@ class EmploymentRequirementsPage extends Page
     #[Url(as: 'policy')]
     public ?int $policyId = null;
 
-    /** @var array<string, mixed>|null */
-    private ?array $report = null;
+    /**
+     * The pre-flight on show, kept between requests: it reads every employee the policy reaches, so it runs when the
+     * page opens, when another policy is chosen, on "Run the pre-flight again" and after a switch (which runs its own).
+     *
+     * @var array<string, mixed>|null
+     */
+    public ?array $preflight = null;
 
     public static function canAccess(): bool
     {
@@ -55,6 +60,13 @@ class EmploymentRequirementsPage extends Page
     public function mount(): void
     {
         $this->policyId ??= $this->policies()->keys()->first();
+        $this->runPreflight();
+    }
+
+    public function runPreflight(): void
+    {
+        $policy = $this->policy();
+        $this->preflight = $policy === null ? null : app(EmploymentRequirementsPreflight::class)->run($policy);
     }
 
     /** @return Collection<int, Policy> */
@@ -71,15 +83,13 @@ class EmploymentRequirementsPage extends Page
     public function choose(int $id): void
     {
         $this->policyId = $id;
-        $this->report = null;
+        $this->runPreflight();
     }
 
     /** @return array<string, mixed>|null */
     public function report(): ?array
     {
-        $policy = $this->policy();
-
-        return $policy === null ? null : ($this->report ??= app(EmploymentRequirementsPreflight::class)->run($policy));
+        return $this->preflight;
     }
 
     /** @return array{required_on_hire: list<string>, required_on_change: list<string>, required_mode: string, checks: array<string, string>}|null */
@@ -94,6 +104,9 @@ class EmploymentRequirementsPage extends Page
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('rerun')->label('Run the pre-flight again')->color('gray')->icon(Heroicon::OutlinedArrowPath)
+                ->visible(fn () => $this->policy() !== null)
+                ->action(fn () => $this->runPreflight()),
             Action::make('editPolicy')->label('Edit in the policy wizard')->color('gray')
                 ->visible(fn () => $this->policy() !== null && (auth()->user()?->can('policy.update') ?? false))
                 ->url(fn () => PolicyWizard::getUrl(['policy' => $this->policyId])),
@@ -114,7 +127,7 @@ class EmploymentRequirementsPage extends Page
                     try {
                         app(EmploymentRequirementsPreflight::class)->switchToBlock($this->policy(), (array) $data['rules'], auth()->user(), (string) AuditReasonField::extract($data),
                             $data['effective_from'], (bool) ($data['accept_gaps'] ?? false));
-                        $this->report = null;
+                        $this->runPreflight();
                         Notification::make()->success()->title('Published with Block')->send();
                     } catch (ConfigurationException $e) {
                         Notification::make()->danger()->title('Not switched to Block')->body($e->getMessage())->persistent()->send();

@@ -10,7 +10,6 @@ use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Models\ReportingRelationship;
 use App\Domain\Employment\Requirements\PositionRequirements;
-use App\Domain\Employment\Requirements\RequirementsResult;
 use App\Domain\Employment\Services\ProfileChangeGuard;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
@@ -113,10 +112,13 @@ final class PositionChangeImports extends RowImports
         }
         // Master relationships R2: the employment data requirements before approval. Block is a row error; Warn a note.
         if ($positionChanges !== []) {
-            $requirements = $this->requirementsFor($employee, $from, $dimensions, $type);
+            // A later row of the same employee starts from what the earlier row leaves (rows apply in file order).
+            $position = $this->positionAfter($employee, $from, $dimensions, $context['positions'][$employeeId] ?? null);
+            $requirements = app(PositionRequirements::class)->assess($position, $type, $from, $employee);
             if ($requirements->blocking() !== []) {
                 return ['action' => 'error', 'errors' => $requirements->blockingMessages(), 'employee_id' => $employeeId];
             }
+            $context['positions'][$employeeId] = $position;
             $match += $requirements->warnings() === [] ? [] : ['warnings' => $requirements->warningMessages()];
         }
 
@@ -124,15 +126,21 @@ final class PositionChangeImports extends RowImports
     }
 
     /**
-     * The position as this row would leave it (the one on file that day, changed and cleared by the row), checked
-     * against the employment data requirements.
+     * The position as this row would leave it (the one on file that day, or what an earlier row of the file leaves,
+     * changed and cleared by the row), for the employment data requirements.
      *
      * @param  array<string, mixed>  $dimensions
+     * @param  array<string, mixed>|null  $earlier  the position an earlier row of this employee leaves
+     * @return array<string, mixed>
      */
-    private function requirementsFor(Employee $employee, string $from, array $dimensions, string $type): RequirementsResult
+    private function positionAfter(Employee $employee, string $from, array $dimensions, ?array $earlier = null): array
     {
-        $current = $employee->positions()->effectiveOn($from)->first();
-        $position = $current === null ? [] : array_intersect_key($current->getAttributes(), EmployeePosition::DIMENSIONS) + ['position_id' => $current->position_id];
+        if ($earlier !== null) {
+            $position = $earlier;
+        } else {
+            $current = $employee->positions()->effectiveOn($from)->first();
+            $position = $current === null ? [] : array_intersect_key($current->getAttributes(), EmployeePosition::DIMENSIONS) + ['position_id' => $current->position_id];
+        }
         foreach (array_intersect_key($dimensions, EmployeePosition::DIMENSIONS) as $column => $value) {
             if (filled($value)) {
                 $position[$column] = $value;
@@ -142,7 +150,7 @@ final class PositionChangeImports extends RowImports
             $position[$column] = null;
         }
 
-        return app(PositionRequirements::class)->assess($position, $type, $from, $employee);
+        return $position;
     }
 
     protected function apply(array $r, EmployeeImportRow $row, EmployeeImport $import, User $user): string

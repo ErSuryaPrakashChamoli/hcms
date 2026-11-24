@@ -204,21 +204,30 @@ final class CompensationCycles
      */
     public function excluded(CompensationCycle $cycle, User $actor): array
     {
-        $columns = [];
+        // The cycle's filters: column => the ids it keeps (a cycle column and the population's organisation lists).
+        $filters = [];
         foreach (['location_id', 'business_unit_id', 'division_id', 'department_id', 'team_id'] as $column) {
             if (filled($cycle->getAttribute($column))) {
-                $columns[] = $column;
+                $filters[$column][] = (int) $cycle->getAttribute($column);
             }
         }
         foreach ((array) (($cycle->population ?? [])['organisation'] ?? []) as $column => $ids) {
             if (in_array($column, IncrementCalculator::POPULATION_COLUMNS, true) && (array) $ids !== []) {
-                $columns[] = $column;
+                $filters[$column] = [...($filters[$column] ?? []), ...array_map('intval', (array) $ids)];
             }
         }
         $out = [];
-        foreach (array_values(array_unique($columns)) as $column) {
+        foreach ($filters as $column => $ids) {
+            // Left out only because this value is missing: every other filter matches (or is missing too).
             $count = EmployeePosition::query()->withoutGlobalScope(AccessScope::class)->effectiveOn($cycle->effective_from->toDateString())
                 ->where('company_id', $cycle->company_id)->whereNull($column)
+                ->where(function ($q) use ($filters, $column) {
+                    foreach ($filters as $other => $keep) {
+                        if ($other !== $column) {
+                            $q->where(fn ($w) => $w->whereIn($other, $keep)->orWhereNull($other));
+                        }
+                    }
+                })
                 ->whereHas('employee', fn ($q) => $q->withoutGlobalScope(AccessScope::class)->whereIn('lifecycle_state', config('peopleos.compensation.lifecycle.cycles', []))
                     ->when($this->scopes->isScoped($actor), fn ($q) => $q->whereIn('id', $this->scopes->employeeKeys($actor))))
                 ->distinct()->count('employee_id');

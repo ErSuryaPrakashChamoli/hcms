@@ -389,7 +389,9 @@ final class PayrollReadiness
             if ($segment === null) {
                 continue;
             }
-            $key = (string) ($segment->compensation->structureVersionId ?? 's'.$segment->compensation->structureId);
+            // Per structure version and the employee's own formula overrides (they change what the formulas read).
+            $key = ($segment->compensation->structureVersionId ?? 's'.$segment->compensation->structureId).'#'
+                .md5((string) json_encode($segment->components->map(fn (CompensationComponentLine $line) => $line->formulaOverride)->values()->all()));
             $variables = $read[$key] ??= self::positionVariables($segment->components);
             if ($variables === []) {
                 continue;

@@ -16,6 +16,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use InvalidArgumentException;
 use RuntimeException;
 use UnitEnum;
 
@@ -50,7 +51,8 @@ class TransferRequestResource extends Resource
             try {
                 $call($record, $data);
                 Notification::make()->success()->title($done)->send();
-            } catch (RuntimeException $e) {
+            } catch (RuntimeException|InvalidArgumentException $e) {
+                // InvalidArgumentException: an employment data requirement on Block (master relationships R2), as elsewhere.
                 Notification::make()->danger()->title('Not done')->body($e->getMessage())->send();
             }
         };

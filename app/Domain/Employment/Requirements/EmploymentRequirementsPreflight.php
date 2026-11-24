@@ -8,6 +8,7 @@ use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Exceptions\ConfigurationException;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Models\PolicyVersion;
+use App\Domain\Configuration\Overrides\ConfigurationOverrides;
 use App\Domain\Configuration\Services\EmployeeRuleContext;
 use App\Domain\Configuration\Services\Policies;
 use App\Domain\Configuration\Services\PolicyResolver;
@@ -26,6 +27,9 @@ use Illuminate\Support\Facades\DB;
  * change, and for each company it checks the required masters exist (a company with no grades cannot require one).
  * "Switch to Block" publishes a new version with the chosen rules on Block and the pre-flight record the policy
  * validator asks for (EmploymentRequirements::validatePolicySettings). Read-only otherwise.
+ *
+ * Counts cover everyone the policy reaches whatever the viewer may see (examples name only people they may see), and
+ * each company is checked with its own values of the policy (configuration overrides).
  */
 final class EmploymentRequirementsPreflight
 {
@@ -38,6 +42,7 @@ final class EmploymentRequirementsPreflight
         private readonly EntityApplicability $applicability,
         private readonly Policies $policies,
         private readonly AuditRecorder $audit,
+        private readonly ConfigurationOverrides $overrides,
     ) {}
 
     /**
@@ -66,32 +71,40 @@ final class EmploymentRequirementsPreflight
         $reached = 0;
         $companies = [];
 
+        $own = [];
+        $settingsFor = function (int $company) use (&$own, $policy, $settings, $on): array {
+            return $own[$company] ??= $this->overrides->hasAny('policy', (int) $policy->id)
+                ? $this->overrides->applyTo($settings, 'policy', (int) $policy->id, $company, $on) : $settings;
+        };
+
         Employee::query()->withoutGlobalScope(AccessScope::class)->employed()->with('person')->orderBy('id')
-            ->chunkById(500, function ($chunk) use (&$report, &$reached, &$companies, $candidates, $policy, $settings, $label, $on) {
-                $contexts = $this->context->buildMany($chunk, $on);
-                $seats = EmployeePosition::query()->withoutGlobalScope(AccessScope::class)->whereIn('employee_id', $chunk->modelKeys())->effectiveOn($on)
-                    ->orderByDesc('effective_from')->get(['employee_id', 'position_id'])->unique('employee_id')->pluck('position_id', 'employee_id');
-                // Counts cover everyone the policy reaches; examples name only people the viewer may see.
+            ->chunkById(500, function ($chunk) use (&$report, &$reached, &$companies, $candidates, $policy, $settingsFor, $label, $on) {
+                // Examples name only people the viewer may see; everything else reads the whole organisation.
                 $visible = Employee::query()->whereKey($chunk->modelKeys())->pluck('id')->flip();
-                foreach ($chunk as $employee) {
-                    $context = $contexts[$employee->id] ?? null;
-                    if ($context === null || blank($context['company_id'] ?? null)
-                        || $this->resolver->firstMatching($candidates, $context, $on)?->policy_id !== $policy->id) {
-                        continue;
-                    }
-                    $reached++;
-                    $companies[(int) $context['company_id']] = true;
-                    $position = array_intersect_key($context, EmployeePosition::DIMENSIONS) + ['position_id' => $seats[$employee->id] ?? null];
-                    foreach ($this->requirements->evaluate($position, 'transfer', $settings, $label, $on, $employee)->problems as $problem) {
-                        if (! isset($report[$problem->rule])) {
+                AccessScope::withoutScoping(function () use ($chunk, $visible, &$report, &$reached, &$companies, $candidates, $policy, $settingsFor, $label, $on) {
+                    $contexts = $this->context->buildMany($chunk, $on);
+                    $seats = EmployeePosition::query()->whereIn('employee_id', $chunk->modelKeys())->effectiveOn($on)
+                        ->orderByDesc('effective_from')->get(['employee_id', 'position_id'])->unique('employee_id')->pluck('position_id', 'employee_id');
+                    foreach ($chunk as $employee) {
+                        $context = $contexts[$employee->id] ?? null;
+                        if ($context === null || blank($context['company_id'] ?? null)
+                            || $this->resolver->firstMatching($candidates, $context, $on)?->policy_id !== $policy->id) {
                             continue;
                         }
-                        $report[$problem->rule]['violations']++;
-                        if (isset($visible[$employee->id]) && count($report[$problem->rule]['samples']) < self::SAMPLES) {
-                            $report[$problem->rule]['samples'][] = trim(($employee->employee_code ?? '#'.$employee->id).' — '.$problem->message);
+                        $reached++;
+                        $companies[(int) $context['company_id']] = true;
+                        $position = array_intersect_key($context, EmployeePosition::DIMENSIONS) + ['position_id' => $seats[$employee->id] ?? null];
+                        foreach ($this->requirements->evaluate($position, 'transfer', $settingsFor((int) $context['company_id']), $label, $on, $employee)->problems as $problem) {
+                            if (! isset($report[$problem->rule])) {
+                                continue;
+                            }
+                            $report[$problem->rule]['violations']++;
+                            if (isset($visible[$employee->id]) && count($report[$problem->rule]['samples']) < self::SAMPLES) {
+                                $report[$problem->rule]['samples'][] = trim(($employee->employee_code ?? '#'.$employee->id).' — '.$problem->message);
+                            }
                         }
                     }
-                }
+                });
             });
 
         // The companies the policy can reach even with nobody there yet: those its rules name, else every company it
@@ -106,18 +119,23 @@ final class EmploymentRequirementsPreflight
             }
         }
 
-        // A required field a company cannot fill: no master of that kind may be used there.
+        // A required field a company cannot fill: no master of that kind may be used there (with the company's own values).
         $names = Company::query()->withoutGlobalScope(AccessScope::class)->whereKey(array_keys($companies))->orderBy('name')->pluck('name', 'id')->all();
         if (isset($report[EmploymentRequirements::REQUIRED])) {
-            $fields = array_values(array_unique([...$normal['required_on_hire'], ...$normal['required_on_change']]));
-            foreach (array_keys($names) as $companyId) {
-                foreach ($fields as $column) {
-                    $model = (new EmployeePosition)->{EmployeePosition::DIMENSIONS[$column][0]}()->getRelated()::class;
-                    if ($this->applicability->options($model, (int) $companyId) === []) {
-                        $report[EmploymentRequirements::REQUIRED]['unconfigured'][] = "{$names[$companyId]} has no ".strtolower(EmployeePosition::DIMENSIONS[$column][1]).' it may use.';
+            AccessScope::withoutScoping(function () use (&$report, $names, $settingsFor) {
+                foreach (array_keys($names) as $companyId) {
+                    $own = EmploymentRequirements::normalise($settingsFor((int) $companyId));
+                    if ($own['required_mode'] === EmploymentRequirements::OFF) {
+                        continue;
+                    }
+                    foreach (array_values(array_unique([...$own['required_on_hire'], ...$own['required_on_change']])) as $column) {
+                        $model = (new EmployeePosition)->{EmployeePosition::DIMENSIONS[$column][0]}()->getRelated()::class;
+                        if ($this->applicability->options($model, (int) $companyId) === []) {
+                            $report[EmploymentRequirements::REQUIRED]['unconfigured'][] = "{$names[$companyId]} has no ".strtolower(EmployeePosition::DIMENSIONS[$column][1]).' it may use.';
+                        }
                     }
                 }
-            }
+            });
         }
 
         $out = [];
@@ -144,6 +162,9 @@ final class EmploymentRequirementsPreflight
         if (! $actor->can('policy.update') || ! $actor->can('policy.publish')) {
             throw new ConfigurationException('Switching rules to Block publishes the policy: you need to be allowed to change and publish policies.');
         }
+        if (! $this->applicability->editableBy($policy, $actor)) {
+            throw new ConfigurationException("{$policy->name} applies to companies outside your access, so you cannot switch its rules to Block.");
+        }
         if (trim($reason) === '') {
             throw new ConfigurationException('Give the reason for blocking.');
         }
@@ -163,6 +184,8 @@ final class EmploymentRequirementsPreflight
             $settings[$rule === EmploymentRequirements::REQUIRED ? 'required_mode' : "check_{$rule}"] = EmploymentRequirements::BLOCK;
         }
         $report = $this->run($policy, $settings);
+        // Every rule on Block after the switch is checked, the ones already on Block too: the record vouches for all.
+        $rules = array_values(array_unique([...$rules, ...EmploymentRequirements::blockRules($settings)]));
         foreach ($rules as $rule) {
             $row = $report['rules'][$rule] ?? null;
             if ($row === null) {
@@ -181,6 +204,7 @@ final class EmploymentRequirementsPreflight
             'by' => $actor->getKey(),
             'fingerprint' => EmploymentRequirements::fingerprint($settings),
             'safe_rules' => $rules,
+            'companies' => array_map('intval', array_keys($report['companies'])),
             'employees' => $report['employees'],
             'violations' => array_map(fn (array $r) => $r['violations'], $report['rules']),
             'accepted_gaps' => $acceptCurrentGaps,

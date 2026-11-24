@@ -166,10 +166,11 @@ The form reads "Usual department (information only)" with a one-line explanation
 | `SeatCompanyTest` | Own-company seat accepted. Another company's seat refused, with or without another company chosen. Accepted when the move is stated. A held seat cannot be carried into another company; vacating allows it. A carried seat inside the company still works. |
 | `ClearLinksTest` | Clear removes from the effective date and keeps the earlier row. Blank keeps. Company never removed. Changed-and-removed refused. Promotion. The screen's Remove field. Deactivated masters leave the pickers. |
 | `NoShiftReadinessTest` | Blocks with person and date ranges. The holiday and the scheduled colleague's days are excluded. Cannot be ticked. "Reprocess" once a schedule applies, and clears after reprocessing. Not applicable without loss of pay from attendance. Passes when everyone has a shift. |
-| `EmploymentRequirementsTest` (R2) | Company only without a policy. Warn per company (and recorded on the audit event). Block refused without a pre-flight (wizard and publish). Switch to Block after a pre-flight; hire refused without the field, accepted with it. Block refused when a company has nothing to meet it. Consent when current people would fail; their next change must complete the data; the earlier position is untouched. Any rule change needs a new pre-flight. Policy versions by effective date. Grade under level and usual department warnings. Publish permission. OD-4 seeding for a new tenant only. |
+| `EmploymentRequirementsTest` (R2) | Company only without a policy. Warn per company (and recorded on the audit event). Block refused without a pre-flight (wizard and publish). Switch to Block after a pre-flight; hire refused without the field, accepted with it. Rehire (hire rules) and promotion (change rules): Warn notes, Block refuses and rolls back (the rehire's lifecycle step too). Block refused when a company has nothing to meet it. Consent when current people would fail; their next change must complete the data; the earlier position is untouched. Any rule change needs a new pre-flight. Policy versions by effective date. Grade under level and usual department warnings. Publish permission. OD-4 seeding for a new tenant only. |
 | `EmploymentRequirementsPathsTest` (R2) | API 422 (Block, and a master that does not apply) and `meta.requirement_warnings`. Job-change and employee uploads: Block a row error before approval, Warn a note and in the run result. Transfer screen notifications and the applicability refusal without an error page. Payroll readiness (employment data, head-office fallback, no leave policy) and the run checklist (blocks only on Block). Increment exclusions. Salary-structure warning on promotion. The pre-flight page and Switch to Block; access refused without `policy.view`. |
 | `DesignationCompanyDefaultsTest` (R3) | Shared L5/T4, FynnEdge L6/T5. Dated start, ending restores the shared value, positions never rewritten. A company value the company may not use is refused. Transfer prefill and seats. Clone folding and independence. Designation upload with a Company column (set, skip, (none) ends, unknown designation or company). A user limited to another company is refused. Override-aware dependency checks and the location establishment guard. Another tenant's company refused. |
-| `MasterScreensTest` (R4) | Tabs per master type. A designation created with name and code alone; optional links. Links tab: requirement hints and company values; Company values and Companies tabs. Usage tab. Placement on create, or later. Unmapped report (within the tenant, blocker on Block, access refused). Designer deep link. A location's establishment. |
+| `RequirementsHardeningTest` (R2–R4, independent review) | Pre-flight counts everyone (limited viewer sees only their own examples); company values of the policy in the pre-flight; rules already on Block kept; a company added after the switch warns until a new pre-flight; copies start on Warn; a company-limited person cannot draft or block a shared policy; transfer-request approval refused as a message; a location's establishment kept to its company and off shared locations (model and form); company values limited to the viewer's companies (Links tab, Unmapped); chained upload rows; increment exclusions with the cycle's other filters; a blank company value of a NOT NULL column keeps the shared value in a copy. |
+| `MasterScreensTest` (R4) | Tabs per master type (every master with an edit page renders each of its tabs). A designation created with name and code alone; optional links. Links tab: requirement hints and company values; Company values and Companies tabs. Usage tab. Placement on create, or later. Unmapped report (within the tenant, blocker on Block, access refused). Designer deep link. A location's establishment. |
 
 ## 5. R2: employment data requirements
 
@@ -185,6 +186,10 @@ The form reads "Usual department (information only)" with a one-line explanation
     company overrides apply even to a hire.
   - Block throws `EmploymentRequirementsException`, an `InvalidArgumentException` (API 422, a row error, a screen
     notification), before anything is written.
+  - Every finding names the missing information, the company, the policy and version, and why it matters (what
+    reads the field, `EmploymentRequirements::WHY`), for example: "Grade is required for Markedge Technologies
+    employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire
+    rules, v1)."
   - Warn findings go on the audit event (`requirement_warnings`) and are returned: `requirementWarnings` on the
     position and the hired employee.
   - With no policy, only the company is required, as before.
@@ -197,10 +202,21 @@ The form reads "Usual department (information only)" with a one-line explanation
     found the rule safe.
   - People failing today need explicit consent (their next change then needs the data).
   - The wizard keeps only the declared settings, so any later edit needs a new pre-flight.
+  - The counts cover everyone the policy reaches, whatever the viewer may see; examples name only people the viewer
+    may see. Each company is checked with its own values of the policy (configuration overrides).
+  - The record lists every rule on Block (those already on Block are checked again) and the companies checked.
+  - **When the rules run**, a Block finding blocks only where the pre-flight vouched for it: the rule is in its safe
+    rules and the company among those it checked. Elsewhere (a company created or reached later, a company's own
+    values) it is a warning ending "It blocks once a pre-flight covers {company}." So nothing blocks unchecked.
+  - A copy of the policy (configuration cloning) starts with its Block rules on Warn and without the pre-flight.
+  - A person limited to some companies cannot draft, publish or block a policy shared beyond their companies
+    (`Policies::draft` / `publish` apply the shared-record guard; refused as a `ConfigurationException`).
+  - The page keeps the last pre-flight between requests; "Run the pre-flight again" refreshes it.
 - **Defaults (OD-4).** A new tenant gets a policy for everyone requiring Location, Department, Designation and
   Employment type, on Warn (`peopleos.employment_requirements.seed_new_tenants`; off in `phpunit.xml`). Existing
   tenants get nothing.
 - **Uploads.** Rows are checked before approval:
+  - a later row of the same person is checked against what the earlier row leaves;
   - Block makes a row error;
   - Warn adds a note to the row ("Errors / notes") and to the run result.
 - **Readiness.** Payroll readiness lists, per person:
@@ -257,11 +273,16 @@ The form reads "Usual department (information only)" with a one-line explanation
   - **Company values:** each company's own values;
   - **Usage:** counts only, and delete or deactivate;
   - **History:** the audit trail.
+  - Legal entities, establishments and skills are edited in a modal on their list page (no edit page), so they have
+    no tabs; a legal entity and an establishment are parts of their company.
+  - Company values on the Links tab and in the Unmapped report are limited to the companies the person may see.
 - **Creating a master** needs only its essentials. Links sit in an optional "Links" step:
   - Designation: level, grade, job family, usual department, reporting level, employment types;
   - Grade: level;
   - Department: parent, cost centre;
-  - Location: parent branch, region, business region and establishment.
+  - Location: parent branch, region, business region and establishment. The establishment must be one of the
+    location's own company, and a location shared with other companies takes none (`LocationHierarchy::
+    assertEstablishment`, on every save; the form shows it as a field error).
 
   New units can be placed when created ("Place under (optional)", `organisation.design`), or later in the
   Organisation Designer, which opens on a unit with `?search=CODE`.

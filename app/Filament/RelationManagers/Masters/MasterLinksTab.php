@@ -3,6 +3,7 @@
 namespace App\Filament\RelationManagers\Masters;
 
 use App\Domain\Configuration\Applicability\ConfigurationTypes;
+use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Models\ConfigurationOverride;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Employment\Requirements\EmploymentRequirements;
@@ -42,6 +43,8 @@ final class MasterLinksTab extends MasterTab
         $type = MasterTabs::type($record);
         $types = app(ConfigurationTypes::class);
         $companies = Company::query()->withoutGlobalScope(AccessScope::class)->pluck('name', 'id');
+        // Company values of the companies the person may see only (as on the Company values tab).
+        $mine = app(EntityApplicability::class)->companiesFor(auth()->user());
         $links = [];
         foreach (($type?->references ?? []) as $column => $targetKey) {
             if (str_contains($column, '.') || ! $types->has($targetKey)) {
@@ -52,6 +55,7 @@ final class MasterLinksTab extends MasterTab
             $value = filled($id) && ! is_array($id) ? $target->model::query()->withoutGlobalScope(AccessScope::class)->whereKey($id)->value($target->nameColumn) : null;
             $own = $type->supportsOverrides() ? ConfigurationOverride::query()->where('configuration_type', $type->key)->where('configuration_id', $record->getKey())
                 ->where('field', $column)->where('status', ConfigurationOverride::ACTIVE)->where('effective_from', '<=', today())
+                ->when($mine !== null, fn ($q) => $q->whereIn('company_id', $mine))
                 ->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', today()))->get()
                 ->map(fn ($row) => ($companies[$row->company_id] ?? '#'.$row->company_id).': '.(filled($row->value) ? ($target->model::query()->withoutGlobalScope(AccessScope::class)->whereKey($row->value)->value($target->nameColumn) ?? '#'.$row->value) : 'none'))
                 ->all() : [];

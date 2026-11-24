@@ -24,6 +24,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /**
@@ -203,10 +204,19 @@ final class GenericCloneAdapter implements CloneAdapter, DescribesColumns
             // Master relationships R3: the copy is the destination company's own record, so it takes the values that
             // company used: its own value of a column where it had one, the shared value otherwise.
             if ($this->type->supportsOverrides() && app(ConfigurationOverrides::class)->hasAny($this->type->key, $snapshot->sourceId)) {
+                $nullable = null;
                 foreach (app(ConfigurationOverrides::class)->valuesFor($this->type->key, $snapshot->sourceId, $destination->companyId) as $column => $value) {
-                    if (array_key_exists($column, $attributes)) {
-                        $attributes[$column] = $value;
+                    if (! array_key_exists($column, $attributes)) {
+                        continue;
                     }
+                    // A blank company value of a column that cannot be empty: the copy keeps the shared value.
+                    if ($value === null) {
+                        $nullable ??= collect(Schema::getColumns((new ($this->type->model))->getTable()))->pluck('nullable', 'name')->all();
+                        if (! ($nullable[$column] ?? true)) {
+                            continue;
+                        }
+                    }
+                    $attributes[$column] = $value;
                 }
             }
             foreach ($this->type->references as $column => $targetKey) {

@@ -58,7 +58,16 @@ class LocationForm
                     ->schema([
                         Select::make('establishment_id')->label('Establishment')->searchable()->placeholder('None')
                             ->options(fn (Get $get) => filled($get('company_id')) ? Establishment::query()->where('company_id', $get('company_id'))->orderBy('name')->pluck('name', 'id')->all() : [])
-                            ->helperText('The establishment whose registrations (PF, ESI, PT, LWF) people here use.'),
+                            ->helperText('The establishment whose registrations (PF, ESI, PT, LWF) people here use.')
+                            ->rules([fn (Get $get, ?Location $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get, $record): void {
+                                $probe = $record?->exists ? clone $record : new Location;
+                                $probe->fill(['company_id' => blank($get('company_id')) ? null : (int) $get('company_id'), 'establishment_id' => blank($value) ? null : (int) $value]);
+                                try {
+                                    app(LocationHierarchy::class)->assertEstablishment($probe);
+                                } catch (InvalidHierarchyException $e) {
+                                    $fail($e->getMessage());
+                                }
+                            }]),
                         Select::make('parent_location_id')->label('Parent branch')->placeholder('None (a branch)')->searchable()
                             ->options(fn (Get $get, ?Location $record) => Location::query()
                                 ->when($get('company_id'), fn ($q, $company) => $q->where('company_id', $company))

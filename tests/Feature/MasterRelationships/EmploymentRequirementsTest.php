@@ -7,12 +7,15 @@ use App\Domain\Configuration\Models\PolicyAssignmentRule;
 use App\Domain\Configuration\Services\Policies;
 use App\Domain\Employment\Actions\AssignPositionAction;
 use App\Domain\Employment\Actions\HireEmployeeAction;
+use App\Domain\Employment\Actions\PromoteEmployeeAction;
+use App\Domain\Employment\Actions\RehireEmployeeAction;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Requirements\EmploymentRequirements;
 use App\Domain\Employment\Requirements\EmploymentRequirementsDefaults;
 use App\Domain\Employment\Requirements\EmploymentRequirementsException;
 use App\Domain\Employment\Requirements\EmploymentRequirementsPreflight;
+use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\CostCentre;
 use App\Domain\Organisation\Models\Department;
@@ -65,7 +68,7 @@ it("warns about what a company's policy requires, records it, and leaves other c
     $markedge = erHire($this->mk);
     $fynnedge = erHire($this->fe);
 
-    expect($markedge->requirementWarnings)->toBe(['Grade is required for Markedge Technologies employees (Employment data requirements: Hire rules, v1).'])
+    expect($markedge->requirementWarnings)->toBe(['Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v1).'])
         ->and($markedge->positions()->count())->toBe(1)
         ->and($fynnedge->requirementWarnings)->toBe([])
         ->and(AuditEvent::query()->where('module', 'employment')->get()->filter(fn ($e) => isset($e->metadata['requirement_warnings']))->count())->toBe(1);
@@ -91,7 +94,7 @@ it('switches to Block after a pre-flight, then refuses a hire without the field 
     expect($version->version)->toBe(2)->and($version->settings['required_mode'])->toBe('block')
         ->and($version->settings['preflight']['safe_rules'])->toBe(['required']);
 
-    expect(fn () => erHire($this->mk))->toThrow(EmploymentRequirementsException::class, 'Grade is required for Markedge Technologies employees (Employment data requirements: Hire rules, v2).')
+    expect(fn () => erHire($this->mk))->toThrow(EmploymentRequirementsException::class, 'Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v2).')
         ->and(Employee::query()->count())->toBe(0);
     expect(erHire($this->mk, ['grade_id' => $grade->id])->requirementWarnings)->toBe([])
         ->and(erHire($this->fe)->requirementWarnings)->toBe([]);
@@ -125,6 +128,31 @@ it('asks for consent when current people would fail, and then their next change 
 
     $moved = app(AssignPositionAction::class)->handle($existing, ['location_id' => $location->id, 'grade_id' => $grade->id], 'transfer', '2026-12-01', 'Moved with grade');
     expect($moved->grade_id)->toBe($grade->id)->and($existing->positions()->count())->toBe(2);
+});
+
+it('applies the same rules to a rehire and a promotion: Warn notes them, Block refuses before anything changes', function () {
+    $grade = Grade::query()->create(['name' => 'T4', 'code' => 'T4']);
+    $manager = Designation::query()->create(['name' => 'Sourcing Manager', 'code' => 'SRC']);
+    [$leaver, $later, $stayer] = [erHire($this->mk, [], '2026-01-05'), erHire($this->mk, [], '2026-01-05'), erHire($this->mk, [], '2026-01-05')];
+    forceLifecycle($leaver, LifecycleState::Alumni, ['exit_date' => '2026-06-30']);
+    forceLifecycle($later, LifecycleState::Alumni, ['exit_date' => '2026-06-30']);
+    $policy = erPolicy(['required_on_hire' => ['grade_id'], 'required_on_change' => ['grade_id']]);
+
+    // Warn: a rehire (hire rules) and a promotion (change rules) go through, with the note.
+    $rehired = app(RehireEmployeeAction::class)->handle($leaver, [], '2026-09-01', null, 'Came back');
+    $promoted = app(PromoteEmployeeAction::class)->handle($stayer, ['designation_id' => $manager->id], '2026-10-01', null, 'Promoted');
+    expect($rehired->requirementWarnings)->toHaveCount(1)->and($rehired->requirementWarnings[0])->toStartWith('Grade is required for Markedge Technologies employees: pay bands')
+        ->and($promoted->requirementWarnings)->toHaveCount(1)->and($promoted->designation_id)->toBe($manager->id);
+
+    // Block: refused, and nothing changes (the rehire's lifecycle step is rolled back with it).
+    app(EmploymentRequirementsPreflight::class)->switchToBlock($policy, ['required'], $this->admin, 'Block', acceptCurrentGaps: true);
+    $positions = EmployeePosition::query()->count();
+    expect(fn () => app(RehireEmployeeAction::class)->handle($later, [], '2026-12-01', null, 'Came back'))->toThrow(EmploymentRequirementsException::class, 'Grade is required')
+        ->and(fn () => app(PromoteEmployeeAction::class)->handle($stayer, ['designation_id' => $manager->id], '2026-12-01', null, 'Promoted'))->toThrow(EmploymentRequirementsException::class, 'Grade is required');
+    expect($later->fresh()->lifecycle_state)->toBe(LifecycleState::Alumni)->and(EmployeePosition::query()->count())->toBe($positions);
+
+    expect(app(RehireEmployeeAction::class)->handle($later->fresh(), ['grade_id' => $grade->id], '2026-12-01', null, 'Came back')->requirementWarnings)->toBe([])
+        ->and(app(PromoteEmployeeAction::class)->handle($stayer, ['grade_id' => $grade->id], '2026-12-01', null, 'Promoted')->grade_id)->toBe($grade->id);
 });
 
 it('needs a new pre-flight whenever the rules change: an edited version keeps Block only with one', function () {

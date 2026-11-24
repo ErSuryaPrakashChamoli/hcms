@@ -67,12 +67,16 @@ class UnmappedMastersPage extends Page
         $names = Company::query()->withoutGlobalScope(AccessScope::class)->pluck('name', 'id');
         [$effect, $blocker] = $this->gradeNeed();
         $canEdit = auth()->user()?->can('people_setup.update') ?? false;
+        $designations = $query->get();
+        // The companies (of those the person may see) whose own grade covers a designation without a shared one.
+        $own = ConfigurationOverride::query()->where('configuration_type', 'designation')->whereIn('configuration_id', $designations->modelKeys())->where('field', 'grade_id')
+            ->where('status', ConfigurationOverride::ACTIVE)->where('effective_from', '<=', today())->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', today()))
+            ->whereNotNull('value')->when($mine !== null, fn ($q) => $q->whereIn('company_id', $mine))->get()
+            ->groupBy('configuration_id')->map(fn ($rows) => $rows->map(fn ($o) => (string) ($names[$o->company_id] ?? '#'.$o->company_id))->values()->all());
 
-        return $query->get()->map(fn (Designation $d) => [
+        return $designations->map(fn (Designation $d) => [
             'name' => $d->name, 'code' => (string) $d->code, 'effect' => $effect, 'blocker' => $blocker,
-            'own' => ConfigurationOverride::query()->where('configuration_type', 'designation')->where('configuration_id', $d->id)->where('field', 'grade_id')
-                ->where('status', ConfigurationOverride::ACTIVE)->where('effective_from', '<=', today())->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', today()))
-                ->whereNotNull('value')->get()->map(fn ($o) => (string) ($names[$o->company_id] ?? '#'.$o->company_id))->values()->all(),
+            'own' => $own->get($d->id, []),
             'url' => $canEdit ? DesignationResource::getUrl('edit', ['record' => $d]) : null,
         ])->all();
     }
