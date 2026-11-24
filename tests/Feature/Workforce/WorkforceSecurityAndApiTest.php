@@ -132,7 +132,9 @@ it('serves positions and workforce over the API with separate scopes, codes only
 
 it('audits position lifecycle moves with actor, reason and effective date, and plan decisions', function () {
     app(Positions::class)->transition($this->child, 'frozen', 'Budget review', $this->admin, '2026-11-01');
-    $event = AuditEvent::query()->where('entity_type', Position::class)->where('entity_id', (string) $this->child->id)->where('action', 'STATUS_CHANGE')->latest('occurred_at')->first();
+    // The clock is frozen, so the opening's status changes share occurred_at and MySQL returns ties in any order: break
+    // the tie by id (AuditRecorder gives each event an id that sorts after the chain's previous one).
+    $event = AuditEvent::query()->where('entity_type', Position::class)->where('entity_id', (string) $this->child->id)->where('action', 'STATUS_CHANGE')->latest('occurred_at')->latest('id')->first();
 
     expect($event)->not->toBeNull()->and($event->reason)->toBe('Budget review')
         ->and($event->effective_date?->toDateString())->toBe('2026-11-01')

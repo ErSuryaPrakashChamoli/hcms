@@ -147,7 +147,8 @@ it('fixes a structure version to grades, designations, levels, departments or an
 
     $structure = $this->structures->create(['name' => 'Sales force', 'code' => 'salesforce', 'effective_from' => '2026-11-01', ...$narrowing, 'components' => [['salary_component_id' => $this->basic->id]]], $this->preparer);
     $v1 = $structure->versions()->sole();
-    expect($v1->applicability)->toBe(['department_id' => [$sales->id, $finance->id], 'designation_id' => [$executive->id], 'level_id' => [$level->id]])
+    // toEqual: applicability is a JSON object, and MySQL keeps object keys in its own order (dimensions are read by name).
+    expect($v1->applicability)->toEqual(['department_id' => [$sales->id, $finance->id], 'designation_id' => [$executive->id], 'level_id' => [$level->id]])
         ->and(array_keys($v1->restrictions()))->toBe(['department_id', 'designation_id', 'level_id', 'grade_id']);
     $this->structures->submit($v1, $this->preparer);
     expect(fn () => $v1->refresh()->update(['applicability' => null]))->toThrow(RuntimeException::class, 'Only a draft structure version is edited');
