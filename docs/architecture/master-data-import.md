@@ -397,3 +397,27 @@ status, what to know and the worksheet and row it depends on. Beside the approva
 happens.
 
 After the run, every worksheet is *Completed*, *Partially completed*, *Failed* or *Not run* (`WorkbookImports::outcome`).
+
+## 13. Designation company values and employment data requirements (2026-11-24)
+
+**Designations upload: Company column** (master relationships R3; `DesignationImports`).
+
+| Company cell | What the row does |
+| --- | --- |
+| Blank | The row is the designation itself, exactly as before. |
+| A company code or name | The row gives that company its own level, grade and job family of the designation, from today, as configuration overrides. The shared values stay for everyone else. |
+
+- **On a Company row:**
+  - `(none)` ends the company's own value, so the shared one applies again; blank keeps it;
+  - the other columns must be blank (they describe the shared designation);
+  - the uploader needs `configuration.override` with the designation permission, and access to that company;
+  - a value the company may not use is refused.
+- **Workbooks.** A Company row for a designation, or company, added earlier in the file or workbook is applied
+  when the row runs.
+
+**Employee and job-change uploads** (master relationships R2) check each new hire and each position change against
+the employment data requirements before approval:
+- a rule on Block makes the row an error, with the policy's message;
+- a rule on Warn leaves the row valid and adds the warning as a note, in the preview and in the run result.
+
+Without a requirements policy nothing changes.

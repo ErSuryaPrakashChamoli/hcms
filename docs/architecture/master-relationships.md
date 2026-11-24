@@ -42,9 +42,9 @@ Conditions the owner attached, held for every phase:
 | Phase | Scope | State |
 | --- | --- | --- |
 | R1 | Safety fixes | Built (§3), applied to the tree 2026-11-23; see §4 for tests |
-| R2 | Business enforcement: Employment data requirements policy, `PositionRequirements` in hire / transfer / upload / API, Off / Warn / Block, readiness checks, salary-structure re-check, increment exclusions | Waits for the applicability work to be committed |
-| R3 | Per-company designation defaults (level, grade, job family) on `configuration_overrides` | Waits for R2 |
-| R4 | Relationship screens (Companies · Links · Company values · Usage · History) | Waits for R3 |
+| R2 | Business enforcement: Employment data requirements policy, `PositionRequirements` in hire / transfer / upload / API, Off / Warn / Block, readiness checks, salary-structure re-check, increment exclusions | Built, commit `4c712e5a` (§5) |
+| R3 | Per-company designation defaults (level, grade, job family) on `configuration_overrides` | Built, commit `02f6f8be` (§6) |
+| R4 | Relationship screens (Companies · Links · Company values · Usage · History), optional Links step, placement, Unmapped report | Built, commit `cdeba629` (§7) |
 | R5 | The 7 missing master uploads plus the Organisation structure upload, with `(none)`, names and applicability | Built (`master-data-import.md` §12) |
 
 **Ownership.** Since 2026-11-23 evening one session owns the whole programme (applicability, workbooks, name
@@ -154,7 +154,7 @@ The form reads "Usual department (information only)" with a one-line explanation
 ### 3.8 Not changed
 
 - No table and no migration. No backfill. No existing employee position, audit event or payroll result is touched.
-- R2's enforcement (required fields, Warn / Block) is not in R1.
+- R2's enforcement (required fields, Warn / Block) is not in R1; it is in §5.
 
 ## 4. Tests
 
@@ -166,5 +166,109 @@ The form reads "Usual department (information only)" with a one-line explanation
 | `SeatCompanyTest` | Own-company seat accepted. Another company's seat refused, with or without another company chosen. Accepted when the move is stated. A held seat cannot be carried into another company; vacating allows it. A carried seat inside the company still works. |
 | `ClearLinksTest` | Clear removes from the effective date and keeps the earlier row. Blank keeps. Company never removed. Changed-and-removed refused. Promotion. The screen's Remove field. Deactivated masters leave the pickers. |
 | `NoShiftReadinessTest` | Blocks with person and date ranges. The holiday and the scheduled colleague's days are excluded. Cannot be ticked. "Reprocess" once a schedule applies, and clears after reprocessing. Not applicable without loss of pay from attendance. Passes when everyone has a shift. |
+| `EmploymentRequirementsTest` (R2) | Company only without a policy. Warn per company (and recorded on the audit event). Block refused without a pre-flight (wizard and publish). Switch to Block after a pre-flight; hire refused without the field, accepted with it. Block refused when a company has nothing to meet it. Consent when current people would fail; their next change must complete the data; the earlier position is untouched. Any rule change needs a new pre-flight. Policy versions by effective date. Grade under level and usual department warnings. Publish permission. OD-4 seeding for a new tenant only. |
+| `EmploymentRequirementsPathsTest` (R2) | API 422 (Block, and a master that does not apply) and `meta.requirement_warnings`. Job-change and employee uploads: Block a row error before approval, Warn a note and in the run result. Transfer screen notifications and the applicability refusal without an error page. Payroll readiness (employment data, head-office fallback, no leave policy) and the run checklist (blocks only on Block). Increment exclusions. Salary-structure warning on promotion. The pre-flight page and Switch to Block; access refused without `policy.view`. |
+| `DesignationCompanyDefaultsTest` (R3) | Shared L5/T4, FynnEdge L6/T5. Dated start, ending restores the shared value, positions never rewritten. A company value the company may not use is refused. Transfer prefill and seats. Clone folding and independence. Designation upload with a Company column (set, skip, (none) ends, unknown designation or company). A user limited to another company is refused. Override-aware dependency checks and the location establishment guard. Another tenant's company refused. |
+| `MasterScreensTest` (R4) | Tabs per master type. A designation created with name and code alone; optional links. Links tab: requirement hints and company values; Company values and Companies tabs. Usage tab. Placement on create, or later. Unmapped report (within the tenant, blocker on Block, access refused). Designer deep link. A location's establishment. |
 
-The regression results are in the R1 completion report.
+## 5. R2: employment data requirements
+
+- **Policy type** `employment_data` ("Employment data requirements", Workforce setup):
+  - required position fields on hire and rehire, and on other changes (Company is always required);
+  - the mode for a missing field;
+  - five consistency checks: grade under level, the designation's defaults for the company, usual
+    department (information only, OD-1), seat match, salary structure.
+  - Each rule is Off, Warn or Block; blank is Warn (OD-3).
+- **One check point.** `PositionRequirements` runs inside `AssignPositionAction`, right after the applicability check.
+  - Hire, rehire, transfer, promotion, the employee and job-change uploads, workbooks and the API all go through it.
+  - The policy is resolved from the proposed position (`EmployeeRuleContext::forPosition`), so company rules and
+    company overrides apply even to a hire.
+  - Block throws `EmploymentRequirementsException`, an `InvalidArgumentException` (API 422, a row error, a screen
+    notification), before anything is written.
+  - Warn findings go on the audit event (`requirement_warnings`) and are returned: `requirementWarnings` on the
+    position and the hired employee.
+  - With no policy, only the company is required, as before.
+- **Pre-flight and Block (OD-3).**
+  - Configuration → Employment data requirements shows, per policy:
+    - who would fail each rule on their next change today;
+    - whether each company the policy reaches has masters that could meet a required field.
+  - "Switch to Block" publishes the chosen rules on Block with a `preflight` record in the version's settings.
+  - The policy validator refuses Block without a pre-flight of exactly these settings, run within 30 days, that
+    found the rule safe.
+  - People failing today need explicit consent (their next change then needs the data).
+  - The wizard keeps only the declared settings, so any later edit needs a new pre-flight.
+- **Defaults (OD-4).** A new tenant gets a policy for everyone requiring Location, Department, Designation and
+  Employment type, on Warn (`peopleos.employment_requirements.seed_new_tenants`; off in `phpunit.xml`). Existing
+  tenants get nothing.
+- **Uploads.** Rows are checked before approval:
+  - Block makes a row error;
+  - Warn adds a note to the row ("Errors / notes") and to the run result.
+- **Readiness.** Payroll readiness lists, per person:
+  - missing employment data, blocking the run checklist only for a rule on Block;
+  - the statutory establishment taken from the head office, in companies with more than one;
+  - formulas reading blank position values, read through `CompensationOutput`;
+  - no leave policy, when the organisation uses leave policies.
+
+  The audit plan had these become blocking automatically after a company's first payroll. That would be blocking
+  nobody switched on, so it was replaced by OD-3: the placement items are review items, and blocking comes only
+  from a rule on Block.
+- **Transfers and promotions.** A transfer or promotion outside the employee's salary structure is a warning
+  (`SalaryStructureVersion::mismatch`).
+- **Increment previews** say who a filter leaves out only because the value is missing ("2 employees excluded: no
+  department").
+- **History.** Nothing earlier is rewritten. Versions apply by their effective dates.
+
+## 6. R3: company-specific designation defaults
+
+- **The override.** Designation's configuration type declares `overrides` => `DesignationOverrideFields`
+  (level, grade, job family).
+  - A company's value must be one that company may use (`CompanyAwareOverrideFields`, called by
+    `ConfigurationOverrides::set`).
+  - Level and grade are not cross-checked, because companies set them one at a time; positions are checked
+    by R2.
+  - Values are effective-dated, versioned and audited. Ending one restores the shared value.
+  - The "Company values" action and column appear through the existing applicability UI.
+- **`DesignationDefaults`** returns the company's value or the shared one, and prefills without ever forcing:
+  - choosing a designation fills a blank level and grade on hire, transfer, promotion and rehire (with no new
+    company, the employee's current one decides);
+  - `Positions::definition` gives a seat its company's defaults.
+  - Existing positions are never changed.
+- **Dependencies.** `ApplicabilityDependencies` reads company values:
+  - forward: a company with its own value is checked against it;
+  - reverse: an override that uses a grade keeps that grade applying there, and a record whose own value replaces
+    the shared link does not block the shared target.
+  - A location with an establishment cannot be shared beyond that establishment's company.
+- **Cloning** folds in the destination company's values: the copy keeps what that company used, and the shared
+  record is unchanged. The prompt's "effective values for the source company" is read as the company the copy is
+  made for, which is the company whose people the copy serves.
+- **Designation upload.** A Company column:
+  - a filled cell sets that company's values from today;
+  - `(none)` ends the company's own value; blank keeps it;
+  - other columns must be blank on such a row;
+  - the uploader needs `configuration.override` and access to the company.
+
+## 7. R4: master screens
+
+- **Edit pages.** Each master's edit page shows the form as "General" beside these tabs (`ShowsMasterTabs`, read-only
+  `MasterTab` relation managers), each only where the type has it:
+  - **Companies:** where it applies and since when;
+  - **Links:** each link or "Not set (optional)", companies with their own value, and what the employment data
+    requirements need; units show their place in the structure, locations their establishment;
+  - **Company values:** each company's own values;
+  - **Usage:** counts only, and delete or deactivate;
+  - **History:** the audit trail.
+- **Creating a master** needs only its essentials. Links sit in an optional "Links" step:
+  - Designation: level, grade, job family, usual department, reporting level, employment types;
+  - Grade: level;
+  - Department: parent, cost centre;
+  - Location: parent branch, region, business region and establishment.
+
+  New units can be placed when created ("Place under (optional)", `organisation.design`), or later in the
+  Organisation Designer, which opens on a unit with `?search=CODE`.
+- **Unmapped masters** (Organisation) lists:
+  - designations without a grade: a blocker only when a requirements policy needs one on Block;
+  - units not placed;
+  - locations without an establishment in companies with more than one (statutory then uses the head office's).
+
+  Each row links to its fix. Access needs `organisation.view` or `people_setup.view`.
+- **Not done:** Skills (a single "manage" page) has no tabs.

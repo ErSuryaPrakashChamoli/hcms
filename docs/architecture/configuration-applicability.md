@@ -340,3 +340,24 @@ Not caused by this work:
 | Runtime gate for survey and campaign audiences | Audiences target people directly through their own criteria (`company_ids` among them), so an audience is already company-bound by its definition. | Unchanged |
 | Records that predate the framework (no explicit applicability) are not checked on positions | Checking them would refuse placements that work today. History before the framework is not judged retroactively. | Choose their companies explicitly (*Applies to…*); from then on they are enforced |
 | Pre-existing: config lists not company-scoped (OD-2); cost and profit centres' access-scope dimension; null-company units hidden from company-scoped users; role-owned tasks ignore company grants (OD-3) | Outside this change; recorded in §1.4 | Separate fix |
+
+## 6. Additions from master relationships R3 (2026-11-24)
+
+- **Designation company values.** The designation type declares `overrides` => `DesignationOverrideFields`
+  (`app/Domain/Organisation/Overrides`):
+  - its fields are level, grade and job family (selects);
+  - the shared values are the designation's own columns.
+
+  `DesignationDefaults` reads the effective value for a company, which hire, transfer and seat prefill use.
+- **Company-aware validation.** A provider may also implement `CompanyAwareOverrideFields::validateForCompany()`.
+  `ConfigurationOverrides::set()` calls it after `validate()`, so a company's own value must suit that company (its
+  grade must be one it may use).
+- **Dependencies see company values** (`ApplicabilityDependencies::check`):
+  - **Forward:** a company with its own value of a link is checked against that value, not the shared one.
+  - **Reverse:** narrowing a record's companies is refused while a company's own value of another record uses it
+    there. A company whose own values replace every link to the record no longer counts as using it.
+  - **Establishment guard:** a location with an establishment cannot be shared beyond that establishment's
+    company. Otherwise people in another company would be stamped with that establishment.
+- **Cloning folds company values.** `GenericCloneAdapter::materialise()` copies the destination company's own
+  values of the source's columns into the copy, so the copy keeps what that company used. This covers every type
+  with attribute overrides (designation, shift). The source and its overrides are unchanged.
