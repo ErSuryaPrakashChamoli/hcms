@@ -226,7 +226,8 @@ it('follows the pay cycle, keeps the dates an upload was made for, and heads rep
         ->and($header)->toContain('25 Sun')->and(count($header))->toBe(39);
 
     $import = $this->imports->inspect(stageSheetCsv("Employee code,2026-09-29,5 Mon\nEMP1,A,WFH\n"));
-    expect($import->mapping)->toBe(['Employee code' => 'employee_code', '2026-09-29' => 'date.2026-09-29', '5 Mon' => 'day.5'])
+    // toEqual: the mapping is a JSON object, and MySQL keeps object keys in its own order (columns are matched by name).
+    expect($import->mapping)->toEqual(['Employee code' => 'employee_code', '2026-09-29' => 'date.2026-09-29', '5 Mon' => 'day.5'])
         ->and(AttendanceSheetImports::fields($import))->toHaveKey('date.2026-09-29');
     $import = $this->imports->validate($this->imports->map($import, $import->mapping));
     $this->imports->run($this->imports->approve($import, auth()->user(), 'October attendance'), auth()->user());

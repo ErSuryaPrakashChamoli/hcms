@@ -83,14 +83,15 @@ it('1. has no RMS dependency: no RMS models, tables, connections or shared ident
 });
 
 it('2. keeps Employee the one canonical employment identity (one per person per tenant)', function () {
+    // Tables of this connection's own database: on MySQL, getTables() without a schema lists every database the user can see.
     $employee = ($this->hire)('Asha');
     expect(fn () => Employee::query()->create(['person_id' => $employee->person_id, 'employee_code' => 'DUP-1', 'lifecycle_state' => 'pre_employee', 'joining_date' => '2025-01-01']))->toThrow(QueryException::class);
-    $identityTables = collect(Schema::getTables())->pluck('name')->filter(fn ($t) => Schema::hasColumns($t, ['person_id', 'employee_code']))->values()->all();
+    $identityTables = collect(Schema::getTables(Schema::getCurrentSchemaListing()))->pluck('name')->filter(fn ($t) => Schema::hasColumns($t, ['person_id', 'employee_code']))->values()->all();
     expect($identityTables)->toBe(['employees']);
 });
 
 it('3. keeps Person the one canonical natural person', function () {
-    $tables = collect(Schema::getTables())->pluck('name')->filter(fn ($t) => Schema::hasColumns($t, ['first_name', 'date_of_birth']))->values()->all();
+    $tables = collect(Schema::getTables(Schema::getCurrentSchemaListing()))->pluck('name')->filter(fn ($t) => Schema::hasColumns($t, ['first_name', 'date_of_birth']))->values()->all();
     // HROne parity WO-15 (documented exception): business partners are people outside the workforce who may be given a
     // sign-in (customers, BGV agents, vendors' staff, consultants). They are never employees, never matched or merged with a
     // Person, and hold no employment data; a partner who is later hired becomes a Person through the hire as anyone else.
@@ -99,7 +100,7 @@ it('3. keeps Person the one canonical natural person', function () {
 
 it('4. keeps the Employee 360 a read surface, never a system of record', function () {
     expect(invariantOffenders('app/Domain/Experience/Services', '~(->|::)(create|update|save|delete|insert|upsert|forceFill)\(~', array_values(array_diff(invariantFiles('app/Domain/Experience/Services'), ['app/Domain/Experience/Services/Employee360.php']))))->toBe([])
-        ->and(collect(Schema::getTables())->pluck('name')->filter(fn ($t) => str_contains($t, '360'))->all())->toBe([]);
+        ->and(collect(Schema::getTables(Schema::getCurrentSchemaListing()))->pluck('name')->filter(fn ($t) => str_contains($t, '360'))->all())->toBe([]);
     $employee = ($this->hire)('Bala');
     $before = AuditEvent::query()->count();
     app(Employee360::class)->for($this->hr, $employee);

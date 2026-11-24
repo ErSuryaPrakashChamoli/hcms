@@ -130,6 +130,9 @@ it('answers every list endpoint of a populated organisation, and keeps each tena
     }
 
     // 3. Record endpoints: what the owner reads (200) is not found (404) for the other tenant's all-scope key.
+    // The loop above ended on the other tenant's key, and in a test the API middleware's tenant binding outlives the
+    // request: look up the demo organisation's records as the demo organisation.
+    actAsTenant($demo);
     $employee = Employee::query()->whereNotNull('employee_code')->orderBy('id')->first();
     $attendance = AttendanceRecord::query()->with('employee')->orderBy('id')->first();
     $records = array_filter([
