@@ -64,7 +64,8 @@ final class CreatePreEmployeeAction
             ]);
             $employee->withAuditReason($reason)->save();
 
-            $this->positions->handle($employee, $position, 'hire', $joining, $reason);
+            // Master relationships R2: the employment data requirements' warnings travel back with the employee.
+            $employee->requirementWarnings = $this->positions->handle($employee, $position, 'hire', $joining, $reason)->requirementWarnings;
 
             if (! empty($payload['manager_code'])) {
                 $manager = Employee::query()->where('employee_code', $payload['manager_code'])->first() ?? throw new InvalidArgumentException("Unknown manager code [{$payload['manager_code']}].");

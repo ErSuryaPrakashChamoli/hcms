@@ -478,6 +478,10 @@ class CreateEmployee extends PeopleCreateRecord
         }
 
         $employee = $outcome['employee'];
+        // Master relationships R2: the hire went through; what the employment data requirements found missing (Warn).
+        if ($employee->requirementWarnings !== []) {
+            Notification::make()->warning()->title('Hired. Some employment data is missing')->body(implode("\n", $employee->requirementWarnings))->persistent()->send();
+        }
         session()->put(self::completionKey((int) $employee->getKey()), [
             'employee_id' => (int) $employee->getKey(),
             'name' => (string) $employee->person?->display_name,

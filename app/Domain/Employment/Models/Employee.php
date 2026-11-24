@@ -69,6 +69,14 @@ class Employee extends Model
 {
     use Auditable, BelongsToTenant, HasCustomFields, HasFactory;
 
+    /**
+     * Master relationships R2: the employment data requirements' warnings of the hire or rehire that just ran (set by
+     * the hire actions, never stored; the audit event keeps them). Screens and the API show them.
+     *
+     * @var list<string>
+     */
+    public array $requirementWarnings = [];
+
     /** @use HasFactory<EmployeeFactory> */
     use ScopedByEmployee;
 

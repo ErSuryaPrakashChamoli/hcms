@@ -39,7 +39,8 @@ final class RehireEmployeeAction
             $this->lifecycle->transition($employee, LifecycleState::Active, $from, $reason ?? 'Re-employed', ['rehire' => true]);
             $employee->withAuditReason($reason)->update(['joining_date' => $from, 'exit_date' => null, 'confirmation_date' => null]);
 
-            $this->positions->handle($employee, $position, 'rehire', $from, $reason);
+            // Master relationships R2: the employment data requirements' warnings travel back with the employee.
+            $employee->requirementWarnings = $this->positions->handle($employee, $position, 'rehire', $from, $reason)->requirementWarnings;
 
             if ($managerId !== null) {
                 $this->managers->handle($employee, Employee::query()->findOrFail($managerId), 'line', $from, $reason);

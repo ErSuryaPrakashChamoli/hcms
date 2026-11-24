@@ -9,6 +9,8 @@ use App\Domain\Employment\Imports\Workbooks\ImportReferences;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
 use App\Domain\Employment\Models\ReportingRelationship;
+use App\Domain\Employment\Requirements\PositionRequirements;
+use App\Domain\Employment\Requirements\RequirementsResult;
 use App\Domain\Employment\Services\ProfileChangeGuard;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
@@ -109,8 +111,38 @@ final class PositionChangeImports extends RowImports
         if ($positionChanges === [] && ! $managerChange) {
             return ['action' => 'skip', 'match' => $match + ['reason' => 'Already in this position (and with this manager) on that date.'], 'employee_id' => $employeeId];
         }
+        // Master relationships R2: the employment data requirements before approval. Block is a row error; Warn a note.
+        if ($positionChanges !== []) {
+            $requirements = $this->requirementsFor($employee, $from, $dimensions, $type);
+            if ($requirements->blocking() !== []) {
+                return ['action' => 'error', 'errors' => $requirements->blockingMessages(), 'employee_id' => $employeeId];
+            }
+            $match += $requirements->warnings() === [] ? [] : ['warnings' => $requirements->warningMessages()];
+        }
 
         return ['action' => 'update', 'match' => $match + ['changes' => [...$positionChanges, ...($managerChange ? ['manager'] : [])]], 'employee_id' => $employeeId];
+    }
+
+    /**
+     * The position as this row would leave it (the one on file that day, changed and cleared by the row), checked
+     * against the employment data requirements.
+     *
+     * @param  array<string, mixed>  $dimensions
+     */
+    private function requirementsFor(Employee $employee, string $from, array $dimensions, string $type): RequirementsResult
+    {
+        $current = $employee->positions()->effectiveOn($from)->first();
+        $position = $current === null ? [] : array_intersect_key($current->getAttributes(), EmployeePosition::DIMENSIONS) + ['position_id' => $current->position_id];
+        foreach (array_intersect_key($dimensions, EmployeePosition::DIMENSIONS) as $column => $value) {
+            if (filled($value)) {
+                $position[$column] = $value;
+            }
+        }
+        foreach ((array) ($dimensions['clear'] ?? []) as $column) {
+            $position[$column] = null;
+        }
+
+        return app(PositionRequirements::class)->assess($position, $type, $from, $employee);
     }
 
     protected function apply(array $r, EmployeeImportRow $row, EmployeeImport $import, User $user): string
@@ -133,8 +165,9 @@ final class PositionChangeImports extends RowImports
         $done = [];
         try {
             if ($positionChanges !== []) {
-                app(AssignPositionAction::class)->handle($employee, $dimensions, $type, $from, $reason);
-                $done[] = (string) config("peopleos.people.position_change_types.{$type}", ucfirst($type)).' ('.implode(', ', $positionChanges).')';
+                $position = app(AssignPositionAction::class)->handle($employee, $dimensions, $type, $from, $reason);
+                $done[] = (string) config("peopleos.people.position_change_types.{$type}", ucfirst($type)).' ('.implode(', ', $positionChanges).')'
+                    .($position->requirementWarnings === [] ? '' : ' — warning: '.implode(' ', $position->requirementWarnings));
             }
             if ($managerChange) {
                 app(ChangeManagerAction::class)->change($employee, Employee::query()->findOrFail($managerId), $user, 'line', $from, $reason);

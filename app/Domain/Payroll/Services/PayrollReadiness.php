@@ -14,12 +14,19 @@ use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\RequiredRules;
 use App\Domain\Compliance\Services\StatutoryContexts;
 use App\Domain\Compliance\Support\StatutoryContext;
+use App\Domain\Configuration\Models\Policy;
+use App\Domain\Configuration\Services\EmployeeRuleContext;
+use App\Domain\Configuration\Services\PolicyResolver;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeStatutoryDetail;
+use App\Domain\Employment\Requirements\EmploymentRequirements;
+use App\Domain\Employment\Requirements\PositionRequirements;
+use App\Domain\Employment\Requirements\RequirementProblem;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Identity\Models\User;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Services\EstablishmentAssignments;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\PayrollEntryLine;
 use App\Domain\Payroll\Models\PayrollPeriod;
@@ -61,6 +68,11 @@ final class PayrollReadiness
         'salary_unprocessed' => ['Salary not processed last month', 'In last month\'s payroll population but without an entry in its finalized run.'],
         'attendance_unprocessed' => ['Attendance not processed', 'Days of this pay month so far (up to yesterday) without a processed attendance record.'],
         'no_shift' => ['Days with no shift', 'Un-punched days recorded absent only because no work schedule, roster or shift applies to the person. Holidays and the weekly offs a schedule names are never counted; without a schedule nothing says which days are off, so weekends appear too. Loss of pay is taken for these days until a schedule is assigned and attendance is reprocessed.'],
+        // Master relationships R2: the data payroll, statutory and leave read from a person's position.
+        'employment_data' => ['Employment data missing', 'The current position lacks what the employment data requirements policy asks for (location, department, …). Blocks the run only when that rule is on Block.'],
+        'head_office_fallback' => ['Statutory establishment from the head office', 'In a company with more than one establishment, no establishment of their own (no assignment, and their location has none): PF, ESI, PT and LWF use the head office\'s.'],
+        'blank_formula_variables' => ['Formulas reading blank position data', 'A formula of their salary structure reads their grade, location, department … and they have none: if, in and slab silently take their other branch.'],
+        'no_leave_policy' => ['No leave policy', 'No leave policy applies to them: they cannot apply for leave and accrual credits nothing. Checked when the organisation uses leave policies.'],
         'statutory_details_missing' => ['Statutory details missing', 'No statutory details (PAN, PF, ESI, PT choices) recorded at all.'],
         'structure_missing' => ['Salary structure missing', 'No approved compensation in force at the end of the pay month (or on the last working day).'],
         'pan_missing' => ['PAN missing', 'No PAN on file (TDS applies at the higher rate).'],
@@ -158,6 +170,7 @@ final class PayrollReadiness
             $period = $this->periodFor($company, $year, $month, $start, $end);
             $this->attendanceChecks($checks, $company, $employees, $start, $end, $today);
             $this->noShiftCheck($checks, $company, $employees, $start, $end);
+            $this->employmentDataChecks($checks, $company, $employees, $end);
             $this->statutoryChecks($checks, $company, $employees, $period);
             $this->compensationChecks($checks, $company, $employees, $period, $withAmounts);
             $this->specialStates($checks, $company, $employees, $start, $end);
@@ -226,6 +239,8 @@ final class PayrollReadiness
             'unbalanced_ctc' => $withAmounts ? ['breakup' => 'Breakup a month', 'ctc' => 'CTC a month'] : [],
             'attendance_unprocessed' => ['days' => 'Days without attendance'],
             'no_shift' => ['days' => 'Days', 'dates' => 'Dates'],
+            'employment_data' => ['missing' => 'Missing'],
+            'blank_formula_variables' => ['variables' => 'Blank values formulas read'],
             default => [],
         };
     }
@@ -333,6 +348,97 @@ final class PayrollReadiness
      * loss of pay for absent days, so the run's checklist blocks on them (PayrollRunChecklist `no_shift`), per person with
      * the dates and what to do. Where payroll takes no loss of pay from attendance the check does not run.
      */
+    /**
+     * Master relationships R2: the position data payroll and leave depend on. Employment data the requirements policy
+     * asks for (blocking only for a rule on Block); statutory establishment from the head office (companies with more
+     * than one); formulas reading blank position values; no leave policy (when the organisation uses them).
+     */
+    private function employmentDataChecks(array &$checks, Company $company, Collection $employees, CarbonInterface $end): void
+    {
+        $byId = $employees->keyBy('id');
+        foreach (app(PositionRequirements::class)->assessMany($employees, $end) as $employeeId => $result) {
+            $checks['employment_data']['ran'] = true;
+            $missing = array_values(array_filter($result->problems, fn (RequirementProblem $p) => $p->rule === EmploymentRequirements::REQUIRED));
+            if ($missing === [] || ! isset($byId[$employeeId])) {
+                continue;
+            }
+            $blocks = collect($missing)->contains(fn (RequirementProblem $p) => $p->blocks());
+            $checks['employment_data']['blocking'] = ($checks['employment_data']['blocking'] ?? false) || $blocks;
+            $fields = implode(', ', array_map(fn (RequirementProblem $p) => EmploymentRequirements::requirableFields()[$p->field] ?? (string) $p->field, $missing));
+            $checks['employment_data']['rows'][] = self::employeeRow($byId[$employeeId], $company,
+                "Missing {$fields} ({$result->policy}".($blocks ? '; on Block' : '').'). Complete the position, or change the policy.', ['missing' => $fields]);
+        }
+
+        if ($company->establishments()->count() > 1) {
+            $checks['head_office_fallback']['ran'] = true;
+            $establishments = app(EstablishmentAssignments::class);
+            foreach ($employees as $employee) {
+                $resolved = $establishments->resolve($employee, $end);
+                if ($resolved['source'] === 'company_primary') {
+                    $checks['head_office_fallback']['rows'][] = self::employeeRow($employee, $company,
+                        'No establishment of their own: PF, ESI, PT and LWF use '.$resolved['establishment']?->name.'. Give their location an establishment, or assign one.');
+                }
+            }
+        }
+
+        // Through the compensation read contract (Payroll never reads salary assignments or structure versions itself).
+        $output = app(CompensationOutput::class);
+        $read = [];
+        foreach ($employees as $employee) {
+            $segment = $output->forPayroll($employee, $end, $end)->last();
+            if ($segment === null) {
+                continue;
+            }
+            $key = (string) ($segment->compensation->structureVersionId ?? 's'.$segment->compensation->structureId);
+            $variables = $read[$key] ??= self::positionVariables($segment->components);
+            if ($variables === []) {
+                continue;
+            }
+            $checks['blank_formula_variables']['ran'] = true;
+            $values = FormulaVariables::employeeAttributes($employee, $end);
+            $blank = array_filter($variables, fn (array $codes, string $variable) => ($values[$variable] ?? '') === '', ARRAY_FILTER_USE_BOTH);
+            if ($blank !== []) {
+                $list = implode('; ', array_map(fn (string $variable, array $codes) => $variable.' ('.implode(', ', $codes).')', array_keys($blank), $blank));
+                $checks['blank_formula_variables']['rows'][] = self::employeeRow($employee, $company,
+                    "Formulas read {$list} and the employee has none: if, in and slab take their other branch. Set it on the position.", ['variables' => implode(', ', array_keys($blank))]);
+            }
+        }
+
+        if (Policy::query()->where('type', 'leave')->where('status', 'active')->exists()) {
+            $checks['no_leave_policy']['ran'] = true;
+            $resolver = app(PolicyResolver::class);
+            $candidates = $resolver->candidates('leave', $end);
+            foreach (app(EmployeeRuleContext::class)->buildMany($employees, $end) as $employeeId => $context) {
+                if (isset($byId[$employeeId]) && $resolver->firstMatching($candidates, $context, $end)?->policy?->versionEffectiveOn($end) === null) {
+                    $checks['no_leave_policy']['rows'][] = self::employeeRow($byId[$employeeId], $company,
+                        'No leave policy applies: leave cannot be applied for and accrual credits nothing. Widen a leave policy\'s rules or add one.');
+                }
+            }
+        }
+    }
+
+    /**
+     * The position values a structure's formulas read: variable => component codes.
+     *
+     * @param  Collection<int, CompensationComponentLine>  $lines
+     * @return array<string, list<string>>
+     */
+    private static function positionVariables(Collection $lines): array
+    {
+        $variables = ['grade', 'level', 'location', 'work_city', 'work_state', 'department', 'designation', 'employment_type', 'employee_category'];
+        $out = [];
+        foreach ($lines as $line) {
+            $formula = (string) $line->component->formulaFor($line->formulaOverride);
+            foreach ($variables as $variable) {
+                if ($formula !== '' && preg_match('/\\b'.$variable.'\\b/', $formula) === 1) {
+                    $out[$variable][] = (string) $line->component->code;
+                }
+            }
+        }
+
+        return array_map(fn (array $codes) => array_values(array_unique($codes)), $out);
+    }
+
     private function noShiftCheck(array &$checks, Company $company, Collection $employees, CarbonInterface $start, CarbonInterface $end): void
     {
         if (! (bool) $this->settings->get('payroll.lop_from_attendance', true)) {

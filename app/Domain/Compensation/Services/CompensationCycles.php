@@ -161,7 +161,7 @@ final class CompensationCycles
      * employees it would skip. Compensation rules checked only when a line is proposed (structure, lifecycle) are not
      * run here.
      *
-     * @return array{lines: list<array{employee: Employee, current: CompensationSnapshot, result: array<string, mixed>}>, errors: list<array{employee_id: ?int, employee_code: ?string, reason: string}>}
+     * @return array{lines: list<array{employee: Employee, current: CompensationSnapshot, result: array<string, mixed>}>, errors: list<array{employee_id: ?int, employee_code: ?string, reason: string}>, excluded: list<array{column: string, reason: string, count: int}>}
      */
     public function plan(CompensationCycle $cycle, User $actor): array
     {
@@ -192,7 +192,42 @@ final class CompensationCycles
             $lines[] = ['employee' => $employee, 'current' => $current, 'result' => $result];
         }
 
-        return ['lines' => $lines, 'errors' => $errors];
+        return ['lines' => $lines, 'errors' => $errors, 'excluded' => $this->excluded($cycle, $actor)];
+    }
+
+    /**
+     * Master relationships R2: the people a cycle's filters leave out only because their position has no value there
+     * ("12 employees excluded: no department"), counted per filter, so the preview explains who is missing and why.
+     * People with another value are not counted: they are outside the filter, not missing data.
+     *
+     * @return list<array{column: string, reason: string, count: int}>
+     */
+    public function excluded(CompensationCycle $cycle, User $actor): array
+    {
+        $columns = [];
+        foreach (['location_id', 'business_unit_id', 'division_id', 'department_id', 'team_id'] as $column) {
+            if (filled($cycle->getAttribute($column))) {
+                $columns[] = $column;
+            }
+        }
+        foreach ((array) (($cycle->population ?? [])['organisation'] ?? []) as $column => $ids) {
+            if (in_array($column, IncrementCalculator::POPULATION_COLUMNS, true) && (array) $ids !== []) {
+                $columns[] = $column;
+            }
+        }
+        $out = [];
+        foreach (array_values(array_unique($columns)) as $column) {
+            $count = EmployeePosition::query()->withoutGlobalScope(AccessScope::class)->effectiveOn($cycle->effective_from->toDateString())
+                ->where('company_id', $cycle->company_id)->whereNull($column)
+                ->whereHas('employee', fn ($q) => $q->withoutGlobalScope(AccessScope::class)->whereIn('lifecycle_state', config('peopleos.compensation.lifecycle.cycles', []))
+                    ->when($this->scopes->isScoped($actor), fn ($q) => $q->whereIn('id', $this->scopes->employeeKeys($actor))))
+                ->distinct()->count('employee_id');
+            if ($count > 0) {
+                $out[] = ['column' => $column, 'reason' => 'no '.strtolower(EmployeePosition::DIMENSIONS[$column][1]), 'count' => $count];
+            }
+        }
+
+        return $out;
     }
 
     /** @param  array<string, mixed>  $data */

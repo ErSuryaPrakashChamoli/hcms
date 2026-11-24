@@ -58,6 +58,9 @@ final class PayrollRunChecklist
         'exits' => ['Exits and people leaving', 'People who left or leave this month, are serving notice, have a pending exit, are suspended or on long leave.', 'review', 'Workforce'],
         'org_changes' => ['Transfers and moves', 'People whose company, department, location or designation changed during the month (pay, statutory state and cost centre may follow).', 'review', 'Workforce'],
         'no_shift' => ['Days with no shift', 'People recorded absent only because no work schedule, roster or shift applies to them: payroll would take loss of pay for those days. Assign a schedule and reprocess attendance for the dates shown.', 'block', 'Time office'],
+        // Master relationships R2: what payroll reads from a person's position (OD-3: review, unless a rule is on Block).
+        'employment_data' => ['Employment data', 'People whose position lacks what the employment data requirements policy asks for. Blocks the run only when the policy has that rule on Block (switched on after a pre-flight).', 'review', 'Workforce'],
+        'placement_data' => ['Data payroll reads from the position', 'People whose statutory establishment falls back to the head office, whose salary formulas read position data they do not have, or who have no leave policy.', 'review', 'Payroll'],
         'final_settlements' => ['Full and final settlements', 'Leavers of the month whose settlement is not finished, and settlements that already pay this month (they are left out of the run).', 'review', 'Exit'],
         'uploads' => ['Salary uploads', 'Payroll uploads that are not imported yet: variable pay, arrears, claims, investments, loans, statutory details …', 'review', 'Payroll'],
         'one_time_inputs' => ['One-time pay inputs', 'Adjustments for this month and variable pay waiting for approval.', 'review', 'Payroll'],
@@ -180,6 +183,8 @@ final class PayrollRunChecklist
         $rows['structure_missing'] = $fromReadiness(['structure_missing']);
         // Master-relationships R1: absences recorded only because no shift applies would dock pay: blocks until cleared.
         $rows['no_shift'] = $fromReadiness(['no_shift']);
+        $rows['employment_data'] = $fromReadiness(['employment_data']);
+        $rows['placement_data'] = $fromReadiness(['head_office_fallback', 'blank_formula_variables', 'no_leave_policy']);
         $rows['pay_checks'] = $fromReadiness(['unbalanced_ctc', 'minimum_wage', 'wage_share', 'esi_ceiling']);
         $rows['statutory'] = $fromReadiness(['statutory_details_missing', 'pan_missing', 'aadhaar_missing', 'uan_missing', 'esi_ip_missing', 'statutory_setup']);
         $rows['bank'] = $this->runs->populationIn($companyId, $start, $end)->whereDoesntHave('bankAccounts', fn ($q) => $q->where('is_primary', true))->with('person')->orderBy('employee_code')->get()
@@ -216,6 +221,10 @@ final class PayrollRunChecklist
         $asOf = now();
         $out = [];
         foreach (self::ITEMS as $key => [$label, $description, $kind, $module]) {
+            // A rule of the employment data requirements on Block (after its pre-flight) blocks; otherwise it is reviewed.
+            if ($key === 'employment_data' && ($readiness['employment_data']['blocking'] ?? false)) {
+                $kind = 'block';
+            }
             $list = collect($rows[$key] ?? [])->values();
             $signature = sha1($list->map(fn (array $r) => $r['code'].'|'.$r['detail'])->sort()->implode("\n"));
             $tick = $ticks[$key] ?? null;

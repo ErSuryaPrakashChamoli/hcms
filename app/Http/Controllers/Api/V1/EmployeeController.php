@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
 use App\Domain\Employment\Actions\HireEmployeeAction;
 use App\Domain\Employment\Exceptions\DuplicatePersonException;
 use App\Domain\Employment\Models\Employee;
@@ -92,14 +93,17 @@ class EmployeeController extends Controller
             }
         } catch (DuplicatePersonException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => ['person' => [$e->getMessage()]], 'candidates' => $e->candidates->map(fn ($c) => ['person_id' => $c['person_id'], 'employee_code' => $c['employee_code'], 'matched_on' => $c['matched_on']])->values()], 422);
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException|ApplicabilityRefusedException $e) {
+            // A master that does not apply to the company is a refusal like any other (422), not a server error.
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
         $employee->loadMissing(self::RELATIONS);
         EmployeeApiResource::$includeSensitive = false;
 
-        return response()->json(['data' => (new EmployeeApiResource($employee))->resolve($request)], 201);
+        // Master relationships R2: the employment data requirements' warnings (added only when there are some).
+        return response()->json(['data' => (new EmployeeApiResource($employee))->resolve($request)]
+            + ($employee->requirementWarnings === [] ? [] : ['meta' => ['requirement_warnings' => $employee->requirementWarnings]]), 201);
     }
 
     /** Lifecycle transition through the engine (validated, audited, effective-dated, event-emitting). */

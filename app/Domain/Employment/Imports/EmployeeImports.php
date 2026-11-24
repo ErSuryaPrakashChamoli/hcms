@@ -11,6 +11,8 @@ use App\Domain\Employment\Enums\ImportMode;
 use App\Domain\Employment\Imports\Workbooks\ImportReferences;
 use App\Domain\Employment\Imports\Workbooks\WorkbookImports;
 use App\Domain\Employment\Models\Employee;
+use App\Domain\Employment\Requirements\PositionRequirements;
+use App\Domain\Employment\Requirements\RequirementsResult;
 use App\Domain\Identity\Models\User;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\BusinessUnit;
@@ -380,7 +382,8 @@ final class EmployeeImports
         DB::transaction(function () use ($import, $mapping, $mode, &$counts, &$seen, &$lookups) {
             foreach ($import->rows()->cursor() as $row) {
                 $record = $this->recordFor($row, $mapping);
-                $errors = $this->validateRecord($record, $lookups, $mode, (int) ($row->data[WorkbookImports::ROW_COLUMN] ?? $row->row_number + 1));
+                $resolved = null;
+                $errors = $this->validateRecord($record, $lookups, $mode, (int) ($row->data[WorkbookImports::ROW_COLUMN] ?? $row->row_number + 1), $resolved);
 
                 foreach ($seen as $key => $values) {
                     $value = mb_strtolower((string) ($record['employee'][$key] ?? $record['person'][$key] ?? ''));
@@ -414,6 +417,16 @@ final class EmployeeImports
                     }
                 } else {
                     $action = 'error';
+                }
+                // Master relationships R2: a new hire's employment data requirements before approval. Block is a row
+                // error; Warn a note on the row.
+                if ($action === 'create' && $resolved !== null) {
+                    $requirements = $this->requirementsOf($resolved);
+                    if ($requirements->blocking() !== []) {
+                        [$action, $errors, $match] = ['error', $requirements->blockingMessages(), null];
+                    } elseif ($requirements->warnings() !== []) {
+                        $match = ['warnings' => $requirements->warningMessages()] + (array) $match;
+                    }
                 }
 
                 $row->update(['action' => $action, 'errors' => $errors ?: null, 'match' => $match, 'employee_id' => $match['employee_id'] ?? null, 'status' => 'pending', 'result' => null]);
@@ -546,7 +559,8 @@ final class EmployeeImports
                     $employee = DB::transaction(function () use ($row, $record, $import) {
                         $employee = $row->action === 'create' ? $this->create($record, $import) : $this->updateExisting($row, $record, $import);
                         // Written in the same transaction as the change, so a resumed run never applies the row twice.
-                        $row->update(['status' => 'imported', 'employee_id' => $employee->getKey(), 'result' => ($row->action === 'create' ? 'Created ' : 'Updated ').$employee->employee_code]);
+                        $row->update(['status' => 'imported', 'employee_id' => $employee->getKey(), 'result' => ($row->action === 'create' ? 'Created ' : 'Updated ').$employee->employee_code
+                            .($employee->requirementWarnings === [] ? '' : ' — warning: '.implode(' ', $employee->requirementWarnings))]);
 
                         return $employee;
                     });
@@ -692,7 +706,7 @@ final class EmployeeImports
     }
 
     /** @return list<string> */
-    private function validateRecord(array $record, array &$lookups, ImportMode $mode, ?int $sheetRow = null): array
+    private function validateRecord(array $record, array &$lookups, ImportMode $mode, ?int $sheetRow = null, ?array &$resolved = null): array
     {
         $errors = [];
         foreach (self::required($mode) as $field) {
@@ -730,7 +744,8 @@ final class EmployeeImports
         if ($record['manager_code'] !== null && $own !== '' && mb_strtolower(trim($record['manager_code'])) === $own) {
             $errors[] = 'An employee cannot report to themselves.';
         } else {
-            [, $referenceErrors] = $this->withReferences($record, $lookups, $sheetRow);
+            // The record with its names replaced by codes (master relationships R2 checks a new hire's position with it).
+            [$resolved, $referenceErrors] = $this->withReferences($record, $lookups, $sheetRow);
             $errors = [...$errors, ...$referenceErrors];
         }
 
@@ -799,6 +814,18 @@ final class EmployeeImports
         }
 
         return [$record, $errors];
+    }
+
+    /** A new hire's position checked against the employment data requirements (nothing when its codes do not resolve). */
+    private function requirementsOf(array $record): RequirementsResult
+    {
+        try {
+            $position = app(OrganisationCodes::class)->resolvePosition($record['position']);
+        } catch (\InvalidArgumentException) {
+            return RequirementsResult::none();
+        }
+
+        return app(PositionRequirements::class)->assess($position, 'hire', $record['employee']['joining_date'] ?? null);
     }
 
     private function create(array $record, EmployeeImport $import): Employee

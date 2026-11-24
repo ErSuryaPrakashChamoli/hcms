@@ -1671,6 +1671,13 @@ return [
     | People option lists. Kept as configuration so tenants can be given different vocabularies
     | later without schema changes.
     */
+    // Master relationships R2 (OD-4): new tenants get an "Employment data requirements" policy requiring Company,
+    // Location, Department, Designation and Employment type, on Warn. Existing tenants get nothing (Company only).
+    // Off in phpunit.xml: tests that hire with a company only must not inherit it; dedicated tests switch it on.
+    'employment_requirements' => [
+        'seed_new_tenants' => (bool) env('PEOPLEOS_SEED_EMPLOYMENT_REQUIREMENTS', true),
+    ],
+
     'people' => [
         'genders' => ['male' => 'Male', 'female' => 'Female', 'non_binary' => 'Non-binary', 'undisclosed' => 'Prefer not to say'],
         'marital_statuses' => ['single' => 'Single', 'married' => 'Married', 'divorced' => 'Divorced', 'widowed' => 'Widowed', 'undisclosed' => 'Prefer not to say'],
@@ -2248,6 +2255,21 @@ return [
                 ]],
             ]],
             // HROne setup parity (Workforce → Transfer policy): what a transfer may change.
+            // Master relationships R2 (OD-3, OD-4): which position fields a hire or a change must name, and consistency
+            // checks, each Off / Warn / Block (blank = Warn). Checked by PositionRequirements inside AssignPositionAction, so
+            // screens, uploads and the API get the same answer. Block is accepted only with a current pre-flight
+            // (Workforce setup → Employment data requirements). No policy: only the company is required, as before.
+            'employment_data' => ['label' => 'Employment data requirements', 'validator' => 'App\\Domain\\Employment\\Requirements\\EmploymentRequirements', 'fields' => [
+                ['key' => 'required_on_hire', 'label' => 'Required when someone is hired or rehired (the company always is)', 'type' => 'checkboxes', 'options' => ['location_id' => 'Location', 'business_unit_id' => 'Business unit', 'division_id' => 'Division', 'department_id' => 'Department', 'team_id' => 'Team', 'designation_id' => 'Designation', 'level_id' => 'Level', 'grade_id' => 'Grade', 'employment_type_id' => 'Employment type', 'employee_category_id' => 'Employee category', 'work_mode_id' => 'Work mode', 'cost_centre_id' => 'Cost centre', 'dimension_value_id' => 'Dimension']],
+                ['key' => 'required_on_change', 'label' => 'Required on a transfer, promotion or other position change', 'type' => 'checkboxes', 'options' => ['location_id' => 'Location', 'business_unit_id' => 'Business unit', 'division_id' => 'Division', 'department_id' => 'Department', 'team_id' => 'Team', 'designation_id' => 'Designation', 'level_id' => 'Level', 'grade_id' => 'Grade', 'employment_type_id' => 'Employment type', 'employee_category_id' => 'Employee category', 'work_mode_id' => 'Work mode', 'cost_centre_id' => 'Cost centre', 'dimension_value_id' => 'Dimension']],
+                ['key' => 'required_mode', 'label' => 'When a required field is missing', 'type' => 'select', 'options' => ['off' => 'Off', 'warn' => 'Warn (the change goes through; the warning is shown and recorded)', 'block' => 'Block (refuse the change; switched on from the pre-flight only)'],
+                    'help' => 'Warn lets the change through and shows what is missing. Block refuses it, and can be switched on only from the pre-flight report.'],
+                ['key' => 'check_grade_level', 'label' => 'Grade sits under the level', 'type' => 'select', 'options' => ['off' => 'Off', 'warn' => 'Warn (the change goes through; the warning is shown and recorded)', 'block' => 'Block (refuse the change; switched on from the pre-flight only)']],
+                ['key' => 'check_designation_defaults', 'label' => "Level and grade match the designation's defaults for the company", 'type' => 'select', 'options' => ['off' => 'Off', 'warn' => 'Warn (the change goes through; the warning is shown and recorded)', 'block' => 'Block (refuse the change; switched on from the pre-flight only)']],
+                ['key' => 'check_usual_department', 'label' => "Department matches the designation's usual department (information only: it never places anyone)", 'type' => 'select', 'options' => ['off' => 'Off', 'warn' => 'Warn (the change goes through; the warning is shown and recorded)', 'block' => 'Block (refuse the change; switched on from the pre-flight only)']],
+                ['key' => 'check_seat_match', 'label' => "A named seat's designation and grade match the person's", 'type' => 'select', 'options' => ['off' => 'Off', 'warn' => 'Warn (the change goes through; the warning is shown and recorded)', 'block' => 'Block (refuse the change; switched on from the pre-flight only)']],
+                ['key' => 'check_salary_structure', 'label' => 'The salary structure still fits after a transfer or promotion', 'type' => 'select', 'options' => ['off' => 'Off', 'warn' => 'Warn (the change goes through; the warning is shown and recorded)', 'block' => 'Block (refuse the change; switched on from the pre-flight only)']],
+            ]],
             'transfer' => ['label' => 'Transfer policy', 'fields' => [
                 ['key' => 'changeable_dimensions', 'label' => 'A transfer may change', 'type' => 'checkboxes', 'options' => ['company_id' => 'Company', 'business_unit_id' => 'Business unit', 'division_id' => 'Division', 'department_id' => 'Department', 'location_id' => 'Location', 'cost_centre_id' => 'Cost centre', 'grade_id' => 'Grade', 'designation_id' => 'Designation', 'manager' => 'Reporting manager']],
                 ['key' => 'notice_days', 'label' => 'Transfers need this many days notice (0 = immediate)', 'type' => 'number', 'min' => 0],

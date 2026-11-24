@@ -10,6 +10,7 @@ use App\Domain\Employment\Events\EmploymentEvent;
 use App\Domain\Employment\Exceptions\OverlappingAssignmentException;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeePosition;
+use App\Domain\Employment\Requirements\PositionRequirements;
 use App\Domain\Lifecycle\Services\Timeline;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -78,6 +79,9 @@ final class AssignPositionAction
             }
             // Configuration applicability: a unit, designation, grade, … limited to some companies is not used by others.
             app(EntityApplicability::class)->assertUsableByCompany($merged, (int) $merged['company_id'], $from);
+            // Master relationships R2: the employment data requirements for the position as it will be. A Block rule
+            // refuses here, before anything is written; Warn findings are kept on the audit event and returned.
+            $requirements = app(PositionRequirements::class)->enforce($merged + ['position_id' => $seat['position_id']], $changeType, $from, $employee);
 
             $current?->withAuditReason($reason)->update(['effective_to' => $from->copy()->subDay()]);
 
@@ -102,8 +106,10 @@ final class AssignPositionAction
                 changes: $this->diff($current, $position),
                 reason: $reason,
                 effectiveDate: $from,
-                metadata: ['change_type' => $changeType, 'position_id' => $position->getKey()],
+                metadata: ['change_type' => $changeType, 'position_id' => $position->getKey()]
+                    + ($requirements->warnings() === [] ? [] : ['requirement_warnings' => $requirements->warningMessages()]),
             );
+            $position->requirementWarnings = $requirements->warningMessages();
 
             $this->writeTimeline($employee, $current, $position, $changeType, $from, $reason);
             $this->dispatchEvents($employee, $current, $position, $changeType, $from, $reason);

@@ -35,7 +35,7 @@ class RowsRelationManager extends RelationManager
                     'imported' => 'success', 'failed' => 'danger', default => 'gray'
                 }),
                 // Errors for a refused row; otherwise why a row is skipped, or what it will do.
-                TextColumn::make('errors')->label('Errors / notes')->state(fn (EmployeeImportRow $record) => $record->errors ? implode(' ', $record->errors) : ($record->match['reason'] ?? null))->wrap()->placeholder('—'),
+                TextColumn::make('errors')->label('Errors / notes')->state(fn (EmployeeImportRow $record) => $record->errors ? implode(' ', $record->errors) : (trim(($record->match['reason'] ?? '').' '.implode(' ', (array) ($record->match['warnings'] ?? []))) ?: null))->wrap()->placeholder('—'),
                 TextColumn::make('match')->label('Matched')->state(fn (EmployeeImportRow $record) => filled($record->match['name'] ?? null) ? $record->match['name'].' ('.implode(', ', $record->match['matched_on'] ?? []).')' : null)->placeholder('—')->wrap(),
                 TextColumn::make('result')->wrap()->placeholder('—')->toggleable(),
             ])

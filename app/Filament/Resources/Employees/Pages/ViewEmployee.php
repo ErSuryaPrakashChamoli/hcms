@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Employees\Pages;
 use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Attendance\Services\ScheduleAssignments;
 use App\Domain\Bgv\Services\Bgv;
+use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
 use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Employment\Actions\AssignPositionAction;
 use App\Domain\Employment\Actions\ChangeManagerAction;
@@ -220,8 +221,9 @@ class ViewEmployee extends PeopleViewRecord
             ->action(function (Employee $record, array $data) {
                 $reason = AuditReasonField::extract($data);
                 try {
-                    app(RehireEmployeeAction::class)->handle($record, array_intersect_key($data, EmployeePosition::DIMENSIONS), $data['rejoin_date'], filled($data['manager_id'] ?? null) ? (int) $data['manager_id'] : null, $reason);
+                    $rehired = app(RehireEmployeeAction::class)->handle($record, array_intersect_key($data, EmployeePosition::DIMENSIONS), $data['rejoin_date'], filled($data['manager_id'] ?? null) ? (int) $data['manager_id'] : null, $reason);
                     Notification::make()->success()->title('Employee is active again')->send();
+                    self::requirementWarnings($rehired->requirementWarnings);
                 } catch (InvalidArgumentException|InvalidLifecycleTransitionException|\RuntimeException $e) {
                     Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
                 }
@@ -317,12 +319,27 @@ class ViewEmployee extends PeopleViewRecord
                 $reason = AuditReasonField::extract($data);
 
                 try {
-                    app(AssignPositionAction::class)->handle($record, $data, $data['change_type'], $data['effective_from'], $reason);
+                    $position = app(AssignPositionAction::class)->handle($record, $data, $data['change_type'], $data['effective_from'], $reason);
                     Notification::make()->success()->title('Position assigned')->send();
-                } catch (InvalidArgumentException $e) {
+                    self::requirementWarnings($position->requirementWarnings);
+                } catch (InvalidArgumentException|ApplicabilityRefusedException $e) {
+                    // A master that does not apply to the company is refused with its reason, never an error page.
                     Notification::make()->danger()->title('Not allowed')->body($e->getMessage())->send();
                 }
             });
+    }
+
+    /**
+     * Master relationships R2: what the employment data requirements found missing or inconsistent (Warn): the change
+     * went through and the audit event keeps the list.
+     *
+     * @param  list<string>  $warnings
+     */
+    private static function requirementWarnings(array $warnings): void
+    {
+        if ($warnings !== []) {
+            Notification::make()->warning()->title('Saved. Some employment data needs attention')->body(implode("\n", $warnings))->persistent()->send();
+        }
     }
 
     /** UX.15: step 1 of a guided change — what is recorded today, read-only. */

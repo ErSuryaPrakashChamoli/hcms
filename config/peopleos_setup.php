@@ -129,7 +129,7 @@ return [
                 ['key' => 'exit.clearance.my_tasks', 'label' => 'List clearance stages and exits ready to complete in My tasks', 'type' => 'boolean', 'group' => 'Separation',
                     'help' => 'On: each open clearance stage is a task for its owner (and their out-of-office delegate), due on the stage\'s due date, and HR sees the exits whose stages are all cleared. Off: they are found on the exit case and the Clearances register.'],
             ],
-            'policy_types' => ['exit', 'confirmation', 'transfer'],
+            'policy_types' => ['exit', 'confirmation', 'transfer', 'employment_data'],
             'links' => [
                 ['label' => 'Confirmation reviews', 'target' => 'App\\Filament\\Resources\\ConfirmationReviews\\ConfirmationReviewResource'],
                 ['label' => 'Transfer requests', 'target' => 'App\\Filament\\Resources\\TransferRequests\\TransferRequestResource'],

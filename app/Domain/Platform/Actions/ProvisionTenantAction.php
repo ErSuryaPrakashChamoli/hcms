@@ -8,6 +8,7 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Services\CompensationDefaults;
 use App\Domain\Documents\Models\DocumentType;
+use App\Domain\Employment\Requirements\EmploymentRequirementsDefaults;
 use App\Domain\Engagement\Services\MoodDefaults;
 use App\Domain\Expense\Services\ExpenseDefaults;
 use App\Domain\Identity\Enums\UserStatus;
@@ -279,6 +280,9 @@ final class ProvisionTenantAction
         app(RecognitionDefaults::class)->seed();
         // HROne setup parity HP-9f: HROne's fourteen mood bot reasons (the mood bot itself stays off).
         app(MoodDefaults::class)->seed();
+        // Master relationships R2, OD-4: new tenants require Company, Location, Department, Designation and Employment
+        // type on Warn (peopleos.employment_requirements.seed_new_tenants). Existing tenants are never given one.
+        app(EmploymentRequirementsDefaults::class)->seed();
     }
 
     private function seedSettings(): void

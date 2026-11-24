@@ -32,6 +32,14 @@ class EmployeePosition extends Model
     use Auditable, BelongsToTenant, HasEffectiveDates;
     use ScopedByEmployee;
 
+    /**
+     * Master relationships R2: the employment data requirements' warnings for the change that wrote this row (set by
+     * AssignPositionAction, never stored; the audit event keeps them). Screens show them after saving.
+     *
+     * @var list<string>
+     */
+    public array $requirementWarnings = [];
+
     /** Dimension => [relation, human label]. Used for diffs on the timeline. */
     public const DIMENSIONS = [
         'company_id' => ['company', 'Company'],

@@ -340,6 +340,8 @@ final class IncrementCalculatorWizard
             .($skipped === [] ? '' : '<div class="mt-2 text-sm"><p class="font-semibold text-warning-600">Warning: '.count($plan['errors']).' employee(s) would be skipped</p><ul class="list-disc pl-5">'
                 .collect($skipped)->map(fn ($e) => '<li>'.e(($e['employee_code'] ?? '—').': '.$e['reason']).'</li>')->implode('').'</ul>'
                 .(count($plan['errors']) > 10 ? '<p class="text-gray-500">The error file lists all of them once the plan is calculated.</p>' : '').'</div>')
+            // Master relationships R2: who the filters leave out only because a value is missing on their position.
+            .collect($plan['excluded'] ?? [])->map(fn (array $x) => '<p class="mt-2 text-sm text-warning-600" data-increment-excluded>'.e($x['count'].' '.($x['count'] === 1 ? 'employee' : 'employees').' excluded: '.$x['reason'].'.').'</p>')->implode('')
             .'<p class="mt-2 text-xs text-gray-500">Compensation rules (structure, lifecycle) are checked again for each line when the plan is calculated; a line they refuse goes to the error file.</p>');
     }
 

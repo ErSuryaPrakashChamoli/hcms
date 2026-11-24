@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
 use App\Domain\Employment\Actions\CreatePreEmployeeAction;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Exit\Models\ExitCase;
@@ -39,11 +40,14 @@ class PreEmployeeController extends Controller
 
         try {
             $employee = $action->handle($data, 'Received from recruitment ('.$request->attributes->get('api_key')?->name.')');
-        } catch (InvalidArgumentException $e) {
+        } catch (InvalidArgumentException|ApplicabilityRefusedException $e) {
+            // A master that does not apply to the company is a refusal like any other (422), not a server error.
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json(['data' => $this->present($employee)], $employee->wasRecentlyCreated ? 201 : 200);
+        // Master relationships R2: the employment data requirements' warnings (added only when there are some).
+        return response()->json(['data' => $this->present($employee)]
+            + ($employee->requirementWarnings === [] ? [] : ['meta' => ['requirement_warnings' => $employee->requirementWarnings]]), $employee->wasRecentlyCreated ? 201 : 200);
     }
 
     public function show(string $reference): JsonResponse
