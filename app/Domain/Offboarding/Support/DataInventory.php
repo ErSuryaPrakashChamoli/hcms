@@ -110,7 +110,9 @@ final class DataInventory
             // Data import DI-1: regions and business regions (branch groupings), the organisation's own places (states,
             // districts, cities), its own dimension's values, and customers / projects / project members (business records;
             // a customer's contact name, e-mail and phone are business contact details, not personal data of employees).
-            'regions', 'business_regions', 'geo_places', 'dimension_values', 'customers', 'projects', 'project_members'],
+            'regions', 'business_regions', 'geo_places', 'dimension_values', 'customers', 'projects', 'project_members',
+            // Name-based import resolution: what a value typed in a file was confirmed to mean (a master record's id).
+            'master_reference_mappings'],
         // HROne parity MS-12 adds a column only (holiday_calendars.employee_note): the calendar's note for employees —
         // organisation text, same category, exported and deleted with its row, not personal.
         'attendance' => ['attendance_devices', 'attendance_marks', 'attendance_punches', 'attendance_records', 'attendance_regularisations', 'holiday_calendar_rules', 'holiday_calendars', 'holidays', 'shift_breaks', 'shifts', 'work_schedule_assignments', 'work_schedule_rules', 'work_schedules',
