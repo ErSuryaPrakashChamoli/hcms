@@ -97,6 +97,8 @@ Details live in the documents linked from each section; this page is the map.
 
 - **SQLite (default):** `php artisan test`, or one folder at a time. Use no cached config (`APP_CONFIG_CACHE`
   pointing to a missing file). `tests/TestCase.php` refuses anything but in-memory SQLite.
+- **Volume (opt-in):** `WORKBOOK_VOLUME=100,1000,10000` for the workbooks and `REQUIREMENTS_VOLUME=1000,10000` for the
+  employment data requirements; both are skipped unless set.
 - **MySQL:** only on a disposable server, never a shared or production database. The repository's own MySQL tests
   (`tests/MySql`) switch to a database named `*workbook*` or `*concurrency*` inside each test. Whole feature suites
   were run on MySQL from a scratch copy of the tree; only that copy's guard accepts a private server on

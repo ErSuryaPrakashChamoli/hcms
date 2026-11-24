@@ -23,7 +23,7 @@
                             <tr data-code="{{ $row['code'] }}">
                                 <td class="is-strong">{{ $row['name'] }} <span class="text-gray-500">({{ $row['code'] }})</span></td>
                                 <td class="is-quiet">{{ $row['own'] === [] ? '—' : implode(', ', $row['own']) }}</td>
-                                <td>@if ($row['blocker'])<x-filament::badge color="danger">Blocking</x-filament::badge> @endif{{ $row['effect'] }}</td>
+                                <td>@if ($row['blocker'])<x-filament::badge color="danger" class="min-w-max">Blocking</x-filament::badge> @endif{{ $row['effect'] }}</td>
                                 <td>@if ($row['url'])<a class="pos-link" href="{{ $row['url'] }}">Set its grade</a>@endif</td>
                             </tr>
                         @endforeach

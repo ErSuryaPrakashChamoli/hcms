@@ -28,6 +28,7 @@ use App\Domain\Organisation\Models\Region;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\Organisation\Services\OrganisationTree;
+use App\Filament\Pages\EmploymentRequirementsPage;
 use App\Filament\Pages\OrganisationDesigner;
 use App\Filament\Pages\UnmappedMastersPage;
 use App\Filament\RelationManagers\Masters\MasterCompaniesTab;
@@ -189,3 +190,11 @@ it('opens every master type with General, Usage and History, and the tabs that t
     WorkMode::class, Company::class, BusinessRegion::class, Grade::class,
     Level::class,
 ])->mapWithKeys(fn ($class) => [class_basename($class) => [$class]])->all());
+
+it('says plainly when there is nothing to show: no requirements policy, and nothing unmapped', function () {
+    $this->sourcing->update(['grade_id' => $this->t5->id]);
+
+    Livewire::test(EmploymentRequirementsPage::class)->assertOk()->assertSee('No employment data requirements yet.');
+    Livewire::test(UnmappedMastersPage::class)->assertOk()
+        ->assertSee('Every designation has a grade.')->assertSee('Every such location has its establishment.');
+});

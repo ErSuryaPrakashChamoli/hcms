@@ -32,14 +32,14 @@
                     <p class="text-sm text-gray-600 dark:text-gray-400">Company, {{ collect($settings['required_on_hire'])->map(fn ($c) => $fields[$c] ?? $c)->implode(', ') ?: 'nothing else' }}</p>
                     <h3 class="mt-3 text-sm font-semibold">Required on another change</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400">Company, {{ collect($settings['required_on_change'])->map(fn ($c) => $fields[$c] ?? $c)->implode(', ') ?: 'nothing else' }}</p>
-                    <p class="mt-3 text-sm">When a required field is missing: <x-filament::badge :color="$tone[$settings['required_mode']]" class="inline-flex">{{ $modes[$settings['required_mode']] }}</x-filament::badge></p>
+                    <p class="mt-3 text-sm">When a required field is missing: <x-filament::badge :color="$tone[$settings['required_mode']]" class="inline-flex min-w-max">{{ $modes[$settings['required_mode']] }}</x-filament::badge></p>
                 </div>
                 <div class="rounded-lg p-4 ring-1 ring-gray-950/5 dark:ring-white/10">
                     <h3 class="text-sm font-semibold">Consistency checks</h3>
                     <ul class="mt-1 grid gap-1 text-sm">
                         @foreach (\App\Domain\Employment\Requirements\EmploymentRequirements::CHECKS as $check => [$label, $about])
                             <li class="flex items-center justify-between gap-3"><span title="{{ $about }}">{{ $label }}</span>
-                                <x-filament::badge :color="$tone[$settings['checks'][$check]]">{{ $modes[$settings['checks'][$check]] }}</x-filament::badge></li>
+                                <x-filament::badge :color="$tone[$settings['checks'][$check]]" class="shrink-0 min-w-max">{{ $modes[$settings['checks'][$check]] }}</x-filament::badge></li>
                         @endforeach
                     </ul>
                 </div>
@@ -64,7 +64,7 @@
                                 @foreach ($report['rules'] as $rule => $row)
                                     <tr data-rule="{{ $rule }}">
                                         <td class="is-strong">{{ $row['label'] }}</td>
-                                        <td><x-filament::badge :color="$tone[$row['mode']]">{{ $modes[$row['mode']] }}</x-filament::badge></td>
+                                        <td><x-filament::badge :color="$tone[$row['mode']]" class="min-w-max">{{ $modes[$row['mode']] }}</x-filament::badge></td>
                                         <td>
                                             {{ $row['violations'] }}
                                             @if ($row['samples'] !== [])
