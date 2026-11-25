@@ -53,6 +53,9 @@ final class EmploymentRequirementsPreflight
 {
     private const SAMPLES = 10;
 
+    /** A running run whose worker has not finished it within the job's time limit (3600 s) may be claimed again. */
+    private const LEASE_SECONDS = 3700;
+
     public function __construct(
         private readonly PolicyResolver $resolver,
         private readonly EmployeeRuleContext $context,
@@ -89,7 +92,7 @@ final class EmploymentRequirementsPreflight
                 $rules[$check] = $mode;
             }
         }
-        $report = array_map(fn (string $mode) => ['mode' => $mode, 'violations' => 0, 'samples' => [], 'unconfigured' => []], $rules);
+        $report = array_map(fn (string $mode) => ['mode' => $mode, 'violations' => 0, 'samples' => [], 'sample_ids' => [], 'unconfigured' => []], $rules);
         $reached = 0;
         $companies = [];
 
@@ -128,6 +131,7 @@ final class EmploymentRequirementsPreflight
                             $report[$problem->rule]['violations']++;
                             if (isset($visible[$employee->id]) && count($report[$problem->rule]['samples']) < self::SAMPLES) {
                                 $report[$problem->rule]['samples'][] = trim(($employee->employee_code ?? '#'.$employee->id).' — '.$problem->message);
+                                $report[$problem->rule]['sample_ids'][] = (int) $employee->id;   // to show each viewer only their own
                             }
                         }
                     }
@@ -227,6 +231,14 @@ final class EmploymentRequirementsPreflight
                 .' people, so its pre-flight runs in the background: run the pre-flight, wait until it has completed, then switch. A pre-flight older than '
                 .$this->evidenceHours().' hours, or from before the policy, the companies it reaches or their own values changed, does not count.'))
             : $this->record($policy, $actor, EmploymentRequirementPreflight::SWITCH, $settings, reason: $reason, queue: false);
+        // Only a completed run that still matches who the policy reaches and the companies' own values vouches for Block
+        // (a run superseded or stopped while it read people keeps a report, but it no longer describes the policy).
+        if ($run->status !== EmploymentRequirementPreflight::COMPLETED) {
+            throw new ConfigurationException('The pre-flight did not complete ('.$run->status.($run->error ? ': '.$run->error : '').'). Run it again, then switch.');
+        }
+        if ($run->applicability_fingerprint !== $this->applicabilityFingerprint($policy) || $run->overrides_fingerprint !== $this->overridesFingerprint($policy)) {
+            throw new ConfigurationException('The companies the policy reaches or their own values changed since the pre-flight. Run it again, then switch.');
+        }
         $report = (array) $run->report;
         // Every rule on Block after the switch is checked, the ones already on Block too: the record vouches for all.
         $rules = array_values(array_unique([...$rules, ...EmploymentRequirements::blockRules($settings)]));
@@ -252,7 +264,7 @@ final class EmploymentRequirementsPreflight
             'safe_rules' => $rules,
             'companies' => $companies,
             // I.7: what each company's settings are, its own values applied: Block holds for it only while they stay so.
-            'company_fingerprints' => $this->companyFingerprints($policy, $settings, $companies),
+            'company_fingerprints' => $this->companyFingerprints($policy, $settings, $companies, $run->effective_on),
             'employees' => $report['employees'],
             'violations' => array_map(fn (array $r) => $r['violations'], $report['rules']),
             'accepted_gaps' => $acceptCurrentGaps,
@@ -335,8 +347,9 @@ final class EmploymentRequirementsPreflight
         $run = DB::transaction(function () use ($policy, $actor, $purpose, $settings, $companyId, $end, $acceptGaps, $reason, $queue, $prints) {
             $open = EmploymentRequirementPreflight::query()->where('policy_id', $policy->id)->where('purpose', $purpose)
                 ->where('company_id', $companyId)->whereIn('status', EmploymentRequirementPreflight::OPEN)->lockForUpdate()->get();
-            $same = $open->first(fn (EmploymentRequirementPreflight $r) => $r->only(array_keys($prints)) === $prints && $r->effective_on->isToday()
-                && $r->end_paths === $end && $r->accept_gaps === $acceptGaps);
+            // Only an open queued run is reused: an open in-request run belongs to a request that ended (or another one).
+            $same = $open->first(fn (EmploymentRequirementPreflight $r) => $queue && $r->mode === 'queued'
+                && $r->only(array_keys($prints)) === $prints && $r->effective_on->isToday() && $r->end_paths === $end && $r->accept_gaps === $acceptGaps);
             if ($same !== null) {
                 return $same;   // already asked for: the same run, not a second one
             }
@@ -368,7 +381,10 @@ final class EmploymentRequirementsPreflight
      */
     public function execute(EmploymentRequirementPreflight $run, bool $final = true): EmploymentRequirementPreflight
     {
-        $claimed = EmploymentRequirementPreflight::query()->whereKey($run->id)->whereIn('status', EmploymentRequirementPreflight::OPEN)
+        // Pending, or running past the job's time limit (its worker died): a run another worker is reading is not claimed.
+        $claimed = EmploymentRequirementPreflight::query()->whereKey($run->id)
+            ->where(fn ($q) => $q->where('status', EmploymentRequirementPreflight::PENDING)
+                ->orWhere(fn ($q) => $q->where('status', EmploymentRequirementPreflight::RUNNING)->where('started_at', '<', now()->subSeconds(self::LEASE_SECONDS))))
             ->update(['status' => EmploymentRequirementPreflight::RUNNING, 'started_at' => now(), 'processed' => 0, 'error' => null]);
         $run = $run->fresh();
         if ($claimed === 0 || $run === null) {
@@ -408,7 +424,8 @@ final class EmploymentRequirementsPreflight
         }
         $run = $this->finish($run, EmploymentRequirementPreflight::COMPLETED, $report);
 
-        return $run->purpose === EmploymentRequirementPreflight::COMPANY ? $this->completeCompany($policy, $run) : $run;
+        // Cancelled or superseded meanwhile: finish() left it so, and nothing is ended.
+        return $run->status === EmploymentRequirementPreflight::COMPLETED && $run->purpose === EmploymentRequirementPreflight::COMPANY ? $this->completeCompany($policy, $run) : $run;
     }
 
     /** The latest run of the policy for the page (a company's coverage runs are listed apart). */
@@ -483,13 +500,16 @@ final class EmploymentRequirementsPreflight
         return $settings;
     }
 
-    /** @return array<int, string> company => the fingerprint of its settings (its own values applied) */
-    private function companyFingerprints(Policy $policy, array $settings, array $companies): array
+    /**
+     * @return array<int, string> company => the fingerprint of its settings (its own values applied) on the date the
+     *                            pre-flight read them: own values starting later make other settings, which then warn until checked
+     */
+    private function companyFingerprints(Policy $policy, array $settings, array $companies, CarbonInterface $on): array
     {
         $out = [];
         foreach ($companies as $id) {
             $out[(int) $id] = EmploymentRequirements::fingerprint($this->overrides->hasAny('policy', (int) $policy->id)
-                ? $this->overrides->applyTo($settings, 'policy', (int) $policy->id, (int) $id, today()) : $settings);
+                ? $this->overrides->applyTo($settings, 'policy', (int) $policy->id, (int) $id, $on) : $settings);
         }
 
         return $out;
@@ -534,7 +554,9 @@ final class EmploymentRequirementsPreflight
                 throw new ConfigurationException('The person who asked for it no longer exists.');
             }
             $end = (array) $run->end_paths;
-            $this->endPaths($policy, (int) $run->company_id, (array) ($end['paths'] ?? []), (string) ($end['from'] ?? today()->toDateString()), $actor, (string) $run->reason);
+            // Asked for a date that has passed while it waited: from today, the earliest a value can end (never earlier).
+            $from = max((string) ($end['from'] ?? today()->toDateString()), today()->toDateString());
+            $this->endPaths($policy, (int) $run->company_id, (array) ($end['paths'] ?? []), $from, $actor, (string) $run->reason);
         } catch (Throwable $e) {
             $run->update(['outcome' => 'refused', 'error' => 'The values could not be ended: '.$e->getMessage()]);
 
@@ -556,10 +578,16 @@ final class EmploymentRequirementsPreflight
         });
     }
 
+    /** Ends a run that is still running (a cancel or a newer run that took over meanwhile is kept, not overwritten). */
     private function finish(EmploymentRequirementPreflight $run, string $status, ?array $report = null, ?string $error = null): EmploymentRequirementPreflight
     {
-        $run->update(['status' => $status, 'report' => $report ?? $run->report, 'error' => $error, 'finished_at' => now()]
-            + ($report !== null ? ['processed' => max((int) $run->processed, (int) ($run->total ?? 0))] : []));
+        $fresh = $run->fresh();
+        $updated = EmploymentRequirementPreflight::query()->whereKey($run->id)->where('status', EmploymentRequirementPreflight::RUNNING)
+            ->update(['status' => $status, 'report' => $report !== null ? json_encode($report) : $fresh?->getRawOriginal('report'), 'error' => $error, 'finished_at' => now()]
+                + ($report !== null ? ['processed' => max((int) $fresh?->processed, (int) ($fresh?->total ?? 0))] : []));
+        if ($updated === 0) {
+            return $run->fresh();
+        }
         if ($run->mode === 'queued' || $run->purpose !== EmploymentRequirementPreflight::REVIEW) {
             $this->audit->record(AuditAction::Update, 'configuration', $run->policy()->withoutGlobalScope(AccessScope::class)->first() ?? $run,
                 reason: $run->reason, metadata: ['employment_requirements_preflight' => $status, 'run' => $run->ulid, 'purpose' => $run->purpose, 'company_id' => $run->company_id, 'error' => $error],

@@ -173,6 +173,7 @@ The form reads "Usual department (information only)" with a one-line explanation
 | `RequirementsVolumeTest` (R2, opt-in) | The pre-flight, the readiness batch check (up to 10,000) and the queued pre-flight end to end: `REQUIREMENTS_VOLUME=1000,10000,30000,50000,100000 vendor/bin/pest tests/Feature/MasterRelationships/RequirementsVolumeTest.php` (JSON lines to `REQUIREMENTS_VOLUME_OUT`). Skipped otherwise. |
 | `LevelGradePairsTest` (I.6) | Shared pair refused (and blank or level-less grades allowed); the form's field error; a company value refused writing nothing, accepted together; ending one of the pair refused, both together fine; later dates checked; a shared change that would break a company's pair; a grade moved to another level (shared and company pairs, and the form); data from before the rule not blocking an unrelated change; the upload (shared and company rows) before approval; a clone of disagreeing values refused; "Level and grade together" in Company values. |
 | `PreflightRunsTest` (I.7, I.13) | Company fingerprints recorded with Block; an uncontrolled end leaves the company on Warn (fails on the old guard); the controlled end refused while people would fail, covered once accepted; no pre-flight when nothing will block; sync runs recorded; queued runs (pending, idempotent, job as the requester, completed, retry of a finished run, evidence window); superseded when own values change while it waits or a newer request comes; cancelled mid-run; retry and final failure; tenant isolation; the page following a queued run. |
+| `RemediationReviewTest` (review fixes) | A superseded in-request run never switches to Block; a late cancel is kept and ends nothing; a run another worker reads is not taken; a company check finishing after its date ends from today; a queued run's examples per viewer; an ended-later company value still counts and an old pair does not block a grade move; a refused scheduled change does not stop the others; the entitlement generation never goes back. Each fails on the code before the fix. |
 | `SharedPolicyGuidanceTest` (I.9) | The restriction kept (nothing written) and explained: why, how many others (unnamed), who can, the routes; any shared record; the page's notice and Switch to Block unavailable. |
 | `MasterScreensTest` (R4) | Tabs per master type (every master with an edit page renders each of its tabs). Empty states of the requirements page and the Unmapped report. A designation created with name and code alone; optional links. Links tab: requirement hints and company values; Company values and Companies tabs. Usage tab. Placement on create, or later. Unmapped report (within the tenant, blocker on Block, access refused). Designer deep link. A location's establishment. |
 
@@ -238,6 +239,14 @@ The form reads "Usual department (information only)" with a one-line explanation
     current and at most `PEOPLEOS_PREFLIGHT_EVIDENCE_HOURS` old (default 24, never past the 30 days); a pending,
     failed, superseded or cancelled run never counts. The version's record names the run. Below the threshold it runs
     in the request as before, and a switch records its run too.
+  - **Hardening after the independent review (25 Nov).** "Switch to Block" needs its run completed and still current
+    (who the policy reaches and the companies' own values unchanged), in the request too; company fingerprints are
+    taken on the date the run read people. A run is ended only from running, so a cancel or a newer run that took over
+    is never overwritten, and a cancelled company check ends nothing. A run another worker is reading is not taken
+    before the job's time limit; an in-request run left open by a request that ended is superseded, not reused. A
+    queued run's examples are shown to each viewer only for people they may see; the page's run is locked to it and
+    cancelling follows the shared-record rule. A company check that finishes after the date asked for ends the values
+    from today (never earlier).
 - **API (remediation I.1, I.4).** `POST /employees` and `/pre-employees`: a refusal by a rule on Block is 422 code
   `employment_requirements` with `requirements` ({rule, field, mode, message} per failed rule); a master that does not
   apply is 422 `master_not_applicable`. Warnings: `meta.requirement_warnings` (messages) and
@@ -277,7 +286,10 @@ The form reads "Usual department (information only)" with a one-line explanation
     change on where a company's own values start or end, wherever the pair can change: the Designation model (form,
     upload, clone, API), company values set or ended (`ConfigurationOverrides` after the write, in its transaction,
     through `ValidatesCompanyTimeline`), and a grade moved to another level (the Grade model). Only pairs a change
-    makes wrong are refused, so data from before the rule does not block an unrelated change. Level and grade change
+    makes wrong are refused, so data from before the rule does not block an unrelated change (a grade move included).
+    A company value ended from a later date counts until its last day. A designation change scheduled through the
+    Configuration Change Centre that no longer agrees on its date is not published (it stays scheduled with the reason
+    in its note, and the other due changes still publish). Level and grade change
     together through `ConfigurationOverrides::together()`: "Company values…" offers "Level and grade together", and an
     upload row with a Company sets its values together and is checked before approval.
   - Values are effective-dated, versioned and audited. Ending one restores the shared value.

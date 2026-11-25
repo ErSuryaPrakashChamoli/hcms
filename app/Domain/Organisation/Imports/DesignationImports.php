@@ -79,8 +79,11 @@ final class DesignationImports extends MasterImports
             } catch (ApplicabilityRefusedException $e) {
                 $errors[] = $e->getMessage();
             }
-            // Remediation I.6: the company's level and grade after this row must agree ("(none)" = the shared value).
+            // Remediation I.6: the company's level and grade after this row must agree ("(none)" = the shared value). A pair
+            // the row does not change is left to the run (data from before the rule is not refused here either); a later
+            // date that would disagree is refused when the row runs, with nothing written.
             $after = app(DesignationDefaults::class)->for($designation, $company);
+            $now = [$after['level_id'], $after['grade_id']];
             foreach (['level_id', 'grade_id'] as $column) {
                 $id = $values[$column] ?? null;
                 if ($id === self::CLEARED) {
@@ -90,7 +93,7 @@ final class DesignationImports extends MasterImports
                 }
             }
             $planned = in_array(self::PLANNED, [$values['level_id'] ?? null, $values['grade_id'] ?? null], true);
-            if ($errors === [] && ! $planned && ($problem = app(LevelGradePairs::class)->problem($after['level_id'], $after['grade_id'])) !== null) {
+            if ($errors === [] && ! $planned && $now !== [$after['level_id'], $after['grade_id']] && ($problem = app(LevelGradePairs::class)->problem($after['level_id'], $after['grade_id'])) !== null) {
                 $errors[] = "{$this->companyName($company)}: {$problem} Give the level and grade that agree.";
             }
         }

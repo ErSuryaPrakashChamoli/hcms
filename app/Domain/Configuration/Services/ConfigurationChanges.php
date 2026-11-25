@@ -4,6 +4,7 @@ namespace App\Domain\Configuration\Services;
 
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Services\AuditRecorder;
+use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
 use App\Domain\Configuration\Enums\ChangeStatus;
 use App\Domain\Configuration\Enums\RiskLevel;
 use App\Domain\Configuration\Events\ConfigurationChangeProposed;
@@ -155,7 +156,13 @@ final class ConfigurationChanges
         return DB::transaction(function () use ($change) {
             $subject = $change->subject()->firstOrFail();
             $subject->withAuditReason($change->reason ?? "Configuration change #{$change->id}", "CHANGE-{$change->id}");
-            $subject->update($change->payload);
+            try {
+                $subject->update($change->payload);
+            } catch (ApplicabilityRefusedException $e) {
+                // A rule on the record itself (a shared record outside the publisher's access, a designation's level and
+                // grade that no longer agree) refuses it as of now: a refusal, not a server error (remediation review).
+                throw new ConfigurationException('Not published: '.$e->getMessage(), previous: $e);
+            }
 
             $change->withAuditReason($change->reason)->update([
                 'status' => ChangeStatus::Published,
@@ -178,8 +185,15 @@ final class ConfigurationChanges
             ->where(fn ($q) => $q->whereNull('effective_from')->orWhere('effective_from', '<=', now()->toDateString()))
             ->orderBy('id')
             ->each(function (ConfigurationChange $change) use (&$count) {
-                $this->publish($change);
-                $count++;
+                try {
+                    $this->publish($change);
+                    $count++;
+                } catch (ConfigurationException $e) {
+                    // Refused as of today (the data it depends on changed since approval): it stays scheduled, says why,
+                    // and the other due changes still publish. Fix the data, or discard the change.
+                    $change->withAuditReason($e->getMessage())->update(['review_note' => mb_substr($e->getMessage(), 0, 1000)]);
+                    $this->audit->record(AuditAction::Update, 'configuration', $change, reason: $e->getMessage(), metadata: ['publish_refused' => true]);
+                }
             });
 
         return $count;

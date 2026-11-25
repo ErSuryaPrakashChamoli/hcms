@@ -75,8 +75,9 @@ final class LevelGradePairs
         if ($designation->getKey() === null) {
             return $pairs;
         }
+        // Active values, and ended ones until their last day (an end from a later date leaves the value applying until then).
         $rows = ConfigurationOverride::query()->for(self::TYPE, (int) $designation->getKey())->whereIn('field', self::FIELDS)
-            ->where('status', ConfigurationOverride::ACTIVE)->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', $from))
+            ->whereIn('status', [ConfigurationOverride::ACTIVE, ConfigurationOverride::ENDED])->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', $from))
             ->when($company !== null, fn ($q) => $q->where('company_id', $company))->get(['company_id', 'effective_from', 'effective_to']);
         $dates = [];
         foreach ($rows as $row) {
@@ -117,8 +118,8 @@ final class LevelGradePairs
                 continue;
             }
             $old = $before[$key] ?? null;
-            if ($old !== null && $old['level'] === $pair['level'] && $old['grade'] === $pair['grade']) {
-                continue;   // already so before this change
+            if ($old !== null && $old['level'] === $pair['level'] && $old['grade'] === $pair['grade'] && $this->problem($old['level'], $old['grade']) !== null) {
+                continue;   // the same pair was already wrong before this change (data from before the rule)
             }
             $where = $pair['company'] === 0 ? 'its shared values' : $this->name(Company::class, $pair['company']).'\'s values';
             $when = $pair['on'] > today()->toDateString() ? ' from '.Carbon::parse($pair['on'])->format('j M Y') : '';
@@ -144,14 +145,15 @@ final class LevelGradePairs
         $id = (int) $grade->getKey();
         $levelOf = [$id => self::int($grade->getAttribute('level_id'))];
         $designations = Designation::query()->withoutGlobalScope(AccessScope::class)->where('grade_id', $id)->pluck('id')
-            ->merge(ConfigurationOverride::query()->where('configuration_type', self::TYPE)->where('field', 'grade_id')->where('status', ConfigurationOverride::ACTIVE)
+            ->merge(ConfigurationOverride::query()->where('configuration_type', self::TYPE)->where('field', 'grade_id')->whereIn('status', [ConfigurationOverride::ACTIVE, ConfigurationOverride::ENDED])
                 ->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', today()))->get(['configuration_id', 'value'])
                 ->filter(fn ($row) => self::int($row->value) === $id)->pluck('configuration_id'))
             ->unique()->values();
         foreach (Designation::query()->withoutGlobalScope(AccessScope::class)->whereKey($designations)->orderBy('name')->get() as $designation) {
             $pairs = array_filter($this->pairs($designation, today()->toDateString()), fn (array $p) => $p['grade'] === $id);
             try {
-                $this->assertPairs($designation, $pairs, [], $levelOf);
+                // The same pairs before the move (with the grade's stored level): one already wrong does not block it.
+                $this->assertPairs($designation, $pairs, $pairs, $levelOf);
             } catch (ApplicabilityRefusedException) {
                 throw new ApplicabilityRefusedException("Grade {$grade->name} cannot move to level ".$this->name(Level::class, $levelOf[$id] ?? 0)
                     .": {$designation->name} pairs it with another level. Change the designation's level and grade first.");

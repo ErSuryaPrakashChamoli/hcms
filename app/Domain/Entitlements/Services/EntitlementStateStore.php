@@ -10,6 +10,7 @@ use App\Domain\Entitlements\Models\TenantPlanAssignment;
 use App\Domain\Entitlements\Support\EntitlementState;
 use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -66,9 +67,16 @@ final class EntitlementStateStore
     {
         unset($this->memo[$tenantId]);
         try {
-            $previous = (string) ($this->cache->get(self::generationKey($tenantId)) ?? '0');
-            $this->cache->forever(self::generationKey($tenantId), ($version ?? 0).'.'.Str::ulid());
-            $this->cache->forget(self::cacheKey($tenantId, $previous));   // tidy only: nobody reads it any more
+            // Never back to an older version: two changes' after-commit calls may arrive out of order. Serialised by a
+            // short cache lock where the store has locks (database, Redis), so two writers cannot both read the old one.
+            $replace = function () use ($tenantId, $version): void {
+                $previous = (string) ($this->cache->get(self::generationKey($tenantId)) ?? '0');
+                $known = (int) strtok($previous, '.');
+                $this->cache->forever(self::generationKey($tenantId), max($known, $version ?? 0).'.'.Str::ulid());
+                $this->cache->forget(self::cacheKey($tenantId, $previous));   // tidy only: nobody reads it any more
+            };
+            $store = $this->cache->getStore();
+            $store instanceof LockProvider ? $store->lock(self::generationKey($tenantId).':lock', 10)->block(5, $replace) : $replace();
         } catch (Throwable $e) {
             Log::warning('entitlements.cache_forget_failed', ['tenant_id' => $tenantId, 'error' => $e::class]);
         }

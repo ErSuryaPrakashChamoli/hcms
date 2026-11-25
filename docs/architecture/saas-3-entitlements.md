@@ -31,7 +31,8 @@ app(Entitlements::class)->observe(Capability::Payroll, 'payroll.run.calculate');
 - the cache is forgotten after commit. Since 2026-11-25 (remediation I.3) entries are keyed by a generation
   (`tenant:{id}:entitlements:{profile version}.{ulid}`) that every change replaces after commit: a reader that loaded the
   state before a change committed can only store it under the old generation, and state older than the generation's
-  version is never stored (`EntitlementCacheRaceTest`).
+  version is never stored (`EntitlementCacheRaceTest`). The generation never goes back to an older version (two changes'
+  after-commit calls arriving out of order), serialised by a short cache lock where the store has locks.
 
 There is no other write path. Do not write the four tables directly.
 

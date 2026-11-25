@@ -197,7 +197,8 @@ it('refuses tenant deletion in production without the deletion register on a con
         expect($errors())->toBe(['missing']);
         config(['peopleos.offboarding.register_disk' => 'no-such-disk']);
         expect($errors())->toBe(['invalid']);
-        config(['filesystems.disks.deletion-register' => ['driver' => 'local', 'root' => storage_path('app/private/register-test')], 'peopleos.offboarding.register_disk' => 'deletion-register']);
+        // Under the test process's own disk folder (tests/TestCase.php), never the application's storage/app.
+        config(['filesystems.disks.deletion-register' => ['driver' => 'local', 'root' => config('filesystems.disks.local.root').'/register-test'], 'peopleos.offboarding.register_disk' => 'deletion-register']);
         expect($errors())->toBe([]);
     } finally {
         app()->detectEnvironment(fn () => 'testing');

@@ -9,6 +9,7 @@ use App\Domain\Configuration\Exceptions\ConfigurationException;
 use App\Domain\Configuration\Models\ConfigurationOverride;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Overrides\ConfigurationOverrides;
+use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Requirements\EmploymentRequirementPreflight;
 use App\Domain\Employment\Requirements\EmploymentRequirements;
 use App\Domain\Employment\Requirements\EmploymentRequirementsPreflight;
@@ -26,6 +27,7 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use UnitEnum;
 
@@ -63,6 +65,7 @@ class EmploymentRequirementsPage extends Page
     public ?array $preflight = null;
 
     /** Remediation I.13: the queued run on show (above the queue threshold the pre-flight runs in the background). */
+    #[Locked]
     public ?int $runId = null;
 
     public static function canAccess(): bool
@@ -89,7 +92,32 @@ class EmploymentRequirementsPage extends Page
         }
         $run = $service->latestRun($policy);
         $this->runId = $run?->id;
-        $this->preflight = $run !== null && $run->status === EmploymentRequirementPreflight::COMPLETED && $service->usableRun($policy, (array) $run->settings)?->is($run) ? $run->report : null;
+        $this->preflight = $run !== null && $run->status === EmploymentRequirementPreflight::COMPLETED && $service->usableRun($policy, (array) $run->settings)?->is($run) ? $this->forViewer($run) : null;
+    }
+
+    /**
+     * A queued run's report for the person looking: its examples were picked as the person who asked for it, so each
+     * viewer sees only the examples of people they may see themselves (counts are of everyone, as always).
+     *
+     * @return array<string, mixed>
+     */
+    private function forViewer(EmploymentRequirementPreflight $run): array
+    {
+        $report = (array) $run->report;
+        $ids = collect($report['rules'] ?? [])->flatMap(fn (array $r) => $r['sample_ids'] ?? [])->unique()->values()->all();
+        $visible = Employee::query()->whereKey($ids)->pluck('id')->map(fn ($id) => (int) $id)->flip();
+        foreach ($report['rules'] ?? [] as $rule => $row) {
+            $keep = [];
+            foreach ($row['samples'] ?? [] as $i => $sample) {
+                if (isset($row['sample_ids'][$i]) && isset($visible[(int) $row['sample_ids'][$i]])) {
+                    $keep[] = $sample;
+                }
+            }
+            $report['rules'][$rule]['samples'] = $keep;
+            unset($report['rules'][$rule]['sample_ids']);
+        }
+
+        return $report;
     }
 
     public function runPreflight(): void
@@ -105,12 +133,16 @@ class EmploymentRequirementsPage extends Page
                 return;
             }
             $this->runId = $run->id;
-            $this->preflight = $run->status === EmploymentRequirementPreflight::COMPLETED ? $run->report : null;
+            $this->preflight = $run->status === EmploymentRequirementPreflight::COMPLETED ? $this->forViewer($run) : null;
             Notification::make()->info()->title('Pre-flight queued')->body('It reads every employee the policy reaches in the background. This page follows its progress.')->send();
 
             return;
         }
-        $this->preflight = $policy === null ? null : $service->run($policy);
+        $report = $policy === null ? null : $service->run($policy);
+        foreach ($report['rules'] ?? [] as $rule => $row) {
+            unset($report['rules'][$rule]['sample_ids']);   // examples here are already the viewer's own
+        }
+        $this->preflight = $report;
     }
 
     /** Polled while a queued run is open. */
@@ -118,18 +150,25 @@ class EmploymentRequirementsPage extends Page
     {
         $run = $this->run();
         if ($run !== null && ! $run->isOpen()) {
-            $this->preflight = $run->status === EmploymentRequirementPreflight::COMPLETED ? $run->report : null;
+            $this->preflight = $run->status === EmploymentRequirementPreflight::COMPLETED ? $this->forViewer($run) : null;
         }
     }
 
     public function run(): ?EmploymentRequirementPreflight
     {
-        return $this->runId === null ? null : EmploymentRequirementPreflight::query()->where('policy_id', $this->policyId)->find($this->runId);
+        $policy = $this->policy();   // one of the requirements policies listed here, or nothing
+
+        return $this->runId === null || $policy === null ? null : EmploymentRequirementPreflight::query()->where('policy_id', $policy->id)->find($this->runId);
     }
 
     public function cancelRun(): void
     {
         $run = $this->run();
+        if ($this->restriction() !== null) {
+            Notification::make()->danger()->title('Not cancelled')->body((string) $this->restriction())->send();
+
+            return;
+        }
         if ($run !== null && $run->isOpen() && (auth()->user()?->can('policy.update') ?? false)) {
             $run->update(['status' => EmploymentRequirementPreflight::CANCELLED, 'finished_at' => now(), 'error' => 'Cancelled by '.auth()->user()->name.'.']);
             Notification::make()->success()->title('Pre-flight cancelled')->send();
