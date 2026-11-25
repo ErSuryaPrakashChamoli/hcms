@@ -3,7 +3,9 @@
 namespace Tests;
 
 use App\Support\Http\HostResolver;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Storage;
 use Tests\Support\FakeHostResolver;
 
 abstract class TestCase extends BaseTestCase
@@ -36,5 +38,32 @@ abstract class TestCase extends BaseTestCase
         // Experience Transformation: the panel theme and interaction script are Vite assets; tests do not
         // depend on a built manifest (public/build is not committed).
         $this->withoutVite();
+        $this->isolateLocalDisks();
+    }
+
+    /** This process's folder for every local disk (see isolateLocalDisks). */
+    private static ?string $diskRoot = null;
+
+    /**
+     * Test storage isolation (2026-11-25): tests never write into the application's own storage/app. It holds preserved
+     * statutory evidence (storage/app/private/compliance-evidence), and test runs that seed statutory packs used to
+     * write into it. Every local disk rooted there points at a folder of this process under storage/framework/testing
+     * instead, removed when the process ends. Storage::fake() still works as before (its own folder).
+     */
+    private function isolateLocalDisks(): void
+    {
+        if (self::$diskRoot === null) {
+            $root = self::$diskRoot = storage_path('framework/testing/disks/run-'.getmypid());
+            register_shutdown_function(static fn () => (new Filesystem)->deleteDirectory($root));
+        }
+        $live = storage_path('app');
+        $isolated = [];
+        foreach ((array) $this->app['config']->get('filesystems.disks', []) as $name => $disk) {
+            if (($disk['driver'] ?? null) === 'local' && str_starts_with((string) ($disk['root'] ?? ''), $live)) {
+                $this->app['config']->set("filesystems.disks.{$name}.root", self::$diskRoot.'/'.$name);
+                $isolated[] = $name;
+            }
+        }
+        Storage::forgetDisk($isolated);
     }
 }
