@@ -93,7 +93,8 @@ it('runs the pre-flight and the readiness batch check at volume', function (int 
         ->and($results === null || count($results) === $size)->toBeTrue()
         ->and($run->only(['mode', 'status']))->toBe(['mode' => 'queued', 'status' => 'completed'])
         ->and($run->processed)->toBe($size)
-        ->and($run->report['rules'])->toBe($report['rules']);
+        // The stored report is a JSON column (MySQL reorders object keys): every key and value, not their order.
+        ->and($run->report['rules'])->toEqual($report['rules']);
 
     $line = ['size' => $size, 'driver' => DB::getDriverName(), 'preflight_seconds' => $preflightSeconds, 'preflight_queries' => $preflightQueries, 'preflight_mb' => $preflightMb,
         'batch_seconds' => $batchSeconds, 'batch_queries' => $batchQueries, 'batch_mb' => $batchMb,
