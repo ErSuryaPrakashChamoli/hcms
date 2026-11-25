@@ -341,6 +341,16 @@ Not caused by this work:
 | Records that predate the framework (no explicit applicability) are not checked on positions | Checking them would refuse placements that work today. History before the framework is not judged retroactively. | Choose their companies explicitly (*Applies to…*); from then on they are enforced |
 | Pre-existing: config lists not company-scoped (OD-2); cost and profit centres' access-scope dimension; null-company units hidden from company-scoped users; role-owned tasks ignore company grants (OD-3) | Outside this change; recorded in §1.4 | Separate fix |
 
+## 5a. Fields that must agree, and changing them together (remediation I.6, 2026-11-25)
+
+- A provider may implement `ValidatesCompanyTimeline` (a designation's level and grade do): `ConfigurationOverrides`
+  takes a snapshot before a change of one of its `timelineFields()`, and after the write, in the same transaction,
+  checks the stored values on every date from the change on; a refusal rolls the change back. Only what the change
+  makes wrong is refused.
+- `ConfigurationOverrides::together(fn () => ...)` groups changes of a company's values: one transaction, and the check
+  runs once after the last change (no refusal of a valid change made in two steps). "Company values…" offers the
+  provider's fields together ("Level and grade together").
+
 ## 6. Additions from master relationships R3 (2026-11-24)
 
 - **Designation company values.** The designation type declares `overrides` => `DesignationOverrideFields`

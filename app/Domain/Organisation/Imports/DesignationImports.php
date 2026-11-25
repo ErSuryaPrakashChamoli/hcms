@@ -22,6 +22,7 @@ use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\JobFamily;
 use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Services\DesignationDefaults;
+use App\Domain\Organisation\Services\LevelGradePairs;
 use App\Support\Imports\ClearValue;
 use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
@@ -78,6 +79,20 @@ final class DesignationImports extends MasterImports
             } catch (ApplicabilityRefusedException $e) {
                 $errors[] = $e->getMessage();
             }
+            // Remediation I.6: the company's level and grade after this row must agree ("(none)" = the shared value).
+            $after = app(DesignationDefaults::class)->for($designation, $company);
+            foreach (['level_id', 'grade_id'] as $column) {
+                $id = $values[$column] ?? null;
+                if ($id === self::CLEARED) {
+                    $after[$column] = $designation->getAttribute($column) === null ? null : (int) $designation->getAttribute($column);
+                } elseif (is_int($id) && $id > 0) {
+                    $after[$column] = $id;
+                }
+            }
+            $planned = in_array(self::PLANNED, [$values['level_id'] ?? null, $values['grade_id'] ?? null], true);
+            if ($errors === [] && ! $planned && ($problem = app(LevelGradePairs::class)->problem($after['level_id'], $after['grade_id'])) !== null) {
+                $errors[] = "{$this->companyName($company)}: {$problem} Give the level and grade that agree.";
+            }
         }
         if ($errors !== []) {
             return ['action' => 'error', 'errors' => array_values(array_unique($errors))];
@@ -108,17 +123,20 @@ final class DesignationImports extends MasterImports
         $own = $overrides->valuesFor(DesignationDefaults::TYPE, (int) $designation->id, $company);
         $current = app(DesignationDefaults::class)->for($designation, $company);
         $done = [];
-        foreach ($values as $column => $id) {
-            $label = strtolower(DesignationDefaults::FIELDS[$column]);
-            if ($id === self::CLEARED) {
-                if (array_key_exists($column, $own) && $overrides->end($designation, $company, $column, today(), $user, $reason)) {
-                    $done[] = "{$label} back to the shared value";
+        // Remediation I.6: the row's values change together, so a new level and grade are checked as a pair, once.
+        $overrides->together(function () use ($values, $own, $current, $overrides, $designation, $company, $user, $reason, &$done) {
+            foreach ($values as $column => $id) {
+                $label = strtolower(DesignationDefaults::FIELDS[$column]);
+                if ($id === self::CLEARED) {
+                    if (array_key_exists($column, $own) && $overrides->end($designation, $company, $column, today(), $user, $reason)) {
+                        $done[] = "{$label} back to the shared value";
+                    }
+                } elseif ($id !== $current[$column]) {
+                    $overrides->set($designation, $company, $column, $id, today(), $user, $reason);
+                    $done[] = "{$label} ".$this->nameOf($column, $id);
                 }
-            } elseif ($id !== $current[$column]) {
-                $overrides->set($designation, $company, $column, $id, today(), $user, $reason);
-                $done[] = "{$label} ".$this->nameOf($column, $id);
             }
-        }
+        });
 
         return $this->companyName($company)." values of {$designation->code}: ".($done === [] ? 'nothing changed' : implode(', ', $done));
     }
@@ -240,10 +258,20 @@ final class DesignationImports extends MasterImports
             $errors[] = 'The experience range runs from a minimum to a higher maximum, in years.';
         }
 
+        $level = $this->lookup($context, Level::class, $r['level_code'] ?? null, 'Level code', $errors);
+        $grade = $this->lookup($context, Grade::class, $r['grade_code'] ?? null, 'Grade code', $errors);
+        // Remediation I.6: the level and grade must agree (blank keeps the one on file, "(none)" clears it; a code an
+        // earlier worksheet adds is checked when the row runs).
+        $pairLevel = $level > 0 ? $level : ($level === null && $existing !== null ? $existing->getAttribute('level_id') : null);
+        $pairGrade = $grade > 0 ? $grade : ($grade === null && $existing !== null ? $existing->getAttribute('grade_id') : null);
+        if ($errors === [] && ! in_array(self::PLANNED, [$level, $grade], true) && ($problem = app(LevelGradePairs::class)->designationFormProblem($existing instanceof Designation ? $existing : null, $pairLevel, $pairGrade)) !== null) {
+            $errors[] = $problem;
+        }
+
         return array_filter([
             'name' => $this->text($r['name'] ?? null, 255, 'Name', $errors),
-            'level_id' => $this->lookup($context, Level::class, $r['level_code'] ?? null, 'Level code', $errors),
-            'grade_id' => $this->lookup($context, Grade::class, $r['grade_code'] ?? null, 'Grade code', $errors),
+            'level_id' => $level,
+            'grade_id' => $grade,
             'department_id' => $this->lookup($context, Department::class, $r['department_code'] ?? null, 'Usual department', $errors),
             'job_family_id' => $this->lookup($context, JobFamily::class, $r['job_family_code'] ?? null, 'Job family code', $errors),
             'min_experience_years' => $min,

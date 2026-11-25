@@ -7,11 +7,14 @@ use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Configuration\Overrides\CompanyAwareOverrideFields;
 use App\Domain\Configuration\Overrides\OverrideField;
 use App\Domain\Configuration\Overrides\OverrideFields;
+use App\Domain\Configuration\Overrides\ValidatesCompanyTimeline;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
+use App\Domain\Organisation\Models\Designation;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\JobFamily;
 use App\Domain\Organisation\Models\Level;
+use App\Domain\Organisation\Services\LevelGradePairs;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -20,7 +23,7 @@ use Illuminate\Database\Eloquent\Model;
  * (effective-dated, versioned, audited); ending one gives the company the shared value again. A company's value must
  * be one that company may use.
  */
-final class DesignationOverrideFields implements CompanyAwareOverrideFields, OverrideFields
+final class DesignationOverrideFields implements CompanyAwareOverrideFields, OverrideFields, ValidatesCompanyTimeline
 {
     /** column => [label, model] */
     private const LINKS = ['level_id' => ['Level', Level::class], 'grade_id' => ['Grade', Grade::class], 'job_family_id' => ['Job family', JobFamily::class]];
@@ -43,10 +46,29 @@ final class DesignationOverrideFields implements CompanyAwareOverrideFields, Ove
     }
 
     /**
-     * Nothing to check across fields: a company sets its level and grade one at a time, so the pair may briefly
-     * disagree. Positions are checked where it matters (employment data requirements, "Grade sits under the level").
+     * Across fields on one date: nothing here. The level and grade pair is checked on every date from the change on,
+     * after it is stored (validateCompanyTimeline), so that setting both together is not refused halfway.
      */
     public function validate(Model $record, array $values): void {}
+
+    /** Remediation I.6: a company's level and grade must agree (LevelGradePairs). */
+    public function timelineFields(): array
+    {
+        return LevelGradePairs::FIELDS;
+    }
+
+    public function timelineSnapshot(Model $record, int $companyId, string $from): array
+    {
+        return $record instanceof Designation ? app(LevelGradePairs::class)->pairs($record, $from, company: $companyId) : [];
+    }
+
+    public function validateCompanyTimeline(Model $record, int $companyId, string $from, array $before): void
+    {
+        if ($record instanceof Designation) {
+            $pairs = app(LevelGradePairs::class);
+            $pairs->assertPairs($record, $pairs->pairs($record, $from, company: $companyId), $before);
+        }
+    }
 
     public function validateForCompany(Model $record, array $values, int $companyId): void
     {

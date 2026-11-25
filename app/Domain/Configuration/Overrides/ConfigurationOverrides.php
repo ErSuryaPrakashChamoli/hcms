@@ -43,6 +43,12 @@ final class ConfigurationOverrides
     /** @var array<string, array<int, list<array<string, mixed>>>> process-wide memo: tenant:type => id => rows */
     private static array $memo = [];
 
+    /** together() depth, and the timeline checks it holds back: key => [provider, record, company, from, snapshot]. */
+    private static int $together = 0;
+
+    /** @var array<string, array{0: ValidatesCompanyTimeline, 1: Model, 2: int, 3: string, 4: array}> */
+    private static array $pending = [];
+
     public function __construct(
         private readonly ConfigurationTypes $types,
         private readonly EntityApplicability $applicability,
@@ -59,6 +65,14 @@ final class ConfigurationOverrides
     public function fields(Model $record): array
     {
         return $this->provider($this->types->forModelOrFail($record))?->fields($record) ?? [];
+    }
+
+    /** @return list<string> the record's fields that must agree with each other (ValidatesCompanyTimeline), if any */
+    public function timelineFields(Model $record): array
+    {
+        $provider = $this->provider($this->types->forModelOrFail($record));
+
+        return $provider instanceof ValidatesCompanyTimeline ? $provider->timelineFields() : [];
     }
 
     public function supports(Model $record): bool
@@ -144,6 +158,78 @@ final class ConfigurationOverrides
             ->orderByDesc('effective_from')->orderByDesc('version')->get();
     }
 
+    /**
+     * Several changes of a company's values as one (remediation I.6): one transaction, and fields that must agree with
+     * each other (ValidatesCompanyTimeline) are checked once, after the last change, not after each step. A designation's
+     * level and grade move together this way.
+     */
+    public function together(\Closure $changes): mixed
+    {
+        try {
+            return $this->togetherInTransaction($changes);
+        } finally {
+            self::flushMemo();   // the memo may hold rows of a change that was rolled back
+        }
+    }
+
+    private function togetherInTransaction(\Closure $changes): mixed
+    {
+        return DB::transaction(function () use ($changes) {
+            self::$together++;
+            try {
+                $result = $changes();
+            } finally {
+                if (--self::$together === 0) {
+                    $pending = self::$pending;
+                    self::$pending = [];
+                }
+            }
+            foreach ($pending ?? [] as [$provider, $record, $companyId, $from, $before]) {
+                self::flushMemo();
+                $provider->validateCompanyTimeline($record, $companyId, $from, $before);
+            }
+
+            return $result;
+        });
+    }
+
+    /** Before a change of $path: the snapshot of fields that must agree (or null when the provider has none / not this field). */
+    private function timelineBefore(?OverrideFields $provider, ConfigurationType $type, Model $record, int $companyId, string $path, string $date): ?array
+    {
+        if (! $provider instanceof ValidatesCompanyTimeline || ! in_array($path, $provider->timelineFields(), true)) {
+            return null;
+        }
+        $key = "{$type->key}#{$record->getKey()}#{$companyId}";
+        if (self::$together > 0 && isset(self::$pending[$key])) {
+            self::$pending[$key][3] = min(self::$pending[$key][3], $date);   // the earliest change of the group
+
+            return null;
+        }
+        $before = $provider->timelineSnapshot($record, $companyId, $date);
+        if (self::$together > 0) {
+            self::$pending[$key] = [$provider, $record, $companyId, $date, $before];
+
+            return null;   // checked when the group ends
+        }
+
+        return $before;
+    }
+
+    /** After the change, in its transaction: refuse it (rolled back) when the fields no longer agree. */
+    private function timelineAfter(?OverrideFields $provider, Model $record, int $companyId, string $date, ?array $before): void
+    {
+        if ($before !== null && $provider instanceof ValidatesCompanyTimeline) {
+            self::flushMemo();
+            try {
+                $provider->validateCompanyTimeline($record, $companyId, $date, $before);
+            } catch (\Throwable $e) {
+                self::flushMemo();   // it read the change that is now rolled back
+
+                throw $e;
+            }
+        }
+    }
+
     /** Gives the company its own value for one field from a date (ending its earlier value of that field from then). */
     public function set(Model $record, int $companyId, string $path, mixed $value, CarbonInterface|string|null $from, ?User $actor, ?string $reason = null): ConfigurationOverride
     {
@@ -171,8 +257,9 @@ final class ConfigurationOverrides
             $provider->validateForCompany($record, $combined, $companyId);
         }
         $before = $this->valuesFor($type->key, (int) $record->getKey(), $companyId, $date)[$path] ?? SettingsPath::get($shared, $path, $field->default);
+        $timeline = $this->timelineBefore($provider, $type, $record, $companyId, $path, $date);
 
-        $override = DB::transaction(function () use ($type, $record, $companyId, $path, $value, $date, $actor, $reason, $shared, $field, $before) {
+        $override = DB::transaction(function () use ($type, $record, $companyId, $path, $value, $date, $actor, $reason, $shared, $field, $before, $provider, $timeline) {
             $version = $this->closeFrom($type->key, (int) $record->getKey(), $companyId, $path, $date, $actor);
 
             $override = ConfigurationOverride::create([
@@ -183,6 +270,7 @@ final class ConfigurationOverrides
             ]);
             $this->audit->record(AuditAction::OverrideSet, $type->module, $record, [['field' => $field->label.' · '.$this->companyName($companyId), 'before' => $field->display($before), 'after' => $field->display($value)]],
                 $reason, effectiveDate: $date, metadata: ['configuration_type' => $type->key, 'company_id' => $companyId, 'field' => $path, 'override' => $override->ulid, 'version' => $override->version], actor: $actor);
+            $this->timelineAfter($provider, $record, $companyId, $date, $timeline);
 
             return $override;
         });
@@ -198,8 +286,10 @@ final class ConfigurationOverrides
         $date = self::date($from);
         $this->authorise($type, $record, $companyId, $date, $actor, requireApplies: false);
         $field = $this->fields($record)[$path] ?? null;
+        $provider = $this->provider($type);
+        $timeline = $this->timelineBefore($provider, $type, $record, $companyId, $path, $date);
 
-        $ended = DB::transaction(function () use ($type, $record, $companyId, $path, $date, $actor, $reason, $field) {
+        $ended = DB::transaction(function () use ($type, $record, $companyId, $path, $date, $actor, $reason, $field, $provider, $timeline) {
             $before = $this->valuesFor($type->key, (int) $record->getKey(), $companyId, $date);
             if (! array_key_exists($path, $before) && ! $this->startsLater($type->key, (int) $record->getKey(), $companyId, $path, $date)) {
                 return false;
@@ -208,6 +298,7 @@ final class ConfigurationOverrides
             $this->audit->record(AuditAction::OverrideEnded, $type->module, $record, [['field' => ($field?->label ?? $path).' · '.$this->companyName($companyId),
                 'before' => $field?->display($before[$path] ?? null) ?? json_encode($before[$path] ?? null), 'after' => 'Shared value']],
                 $reason, effectiveDate: $date, metadata: ['configuration_type' => $type->key, 'company_id' => $companyId, 'field' => $path], actor: $actor);
+            $this->timelineAfter($provider, $record, $companyId, $date, $timeline);
 
             return true;
         });

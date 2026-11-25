@@ -56,9 +56,12 @@ beforeEach(function () {
 
 function feDefaults(object $test, string $from = '2026-11-24'): void
 {
+    // The level and grade move together (remediation I.6): L6 with the shared T4 (a grade of L5) would disagree.
     $overrides = app(ConfigurationOverrides::class);
-    $overrides->set($test->sourcing, $test->fe->id, 'level_id', $test->l6->id, $from, $test->admin, 'FynnEdge levels');
-    $overrides->set($test->sourcing, $test->fe->id, 'grade_id', $test->t5->id, $from, $test->admin, 'FynnEdge grades');
+    $overrides->together(function () use ($overrides, $test, $from) {
+        $overrides->set($test->sourcing, $test->fe->id, 'level_id', $test->l6->id, $from, $test->admin, 'FynnEdge levels');
+        $overrides->set($test->sourcing, $test->fe->id, 'grade_id', $test->t5->id, $from, $test->admin, 'FynnEdge grades');
+    });
 }
 
 function r3Hire(Company $company, array $position = [], string $date = '2026-11-24'): Employee
@@ -95,7 +98,12 @@ it('starts a company value on its date, restores the shared value when it ends, 
         ->and(app(DesignationDefaults::class)->for($this->sourcing, $this->fe->id, '2026-12-01')['grade_id'])->toBe($this->t5->id)
         ->and($employee->positions()->sole()->grade_id)->toBe($this->t4->id);
 
-    app(ConfigurationOverrides::class)->end($this->sourcing, $this->fe->id, 'grade_id', '2027-01-01', $this->admin, 'Back to the shared grade');
+    // Both end together (I.6: FynnEdge's own L6 with the shared T4 would disagree).
+    $overrides = app(ConfigurationOverrides::class);
+    $overrides->together(function () use ($overrides) {
+        $overrides->end($this->sourcing, $this->fe->id, 'level_id', '2027-01-01', $this->admin, 'Back to the shared level');
+        $overrides->end($this->sourcing, $this->fe->id, 'grade_id', '2027-01-01', $this->admin, 'Back to the shared grade');
+    });
     expect(app(DesignationDefaults::class)->for($this->sourcing, $this->fe->id, '2027-01-02')['grade_id'])->toBe($this->t4->id)
         ->and(app(DesignationDefaults::class)->for($this->sourcing, $this->fe->id, '2026-12-15')['grade_id'])->toBe($this->t5->id);
 });
@@ -106,7 +114,13 @@ it('refuses a company value the company may not use', function () {
 
     expect(fn () => $overrides->set($this->sourcing, $this->fe->id, 'grade_id', $this->t5->id, '2026-11-24', $this->admin))
         ->toThrow(ApplicabilityRefusedException::class, 'Grade "T5" does not apply to FynnEdge Advisory');
-    expect($overrides->set($this->sourcing, $this->mk->id, 'grade_id', $this->t5->id, '2026-11-24', $this->admin)->value)->toBe($this->t5->id);
+    // T5 belongs to L6: Markedge takes both, together (I.6).
+    $set = $overrides->together(function () use ($overrides) {
+        $overrides->set($this->sourcing, $this->mk->id, 'level_id', $this->l6->id, '2026-11-24', $this->admin);
+
+        return $overrides->set($this->sourcing, $this->mk->id, 'grade_id', $this->t5->id, '2026-11-24', $this->admin);
+    });
+    expect($set->value)->toBe($this->t5->id);
 });
 
 it("prefills the hire screen with the chosen company's defaults, keeps what is already chosen, and audits each company value", function () {
@@ -168,11 +182,14 @@ it('sets and ends company values from the designation upload with a Company colu
     $service->run($import->refresh(), $this->admin);
     expect(app(DesignationDefaults::class)->for($this->sourcing, $this->fe->id))->toBe(['level_id' => $this->l6->id, 'grade_id' => $this->t5->id, 'job_family_id' => null]);
 
-    // (none) ends the company's own value: the shared grade applies again. Blank keeps it.
-    $again = r3Upload("Code,Name,Level code,Grade code,Company\nSRC-MGR,Sourcing Manager,,(none),FE\n", $this->admin);
+    // (none) ends the company's own value: the shared value applies again. Ending the grade alone would leave L6 with
+    // the shared T4 (a grade of L5): refused before approval (I.6). Both together are fine.
+    $alone = r3Upload("Code,Name,Level code,Grade code,Company\nSRC-MGR,Sourcing Manager,,(none),FE\n", $this->admin);
+    expect($alone->rows()->sole()->action)->toBe('error')->and(implode(' ', $alone->rows()->sole()->errors))->toContain('Grade T4 belongs to level L5, not L6');
+    $again = r3Upload("Code,Name,Level code,Grade code,Company\nSRC-MGR,Sourcing Manager,(none),(none),FE\n", $this->admin);
     $service->approve($again->refresh(), $this->admin, 'test');
     $service->run($again->refresh(), $this->admin);
-    expect(app(DesignationDefaults::class)->for($this->sourcing, $this->fe->id, '2026-11-25'))->toBe(['level_id' => $this->l6->id, 'grade_id' => $this->t4->id, 'job_family_id' => null]);
+    expect(app(DesignationDefaults::class)->for($this->sourcing, $this->fe->id, '2026-11-25'))->toBe(['level_id' => $this->l5->id, 'grade_id' => $this->t4->id, 'job_family_id' => null]);
 });
 
 it('refuses company values to someone limited to another company', function () {

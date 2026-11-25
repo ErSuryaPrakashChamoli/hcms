@@ -16,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard\Step;
@@ -32,6 +33,9 @@ use Illuminate\Support\HtmlString;
  */
 final class CompanyValuesAction
 {
+    /** The field choice that changes the fields that must agree (a designation's level and grade) in one step. */
+    public const TOGETHER = '__together';
+
     public static function make(string $typeKey, string $name = 'companyValues'): Action
     {
         $type = app(ConfigurationTypes::class)->for($typeKey);
@@ -65,6 +69,9 @@ final class CompanyValuesAction
                         ->options(fn (Get $get) => self::field($record, $get)?->options ?? [])
                         ->multiple(fn (Get $get) => self::field($record, $get)?->kind === 'multiselect')
                         ->visible(fn (Get $get) => $get('operation') === 'set' && in_array(self::field($record, $get)?->kind, ['select', 'multiselect'], true) && (self::field($record, $get)?->options ?? []) !== []),
+                    Group::make(fn () => collect(self::togetherFields($record))->map(fn (OverrideField $f, string $path) => Select::make("together.{$path}")
+                        ->label("Company {$f->label}")->native(false)->searchable()->options($f->options)->placeholder('Blank (none)'))->values()->all())
+                        ->visible(fn (Get $get) => $get('operation') === 'set' && $get('field') === self::TOGETHER),
                     TextInput::make('value_text')->label('Company value')
                         ->visible(fn (Get $get) => $get('operation') === 'set' && (in_array(self::field($record, $get)?->kind, ['text', 'time'], true)
                             || (in_array(self::field($record, $get)?->kind, ['select', 'multiselect'], true) && (self::field($record, $get)?->options ?? []) === []))),
@@ -80,7 +87,16 @@ final class CompanyValuesAction
                 $reason = AuditReasonField::extract($data);
                 $overrides = app(ConfigurationOverrides::class);
                 try {
-                    if ($data['operation'] === 'end') {
+                    if ($data['field'] === self::TOGETHER) {
+                        // Remediation I.6: the fields that must agree change in one step, checked once at the end.
+                        $overrides->together(function () use ($overrides, $record, $data, $reason) {
+                            foreach (array_keys(self::togetherFields($record)) as $path) {
+                                $data['operation'] === 'end'
+                                    ? $overrides->end($record, (int) $data['company_id'], $path, $data['effective_from'], auth()->user(), $reason)
+                                    : $overrides->set($record, (int) $data['company_id'], $path, $data['together'][$path] ?? null, $data['effective_from'], auth()->user(), $reason);
+                            }
+                        });
+                    } elseif ($data['operation'] === 'end') {
                         $overrides->end($record, (int) $data['company_id'], (string) $data['field'], $data['effective_from'], auth()->user(), $reason);
                     } else {
                         $field = $overrides->fields($record)[$data['field']] ?? null;
@@ -118,8 +134,18 @@ final class CompanyValuesAction
             $mine = $overrides->valuesFor(app(EntityApplicability::class)->type($record)->key, (int) $record->getKey(), (int) $get('company_id'));
             $fields = array_intersect_key($fields, $mine);
         }
+        $together = self::togetherFields($record);
 
-        return collect($fields)->mapWithKeys(fn (OverrideField $f, string $path) => [$path => $f->label])->all();
+        return collect($fields)->mapWithKeys(fn (OverrideField $f, string $path) => [$path => $f->label])->all()
+            + (count($together) > 1 ? [self::TOGETHER => collect($together)->map(fn (OverrideField $f) => $f->label)->implode(' and ').' together'] : []);
+    }
+
+    /** @return array<string, OverrideField> the fields that must agree with each other (ValidatesCompanyTimeline), if any */
+    private static function togetherFields(Model $record): array
+    {
+        $overrides = app(ConfigurationOverrides::class);
+
+        return array_intersect_key($overrides->fields($record), array_flip($overrides->timelineFields($record)));
     }
 
     private static function field(Model $record, Get $get): ?OverrideField
@@ -152,8 +178,20 @@ final class CompanyValuesAction
 
     private static function review(Model $record, Get $get): HtmlString
     {
-        $field = self::field($record, $get);
         $company = filled($get('company_id')) ? (int) $get('company_id') : null;
+        if ($get('field') === self::TOGETHER && $company !== null) {
+            $names = app(EntityApplicability::class)->companyNames();
+            $explained = collect(app(ConfigurationOverrides::class)->explain($record, $company, $get('effective_from')))->keyBy('path');
+            $rows = [['Company', $names[$company] ?? '—']];
+            foreach (self::togetherFields($record) as $path => $f) {
+                $rows[] = [$f->label, ($explained[$path]['effective_display'] ?? '—').' → '.($get('operation') === 'end' ? 'the shared value ('.($explained[$path]['shared_display'] ?? '—').')' : $f->display($get("together.{$path}")))];
+            }
+            $rows[] = ['From', filled($get('effective_from')) ? Carbon::parse($get('effective_from'))->format('j M Y') : '—'];
+            $rows[] = ['Checked', 'Together: they must agree on every date from then on'];
+
+            return new HtmlString(view('filament.applicability.value-review', ['rows' => $rows])->render());
+        }
+        $field = self::field($record, $get);
         if ($field === null || $company === null) {
             return new HtmlString('<p class="pos-body-sm text-gray-500">Choose the company and the field first.</p>');
         }

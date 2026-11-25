@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\Grades\Schemas;
 
 use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Domain\Organisation\Models\Grade;
+use App\Domain\Organisation\Services\LevelGradePairs;
 use App\Filament\Support\AuditReasonField;
+use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -30,7 +33,13 @@ class GradeForm
                 Section::make('Links')
                     ->description('Optional: set it now or later. "Grade sits under the level" in the employment data requirements uses it.')
                     ->schema([
-                        Select::make('level_id')->relationship('level', 'name')->searchable()->preload(),
+                        Select::make('level_id')->relationship('level', 'name')->searchable()->preload()
+                            // Remediation I.6: not while a designation pairs this grade with another level.
+                            ->rule(fn (?Grade $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                if (($problem = app(LevelGradePairs::class)->gradeFormProblem($record, $value)) !== null) {
+                                    $fail($problem);
+                                }
+                            }),
                     ]),
                 Section::make('Effective dates')
                     ->description('Leave blank for open-ended. History is never overwritten.')

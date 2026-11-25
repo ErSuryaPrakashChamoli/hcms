@@ -4,6 +4,7 @@ namespace App\Domain\Organisation\Models;
 
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Domain\Organisation\Services\LevelGradePairs;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
@@ -22,6 +23,12 @@ class Grade extends Model
     use Auditable, BelongsToTenant, HasEffectiveDates, HasFactory;
 
     use GuardsMasterDeletion;
+
+    protected static function booted(): void
+    {
+        // Remediation I.6: a grade moves to another level only while no designation pairs it with a different level.
+        static::updating(fn (Grade $grade) => app(LevelGradePairs::class)->assertGradeChange($grade));
+    }
 
     protected function casts(): array
     {

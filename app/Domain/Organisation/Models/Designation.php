@@ -5,6 +5,7 @@ namespace App\Domain\Organisation\Models;
 use App\Domain\Audit\Concerns\Auditable;
 use App\Domain\Configuration\Concerns\HasCustomFields;
 use App\Domain\Organisation\Enums\ActiveStatus;
+use App\Domain\Organisation\Services\LevelGradePairs;
 use App\Support\EffectiveDating\HasEffectiveDates;
 use App\Support\Masters\GuardsMasterDeletion;
 use App\Support\Tenancy\BelongsToTenant;
@@ -38,6 +39,11 @@ class Designation extends Model
             $category = $attributes['wage_skill_category'] ?? null;
             if ($category !== null && ! array_key_exists($category, (array) config('peopleos.compliance.wage_skill_categories', []))) {
                 throw new \RuntimeException('Unknown wage skill category.');
+            }
+            // Remediation I.6: the level and grade agree, shared and for every company that follows the shared values
+            // (form, upload, clone and API all save here).
+            if (! $designation->exists || $designation->isDirty(['level_id', 'grade_id'])) {
+                app(LevelGradePairs::class)->assertDesignationChange($designation);
             }
         });
     }

@@ -4,8 +4,10 @@ namespace App\Filament\Resources\Designations\Schemas;
 
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Models\Designation;
+use App\Domain\Organisation\Services\LevelGradePairs;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\CustomFieldsSchema;
+use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -13,6 +15,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class DesignationForm
@@ -36,7 +39,13 @@ class DesignationForm
                     ->columns(2)
                     ->schema([
                         Select::make('level_id')->relationship('level', 'name')->searchable()->preload(),
-                        Select::make('grade_id')->relationship('grade', 'name')->searchable()->preload(),
+                        Select::make('grade_id')->relationship('grade', 'name')->searchable()->preload()
+                            // Remediation I.6: the grade agrees with the level (shared, and for each company that follows them).
+                            ->rule(fn (Get $get, ?Designation $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get, $record): void {
+                                if (($problem = app(LevelGradePairs::class)->designationFormProblem($record, $get('level_id'), $value)) !== null) {
+                                    $fail($problem);
+                                }
+                            }),
                         Select::make('job_family_id')->relationship('jobFamily', 'name')->label('Job family')->searchable()->preload(),
                         // OD-1: information only. A person's department comes from their own position; this never places anyone.
                         Select::make('department_id')->relationship('department', 'name')->label('Usual department (information only)')
