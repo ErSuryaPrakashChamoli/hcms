@@ -115,7 +115,7 @@ it('stops before the next batch when a hold arrives during the run, and a retry 
     $placed = false;
     // The hold is written the moment the first audit rows are deleted, as another operator would (its own row).
     Event::listen(QueryExecuted::class, function (QueryExecuted $q) use (&$placed, $tenantId) {
-        if (! $placed && str_starts_with($q->sql, 'delete from "audit_events"')) {
+        if (! $placed && preg_match('/^delete from [`"]audit_events[`"]/', $q->sql)) {   // SQLite quotes "…", MySQL `…`
             $placed = true;
             DB::table('legal_holds')->insert(['tenant_id' => $tenantId, 'reference' => (string) Str::ulid(), 'status' => 'active', 'scope' => 'categories',
                 'categories' => json_encode(['audit']), 'reason' => 'Hold during the run', 'starts_on' => today()->toDateString(), 'placed_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
@@ -150,7 +150,7 @@ it('resumes a run that died halfway without repeating finished steps', function 
     $deletion = approvedDeletion($case->fresh(), $this->maker, $this->checker);
     $crash = true;
     Event::listen(QueryExecuted::class, function (QueryExecuted $q) use (&$crash) {
-        if ($crash && str_starts_with($q->sql, 'delete from "leave_requests"')) {
+        if ($crash && preg_match('/^delete from [`"]leave_requests[`"]/', $q->sql)) {   // SQLite quotes "…", MySQL `…`
             $crash = false;
             throw new RuntimeException('database went away (simulated)');
         }

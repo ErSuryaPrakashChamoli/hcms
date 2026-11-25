@@ -17,7 +17,6 @@ use Tests\Support\TenantAwareTestJob;
  * configuration. Redis itself is not available here; these tests prove detection, not a live Redis.
  */
 
-/** Validate as if the default connection were MySQL, restoring it at once (the test database stays SQLite). */
 /**
  * The validator as if the default connection were SQLite, whatever database runs the suite (the cases below check that
  * a SQLite connection is flagged in production; on a MySQL test run the default connection is MySQL).
@@ -33,6 +32,7 @@ function validateOnSqlite(bool $asProduction = false): array
     }
 }
 
+/** Validate as if the default connection were MySQL, restoring it at once (the test database stays SQLite). */
 function validateOnMysql(bool $asProduction = false): array
 {
     $previous = config('database.default');

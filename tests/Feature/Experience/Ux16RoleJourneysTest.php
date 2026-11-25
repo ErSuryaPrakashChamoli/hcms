@@ -66,7 +66,13 @@ it('manager: Home → decision → approve in the Approval Center → done in My
     Livewire::test(Approvals::class)->call('decide', 'leave:'.$request->id, 'approve', null)->assertNotified('Leave approved');
     expect($request->fresh()->status)->toBe('approved');
     $done = Livewire::test(MyWork::class)->call('setFilter', 'completed')->instance()->work['completed'];
-    expect($done->pluck('key')->implode(' '))->toContain((string) $request->id);
+    // The approved request is among the completed items: its leave type, the employee and the decision. (This compared
+    // the request id with the items' keys, which are md5 digests: it held on SQLite only because a one-digit id is
+    // almost always somewhere in a digest, and failed on MySQL, where ids run higher.)
+    $leave = $done->firstWhere('domain', 'Leave');
+    expect($leave)->not->toBeNull()
+        ->and($leave['title'])->toStartWith($this->el->name)
+        ->and($leave['detail'])->toContain($this->employee->display_name)->toContain('Approved');
 });
 
 it('HR: Home → operational issue → the employee → a lifecycle action, recorded', function () {

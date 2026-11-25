@@ -16,6 +16,7 @@ use App\Domain\Platform\Models\Tenant;
 use App\Support\Observability\PlatformReadiness;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 require_once __DIR__.'/OffboardingTestHelpers.php';
@@ -35,7 +36,13 @@ require_once __DIR__.'/../Workflow/WorkflowTestHelpers.php';
 /** @return array<string, list<array<string, mixed>>> every row of every table (the "backup") */
 function snapshotDatabase(): array
 {
-    $tables = collect(DB::select("select name from sqlite_master where type = 'table' and name not like 'sqlite_%' and name <> 'migrations'"))->pluck('name');
+    // Every table of the test database except the migrations table. On SQLite in creation order (parents before
+    // children), which the restore relies on: SQLite still runs ON DELETE actions while foreign keys are deferred, so a
+    // parent restored after its children would cascade them away. On MySQL the restore switches the checks, and with
+    // them those actions, off, so any order will do.
+    $tables = DB::getDriverName() === 'sqlite'
+        ? collect(DB::select("select name from sqlite_master where type = 'table' and name not like 'sqlite_%' and name <> 'migrations'"))->pluck('name')
+        : collect(Schema::getTableListing(schemaQualified: false))->reject(fn (string $t) => $t === 'migrations')->values();
 
     return $tables->mapWithKeys(fn (string $t) => [$t => DB::table($t)->get()->map(fn ($row) => (array) $row)->all()])->all();
 }
@@ -43,11 +50,20 @@ function snapshotDatabase(): array
 /** Puts every table back to the snapshot (the "restore"). */
 function restoreDatabase(array $snapshot): void
 {
-    DB::statement('PRAGMA defer_foreign_keys = ON');
-    foreach ($snapshot as $table => $rows) {
-        DB::table($table)->delete();
-        foreach (array_chunk($rows, 25) as $chunk) {
-            DB::table($table)->insert($chunk);
+    // Foreign keys are checked once the whole database is back, as a restore does: SQLite defers them to the end of the
+    // test's transaction; MySQL switches the checks off for this connection while the rows go back.
+    $mysql = DB::getDriverName() === 'mysql';
+    DB::statement($mysql ? 'SET FOREIGN_KEY_CHECKS = 0' : 'PRAGMA defer_foreign_keys = ON');
+    try {
+        foreach ($snapshot as $table => $rows) {
+            DB::table($table)->delete();
+            foreach (array_chunk($rows, 25) as $chunk) {
+                DB::table($table)->insert($chunk);
+            }
+        }
+    } finally {
+        if ($mysql) {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 1');
         }
     }
     app(TenantContext::class)->clear();
@@ -222,8 +238,10 @@ it('never acts when the database holds the deletion with another certificate tha
 });
 
 it('needs nothing when the restore predates the tenant itself', function () {
-    $tenant = app(TenantContext::class)->bypass(fn () => Tenant::query()->whereKey($this->tenant->id)->firstOrFail());
-    DB::table('tenants')->whereKey($tenant->id)->delete(); // simulate: the backup was taken before this tenant existed
+    // Simulate: the backup was taken before the tenant below existed. (This first deleted the beforeEach tenant through
+    // DB::table('tenants')->whereKey(): on a query builder that is a dynamic where on a "key" column, which SQLite read
+    // as the string 'key', so it deleted nothing, and MySQL refused. The test has always run with that tenant present;
+    // the tenant that matters is the one created after the backup.)
     $backupWithout = snapshotDatabase();
     restoreDatabase($backupWithout);
     // Recreate the world after the backup: the tenant existed and was deleted (register written), then the restore.
