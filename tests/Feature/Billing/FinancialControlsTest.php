@@ -62,8 +62,9 @@ it('carries out a financial operation only when a second operator approves, reco
     expect([$approved->status, $approved->maker_id, $approved->checker_id, $approved->maker_reason, $approved->checker_reason, $approved->result])
         ->toBe([ApprovalStatus::Approved, $this->maker->id, $this->checker->id, 'Customer cancelled the order', 'Cancellation confirmed by the customer', 'Credit note CN/000001'])
         ->and($approved->requested_at)->not->toBeNull()->and($approved->decided_at)->not->toBeNull()->and($approved->executed_at)->not->toBeNull()
-        ->and($approved->before)->toBe(['invoice_status' => 'issued', 'credited' => 'INR 0.00', 'amount_due' => 'INR 1075.00'])
-        ->and($approved->after)->toBe(['invoice_status' => 'credited', 'credited' => 'INR 1075.00'])
+        // JSON columns: MySQL reorders object keys, so compare keys and values, not their order (toEqual).
+        ->and($approved->before)->toEqual(['invoice_status' => 'issued', 'credited' => 'INR 0.00', 'amount_due' => 'INR 1075.00'])
+        ->and($approved->after)->toEqual(['invoice_status' => 'credited', 'credited' => 'INR 1075.00'])
         ->and($approved->correlation_key)->toStartWith('credit_note:'.$this->invoice->reference)
         ->and([$note->number, $note->kind, $note->total_minor, $note->approval_id, $note->created_by, $note->approved_by])
         ->toBe(['CN/000001', CreditNote::FULL, 107500, $approved->id, $this->maker->id, $this->checker->id])
@@ -126,7 +127,7 @@ it('credits part of an invoice at its original rates, then the rest exactly, nev
     $first = notesOf($this->tenant)->sole();
     expect([$first->number, $first->kind, $first->subtotal_minor, $first->tax_minor, $first->total_minor, $this->invoice->fresh()->status])
         ->toBe(['CN/000001', CreditNote::PARTIAL, 10000, 750, 10750, InvoiceStatus::Issued])
-        ->and($first->snapshot['lines'][0]['taxes'])->toBe([['type' => 'IGST', 'rate' => '7.5000', 'tax_minor' => 750]])
+        ->and($first->snapshot['lines'][0]['taxes'])->toEqual([['type' => 'IGST', 'rate' => '7.5000', 'tax_minor' => 750]])   // JSON: key order varies on MySQL
         ->and($first->snapshot['invoice']['number'])->toBe($this->invoice->number)
         ->and($this->invoices->amountDue($this->invoice->fresh())->toDecimal())->toBe('967.50')
         ->and($partial->result)->toBe('Credit note CN/000001');

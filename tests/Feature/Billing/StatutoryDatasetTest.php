@@ -337,6 +337,6 @@ it('keeps each loaded rule\'s statutory notes and the dataset\'s verification re
     foreach ($rules as $rule) {
         $entry = $shipped[$rule->dataset_key];
         expect($rule->statutory_notes)->toMatchArray($entry['statutory_notes'])
-            ->and($rule->statutory_notes['dataset_verification'] ?? null)->toBe($entry['verification']);
+            ->and($rule->statutory_notes['dataset_verification'] ?? null)->toEqual($entry['verification']);   // JSON: key order varies on MySQL
     }
 });
