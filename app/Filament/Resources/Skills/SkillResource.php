@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Skills;
 use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\People\Models\Skill;
 use App\Domain\Skills\Models\SkillScale;
+use App\Filament\RelationManagers\AuditHistoryRelationManager;
+use App\Filament\Resources\Skills\Pages\EditSkill;
 use App\Filament\Resources\Skills\Pages\ManageSkills;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\Masters\MasterDeleteAction;
@@ -65,19 +67,21 @@ class SkillResource extends Resource
             ->filters([SelectFilter::make('status')->options(ActiveStatus::class)])
             ->defaultSort('name')
             ->recordActions([
-                EditAction::make()->using(function (Skill $record, array $data) {
-                    $record->withAuditReason(AuditReasonField::extract($data))->update($data);
-
-                    return $record;
-                }),
+                EditAction::make(),   // opens the master's page (General and its tabs)
                 MasterDeleteAction::make(),
             ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [AuditHistoryRelationManager::class];
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ManageSkills::route('/'),
+            'edit' => EditSkill::route('/{record}/edit'),
         ];
     }
 }

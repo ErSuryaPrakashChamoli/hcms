@@ -6,6 +6,7 @@ use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Models\Company;
 use App\Domain\Organisation\Models\LegalEntity;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
+use App\Filament\Resources\LegalEntities\Pages\EditLegalEntity;
 use App\Filament\Resources\LegalEntities\Pages\ManageLegalEntities;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\RecordVerificationActions;
@@ -89,11 +90,7 @@ class LegalEntityResource extends Resource
             ->defaultSort('legal_name')
             ->recordActions([
                 ...RecordVerificationActions::make('legal_entity'),
-                EditAction::make()->using(function (LegalEntity $record, array $data) {
-                    $record->withAuditReason(AuditReasonField::extract($data))->update($data);
-
-                    return $record;
-                }),
+                EditAction::make(),   // opens the master's page (General and its tabs)
             ]);
     }
 
@@ -104,6 +101,6 @@ class LegalEntityResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ManageLegalEntities::route('/')];
+        return ['index' => ManageLegalEntities::route('/'), 'edit' => EditLegalEntity::route('/{record}/edit')];
     }
 }

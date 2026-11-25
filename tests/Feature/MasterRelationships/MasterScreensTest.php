@@ -20,6 +20,7 @@ use App\Domain\Organisation\Models\EmploymentType;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\Grade;
 use App\Domain\Organisation\Models\JobFamily;
+use App\Domain\Organisation\Models\LegalEntity;
 use App\Domain\Organisation\Models\Level;
 use App\Domain\Organisation\Models\Location;
 use App\Domain\Organisation\Models\OrganisationNode;
@@ -28,6 +29,8 @@ use App\Domain\Organisation\Models\Region;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
 use App\Domain\Organisation\Services\OrganisationTree;
+use App\Domain\People\Models\Skill;
+use App\Domain\Skills\Models\SkillScale;
 use App\Filament\Pages\EmploymentRequirementsPage;
 use App\Filament\Pages\OrganisationDesigner;
 use App\Filament\Pages\UnmappedMastersPage;
@@ -40,8 +43,14 @@ use App\Filament\Resources\Departments\Pages\CreateDepartment;
 use App\Filament\Resources\Departments\Pages\EditDepartment;
 use App\Filament\Resources\Designations\Pages\CreateDesignation;
 use App\Filament\Resources\Designations\Pages\EditDesignation;
+use App\Filament\Resources\Establishments\Pages\EditEstablishment;
 use App\Filament\Resources\Grades\Pages\EditGrade;
+use App\Filament\Resources\LegalEntities\LegalEntityResource;
+use App\Filament\Resources\LegalEntities\Pages\EditLegalEntity;
 use App\Filament\Resources\Locations\Pages\EditLocation;
+use App\Filament\Resources\Skills\Pages\EditSkill;
+use App\Filament\Resources\Skills\Pages\ManageSkills;
+use App\Filament\Resources\Skills\SkillResource;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 
@@ -163,12 +172,14 @@ it('shows a location its establishment, and says when the head office applies', 
     msTab(MasterLinksTab::class, $pune->fresh(), EditLocation::class)->assertSee($principal->name);
 });
 
-// Every master with an edit page. Legal entities, establishments and skills are edited in a modal on their list page
-// (no edit page, so no tabs); a legal entity and an establishment are parts of their company.
+// Every master. Legal entities, establishments and skills have their own page since the remediation (I.5); a legal
+// entity and an establishment are parts of one company, so they have no Companies or Links tab.
 it('opens every master type with General, Usage and History, and the tabs that type has', function (string $class) {
     $record = match ($class) {
         Company::class => $this->mk,
         Location::class => Location::query()->create(['name' => 'Pune', 'code' => 'PUN', 'company_id' => $this->mk->id]),
+        LegalEntity::class => LegalEntity::query()->create(['company_id' => $this->mk->id, 'code' => 'MK-LLP', 'legal_name' => 'Markedge Services LLP', 'country' => 'IN', 'effective_from' => '2020-01-01']),
+        Establishment::class => Establishment::query()->create(['company_id' => $this->mk->id, 'legal_entity_id' => LegalEntity::query()->where('company_id', $this->mk->id)->value('id'), 'code' => 'MYS', 'name' => 'Mysuru', 'state' => 'KA', 'effective_from' => '2020-01-01']),
         default => $class::query()->create(['name' => 'Sample master', 'code' => 'SAMPLE']),
     };
     $edit = Filament::getModelResource($class)::getPages()['edit']->getPage();
@@ -188,8 +199,40 @@ it('opens every master type with General, Usage and History, and the tabs that t
     JobFamily::class, EmployeeCategory::class, Team::class,
     ProfitCentre::class, DimensionValue::class, CostCentre::class,
     WorkMode::class, Company::class, BusinessRegion::class, Grade::class,
-    Level::class,
+    Level::class, LegalEntity::class, Establishment::class, Skill::class,
 ])->mapWithKeys(fn ($class) => [class_basename($class) => [$class]])->all());
+
+it('gives legal entities, establishments and skills their own page with only the tabs that apply, saved through the audited path', function () {
+    $entity = LegalEntity::query()->where('company_id', $this->mk->id)->firstOrFail();   // created with its company
+    $establishment = Establishment::query()->create(['company_id' => $this->mk->id, 'legal_entity_id' => $entity->id, 'code' => 'MYS', 'name' => 'Mysuru', 'state' => 'KA', 'effective_from' => '2020-01-01']);
+    $skill = Skill::query()->create(['name' => 'Negotiation', 'code' => 'NEG', 'skill_scale_id' => SkillScale::query()->create(['name' => 'Five levels', 'code' => 'L5'])->id]);
+    $tabs = fn (string $page, $record) => array_values(array_intersect(MasterTabs::MANAGERS, Livewire::test($page, ['record' => $record->getRouteKey()])->assertOk()->instance()->getRelationManagers()));
+
+    // Parts of one company: no Companies, Links or Company values tab, only what uses them. A skill is shared
+    // configuration: its companies, its link to the scale, what uses it.
+    expect($tabs(EditLegalEntity::class, $entity))->toBe([MasterUsageTab::class])
+        ->and($tabs(EditEstablishment::class, $establishment))->toBe([MasterUsageTab::class])
+        ->and($tabs(EditSkill::class, $skill))->toBe([MasterCompaniesTab::class, MasterLinksTab::class, MasterUsageTab::class]);
+    msTab(MasterLinksTab::class, $skill, EditSkill::class)->assertSee('Skill scale')->assertSee('Five levels');
+    msTab(MasterUsageTab::class, $entity, EditLegalEntity::class)->assertSee('establishment');   // its establishments use it
+
+    // The list's Edit opens the page; creating stays a dialog on the list.
+    expect(Livewire::test(ManageSkills::class)->instance()->getTable()->getAction('edit')->record($skill)->getUrl())->toBe(SkillResource::getUrl('edit', ['record' => $skill]))
+        ->and(LegalEntityResource::hasPage('create'))->toBeFalse();
+
+    // Saved with its reason in the audit trail, as on every master page.
+    Livewire::test(EditEstablishment::class, ['record' => $establishment->getRouteKey()])
+        ->fillForm(['name' => 'Mysuru works', 'audit_reason' => 'Renamed on registration'])->call('save')->assertHasNoFormErrors();
+    expect($establishment->fresh()->name)->toBe('Mysuru works')
+        ->and($establishment->auditEvents()->latest('id')->first()?->reason)->toBe('Renamed on registration');
+
+    // Another tenant's record is not found.
+    $other = provisionTenant('Other');
+    actAsTenant($other);
+    $foreign = Skill::query()->create(['name' => 'Foreign skill', 'code' => 'FOR']);
+    actAsTenant($this->tenant);
+    Livewire::test(EditSkill::class, ['record' => $foreign->getRouteKey()])->assertNotFound();
+});
 
 it('says plainly when there is nothing to show: no requirements policy, and nothing unmapped', function () {
     $this->sourcing->update(['grade_id' => $this->t5->id]);

@@ -6,6 +6,7 @@ use App\Domain\Organisation\Enums\ActiveStatus;
 use App\Domain\Organisation\Models\Establishment;
 use App\Domain\Organisation\Models\LegalEntity;
 use App\Filament\RelationManagers\AuditHistoryRelationManager;
+use App\Filament\Resources\Establishments\Pages\EditEstablishment;
 use App\Filament\Resources\Establishments\Pages\ManageEstablishments;
 use App\Filament\Support\AuditReasonField;
 use App\Filament\Support\RecordVerificationActions;
@@ -101,11 +102,7 @@ class EstablishmentResource extends Resource
             ->defaultSort('name')
             ->recordActions([
                 ...RecordVerificationActions::make('establishment'),
-                EditAction::make()->using(function (Establishment $record, array $data) {
-                    $record->withAuditReason(AuditReasonField::extract($data))->update($data);
-
-                    return $record;
-                }),
+                EditAction::make(),   // opens the master's page (General and its tabs)
             ]);
     }
 
@@ -116,6 +113,6 @@ class EstablishmentResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ManageEstablishments::route('/')];
+        return ['index' => ManageEstablishments::route('/'), 'edit' => EditEstablishment::route('/{record}/edit')];
     }
 }
