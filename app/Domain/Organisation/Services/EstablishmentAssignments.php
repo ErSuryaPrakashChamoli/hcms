@@ -129,6 +129,58 @@ final class EstablishmentAssignments
         return ['establishment' => null, 'source' => null];
     }
 
+    /**
+     * Remediation I.8: resolve() for many employees on one date in a few queries (assignments, positions, the positions'
+     * locations and their establishments, each company's principal establishment), with the same answer for each.
+     *
+     * @param  list<int>  $employeeIds
+     * @return array<int, array{establishment: ?Establishment, source: ?string}>
+     */
+    public function resolveMany(array $employeeIds, CarbonInterface|string $on): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $employeeIds)));
+        if ($ids === []) {
+            return [];
+        }
+        $day = Carbon::parse($on)->toDateString();
+        // Latest first, as resolve() takes them; the first row per employee wins.
+        $assignments = EmployeeEstablishmentAssignment::query()->withoutGlobalScope(AccessScope::class)
+            ->with(['establishment' => fn ($q) => $q->withoutGlobalScope(AccessScope::class)])
+            ->whereIn('employee_id', $ids)->effectiveOn($day)->orderByDesc('effective_from')->get()->unique('employee_id')->keyBy('employee_id');
+        $positions = EmployeePosition::query()->withoutGlobalScope(AccessScope::class)->whereIn('employee_id', $ids)->effectiveOn($day)
+            ->orderByDesc('effective_from')->orderByDesc('id')->get(['id', 'employee_id', 'company_id', 'location_id'])->unique('employee_id')->keyBy('employee_id');
+        $locationEstablishments = Location::query()->withoutGlobalScope(AccessScope::class)->whereKey($positions->pluck('location_id')->filter()->unique()->values()->all())
+            ->pluck('establishment_id', 'id');
+        $establishments = Establishment::query()->withoutGlobalScope(AccessScope::class)->whereKey($locationEstablishments->filter()->unique()->values()->all())->get()->keyBy('id');
+        $primary = [];
+
+        $out = [];
+        foreach ($ids as $id) {
+            $assignment = $assignments->get($id);
+            if ($assignment?->establishment !== null) {
+                $out[$id] = ['establishment' => $assignment->establishment, 'source' => 'assignment'];
+
+                continue;
+            }
+            $position = $positions->get($id);
+            $fromLocation = $position?->location_id ? ($locationEstablishments[$position->location_id] ?? null) : null;
+            if ($fromLocation && ($establishment = $establishments->get($fromLocation)) !== null) {
+                $out[$id] = ['establishment' => $establishment, 'source' => 'location'];
+
+                continue;
+            }
+            $company = $position?->company_id ? (int) $position->company_id : null;
+            if ($company !== null && ($establishment = array_key_exists($company, $primary) ? $primary[$company] : ($primary[$company] = $this->entities->primaryEstablishment($company))) !== null) {
+                $out[$id] = ['establishment' => $establishment, 'source' => 'company_primary'];
+
+                continue;
+            }
+            $out[$id] = ['establishment' => null, 'source' => null];
+        }
+
+        return $out;
+    }
+
     /** Give an employee without history an assignment derived from their position (ADR-0001 transition). */
     public function backfill(Employee $employee): ?EmployeeEstablishmentAssignment
     {

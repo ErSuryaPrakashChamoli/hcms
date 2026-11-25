@@ -26,6 +26,28 @@ final class StatutoryContexts
     }
 
     /**
+     * Remediation I.8: for() for many employees of the period's company, with the same answer for each, in a few
+     * queries: the company settings once, the establishments in one batch, each establishment's profiles once.
+     *
+     * @param  iterable<Employee>  $employees  with their statutory detail loaded
+     * @return array<int, StatutoryContext> employee id => context
+     */
+    public function forMany(iterable $employees, PayrollPeriod $period): array
+    {
+        $employees = collect($employees);
+        $on = $period->end_date->toDateString();
+        $legacy = $this->companySettings((int) $period->company_id);
+        $resolved = $this->assignments->resolveMany($employees->map(fn (Employee $e) => (int) $e->getKey())->all(), $on);
+        $profiles = [];
+        $out = [];
+        foreach ($employees as $employee) {
+            $out[(int) $employee->getKey()] = $this->build($employee, $period, $resolved[(int) $employee->getKey()] ?? ['establishment' => null, 'source' => null], $legacy, $profiles);
+        }
+
+        return $out;
+    }
+
+    /**
      * Whether each statute applies at an establishment on each date, decided as for an employee there: from the
      * establishment's profiles when it has any, otherwise from the company statutory settings. Compliance reports
      * use it so a pack decides as payroll did. Pass $profiles to decide for a proposed set instead of the stored one.
@@ -62,10 +84,19 @@ final class StatutoryContexts
 
     private function resolve(Employee $employee, PayrollPeriod $period): StatutoryContext
     {
-        $on = $period->end_date->toDateString();
-        $legacy = $this->companySettings((int) $period->company_id);
+        $profiles = [];
 
-        ['establishment' => $establishment, 'source' => $source] = $this->assignments->resolve($employee, $on);
+        return $this->build($employee, $period, $this->assignments->resolve($employee, $period->end_date->toDateString()), $this->companySettings((int) $period->company_id), $profiles);
+    }
+
+    /**
+     * @param  array{establishment: ?Establishment, source: ?string}  $resolved
+     * @param  array<int, array{uses: bool, profiles: array<string, mixed>}>  $profilesMemo  per establishment, shared across a batch
+     */
+    private function build(Employee $employee, PayrollPeriod $period, array $resolved, CompanyStatutoryProfile $legacy, array &$profilesMemo): StatutoryContext
+    {
+        $on = $period->end_date->toDateString();
+        ['establishment' => $establishment, 'source' => $source] = $resolved;
 
         // An establishment of another company never applies to this company's payroll.
         if ($establishment !== null && (int) $establishment->company_id !== (int) $period->company_id) {
@@ -74,11 +105,20 @@ final class StatutoryContexts
         }
 
         $profiles = [];
-        $usesProfiles = $establishment !== null && $this->registrations->hasProfiles($establishment);
-        if ($usesProfiles) {
-            foreach (EstablishmentStatutoryProfile::STATUTES as $statute) {
-                $profiles[$statute] = $this->registrations->profile($establishment, $statute, $on);
-            }
+        $usesProfiles = false;
+        if ($establishment !== null) {
+            $memo = $profilesMemo[(int) $establishment->getKey()] ??= (function () use ($establishment, $on): array {
+                $uses = $this->registrations->hasProfiles($establishment);
+                $found = [];
+                if ($uses) {
+                    foreach (EstablishmentStatutoryProfile::STATUTES as $statute) {
+                        $found[$statute] = $this->registrations->profile($establishment, $statute, $on);
+                    }
+                }
+
+                return ['uses' => $uses, 'profiles' => $found];
+            })();
+            [$usesProfiles, $profiles] = [$memo['uses'], $memo['profiles']];
         }
 
         $override = $employee->statutoryDetail?->pt_state_code;

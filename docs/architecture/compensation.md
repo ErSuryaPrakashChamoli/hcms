@@ -60,7 +60,7 @@ Baseline `49eff96`. Every read and write of employee salary, classified as the o
 | 2 | `Payroll\Services\Salaries::current` | Read | Compensation read | `CompensationOutput::on()` |
 | 3 | `Payroll\Models\EmployeeSalaryAssignment` | Model | Compensation owner | Moved to `Compensation\Models`; model guard refuses any create / update / delete outside the writer |
 | 4 | `Payroll\Models\SalaryStructure`, `SalaryStructureComponent` | Model | Compensation owner | Moved to `Compensation\Models` (same tables) |
-| 5 | `PayrollCalculator::segments()` and the structure's items | Read (direct table) | Payroll consumer | `CompensationOutput::forPayroll()` |
+| 5 | `PayrollCalculator::segments()` and the structure's items | Read (direct table) | Payroll consumer | `CompensationOutput::forPayroll()` (and `forPayrollMany()` for a batch, the same result per employee: payroll readiness, remediation I.8) |
 | 6 | `PayrollComputation::$assignment` | Read | Payroll consumer | `CompensationSegment` value object (`$compensation`) |
 | 7 | `PayrollRuns::calculate`: entry FK `employee_salary_assignment_id` | Read | Payroll consumer | The id comes from the contract segment; the column is unchanged |
 | 8 | `PayrollRuns::finalize` | None | Payroll consumer | New: refuses entries whose compensation fingerprint changed since calculation |

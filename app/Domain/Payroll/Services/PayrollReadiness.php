@@ -9,6 +9,7 @@ use App\Domain\Audit\Services\AuditRecorder;
 use App\Domain\Compensation\Contracts\CompensationOutput;
 use App\Domain\Compensation\Support\CompensationComponentLine;
 use App\Domain\Compensation\Support\CompensationSegment;
+use App\Domain\Compensation\Support\PayrollCompensation;
 use App\Domain\Compliance\Models\ComplianceRule;
 use App\Domain\Compliance\Services\ComplianceRules;
 use App\Domain\Compliance\Services\RequiredRules;
@@ -99,6 +100,25 @@ final class PayrollReadiness
     /** @var array<int, bool> structure version id => any formula reads employee attributes */
     private array $needsAttributes = [];
 
+    /**
+     * Remediation I.8: what an evaluation reads per employee, read per batch of BATCH instead: each employee's
+     * compensation ("employee#from#to") and statutory context (employee id). Kept for one evaluation only.
+     *
+     * @var array<string, PayrollCompensation>
+     */
+    private array $payroll = [];
+
+    /** @var array<int, StatutoryContext> the statutory contexts of one batch of the population being checked */
+    private array $statutoryContexts = [];
+
+    /** @var list<Collection<int, Employee>> the population being checked, in batches; employee id => its batch */
+    private array $batches = [];
+
+    /** @var array<int, int> */
+    private array $batchOf = [];
+
+    private const BATCH = 500;
+
     public function __construct(
         private readonly CompensationOutput $compensation,
         private readonly StructureFormulas $formulas,
@@ -139,6 +159,18 @@ final class PayrollReadiness
         $latestEnd = null;
 
         $companies = Company::query()->when($companyId !== null, fn ($q) => $q->whereKey($companyId))->orderBy('name')->get();
+        $this->formulas->rememberCatalogue();
+        try {
+            return $this->evaluateCompanies($companies, $checks, $notes, $months, $latestEnd, $activeOnly, $withAmounts, $today, $payMonth);
+        } finally {
+            $this->formulas->rememberCatalogue(false);
+            [$this->payroll, $this->statutoryContexts, $this->batches, $this->batchOf] = [[], [], [], []];
+        }
+    }
+
+    /** @param  Collection<int, Company>  $companies */
+    private function evaluateCompanies(Collection $companies, array $checks, array $notes, array $months, ?CarbonInterface $latestEnd, bool $activeOnly, bool $withAmounts, CarbonInterface $today, ?array $payMonth): array
+    {
         foreach ($companies as $company) {
             try {
                 // Streamline S2: the run's own pay month when one is named (the guided run checks the month it runs),
@@ -168,6 +200,13 @@ final class PayrollReadiness
                 continue;
             }
             $period = $this->periodFor($company, $year, $month, $start, $end);
+            // Remediation I.8: what is read per person is read per batch of this population (context(), payrollFor()).
+            [$this->batches, $this->batchOf, $this->statutoryContexts, $this->payroll] = [$employees->chunk(self::BATCH)->values()->all(), [], [], []];
+            foreach ($this->batches as $i => $batch) {
+                foreach ($batch as $employee) {
+                    $this->batchOf[(int) $employee->id] = $i;
+                }
+            }
             $this->attendanceChecks($checks, $company, $employees, $start, $end, $today);
             $this->noShiftCheck($checks, $company, $employees, $start, $end);
             $this->employmentDataChecks($checks, $company, $employees, $end);
@@ -372,38 +411,25 @@ final class PayrollReadiness
         if ($company->establishments()->count() > 1) {
             $checks['head_office_fallback']['ran'] = true;
             $establishments = app(EstablishmentAssignments::class);
-            foreach ($employees as $employee) {
-                $resolved = $establishments->resolve($employee, $end);
-                if ($resolved['source'] === 'company_primary') {
-                    $checks['head_office_fallback']['rows'][] = self::employeeRow($employee, $company,
-                        'No establishment of their own: PF, ESI, PT and LWF use '.$resolved['establishment']?->name.'. Give their location an establishment, or assign one.');
+            foreach ($employees->chunk(self::BATCH) as $batch) {   // one resolution per batch, not per person (I.8)
+                $found = $establishments->resolveMany($batch->pluck('id')->all(), $end);
+                foreach ($batch as $employee) {
+                    $resolved = $found[(int) $employee->id];
+                    if ($resolved['source'] === 'company_primary') {
+                        $checks['head_office_fallback']['rows'][] = self::employeeRow($employee, $company,
+                            'No establishment of their own: PF, ESI, PT and LWF use '.$resolved['establishment']?->name.'. Give their location an establishment, or assign one.');
+                    }
                 }
             }
         }
 
-        // Through the compensation read contract (Payroll never reads salary assignments or structure versions itself).
-        $output = app(CompensationOutput::class);
+        // Through the compensation read contract (Payroll never reads salary assignments or structure versions itself),
+        // read per batch of BATCH and let go after it (remediation I.8: bounded queries and memory).
         $read = [];
-        foreach ($employees as $employee) {
-            $segment = $output->forPayroll($employee, $end, $end)->last();
-            if ($segment === null) {
-                continue;
-            }
-            // Per structure version and the employee's own formula overrides (they change what the formulas read).
-            $key = ($segment->compensation->structureVersionId ?? 's'.$segment->compensation->structureId).'#'
-                .md5((string) json_encode($segment->components->map(fn (CompensationComponentLine $line) => $line->formulaOverride)->values()->all()));
-            $variables = $read[$key] ??= self::positionVariables($segment->components);
-            if ($variables === []) {
-                continue;
-            }
-            $checks['blank_formula_variables']['ran'] = true;
-            $values = FormulaVariables::employeeAttributes($employee, $end);
-            $blank = array_filter($variables, fn (array $codes, string $variable) => ($values[$variable] ?? '') === '', ARRAY_FILTER_USE_BOTH);
-            if ($blank !== []) {
-                $list = implode('; ', array_map(fn (string $variable, array $codes) => $variable.' ('.implode(', ', $codes).')', array_keys($blank), $blank));
-                $checks['blank_formula_variables']['rows'][] = self::employeeRow($employee, $company,
-                    "Formulas read {$list} and the employee has none: if, in and slab take their other branch. Set it on the position.", ['variables' => implode(', ', array_keys($blank))]);
-            }
+        foreach ($employees->chunk(self::BATCH) as $batch) {
+            $this->primePayroll($batch, $end);
+            $this->employeeFormulaVariables($checks, $company, $batch, $end, $read);
+            $this->payroll = [];
         }
 
         if (Policy::query()->where('type', 'leave')->where('status', 'active')->exists()) {
@@ -552,15 +578,42 @@ final class PayrollReadiness
         // The date each employee's compensation is read on: the pay month's end, or the last working day inside it.
         $on = fn (Employee $e) => $e->exit_date && CarbonImmutable::parse($e->exit_date)->lt($end) ? CarbonImmutable::parse($e->exit_date)->startOfDay() : $end;
         $coveredAtEnd = array_flip(array_map('intval', $this->compensation->coveredEmployeeIds($end)->whereIn('employee_id', $employees->pluck('id')->all())->pluck('employee_id')->all()));
+        // People leaving inside the month are read on their last day: one read per such day, not per person (I.8).
+        $coveredOn = [];
+        foreach ($employees->groupBy(fn (Employee $e) => $on($e)->toDateString()) as $day => $group) {
+            if ($day === $end->toDateString()) {
+                continue;
+            }
+            $coveredOn[$day] = array_flip(array_map('intval', $this->compensation->coveredEmployeeIds($day)->whereIn('employee_id', $group->pluck('id')->all())->pluck('employee_id')->all()));
+        }
 
         $wageRule = $this->verifiedThreshold('wage_share', $end);
         $esiRule = $this->verifiedThreshold('esi_ceiling', $end);
         $minimumWageAnywhere = $this->minimumWageAnywhere();
         $classes = (array) config('peopleos.payroll.guardrails.wage_share.classifications', ['basic', 'da']);
 
-        foreach ($employees as $employee) {
+        // Per batch: the statutory contexts and the compensation on each person's date, read together, let go after it (I.8).
+        foreach ($employees->chunk(self::BATCH) as $batch) {
+            $this->payroll = [];
+            foreach ($batch->groupBy(fn (Employee $e) => $on($e)->toDateString()) as $day => $group) {
+                $this->primePayroll($group, CarbonImmutable::parse($day));
+            }
+            $this->compensationBatch($checks, $company, $batch, $period, $withAmounts, $on, $end, $coveredAtEnd, $coveredOn, $wageRule, $esiRule, $minimumWageAnywhere, $classes);
+        }
+        $this->payroll = [];
+    }
+
+    /**
+     * The compensation checks of one batch (compensationChecks).
+     *
+     * @param  Collection<int, Employee>  $batch
+     */
+    private function compensationBatch(array &$checks, Company $company, Collection $batch, PayrollPeriod $period, bool $withAmounts, \Closure $on, CarbonInterface $end,
+        array $coveredAtEnd, array $coveredOn, ?ComplianceRule $wageRule, ?ComplianceRule $esiRule, bool $minimumWageAnywhere, array $classes): void
+    {
+        foreach ($batch as $employee) {
             $date = $on($employee);
-            $covered = $date->eq($end) ? isset($coveredAtEnd[(int) $employee->id]) : $this->compensation->coveredEmployeeIds($date)->where('employee_id', $employee->id)->exists();
+            $covered = $date->eq($end) ? isset($coveredAtEnd[(int) $employee->id]) : isset($coveredOn[$date->toDateString()][(int) $employee->id]);
             if (! $covered) {
                 $checks['structure_missing']['rows'][] = self::employeeRow($employee, $company, 'No approved compensation in force on '.$date->format('j M Y'));
 
@@ -708,7 +761,59 @@ final class PayrollReadiness
     /** Employee → establishment (on the pay month's end) → state and the statutes that apply there, as payroll resolves it. */
     private function context(Employee $employee, PayrollPeriod $period): StatutoryContext
     {
-        return $this->contexts->for($employee, $period);
+        $id = (int) $employee->id;
+        // The first time a person of a batch is asked about, the whole batch is resolved (one batch kept at a time).
+        if (! isset($this->statutoryContexts[$id]) && isset($this->batchOf[$id])) {
+            $this->statutoryContexts = $this->contexts->forMany($this->batches[$this->batchOf[$id]], $period);
+        }
+
+        return $this->statutoryContexts[$id] ?? $this->contexts->for($employee, $period);
+    }
+
+    /**
+     * Formulas reading position values the employee has blank, for one batch whose compensation is read (payrollFor).
+     *
+     * @param  Collection<int, Employee>  $batch
+     * @param  array<string, array<string, list<string>>>  $read  the variables each structure version reads, kept across batches
+     */
+    private function employeeFormulaVariables(array &$checks, Company $company, Collection $batch, CarbonInterface $end, array &$read): void
+    {
+        foreach ($batch as $employee) {
+            $segment = $this->payrollFor($employee, $end, $end)->last();
+            if ($segment === null) {
+                continue;
+            }
+            // Per structure version and the employee's own formula overrides (they change what the formulas read).
+            $key = ($segment->compensation->structureVersionId ?? 's'.$segment->compensation->structureId).'#'
+                .md5((string) json_encode($segment->components->map(fn (CompensationComponentLine $line) => $line->formulaOverride)->values()->all()));
+            $variables = $read[$key] ??= self::positionVariables($segment->components);
+            if ($variables === []) {
+                continue;
+            }
+            $checks['blank_formula_variables']['ran'] = true;
+            $values = FormulaVariables::employeeAttributes($employee, $end);
+            $blank = array_filter($variables, fn (array $codes, string $variable) => ($values[$variable] ?? '') === '', ARRAY_FILTER_USE_BOTH);
+            if ($blank !== []) {
+                $list = implode('; ', array_map(fn (string $variable, array $codes) => $variable.' ('.implode(', ', $codes).')', array_keys($blank), $blank));
+                $checks['blank_formula_variables']['rows'][] = self::employeeRow($employee, $company,
+                    "Formulas read {$list} and the employee has none: if, in and slab take their other branch. Set it on the position.", ['variables' => implode(', ', array_keys($blank))]);
+            }
+        }
+    }
+
+    /** @param  Collection<int, Employee>  $batch */
+    private function primePayroll(Collection $batch, CarbonInterface $on): void
+    {
+        $day = $on->toDateString();
+        foreach ($this->compensation->forPayrollMany($batch, $on, $on) as $id => $compensation) {
+            $this->payroll["{$id}#{$day}#{$day}"] = $compensation;
+        }
+    }
+
+    /** The employee's compensation for a window: from the batch read when there is one, else read now. */
+    private function payrollFor(Employee $employee, CarbonInterface $from, CarbonInterface $to): PayrollCompensation
+    {
+        return $this->payroll[$employee->id.'#'.$from->toDateString().'#'.$to->toDateString()] ?? $this->compensation->forPayroll($employee, $from, $to);
     }
 
     /**
@@ -720,7 +825,7 @@ final class PayrollReadiness
     private function breakup(Employee $employee, CarbonInterface $on): array
     {
         $none = fn (string $error) => ['error' => $error, 'ctc_mode' => 'ctc', 'difference' => 0.0, 'breakup' => 0.0, 'ctc_monthly' => 0.0, 'gross' => 0.0, 'sum' => fn () => 0.0];
-        $segment = $this->compensation->forPayroll($employee, $on, $on)->last();
+        $segment = $this->payrollFor($employee, $on, $on)->last();
         if (! $segment instanceof CompensationSegment || $segment->components->isEmpty()) {
             return $none('The salary structure has no approved components on '.Carbon::parse($on)->format('j M Y'));
         }

@@ -24,7 +24,22 @@ use RuntimeException;
  */
 final class StructureFormulas
 {
+    /** The salary component codes, while a read-only caller asked to keep them (rememberCatalogue). */
+    private ?array $catalogue = null;
+
+    private bool $remember = false;
+
     public function __construct(private readonly FormulaEngine $formulas, private readonly StatutoryEngine $statutory) {}
+
+    /**
+     * Remediation I.8: a read-only caller that checks many breakups (payroll readiness) reads the component catalogue
+     * once instead of once per breakup. Off again, it reads it each time (components may be added meanwhile).
+     */
+    public function rememberCatalogue(bool $remember = true): void
+    {
+        $this->remember = $remember;
+        $this->catalogue = null;
+    }
 
     /**
      * HROne setup parity BP-2: `$options` carries the version's `ctc_mode` (ctc, the default, or components) and
@@ -69,7 +84,11 @@ final class StructureFormulas
             }
         }
 
-        $catalogue = SalaryComponent::query()->pluck('code')->map(fn ($code) => strtolower((string) $code))->all();
+        $catalogue = $this->remember && $this->catalogue !== null ? $this->catalogue
+            : SalaryComponent::query()->pluck('code')->map(fn ($code) => strtolower((string) $code))->all();
+        if ($this->remember) {
+            $this->catalogue = $catalogue;
+        }
         $known = [...array_keys(FormulaVariables::PAY), ...array_keys(FormulaVariables::EMPLOYEE), ...array_map('strval', array_keys($parameters)), ...array_keys($position)];
 
         foreach ($ordered as $i => $line) {

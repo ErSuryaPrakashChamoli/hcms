@@ -34,6 +34,14 @@ interface CompensationOutput
     public function forPayroll(Employee $employee, CarbonInterface $from, CarbonInterface $to): PayrollCompensation;
 
     /**
+     * forPayroll() for many employees in a few queries (remediation I.8: payroll readiness), the same result for each.
+     *
+     * @param  iterable<Employee>  $employees
+     * @return array<int, PayrollCompensation> employee id => compensation
+     */
+    public function forPayrollMany(iterable $employees, CarbonInterface $from, CarbonInterface $to): array;
+
+    /**
      * Fingerprints of the approved compensation overlapping [from, to] for many employees, in one
      * query. Integrity check only (no amounts), so it is not limited by the reader's organisation scope.
      *

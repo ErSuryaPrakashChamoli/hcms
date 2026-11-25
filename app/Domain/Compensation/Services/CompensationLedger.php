@@ -54,6 +54,40 @@ final class CompensationLedger implements CompensationOutput
             ->get();
         $versions = $this->versions($rows->pluck('salary_structure_id')->all(), $start, $end, withComponents: true);
 
+        return $this->compose($rows, $versions, $start, $end);
+    }
+
+    /**
+     * Remediation I.8: forPayroll() for many employees at once, with the same result for each: their assignments in one
+     * read, the structure versions (with components) in one more. Same reader scope as forPayroll().
+     */
+    public function forPayrollMany(iterable $employees, CarbonInterface $from, CarbonInterface $to): array
+    {
+        $ids = collect($employees)->map(fn (Employee $e) => (int) $e->getKey())->unique()->values()->all();
+        if ($ids === []) {
+            return [];
+        }
+        $start = Carbon::parse($from)->startOfDay();
+        $end = Carbon::parse($to)->startOfDay();
+        $rows = $this->overlapping(EmployeeSalaryAssignment::query(), $start, $end)
+            ->whereIn('employee_id', $ids)
+            ->with('structure:id,code')
+            ->orderBy('effective_from')->orderBy('id')
+            ->get();
+        $versions = $this->versions($rows->pluck('salary_structure_id')->all(), $start, $end, withComponents: true);
+        $byEmployee = $rows->groupBy('employee_id');
+
+        $out = [];
+        foreach ($ids as $id) {
+            $out[$id] = $this->compose($byEmployee->get($id, collect())->values(), $versions, $start, $end);
+        }
+
+        return $out;
+    }
+
+    /** The segments of one employee's rows (oldest first) against the structure versions, and their fingerprint. */
+    private function compose(Collection $rows, Collection $versions, Carbon $start, Carbon $end): PayrollCompensation
+    {
         $segments = collect();
         foreach ($rows as $row) {
             $rowFrom = $row->effective_from->copy()->startOfDay()->max($start)->copy();
