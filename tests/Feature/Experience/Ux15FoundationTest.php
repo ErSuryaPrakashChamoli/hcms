@@ -48,8 +48,11 @@ it('keeps the design system governed: tokens only, and no text below 12 px', fun
     preg_match_all('/#[0-9a-fA-F]{3,8}\b/', $rules, $hex);
     expect(array_unique($hex[0]))->toBe(array_values(array_unique(array_filter($hex[0], fn ($h) => $h === '#000'))));
 
-    preg_match_all('/--pos-fs-[a-z]+:\s*([0-9.]+)px/', $css, $sizes);
-    expect(count($sizes[1]))->toBe(8)->and(min(array_map('floatval', $sizes[1])))->toBeGreaterThanOrEqual(12.0);
+    // The type scale, step by step: the 8 steps of UX.15 plus the At-a-glance (§P) and Home tile (§H2) figures the
+    // 2026-11-11 redesigns added. A new step must be added here on purpose; none may go below 12 px.
+    preg_match_all('/--pos-fs-([a-z]+):\s*([0-9.]+)px/', $css, $sizes);
+    expect($sizes[1])->toBe(['caption', 'meta', 'body', 'lead', 'section', 'glance', 'metric', 'tile', 'title', 'display'])
+        ->and(min(array_map('floatval', $sizes[2])))->toBeGreaterThanOrEqual(12.0);
 });
 
 it('peeks only at people the viewer may find, with directory fields only', function () {

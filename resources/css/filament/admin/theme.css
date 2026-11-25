@@ -7,7 +7,7 @@
  * - Colour carries meaning. Neutral = normal information; indigo = PeopleOS identity (primary action,
  *   selection, focus, links); gold = high-value moments (milestones, recognition, the lifetime record);
  *   green = positive / completed; amber = attention; red = critical / destructive; blue = informational.
- * - Type uses one 8-step scale and never goes below 12 px.
+ * - Type uses one 10-step scale (8 steps, plus glance and tile figures added 2026-11-11) and never goes below 12 px.
  *
  * Layers:
  * 1. Filament's theme (forms, tables, actions, authorisation-aware UI), imported unchanged.
@@ -197,6 +197,18 @@
     --pos-iris-from: #7366e6;
     --pos-iris-to: #463ba6;
     --pos-iris-text: #ffffff;
+    /* Fixed white, the same in both themes (so no .dark override): text on a fixed fill, the plate under logos drawn
+       for white paper. --pos-on-fill and --pos-text-inverse turn dark in the dark theme; this does not. */
+    --pos-white: #ffffff;
+    /* The public website's own ink (resources/css/site.css --ps-*) for its miniatures in the site editor (§S) and the
+       app badges on the sign-in page (§R): fixed in both themes, like the website itself. */
+    --pos-site-ink: #0e1130;
+    --pos-site-ink-deep: #12142c;
+    --pos-site-ink-hover: #262170;
+    --pos-site-champagne: #e2c48c;
+    /* The sign-in stage monogram (§R): artwork sized to its 168 px tile, outside the type scale. */
+    --pos-art-monogram-size: 64px;
+    --pos-art-monogram-radius: 40px;
     --pos-shadow-hero: 0 24px 48px -28px rgb(18 22 58 / 0.55), 0 2px 6px -2px rgb(18 22 58 / 0.18);
     /* Home cards: a soft lift instead of a hairline alone */
     --pos-shadow-soft: 0 1px 2px rgb(16 20 30 / 0.04), 0 6px 18px -10px rgb(16 20 30 / 0.10), 0 0 0 1px var(--pos-border);
@@ -2900,7 +2912,7 @@ a.pos-home-tile:focus-visible { outline: 2px solid var(--pos-focus); outline-off
 .pos-home-steps { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 0; padding: var(--pos-space-4) 0; list-style: none;
     border-radius: var(--pos-radius-md); background: var(--pos-surface-sunken); box-shadow: inset 0 0 0 1px var(--pos-border); }
 .pos-home-step { position: relative; display: grid; justify-items: center; gap: var(--pos-space-2); min-width: 0; text-align: center; }
-.pos-home-step::before { content: ''; position: absolute; top: 11px; inset-inline: calc(-50% + 16px) calc(50% + 16px); height: 2px; border-radius: 2px; background: var(--pos-border-strong); }
+.pos-home-step::before { content: ''; position: absolute; top: 11px; inset-inline: calc(-50% + 16px) calc(50% + 16px); height: 2px; border-radius: var(--pos-radius-pill); background: var(--pos-border-strong); }
 .pos-home-step:first-child::before { display: none; }
 .pos-home-step[data-state='done']::before { background: var(--pos-success); }
 .pos-home-step[data-state='current']::before { background: linear-gradient(90deg, var(--pos-success), var(--pos-primary)); }
@@ -3072,12 +3084,12 @@ a.pos-home-tile:focus-visible { outline: 2px solid var(--pos-focus); outline-off
 .pos-wizard-review-row dd .pos-change-after { white-space: pre-line; }
 .pos-wizard-review-row dt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--pos-space-2); }
 .pos-wizard-review-blank { font-weight: var(--pos-fw-regular); font-style: italic; color: var(--pos-text-muted); }
-.pos-wizard-review-row[data-changed] { margin-inline: calc(var(--pos-space-2) * -1); padding-inline: var(--pos-space-2); border-radius: var(--pos-radius-sm, 6px); background: var(--pos-primary-soft); }
-.pos-wizard-review-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: var(--pos-radius-pill); font-size: 11px; font-weight: var(--pos-fw-semibold); letter-spacing: 0.02em; color: var(--pos-primary-strong); background: var(--pos-surface); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 35%, transparent); }
+.pos-wizard-review-row[data-changed] { margin-inline: calc(var(--pos-space-2) * -1); padding-inline: var(--pos-space-2); border-radius: var(--pos-radius-sm); background: var(--pos-primary-soft); }
+.pos-wizard-review-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); letter-spacing: 0.02em; color: var(--pos-primary-strong); background: var(--pos-surface); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 35%, transparent); }
 .pos-wizard-review-tools { display: flex; justify-content: flex-end; }
 .pos-wizard-review-filter { display: inline-flex; align-items: center; gap: var(--pos-space-2); padding: 4px 6px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-meta); font-weight: var(--pos-fw-medium); color: var(--pos-text-secondary); background: transparent; cursor: pointer; }
 .pos-wizard-review-filter:focus-visible { outline: 2px solid var(--pos-primary); outline-offset: 2px; }
-.pos-wizard-review-filter-track { position: relative; flex: none; width: 30px; height: 18px; border-radius: 999px; background: var(--pos-border-strong); transition: background var(--pos-dur-1) var(--pos-ease); }
+.pos-wizard-review-filter-track { position: relative; flex: none; width: 30px; height: 18px; border-radius: var(--pos-radius-pill); background: var(--pos-border-strong); transition: background var(--pos-dur-1) var(--pos-ease); }
 .pos-wizard-review-filter-track > span { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--pos-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.2); transition: transform var(--pos-dur-1) var(--pos-ease); }
 .pos-wizard-review-filter[aria-checked="true"] .pos-wizard-review-filter-track { background: var(--pos-primary); }
 .pos-wizard-review-filter[aria-checked="true"] .pos-wizard-review-filter-track > span { transform: translateX(12px); }
@@ -4054,7 +4066,7 @@ input[type='checkbox'].border-gray-300 { border: 1px solid var(--pos-border-stro
 /* Tighter stacks inside a cell */
 .pos-rules .pos-rule-name, .pos-rules .pos-rule-value, .pos-rules .pos-rule-value .fi-sc { gap: 6px; }
 /* A component the rules add: a small chip under its name, not a second full-size field */
-.pos-rules .pos-rule-chip { justify-self: start; min-height: 0; border-radius: var(--pos-radius-pill); background: var(--pos-info-soft); box-shadow: none !important; --tw-ring-shadow: 0 0 #0000 !important; }
+.pos-rules .pos-rule-chip { justify-self: start; min-height: 0; border-radius: var(--pos-radius-pill); background: var(--pos-info-soft); box-shadow: none !important; --tw-ring-shadow: 0 0 transparent !important; }
 .pos-rules .pos-rule-chip select { height: 26px; min-height: 0; padding-block: 0; padding-inline: 10px 28px; font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold); color: var(--pos-info); background-position: right 6px center; }
 /* Amounts: no spinners; limits a size smaller; formulas in a code face */
 .pos-rules input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
@@ -4311,7 +4323,7 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 .pos-mast-band .pos-tab[aria-selected='true'] { background: var(--pos-hero-text); color: var(--pos-hero-on-light); box-shadow: none; }
 .pos-mast-band .pos-tab .pos-count { background: var(--pos-hero-glass-strong); color: var(--pos-hero-text); }
 .pos-mast-band .pos-tab[aria-selected='true'] .pos-count { background: var(--pos-primary-soft); color: var(--pos-hero-on-light); }
-.pos-mast-band .pos-tab .pos-count[data-tone='danger'] { background: var(--pos-danger); color: #fff; }
+.pos-mast-band .pos-tab .pos-count[data-tone='danger'] { background: var(--pos-danger); color: var(--pos-hero-text); }
 .pos-mast-band .pos-btn-secondary { background: var(--pos-hero-glass); color: var(--pos-hero-text); box-shadow: inset 0 0 0 1px var(--pos-hero-line-strong); }
 .pos-mast-band .pos-btn-secondary:hover { background: var(--pos-hero-glass-strong); }
 /* The page's own header actions (Filament buttons) on the ink: the primary one solid white, the rest glass */
@@ -4596,11 +4608,11 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
     place-items: center;
     border-radius: var(--pos-radius-lg);
     background: var(--primary-600);
-    color: #ffffff;
+    color: var(--pos-white);
     font-weight: var(--pos-fw-semibold);
     letter-spacing: 0.02em;
 }
-.pos-signin-org-monogram { width: 56px; height: 56px; font-size: 20px; }
+.pos-signin-org-monogram { width: 56px; height: 56px; font-size: var(--pos-fs-glance); }
 
 .pos-signin-foot {
     display: flex;
@@ -4665,7 +4677,7 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 }
 .pos-signin-art-brand { display: flex; align-items: center; gap: var(--pos-space-3); }
 .pos-signin-art-brand svg { width: 36px; height: 36px; }
-.pos-signin-art-brand span { font-family: var(--font-display); font-size: 26px; line-height: 1; letter-spacing: -0.01em; }
+.pos-signin-art-brand span { font-family: var(--font-display); font-size: var(--pos-fs-tile); line-height: 1; letter-spacing: -0.01em; }
 .pos-signin-art-brand b { font-weight: inherit; color: var(--pos-hero-node-iris); }
 .pos-signin-art-copy { max-width: 30rem; }
 .pos-signin-art-title {
@@ -4705,11 +4717,11 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
     object-fit: contain;
     padding: var(--pos-space-8);
     border-radius: var(--pos-radius-xl);
-    background: #ffffff;
+    background: var(--pos-white);
     box-shadow: var(--pos-shadow-hero);
 }
-.dark .pos-signin-org-logo { padding: var(--pos-space-1) var(--pos-space-2); border-radius: var(--pos-radius-md); background: #ffffff; }
-.pos-signin-stage-monogram { width: 168px; height: 168px; border-radius: 40px; font-size: 64px; }
+.dark .pos-signin-org-logo { padding: var(--pos-space-1) var(--pos-space-2); border-radius: var(--pos-radius-md); background: var(--pos-white); }
+.pos-signin-stage-monogram { width: 168px; height: 168px; border-radius: var(--pos-art-monogram-radius); font-size: var(--pos-art-monogram-size); }
 
 @media (prefers-reduced-motion: no-preference) {
     .pos-signin-form > :not(.pos-signin-watermark) { animation: pos-fade-up var(--pos-dur-4) var(--pos-ease-emphasised) backwards; }
@@ -4756,14 +4768,14 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
     min-height: 44px;
     padding: 6px 14px 6px 10px;
     border-radius: var(--pos-radius-lg);
-    background: #12142c;
-    color: #ffffff;
+    background: var(--pos-site-ink-deep);
+    color: var(--pos-white);
     font-weight: var(--pos-fw-semibold);
-    font-size: 14px;
+    font-size: var(--pos-fs-body);
     line-height: 1.1;
 }
-.pos-signin-app small { display: block; font-size: 10px; font-weight: var(--pos-fw-regular); opacity: 0.8; }
-.pos-signin-app:hover { background: #262170; }
+.pos-signin-app small { display: block; font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-regular); opacity: 0.8; }
+.pos-signin-app:hover { background: var(--pos-site-ink-hover); }
 .dark .pos-signin-app { background: var(--pos-surface-muted); box-shadow: inset 0 0 0 1px var(--pos-border); }
 
 /* ------------------------------------------------------------------ S. Platform → Public website (the site editor)
@@ -4807,19 +4819,19 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 .pos-site-facts dt { font-size: var(--pos-fs-meta); color: var(--pos-text-muted); }
 .pos-site-facts dd { margin: 0; color: var(--pos-text); }
 /* The announcement and sign-in previews: miniatures in the website's own ink */
-.pos-site-mock-announce { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-bottom: var(--pos-space-3); padding: 10px 16px; border-radius: var(--pos-radius-lg); background: #0e1130; color: rgb(255 255 255 / 0.86); font-size: 13px; }
+.pos-site-mock-announce { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-bottom: var(--pos-space-3); padding: 10px 16px; border-radius: var(--pos-radius-lg); background: var(--pos-site-ink); color: rgb(255 255 255 / 0.86); font-size: var(--pos-fs-meta); }
 .pos-site-mock-announce[data-off] { opacity: 0.45; }
-.pos-site-mock-badge { padding: 2px 8px; border-radius: 999px; background: #e2c48c; color: #0e1130; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.pos-site-mock-link { color: #ffffff; font-weight: 600; }
+.pos-site-mock-badge { padding: 2px 8px; border-radius: var(--pos-radius-pill); background: var(--pos-site-champagne); color: var(--pos-site-ink); font-size: var(--pos-fs-caption); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.pos-site-mock-link { color: var(--pos-white); font-weight: 600; }
 .pos-site-signin { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); margin-bottom: var(--pos-space-3); border-radius: var(--pos-radius-lg); overflow: hidden; box-shadow: inset 0 0 0 1px var(--pos-border); min-height: 220px; }
-.pos-site-signin-art { display: grid; align-content: end; gap: 8px; padding: 20px; color: #ffffff; background: radial-gradient(60% 70% at 88% 8%, var(--pos-hero-glow), transparent 70%), linear-gradient(150deg, var(--pos-hero-ink), var(--pos-hero-mid) 58%, var(--pos-hero-iris)); }
-.pos-site-signin-title { margin: 0; font-family: var(--font-display); font-size: 26px; line-height: 1.1; }
-.pos-site-signin-title em { color: #e2c48c; }
-.pos-site-signin-lead { margin: 0; font-size: 12.5px; color: rgb(255 255 255 / 0.78); }
+.pos-site-signin-art { display: grid; align-content: end; gap: 8px; padding: 20px; color: var(--pos-white); background: radial-gradient(60% 70% at 88% 8%, var(--pos-hero-glow), transparent 70%), linear-gradient(150deg, var(--pos-hero-ink), var(--pos-hero-mid) 58%, var(--pos-hero-iris)); }
+.pos-site-signin-title { margin: 0; font-family: var(--font-display); font-size: var(--pos-fs-tile); line-height: 1.1; }
+.pos-site-signin-title em { color: var(--pos-site-champagne); }
+.pos-site-signin-lead { margin: 0; font-size: var(--pos-fs-caption); color: rgb(255 255 255 / 0.78); }
 .pos-site-signin-form { display: grid; align-content: center; gap: 8px; padding: 20px; background: var(--pos-surface); }
-.pos-site-signin-field { height: 30px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--pos-border); }
-.pos-site-signin-button { height: 30px; border-radius: 8px; background: var(--pos-primary); opacity: 0.85; }
-.pos-site-signin-notice { margin: 0; padding: 6px 10px; border-radius: 8px; font-size: 12px; background: var(--pos-info-soft); }
+.pos-site-signin-field { height: 30px; border-radius: var(--pos-radius-md); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-site-signin-button { height: 30px; border-radius: var(--pos-radius-md); background: var(--pos-primary); opacity: 0.85; }
+.pos-site-signin-notice { margin: 0; padding: 6px 10px; border-radius: var(--pos-radius-md); font-size: var(--pos-fs-caption); background: var(--pos-info-soft); }
 .pos-site-signin-notice[data-tone='warning'] { background: var(--pos-warning-soft); }
 @media (max-width: 640px) { .pos-site-signin { grid-template-columns: minmax(0, 1fr); } }
 
@@ -4866,7 +4878,7 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 .pos-gcl-section-title { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
 .pos-gcl-section-hint { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-muted); }
 .pos-gcl-option-name { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
-.pos-gcl-code { padding: 0 6px; border-radius: var(--pos-radius-sm); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 18px; color: var(--pos-text-muted); background: var(--pos-surface-sunken); }
+.pos-gcl-code { padding: 0 6px; border-radius: var(--pos-radius-sm); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--pos-fs-caption); line-height: 18px; color: var(--pos-text-muted); background: var(--pos-surface-sunken); }
 .pos-gcl-none { margin: 0; padding: var(--pos-space-4); border-radius: var(--pos-radius-lg); text-align: center; font-size: var(--pos-fs-meta); color: var(--pos-text-muted); background: var(--pos-surface-sunken); }
 @media (max-width: 640px) {
     .pos-gcl-head, .pos-gcl-body { padding-inline: var(--pos-space-3); }

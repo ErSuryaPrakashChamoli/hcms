@@ -14,6 +14,12 @@ The research behind each decision is in `PeopleOS-UX-Research.md` (UX.1) and `UX
 - Component rules use tokens only. Literal values are allowed for `0`, `1px` hairlines and layout dimensions (widths, heights, grid tracks), and `#000` inside masks.
 - At UX.15.4 the theme contains **0 literal font sizes** (was 20), **0 literal radii** (was 10 values) and **no colour literals outside the token blocks** (was 20+).
 - New colours, sizes or radii are added as tokens here first, with a reason.
+- 2026-11-25: the CSS added on 16 and 19 Nov (sign-in, website editor previews, wizard review tag, permission lists)
+  brought back 12 literal font sizes, 8 radii and 15 colours. All are tokens again. Equal values map to the existing
+  token; text below 12 px (10, 10.5 and 11 px) now uses the caption step (12 px), as the scale requires. New fixed tokens,
+  the same in both themes: `--pos-white` (text on a fixed fill, the plate under logos), the website's own ink
+  `--pos-site-ink`, `--pos-site-ink-deep`, `--pos-site-ink-hover`, `--pos-site-champagne`, and the sign-in stage
+  monogram's `--pos-art-monogram-size` / `--pos-art-monogram-radius` (artwork, outside the type scale).
 
 ## 1. Principles
 
@@ -118,7 +124,8 @@ Every text pair is at least 4.5:1.
 | Display | **Instrument Serif** 400 | Page titles and the Home greeting only |
 | Code | JetBrains Mono | IDs and codes |
 
-**Scale.** Eight steps; nothing is smaller than 12 px.
+**Scale.** Ten steps: the eight of UX.15, plus the glance and tile figures the 2026-11-11 redesigns added. Nothing is
+smaller than 12 px; `Ux15FoundationTest` names every step, so a new one is added on purpose.
 
 | Token | Size / line | Classes | Use |
 |---|---|---|---|
@@ -127,7 +134,9 @@ Every text pair is at least 4.5:1.
 | `--pos-fs-body` | 14 / 21 | `.pos-body`, `.pos-stream-title`, Filament body | Running text, list titles, controls |
 | `--pos-fs-lead` | 16 / 24 | `.pos-lead`, `.pos-ws-brief`, `.pos-h3` | The workspace brief, item headings |
 | `--pos-fs-section` | 18 / 26 | `.pos-section-title`, `.pos-h2` | Section headings |
+| `--pos-fs-glance` | 20 / 26 | `.pos-glance` figures, sign-in org monogram | At-a-glance figures (§P masthead) |
 | `--pos-fs-metric` | 22 / 28 | `.pos-figure-value`, `.pos-metric` | Figures |
+| `--pos-fs-tile` | 26 / 32 | Home signal tiles, sign-in brand, website sign-in preview | Home tile figures (§H2) |
 | `--pos-fs-title` | 28 / 34 | `.pos-ws-title`, `.fi-header-heading`, `.pos-title` | Page titles (serif) |
 | `--pos-fs-display` | 36 / 42 | `.pos-ws-title-display`, `.pos-display` | The Home greeting (serif) |
 
