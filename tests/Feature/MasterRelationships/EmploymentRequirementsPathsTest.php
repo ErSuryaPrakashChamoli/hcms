@@ -86,19 +86,52 @@ it('answers 422 through the API for a Block refusal or a master that does not ap
     actAsTenant(null);
     $payload = fn (array $position) => ['person' => ['first_name' => 'Kiran', 'last_name' => 'Rao'], 'employee' => ['joining_date' => '2026-11-30'], 'position' => ['company_code' => 'MK'] + $position];
 
+    $warning = 'Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v1).';
     $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/employees', $payload([]))
-        ->assertCreated()->assertJsonPath('meta.requirement_warnings.0', 'Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v1).');
+        ->assertCreated()->assertJsonPath('meta.requirement_warnings.0', $warning)
+        // The same warning with its rule and field, as documented (RecordWithRequirementWarnings in docs/api/openapi.json).
+        ->assertJsonPath('meta.requirement_warning_details', [['rule' => 'required', 'field' => 'grade_id', 'mode' => 'warn', 'message' => $warning]]);
     $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/employees', $payload(['designation_code' => 'PTR', 'grade_code' => 'T4']))
-        ->assertStatus(422)->assertJsonPath('message', fn (string $m) => str_contains($m, 'Partner'));
+        ->assertStatus(422)->assertJsonPath('code', 'master_not_applicable')->assertJsonPath('message', fn (string $m) => str_contains($m, 'Partner'))
+        ->assertJsonMissingPath('requirements');
 
     actAsTenant($this->tenant);
     $this->actingAs($this->admin);
     app(EmploymentRequirementsPreflight::class)->switchToBlock($policy, ['required'], $this->admin, 'Block', acceptCurrentGaps: true);
     auth()->logout();
     actAsTenant(null);
+    $blocked = 'Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v2).';
+    $before = Employee::query()->withoutGlobalScopes()->count();
     $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/employees', $payload([]))
-        ->assertStatus(422)->assertJsonPath('message', 'Grade is required for Markedge Technologies employees: pay bands, increments and salary formulas by grade read it (Employment data requirements: Hire rules, v2).');
+        ->assertStatus(422)->assertJsonPath('message', $blocked)->assertJsonPath('code', 'employment_requirements')
+        ->assertJsonPath('requirements', [['rule' => 'required', 'field' => 'grade_id', 'mode' => 'block', 'message' => $blocked]])
+        ->assertJsonStructure(['message', 'code', 'request_id', 'requirements']);
+    expect(Employee::query()->withoutGlobalScopes()->count())->toBe($before);   // refused: nothing written
     $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/employees', $payload(['grade_code' => 'T4']))->assertCreated()->assertJsonMissingPath('meta');
+});
+
+it('answers the recruitment hand-over (pre-employees) with the same warnings and refusal codes', function () {
+    $policy = erpPolicy(['required_on_hire' => ['grade_id']], [['field' => 'company_id', 'operator' => 'in', 'value' => [$this->mk->id]]]);
+    $key = app(ApiKeys::class)->issue('RMS', ['rms.write']);
+    auth()->logout();
+    actAsTenant(null);
+    $offer = fn (string $reference, array $position = []) => ['person' => ['first_name' => 'Meera', 'last_name' => 'Iyer'],
+        'offer' => ['external_reference' => $reference, 'expected_joining_date' => '2026-12-01'], 'position' => ['company_code' => 'MK'] + $position];
+
+    $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/pre-employees', $offer('OFF-1'))
+        ->assertCreated()->assertJsonPath('meta.requirement_warning_details.0.rule', 'required')
+        ->assertJsonPath('meta.requirement_warning_details.0.field', 'grade_id')->assertJsonPath('meta.requirement_warning_details.0.mode', 'warn')
+        ->assertJsonPath('meta.requirement_warnings.0', fn (string $m) => str_starts_with($m, 'Grade is required for Markedge Technologies employees'));
+
+    actAsTenant($this->tenant);
+    $this->actingAs($this->admin);
+    app(EmploymentRequirementsPreflight::class)->switchToBlock($policy, ['required'], $this->admin, 'Block', acceptCurrentGaps: true);
+    auth()->logout();
+    actAsTenant(null);
+    $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/pre-employees', $offer('OFF-2'))
+        ->assertStatus(422)->assertJsonPath('code', 'employment_requirements')->assertJsonPath('requirements.0.mode', 'block');
+    $this->withHeader('X-Api-Key', $key['plaintext'])->postJson('/api/v1/pre-employees', $offer('OFF-3', ['grade_code' => 'T4']))
+        ->assertCreated()->assertJsonMissingPath('meta');
 });
 
 it('shows a Block refusal as a row error before approval in the job-change upload, and Warn as a note', function () {

@@ -77,6 +77,13 @@ class Employee extends Model
      */
     public array $requirementWarnings = [];
 
+    /**
+     * The same warnings with their rule and field, for integrations (API meta.requirement_warning_details). Transient.
+     *
+     * @var list<array{rule: string, field: ?string, mode: string, message: string}>
+     */
+    public array $requirementProblems = [];
+
     /** @use HasFactory<EmployeeFactory> */
     use ScopedByEmployee;
 

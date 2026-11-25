@@ -104,7 +104,9 @@ final class HireEmployeeAction
             $record->withAuditReason($reason)->save();
 
             // Master relationships R2: the employment data requirements' warnings travel back with the employee.
-            $record->requirementWarnings = $this->positions->handle($record, $position, 'hire', $joiningDate, $reason)->requirementWarnings;
+            $seat = $this->positions->handle($record, $position, 'hire', $joiningDate, $reason);
+            $record->requirementWarnings = $seat->requirementWarnings;
+            $record->requirementProblems = $seat->requirementProblems;
 
             if ($managerId !== null) {
                 $this->managers->handle($record, Employee::query()->findOrFail($managerId), 'line', $joiningDate, $reason);

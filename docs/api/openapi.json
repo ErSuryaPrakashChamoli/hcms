@@ -1875,10 +1875,23 @@
                 "x-data-classification": "internal",
                 "parameters": [
                     {
-                        "$ref": "#/components/parameters/Page"
+                        "name": "employee_code",
+                        "in": "query",
+                        "required": true,
+                        "description": "The employee whose readiness is compared.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 32
+                        }
                     },
                     {
-                        "$ref": "#/components/parameters/PerPage"
+                        "name": "designation_code",
+                        "in": "query",
+                        "required": true,
+                        "description": "The designation they are compared against.",
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     {
                         "$ref": "#/components/parameters/CorrelationId"
@@ -1886,11 +1899,11 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "A page",
+                        "description": "OK",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Page"
+                                    "$ref": "#/components/schemas/Record"
                                 }
                             }
                         }
@@ -1916,7 +1929,7 @@
                         }
                     },
                     "404": {
-                        "description": "Unknown record (including another tenant's)",
+                        "description": "Unknown employee or designation code (including another tenant's)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1926,7 +1939,7 @@
                         }
                     },
                     "422": {
-                        "description": "Validation or business rule",
+                        "description": "A required query parameter is missing or invalid (`validation_failed`; `errors` names it)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2130,10 +2143,14 @@
                 "x-data-classification": "internal",
                 "parameters": [
                     {
-                        "$ref": "#/components/parameters/Page"
-                    },
-                    {
-                        "$ref": "#/components/parameters/PerPage"
+                        "name": "employee_code",
+                        "in": "query",
+                        "required": true,
+                        "description": "The employee whose career movements are listed.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 32
+                        }
                     },
                     {
                         "$ref": "#/components/parameters/CorrelationId"
@@ -2141,11 +2158,11 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "A page",
+                        "description": "A list (not paged)",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Page"
+                                    "$ref": "#/components/schemas/List"
                                 }
                             }
                         }
@@ -2171,7 +2188,7 @@
                         }
                     },
                     "404": {
-                        "description": "Unknown record (including another tenant's)",
+                        "description": "Unknown employee or designation code (including another tenant's)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2181,7 +2198,7 @@
                         }
                     },
                     "422": {
-                        "description": "Validation or business rule",
+                        "description": "A required query parameter is missing or invalid (`validation_failed`; `errors` names it)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2649,10 +2666,14 @@
                 "x-data-classification": "internal",
                 "parameters": [
                     {
-                        "$ref": "#/components/parameters/Page"
-                    },
-                    {
-                        "$ref": "#/components/parameters/PerPage"
+                        "name": "employee",
+                        "in": "query",
+                        "required": true,
+                        "description": "Employee code whose communication preferences are read.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 32
+                        }
                     },
                     {
                         "$ref": "#/components/parameters/CorrelationId"
@@ -2660,11 +2681,11 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "A page",
+                        "description": "OK",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Page"
+                                    "$ref": "#/components/schemas/Record"
                                 }
                             }
                         }
@@ -2690,7 +2711,7 @@
                         }
                     },
                     "404": {
-                        "description": "Unknown record (including another tenant's)",
+                        "description": "Unknown employee or designation code (including another tenant's)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2700,7 +2721,7 @@
                         }
                     },
                     "422": {
-                        "description": "Validation or business rule",
+                        "description": "A required query parameter is missing or invalid (`validation_failed`; `errors` names it)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4219,18 +4240,15 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Done, or an idempotent replay",
+                    "201": {
+                        "description": "Created. When the employment data requirements found gaps on Warn, `meta` lists them; without warnings there is no `meta`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Record"
+                                    "$ref": "#/components/schemas/RecordWithRequirementWarnings"
                                 }
                             }
                         }
-                    },
-                    "201": {
-                        "description": "Created"
                     },
                     "401": {
                         "description": "Missing, invalid or expired key (or bad signature)",
@@ -4263,11 +4281,11 @@
                         }
                     },
                     "422": {
-                        "description": "Validation or business rule",
+                        "description": "Refused; nothing is written. `code` says why: `validation_failed` (the body; `errors` names the fields), `employment_requirements` (a rule of the employment data requirements on Block; `requirements` lists each failed rule), `master_not_applicable` (a master that does not apply to the company), or `unprocessable` (another business rule, e.g. an unknown code or a duplicate person).",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Error"
+                                    "$ref": "#/components/schemas/RequirementsRefusal"
                                 }
                             }
                         }
@@ -4497,10 +4515,14 @@
                 "x-data-classification": "internal",
                 "parameters": [
                     {
-                        "$ref": "#/components/parameters/Page"
-                    },
-                    {
-                        "$ref": "#/components/parameters/PerPage"
+                        "name": "employee",
+                        "in": "query",
+                        "required": true,
+                        "description": "Employee code of the participant. Participation is disclosed only for identified surveys.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 32
+                        }
                     },
                     {
                         "$ref": "#/components/parameters/CorrelationId"
@@ -4508,11 +4530,11 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "A page",
+                        "description": "A list (not paged)",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Page"
+                                    "$ref": "#/components/schemas/List"
                                 }
                             }
                         }
@@ -4538,7 +4560,7 @@
                         }
                     },
                     "404": {
-                        "description": "Unknown record (including another tenant's)",
+                        "description": "Unknown employee or designation code (including another tenant's)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4548,7 +4570,7 @@
                         }
                     },
                     "422": {
-                        "description": "Validation or business rule",
+                        "description": "A required query parameter is missing or invalid (`validation_failed`; `errors` names it)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6755,6 +6777,26 @@
                         "$ref": "#/components/parameters/PerPage"
                     },
                     {
+                        "name": "from",
+                        "in": "query",
+                        "required": true,
+                        "description": "First day of the window (YYYY-MM-DD).",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": true,
+                        "description": "Last day of the window (YYYY-MM-DD), on or after `from`.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
                         "$ref": "#/components/parameters/CorrelationId"
                     }
                 ],
@@ -6790,7 +6832,7 @@
                         }
                     },
                     "404": {
-                        "description": "Unknown record (including another tenant's)",
+                        "description": "Unknown employee or designation code (including another tenant's)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6800,7 +6842,7 @@
                         }
                     },
                     "422": {
-                        "description": "Validation or business rule",
+                        "description": "A required query parameter is missing or invalid (`validation_failed`; `errors` names it)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9289,18 +9331,25 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Done, or an idempotent replay",
+                    "201": {
+                        "description": "Created. When the employment data requirements found gaps on Warn, `meta` lists them; without warnings there is no `meta`.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Record"
+                                    "$ref": "#/components/schemas/RecordWithRequirementWarnings"
                                 }
                             }
                         }
                     },
-                    "201": {
-                        "description": "Created"
+                    "200": {
+                        "description": "An idempotent replay of the same offer.external_reference",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RecordWithRequirementWarnings"
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "description": "Missing, invalid or expired key (or bad signature)",
@@ -9333,11 +9382,11 @@
                         }
                     },
                     "422": {
-                        "description": "Validation or business rule",
+                        "description": "Refused; nothing is written. `code` says why: `validation_failed` (the body; `errors` names the fields), `employment_requirements` (a rule of the employment data requirements on Block; `requirements` lists each failed rule), `master_not_applicable` (a master that does not apply to the company), or `unprocessable` (another business rule, e.g. an unknown code or a duplicate person).",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Error"
+                                    "$ref": "#/components/schemas/RequirementsRefusal"
                                 }
                             }
                         }
@@ -11802,6 +11851,9 @@
                             "not_found",
                             "forbidden",
                             "validation_failed",
+                            "unprocessable",
+                            "employment_requirements",
+                            "master_not_applicable",
                             "idempotency_key_reused",
                             "invalid_signature"
                         ]
@@ -11865,6 +11917,112 @@
                         "type": "object"
                     }
                 }
+            },
+            "List": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "RequirementProblem": {
+                "type": "object",
+                "required": [
+                    "rule",
+                    "field",
+                    "mode",
+                    "message"
+                ],
+                "description": "One finding of the employment data requirements.",
+                "properties": {
+                    "rule": {
+                        "type": "string",
+                        "enum": [
+                            "required",
+                            "grade_level",
+                            "designation_defaults",
+                            "usual_department",
+                            "seat_match",
+                            "salary_structure"
+                        ],
+                        "description": "`required` (a field the hire or change must carry) or one of the consistency checks."
+                    },
+                    "field": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The position field concerned (e.g. grade_id), or null for a check about the whole position."
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "warn",
+                            "block"
+                        ]
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "What is missing and why it matters, naming the policy and version."
+                    }
+                }
+            },
+            "RecordWithRequirementWarnings": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "type": "object"
+                    },
+                    "meta": {
+                        "type": "object",
+                        "description": "Present only when the employment data requirements found gaps on Warn. Additive: clients that ignore it are unaffected.",
+                        "properties": {
+                            "requirement_warnings": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "The warning messages."
+                            },
+                            "requirement_warning_details": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/RequirementProblem"
+                                },
+                                "description": "The same warnings with their rule and field (mode is always warn)."
+                            }
+                        }
+                    }
+                }
+            },
+            "RequirementsRefusal": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "requirements": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/RequirementProblem"
+                                },
+                                "description": "With code employment_requirements: each rule on Block the hire fails (mode is always block)."
+                            }
+                        }
+                    }
+                ]
             },
             "InboundEvent": {
                 "type": "object",

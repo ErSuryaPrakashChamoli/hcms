@@ -40,7 +40,9 @@ final class RehireEmployeeAction
             $employee->withAuditReason($reason)->update(['joining_date' => $from, 'exit_date' => null, 'confirmation_date' => null]);
 
             // Master relationships R2: the employment data requirements' warnings travel back with the employee.
-            $employee->requirementWarnings = $this->positions->handle($employee, $position, 'rehire', $from, $reason)->requirementWarnings;
+            $seat = $this->positions->handle($employee, $position, 'rehire', $from, $reason);
+            $employee->requirementWarnings = $seat->requirementWarnings;
+            $employee->requirementProblems = $seat->requirementProblems;
 
             if ($managerId !== null) {
                 $this->managers->handle($employee, Employee::query()->findOrFail($managerId), 'line', $from, $reason);

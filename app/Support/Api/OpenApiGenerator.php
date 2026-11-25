@@ -2,6 +2,7 @@
 
 namespace App\Support\Api;
 
+use App\Domain\Employment\Requirements\EmploymentRequirements;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
@@ -43,6 +44,41 @@ final class OpenApiGenerator
         'api.v1.pre-employees.store' => 'Recruitment hand-over: create a pre-employee (idempotent on offer.external_reference)',
         'api.v1.leave.requests.store' => 'Submit a leave request on behalf of an employee (Idempotency-Key)',
     ];
+
+    /**
+     * Query parameters an operation takes besides paging and sorting: route name => [name, required, schema, description].
+     * A required one missing answers 422 `validation_failed` naming it; an unknown employee is 404.
+     */
+    public const QUERY = [
+        'api.v1.leave.calendar' => [
+            ['from', true, ['type' => 'string', 'format' => 'date'], 'First day of the window (YYYY-MM-DD).'],
+            ['to', true, ['type' => 'string', 'format' => 'date'], 'Last day of the window (YYYY-MM-DD), on or after `from`.'],
+        ],
+        'api.v1.career.gaps' => [
+            ['employee_code', true, ['type' => 'string', 'maxLength' => 32], 'The employee whose readiness is compared.'],
+            ['designation_code', true, ['type' => 'string'], 'The designation they are compared against.'],
+        ],
+        'api.v1.career.movements' => [
+            ['employee_code', true, ['type' => 'string', 'maxLength' => 32], 'The employee whose career movements are listed.'],
+        ],
+        'api.v1.engagement.my-surveys' => [
+            ['employee', true, ['type' => 'string', 'maxLength' => 32], 'Employee code of the participant. Participation is disclosed only for identified surveys.'],
+        ],
+        'api.v1.communications.preferences' => [
+            ['employee', true, ['type' => 'string', 'maxLength' => 32], 'Employee code whose communication preferences are read.'],
+        ],
+    ];
+
+    /** List-looking operations that answer one object (`record`) or a plain array without paging (`list`), not a page. */
+    public const UNPAGED = [
+        'api.v1.career.gaps' => 'record',
+        'api.v1.career.movements' => 'list',
+        'api.v1.engagement.my-surveys' => 'list',
+        'api.v1.communications.preferences' => 'record',
+    ];
+
+    /** Operations that check the employment data requirements (master relationships R2) and may answer warnings. */
+    public const HIRES = ['api.v1.employees.store', 'api.v1.pre-employees.store'];
 
     private const SENSITIVE_SCOPES = ['employees.sensitive.read', 'payroll.read', 'compensation.sensitive', 'learning.costs', 'workforce.costs', 'compliance.read'];
 
@@ -106,10 +142,13 @@ final class OpenApiGenerator
         foreach ($m[1] as $param) {
             $parameters[] = ['name' => $param, 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']];
         }
-        $isList = $method === 'get' && ! str_ends_with($route->uri(), '}') && ! $isScim;
+        $isList = $method === 'get' && ! str_ends_with($route->uri(), '}') && ! $isScim && ! isset(self::UNPAGED[$name]);
         if ($isList) {
             $parameters[] = ['$ref' => '#/components/parameters/Page'];
             $parameters[] = ['$ref' => '#/components/parameters/PerPage'];
+        }
+        foreach (self::QUERY[$name] ?? [] as [$query, $required, $schema, $description]) {
+            $parameters[] = ['name' => $query, 'in' => 'query', 'required' => $required, 'description' => $description, 'schema' => $schema];
         }
         if (isset(self::SORTABLE[$name])) {
             $parameters[] = ['name' => 'sort', 'in' => 'query', 'required' => false, 'description' => 'Comma-separated; prefix - for descending. Allowed: id, '.implode(', ', self::SORTABLE[$name]), 'schema' => ['type' => 'string']];
@@ -152,6 +191,10 @@ final class OpenApiGenerator
     private function responses(string $method, bool $isList, string $name): array
     {
         $ok = match (true) {
+            in_array($name, self::HIRES, true) => [
+                '201' => ['description' => 'Created. When the employment data requirements found gaps on Warn, `meta` lists them; without warnings there is no `meta`.', 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/RecordWithRequirementWarnings']]]],
+            ] + ($name === 'api.v1.pre-employees.store' ? ['200' => ['description' => 'An idempotent replay of the same offer.external_reference', 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/RecordWithRequirementWarnings']]]]] : []),
+            ($name !== '' && isset(self::UNPAGED[$name])) => ['200' => ['description' => self::UNPAGED[$name] === 'list' ? 'A list (not paged)' : 'OK', 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/'.(self::UNPAGED[$name] === 'list' ? 'List' : 'Record')]]]]],
             $name === 'api.v1.integrations.events.store' => ['202' => ['description' => 'Received (or 200 for a duplicate delivery)', 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Record']]]]],
             $method === 'post' => ['200' => ['description' => 'Done, or an idempotent replay', 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Record']]]], '201' => ['description' => 'Created']],
             $isList => ['200' => ['description' => 'A page', 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Page']]]]],
@@ -160,6 +203,14 @@ final class OpenApiGenerator
         $errors = [];
         foreach (['401' => 'Missing, invalid or expired key (or bad signature)', '403' => 'Key lacks the scope, is used from an address outside its IP allowlist (ip_not_allowed), or tenant refused', '404' => 'Unknown record (including another tenant\'s)', '422' => 'Validation or business rule', '429' => 'Rate limited'] as $code => $description) {
             $errors[$code] = ['description' => $description, 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Error']]]];
+        }
+
+        if (in_array($name, self::HIRES, true)) {
+            $errors['422'] = ['description' => 'Refused; nothing is written. `code` says why: `validation_failed` (the body; `errors` names the fields), `employment_requirements` (a rule of the employment data requirements on Block; `requirements` lists each failed rule), `master_not_applicable` (a master that does not apply to the company), or `unprocessable` (another business rule, e.g. an unknown code or a duplicate person).', 'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/RequirementsRefusal']]]];
+        }
+        if (isset(self::QUERY[$name])) {
+            $errors['404']['description'] = 'Unknown employee or designation code (including another tenant\'s)';
+            $errors['422']['description'] = 'A required query parameter is missing or invalid (`validation_failed`; `errors` names it)';
         }
 
         return $ok + $errors;
@@ -210,12 +261,29 @@ final class OpenApiGenerator
             ],
             'schemas' => [
                 'Error' => ['type' => 'object', 'required' => ['message', 'code', 'request_id'], 'properties' => [
-                    'message' => ['type' => 'string'], 'code' => ['type' => 'string', 'examples' => ['not_found', 'forbidden', 'validation_failed', 'idempotency_key_reused', 'invalid_signature']],
+                    'message' => ['type' => 'string'], 'code' => ['type' => 'string', 'examples' => ['not_found', 'forbidden', 'validation_failed', 'unprocessable', 'employment_requirements', 'master_not_applicable', 'idempotency_key_reused', 'invalid_signature']],
                     'request_id' => ['type' => 'string'], 'errors' => ['type' => 'object', 'additionalProperties' => ['type' => 'array', 'items' => ['type' => 'string']]],
                 ]],
                 'PageMeta' => ['type' => 'object', 'properties' => ['page' => ['type' => 'integer'], 'per_page' => ['type' => 'integer'], 'total' => ['type' => 'integer'], 'last_page' => ['type' => 'integer']]],
                 'Page' => ['type' => 'object', 'required' => ['data', 'meta'], 'properties' => ['data' => ['type' => 'array', 'items' => ['type' => 'object']], 'meta' => ['$ref' => '#/components/schemas/PageMeta']]],
                 'Record' => ['type' => 'object', 'required' => ['data'], 'properties' => ['data' => ['type' => 'object']]],
+                'List' => ['type' => 'object', 'required' => ['data'], 'properties' => ['data' => ['type' => 'array', 'items' => ['type' => 'object']]]],
+                'RequirementProblem' => ['type' => 'object', 'required' => ['rule', 'field', 'mode', 'message'], 'description' => 'One finding of the employment data requirements.', 'properties' => [
+                    'rule' => ['type' => 'string', 'enum' => ['required', ...array_keys(EmploymentRequirements::CHECKS)], 'description' => '`required` (a field the hire or change must carry) or one of the consistency checks.'],
+                    'field' => ['type' => ['string', 'null'], 'description' => 'The position field concerned (e.g. grade_id), or null for a check about the whole position.'],
+                    'mode' => ['type' => 'string', 'enum' => [EmploymentRequirements::WARN, EmploymentRequirements::BLOCK]],
+                    'message' => ['type' => 'string', 'description' => 'What is missing and why it matters, naming the policy and version.'],
+                ]],
+                'RecordWithRequirementWarnings' => ['type' => 'object', 'required' => ['data'], 'properties' => [
+                    'data' => ['type' => 'object'],
+                    'meta' => ['type' => 'object', 'description' => 'Present only when the employment data requirements found gaps on Warn. Additive: clients that ignore it are unaffected.', 'properties' => [
+                        'requirement_warnings' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'The warning messages.'],
+                        'requirement_warning_details' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/RequirementProblem'], 'description' => 'The same warnings with their rule and field (mode is always warn).'],
+                    ]],
+                ]],
+                'RequirementsRefusal' => ['allOf' => [['$ref' => '#/components/schemas/Error'], ['type' => 'object', 'properties' => [
+                    'requirements' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/RequirementProblem'], 'description' => 'With code employment_requirements: each rule on Block the hire fails (mode is always block).'],
+                ]]]],
                 'InboundEvent' => ['type' => 'object', 'required' => ['event_id', 'event_type', 'data'], 'properties' => [
                     'event_id' => ['type' => 'string', 'maxLength' => 191], 'event_type' => ['type' => 'string', 'pattern' => '^[a-z0-9_.-]{1,64}$', 'examples' => array_keys(config('peopleos.integration.handlers', []))],
                     'correlation_id' => ['type' => 'string'], 'occurred_at' => ['type' => 'string', 'format' => 'date-time'], 'data' => ['type' => 'object'],

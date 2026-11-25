@@ -40,6 +40,13 @@ class EmployeePosition extends Model
      */
     public array $requirementWarnings = [];
 
+    /**
+     * The same warnings with their rule and field, for integrations (API meta.requirement_warning_details). Transient.
+     *
+     * @var list<array{rule: string, field: ?string, mode: string, message: string}>
+     */
+    public array $requirementProblems = [];
+
     /** Dimension => [relation, human label]. Used for diffs on the timeline. */
     public const DIMENSIONS = [
         'company_id' => ['company', 'Company'],

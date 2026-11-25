@@ -7,6 +7,7 @@ use App\Domain\Integration\Services\ApiKeys;
 use App\Domain\Leave\Models\LeaveRequest;
 use App\Domain\Payroll\Models\PayrollRun;
 use App\Domain\Payroll\Models\Payslip;
+use App\Support\Api\OpenApiGenerator;
 use App\Support\Tenancy\TenantContext;
 use Database\Seeders\Demo\DemoOrganisation;
 use Illuminate\Routing\Route;
@@ -109,19 +110,30 @@ it('answers every list endpoint of a populated organisation, and keeps each tena
     $otherKey = app(TenantContext::class)->runAs($other, fn () => app(ApiKeys::class)->issue('Other integration', everyApiScope())['plaintext']);
     actAsTenant($demo);
 
-    // 2. Every list endpoint (GET without a route parameter) answers 200 with JSON for the owner.
-    $lists = collect(apiRoutes())
-        ->filter(fn (Route $route) => in_array('GET', $route->methods(), true) && $route->parameterNames() === [])
-        ->map(fn (Route $route) => '/'.$route->uri())->values();
+    // 2. Every list endpoint (GET without a route parameter) answers 200 with JSON for the owner, given the query
+    // parameters its documented contract requires (OpenApiGenerator::QUERY); without them it is 422 naming each one.
+    $routes = collect(apiRoutes())->filter(fn (Route $route) => in_array('GET', $route->methods(), true) && $route->parameterNames() === []);
+    $lists = $routes->map(fn (Route $route) => '/'.$route->uri())->values();
+    $subject = Employee::query()->whereNotNull('employee_code')->whereHas('currentPosition', fn ($q) => $q->whereNotNull('designation_id'))->with('currentPosition.designation')->orderBy('id')->first();
+    $values = ['from' => '2026-11-01', 'to' => '2026-11-30', 'employee_code' => $subject->employee_code, 'employee' => $subject->employee_code,
+        'designation_code' => $subject->currentPosition->designation->code];
+    $required = $routes->mapWithKeys(fn (Route $route) => ['/'.$route->uri() => collect(OpenApiGenerator::QUERY[$route->getName()] ?? [])->filter(fn (array $q) => $q[1])->map(fn (array $q) => $q[0])->values()->all()]);
     $failures = [];
     $demoCodes = Employee::query()->pluck('employee_code')->filter()->all();
     $leaks = [];
     foreach ($lists as $uri) {
-        $response = $this->withHeader('X-Api-Key', $ownKey)->getJson($uri);
+        $query = $required[$uri] === [] ? '' : '?'.http_build_query(array_intersect_key($values, array_flip($required[$uri])));
+        $response = $this->withHeader('X-Api-Key', $ownKey)->getJson($uri.$query);
         if ($response->getStatusCode() !== 200 || ! is_array($response->json())) {
             $failures[$uri] = $response->getStatusCode().' '.Str::limit((string) ($response->exception?->getMessage() ?? $response->getContent()), 200);
         }
-        $body = $this->withHeader('X-Api-Key', $otherKey)->getJson($uri)->getContent();
+        if ($required[$uri] !== []) {
+            $bare = $this->withHeader('X-Api-Key', $ownKey)->getJson($uri);
+            if ($bare->getStatusCode() !== 422 || $bare->json('code') !== 'validation_failed' || array_diff($required[$uri], array_keys((array) $bare->json('errors'))) !== []) {
+                $failures["{$uri} without its required parameters"] = $bare->getStatusCode().' '.Str::limit($bare->getContent(), 200);
+            }
+        }
+        $body = $this->withHeader('X-Api-Key', $otherKey)->getJson($uri.$query)->getContent();
         foreach ($demoCodes as $code) {
             if (str_contains((string) $body, '"'.$code.'"')) {
                 $leaks[] = "{$uri} shows {$code}";
@@ -155,6 +167,7 @@ it('answers every list endpoint of a populated organisation, and keeps each tena
     }
 
     expect($lists->count())->toBeGreaterThan(80)
+        ->and($required->filter()->count())->toBe(count(OpenApiGenerator::QUERY))   // every declared contract was exercised
         ->and(count($records))->toBeGreaterThanOrEqual(6)
         ->and($failures)->toBe([])
         ->and($leaks)->toBe([])

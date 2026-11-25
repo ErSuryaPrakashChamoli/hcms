@@ -93,7 +93,9 @@ class EngagementController extends Controller
      */
     public function mySurveys(Request $request): JsonResponse
     {
-        $employee = Employee::query()->where('employee_code', (string) $request->query('employee'))->first() ?? abort(404);
+        // A lookup for one employee (by code): without it a validation error (422), an unknown code is 404.
+        $data = $request->validate(['employee' => ['required', 'string', 'max:32']]);
+        $employee = Employee::query()->where('employee_code', $data['employee'])->firstOrFail();
         $participations = AccessScope::withoutScoping(fn () => SurveyParticipation::query()->where('employee_id', $employee->id)->orderByDesc('id')->limit(100)->get()->keyBy('survey_version_id'));
         $versions = SurveyVersion::query()->with('survey')->whereIn('id', $participations->keys())->whereIn('status', ['open', 'closed', 'archived'])->orderByDesc('id')->get();
 

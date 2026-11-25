@@ -118,7 +118,9 @@ class CareerController extends Controller
 
     public function movements(Request $request, CareerMovements $movements): JsonResponse
     {
-        $employee = Employee::query()->where('employee_code', (string) $request->query('employee_code'))->firstOrFail();
+        // A lookup for one employee: without employee_code it is a validation error (422), an unknown code is 404.
+        $data = $request->validate(['employee_code' => ['required', 'string', 'max:32']]);
+        $employee = Employee::query()->where('employee_code', $data['employee_code'])->firstOrFail();
 
         return response()->json(['data' => collect($movements->for($employee))->map(fn ($m) => array_diff_key($m, ['reason' => true]))->all()]);
     }

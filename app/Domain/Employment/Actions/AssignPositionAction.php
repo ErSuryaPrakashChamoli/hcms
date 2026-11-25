@@ -110,6 +110,7 @@ final class AssignPositionAction
                     + ($requirements->warnings() === [] ? [] : ['requirement_warnings' => $requirements->warningMessages()]),
             );
             $position->requirementWarnings = $requirements->warningMessages();
+            $position->requirementProblems = array_map(fn ($problem) => $problem->toArray(), $requirements->warnings());
 
             $this->writeTimeline($employee, $current, $position, $changeType, $from, $reason);
             $this->dispatchEvents($employee, $current, $position, $changeType, $from, $reason);

@@ -48,7 +48,9 @@ class CommunicationController extends Controller
 
     public function preferences(Request $request, CommunicationPreferences $preferences): JsonResponse
     {
-        $employee = Employee::query()->where('employee_code', (string) $request->query('employee'))->first() ?? abort(404);
+        // A lookup for one employee (by code): without it a validation error (422), an unknown code is 404.
+        $data = $request->validate(['employee' => ['required', 'string', 'max:32']]);
+        $employee = Employee::query()->where('employee_code', $data['employee'])->firstOrFail();
 
         return response()->json(['data' => [
             'employee_code' => $employee->employee_code,
