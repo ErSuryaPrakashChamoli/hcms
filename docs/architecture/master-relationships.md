@@ -170,7 +170,10 @@ The form reads "Usual department (information only)" with a one-line explanation
 | `EmploymentRequirementsPathsTest` (R2) | API 422 (Block, and a master that does not apply) and `meta.requirement_warnings`. Job-change and employee uploads: Block a row error before approval, Warn a note and in the run result. Transfer screen notifications and the applicability refusal without an error page. Payroll readiness (employment data, head-office fallback, no leave policy) and the run checklist (blocks only on Block). Increment exclusions. Salary-structure warning on promotion; the pre-flight counts salary-structure mismatches with one salary query per batch. The pre-flight page and Switch to Block; access refused without `policy.view`. |
 | `DesignationCompanyDefaultsTest` (R3) | Shared L5/T4, FynnEdge L6/T5. Dated start, ending restores the shared value, positions never rewritten. A company value the company may not use is refused. Transfer prefill and seats. Clone folding and independence. Designation upload with a Company column (set, skip, (none) ends, unknown designation or company). A user limited to another company is refused. Override-aware dependency checks and the location establishment guard. Another tenant's company refused. |
 | `RequirementsHardeningTest` (R2–R4, independent review) | Pre-flight counts everyone (limited viewer sees only their own examples); company values of the policy in the pre-flight; rules already on Block kept; a company added after the switch warns until a new pre-flight; copies start on Warn; a company-limited person cannot draft or block a shared policy; transfer-request approval refused as a message; a location's establishment kept to its company and off shared locations (model and form); company values limited to the viewer's companies (Links tab, Unmapped); chained upload rows; increment exclusions with the cycle's other filters; a blank company value of a NOT NULL column keeps the shared value in a copy. |
-| `RequirementsVolumeTest` (R2, opt-in) | The pre-flight and the readiness batch check for 1,000 and 10,000 employees: `REQUIREMENTS_VOLUME=1000,10000 vendor/bin/pest tests/Feature/MasterRelationships/RequirementsVolumeTest.php` (JSON lines to `REQUIREMENTS_VOLUME_OUT`). Skipped otherwise. |
+| `RequirementsVolumeTest` (R2, opt-in) | The pre-flight, the readiness batch check (up to 10,000) and the queued pre-flight end to end: `REQUIREMENTS_VOLUME=1000,10000,30000,50000,100000 vendor/bin/pest tests/Feature/MasterRelationships/RequirementsVolumeTest.php` (JSON lines to `REQUIREMENTS_VOLUME_OUT`). Skipped otherwise. |
+| `LevelGradePairsTest` (I.6) | Shared pair refused (and blank or level-less grades allowed); the form's field error; a company value refused writing nothing, accepted together; ending one of the pair refused, both together fine; later dates checked; a shared change that would break a company's pair; a grade moved to another level (shared and company pairs, and the form); data from before the rule not blocking an unrelated change; the upload (shared and company rows) before approval; a clone of disagreeing values refused; "Level and grade together" in Company values. |
+| `PreflightRunsTest` (I.7, I.13) | Company fingerprints recorded with Block; an uncontrolled end leaves the company on Warn (fails on the old guard); the controlled end refused while people would fail, covered once accepted; no pre-flight when nothing will block; sync runs recorded; queued runs (pending, idempotent, job as the requester, completed, retry of a finished run, evidence window); superseded when own values change while it waits or a newer request comes; cancelled mid-run; retry and final failure; tenant isolation; the page following a queued run. |
+| `SharedPolicyGuidanceTest` (I.9) | The restriction kept (nothing written) and explained: why, how many others (unnamed), who can, the routes; any shared record; the page's notice and Switch to Block unavailable. |
 | `MasterScreensTest` (R4) | Tabs per master type (every master with an edit page renders each of its tabs). Empty states of the requirements page and the Unmapped report. A designation created with name and code alone; optional links. Links tab: requirement hints and company values; Company values and Companies tabs. Usage tab. Placement on create, or later. Unmapped report (within the tenant, blocker on Block, access refused). Designer deep link. A location's establishment. |
 
 ## 5. R2: employment data requirements
@@ -207,14 +210,39 @@ The form reads "Usual department (information only)" with a one-line explanation
     may see. Each company is checked with its own values of the policy (configuration overrides).
   - The record lists every rule on Block (those already on Block are checked again) and the companies checked.
   - **When the rules run**, a Block finding blocks only where the pre-flight vouched for it: the rule is in its safe
-    rules and the company among those it checked. Elsewhere (a company created or reached later, a company's own
-    values) it is a warning ending "It blocks once a pre-flight covers {company}." So nothing blocks unchecked.
+    rules, the company among those it checked, and (remediation I.7) the company's settings, its own values applied,
+    still have the fingerprint the pre-flight recorded for it (`preflight.company_fingerprints`). Elsewhere (a company
+    created or reached later, a company whose own values changed or ended) it is a warning ending "It blocks once a
+    pre-flight covers {company}." So nothing blocks unchecked. A record from before company fingerprints vouches only
+    for companies on the shared settings.
+  - **Ending a company's own values** of a requirements policy goes through `EmploymentRequirementsPreflight::
+    endCompanyValues` (the page's "End a company's own values" and "Company values…" on a requirements policy): when
+    the settings the company will have block anything, the company is checked with them first; its values end and
+    the check is recorded as its coverage (a completed company run) only when safe or with the gaps accepted;
+    otherwise nothing ends (outcome refused). Above the queue threshold the check runs on the queue (outcome pending:
+    nothing changes until it finds it safe).
   - A copy of the policy (configuration cloning) starts with its Block rules on Warn and without the pre-flight.
   - A person limited to some companies cannot draft, publish or block a policy shared beyond their companies
     (`Policies::draft` / `publish` apply the shared-record guard; refused as a `ConfigurationException`).
   - The page keeps the last pre-flight between requests; "Run the pre-flight again" refreshes it.
   - It reads people in batches of 500: positions, rule contexts and salary assignments take one query each per
     batch, not one per person (`PositionRequirements::primeSalaryAssignments`).
+  - **Queued above a threshold (remediation I.13).** Above `PEOPLEOS_PREFLIGHT_QUEUE_THRESHOLD` employed people
+    (default 30,000) the pre-flight is a run (`employment_requirement_preflights`) handled by
+    `RunEmploymentRequirementsPreflight` as the person who asked: pending → running (progress per batch) →
+    completed, failed, superseded or cancelled. Asking again while one is open returns it; a newer request of the
+    same policy and purpose supersedes it; a running one stops between batches once superseded or cancelled; a
+    failed attempt is retried and the last marks it failed. It completes only if the policy, who it reaches
+    (`applicability_fingerprint`) and the companies' own values (`overrides_fingerprint`) did not change while it ran.
+    "Switch to Block" then needs a completed run of those rules (Warn or Block read alike: `evidence_fingerprint`),
+    current and at most `PEOPLEOS_PREFLIGHT_EVIDENCE_HOURS` old (default 24, never past the 30 days); a pending,
+    failed, superseded or cancelled run never counts. The version's record names the run. Below the threshold it runs
+    in the request as before, and a switch records its run too.
+- **API (remediation I.1, I.4).** `POST /employees` and `/pre-employees`: a refusal by a rule on Block is 422 code
+  `employment_requirements` with `requirements` ({rule, field, mode, message} per failed rule); a master that does not
+  apply is 422 `master_not_applicable`. Warnings: `meta.requirement_warnings` (messages) and
+  `meta.requirement_warning_details` ({rule, field, mode, message}); no `meta` without warnings. Described in
+  `docs/api/openapi.json` (`RecordWithRequirementWarnings`, `RequirementsRefusal`, `RequirementProblem`).
 - **Defaults (OD-4).** A new tenant gets a policy for everyone requiring Location, Department, Designation and
   Employment type, on Warn (`peopleos.employment_requirements.seed_new_tenants`; off in `phpunit.xml`). Existing
   tenants get nothing.
@@ -243,8 +271,15 @@ The form reads "Usual department (information only)" with a one-line explanation
   (level, grade, job family).
   - A company's value must be one that company may use (`CompanyAwareOverrideFields`, called by
     `ConfigurationOverrides::set`).
-  - Level and grade are not cross-checked, because companies set them one at a time; positions are checked
-    by R2.
+  - **Level and grade agree (remediation I.6, `LevelGradePairs`).** When a designation's level and grade are both
+    set and the grade belongs to a level (`grades.level_id`), it must be that level; a grade with no level fits any
+    level, and either may be blank. Checked for the shared values and for each company's, on every date from the
+    change on where a company's own values start or end, wherever the pair can change: the Designation model (form,
+    upload, clone, API), company values set or ended (`ConfigurationOverrides` after the write, in its transaction,
+    through `ValidatesCompanyTimeline`), and a grade moved to another level (the Grade model). Only pairs a change
+    makes wrong are refused, so data from before the rule does not block an unrelated change. Level and grade change
+    together through `ConfigurationOverrides::together()`: "Company values…" offers "Level and grade together", and an
+    upload row with a Company sets its values together and is checked before approval.
   - Values are effective-dated, versioned and audited. Ending one restores the shared value.
   - The "Company values" action and column appear through the existing applicability UI.
 - **`DesignationDefaults`** returns the company's value or the shared one, and prefills without ever forcing:
@@ -276,8 +311,9 @@ The form reads "Usual department (information only)" with a one-line explanation
   - **Company values:** each company's own values;
   - **Usage:** counts only, and delete or deactivate;
   - **History:** the audit trail.
-  - Legal entities, establishments and skills are edited in a modal on their list page (no edit page), so they have
-    no tabs; a legal entity and an establishment are parts of their company.
+  - Legal entities, establishments and skills have their own edit page (remediation I.5): a legal entity and an
+    establishment (parts of one company) show Usage and History; a skill (shared configuration) Companies, Links
+    (its skill scale), Usage and History. Creating them stays a dialog on the list.
   - Company values on the Links tab and in the Unmapped report are limited to the companies the person may see.
 - **Creating a master** needs only its essentials. Links sit in an optional "Links" step:
   - Designation: level, grade, job family, usual department, reporting level, employment types;
@@ -295,4 +331,7 @@ The form reads "Usual department (information only)" with a one-line explanation
   - locations without an establishment in companies with more than one (statutory then uses the head office's).
 
   Each row links to its fix. Access needs `organisation.view` or `people_setup.view`.
-- **Not done:** Skills (a single "manage" page) has no tabs.
+- **Administrators limited to some companies (remediation I.9).** A record shared beyond their companies stays
+  unchangeable for them (`SharedConfigurationGuard`). The refusal says how many other companies it reaches (never
+  which), who can change it, and what they can do for their own companies (clone it, or give their company its own
+  values); the requirements page says so before they try and leaves "Switch to Block" unavailable.

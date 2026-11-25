@@ -28,7 +28,10 @@ app(Entitlements::class)->observe(Capability::Payroll, 'payroll.run.calculate');
 - every method needs a platform operator and a reason;
 - changes start today or later;
 - every change is audited on both chains;
-- the cache is forgotten after commit.
+- the cache is forgotten after commit. Since 2026-11-25 (remediation I.3) entries are keyed by a generation
+  (`tenant:{id}:entitlements:{profile version}.{ulid}`) that every change replaces after commit: a reader that loaded the
+  state before a change committed can only store it under the old generation, and state older than the generation's
+  version is never stored (`EntitlementCacheRaceTest`).
 
 There is no other write path. Do not write the four tables directly.
 
@@ -60,7 +63,7 @@ There is no other write path. Do not write the four tables directly.
 | Kind | Where |
 |---|---|
 | Feature | `tests/Feature/Entitlements/*` (engine, catalogue, shadow, payroll safety, security and isolation, performance, operations) |
-| MySQL races | `tests/MySql/EntitlementConcurrencyTest.php`, using the database cache store so invalidation and the shadow gate are shared between processes |
+| MySQL races | `tests/MySql/EntitlementConcurrencyTest.php`, using the database cache store so invalidation and the shadow gate are shared between processes (`useSharedDatabaseCache()` re-resolves the store the services inject: switching `cache.default` alone did not reach them) |
 | Queue isolation | `Tests\Support\EntitlementProbeJob` |
 
 Test gotchas:

@@ -8,8 +8,12 @@ use App\Domain\Assets\Models\AssetSubtype;
 use App\Domain\Assets\Support\AssetAcknowledgementTaskSource;
 use App\Domain\Attendance\Adapters\EsslAdapter;
 use App\Domain\Attendance\Adapters\GenericJsonAdapter;
+use App\Domain\Attendance\Models\HolidayCalendar;
+use App\Domain\Attendance\Models\Shift;
+use App\Domain\Attendance\Models\WorkSchedule;
 use App\Domain\Bgv\Models\BgvCase;
 use App\Domain\Bgv\Providers\ManualProvider;
+use App\Domain\Career\Models\CareerTrack;
 use App\Domain\Communication\Services\CommunicationTaskSource;
 use App\Domain\Compensation\Models\CompensationBudget;
 use App\Domain\Compensation\Models\CompensationChange;
@@ -59,6 +63,8 @@ use App\Domain\ComplianceReports\Builders\ReturnWorkingSheet;
 use App\Domain\ComplianceReports\Builders\SalaryVariance;
 use App\Domain\ComplianceReports\Builders\TdsStatement;
 use App\Domain\ComplianceReports\Builders\WageRegister;
+use App\Domain\Configuration\Applicability\Providers\OnboardingTemplateReferences;
+use App\Domain\Configuration\Applicability\Providers\PolicyReferences;
 use App\Domain\Configuration\Cloning\Adapters\PolicyCloneAdapter;
 use App\Domain\Configuration\Models\ConfigurationChange;
 use App\Domain\Configuration\Models\CustomField;
@@ -67,20 +73,31 @@ use App\Domain\Configuration\Models\FormSubmission;
 use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Models\PolicyAssignmentRule;
 use App\Domain\Configuration\Models\PolicyVersion;
+use App\Domain\Configuration\Overrides\PolicyOverrideFields;
 use App\Domain\Development\Models\DevelopmentPlan;
+use App\Domain\Documents\Models\DocumentType;
 use App\Domain\Documents\Models\EmployeeDocument;
 use App\Domain\Employment\Models\Employee;
 use App\Domain\Employment\Models\EmployeeBankAccount;
 use App\Domain\Employment\Models\EmployeeStatutoryDetail;
+use App\Domain\Employment\Models\WorkforceReason;
 use App\Domain\Employment\Support\JoiningDayTaskSource;
+use App\Domain\Engagement\Models\Audience;
+use App\Domain\Engagement\Models\MoodReason;
 use App\Domain\Engagement\Support\EventInvitationTaskSource;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Enterprise\Models\WebhookEndpoint;
+use App\Domain\Exit\Models\ClearanceChecklist;
 use App\Domain\Exit\Models\ExitCase;
 use App\Domain\Exit\Models\FinalSettlement;
 use App\Domain\Exit\Support\ClearanceTaskSource;
+use App\Domain\Expense\Models\ExpenseCategory;
+use App\Domain\Expense\Models\ExpenseGroup;
+use App\Domain\Feedback\Models\FeedbackTemplate;
+use App\Domain\Feedback\Models\QuestionBank;
 use App\Domain\Feedback\Support\FeedbackTaskSource;
 use App\Domain\Grievance\Models\Grievance;
+use App\Domain\Grievance\Models\GrievanceCategory;
 use App\Domain\Identity\Models\Role;
 use App\Domain\Identity\Models\User;
 use App\Domain\Integration\Handlers\BgvResultsHandler;
@@ -91,13 +108,18 @@ use App\Domain\Learning\Models\Course;
 use App\Domain\Learning\Models\LearningCost;
 use App\Domain\Learning\Models\LearningEvidence;
 use App\Domain\Learning\Models\LearningPath;
+use App\Domain\Leave\Models\LeaveType;
 use App\Domain\Letters\Models\Letter;
+use App\Domain\Letters\Models\LetterSignatory;
+use App\Domain\Letters\Models\LetterTemplate;
 use App\Domain\Letters\Support\LetterTaskSource;
 use App\Domain\Lifecycle\Enums\LifecycleState;
 use App\Domain\Loans\Models\Loan;
 use App\Domain\Notifications\Channels\EmailChannel;
 use App\Domain\Notifications\Channels\InAppChannel;
 use App\Domain\Notifications\Channels\LogChannel;
+use App\Domain\Notifications\Models\NotificationTemplate;
+use App\Domain\Onboarding\Models\OnboardingTemplate;
 use App\Domain\Organisation\Models\BusinessRegion;
 use App\Domain\Organisation\Models\BusinessUnit;
 use App\Domain\Organisation\Models\Company;
@@ -117,20 +139,26 @@ use App\Domain\Organisation\Models\ProfitCentre;
 use App\Domain\Organisation\Models\Region;
 use App\Domain\Organisation\Models\Team;
 use App\Domain\Organisation\Models\WorkMode;
+use App\Domain\Organisation\Overrides\DesignationOverrideFields;
 use App\Domain\Payroll\Models\PayrollEntry;
 use App\Domain\Payroll\Models\Payslip;
 use App\Domain\Payroll\Models\SalaryComponent;
+use App\Domain\People\Models\Qualification;
 use App\Domain\People\Models\Skill;
 use App\Domain\Performance\Models\CalibrationAdjustment;
 use App\Domain\Performance\Models\CalibrationSession;
 use App\Domain\Performance\Models\CareerPath;
 use App\Domain\Performance\Models\Competency;
 use App\Domain\Performance\Models\FeedbackEntry;
+use App\Domain\Performance\Models\GoalTemplate;
 use App\Domain\Performance\Models\ImprovementPlan;
 use App\Domain\Performance\Models\ImprovementPlanCheckpoint;
+use App\Domain\Performance\Models\KpiRatingFormula;
 use App\Domain\Performance\Models\Kra;
 use App\Domain\Performance\Models\OneOnOne;
 use App\Domain\Performance\Models\PerformanceCheckIn;
+use App\Domain\Performance\Models\PerformanceTemplate;
+use App\Domain\Performance\Models\RatingScale;
 use App\Domain\Performance\Support\AppraisalAcknowledgementTaskSource;
 use App\Domain\Performance\Support\CheckInPromptTaskSource;
 use App\Domain\Performance\Support\Feedback360TaskSource;
@@ -141,6 +169,7 @@ use App\Domain\Performance\Support\PerformanceReviewTaskSource;
 use App\Domain\Performance\Support\PipEvaluationDueTaskSource;
 use App\Domain\Platform\Models\TenantFeature;
 use App\Domain\Platform\Models\TenantSetting;
+use App\Domain\Recognition\Models\Badge;
 use App\Domain\ServiceDesk\DomainActions\AddressChange;
 use App\Domain\ServiceDesk\DomainActions\BankAccountChange;
 use App\Domain\ServiceDesk\DomainActions\CompensationProposalLink;
@@ -151,9 +180,13 @@ use App\Domain\ServiceDesk\DomainActions\LetterRequestAction;
 use App\Domain\ServiceDesk\DomainActions\ManagerChange;
 use App\Domain\ServiceDesk\DomainActions\RegularisationAction;
 use App\Domain\ServiceDesk\DomainActions\StatutoryIdentityChange;
+use App\Domain\ServiceDesk\Models\ServiceDefinition;
+use App\Domain\ServiceDesk\Models\ServiceSlaPolicy;
 use App\Domain\ServiceDesk\Models\Ticket;
+use App\Domain\ServiceDesk\Models\TicketCategory;
 use App\Domain\ServiceDesk\Services\ServiceDeskTaskSource;
 use App\Domain\Skills\Models\SkillAssessment;
+use App\Domain\Skills\Models\SkillScale;
 use App\Domain\Succession\Models\ReadinessAssessment;
 use App\Domain\Succession\Models\SuccessionPlan;
 use App\Domain\Succession\Models\Successor;
@@ -161,6 +194,7 @@ use App\Domain\Talent\Models\TalentAssessment;
 use App\Domain\Talent\Models\TalentPoolMembership;
 use App\Domain\Talent\Models\TalentProfile;
 use App\Domain\Talent\Models\TalentReviewItem;
+use App\Domain\Workflow\Models\Workflow;
 use App\Domain\Workflow\Services\WorkflowTaskSource;
 use App\Domain\Workforce\Models\WorkforceBudget;
 use App\Domain\Workforce\Models\WorkforcePlanLine;
@@ -2688,7 +2722,7 @@ return [
     */
     'configuration_types' => [
         'location' => [
-            'model' => \App\Domain\Organisation\Models\Location::class,
+            'model' => Location::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'owner' => 'company_id',
@@ -2698,7 +2732,7 @@ return [
         ],
         'business_unit' => [
             'label' => 'Business unit',
-            'model' => \App\Domain\Organisation\Models\BusinessUnit::class,
+            'model' => BusinessUnit::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'owner' => 'company_id',
@@ -2706,7 +2740,7 @@ return [
             'clone' => 'business_unit',
         ],
         'division' => [
-            'model' => \App\Domain\Organisation\Models\Division::class,
+            'model' => Division::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'owner' => 'company_id',
@@ -2714,7 +2748,7 @@ return [
             'clone' => 'division',
         ],
         'department' => [
-            'model' => \App\Domain\Organisation\Models\Department::class,
+            'model' => Department::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'owner' => 'company_id',
@@ -2723,7 +2757,7 @@ return [
             'clone' => 'department',
         ],
         'team' => [
-            'model' => \App\Domain\Organisation\Models\Team::class,
+            'model' => Team::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'owner' => 'company_id',
@@ -2732,7 +2766,7 @@ return [
         ],
         'cost_centre' => [
             'label' => 'Cost centre',
-            'model' => \App\Domain\Organisation\Models\CostCentre::class,
+            'model' => CostCentre::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'owner' => 'company_id',
@@ -2741,28 +2775,28 @@ return [
         ],
         'profit_centre' => [
             'label' => 'Profit centre',
-            'model' => \App\Domain\Organisation\Models\ProfitCentre::class,
+            'model' => ProfitCentre::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'owner' => 'company_id',
             'clone' => 'profit_centre',
         ],
         'region' => [
-            'model' => \App\Domain\Organisation\Models\Region::class,
+            'model' => Region::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'clone' => 'region',
         ],
         'business_region' => [
             'label' => 'Business region',
-            'model' => \App\Domain\Organisation\Models\BusinessRegion::class,
+            'model' => BusinessRegion::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'clone' => 'business_region',
         ],
         'dimension_value' => [
             'label' => 'Organisation dimension',
-            'model' => \App\Domain\Organisation\Models\DimensionValue::class,
+            'model' => DimensionValue::class,
             'module' => 'organisation',
             'permission' => 'organisation.update',
             'references' => ['parent_id' => 'dimension_value'],
@@ -2770,24 +2804,24 @@ return [
             'clone' => 'dimension_value',
         ],
         'designation' => [
-            'model' => \App\Domain\Organisation\Models\Designation::class,
+            'model' => Designation::class,
             'module' => 'organisation',
             'permission' => 'people_setup.update',
             'references' => ['level_id' => 'level', 'grade_id' => 'grade', 'job_family_id' => 'job_family', 'department_id' => 'department', 'default_reporting_level_id' => 'level'],
             'usages' => [['table' => 'employee_positions', 'column' => 'designation_id', 'company' => 'company_id', 'current' => 'effective_to', 'label' => 'current positions']],
             'clone' => 'designation',
             // Master relationships R3: a company's own default level, grade and job family of a shared designation.
-            'overrides' => \App\Domain\Organisation\Overrides\DesignationOverrideFields::class,
+            'overrides' => DesignationOverrideFields::class,
         ],
         'level' => [
-            'model' => \App\Domain\Organisation\Models\Level::class,
+            'model' => Level::class,
             'module' => 'organisation',
             'permission' => 'people_setup.update',
             'usages' => [['table' => 'employee_positions', 'column' => 'level_id', 'company' => 'company_id', 'current' => 'effective_to', 'label' => 'current positions']],
             'clone' => 'level',
         ],
         'grade' => [
-            'model' => \App\Domain\Organisation\Models\Grade::class,
+            'model' => Grade::class,
             'module' => 'organisation',
             'permission' => 'people_setup.update',
             'references' => ['level_id' => 'level'],
@@ -2796,14 +2830,14 @@ return [
         ],
         'job_family' => [
             'label' => 'Job family',
-            'model' => \App\Domain\Organisation\Models\JobFamily::class,
+            'model' => JobFamily::class,
             'module' => 'organisation',
             'permission' => 'people_setup.update',
             'clone' => 'job_family',
         ],
         'employment_type' => [
             'label' => 'Employment type',
-            'model' => \App\Domain\Organisation\Models\EmploymentType::class,
+            'model' => EmploymentType::class,
             'module' => 'organisation',
             'permission' => 'people_setup.update',
             'usages' => [['table' => 'employee_positions', 'column' => 'employment_type_id', 'company' => 'company_id', 'current' => 'effective_to', 'label' => 'current positions']],
@@ -2811,7 +2845,7 @@ return [
         ],
         'employee_category' => [
             'label' => 'Employee category',
-            'model' => \App\Domain\Organisation\Models\EmployeeCategory::class,
+            'model' => EmployeeCategory::class,
             'module' => 'organisation',
             'permission' => 'people_setup.update',
             'usages' => [['table' => 'employee_positions', 'column' => 'employee_category_id', 'company' => 'company_id', 'current' => 'effective_to', 'label' => 'current positions']],
@@ -2819,46 +2853,46 @@ return [
         ],
         'work_mode' => [
             'label' => 'Work mode',
-            'model' => \App\Domain\Organisation\Models\WorkMode::class,
+            'model' => WorkMode::class,
             'module' => 'organisation',
             'permission' => 'people_setup.update',
             'usages' => [['table' => 'employee_positions', 'column' => 'work_mode_id', 'company' => 'company_id', 'current' => 'effective_to', 'label' => 'current positions']],
             'clone' => 'work_mode',
         ],
         'skill' => [
-            'model' => \App\Domain\People\Models\Skill::class,
+            'model' => Skill::class,
             'module' => 'organisation',
             'permission' => 'people_setup.update',
             'references' => ['skill_scale_id' => 'skill_scale'],
             'clone' => 'skill',
         ],
         'qualification' => [
-            'model' => \App\Domain\People\Models\Qualification::class,
+            'model' => Qualification::class,
             'module' => 'organisation',
             'permission' => 'people_setup.update',
             'code' => null,
         ],
         'onboarding_template' => [
             'label' => 'Onboarding template',
-            'model' => \App\Domain\Onboarding\Models\OnboardingTemplate::class,
+            'model' => OnboardingTemplate::class,
             'module' => 'onboarding',
             'permission' => 'onboarding.manage',
             'code' => 'key',
             'clone' => 'onboarding_template',
-            'references_provider' => \App\Domain\Configuration\Applicability\Providers\OnboardingTemplateReferences::class,
+            'references_provider' => OnboardingTemplateReferences::class,
             'clone_children' => ['items' => ['foreign' => 'onboarding_template_id']],
             'rule_columns' => ['conditions'],
         ],
         'clearance_checklist' => [
             'label' => 'Exit clearance checklist',
-            'model' => \App\Domain\Exit\Models\ClearanceChecklist::class,
+            'model' => ClearanceChecklist::class,
             'module' => 'exit',
             'permission' => 'exit.manage',
             'code' => null,
         ],
         'letter_signatory' => [
             'label' => 'Letter signatory',
-            'model' => \App\Domain\Letters\Models\LetterSignatory::class,
+            'model' => LetterSignatory::class,
             'module' => 'letter',
             'permission' => 'letter.manage',
             'owner' => 'company_id',
@@ -2866,7 +2900,7 @@ return [
         ],
         'letter_template' => [
             'label' => 'Letter template',
-            'model' => \App\Domain\Letters\Models\LetterTemplate::class,
+            'model' => LetterTemplate::class,
             'module' => 'letter',
             'permission' => 'letter.manage',
             'references' => ['letter_signatory_id' => 'letter_signatory', 'letter_signatory_2_id' => 'letter_signatory', 'letter_signatory_3_id' => 'letter_signatory', 'letter_signatory_4_id' => 'letter_signatory'],
@@ -2875,14 +2909,14 @@ return [
         ],
         'feedback_template' => [
             'label' => 'Feedback template',
-            'model' => \App\Domain\Feedback\Models\FeedbackTemplate::class,
+            'model' => FeedbackTemplate::class,
             'module' => 'feedback',
             'permission' => 'feedback.manage',
             'clone' => 'feedback_template',
         ],
         'question_bank' => [
             'label' => 'Question bank',
-            'model' => \App\Domain\Feedback\Models\QuestionBank::class,
+            'model' => QuestionBank::class,
             'module' => 'feedback',
             'permission' => 'feedback.manage',
             'clone' => 'question_bank',
@@ -2890,7 +2924,7 @@ return [
         ],
         'document_type' => [
             'label' => 'Document type',
-            'model' => \App\Domain\Documents\Models\DocumentType::class,
+            'model' => DocumentType::class,
             'module' => 'documents',
             'permission' => 'document.types',
             'clone' => 'document_type',
@@ -2898,43 +2932,43 @@ return [
         ],
         'workforce_reason' => [
             'label' => 'Separation or transfer reason',
-            'model' => \App\Domain\Employment\Models\WorkforceReason::class,
+            'model' => WorkforceReason::class,
             'module' => 'employment',
             'permission' => 'exit.manage',
             'code' => null,
         ],
         'workflow' => [
-            'model' => \App\Domain\Workflow\Models\Workflow::class,
+            'model' => Workflow::class,
             'module' => 'workflow',
             'permission' => 'workflow.update',
             'code' => 'key',
         ],
         'notification_template' => [
             'label' => 'Notification template',
-            'model' => \App\Domain\Notifications\Models\NotificationTemplate::class,
+            'model' => NotificationTemplate::class,
             'module' => 'notifications',
             'permission' => 'notification.update',
             'code' => 'key',
             'clone' => 'notification_template',
         ],
         'policy' => [
-            'model' => \App\Domain\Configuration\Models\Policy::class,
+            'model' => Policy::class,
             'module' => 'configuration',
             'permission' => 'policy.update',
-            'overrides' => \App\Domain\Configuration\Overrides\PolicyOverrideFields::class,
+            'overrides' => PolicyOverrideFields::class,
             'clone' => 'policy',
             'payroll_sensitive' => true,
-            'references_provider' => \App\Domain\Configuration\Applicability\Providers\PolicyReferences::class,
+            'references_provider' => PolicyReferences::class,
         ],
         'leave_type' => [
             'label' => 'Leave type',
-            'model' => \App\Domain\Leave\Models\LeaveType::class,
+            'model' => LeaveType::class,
             'module' => 'leave',
             'permission' => 'leave.manage',
             'clone' => 'leave_type',
         ],
         'shift' => [
-            'model' => \App\Domain\Attendance\Models\Shift::class,
+            'model' => Shift::class,
             'module' => 'attendance',
             'permission' => 'attendance.manage',
             'overrides' => [
@@ -2950,14 +2984,14 @@ return [
         ],
         'work_schedule' => [
             'label' => 'Work schedule',
-            'model' => \App\Domain\Attendance\Models\WorkSchedule::class,
+            'model' => WorkSchedule::class,
             'module' => 'attendance',
             'permission' => 'attendance.manage',
             'clone' => 'work_schedule',
         ],
         'holiday_calendar' => [
             'label' => 'Holiday calendar',
-            'model' => \App\Domain\Attendance\Models\HolidayCalendar::class,
+            'model' => HolidayCalendar::class,
             'module' => 'attendance',
             'permission' => 'attendance.manage',
             'clone' => 'holiday_calendar',
@@ -2965,7 +2999,7 @@ return [
         ],
         'salary_component' => [
             'label' => 'Salary component',
-            'model' => \App\Domain\Payroll\Models\SalaryComponent::class,
+            'model' => SalaryComponent::class,
             'module' => 'payroll',
             'permission' => 'payroll.manage',
             'clone' => 'salary_component',
@@ -2973,21 +3007,21 @@ return [
         ],
         'salary_structure' => [
             'label' => 'Salary structure',
-            'model' => \App\Domain\Compensation\Models\SalaryStructure::class,
+            'model' => SalaryStructure::class,
             'module' => 'compensation',
             'permission' => 'compensation.configure',
             'payroll_sensitive' => true,
         ],
         'expense_group' => [
             'label' => 'Expense group',
-            'model' => \App\Domain\Expense\Models\ExpenseGroup::class,
+            'model' => ExpenseGroup::class,
             'module' => 'expense',
             'permission' => 'expense.manage',
             'clone' => 'expense_group',
         ],
         'expense_category' => [
             'label' => 'Expense category',
-            'model' => \App\Domain\Expense\Models\ExpenseCategory::class,
+            'model' => ExpenseCategory::class,
             'module' => 'expense',
             'permission' => 'expense.manage',
             'references' => ['expense_group_id' => 'expense_group'],
@@ -2995,26 +3029,26 @@ return [
         ],
         'performance_template' => [
             'label' => 'Appraisal template',
-            'model' => \App\Domain\Performance\Models\PerformanceTemplate::class,
+            'model' => PerformanceTemplate::class,
             'module' => 'performance',
             'permission' => 'performance.manage',
         ],
         'rating_scale' => [
             'label' => 'Rating scale',
-            'model' => \App\Domain\Performance\Models\RatingScale::class,
+            'model' => RatingScale::class,
             'module' => 'performance',
             'permission' => 'performance.manage',
             'clone' => 'rating_scale',
         ],
         'competency' => [
-            'model' => \App\Domain\Performance\Models\Competency::class,
+            'model' => Competency::class,
             'module' => 'performance',
             'permission' => 'performance.manage',
             'clone' => 'competency',
         ],
         'goal_template' => [
             'label' => 'Goal template',
-            'model' => \App\Domain\Performance\Models\GoalTemplate::class,
+            'model' => GoalTemplate::class,
             'module' => 'performance',
             'permission' => 'performance.manage',
             'references' => ['feedback_template_id' => 'feedback_template'],
@@ -3024,80 +3058,80 @@ return [
         ],
         'kpi_rating_formula' => [
             'label' => 'KPI rating formula',
-            'model' => \App\Domain\Performance\Models\KpiRatingFormula::class,
+            'model' => KpiRatingFormula::class,
             'module' => 'performance',
             'permission' => 'performance.manage',
             'clone' => 'kpi_rating_formula',
         ],
         'career_track' => [
             'label' => 'Career track',
-            'model' => \App\Domain\Career\Models\CareerTrack::class,
+            'model' => CareerTrack::class,
             'module' => 'career',
             'permission' => 'career.manage',
             'clone' => 'career_track',
         ],
         'career_path' => [
             'label' => 'Career path',
-            'model' => \App\Domain\Performance\Models\CareerPath::class,
+            'model' => CareerPath::class,
             'module' => 'career',
             'permission' => 'career.manage',
             'references' => ['job_family_id' => 'job_family', 'career_track_id' => 'career_track', 'business_unit_id' => 'business_unit'],
         ],
         'course' => [
-            'model' => \App\Domain\Learning\Models\Course::class,
+            'model' => Course::class,
             'module' => 'learning',
             'permission' => 'learning.manage',
             'name' => 'title',
         ],
         'learning_path' => [
             'label' => 'Learning path',
-            'model' => \App\Domain\Learning\Models\LearningPath::class,
+            'model' => LearningPath::class,
             'module' => 'learning',
             'permission' => 'learning.manage',
         ],
         'skill_scale' => [
             'label' => 'Skill scale',
-            'model' => \App\Domain\Skills\Models\SkillScale::class,
+            'model' => SkillScale::class,
             'module' => 'skills',
             'permission' => 'skills.manage',
         ],
         'grievance_category' => [
             'label' => 'Grievance category',
-            'model' => \App\Domain\Grievance\Models\GrievanceCategory::class,
+            'model' => GrievanceCategory::class,
             'module' => 'grievance',
             'permission' => 'grievance.manage',
             'clone' => 'grievance_category',
         ],
         'badge' => [
             'label' => 'Recognition badge',
-            'model' => \App\Domain\Recognition\Models\Badge::class,
+            'model' => Badge::class,
             'module' => 'recognition',
             'permission' => 'recognition.manage',
             'clone' => 'badge',
         ],
         'mood_reason' => [
             'label' => 'Mood reason',
-            'model' => \App\Domain\Engagement\Models\MoodReason::class,
+            'model' => MoodReason::class,
             'module' => 'engagement',
             'permission' => 'engagement.manage',
             'code' => null,
         ],
         'audience' => [
-            'model' => \App\Domain\Engagement\Models\Audience::class,
+            'model' => Audience::class,
             'module' => 'engagement',
             'permission' => 'engagement.manage',
             'clone' => 'audience',
         ],
         'asset_category' => [
             'label' => 'Asset category',
-            'model' => \App\Domain\Assets\Models\AssetCategory::class,
+            'model' => AssetCategory::class,
             'module' => 'assets',
             'permission' => 'asset.manage',
             'clone' => 'asset_category',
         ],
         'asset_subtype' => [
             'label' => 'Asset subtype',
-            'model' => \App\Domain\Assets\Models\AssetSubtype::class,
+            'model' => AssetSubtype::class,
             'module' => 'assets',
             'permission' => 'asset.manage',
             'references' => ['asset_category_id' => 'asset_category'],
@@ -3105,7 +3139,7 @@ return [
         ],
         'asset_model' => [
             'label' => 'Asset model',
-            'model' => \App\Domain\Assets\Models\AssetModel::class,
+            'model' => AssetModel::class,
             'module' => 'assets',
             'permission' => 'asset.manage',
             'code' => null,
@@ -3113,26 +3147,26 @@ return [
         ],
         'ticket_category' => [
             'label' => 'Service request category',
-            'model' => \App\Domain\ServiceDesk\Models\TicketCategory::class,
+            'model' => TicketCategory::class,
             'module' => 'servicedesk',
             'permission' => 'servicedesk.manage',
             'clone' => 'ticket_category',
         ],
         'service_definition' => [
             'label' => 'Service',
-            'model' => \App\Domain\ServiceDesk\Models\ServiceDefinition::class,
+            'model' => ServiceDefinition::class,
             'module' => 'servicedesk',
             'permission' => 'servicedesk.manage',
             'references' => ['ticket_category_id' => 'ticket_category'],
         ],
         'service_sla_policy' => [
             'label' => 'Service-level policy',
-            'model' => \App\Domain\ServiceDesk\Models\ServiceSlaPolicy::class,
+            'model' => ServiceSlaPolicy::class,
             'module' => 'servicedesk',
             'permission' => 'servicedesk.manage',
         ],
         'form' => [
-            'model' => \App\Domain\Configuration\Models\Form::class,
+            'model' => Form::class,
             'module' => 'configuration',
             'permission' => 'form.update',
             'code' => 'key',

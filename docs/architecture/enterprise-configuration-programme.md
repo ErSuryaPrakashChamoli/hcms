@@ -109,15 +109,18 @@ Details live in the documents linked from each section; this page is the map.
 
 ## Known limitations
 
-- **Pre-existing failures, unchanged:**
-  - `ApiSweepTest` assumes every list endpoint answers without parameters; five need parameters or a linked
-    employee. This is an API contract question.
-  - `Ux15FoundationTest` design-rule breaches in CSS committed on 16 and 19 Nov.
-  - Three shared-cache concurrency tests (Entitlements 5 and 6, Plans 6) fail the same way on the base commit.
-- **Not built:**
-  - Skills, legal entities and establishments (edited in a modal on their list page) have no master tabs.
-  - Ending a company's own value of an employment data requirements policy is not pre-flighted: if the shared
-    version is on Block, that company then follows the shared Block for the rules and companies the last pre-flight
-    covered (the run-time guard still turns anything it did not cover into a warning).
-  - Company values are not cross-checked as a level and grade pair, because companies set them one at a time.
-  - Placement readiness items stay review items: no automatic blocking (OD-3).
+Remediation of 25 Nov 2026 (`Final-Completion-Report-Post-Remediation.md` outside the repository) closed the earlier
+list: the five API lookups have explicit contracts (I.1), the CSS is on tokens (I.2), the MySQL concurrency suites
+share the database cache and the entitlement cache is generation-keyed (I.3), the OpenAPI file describes the
+requirement warnings and refusals (I.4), legal entities, establishments and skills have master pages (I.5), company
+level and grade pairs are enforced (I.6), ending a company's own values cannot bring in an unchecked Block (I.7),
+payroll readiness reads in batches (I.8), restricted administrators are told why and what to do (I.9), tests never
+write into `storage/app` (I.10), the deployment checklist covers the new job and settings (I.11), OD-4 is verified
+(I.12) and large pre-flights run on the queue (I.13). What remains:
+
+- **Operational:** a queue worker must listen on `PEOPLEOS_PREFLIGHT_QUEUE`, or a large organisation's pre-flight stays
+  pending (it never authorises Block while pending).
+- **By decision:** new tenants start with the OD-4 requirements on Warn; placement readiness items stay review items
+  (OD-3).
+- **Older pre-flight records** (before company fingerprints) vouch only for companies on the shared settings: a company
+  with its own values warns until the next "Switch to Block" records its fingerprint.

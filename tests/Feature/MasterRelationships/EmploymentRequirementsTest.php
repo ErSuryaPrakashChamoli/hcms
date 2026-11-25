@@ -203,6 +203,33 @@ it('refuses to switch to Block for someone not allowed to publish policies', fun
         ->and($policy->versions()->count())->toBe(1);
 });
 
+it('keeps OD-4 exactly: every rule on Warn, seeded once at provisioning, off with the switch, never added to an existing tenant', function () {
+    // Remediation I.12: the approved decision, checked rule by rule.
+    $settings = EmploymentRequirementsDefaults::defaultSettings();
+    expect($settings['required_mode'])->toBe(EmploymentRequirements::WARN)
+        ->and(collect(EmploymentRequirements::CHECKS)->keys()->map(fn ($c) => $settings["check_{$c}"])->unique()->values()->all())->toBe([EmploymentRequirements::WARN])
+        ->and($settings['required_on_hire'])->toBe(['location_id', 'department_id', 'designation_id', 'employment_type_id'])
+        ->and($settings['required_on_change'])->toBe($settings['required_on_hire'])
+        ->and(EmploymentRequirements::blockRules($settings))->toBe([]);
+
+    // Off with PEOPLEOS_SEED_EMPLOYMENT_REQUIREMENTS=false (phpunit.xml): a new tenant then requires the company only.
+    config(['peopleos.employment_requirements.seed_new_tenants' => false]);
+    $plain = provisionTenant('Plain');
+    actAsTenant($plain);
+    expect(Policy::query()->where('type', EmploymentRequirements::TYPE)->count())->toBe(0);
+
+    // On: seeded once at provisioning; seeding again adds nothing; the existing tenants are left as they are.
+    config(['peopleos.employment_requirements.seed_new_tenants' => true]);
+    $seeded = provisionTenant('Seeded');
+    actAsTenant($seeded);
+    expect(app(EmploymentRequirementsDefaults::class)->seed())->toBeNull()
+        ->and(Policy::query()->where('type', EmploymentRequirements::TYPE)->count())->toBe(1);
+    foreach ([$this->tenant, $plain] as $existing) {
+        actAsTenant($existing);
+        expect(Policy::query()->where('type', EmploymentRequirements::TYPE)->count())->toBe(0);
+    }
+});
+
 it('gives a new tenant the OD-4 defaults on Warn and an existing tenant nothing', function () {
     expect(Policy::query()->where('type', EmploymentRequirements::TYPE)->exists())->toBeFalse();
 
