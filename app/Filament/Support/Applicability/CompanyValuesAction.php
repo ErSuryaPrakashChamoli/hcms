@@ -5,8 +5,12 @@ namespace App\Filament\Support\Applicability;
 use App\Domain\Configuration\Applicability\ApplicabilityRefusedException;
 use App\Domain\Configuration\Applicability\ConfigurationTypes;
 use App\Domain\Configuration\Applicability\EntityApplicability;
+use App\Domain\Configuration\Exceptions\ConfigurationException;
+use App\Domain\Configuration\Models\Policy;
 use App\Domain\Configuration\Overrides\ConfigurationOverrides;
 use App\Domain\Configuration\Overrides\OverrideField;
+use App\Domain\Employment\Requirements\EmploymentRequirements;
+use App\Domain\Employment\Requirements\EmploymentRequirementsPreflight;
 use App\Domain\Identity\Models\User;
 use App\Filament\Support\AuditReasonField;
 use Filament\Actions\Action;
@@ -96,13 +100,30 @@ final class CompanyValuesAction
                                     : $overrides->set($record, (int) $data['company_id'], $path, $data['together'][$path] ?? null, $data['effective_from'], auth()->user(), $reason);
                             }
                         });
+                    } elseif ($data['operation'] === 'end' && $record instanceof Policy && $record->type === EmploymentRequirements::TYPE) {
+                        // Remediation I.7: ending a company's own value of a requirements policy is checked first, so the
+                        // company never takes on a Block nobody checked for it (EmploymentRequirementsPreflight).
+                        $outcome = app(EmploymentRequirementsPreflight::class)->endCompanyValues($record, (int) $data['company_id'], [(string) $data['field']], auth()->user(), (string) $reason, $data['effective_from']);
+                        $notice = Notification::make()->title(match ($outcome['outcome']) {
+                            'pending' => 'Checking first', 'refused' => 'Not ended', default => 'Back to the shared value',
+                        })->body($outcome['message']);
+                        match ($outcome['outcome']) {
+                            'refused' => $notice->danger()->persistent()->send(),
+                            'pending' => $notice->info()->persistent()->send(),
+                            default => $notice->success()->send(),
+                        };
+                        if ($outcome['outcome'] === 'refused') {
+                            $action->halt();
+                        }
+
+                        return;
                     } elseif ($data['operation'] === 'end') {
                         $overrides->end($record, (int) $data['company_id'], (string) $data['field'], $data['effective_from'], auth()->user(), $reason);
                     } else {
                         $field = $overrides->fields($record)[$data['field']] ?? null;
                         $overrides->set($record, (int) $data['company_id'], (string) $data['field'], self::value($field, $data), $data['effective_from'], auth()->user(), $reason);
                     }
-                } catch (ApplicabilityRefusedException $refused) {
+                } catch (ApplicabilityRefusedException|ConfigurationException $refused) {
                     Notification::make()->danger()->title('Not saved')->body($refused->getMessage())->send();
                     $action->halt();
 

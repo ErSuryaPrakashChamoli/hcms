@@ -71,7 +71,7 @@ final class PositionRequirements
         $settings = (array) $version->settings;
         $result = $this->evaluate($position, $changeType, $settings, trim(($version->policy?->name ?? 'Employment data requirements').', v'.$version->version), $on, $employee);
 
-        return $this->coveredByPreflight($result, $settings, $position['company_id'] ?? null);
+        return $this->coveredByPreflight($result, $settings, $position['company_id'] ?? null, (int) $version->policy_id);
     }
 
     /**
@@ -81,7 +81,7 @@ final class PositionRequirements
      *
      * @param  array<string, mixed>  $settings  the version's settings, with the pre-flight record
      */
-    private function coveredByPreflight(RequirementsResult $result, array $settings, mixed $companyId): RequirementsResult
+    private function coveredByPreflight(RequirementsResult $result, array $settings, mixed $companyId, int $policyId): RequirementsResult
     {
         if ($result->blocking() === []) {
             return $result;
@@ -89,7 +89,19 @@ final class PositionRequirements
         $preflight = (array) ($settings['preflight'] ?? []);
         $rules = array_map('strval', (array) ($preflight['safe_rules'] ?? []));
         $companies = array_map('intval', (array) ($preflight['companies'] ?? []));
-        $covered = filled($companyId) && in_array((int) $companyId, $companies, true);
+        // Remediation I.7: the company's settings (its own values applied) must be the ones the pre-flight checked for it.
+        // A record from before company fingerprints vouches only for companies on the shared settings.
+        $effective = EmploymentRequirements::fingerprint($settings);
+        $prints = $preflight['company_fingerprints'] ?? null;
+        $covered = filled($companyId) && in_array((int) $companyId, $companies, true)
+            && (is_array($prints) ? ($prints[(int) $companyId] ?? $prints[(string) (int) $companyId] ?? null) === $effective : ($preflight['fingerprint'] ?? null) === $effective);
+        if (! $covered && filled($companyId)) {
+            // Or a completed pre-flight of this company with exactly these settings (its own values ended the controlled way).
+            $own = $this->remember("coverage#{$policyId}#{$companyId}#{$effective}", fn () => EmploymentRequirementsPreflight::companyCoverage($policyId, (int) $companyId, $effective));
+            if ($own !== null) {
+                [$covered, $rules] = [true, array_map('strval', $own)];
+            }
+        }
         $company = $this->name(Company::class, $companyId) ?? 'this company';
 
         return new RequirementsResult(array_map(fn (RequirementProblem $p) => ! $p->blocks() || ($covered && in_array($p->rule, $rules, true)) ? $p
@@ -259,7 +271,7 @@ final class PositionRequirements
             if ($version !== null) {
                 $result = $this->evaluate(array_intersect_key($context, EmployeePosition::DIMENSIONS), $changeType, (array) $version->settings,
                     trim(($version->policy?->name ?? 'Employment data requirements').', v'.$version->version), $on);
-                $out[$employeeId] = $this->coveredByPreflight($result, (array) $version->settings, $context['company_id']);
+                $out[$employeeId] = $this->coveredByPreflight($result, (array) $version->settings, $context['company_id'], (int) $version->policy_id);
             }
         }
 

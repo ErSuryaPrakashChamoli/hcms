@@ -52,6 +52,15 @@ operator works through before a PeopleOS environment serves real employees.
 | Workers | supervised `queue:work --timeout=3700` (or Horizon), restarted on deploy | heartbeat / failed jobs via `/health/ready` |
 | Scheduler | cron `* * * * * php artisan schedule:run` on one node | heartbeat age |
 
+### 3c. Employment data requirements (R2, remediation I.13)
+
+| Setting | Default | Notes |
+|---|---|---|
+| `PEOPLEOS_SEED_EMPLOYMENT_REQUIREMENTS` | `true` | OD-4: a new organisation starts with Location, Department, Designation and Employment type required on Warn. Existing organisations are never given a policy. |
+| `PEOPLEOS_PREFLIGHT_QUEUE_THRESHOLD` | `30000` | Employed people above which the pre-flight runs on the queue instead of in the page request (about 0.6 s per 1,000 people on MySQL 8.4). |
+| `PEOPLEOS_PREFLIGHT_QUEUE` | `default` | The queue `RunEmploymentRequirementsPreflight` goes to: a worker must listen on it. |
+| `PEOPLEOS_PREFLIGHT_EVIDENCE_HOURS` | `24` | How long a completed queued pre-flight counts as evidence for "Switch to Block" (never past the 30-day validity of the pre-flight record). |
+
 ## 3a. Proxies and HTTPS (closure)
 
 | Setting | Required value | Checked |

@@ -18,7 +18,9 @@ use Illuminate\Support\Facades\DB;
 
 /*
 | Employment data requirements at volume: the pre-flight (every employee the policy reaches, every rule on) and the
-| batch check payroll readiness uses, for 1,000 and 10,000 employees. Off by default (minutes of set-up):
+| batch check payroll readiness uses, for 1,000 and 10,000 employees; since remediation I.13 also the queued pre-flight
+| (a recorded run through the job, with its progress updates), measured end to end, up to 100,000. Above 10,000 the
+| readiness batch is not measured (its caller loads every employee at once). Off by default (minutes of set-up):
 | REQUIREMENTS_VOLUME=1000,10000 vendor/bin/pest tests/Feature/MasterRelationships/RequirementsVolumeTest.php
 | Results are appended as JSON lines to REQUIREMENTS_VOLUME_OUT (also against MySQL with DB_CONNECTION=mysql).
 */
@@ -79,15 +81,24 @@ it('runs the pre-flight and the readiness batch check at volume', function (int 
     };
 
     [$report, $preflightSeconds, $preflightQueries, $preflightMb] = $measure(fn () => app(EmploymentRequirementsPreflight::class)->run($policy));
-    [$results, $batchSeconds, $batchQueries, $batchMb] = $measure(fn () => app(PositionRequirements::class)->assessMany(
-        Employee::query()->with('person')->get(), today()));
+    [$results, $batchSeconds, $batchQueries, $batchMb] = $size <= 10000
+        ? $measure(fn () => app(PositionRequirements::class)->assessMany(Employee::query()->with('person')->get(), today()))
+        : [null, null, null, null];
+    // I.13: the queued pre-flight end to end (the sync queue runs the job at once): claim, batches with progress, result.
+    config(['peopleos.employment_requirements.preflight_queue_threshold' => 0, 'queue.default' => 'sync']);
+    [$run, $queuedSeconds, $queuedQueries, $queuedMb] = $measure(fn () => app(EmploymentRequirementsPreflight::class)->record($policy, $this->admin)->fresh());
 
     expect($report['employees'])->toBe($size)
         ->and($report['rules']['required']['violations'])->toBe(intdiv($size, 2))
-        ->and($results)->toHaveCount($size);
+        ->and($results === null || count($results) === $size)->toBeTrue()
+        ->and($run->only(['mode', 'status']))->toBe(['mode' => 'queued', 'status' => 'completed'])
+        ->and($run->processed)->toBe($size)
+        ->and($run->report['rules'])->toBe($report['rules']);
 
     $line = ['size' => $size, 'driver' => DB::getDriverName(), 'preflight_seconds' => $preflightSeconds, 'preflight_queries' => $preflightQueries, 'preflight_mb' => $preflightMb,
-        'batch_seconds' => $batchSeconds, 'batch_queries' => $batchQueries, 'batch_mb' => $batchMb, 'violations' => array_map(fn (array $r) => $r['violations'], $report['rules'])];
+        'batch_seconds' => $batchSeconds, 'batch_queries' => $batchQueries, 'batch_mb' => $batchMb,
+        'queued_seconds' => $queuedSeconds, 'queued_queries' => $queuedQueries, 'queued_mb' => $queuedMb,
+        'violations' => array_map(fn (array $r) => $r['violations'], $report['rules'])];
     if (filled(env('REQUIREMENTS_VOLUME_OUT'))) {
         file_put_contents((string) env('REQUIREMENTS_VOLUME_OUT'), json_encode($line).PHP_EOL, FILE_APPEND);
     }

@@ -1676,6 +1676,12 @@ return [
     // Off in phpunit.xml: tests that hire with a company only must not inherit it; dedicated tests switch it on.
     'employment_requirements' => [
         'seed_new_tenants' => (bool) env('PEOPLEOS_SEED_EMPLOYMENT_REQUIREMENTS', true),
+        // Remediation I.13: above this many employed people the pre-flight runs on the queue (measured: about 0.6 s per
+        // 1,000 people on MySQL 8.4, so 30,000 is about 18 s in a request), and the page follows its progress.
+        'preflight_queue_threshold' => (int) env('PEOPLEOS_PREFLIGHT_QUEUE_THRESHOLD', 30000),
+        'preflight_queue' => env('PEOPLEOS_PREFLIGHT_QUEUE', 'default'),
+        // A queued pre-flight is evidence for "Switch to Block" for this long (and never past the 30-day validity).
+        'preflight_evidence_hours' => (int) env('PEOPLEOS_PREFLIGHT_EVIDENCE_HOURS', 24),
     ],
 
     'people' => [

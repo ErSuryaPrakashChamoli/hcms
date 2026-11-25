@@ -57,9 +57,30 @@ final class SharedConfigurationGuard
             return;
         }
         if (! app(EntityApplicability::class)->editableBy($record, $user)) {
-            $type = $this->types->forModelOrFail($record);
-            throw new ApplicabilityRefusedException("{$type->describe($record)} is shared with companies outside your access, so you cannot {$verb} it. Clone it for your company, or override its values for your company instead.");
+            throw new ApplicabilityRefusedException($this->explain($record, $user, $verb));
         }
+    }
+
+    /**
+     * Remediation I.9: why a person limited to some companies may not change a record shared beyond them, who can, and
+     * what they can do instead for their own companies. The other companies are counted, never named (the person may
+     * not see them).
+     */
+    public function explain(Model $record, User $user, string $verb): string
+    {
+        $type = $this->types->forModelOrFail($record);
+        $applicability = app(EntityApplicability::class);
+        $mine = $applicability->companiesFor($user) ?? [];
+        $reach = $applicability->reach($record) ?? $applicability->allCompanyIds();
+        $others = count(array_diff($reach, $mine));
+        $routes = array_values(array_filter([
+            $type->supportsCloning() ? 'clone it for your company and change the copy (Companies → Clone)' : null,
+            $type->supportsOverrides() ? 'give your company its own values (Companies → Company values…)' : null,
+        ]));
+
+        return "{$type->describe($record)} is shared with companies outside your access ({$others} ".($others === 1 ? 'company' : 'companies')
+            ."), so you cannot {$verb} it: a change would reach them too. Someone whose access covers every company it applies to can, such as an administrator without a company limit."
+            .($routes === [] ? '' : ' For your own companies you can '.implode(', or ', $routes).'.');
     }
 
     private function limitToCreator(Model $record): void
