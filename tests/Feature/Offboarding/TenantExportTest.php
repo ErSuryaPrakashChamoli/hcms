@@ -12,6 +12,7 @@ use App\Domain\Offboarding\Services\ExportPackager;
 use App\Domain\Offboarding\Services\TenantExports;
 use App\Domain\Offboarding\Support\Signatures;
 use App\Domain\Platform\Models\Tenant;
+use App\Support\Storage\ScratchSpace;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
@@ -133,7 +134,7 @@ it('resumes a stopped export from its checkpoint, verifying what was already wri
     expect(count($checkpoint['tables']))->toBeGreaterThanOrEqual(4);
     // A file the dead worker wrote was damaged meanwhile: the resume must not trust it.
     $written = collect($checkpoint['tables'])->flatMap(fn (array $t) => $t['files'])->first()['path'];
-    file_put_contents(storage_path("app/offboarding-work/{$export->reference}/{$written}"), "damaged\n", FILE_APPEND);
+    file_put_contents(ScratchSpace::path("offboarding-work/{$export->reference}/{$written}"), "damaged\n", FILE_APPEND);
 
     $this->travel(31)->minutes();
     expect(app(TenantExports::class)->sweep())->toMatchArray(['resumed' => 1]);

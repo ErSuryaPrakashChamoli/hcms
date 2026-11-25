@@ -847,6 +847,9 @@ return [
         // Statutory evidence, verification copies and generated return files (platform-level).
         'compliance_disk' => env('PEOPLEOS_COMPLIANCE_DISK', 'local'),
         'shared_required' => (bool) env('PEOPLEOS_SHARED_STORAGE_REQUIRED', false),
+        // Local working folders while a job or download runs (App\Support\Storage\ScratchSpace). Null = storage/app.
+        // Tests set their own per-process folder.
+        'scratch_path' => null,
     ],
 
     // Phase 14 observability. The health token reveals counts and timings on /health/ready (never secrets).

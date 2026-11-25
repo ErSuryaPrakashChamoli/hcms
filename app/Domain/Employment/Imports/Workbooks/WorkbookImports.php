@@ -16,6 +16,7 @@ use App\Domain\Employment\Jobs\RunWorkbookImport;
 use App\Domain\Experience\Services\ScreenAccess;
 use App\Domain\Identity\Enums\UserStatus;
 use App\Domain\Identity\Models\User;
+use App\Support\Storage\ScratchSpace;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -779,7 +780,7 @@ final class WorkbookImports
 
     private function tempDirectory(): string
     {
-        $dir = storage_path('app/workbook-tmp/'.Str::ulid());
+        $dir = ScratchSpace::path('workbook-tmp/'.Str::ulid());
         File::ensureDirectoryExists($dir, 0700);
 
         return $dir;

@@ -1,12 +1,14 @@
 <?php
 
 use App\Domain\Compliance\Services\ComplianceRules;
+use App\Support\Storage\ScratchSpace;
 use Illuminate\Support\Facades\Storage;
 
 /*
 | Test storage isolation (2026-11-25). The application's own storage/app holds preserved statutory evidence
 | (storage/app/private/compliance-evidence). Test runs that seeded statutory packs wrote into it; tests/TestCase.php now
-| points every local disk at a folder of the test process. These tests keep it that way.
+| points every local disk, and the working folders of jobs and downloads, at a folder of the test process. These tests
+| keep it that way.
 */
 
 /** Files under the live evidence folder changed at or after $since (none when the folder does not exist). */
@@ -48,4 +50,18 @@ it('writes statutory pack evidence into the test folder, never into the preserve
     $written = $disk->allFiles('compliance-evidence');
     expect($written)->not->toBeEmpty()   // the packs ship official documents: they were stored, in the test folder
         ->and(liveEvidenceChangedSince($since))->toBe([]);
+});
+
+it('keeps the working folders of jobs and downloads in the test folder, and code builds them only through ScratchSpace', function () {
+    expect(str_starts_with(ScratchSpace::path('workbook-tmp/x'), storage_path('app')))->toBeFalse()
+        ->and(str_starts_with(ScratchSpace::path('offboarding-work/x'), storage_path('framework/testing')))->toBeTrue();
+
+    // A working folder built straight from storage_path('app/...') would bypass the redirect (and write into storage/app).
+    $direct = [];
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(app_path(), FilesystemIterator::SKIP_DOTS)) as $file) {
+        if ($file->getExtension() === 'php' && $file->getFilename() !== 'ScratchSpace.php' && preg_match('/storage_path\(\s*[\'"]app/', (string) file_get_contents($file->getPathname()))) {
+            $direct[] = str_replace(base_path().'/', '', $file->getPathname());
+        }
+    }
+    expect($direct)->toBe([]);
 });

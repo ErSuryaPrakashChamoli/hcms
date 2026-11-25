@@ -8,6 +8,7 @@ use App\Domain\Offboarding\Support\DataInventory;
 use App\Domain\Offboarding\Support\Signatures;
 use App\Domain\Offboarding\Support\TableModels;
 use App\Domain\Platform\Models\Tenant;
+use App\Support\Storage\ScratchSpace;
 use Closure;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Crypt;
@@ -50,7 +51,7 @@ final class ExportPackager
      */
     public function build(TenantExport $export, Tenant $tenant, string $passphrase, Closure $checkpoint): array
     {
-        $work = storage_path('app/offboarding-work/'.$export->reference);
+        $work = ScratchSpace::path('offboarding-work/'.$export->reference);
         File::ensureDirectoryExists($work);
         $state = $export->checkpoint ?? [];
         $state['tables'] ??= [];
@@ -121,8 +122,8 @@ final class ExportPackager
     /** Drops a stopped export's working files (a retry starts from its checkpoint; a cancelled one needs nothing). */
     public function discardWork(TenantExport $export): void
     {
-        File::deleteDirectory(storage_path('app/offboarding-work/'.$export->reference));
-        File::delete(storage_path('app/offboarding-work/'.$export->reference.'.zip'));
+        File::deleteDirectory(ScratchSpace::path('offboarding-work/'.$export->reference));
+        File::delete(ScratchSpace::path('offboarding-work/'.$export->reference.'.zip'));
     }
 
     /** @return list<array{0: string, 1: string}> [category, table] in package order */

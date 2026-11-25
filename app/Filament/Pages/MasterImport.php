@@ -14,6 +14,7 @@ use App\Domain\Employment\Imports\Workbooks\WorkbookImports;
 use App\Domain\Employment\Imports\Workbooks\WorkbookWriter;
 use App\Domain\Identity\Scopes\AccessScope;
 use App\Domain\Organisation\Models\Company;
+use App\Support\Storage\ScratchSpace;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Textarea;
@@ -402,7 +403,7 @@ class MasterImport extends Page implements HasSchemas
     public function downloadErrors(): ?StreamedResponse
     {
         $import = $this->current();
-        $path = storage_path('app/workbook-tmp/errors-'.Str::ulid().'.xlsx');
+        $path = ScratchSpace::path('workbook-tmp/errors-'.Str::ulid().'.xlsx');
         @mkdir(dirname($path), 0700, true);
         if (app(WorkbookWriter::class)->errors($import, $path) === null) {
             Notification::make()->success()->title('No rows with problems')->body('Every row was checked or imported without errors.')->send();
@@ -440,7 +441,7 @@ class MasterImport extends Page implements HasSchemas
     public static function templateResponse(string $key, bool $sample): StreamedResponse
     {
         abort_unless(WorkbookCatalogue::allowed(auth()->user(), $key), 403);
-        $path = storage_path('app/workbook-tmp/template-'.Str::ulid().'.xlsx');
+        $path = ScratchSpace::path('workbook-tmp/template-'.Str::ulid().'.xlsx');
         @mkdir(dirname($path), 0700, true);
         app(WorkbookWriter::class)->template($key, auth()->user(), $sample, $path);
 

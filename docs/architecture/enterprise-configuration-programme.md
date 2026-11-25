@@ -115,8 +115,9 @@ share the database cache and the entitlement cache is generation-keyed (I.3), th
 requirement warnings and refusals (I.4), legal entities, establishments and skills have master pages (I.5), company
 level and grade pairs are enforced (I.6), ending a company's own values cannot bring in an unchecked Block (I.7),
 payroll readiness reads in batches (I.8), restricted administrators are told why and what to do (I.9), tests never
-write into `storage/app` (I.10), the deployment checklist covers the new job and settings (I.11), OD-4 is verified
-(I.12) and large pre-flights run on the queue (I.13). What remains:
+write into `storage/app`: neither its disks nor the working folders of jobs and downloads, which go through
+`App\Support\Storage\ScratchSpace` (I.10), the deployment checklist covers the new job and settings (I.11), OD-4 is
+verified (I.12) and large pre-flights run on the queue (I.13). What remains:
 
 - **Operational:** a queue worker must listen on `PEOPLEOS_PREFLIGHT_QUEUE`, or a large organisation's pre-flight stays
   pending (it never authorises Block while pending).

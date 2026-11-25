@@ -48,7 +48,8 @@ abstract class TestCase extends BaseTestCase
      * Test storage isolation (2026-11-25): tests never write into the application's own storage/app. It holds preserved
      * statutory evidence (storage/app/private/compliance-evidence), and test runs that seed statutory packs used to
      * write into it. Every local disk rooted there points at a folder of this process under storage/framework/testing
-     * instead, removed when the process ends. Storage::fake() still works as before (its own folder).
+     * instead, removed when the process ends. Storage::fake() still works as before (its own folder). The working
+     * folders of jobs and downloads (App\Support\Storage\ScratchSpace) go there too.
      */
     private function isolateLocalDisks(): void
     {
@@ -65,5 +66,7 @@ abstract class TestCase extends BaseTestCase
             }
         }
         Storage::forgetDisk($isolated);
+        // The working folders of jobs and downloads (App\Support\Storage\ScratchSpace) too.
+        $this->app['config']->set('peopleos.storage.scratch_path', self::$diskRoot.'/scratch');
     }
 }
