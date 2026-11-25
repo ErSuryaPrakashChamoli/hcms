@@ -40,7 +40,8 @@ final class TenantCommercialLock
             return DB::transaction(function () use ($tenant, $work) {
                 $profile = TenantEntitlementProfile::query()->lockForUpdate()->firstOrFail();
                 $result = $work($profile);
-                DB::afterCommit(fn () => app(EntitlementStateStore::class)->forget($tenant->id));
+                // The new generation carries the profile version after the change (EntitlementStateStore::forget).
+                DB::afterCommit(fn () => app(EntitlementStateStore::class)->forget($tenant->id, (int) $profile->version));
 
                 return $result;
             });

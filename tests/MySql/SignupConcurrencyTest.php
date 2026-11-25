@@ -38,6 +38,7 @@ beforeEach(function () {
     config(['database.connections.concurrency' => array_merge(config('database.connections.mysql'), ['database' => $database]), 'database.default' => 'concurrency',
         'queue.default' => 'sync', 'mail.default' => 'array', 'cache.default' => 'database']);
     DB::purge('concurrency');
+    useSharedDatabaseCache('concurrency');   // the database store, re-resolved (ConcurrencyHelpers)
     Artisan::call('migrate:fresh', ['--database' => 'concurrency', '--force' => true]);
     Notification::fake();
     Filament::setCurrentPanel(Filament::getPanel('admin'));

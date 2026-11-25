@@ -42,6 +42,7 @@ beforeEach(function () {
         'queue.default' => 'sync', 'cache.default' => 'database', 'cache.stores.database.connection' => 'concurrency',
         'peopleos.billing.sandbox.enabled' => true, 'peopleos.billing.sandbox.webhook_secret' => 'sandbox-race-secret-0123456789']);
     DB::purge('concurrency');
+    useSharedDatabaseCache('concurrency');   // the database store, re-resolved (ConcurrencyHelpers)
     if (! ($GLOBALS['peopleos_concurrency_migrated'] ?? false)) {
         Artisan::call('migrate:fresh', ['--database' => 'concurrency', '--force' => true]);
         $GLOBALS['peopleos_concurrency_migrated'] = true;

@@ -12,6 +12,7 @@ use App\Domain\Platform\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -20,8 +21,12 @@ use Throwable;
  * - Request memo: this service is request-scoped (AppServiceProvider); its memo dies with the request, with each
  *   queued job (Laravel forgets scoped instances per job) and at the end of every handled request. Callers always
  *   resolve it from the container at call time, so no long-lived object can hold a stale memo. Keyed by tenant id.
- * - Cache: `tenant:{id}:entitlements` on the default store, separate from every authorisation cache; forgotten
- *   after commit by every configuration change. A cache failure falls back to the database.
+ * - Cache: `tenant:{id}:entitlements:{generation}` on the default store, separate from every authorisation cache.
+ *   Every configuration change sets a new generation after commit (forget()): "{profile version}.{ulid}", never reused.
+ *   So a reader that loaded the previous state before the change committed can only store it under the old generation,
+ *   where nobody reads it again, and a reader whose state is older than the generation's version (a transaction
+ *   snapshot taken before the commit) does not store it at all (2026-11-25: a plain forget left that race open, and the
+ *   previous state came back for up to the cache lifetime). A cache failure falls back to the database.
  * - Database: three indexed, tenant-scoped reads (profile, active configuration rows, active overrides). SaaS.4: a
  *   tenant that has ever had a plan adds two (its assignments, then the pinned published versions with their
  *   entitlements in one joined read); a tenant that never had one reads exactly as before.
@@ -33,9 +38,18 @@ final class EntitlementStateStore
 
     public function __construct(private readonly Cache $cache, private readonly TenantContext $tenants) {}
 
-    public static function cacheKey(int $tenantId): string
+    /** The cache entry of a tenant's state for a generation (default: the current one). */
+    public static function cacheKey(int $tenantId, ?string $generation = null): string
     {
-        return "tenant:{$tenantId}:entitlements";
+        $generation ??= (string) (cache()->get(self::generationKey($tenantId)) ?? '0');
+
+        return "tenant:{$tenantId}:entitlements:{$generation}";
+    }
+
+    /** The tenant's current generation: replaced (never reused) by every configuration change. */
+    public static function generationKey(int $tenantId): string
+    {
+        return "tenant:{$tenantId}:entitlements:generation";
     }
 
     public function for(int $tenantId): EntitlementState
@@ -43,11 +57,18 @@ final class EntitlementStateStore
         return $this->memo[$tenantId] ??= $this->cached($tenantId);
     }
 
-    public function forget(int $tenantId): void
+    /**
+     * After a change has committed: this request reloads, and every process moves to a new generation.
+     *
+     * @param  int|null  $version  the tenant's profile version after the change (TenantCommercialLock passes it)
+     */
+    public function forget(int $tenantId, ?int $version = null): void
     {
         unset($this->memo[$tenantId]);
         try {
-            $this->cache->forget(self::cacheKey($tenantId));
+            $previous = (string) ($this->cache->get(self::generationKey($tenantId)) ?? '0');
+            $this->cache->forever(self::generationKey($tenantId), ($version ?? 0).'.'.Str::ulid());
+            $this->cache->forget(self::cacheKey($tenantId, $previous));   // tidy only: nobody reads it any more
         } catch (Throwable $e) {
             Log::warning('entitlements.cache_forget_failed', ['tenant_id' => $tenantId, 'error' => $e::class]);
         }
@@ -56,9 +77,20 @@ final class EntitlementStateStore
     private function cached(int $tenantId): EntitlementState
     {
         try {
-            $data = $this->cache->remember(self::cacheKey($tenantId), (int) config('peopleos.entitlements.cache_seconds', 600), fn () => $this->load($tenantId)->toArray());
+            // The generation is read before the state, so state loaded after it is at least that recent, unless the
+            // read sees an older snapshot (an open transaction): then it serves this request only.
+            $generation = (string) ($this->cache->get(self::generationKey($tenantId)) ?? '0');
+            $key = self::cacheKey($tenantId, $generation);
+            $data = $this->cache->get($key);
+            if ($data !== null) {
+                return EntitlementState::fromArray($data);
+            }
+            $state = $this->load($tenantId);
+            if ($state->version >= (int) strtok($generation, '.')) {
+                $this->cache->put($key, $state->toArray(), (int) config('peopleos.entitlements.cache_seconds', 600));
+            }
 
-            return EntitlementState::fromArray($data);
+            return $state;
         } catch (Throwable $e) {
             Log::warning('entitlements.cache_unavailable', ['tenant_id' => $tenantId, 'error' => $e::class]);
 

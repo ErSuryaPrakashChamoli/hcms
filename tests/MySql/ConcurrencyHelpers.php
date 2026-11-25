@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 
@@ -56,4 +57,20 @@ function race(array $callbacks, float $pause = 0.4, array $slow = []): array
 
         return $result;
     }, $files);
+}
+
+/**
+ * Switch this test to the shared database cache store, so cache invalidation and cache gates cross the forked
+ * processes the way they cross real ones (2026-11-25). The default store was resolved while the application booted, on
+ * the array store from phpunit.xml: services that inject the cache repository (EntitlementStateStore, ShadowRecorder)
+ * kept that process-local array, so each forked process had a private cache and the cross-process tests could not see
+ * each other's invalidations. Changing cache.default alone did not reach them.
+ */
+function useSharedDatabaseCache(string $connection = 'concurrency'): void
+{
+    config(['cache.default' => 'database', 'cache.stores.database.connection' => $connection]);
+    app('cache')->forgetDriver(['array', 'database']);
+    app()->forgetInstance('cache.store');
+    Cache::clearResolvedInstances();
+    app()->forgetScopedInstances();
 }

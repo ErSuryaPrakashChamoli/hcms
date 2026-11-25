@@ -29,6 +29,7 @@ beforeEach(function () {
     config(['database.connections.concurrency' => array_merge(config('database.connections.mysql'), ['database' => $database]), 'database.default' => 'concurrency',
         'queue.default' => 'sync', 'cache.default' => 'database', 'cache.stores.database.connection' => 'concurrency']);
     DB::purge('concurrency');
+    useSharedDatabaseCache('concurrency');   // the database store, re-resolved (ConcurrencyHelpers)
     if (! ($GLOBALS['peopleos_concurrency_migrated'] ?? false)) {
         Artisan::call('migrate:fresh', ['--database' => 'concurrency', '--force' => true]);
         $GLOBALS['peopleos_concurrency_migrated'] = true;

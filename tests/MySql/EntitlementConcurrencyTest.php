@@ -30,8 +30,9 @@ beforeEach(function () {
         $this->markTestSkipped('Set PEOPLEOS_MYSQL_CONCURRENCY_DB to a disposable MySQL database (name containing "concurrency") and enable pcntl.');
     }
     config(['database.connections.concurrency' => array_merge(config('database.connections.mysql'), ['database' => $database]), 'database.default' => 'concurrency',
-        'queue.default' => 'sync', 'cache.default' => 'database', 'cache.stores.database.connection' => 'concurrency']);
+        'queue.default' => 'sync']);
     DB::purge('concurrency');
+    useSharedDatabaseCache('concurrency');
     if (! ($GLOBALS['peopleos_concurrency_migrated'] ?? false)) {
         Artisan::call('migrate:fresh', ['--database' => 'concurrency', '--force' => true]);
         $GLOBALS['peopleos_concurrency_migrated'] = true;
