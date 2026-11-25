@@ -18,6 +18,21 @@ use Tests\Support\TenantAwareTestJob;
  */
 
 /** Validate as if the default connection were MySQL, restoring it at once (the test database stays SQLite). */
+/**
+ * The validator as if the default connection were SQLite, whatever database runs the suite (the cases below check that
+ * a SQLite connection is flagged in production; on a MySQL test run the default connection is MySQL).
+ */
+function validateOnSqlite(bool $asProduction = false): array
+{
+    $previous = config('database.default');
+    config(['database.default' => 'sqlite']);
+    try {
+        return app(ProductionConfigValidator::class)->validate($asProduction);
+    } finally {
+        config(['database.default' => $previous]);
+    }
+}
+
 function validateOnMysql(bool $asProduction = false): array
 {
     $previous = config('database.default');
@@ -57,7 +72,7 @@ function productionLikeConfig(): void
 
 it('finds missing, insecure, invalid and incompatible settings without printing any value', function () {
     config(['database.connections.mysql.password' => 'super-secret-db-pw', 'filesystems.disks.s3.secret' => 'aws-secret-zzz', 'peopleos.ai.anthropic.key' => 'sk-ant-should-not-print']);
-    $findings = collect(app(ProductionConfigValidator::class)->validate(asProduction: true));
+    $findings = collect(validateOnSqlite(asProduction: true));
 
     expect($findings->where('severity', 'error')->pluck('key')->all())->toContain('APP_ENV', 'APP_URL', 'DB_CONNECTION', 'CACHE_STORE', 'SESSION_DRIVER', 'SESSION_SECURE_COOKIE', 'QUEUE_CONNECTION', 'MAIL_MAILER', 'PEOPLEOS_HEALTH_TOKEN')
         ->and($findings->pluck('category')->unique()->all())->toContain('missing', 'insecure', 'invalid', 'incompatible')
@@ -125,7 +140,7 @@ it('reports configuration safety and distributed locks in readiness, and refuses
     app()->detectEnvironment(fn () => 'production');
     $this->flushHeaders()->getJson('/health/ready')->assertStatus(503)->assertJsonPath('checks.configuration.status', 'fail');
     productionLikeConfig();
-    expect(collect(app(ProductionConfigValidator::class)->validate())->where('severity', 'error')->pluck('key')->all())->toBe(['DB_CONNECTION'])
+    expect(collect(validateOnSqlite())->where('severity', 'error')->pluck('key')->all())->toBe(['DB_CONNECTION'])
         ->and(collect(validateOnMysql())->where('severity', 'error')->all())->toBe([]);
     app()->detectEnvironment(fn () => 'testing');
 });
