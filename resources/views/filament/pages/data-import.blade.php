@@ -30,9 +30,16 @@
         @if (! $searching && ($masters = $this->masterWorkbooks()) !== [])
             <section class="pos-mu-band" aria-labelledby="di-preferred-title">
                 <div class="pos-mu-band-head">
-                    <span class="pos-mu-band-eyebrow">Preferred imports</span>
-                    <h2 id="di-preferred-title">Master uploads</h2>
-                    <p>One Excel workbook for many kinds of data: fill in the worksheets you need, and PeopleOS checks them together and imports them in the order they depend on each other. Every single upload is still below.</p>
+                    <div class="pos-mu-band-intro">
+                        <span class="pos-mu-band-eyebrow"><x-filament::icon icon="heroicon-m-sparkles" class="size-4" />Preferred imports</span>
+                        <h2 id="di-preferred-title">Master uploads</h2>
+                        <p>One Excel workbook for many kinds of data: fill in the worksheets you need, and PeopleOS checks them together and imports them in the order they depend on each other. Every single upload is still below.</p>
+                    </div>
+                    <ol class="pos-mu-band-steps" aria-label="How a master upload works">
+                        <li><span aria-hidden="true">1</span>Download the template</li>
+                        <li><span aria-hidden="true">2</span>Fill only what you need</li>
+                        <li><span aria-hidden="true">3</span>Check, approve, import</li>
+                    </ol>
                 </div>
                 @include('filament.imports.master-upload-cards', ['workbooks' => $masters])
             </section>

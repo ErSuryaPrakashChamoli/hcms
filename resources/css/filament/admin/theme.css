@@ -4886,35 +4886,84 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 }
 
 /* ------------------------------------------------------------------ U. Master uploads (Data import → Preferred imports, MasterImport page)
-   The band above the single uploads: an eyebrow, a heading and one line, then a card per workbook in its module's hue
-   (icon tile, name, worksheet count, the first worksheets as quiet chips, Upload / Template / Previous). */
-.pos-mu-band { display: grid; gap: var(--pos-space-4); padding: var(--pos-space-5); border-radius: var(--pos-radius-xl, var(--pos-radius-lg));
-    background: linear-gradient(135deg, var(--pos-primary-soft), color-mix(in srgb, var(--pos-primary-soft) 25%, var(--pos-surface)) 70%);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 14%, transparent); }
-.pos-mu-band-head { display: grid; gap: 4px; max-width: 60rem; }
-.pos-mu-band-eyebrow { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label);
-    text-transform: uppercase; color: var(--pos-primary); }
-.pos-mu-band-head h2 { margin: 0; font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
+   The band above the single uploads: an eyebrow, a heading and one line beside three numbered steps, then a card per
+   workbook in its module's hue — a tone wash and corner watermark, a gradient icon tile, the name and worksheet count,
+   the worksheets as chips, and Upload workbook / Template / Previous uploads (the clock) on the foot. */
+.pos-mu-band { position: relative; isolation: isolate; display: grid; gap: var(--pos-space-5); padding: var(--pos-space-6); overflow: hidden;
+    border-radius: var(--pos-radius-xl, var(--pos-radius-lg));
+    background:
+        radial-gradient(42rem 18rem at 100% 0%, color-mix(in srgb, var(--pos-primary) 13%, transparent), transparent 70%),
+        radial-gradient(28rem 14rem at 0% 100%, color-mix(in srgb, var(--pos-hue-teal) 8%, transparent), transparent 70%),
+        linear-gradient(160deg, var(--pos-primary-soft), color-mix(in srgb, var(--pos-primary-soft) 30%, var(--pos-surface)) 75%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 16%, transparent); }
+/* A faint dot grid in the top corner, fading out */
+.pos-mu-band::before { content: ''; position: absolute; z-index: -1; inset: 0 0 auto auto; width: 22rem; height: 11rem; pointer-events: none;
+    background-image: radial-gradient(color-mix(in srgb, var(--pos-primary) 30%, transparent) 1px, transparent 1.4px); background-size: 14px 14px;
+    -webkit-mask-image: radial-gradient(farthest-side at 100% 0%, #000 10%, transparent); mask-image: radial-gradient(farthest-side at 100% 0%, #000 10%, transparent); }
+.pos-mu-band-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--pos-space-4) var(--pos-space-6); }
+.pos-mu-band-intro { display: grid; gap: 6px; flex: 1 1 32rem; max-width: 52rem; }
+.pos-mu-band-eyebrow { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 3px 10px 3px 8px; border-radius: var(--pos-radius-pill);
+    font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); letter-spacing: var(--pos-tracking-label);
+    text-transform: uppercase; color: var(--pos-primary); background: color-mix(in srgb, var(--pos-primary) 10%, var(--pos-surface));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 20%, transparent); }
+.pos-mu-band-head h2 { margin: 0; font-size: var(--pos-fs-title); line-height: var(--pos-lh-title); font-weight: var(--pos-fw-semibold); letter-spacing: -0.01em; color: var(--pos-text); }
 .pos-mu-band-head p { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary); }
-.pos-mu-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: var(--pos-space-3); }
-.pos-mu-card { position: relative; display: grid; align-content: start; gap: var(--pos-space-3); min-width: 0; padding: var(--pos-space-4); overflow: hidden;
-    border-radius: var(--pos-radius-lg); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border);
-    transition: box-shadow var(--pos-dur-1) var(--pos-ease); }
-.pos-mu-card::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 3px; background: var(--tone); }
-.pos-mu-card:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 35%, var(--pos-border)), var(--pos-shadow-1); }
+.pos-mu-band-steps { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); margin: 0; padding: 0; list-style: none; }
+.pos-mu-band-steps li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: var(--pos-radius-pill);
+    font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); font-weight: var(--pos-fw-medium); color: var(--pos-text);
+    background: color-mix(in srgb, var(--pos-surface) 80%, transparent); box-shadow: 0 1px 2px rgb(16 20 30 / 0.04), inset 0 0 0 1px color-mix(in srgb, var(--pos-primary) 14%, var(--pos-border));
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.pos-mu-band-steps li > span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: var(--pos-fs-caption); font-weight: var(--pos-fw-semibold);
+    color: var(--pos-surface); background: linear-gradient(135deg, var(--pos-primary), color-mix(in srgb, var(--pos-primary) 70%, var(--pos-hue-plum))); }
+
+/* Cards keep their own height, so opening one card's worksheets does not stretch the others in its row */
+.pos-mu-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); align-items: start; gap: var(--pos-space-4); }
+.pos-mu-card { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: var(--pos-space-3); min-width: 0; padding: var(--pos-space-4) var(--pos-space-4) 14px;
+    overflow: hidden; border-radius: var(--pos-radius-xl, var(--pos-radius-lg));
+    background:
+        radial-gradient(16rem 9rem at 100% 0%, color-mix(in srgb, var(--tone) 12%, transparent), transparent 70%),
+        linear-gradient(180deg, color-mix(in srgb, var(--tone-soft) 80%, transparent), transparent 7.5rem),
+        var(--pos-surface);
+    box-shadow: 0 1px 2px rgb(16 20 30 / 0.04), inset 0 0 0 1px color-mix(in srgb, var(--tone) 14%, var(--pos-border));
+    transition: box-shadow var(--pos-dur-2) var(--pos-ease), transform var(--pos-dur-2) var(--pos-ease); }
+/* The hue as a thin top edge that fades out to the right */
+.pos-mu-card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 15%, transparent)); }
+.pos-mu-card:hover, .pos-mu-card:focus-within { box-shadow: 0 14px 30px -16px color-mix(in srgb, var(--tone) 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--tone) 40%, var(--pos-border)); }
+@media (prefers-reduced-motion: no-preference) {
+    .pos-mu-card:hover { transform: translateY(-2px); }
+    .pos-mu-card:hover .pos-mu-card-mark { transform: rotate(-8deg) scale(1.06); }
+}
+/* The module icon again, large and faint in the top corner */
+.pos-mu-card-mark { position: absolute; z-index: -1; top: -12px; right: -12px; width: 88px; height: 88px; color: var(--tone); opacity: 0.08; pointer-events: none;
+    transform: rotate(-12deg); transition: transform var(--pos-dur-3) var(--pos-ease); }
+.pos-mu-card-mark svg { width: 100%; height: 100%; }
 .pos-mu-card-head { display: flex; align-items: center; gap: var(--pos-space-3); min-width: 0; }
-.pos-mu-card-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--pos-radius-md); color: var(--tone); background: var(--tone-soft); }
-.pos-mu-card-title { display: grid; min-width: 0; }
-.pos-mu-card-title h3 { margin: 0; font-size: var(--pos-fs-body); line-height: var(--pos-lh-body); font-weight: var(--pos-fw-semibold); color: var(--pos-text); }
-.pos-mu-card-title span { font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-muted); }
-.pos-mu-card-about { margin: 0; font-size: var(--pos-fs-meta); line-height: var(--pos-lh-meta); color: var(--pos-text-secondary);
-    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.pos-mu-card-sheets { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.pos-mu-card-sheets li { padding: 2px 8px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); color: var(--pos-text-secondary);
-    background: var(--pos-surface-muted); }
-.pos-mu-card-sheets li.is-more { color: var(--tone); background: var(--tone-soft); }
-.pos-mu-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); }
-.pos-mu-card-history { margin-inline-start: auto; font-size: var(--pos-fs-meta); }
+.pos-mu-card-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; color: var(--pos-surface);
+    background: linear-gradient(140deg, color-mix(in srgb, var(--tone) 78%, #fff), var(--tone) 55%, color-mix(in srgb, var(--tone) 82%, #000));
+    box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--tone) 75%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.25); }
+.pos-mu-card-title { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.pos-mu-card-title h3 { margin: 0; font-size: 15px; line-height: 20px; font-weight: var(--pos-fw-semibold); letter-spacing: -0.005em; color: var(--pos-text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-mu-card-count { display: inline-flex; align-items: center; gap: 5px; justify-self: start; padding: 1px 8px 1px 6px; border-radius: var(--pos-radius-pill);
+    font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-semibold); font-variant-numeric: tabular-nums;
+    color: var(--tone); background: color-mix(in srgb, var(--tone-soft) 85%, var(--pos-surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent); }
+.pos-mu-card-history { display: grid; place-items: center; flex: none; align-self: stretch; min-width: 32px; aspect-ratio: 1; border-radius: var(--pos-radius-md); color: var(--pos-text-muted);
+    background: color-mix(in srgb, var(--pos-surface) 70%, transparent); box-shadow: inset 0 0 0 1px var(--pos-border);
+    transition: color var(--pos-dur-1) var(--pos-ease), background var(--pos-dur-1) var(--pos-ease), box-shadow var(--pos-dur-1) var(--pos-ease); }
+.pos-mu-card-history:hover { color: var(--tone); background: var(--pos-surface); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 40%, var(--pos-border)); }
+.pos-mu-card-history:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
+.pos-mu-card-sheets { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; min-height: calc(2 * 20px + 6px); margin: 0; padding: 0; list-style: none; }
+.pos-mu-card-sheets li { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: var(--pos-radius-pill); font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption);
+    color: var(--pos-text-secondary); background: var(--pos-surface); box-shadow: inset 0 0 0 1px var(--pos-border); }
+.pos-mu-card-sheets li:not(.is-more)::before { content: ''; flex: none; width: 5px; height: 5px; border-radius: 50%; background: color-mix(in srgb, var(--tone) 55%, transparent); }
+.pos-mu-card-sheets li.is-more { padding: 0; font-weight: var(--pos-fw-semibold); color: var(--tone); background: var(--tone-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 22%, transparent); }
+.pos-mu-card-sheets li.is-more button { padding: 2px 9px; border-radius: inherit; font: inherit; color: inherit; cursor: pointer; }
+.pos-mu-card-sheets li.is-more button:hover { background: color-mix(in srgb, var(--tone) 12%, transparent); }
+.pos-mu-card-sheets li.is-more button:focus-visible { outline: 2px solid var(--tone); outline-offset: 1px; }
+/* The chips keep room for two rows, so closed cards in a row line their buttons up */
+.pos-mu-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pos-space-2); padding-top: var(--pos-space-3);
+    border-top: 1px dashed color-mix(in srgb, var(--tone) 22%, var(--pos-border)); }
+.pos-mu-card-actions .pos-mu-card-upload { flex: 1 1 auto; }
 /* The check / import steps: the worksheet table's "after …" line and failed counts */
 .pos-mu { display: grid; gap: var(--pos-space-4); }
 .pos-mu-after { display: block; font-size: var(--pos-fs-caption); line-height: var(--pos-lh-caption); font-weight: var(--pos-fw-regular); color: var(--pos-text-muted); }
@@ -4931,5 +4980,5 @@ a.pos-adm-stat:focus-visible { outline: 2px solid var(--pos-hero-text); outline-
 .pos-step-table td .pos-link + .pos-link { margin-inline-start: var(--pos-space-2); }
 @media (max-width: 640px) {
     .pos-mu-band { padding: var(--pos-space-4); }
-    .pos-mu-card-history { margin-inline-start: 0; }
+    .pos-mu-band-steps li { padding-inline-end: 10px; }
 }

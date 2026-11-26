@@ -166,14 +166,13 @@ it('loads calendars and their holidays from one workbook: holidays wait for a ca
         ->and(HolidayCalendar::query()->where('code', 'HOL-WB')->firstOrFail()->holidays()->count())->toBe(2);
 });
 
-it('shows on each master upload card the companies the person may load data for', function () {
-    $everyone = collect((new DataImport)->masterWorkbooks())->keyBy('key');
-    expect($everyone['organisation']['companies'])->toContain('FynnEdge Advisory')->toContain('Markedge Technologies')
-        ->and($everyone['organisation']['label'])->toBe('Organisation Master');
-    Livewire\Livewire::test(DataImport::class)->assertSee('Markedge Technologies')->assertDontSee('every company');
+it('keeps master upload cards to the name, worksheet count, worksheets and actions', function () {
+    $organisation = collect((new DataImport)->masterWorkbooks())->firstWhere('key', 'organisation');
+    expect($organisation['label'])->toBe('Organisation Master')->and($organisation)->not->toHaveKey('companies');
 
-    $limited = tenantUser($this->tenant, ['employee.import', 'organisation.create', 'organisation.view']);
-    app(AccessScopes::class)->assign($limited, ['company' => [$this->mk->id]]);
-    $this->actingAs($limited);
-    expect(MasterImport::companiesLine())->toBe('Markedge Technologies');
+    // The companies line, "runs in dependency order" and the workbook's description are no longer on the card.
+    Livewire\Livewire::test(DataImport::class)
+        ->assertSee('Organisation Master')->assertSeeHtml('aria-label="Previous uploads of Organisation Master"')
+        ->assertSee(count($organisation['sheets']).' worksheets')
+        ->assertDontSee('runs in dependency order')->assertDontSee($organisation['about']);
 });

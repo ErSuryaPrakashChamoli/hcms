@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Domain\Configuration\Applicability\EntityApplicability;
 use App\Domain\Employment\Imports\EmployeeImport;
 use App\Domain\Employment\Imports\EmployeeImportRow;
 use App\Domain\Employment\Imports\EmployeeImports;
@@ -12,8 +11,6 @@ use App\Domain\Employment\Imports\Workbooks\DependencyPlanner;
 use App\Domain\Employment\Imports\Workbooks\WorkbookCatalogue;
 use App\Domain\Employment\Imports\Workbooks\WorkbookImports;
 use App\Domain\Employment\Imports\Workbooks\WorkbookWriter;
-use App\Domain\Identity\Scopes\AccessScope;
-use App\Domain\Organisation\Models\Company;
 use App\Support\Storage\ScratchSpace;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
@@ -153,33 +150,7 @@ class MasterImport extends Page implements HasSchemas
             'sheets' => array_map(fn (string $title) => ['title' => $title, 'about' => $sheets[$title]['process']['about'], 'after' => $plan['after'][$title], 'stage' => $plan['stages'][$title]], $plan['order']),
             'all' => count(WorkbookCatalogue::WORKBOOKS[$key]['sheets']),
             'url' => static::getUrl(['workbook' => $key]),
-            'companies' => static::companiesLine(),
         ]);
-    }
-
-    /**
-     * The companies this person may load data for, as the cards show them: up to three by name, otherwise how many
-     * ("all 5 companies" when they may act for every company of the organisation, "3 of 5 companies" when limited).
-     */
-    public static function companiesLine(): string
-    {
-        $user = auth()->user();
-        if ($user === null) {
-            return '';
-        }
-        $limited = app(EntityApplicability::class)->companiesFor($user);
-        $all = Company::query()->withoutGlobalScope(AccessScope::class)->orderBy('name')->pluck('name', 'id');
-        $mine = $limited === null ? $all : $all->only($limited);
-        if ($mine->isEmpty()) {
-            return 'no company yet';
-        }
-        if ($mine->count() <= 3) {
-            $names = $mine->values()->all();
-
-            return count($names) === 1 ? $names[0] : implode(', ', array_slice($names, 0, -1)).' and '.end($names);
-        }
-
-        return $limited === null ? "all {$all->count()} companies" : "{$mine->count()} of {$all->count()} companies";
     }
 
     public function tone(): string

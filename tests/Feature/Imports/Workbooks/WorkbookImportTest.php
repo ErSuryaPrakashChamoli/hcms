@@ -347,8 +347,14 @@ it('lists a workbook once in Recent uploads and only for people who may see all 
 });
 
 it('shows the master uploads above every single upload on Data import, each with its template', function () {
+    $organisation = collect((new DataImport)->masterWorkbooks())->firstWhere('key', 'organisation');
+    $hidden = count($organisation['sheets']) - 4;
+
     Livewire\Livewire::test(DataImport::class)
         ->assertSee('Preferred imports')->assertSee('Organisation Master')->assertSee('Employee Master')->assertSee('Accounting Codes (JV)')
+        // A card shows four worksheets; "+N more" opens the rest, which are already on the page.
+        ->assertSeeHtml('aria-controls="mu-sheets-organisation"')->assertSee("+{$hidden} more")
+        ->assertSee(end($organisation['sheets'])['title'])
         // The single uploads all stay below.
         ->assertSee('Select process')
         ->call('downloadWorkbookTemplate', 'organisation')->assertFileDownloaded('organisation-master-template.xlsx');

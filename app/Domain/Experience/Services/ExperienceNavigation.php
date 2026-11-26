@@ -299,7 +299,10 @@ final class ExperienceNavigation
         return $this->routes[$url];
     }
 
-    /** The module the current request is on, if any. */
+    /**
+     * The module the current request is on, if any. A page module also owns the pages whose slug sits below its own
+     * (Data import → data-import/master-uploads), so those keep their area bar and rail place.
+     */
     public function currentModule(User $user): ?array
     {
         $route = $this->currentRoute();
@@ -308,7 +311,9 @@ final class ExperienceNavigation
         }
         $best = null;
         foreach ($this->catalogue->for($user) as $module) {
-            $match = $module['kind'] === 'page' ? $route === $module['route'] : str_starts_with($route, $module['route']);
+            $match = $module['kind'] === 'page'
+                ? $route === $module['route'] || str_starts_with($route, $module['route'].'.')
+                : str_starts_with($route, $module['route']);
             if ($match && ($best === null || strlen($module['route']) > strlen($best['route']))) {
                 $best = $module;
             }

@@ -2,6 +2,8 @@
 
 use App\Domain\Experience\Services\ExperienceNavigation;
 use App\Domain\Experience\Services\ExperiencePreferences;
+use App\Filament\Pages\DataImport;
+use App\Filament\Pages\MasterImport;
 use App\Filament\Resources\Companies\CompanyResource;
 use App\Filament\Resources\Establishments\EstablishmentResource;
 use App\Filament\Resources\PayrollRuns\PayrollRunResource;
@@ -55,6 +57,16 @@ it('keeps the title and buttons in the header of a record page', function () {
 
     expect($create)->toContain('class="pos-spacebar"')->toContain('aria-current="page"')
         ->not->toContain('data-pos-landing')->not->toContain('pos-toolbar-actions');
+});
+
+it('keeps the area bar on a page that sits below a module page (Data import → Master uploads)', function () {
+    $this->actingAs($this->admin);
+
+    $html = $this->get(MasterImport::getUrl(['workbook' => 'organisation']))->assertOk()->getContent();
+
+    // The bar shows, with Data import as the page you are in; the page keeps its own title (it is not the landing).
+    expect($html)->toContain('class="pos-spacebar"')->not->toContain('data-pos-landing')
+        ->and(areaRow($html)[0])->toBe(DataImport::getUrl());
 });
 
 it('leads with favourites after the current page and lists them apart under "All in"', function () {
